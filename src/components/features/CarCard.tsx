@@ -89,13 +89,16 @@ export function CarCard({ title, price, image, href = "#" }: CarCardProps) {
                     style={{ transform: "translateZ(40px)" }}
                     className="relative z-10 w-full h-full flex items-center justify-center"
                 >
-                    <Image
-                        src={image}
-                        alt={title}
-                        width={400}
-                        height={300}
-                        className="max-h-full w-auto object-contain drop-shadow-2xl transition-transform duration-500 group-hover:scale-105 group-hover:-rotate-1"
-                    />
+                    {/* Wrap image in Link for better UX */}
+                    <Link href={href} className="cursor-pointer">
+                        <Image
+                            src={image}
+                            alt={title}
+                            width={400}
+                            height={300}
+                            className="max-h-full w-auto object-contain drop-shadow-2xl transition-transform duration-500 group-hover:scale-105 group-hover:-rotate-1"
+                        />
+                    </Link>
                 </motion.div>
             </div>
 
@@ -118,14 +121,15 @@ export function CarCard({ title, price, image, href = "#" }: CarCardProps) {
                 </p>
 
                 <div className="mt-auto">
+                    {/* Make the button use the default red gradient variant for high contrast */}
                     <Link href={href} className="block w-full">
                         <Button
-                            className="w-full shadow-lg border-white/5 text-white overflow-hidden relative"
-                            variant="outline"
+                            className="w-full shadow-lg text-white"
+                            variant="default" // Changed from outline to default
                             size="sm"
+                            shape="default"
                         >
-                            <span className="relative z-10 group-hover:text-primary transition-colors">View Details</span>
-                            <div className="absolute inset-0 bg-white/10 translate-y-[100%] group-hover:translate-y-0 transition-transform duration-300" />
+                            View Details
                         </Button>
                     </Link>
                 </div>

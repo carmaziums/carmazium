@@ -82,11 +82,11 @@ export function MaziumWidget() {
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className={cn(
-                    "h-14 w-14 rounded-full shadow-[0_4px_20px_rgba(237,28,36,0.5)] flex items-center justify-center transition-all duration-300 hover:scale-105",
-                    isOpen ? "bg-slate-800 text-white" : "bg-primary text-white"
+                    "h-14 w-14 rounded-full shadow-[0_4px_20px_rgba(237,28,36,0.5)] flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95",
+                    isOpen ? "bg-slate-800 text-white" : "bg-gradient-to-r from-[#ed1c24] to-[#7f1d1d] text-white animate-float"
                 )}
             >
-                {isOpen ? <X size={24} /> : <MessageSquare size={24} />}
+                {isOpen ? <X size={24} /> : <Sparkles size={24} className="animate-pulse" />}
             </button>
         </div>
     )

@@ -62,7 +62,7 @@ export default function Home() {
                 placeholder="e.g. BMW 3 Series, hybrid, low mileage"
                 className="flex-1 bg-transparent px-8 py-4 text-white placeholder:text-gray-400 focus:outline-none text-lg"
               />
-              <Button size="lg" shape="pill" className="rounded-2xl px-10 text-lg shadow-neon group-hover:scale-105 transition-transform duration-300">
+              <Button variant="default" size="lg" shape="pill" className="rounded-2xl px-10 text-lg shadow-neon group-hover:scale-105 transition-transform duration-300">
                 <Search className="mr-2 h-5 w-5" /> Search
               </Button>
             </form>
@@ -194,9 +194,9 @@ export default function Home() {
         <h2 className="text-3xl font-bold text-center mb-16 font-heading">Featured Cars Available Now</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {[
-            { title: "Black SUV (2025)", price: "$32,000", img: "/assets/images/featured-suv.png" },
-            { title: "Red Sports (2025)", price: "$58,000", img: "/assets/images/featured-sports.png" },
-            { title: "White Sedan (2025)", price: "$28,500", img: "/assets/images/promo-car.png" }
+            { title: "Black SUV (2025)", price: "$32,000", img: "/assets/images/featured-suv.png", id: "black-suv-2025" },
+            { title: "Red Sports (2025)", price: "$58,000", img: "/assets/images/featured-sports.png", id: "red-sports-2025" },
+            { title: "White Sedan (2025)", price: "$28,500", img: "/assets/images/promo-car.png", id: "white-sedan-2025" }
           ].map((car, i) => (
             <motion.div
               key={i}
@@ -205,7 +205,12 @@ export default function Home() {
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: i * 0.1 }}
             >
-              <CarCard title={car.title} price={car.price} image={car.img} />
+              <CarCard
+                title={car.title}
+                price={car.price}
+                image={car.img}
+                href={`/vehicle/${car.id}`}
+              />
             </motion.div>
           ))}
         </div>

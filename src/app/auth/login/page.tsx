@@ -54,10 +54,11 @@ export default function LoginPage() {
                         {/* Assuming asset exists, otherwise fallback to icon */}
                         <img src="/assets/images/google-icon.png" alt="Google" className="w-5 h-5 mx-auto" />
                     </Button>
-                    <Button variant="outline" className="flex-1 border-white/20 hover:bg-white/10 text-white">
+                    <Button variant="outline" className="flex-1 border-white/20 hover:bg-white/10 text-white h-12">
                         <span className="sr-only">Apple</span>
-                        {/* Fallback for FontAwesome if not globally loaded */}
-                        <svg className="w-5 h-5 mx-auto fill-current" viewBox="0 0 24 24"><path d="M17.05 20.28c-.98.95-2.05.88-3.08.38-1.09-.54-2.08-.55-3.18 0-1.15.58-1.95.5-3.04-.54-2.61-2.5-3.26-6.84-.75-10.42 1.48-2.11 3.53-2.3 4.96-.86.74.75 1.54.91 2.37.07 1.3-1.32 3.19-1.21 4.79-.18.15.65.3.93.42 1.13-2.19-1.57-2.9-4.22-1.77-5.91 2.5 1.7 3.25 4.79 1.48 7.08-1.07 1.41-2.08 2.44-3.56 3.9l1.36 5.35z" /></svg>
+                        <svg className="w-5 h-5 mx-auto fill-current" viewBox="0 0 24 24">
+                            <path d="M17.05 20.28c-.98.95-2.05.88-3.08.38-1.09-.54-2.08-.55-3.18 0-1.15.58-1.95.5-3.04-.54-2.61-2.5-3.26-6.84-.75-10.42 1.48-2.11 3.53-2.3 4.96-.86.74.75 1.54.91 2.37.07 1.3-1.32 3.19-1.21 4.79-.18.15.65.3.93.42 1.13-2.19-1.57-2.9-4.22-1.77-5.91 2.5 1.7 3.25 4.79 1.48 7.08-1.07 1.41-2.08 2.44-3.56 3.9l1.36 5.35z" />
+                        </svg>
                     </Button>
                 </div>
 
