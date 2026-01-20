@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { MessageSquare, X, Send, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { motion, AnimatePresence } from "framer-motion"
 
 export function MaziumWidget() {
     const [isOpen, setIsOpen] = React.useState(false)
@@ -12,6 +13,20 @@ export function MaziumWidget() {
         { role: "bot", text: "Hello! I'm Mazium AI. How can I help you find your dream car today?" }
     ])
     const [input, setInput] = React.useState("")
+    const [showGreeting, setShowGreeting] = React.useState(false)
+
+    React.useEffect(() => {
+        const timer = setTimeout(() => {
+            setShowGreeting(true)
+        }, 30000) // 30 seconds delay
+
+        return () => clearTimeout(timer)
+    }, [])
+
+    const handleToggle = () => {
+        setIsOpen(!isOpen)
+        if (!isOpen) setShowGreeting(false) // Dismiss greeting when opening
+    }
 
     const handleSend = () => {
         if (!input.trim()) return
@@ -78,9 +93,40 @@ export function MaziumWidget() {
                 </div>
             </div>
 
+            {/* Greeting Pop-up */}
+            <AnimatePresence>
+                {!isOpen && showGreeting && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+                        className="absolute bottom-20 right-0 bg-white px-5 py-3 rounded-2xl shadow-xl border border-gray-100 flex items-center gap-3 z-40 mb-2 origin-bottom-right"
+                    >
+                        <div className="relative">
+                            <div className="w-2 h-2 bg-green-500 rounded-full absolute -top-1 -right-1 animate-pulse" />
+                            <Sparkles className="text-primary w-5 h-5" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-bold text-slate-800">Hi there! 👋</p>
+                            <p className="text-xs text-slate-500">Need help looking for a car?</p>
+                        </div>
+
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setShowGreeting(false); }}
+                            className="ml-2 p-1 hover:bg-slate-100 rounded-full transition-colors text-gray-400 hover:text-gray-600"
+                        >
+                            <X size={14} />
+                        </button>
+
+                        {/* Speech Bubble Arrow */}
+                        <div className="absolute -bottom-2 right-6 w-4 h-4 bg-white rotate-45 border-b border-r border-gray-100" />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Toggle Button */}
             <button
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={handleToggle}
                 className={cn(
                     "h-14 w-14 rounded-full shadow-[0_4px_20px_rgba(237,28,36,0.5)] flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95",
                     isOpen ? "bg-slate-800 text-white" : "bg-gradient-to-r from-[#ed1c24] to-[#7f1d1d] text-white animate-float"

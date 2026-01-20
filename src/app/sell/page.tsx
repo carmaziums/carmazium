@@ -14,10 +14,12 @@ export default function SellPage() {
         mileage: ""
     })
 
+    const [sellingMethod, setSellingMethod] = React.useState<'list' | 'retail' | null>(null)
+
     // Scroll to top on step change
     React.useEffect(() => {
         window.scrollTo(0, 0)
-    }, [currentStep])
+    }, [currentStep, sellingMethod])
 
     const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, 5))
     const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1))
@@ -68,6 +70,67 @@ export default function SellPage() {
         )
     }
 
+    if (!sellingMethod) {
+        return (
+            <div className="min-h-screen py-20 flex items-center justify-center">
+                <div className="container mx-auto px-5 max-w-5xl">
+                    <div className="text-center mb-16">
+                        <h1 className="text-4xl md:text-5xl font-bold font-heading mb-6 text-white">How would you like to sell?</h1>
+                        <p className="text-xl text-gray-300">Choose the method that works best for you.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                        {/* Option 1: List Your Car */}
+                        <div
+                            onClick={() => setSellingMethod('list')}
+                            className="glass-card p-10 cursor-pointer hover:border-primary/50 hover:bg-white/5 transition-all duration-300 group relative overflow-hidden"
+                        >
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -z-10 group-hover:bg-primary/20 transition-colors" />
+
+                            <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mb-8 border border-white/10 group-hover:border-primary/50 group-hover:shadow-[0_0_30px_rgba(237,28,36,0.2)] transition-all">
+                                <List className="text-primary w-10 h-10" />
+                            </div>
+
+                            <h2 className="text-3xl font-bold mb-4 font-heading">List My Car</h2>
+                            <p className="text-gray-400 mb-8 h-12">Create a public listing or auction. You control the price and manage inquiries.</p>
+
+                            <ul className="space-y-3 mb-8 text-gray-300">
+                                <li className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-400" /> Reach thousands of buyers</li>
+                                <li className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-400" /> Option for Live Auction</li>
+                                <li className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-400" /> Maximize sale price</li>
+                            </ul>
+
+                            <Button className="w-full py-6 text-lg group-hover:shadow-neon">Start Listing <ArrowRight className="ml-2" /></Button>
+                        </div>
+
+                        {/* Option 2: Retail / Instant Offer */}
+                        <div
+                            onClick={() => setSellingMethod('retail')}
+                            className="glass-card p-10 cursor-pointer hover:border-indigo-500/50 hover:bg-white/5 transition-all duration-300 group relative overflow-hidden"
+                        >
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -z-10 group-hover:bg-indigo-500/20 transition-colors" />
+
+                            <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mb-8 border border-white/10 group-hover:border-indigo-500/50 group-hover:shadow-[0_0_30px_rgba(99,102,241,0.2)] transition-all">
+                                <DollarSign className="text-indigo-400 w-10 h-10" />
+                            </div>
+
+                            <h2 className="text-3xl font-bold mb-4 font-heading">Retail My Car</h2>
+                            <p className="text-gray-400 mb-8 h-12">Get an instant cash offer or trade-in value from our trusted partner network.</p>
+
+                            <ul className="space-y-3 mb-8 text-gray-300">
+                                <li className="flex items-center gap-3"><CheckCircle size={18} className="text-indigo-400" /> Sell in 24 hours</li>
+                                <li className="flex items-center gap-3"><CheckCircle size={18} className="text-indigo-400" /> No haggling or meetups</li>
+                                <li className="flex items-center gap-3"><CheckCircle size={18} className="text-indigo-400" /> Instant payment</li>
+                            </ul>
+
+                            <Button variant="outline" className="w-full py-6 text-lg border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/20 hover:text-white group-hover:border-indigo-500">Get Instant Offer <ArrowRight className="ml-2" /></Button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
     const steps = [
         { id: 1, icon: Car, title: "Vehicle Info" },
         { id: 2, icon: Camera, title: "Media" },
@@ -79,9 +142,25 @@ export default function SellPage() {
     return (
         <div className="min-h-screen py-12">
             <div className="container mx-auto px-5 max-w-4xl">
+                <div className="mb-8">
+                    <Button
+                        variant="ghost"
+                        onClick={() => setSellingMethod(null)}
+                        className="text-gray-400 hover:text-white"
+                    >
+                        <ArrowLeft className="mr-2 h-4 w-4" /> Back to Selection
+                    </Button>
+                </div>
+
                 <div className="text-center mb-12">
-                    <h1 className="text-4xl md:text-5xl font-heading font-bold mb-4 text-white">Sell Your Car</h1>
-                    <p className="text-gray-300 text-lg">List your potential auction or retail car in minutes.</p>
+                    <h1 className="text-4xl md:text-5xl font-heading font-bold mb-4 text-white">
+                        {sellingMethod === 'list' ? 'List Your Car' : 'Retail Your Car'}
+                    </h1>
+                    <p className="text-gray-300 text-lg">
+                        {sellingMethod === 'list'
+                            ? 'Complete the details below to publish your listing.'
+                            : 'Provide vehicle details to receive your instant offer.'}
+                    </p>
                 </div>
 
                 {/* Progress Bar - Dark Glass */}
@@ -180,7 +259,7 @@ export default function SellPage() {
                         {currentStep < 5 ? (
                             <Button onClick={nextStep} className="px-8 shadow-neon">Next Step <ArrowRight className="ml-2 h-4 w-4" /></Button>
                         ) : (
-                            <Button className="px-8 bg-emerald-600 hover:bg-emerald-700 border-none shadow-[0_0_20px_rgba(16,185,129,0.4)]">Submit Listing</Button>
+                            <Button className="px-8 bg-emerald-600 hover:bg-emerald-700 border-none shadow-[0_0_20px_rgba(16,185,129,0.4)]">Submit {sellingMethod === 'list' ? 'Listing' : 'Request'}</Button>
                         )}
                     </div>
                 </div>

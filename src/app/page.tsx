@@ -6,6 +6,8 @@ import { Search, ArrowRight, ShieldCheck, UserCheck, FileText, CheckCircle, Hand
 import { Button } from "@/components/ui/Button"
 import { CarCard } from "@/components/features/CarCard"
 import { AnimatedCounter } from "@/components/ui/AnimatedCounter"
+import { TestimonialsSection } from "@/components/features/TestimonialsSection"
+import { PromoCarousel } from "@/components/features/PromoCarousel"
 import { motion, useScroll, useTransform } from "framer-motion"
 import { useRef } from "react"
 
@@ -28,6 +30,7 @@ export default function Home() {
           <video
             autoPlay
             muted
+            loop
             playsInline
             className="absolute top-1/2 left-1/2 min-w-full min-h-full object-cover -translate-x-1/2 -translate-y-1/2"
             onEnded={(e) => e.currentTarget.pause()} // Ensure it stays paused
@@ -121,73 +124,8 @@ export default function Home() {
         </motion.div>
       </section>
 
-      {/* Cinematic Promo Section */}
-      <section className="py-24 overflow-hidden relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-800/30 to-slate-900 pointer-events-none" />
-        <div className="container mx-auto px-5 flex flex-col md:flex-row items-center gap-20 relative z-10">
-
-          {/* Animated Car Video (Cinematic) */}
-          <motion.div
-            initial={{ opacity: 0, x: -100 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 1, ease: "easeOut" }}
-            className="flex-1 relative w-full"
-          >
-            {/* Glow effect - Premium White/Blue */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-white/5 blur-[120px] rounded-full -z-10" />
-
-            <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-white/10 group aspect-video">
-              <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-10 pointer-events-none" />
-
-              <video
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-1000 ease-out"
-                poster="/assets/images/promo-car.png"
-              >
-                <source src="/assets/videos/promo-cinematic.mp4" type="video/mp4" />
-              </video>
-            </div>
-          </motion.div>
-
-          {/* Animated Text Content */}
-          <div className="flex-1 text-left">
-            <motion.h2
-              initial={{ opacity: 0, x: 50 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-              className="text-4xl md:text-5xl font-bold font-heading mb-8 uppercase tracking-wide leading-tight"
-            >
-              BUY & SELL <br /><span className="text-primary inline-block transform hover:scale-110 transition-transform origin-left duration-300">MODERN</span> AND LUXURY <br /> CARS WITH CONFIDENCE
-            </motion.h2>
-
-            <motion.p
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8, delay: 0.3 }}
-              className="text-gray-300 mb-10 leading-relaxed text-lg max-w-xl"
-            >
-              Whether you’re looking to buy your next car, sell your existing one, or auction vehicles at the best market value, Carmazium offers a seamless experience. Our platform ensures verified listings, fair pricing, and complete transparency at every step.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.5 }}
-            >
-              <Link href="/search">
-                <Button size="lg" className="px-10 py-6 text-lg shadow-neon hover:shadow-[0_0_30px_rgba(237,28,36,0.6)]">VIEW LISTINGS</Button>
-              </Link>
-            </motion.div>
-          </div>
-        </div>
-      </section>
+      {/* Cinematic Promo Section - Now a Carousel */}
+      <PromoCarousel />
 
       {/* Featured Cars */}
       <section className="container mx-auto px-5 mb-24">
@@ -215,6 +153,9 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      {/* Testimonials Section */}
+      <TestimonialsSection />
 
       {/* Steps Section */}
       <section className="py-24 bg-slate-900/50 border-y border-white/5">

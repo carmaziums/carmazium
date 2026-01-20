@@ -6,22 +6,69 @@ import Link from "next/link"
 import { Button } from "@/components/ui/Button"
 import { AccordionItem } from "@/components/ui/Accordion"
 import { FinanceCalculator } from "@/components/features/FinanceCalculator"
-import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart } from "lucide-react"
+import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale } from "lucide-react"
+import { useCompare } from "@/context/CompareContext"
 
-export default function VehicleDetailsPage({ params }: { params: { id: string } }) {
-    // In a real app, fetch data based on params.id
+export default function VehicleDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = React.use(params)
+    // Mock data generation based on ID to simulate different cars
+    const isSecondCar = id === "2"
+
     const vehicle = {
-        title: "2024 Porsche 911 Carrera GTS",
-        subtitle: "3.0L Twin-Turbo Flat-6 | PDK Automatic",
-        price: "£115,000",
-        images: [
+        id: id, // Use actual param ID
+        title: isSecondCar ? "2024 BMW M4 Competition" : "2024 Porsche 911 Carrera GTS",
+        subtitle: isSecondCar ? "3.0L Twin-Turbo Inline-6 | 8-Speed Auto" : "3.0L Twin-Turbo Flat-6 | PDK Automatic",
+        price: isSecondCar ? "£85,000" : "£115,000",
+        images: isSecondCar ? [
+            "/assets/images/featured-sedan.png",
+            "/assets/images/featured-suv.png"
+        ] : [
             "/assets/images/featured-sports.png",
             "/assets/images/featured-suv.png",
             "/assets/images/featured-sedan.png"
-        ]
+        ],
+        specs: isSecondCar ? {
+            year: "2024",
+            mileage: "2,500 miles",
+            engine: "503 bhp",
+            transmission: "Automatic",
+            doors: "2",
+            seats: "4"
+        } : {
+            year: "2024",
+            mileage: "< 100 miles",
+            engine: "473 bhp",
+            transmission: "Automatic (PDK)",
+            doors: "2",
+            seats: "4"
+        }
     }
 
     const [activeImage, setActiveImage] = React.useState(0)
+
+    const { addToCompare, removeFromCompare, isInCompare } = useCompare()
+    const isCompared = isInCompare(vehicle.id)
+
+    const handleCompare = () => {
+        if (isCompared) {
+            removeFromCompare(vehicle.id)
+        } else {
+            addToCompare({
+                id: vehicle.id,
+                title: vehicle.title,
+                price: vehicle.price,
+                image: vehicle.images[0],
+                specs: {
+                    year: vehicle.specs.year,
+                    mileage: vehicle.specs.mileage,
+                    engine: vehicle.specs.engine,
+                    transmission: vehicle.specs.transmission,
+                    doors: vehicle.specs.doors,
+                    seats: vehicle.specs.seats
+                }
+            })
+        }
+    }
 
     return (
         <div className="min-h-screen bg-slate-900 pt-24 pb-12 relative">
@@ -40,6 +87,13 @@ export default function VehicleDetailsPage({ params }: { params: { id: string } 
                             <p className="text-gray-300 text-lg">{vehicle.subtitle}</p>
                         </div>
                         <div className="flex gap-4">
+                            <Button
+                                variant={isCompared ? "default" : "outline"}
+                                className={`rounded-full ${isCompared ? 'bg-primary border-primary text-white' : 'border-gray-600 text-gray-400 hover:text-white hover:border-white'}`}
+                                onClick={handleCompare}
+                            >
+                                <Scale size={20} className="mr-2" /> {isCompared ? "Compared" : "Compare"}
+                            </Button>
                             <Button variant="outline" size="icon" className="rounded-full border-gray-600 text-gray-400 hover:text-white hover:border-white">
                                 <Share2 size={20} />
                             </Button>

@@ -75,7 +75,17 @@ export function Header() {
                 </nav>
 
                 {/* Action Buttons */}
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-4">
+                    <Button
+                        asChild
+                        variant="ghost"
+                        className="hidden md:flex text-sm font-semibold text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+                    >
+                        <Link href="/auth/signup">
+                            Join as partner
+                        </Link>
+                    </Button>
+
                     <Button
                         asChild
                         variant="default"
@@ -106,7 +116,12 @@ export function Header() {
                                 {link.name}
                             </Link>
                         ))}
-                        <Button asChild className="w-full mt-4">
+                        <Button asChild variant="outline" className="w-full mt-4 border-white/20 text-white hover:bg-white/10">
+                            <Link href="/auth/signup" onClick={() => setIsMobileMenuOpen(false)}>
+                                Join as partner
+                            </Link>
+                        </Button>
+                        <Button asChild className="w-full mt-2">
                             <Link href="/auth/signup" onClick={() => setIsMobileMenuOpen(false)}>
                                 Sign Up
                             </Link>

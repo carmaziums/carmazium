@@ -4,6 +4,7 @@ import Image from "next/image"
 import { Users, Globe, Award, TrendingUp, Handshake, Target, Rocket } from "lucide-react"
 import { motion, useScroll, useTransform } from "framer-motion"
 import { AnimatedCounter } from "@/components/ui/AnimatedCounter"
+import { TestimonialsSection } from "@/components/features/TestimonialsSection"
 import { Button } from "@/components/ui/Button"
 import { useRef } from "react"
 import Link from "next/link"
@@ -29,9 +30,9 @@ export default function AboutPage() {
                     <video
                         autoPlay
                         muted
+                        loop
                         playsInline
                         className="absolute inset-0 w-full h-full object-cover blur-[2px] scale-105"
-                        onEnded={(e) => e.currentTarget.pause()}
                     >
                         <source src="/assets/videos/about-cinematic.mov" type="video/quicktime" />
                         <source src="/assets/videos/about-cinematic.mov" type="video/mp4" /> {/* Fallback if it's actually MP4 container */}
@@ -119,6 +120,9 @@ export default function AboutPage() {
                     </div>
                 </div>
             </section>
+
+            {/* Testimonials Section */}
+            <TestimonialsSection />
 
             {/* Team Section */}
             <section className="py-24 bg-slate-900/50">
