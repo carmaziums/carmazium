@@ -45,7 +45,7 @@ export function DashboardSidebar({ role, userName = "John Doe", userType, childr
 
     return (
         <aside className="lg:w-1/4">
-            <div className="glass-card p-6 sticky top-24 shadow-lg border-white/5 bg-gradient-to-br from-slate-900/80 to-slate-900/40">
+            <div className="glass-card p-6 sticky top-24 shadow-lg border-white/5 bg-gradient-to-br from-slate-900/80 to-slate-900/40 max-h-[calc(100vh-8rem)] overflow-y-auto custom-scrollbar">
                 <div className="flex items-center gap-4 mb-8">
                     <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-xl border border-primary/50 shadow-neon">
                         {userName.split(" ").map(n => n[0]).join("")}
