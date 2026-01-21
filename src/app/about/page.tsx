@@ -4,6 +4,7 @@ import Image from "next/image"
 import { Users, Globe, Award, TrendingUp, Handshake, Target, Rocket } from "lucide-react"
 import { motion, useScroll, useTransform } from "framer-motion"
 import { AnimatedCounter } from "@/components/ui/AnimatedCounter"
+import { AccordionItem } from "@/components/ui/Accordion"
 import { TestimonialsSection } from "@/components/features/TestimonialsSection"
 import { Button } from "@/components/ui/Button"
 import { useRef } from "react"
@@ -162,6 +163,44 @@ export default function AboutPage() {
                             </motion.div>
                         ))}
                     </div>
+                </div>
+            </section>
+
+            {/* FAQ Section */}
+            <section className="py-24 container mx-auto px-5">
+                <div className="max-w-3xl mx-auto">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        className="text-center mb-16"
+                    >
+                        <h2 className="text-3xl md:text-5xl font-heading font-bold text-white mb-6">Frequently Asked <span className="text-primary">Questions</span></h2>
+                        <p className="text-gray-400 text-lg">Everything you need to know about the CarMazium experience.</p>
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: 0.2 }}
+                    >
+                        <AccordionItem title="How does CarMazium verify vehicles?" defaultOpen>
+                            <p>Every vehicle listed on CarMazium undergoes a rigorous 150-point inspection by our certified mechanics. We check everything from engine performance and transmission health to paint depth and interior condition. A detailed report is available for every listing, ensuring complete transparency.</p>
+                        </AccordionItem>
+                        <AccordionItem title="How do the live auctions work?">
+                            <p>Our live auctions are real-time, competitive bidding events. Once you register and get verified, you can join a live auction room, place bids, and watch the action unfold. Auctions typically last 15-30 minutes, and if you win, our team handles all the paperwork and logistics.</p>
+                        </AccordionItem>
+                        <AccordionItem title="Can I sell my car on CarMazium?">
+                            <p>Absolutely. We offer a premium selling experience. You can submit your vehicle details, and if it meets our criteria, we'll arrange for an inspection and photography session. You can choose to list it for a fixed price or put it up for auction to maximize its value.</p>
+                        </AccordionItem>
+                        <AccordionItem title="What financing options are available?">
+                            <p>We partner with leading financial institutions to offer competitive financing rates. You can apply directly through our platform, get pre-approved in minutes, and customize your payment plan. We also accept external financing if you have your own lender.</p>
+                        </AccordionItem>
+                        <AccordionItem title="Are there any hidden fees?">
+                            <p>Transparency is one of our core values. We charge a flat buyer's fee displayed clearly on every listing. For sellers, we take a small commission only when the car helps sells. There are no hidden processing fees or surprise charges at checkout.</p>
+                        </AccordionItem>
+                    </motion.div>
                 </div>
             </section>
 
