@@ -185,6 +185,19 @@ export default function Home() {
               </motion.div>
             ))}
           </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mt-16"
+          >
+            <Button asChild variant="outline" shape="pill" className="px-8 py-4 border-white/10 text-white hover:bg-white/5 hover:border-white/30 text-lg">
+              <Link href="/how-it-works">
+                See Exactly How It Works <ArrowRight className="ml-2 w-5 h-5" />
+              </Link>
+            </Button>
+          </motion.div>
         </div>
       </section>
 

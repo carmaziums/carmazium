@@ -179,12 +179,15 @@ export default function AboutPage() {
                     <div className="relative z-10 max-w-2xl mx-auto">
                         <h2 className="text-4xl font-bold text-white mb-8">Ready to start your journey?</h2>
                         <p className="text-gray-300 mb-10 text-lg">Join the fastest growing luxury automotive community today.</p>
-                        <div className="flex justify-center gap-6">
+                        <div className="flex flex-col sm:flex-row justify-center gap-6">
                             <Link href="/search">
-                                <Button size="lg" className="px-10 py-6 text-lg shadow-neon">Browse Inventory</Button>
+                                <Button size="lg" className="px-10 py-6 text-lg shadow-neon w-full sm:w-auto">Browse Inventory</Button>
+                            </Link>
+                            <Link href="/how-it-works">
+                                <Button size="lg" variant="outline" className="px-10 py-6 text-lg border-white/20 text-white hover:bg-white/10 w-full sm:w-auto">How It Works</Button>
                             </Link>
                             <Link href="/auth/signup">
-                                <Button size="lg" variant="outline" className="px-10 py-6 text-lg border-white/20 text-white hover:bg-white/10">Create Account</Button>
+                                <Button size="lg" variant="ghost" className="px-10 py-6 text-lg text-white/70 hover:text-white hover:bg-white/5 w-full sm:w-auto">Create Account</Button>
                             </Link>
                         </div>
                     </div>

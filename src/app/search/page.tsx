@@ -4,7 +4,7 @@ import * as React from "react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { CarCard } from "@/components/features/CarCard"
-import { Search, Filter, X } from "lucide-react"
+import { Search, Filter, X, Gavel, AlertTriangle } from "lucide-react"
 
 export default function SearchPage() {
     const [isFilterOpen, setIsFilterOpen] = React.useState(false)
@@ -89,7 +89,44 @@ export default function SearchPage() {
                             </div>
                         </div>
 
-                        <Button className="w-full mt-4">Apply Filters</Button>
+                        <Button className="w-full mt-4 shadow-neon">Apply Filters</Button>
+                    </div>
+
+                    {/* Auction Promo Card */}
+                    <div className="mt-8 p-5 rounded-2xl bg-white/5 border border-white/10 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-20 h-20 bg-primary/20 rounded-full blur-2xl -z-10 group-hover:bg-primary/30 transition-colors" />
+
+                        <div className="flex items-center gap-2 mb-3">
+                            <Gavel className="text-primary" size={20} />
+                            <h3 className="font-bold text-white text-lg">Live Auctions</h3>
+                        </div>
+
+                        <p className="text-xs text-gray-400 mb-4 leading-relaxed">
+                            Live marketplace for verified buyers and sellers.
+                        </p>
+
+                        <ul className="space-y-2 mb-4">
+                            {[
+                                "Real-time competitive bidding",
+                                "Open to all verified members",
+                                "Vehicles sold as-seen",
+                                "Secure buyer protection"
+                            ].map((item, i) => (
+                                <li key={i} className="flex items-start gap-2 text-xs text-gray-300">
+                                    <div className="mt-0.5"><div className="w-1.5 h-1.5 rounded-full bg-primary" /></div>
+                                    {item}
+                                </li>
+                            ))}
+                        </ul>
+
+                        <div className="bg-amber-900/20 border border-amber-500/20 rounded-lg p-3">
+                            <h4 className="text-amber-500 font-bold text-xs mb-1 flex items-center gap-1">
+                                <AlertTriangle size={12} /> Verification Required
+                            </h4>
+                            <p className="text-[10px] text-amber-200/70 leading-relaxed">
+                                To list or bid, register as a verified member. Complete KYC verification after signup.
+                            </p>
+                        </div>
                     </div>
                 </aside>
 
