@@ -22,8 +22,8 @@ export default async function handler(req: any, res: any) {
 
     // Log for debugging on Vercel
     const originalUrl = req.url;
-    // Strip /api from the beginning of the URL so NestJS matches its routes correctly
-    req.url = req.url.replace(/^\/api/, '') || '/';
+    // Strip /v1 from the beginning of the URL so NestJS matches its routes correctly
+    req.url = req.url.replace(/^\/v1/, '') || '/';
     console.log(`[API Request] ${req.method} ${originalUrl} -> ${req.url}`);
 
     // Check if Database URL is present (diagnostic)
