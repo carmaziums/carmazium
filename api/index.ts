@@ -8,7 +8,7 @@ let cachedApp: NestExpressApplication;
 export default async function handler(req: any, res: any) {
     if (!cachedApp) {
         const app = await NestFactory.create<NestExpressApplication>(AppModule);
-        app.setGlobalPrefix('api');
+        // Remove global prefix to avoid routing conflicts on Vercel
         app.useGlobalPipes(new ValidationPipe({
             whitelist: true,
             transform: true,
@@ -22,11 +22,6 @@ export default async function handler(req: any, res: any) {
 
     // Log for debugging on Vercel
     console.log(`[API Request] ${req.method} ${req.url}`);
-
-    // Ensure the URL matches what Nest expects if it was rewritten
-    if (req.url && !req.url.startsWith('/api')) {
-        req.url = `/api${req.url}`;
-    }
 
     instance(req, res);
 }

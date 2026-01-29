@@ -54,7 +54,7 @@ export default function SellPage() {
             const file = files[i]
             const fileExt = file.name.split('.').pop()
             const fileName = `${Math.random()}.${fileExt}`
-            const filePath = `listings/${fileName}`
+            const filePath = `${fileName}`
 
             const { data, error } = await supabase.storage
                 .from('listings')
@@ -101,12 +101,18 @@ export default function SellPage() {
                 alert('Listing created successfully!')
                 window.location.href = '/dashboard/seller/listings'
             } else {
-                const error = await response.json()
-                alert(`Error: ${error.message || 'Failed to create listing'}`)
+                const errorText = await response.text()
+                console.error('API Error Response:', errorText)
+                try {
+                    const errorJson = JSON.parse(errorText)
+                    alert(`Error: ${errorJson.message || 'Failed to create listing'}`)
+                } catch (e) {
+                    alert(`Server Error: ${response.status} ${response.statusText}`)
+                }
             }
         } catch (err) {
             console.error('Submission error:', err)
-            alert('An unexpected error occurred.')
+            alert(`Unexpected error: ${err instanceof Error ? err.message : String(err)}`)
         } finally {
             setIsSubmitting(false)
         }
