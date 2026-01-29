@@ -4,9 +4,13 @@ import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { ListingFilterDto } from './dto/listing-filter.dto';
 
-// Assuming an @User() decorator exists to extract userId
-// For now, I'll use a placeholder for demonstration as requested
-const User = () => (target: any, key: string, index: number) => { };
+import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+
+export const User = createParamDecorator(
+    (data: unknown, ctx: ExecutionContext) => {
+        return 'demo-user-id';
+    },
+);
 
 @Controller('listings')
 export class ListingsController {

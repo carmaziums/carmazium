@@ -19,5 +19,14 @@ export default async function handler(req: any, res: any) {
     }
 
     const instance = cachedApp.getHttpAdapter().getInstance();
+
+    // Log for debugging on Vercel
+    console.log(`[API Request] ${req.method} ${req.url}`);
+
+    // Ensure the URL matches what Nest expects if it was rewritten
+    if (req.url && !req.url.startsWith('/api')) {
+        req.url = `/api${req.url}`;
+    }
+
     instance(req, res);
 }
