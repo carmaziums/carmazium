@@ -1,19 +1,19 @@
 {
     "version": 2,
+    "rewrites": [
+        {
+            "source": "/api/:match*",
+            "destination": "/backend/src/main.ts"
+        }
+    ],
     "builds": [
+        {
+            "src": "package.json",
+            "use": "@vercel/next"
+        },
         {
             "src": "backend/src/main.ts",
             "use": "@vercel/node"
-        }
-    ],
-    "routes": [
-        {
-            "src": "/listings/(.*)",
-            "dest": "backend/src/main.ts"
-        },
-        {
-            "src": "/(.*)",
-            "dest": "backend/src/main.ts"
         }
     ]
 }
