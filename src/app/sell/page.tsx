@@ -1,4 +1,8 @@
+"use client"
+
 import * as React from "react"
+
+export const dynamic = 'force-dynamic';
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { Car, Camera, List, DollarSign, CheckCircle, ArrowRight, ArrowLeft, Gavel, Loader2, X } from "lucide-react"
@@ -42,6 +46,11 @@ export default function SellPage() {
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files
         if (!files || files.length === 0) return
+
+        if (!supabase) {
+            alert("Storage service is not configured. Please check environment variables.")
+            return
+        }
 
         setIsUploading(true)
         const newImages = [...formData.images]
