@@ -13,6 +13,7 @@ export default async function handler(req: any, res: any) {
             whitelist: true,
             transform: true,
         }));
+        app.enableCors();
         await app.init();
         cachedApp = app;
     }
