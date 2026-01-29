@@ -47,11 +47,6 @@ export default function SellPage() {
         const files = e.target.files
         if (!files || files.length === 0) return
 
-        if (!supabase) {
-            alert("Storage service is not configured. Please check environment variables.")
-            return
-        }
-
         setIsUploading(true)
         const newImages = [...formData.images]
 
@@ -153,18 +148,55 @@ export default function SellPage() {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-                            <div onClick={() => setSellingMethod('list')} className="glass-card p-10 cursor-pointer hover:border-primary/50 hover:bg-white/5 transition-all duration-300 group relative">
-                                <List className="text-primary w-10 h-10 mb-8" />
+                            <div onClick={() => setSellingMethod('list')} className="glass-card p-10 cursor-pointer hover:border-primary/50 hover:bg-white/5 transition-all duration-300 group relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -z-10 group-hover:bg-primary/20 transition-colors" />
+                                <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mb-8 border border-white/10 group-hover:border-primary/50 group-hover:shadow-[0_0_30px_rgba(237,28,36,0.2)] transition-all">
+                                    <List className="text-primary w-10 h-10" />
+                                </div>
                                 <h2 className="text-3xl font-bold mb-4 font-heading">List My Car</h2>
                                 <p className="text-gray-400 mb-8 h-12">Create a public listing or auction. You control the price.</p>
                                 <Button className="w-full py-6 text-lg group-hover:shadow-neon">Start Listing <ArrowRight className="ml-2" /></Button>
                             </div>
 
-                            <div onClick={() => setSellingMethod('retail')} className="glass-card p-10 cursor-pointer hover:border-indigo-500/50 hover:bg-white/5 transition-all duration-300 group relative">
-                                <Gavel className="text-primary w-10 h-10 mb-8" />
+                            <div onClick={() => setSellingMethod('retail')} className="glass-card p-10 cursor-pointer hover:border-indigo-500/50 hover:bg-white/5 transition-all duration-300 group relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -z-10 group-hover:bg-indigo-500/20 transition-colors" />
+                                <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mb-8 border border-white/10 group-hover:border-primary/50 group-hover:shadow-[0_0_30px_rgba(237,28,36,0.2)] transition-all">
+                                    <Gavel className="text-primary w-10 h-10" />
+                                </div>
                                 <h2 className="text-3xl font-bold mb-4 font-heading">Auction Listing</h2>
                                 <p className="text-gray-400 mb-8 h-12">Let buyers bid on your vehicle in a 7-day auction.</p>
                                 <Button className="w-full py-6 text-lg group-hover:shadow-neon">Create Auction <ArrowRight className="ml-2" /></Button>
+                            </div>
+                        </div>
+
+                        {/* 3 Easy Steps Section */}
+                        <div className="mt-40">
+                            <div className="text-center mb-20">
+                                <h2 className="text-5xl md:text-6xl font-bold font-heading mb-6 text-white uppercase tracking-tight leading-tight">
+                                    Sell Your Car <br /> <span className="text-primary">in 3 Easy Steps</span>
+                                </h2>
+                                <p className="text-gray-400 text-lg max-w-2xl mx-auto">Transform your car into cash with our simple, transparent process</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-10 text-left">
+                                {[
+                                    { id: 1, img: "/assets/images/step1.jpeg", title: "Get Valuation", desc: "Skip the guesswork. Get an instant, fair valuation based on live market trends." },
+                                    { id: 2, img: "/assets/images/step2.jpeg", title: "Get It Sold", desc: "Finish your listing. We put your car in front of 5,500+ dealers. Best offer wins." },
+                                    { id: 3, img: "/assets/images/step3.jpeg", title: "Get Paid Fast", desc: "Job done! The dealer collects it for free and can pay you there and then." }
+                                ].map((step, idx) => (
+                                    <div key={idx} className="group">
+                                        <div className="relative rounded-3xl overflow-hidden mb-6 aspect-[4/3] border border-white/10 shadow-2xl hover:shadow-[0_0_40px_rgba(237,28,36,0.15)] transition-shadow duration-500">
+                                            <div className="absolute inset-0 bg-slate-800 animate-pulse" />
+                                            {/* We use Image here, but assuming path exists in public */}
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                                            <div className="absolute top-6 left-6 w-14 h-14 bg-primary text-white font-bold text-2xl flex items-center justify-center rounded-xl shadow-lg border border-white/10">
+                                                {step.id}
+                                            </div>
+                                        </div>
+                                        <h3 className="text-2xl font-bold font-heading text-white mb-4 uppercase tracking-wide">{step.title}</h3>
+                                        <p className="text-gray-400 leading-relaxed text-base">{step.desc}</p>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </div>
