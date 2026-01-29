@@ -86,7 +86,7 @@ export default function SellPage() {
     const handleSubmit = async () => {
         setIsSubmitting(true)
         try {
-            const response = await fetch('/v1/listings', {
+            const response = await fetch('/api/listings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

@@ -2,8 +2,8 @@
     "version": 2,
     "rewrites": [
         {
-            "source": "/v1/(.*)",
-            "destination": "/api-server/index.ts"
+            "source": "/api/(.*)",
+            "destination": "/api/index.ts"
         }
     ]
 }
