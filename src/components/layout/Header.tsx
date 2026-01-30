@@ -22,7 +22,7 @@ export function Header() {
     const pathname = usePathname()
 
     React.useEffect(() => {
-        setActiveLink(pathname)
+        setActiveLink(pathname || "")
     }, [pathname])
 
     const toggleMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen)
