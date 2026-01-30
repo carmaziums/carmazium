@@ -7,6 +7,15 @@ import { AppModule } from '../../../backend/src/app.module';
 let app: any;
 
 const bootstrap = async (req: NextApiRequest, res: NextApiResponse) => {
+    // Handle CORS preflight quickly to avoid NestJS returning 405
+    if (req.method === 'OPTIONS') {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        res.status(204).end();
+        return;
+    }
+
     if (!app) {
         app = await NestFactory.create(AppModule);
         app.setGlobalPrefix('api'); // Match the route prefix
