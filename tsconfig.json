@@ -37,10 +37,9 @@
     "src/**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "api/**/*.ts"
+    "backend/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "backend"
+    "node_modules"
   ]
 }
