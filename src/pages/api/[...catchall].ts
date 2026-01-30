@@ -7,13 +7,22 @@ import { AppModule } from '../../../backend/src/app.module';
 let app: any;
 
 const bootstrap = async (req: NextApiRequest, res: NextApiResponse) => {
-    // Handle CORS preflight quickly to avoid NestJS returning 405
+    // Ensure CORS headers are present and handle preflight quickly
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
     if (req.method === 'OPTIONS') {
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
         res.status(204).end();
         return;
+    }
+
+    // Diagnostics: log incoming requests so we can see the exact URL/method
+    // This will appear in your Next.js server logs
+    try {
+        console.log(`[Next API Catchall] ${req.method} ${req.url} host=${req.headers.host}`);
+    } catch (e) {
+        // ignore logging errors
     }
 
     if (!app) {
