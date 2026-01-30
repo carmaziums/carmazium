@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
-import { AppModule } from '../../../../backend/src/app.module';
+import { AppModule } from '../../../backend/src/app.module';
 
 // Use a singleton to persist the Nest app across hot-reloads and invocations
 let app: any;
