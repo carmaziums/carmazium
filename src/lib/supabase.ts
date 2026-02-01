@@ -1,13 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'example-key';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    console.warn('Missing Supabase environment variables - functionality will be limited');
+if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('Missing Supabase environment variables - Image upload will fail');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl || 'https://missing-url.supabase.co', supabaseAnonKey || 'missing-key');
 
 /**
  * Upload an image to Supabase Storage
@@ -19,6 +19,11 @@ export async function uploadImage(
     file: File,
     bucket: string = 'listings'
 ): Promise<string> {
+    // Check if initialized properly
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+        throw new Error('Supabase is not configured. Please add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your environment variables.');
+    }
+
     // Generate unique filename: timestamp-uuid-originalname
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2, 15);
@@ -55,6 +60,11 @@ export async function deleteImage(
     publicUrl: string,
     bucket: string = 'listings'
 ): Promise<void> {
+    // Check if initialized properly
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+        throw new Error('Supabase is not configured. Please add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your environment variables.');
+    }
+
     // Extract filename from public URL
     const urlParts = publicUrl.split('/');
     const fileName = urlParts[urlParts.length - 1];
