@@ -39,8 +39,10 @@ export interface CreateListingResponse {
 /**
  * Create a new listing
  */
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
 export async function createListing(data: CreateListingRequest): Promise<CreateListingResponse> {
-    const response = await fetch('http://localhost:3001/listings', {
+    const response = await fetch(`${API_URL}/listings`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -124,7 +126,7 @@ export async function getListings(filters?: ListingFilters): Promise<ListingsRes
         if (filters.limit) params.append('limit', filters.limit.toString())
     }
 
-    const url = `http://localhost:3001/listings${params.toString() ? `?${params.toString()}` : ''}`
+    const url = `${API_URL}/listings${params.toString() ? `?${params.toString()}` : ''}`
 
     const response = await fetch(url, {
         method: 'GET',
@@ -146,7 +148,7 @@ export async function getListings(filters?: ListingFilters): Promise<ListingsRes
  * Fetch a single listing by slug
  */
 export async function getListingBySlug(slug: string): Promise<Listing> {
-    const response = await fetch(`http://localhost:3001/listings/${slug}`, {
+    const response = await fetch(`${API_URL}/listings/${slug}`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
