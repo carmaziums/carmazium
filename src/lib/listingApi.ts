@@ -39,7 +39,7 @@ export interface CreateListingResponse {
 /**
  * Create a new listing
  */
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium.onrender.com'
 
 export async function createListing(data: CreateListingRequest): Promise<CreateListingResponse> {
     const response = await fetch(`${API_URL}/listings`, {
