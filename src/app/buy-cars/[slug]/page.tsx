@@ -199,7 +199,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
 
                         {/* Finance Calculator */}
                         {/* Finance Calculator */}
-                        <FinanceCalculator vehiclePrice={listing.price} />
+                        <FinanceCalculator vehiclePrice={Number(listing.price)} />
                     </div>
 
                     {/* Right Column: Sticky Sidebar */}
