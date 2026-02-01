@@ -1,36 +1,64 @@
-import { IsString, IsOptional, IsInt, IsNumber, Min } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class ListingFilterDto {
-    @IsOptional()
-    @IsString()
-    make?: string;
-
-    @IsOptional()
+    @ApiPropertyOptional({
+        description: 'Minimum price filter',
+        example: 10000,
+    })
     @Type(() => Number)
     @IsNumber()
+    @IsOptional()
     @Min(0)
     minPrice?: number;
 
-    @IsOptional()
+    @ApiPropertyOptional({
+        description: 'Maximum price filter',
+        example: 50000,
+    })
     @Type(() => Number)
     @IsNumber()
+    @IsOptional()
     @Min(0)
     maxPrice?: number;
 
+    @ApiPropertyOptional({
+        description: 'Filter by vehicle make',
+        example: 'Audi',
+    })
+    @IsString()
     @IsOptional()
-    @Type(() => Number)
-    @IsInt()
-    @Min(1900)
-    minYear?: number;
+    make?: string;
 
-    @IsOptional()
+    @ApiPropertyOptional({
+        description: 'Filter by year',
+        example: 2015,
+    })
     @Type(() => Number)
     @IsInt()
+    @IsOptional()
+    year?: number;
+
+    @ApiPropertyOptional({
+        description: 'Page number (1-indexed)',
+        example: 1,
+        default: 1,
+    })
+    @Type(() => Number)
+    @IsInt()
+    @IsOptional()
+    @Min(1)
     page?: number = 1;
 
-    @IsOptional()
+    @ApiPropertyOptional({
+        description: 'Number of items per page',
+        example: 20,
+        default: 20,
+    })
     @Type(() => Number)
     @IsInt()
-    limit?: number = 10;
+    @IsOptional()
+    @Min(1)
+    limit?: number = 20;
 }

@@ -1,14 +1,42 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.setGlobalPrefix('api');
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    transform: true,
-  }));
-  await app.listen(process.env.PORT ?? 3000);
+
+  // Enable CORS for frontend
+  app.enableCors();
+
+  // Global validation pipe for DTOs
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true, // Strip properties that don't have decorators
+      forbidNonWhitelisted: true, // Throw error if non-whitelisted properties are present
+      transform: true, // Automatically transform payloads to DTO instances
+      transformOptions: {
+        enableImplicitConversion: true, // Enable implicit type conversion
+      },
+    }),
+  );
+
+  // Swagger configuration
+  const config = new DocumentBuilder()
+    .setTitle('Carmazium API')
+    .setDescription('Core Marketplace Engine API for Carmazium')
+    .setVersion('1.0')
+    .addTag('Listings', 'Vehicle listings management')
+    .addBearerAuth() // For future JWT authentication
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api', app, document);
+
+  const port = process.env.PORT ?? 3000;
+  await app.listen(port);
+
+  console.log(`🚀 Server running on http://localhost:${port}`);
+  console.log(`📚 Swagger docs available at http://localhost:${port}/api`);
 }
 bootstrap();

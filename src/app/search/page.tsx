@@ -4,10 +4,46 @@ import * as React from "react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { CarCard } from "@/components/features/CarCard"
-import { Search, Filter, X, Gavel, AlertTriangle } from "lucide-react"
+import { Search, Filter, X, Gavel, AlertTriangle, Loader2 } from "lucide-react"
+import { getListings, formatPrice, type Listing } from "@/lib/listingApi"
 
 export default function SearchPage() {
     const [isFilterOpen, setIsFilterOpen] = React.useState(false)
+    const [listings, setListings] = React.useState<Listing[]>([])
+    const [loading, setLoading] = React.useState(true)
+    const [error, setError] = React.useState<string | null>(null)
+    const [totalCount, setTotalCount] = React.useState(0)
+
+    // Fetch listings on mount
+    React.useEffect(() => {
+        async function fetchListings() {
+            try {
+                setLoading(true)
+                setError(null)
+                const response = await getListings({ limit: 20 })
+                setListings(response.data)
+                setTotalCount(response.pagination.total)
+            } catch (err) {
+                console.error('Failed to fetch listings:', err)
+                setError(err instanceof Error ? err.message : 'Failed to load listings')
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        fetchListings()
+    }, [])
+
+    // Get the first image from a listing or use a placeholder
+    const getListingImage = (listing: Listing) => {
+        if (listing.images && listing.images.length > 0) {
+            return listing.images[0]
+        }
+        // Use placeholder based on listing type
+        return listing.type === 'AUCTION'
+            ? "/assets/images/featured-suv.png"
+            : "/assets/images/featured-sports.png"
+    }
 
     return (
         <div className="min-h-screen pb-20">
@@ -133,7 +169,13 @@ export default function SearchPage() {
                 {/* Results Grid */}
                 <div className="lg:w-3/4">
                     <div className="flex justify-between items-center mb-6">
-                        <p className="text-gray-400 text-sm">Showing <span className="font-bold text-white">24</span> vehicles</p>
+                        <p className="text-gray-400 text-sm">
+                            {loading ? (
+                                <span>Loading...</span>
+                            ) : (
+                                <>Showing <span className="font-bold text-white">{listings.length}</span> of <span className="font-bold text-white">{totalCount}</span> vehicles</>
+                            )}
+                        </p>
                         <select className="bg-transparent border-none text-sm font-bold text-white cursor-pointer outline-none">
                             <option className="bg-slate-800 text-white">Sort by: Newest</option>
                             <option className="bg-slate-800 text-white">Price: Low to High</option>
@@ -142,22 +184,55 @@ export default function SearchPage() {
                         </select>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {/* Initial 6 cars for demo */}
-                        {[1, 2, 3, 4, 5, 6].map((i) => (
-                            <CarCard
-                                key={i}
-                                title={`BMW M${i} Competition`}
-                                price={`$${45000 + (i * 2000)}`}
-                                image={i % 2 === 0 ? "/assets/images/featured-suv.png" : "/assets/images/featured-sports.png"}
-                                href={`/vehicle/bmw-m${i}`}
-                            />
-                        ))}
-                    </div>
+                    {/* Loading State */}
+                    {loading && (
+                        <div className="flex flex-col items-center justify-center py-20">
+                            <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
+                            <p className="text-gray-400">Loading listings...</p>
+                        </div>
+                    )}
 
-                    <div className="mt-12 text-center">
-                        <Button variant="outline" size="lg" className="border-gray-300 text-gray-500 hover:text-primary hover:border-primary font-bold">Load More</Button>
-                    </div>
+                    {/* Error State */}
+                    {error && !loading && (
+                        <div className="glass-card p-8 text-center">
+                            <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+                            <h3 className="text-xl font-bold text-white mb-2">Failed to Load Listings</h3>
+                            <p className="text-gray-400 mb-4">{error}</p>
+                            <Button onClick={() => window.location.reload()}>Try Again</Button>
+                        </div>
+                    )}
+
+                    {/* Empty State */}
+                    {!loading && !error && listings.length === 0 && (
+                        <div className="glass-card p-8 text-center">
+                            <Search className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+                            <h3 className="text-xl font-bold text-white mb-2">No Listings Found</h3>
+                            <p className="text-gray-400 mb-4">Be the first to list your car!</p>
+                            <Button onClick={() => window.location.href = '/sell'}>Sell Your Car</Button>
+                        </div>
+                    )}
+
+                    {/* Listings Grid */}
+                    {!loading && !error && listings.length > 0 && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {listings.map((listing) => (
+                                <CarCard
+                                    key={listing.id}
+                                    title={listing.title}
+                                    price={formatPrice(listing.price)}
+                                    image={getListingImage(listing)}
+                                    href={`/buy-cars/${listing.slug}`}
+                                />
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Load More */}
+                    {!loading && !error && listings.length > 0 && listings.length < totalCount && (
+                        <div className="mt-12 text-center">
+                            <Button variant="outline" size="lg" className="border-gray-300 text-gray-500 hover:text-primary hover:border-primary font-bold">Load More</Button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

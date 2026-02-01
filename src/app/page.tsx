@@ -147,7 +147,7 @@ export default function Home() {
                 title={car.title}
                 price={car.price}
                 image={car.img}
-                href={`/vehicle/${car.id}`}
+                href={`/buy-cars/${car.id}`}
               />
             </motion.div>
           ))}
