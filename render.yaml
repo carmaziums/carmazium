@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: carmazium-backend
+    env: node
+    plan: free
+    repo: https://github.com/pizn-01/carmazium
+    branch: main
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+    autoDeploy: true
