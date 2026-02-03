@@ -7,6 +7,7 @@ import { MaziumWidget } from "@/components/features/MaziumWidget";
 
 import { Providers } from "@/components/providers/Providers";
 import { AuthProvider } from "@/context/AuthContext";
+import { ChatProvider } from "@/context/ChatContext";
 
 const poppins = Poppins({
   variable: "--font-poppins",
@@ -39,15 +40,18 @@ export default function RootLayout({
         className={`${inter.className} bg-slate-950 text-slate-50 selection:bg-red-500/30 selection:text-red-200`}
       >
         <AuthProvider>
-          <div className="flex flex-col min-h-screen">
-            <Header />
-            <main className="flex-grow pt-20">
-              {children}
-            </main>
-            <Footer />
-          </div>
+          <ChatProvider>
+            <div className="flex flex-col min-h-screen">
+              <Header />
+              <main className="flex-grow pt-20">
+                {children}
+              </main>
+              <Footer />
+            </div>
+          </ChatProvider>
         </AuthProvider>
       </body>
     </html>
   );
 }
+

@@ -9,6 +9,7 @@ import { UsersModule } from './users/users.module';
 import { BidsModule } from './bids/bids.module';
 import { WatchlistModule } from './watchlist/watchlist.module';
 import { ServiceRequestsModule } from './service-requests/service-requests.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -22,10 +23,12 @@ import { ServiceRequestsModule } from './service-requests/service-requests.modul
     BidsModule,
     WatchlistModule,
     ServiceRequestsModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule { }
+
 
 

@@ -1,120 +1,62 @@
 "use client"
 
+import * as React from "react"
+import { MessageSquare } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
-import { Input } from "@/components/ui/Input"
-import { Button } from "@/components/ui/Button"
-import { Search, Send, MapPin, Phone, User, MoreVertical } from "lucide-react"
-import { useState } from "react"
-import Link from "next/link"
-import Image from "next/image"
+import { ChatRoomList } from "@/components/chat/ChatRoomList"
+import { ChatWindow } from "@/components/chat/ChatWindow"
+import { useAuth } from "@/context/AuthContext"
+import type { ChatRoom } from "@/lib/chatApi"
 
 export default function BuyerMessagesPage() {
-    // Mock Data
-    const conversations = [
-        { id: 1, name: "Luxury Motors London", lastMsg: "The paperwork for the GT3 RS is ready.", time: "10:42 AM", unread: 2, avatar: null, active: true },
-        { id: 2, name: "Alex Chen", lastMsg: "Is the price negotiable for cash?", time: "Yesterday", unread: 0, avatar: null, active: false },
-        { id: 3, name: "CarMazium Support", lastMsg: "Your verification status has been updated.", time: "Jan 15", unread: 0, avatar: null, active: false },
-    ]
+    const { user, profile, loading } = useAuth()
+    const [selectedRoom, setSelectedRoom] = React.useState<ChatRoom | null>(null)
 
-    const [messages, setMessages] = useState([
-        { id: 1, text: "Hi, I'm interested in the 911 GT3 RS. Is it still available?", sender: "me", time: "10:30 AM" },
-        { id: 2, text: "Hello! Yes, the vehicle is currently in our showroom and available for viewing.", sender: "them", time: "10:32 AM" },
-        { id: 3, text: "Great. I'd like to arrange a viewing for this Saturday.", sender: "me", time: "10:35 AM" },
-        { id: 4, text: "Saturday works perfectly. Would 11:00 AM suit you?", sender: "them", time: "10:38 AM" },
-        { id: 5, text: "The paperwork for the GT3 RS is ready.", sender: "them", time: "10:42 AM" },
-    ])
-
-    const [newMessage, setNewMessage] = useState("")
-
-    const handleSend = () => {
-        if (!newMessage.trim()) return
-        setMessages([...messages, { id: Date.now(), text: newMessage, sender: "me", time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }])
-        setNewMessage("")
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+            </div>
+        )
     }
 
+    const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "User")
+
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900">
+        <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
+                <DashboardSidebar role="buyer" userName={userName} userType={profile?.role ? `${profile.role} Account` : "Buyer"} />
 
-                <DashboardSidebar role="buyer" />
-
-                <main className="flex-1 h-[800px] flex gap-6">
-                    {/* Chat List */}
-                    <div className="w-1/3 glass-card flex flex-col hidden md:flex">
-                        <div className="p-4 border-b border-white/10">
-                            <h2 className="font-bold text-white mb-4">Messages</h2>
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
-                                <Input placeholder="Search messages..." className="pl-9 h-10 bg-slate-800/50 border-white/10" />
-                            </div>
-                        </div>
-                        <div className="flex-1 overflow-y-auto">
-                            {conversations.map(chat => (
-                                <div key={chat.id} className={`p-4 border-b border-white/5 cursor-pointer hover:bg-white/5 transition-colors ${chat.active ? "bg-primary/5 border-l-2 border-l-primary" : ""}`}>
-                                    <div className="flex justify-between items-start mb-1">
-                                        <h3 className={`font-bold text-sm ${chat.active ? "text-primary" : "text-white"}`}>{chat.name}</h3>
-                                        <span className="text-xs text-gray-500">{chat.time}</span>
-                                    </div>
-                                    <p className="text-xs text-gray-400 truncate max-w-[180px]">{chat.lastMsg}</p>
-                                    {chat.unread > 0 && (
-                                        <div className="mt-2 text-xs bg-primary text-white w-5 h-5 flex items-center justify-center rounded-full font-bold ml-auto">
-                                            {chat.unread}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Chat Window */}
-                    <div className="flex-1 glass-card flex flex-col overflow-hidden">
-                        {/* Chat Header */}
-                        <div className="p-4 border-b border-white/10 flex justify-between items-center bg-slate-800/30">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center">
-                                    <User className="text-gray-400" size={20} />
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-white">Luxury Motors London</h3>
-                                    <div className="flex items-center gap-2 text-xs text-emerald-400">
-                                        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> Online
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="flex gap-2">
-                                <Button size="sm" variant="ghost" className="text-gray-400 hover:text-white"><Phone size={18} /></Button>
-                                <Button size="sm" variant="ghost" className="text-gray-400 hover:text-white"><MoreVertical size={18} /></Button>
-                            </div>
+                <main className="flex-1">
+                    <div className="glass-card overflow-hidden h-[calc(100vh-180px)]">
+                        <div className="p-6 border-b border-white/10 flex items-center gap-3">
+                            <MessageSquare className="text-primary" />
+                            <h2 className="text-xl font-bold font-heading text-white">Messages</h2>
                         </div>
 
-                        {/* Messages Area */}
-                        <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-900/20">
-                            {messages.map((msg) => (
-                                <div key={msg.id} className={`flex ${msg.sender === "me" ? "justify-end" : "justify-start"}`}>
-                                    <div className={`max-w-[70%] p-4 rounded-2xl text-sm ${msg.sender === "me"
-                                        ? "bg-primary text-white rounded-tr-none shadow-neon"
-                                        : "bg-slate-800 text-gray-200 border border-white/10 rounded-tl-none"
-                                        }`}>
-                                        <p>{msg.text}</p>
-                                        <p className={`text-[10px] mt-1 text-right ${msg.sender === "me" ? "text-white/70" : "text-gray-500"}`}>{msg.time}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Input Area */}
-                        <div className="p-4 bg-slate-800/30 border-t border-white/10">
-                            <div className="flex gap-2">
-                                <Input
-                                    className="bg-slate-900 border-white/10 text-white"
-                                    placeholder="Type your message..."
-                                    value={newMessage}
-                                    onChange={(e) => setNewMessage(e.target.value)}
-                                    onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                        <div className="flex h-[calc(100%-80px)]">
+                            {/* Room List */}
+                            <div className={`w-full lg:w-80 border-r border-white/10 ${selectedRoom ? 'hidden lg:block' : ''}`}>
+                                <ChatRoomList
+                                    onSelectRoom={setSelectedRoom}
+                                    selectedRoomId={selectedRoom?.id}
                                 />
-                                <Button onClick={handleSend} className="bg-primary hover:bg-primary/80 shadow-neon w-12 px-0 flex items-center justify-center">
-                                    <Send size={18} />
-                                </Button>
+                            </div>
+
+                            {/* Chat Window */}
+                            <div className={`flex-1 ${!selectedRoom ? 'hidden lg:flex lg:items-center lg:justify-center' : ''}`}>
+                                {selectedRoom ? (
+                                    <ChatWindow
+                                        room={selectedRoom}
+                                        onBack={() => setSelectedRoom(null)}
+                                    />
+                                ) : (
+                                    <div className="text-center text-gray-500">
+                                        <MessageSquare className="w-16 h-16 mx-auto mb-4 opacity-30" />
+                                        <p className="text-lg">Select a conversation</p>
+                                        <p className="text-sm mt-1">Choose from your existing conversations</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

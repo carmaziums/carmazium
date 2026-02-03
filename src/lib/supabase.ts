@@ -10,6 +10,16 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl || 'https://missing-url.supabase.co', supabaseAnonKey || 'missing-key');
 
 /**
+ * Get the current access token from the Supabase session
+ * @returns The access token or null if not authenticated
+ */
+export async function getAccessToken(): Promise<string | null> {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token || null;
+}
+
+
+/**
  * Upload an image to Supabase Storage
  * @param file - The file to upload
  * @param bucket - The storage bucket name (default: 'listings')
