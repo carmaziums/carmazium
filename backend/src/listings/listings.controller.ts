@@ -28,17 +28,7 @@ import { Listing } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
-/**
- * Custom decorator to extract userId from request
- * TODO: Replace with actual auth guard and user decorator
- * For now, this is a placeholder
- */
-function UserId() {
-    return function (target: any, propertyKey: string, parameterIndex: number) {
-        // Placeholder - in production, this would extract userId from JWT token
-        // For testing, you can hardcode a test user ID or use a header
-    };
-}
+
 
 @ApiTags('Listings')
 @Controller('listings')
@@ -50,6 +40,8 @@ export class ListingsController {
      * Requires authentication
      */
     @Post()
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({
         summary: 'Create a new listing',
@@ -70,14 +62,12 @@ export class ListingsController {
     })
     async create(
         @Body() createListingDto: CreateListingDto,
-        // TODO: Uncomment when auth is implemented
-        // @UserId() userId: string,
+        @CurrentUser() user: any,
     ): Promise<StandardResponse<Listing>> {
-        // TEMPORARY: For testing without auth, userId is optional
-        // In production, this should come from @UserId() decorator with JWT
-        const listing = await this.listingsService.create(createListingDto);
+        const listing = await this.listingsService.create(createListingDto, user.id);
         return new StandardResponse(listing);
     }
+
 
     /**
      * Get all listings with filtering and pagination
@@ -194,6 +184,8 @@ export class ListingsController {
      * Requires authentication and ownership
      */
     @Patch(':id')
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
     @ApiOperation({
         summary: 'Update a listing',
         description: 'Updates a listing. Requires authentication and ownership.',
@@ -218,13 +210,9 @@ export class ListingsController {
     async update(
         @Param('id') id: string,
         @Body() updateListingDto: UpdateListingDto,
-        // TODO: Uncomment when auth is implemented
-        // @UserId() userId: string,
+        @CurrentUser() user: any,
     ): Promise<StandardResponse<Listing>> {
-        // TEMPORARY: For testing without auth
-        const userId = 'temp-user-id-for-testing';
-
-        const listing = await this.listingsService.update(id, userId, updateListingDto);
+        const listing = await this.listingsService.update(id, user.id, updateListingDto);
         return new StandardResponse(listing);
     }
 
@@ -233,6 +221,8 @@ export class ListingsController {
      * Requires authentication and ownership
      */
     @Delete(':id')
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
         summary: 'Delete a listing (soft delete)',
@@ -257,13 +247,9 @@ export class ListingsController {
     })
     async remove(
         @Param('id') id: string,
-        // TODO: Uncomment when auth is implemented
-        // @UserId() userId: string,
+        @CurrentUser() user: any,
     ): Promise<StandardResponse<Listing>> {
-        // TEMPORARY: For testing without auth
-        const userId = 'temp-user-id-for-testing';
-
-        const listing = await this.listingsService.softDelete(id, userId);
+        const listing = await this.listingsService.softDelete(id, user.id);
         return new StandardResponse(listing);
     }
 }
