@@ -248,4 +248,81 @@ export class ListingsService {
 
         return deletedListing;
     }
+
+    /**
+     * Find all listings belonging to a specific seller
+     */
+    async findMyListings(sellerId: string, filterDto?: ListingFilterDto): Promise<{ data: Listing[]; total: number }> {
+        const page = filterDto?.page || 1;
+        const limit = filterDto?.limit || 20;
+        const skip = (page - 1) * limit;
+
+        const where: any = {
+            sellerId,
+            deletedAt: null,
+        };
+
+        // Apply optional filters
+        if (filterDto?.minPrice !== undefined || filterDto?.maxPrice !== undefined) {
+            where.price = {};
+            if (filterDto.minPrice !== undefined) where.price.gte = filterDto.minPrice;
+            if (filterDto.maxPrice !== undefined) where.price.lte = filterDto.maxPrice;
+        }
+
+        if (filterDto?.make) {
+            where.make = { contains: filterDto.make, mode: 'insensitive' };
+        }
+
+        const [data, total] = await Promise.all([
+            this.prisma.listing.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy: { createdAt: 'desc' },
+            }),
+            this.prisma.listing.count({ where }),
+        ]);
+
+        return { data, total };
+    }
+
+    /**
+     * Get seller dashboard statistics
+     */
+    async getSellerStats(sellerId: string): Promise<{
+        totalListings: number;
+        activeListings: number;
+        soldListings: number;
+        draftListings: number;
+        totalViews: number;
+        totalRevenue: number;
+    }> {
+        const baseWhere = { sellerId, deletedAt: null };
+
+        const [totalListings, activeListings, soldListings, draftListings, viewsAndRevenue] = await Promise.all([
+            this.prisma.listing.count({ where: baseWhere }),
+            this.prisma.listing.count({ where: { ...baseWhere, status: 'ACTIVE' } }),
+            this.prisma.listing.count({ where: { ...baseWhere, status: 'SOLD' } }),
+            this.prisma.listing.count({ where: { ...baseWhere, status: 'DRAFT' } }),
+            this.prisma.listing.aggregate({
+                where: baseWhere,
+                _sum: { viewCount: true, price: true },
+            }),
+        ]);
+
+        // Calculate total revenue from sold listings
+        const soldRevenue = await this.prisma.listing.aggregate({
+            where: { ...baseWhere, status: 'SOLD' },
+            _sum: { price: true },
+        });
+
+        return {
+            totalListings,
+            activeListings,
+            soldListings,
+            draftListings,
+            totalViews: viewsAndRevenue._sum.viewCount || 0,
+            totalRevenue: Number(soldRevenue._sum.price || 0),
+        };
+    }
 }

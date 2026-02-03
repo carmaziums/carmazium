@@ -6,8 +6,8 @@ export default function OrderHistoryPage() {
     return (
         <div className="min-h-screen pt-20 pb-12 bg-slate-900">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
-                <DashboardSidebar role="buyer" userName="John Doe" />
-                <main className="lg:w-3/4 space-y-6">
+                <DashboardSidebar role="buyer" />
+                <main className="flex-1 space-y-6">
                     <h1 className="text-3xl font-bold font-heading text-white mb-6">Order History</h1>
 
                     <div className="glass-card overflow-hidden">

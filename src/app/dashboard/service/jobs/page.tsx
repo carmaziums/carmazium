@@ -6,8 +6,8 @@ export default function ServiceJobsPage() {
     return (
         <div className="min-h-screen pt-20 pb-12 bg-slate-900">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
-                <DashboardSidebar role="provider" userName="Apex Customs" userType="Service Provider" />
-                <main className="lg:w-3/4 space-y-6">
+                <DashboardSidebar role="provider" />
+                <main className="flex-1 space-y-6">
                     <div className="flex justify-between items-center mb-6">
                         <h1 className="text-3xl font-bold font-heading text-white">Active Jobs</h1>
                         <div className="flex gap-2">

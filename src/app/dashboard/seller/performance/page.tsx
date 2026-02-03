@@ -10,9 +10,9 @@ export default function PerformancePage() {
         <div className="min-h-screen pt-20 pb-12 bg-slate-900">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
 
-                <DashboardSidebar role="seller" userName="John Doe" />
+                <DashboardSidebar role="seller" />
 
-                <main className="lg:w-3/4 space-y-8">
+                <main className="flex-1 space-y-8">
                     <div className="mb-2">
                         <h1 className="text-3xl font-bold font-heading text-white">Performance Analytics</h1>
                         <p className="text-gray-400">Track your verified listing performance and reach.</p>

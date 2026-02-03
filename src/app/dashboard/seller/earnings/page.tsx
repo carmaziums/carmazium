@@ -6,8 +6,8 @@ export default function EarningsPage() {
     return (
         <div className="min-h-screen pt-20 pb-12 bg-slate-900">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
-                <DashboardSidebar role="seller" userName="John Doe" />
-                <main className="lg:w-3/4 space-y-6">
+                <DashboardSidebar role="seller" />
+                <main className="flex-1 space-y-6">
                     <h1 className="text-3xl font-bold font-heading text-white mb-6">Earnings</h1>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

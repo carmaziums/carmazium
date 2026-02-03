@@ -1,11 +1,43 @@
 "use client"
 
+import * as React from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Loader2 } from "lucide-react"
+import { supabase } from "@/lib/supabase"
 
 export default function LoginPage() {
+    const router = useRouter()
+    const [formData, setFormData] = React.useState({
+        email: "",
+        password: ""
+    })
+    const [loading, setLoading] = React.useState(false)
+    const [error, setError] = React.useState<string | null>(null)
+
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setLoading(true)
+        setError(null)
+
+        try {
+            const { error: authError } = await supabase.auth.signInWithPassword({
+                email: formData.email,
+                password: formData.password
+            })
+
+            if (authError) throw authError
+
+            router.push('/dashboard')
+        } catch (err: any) {
+            setError(err.message || 'Invalid email or password')
+        } finally {
+            setLoading(false)
+        }
+    }
+
     return (
         <div className="min-h-screen pt-24 pb-12 flex items-center justify-center bg-[url('/assets/images/signup-bg.png')] bg-cover bg-center relative">
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
@@ -20,15 +52,37 @@ export default function LoginPage() {
                     <p className="text-gray-300">Login to continue to CarMazium.</p>
                 </div>
 
-                <form className="space-y-6">
+                {error && (
+                    <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200 text-sm">
+                        {error}
+                    </div>
+                )}
+
+                <form className="space-y-6" onSubmit={handleLogin}>
                     <div className="space-y-2">
                         <label htmlFor="email" className="text-xs font-bold uppercase tracking-wide block text-gray-200">Email Address</label>
-                        <Input id="email" type="email" placeholder="john@example.com" required className="bg-white/20 border-white/10 text-white placeholder:text-gray-400 focus:bg-white/30" />
+                        <Input
+                            id="email"
+                            type="email"
+                            placeholder="john@example.com"
+                            required
+                            value={formData.email}
+                            onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                            className="bg-white/20 border-white/10 text-white placeholder:text-gray-400 focus:bg-white/30"
+                        />
                     </div>
 
                     <div className="space-y-2">
                         <label htmlFor="password" className="text-xs font-bold uppercase tracking-wide block text-gray-200">Password</label>
-                        <Input id="password" type="password" placeholder="••••••••" required className="bg-white/20 border-white/10 text-white placeholder:text-gray-400 focus:bg-white/30" />
+                        <Input
+                            id="password"
+                            type="password"
+                            placeholder="••••••••"
+                            required
+                            value={formData.password}
+                            onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                            className="bg-white/20 border-white/10 text-white placeholder:text-gray-400 focus:bg-white/30"
+                        />
                     </div>
 
                     <div className="flex items-center justify-between text-sm">
@@ -39,7 +93,9 @@ export default function LoginPage() {
                         <Link href="#" className="text-primary hover:text-red-400 font-medium transition-colors">Forgot Password?</Link>
                     </div>
 
-                    <Button className="w-full h-12 text-lg shadow-[0_4px_15px_rgba(237,28,36,0.4)]" shape="default">Log In</Button>
+                    <Button type="submit" disabled={loading} className="w-full h-12 text-lg shadow-[0_4px_15px_rgba(237,28,36,0.4)]" shape="default">
+                        {loading ? <Loader2 className="animate-spin" /> : 'Log In'}
+                    </Button>
                 </form>
 
                 <div className="my-8 flex items-center gap-4 text-gray-400">
@@ -51,7 +107,6 @@ export default function LoginPage() {
                 <div className="flex gap-4">
                     <Button variant="outline" className="flex-1 border-white/20 hover:bg-white/10 text-white">
                         <span className="sr-only">Google</span>
-                        {/* Assuming asset exists, otherwise fallback to icon */}
                         <img src="/assets/images/google-icon.png" alt="Google" className="w-5 h-5 mx-auto" />
                     </Button>
                     <Button variant="outline" className="flex-1 border-white/20 hover:bg-white/10 text-white h-12">

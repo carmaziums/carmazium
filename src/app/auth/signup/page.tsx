@@ -1,11 +1,86 @@
 "use client"
 
+import * as React from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
-import { ArrowLeft, Car, Wrench, CreditCard, Shield, Handshake } from "lucide-react"
+import { ArrowLeft, Car, Wrench, CreditCard, Shield, Handshake, Loader2 } from "lucide-react"
+import { supabase } from "@/lib/supabase"
 
 export default function SignupPage() {
+    const router = useRouter()
+    const [formData, setFormData] = React.useState({
+        firstName: "",
+        lastName: "",
+        email: "",
+        password: "",
+        role: "BUYER" as "BUYER" | "SELLER" | "DEALER" | "CONTRACTOR" | "FINANCE_PARTNER" | "INSURANCE_PARTNER"
+    })
+    const [loading, setLoading] = React.useState(false)
+    const [error, setError] = React.useState<string | null>(null)
+
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium.onrender.com'
+
+    const handleSignup = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setLoading(true)
+        setError(null)
+
+        try {
+            // 1. Supabase Signup
+            const { data: authData, error: authError } = await supabase.auth.signUp({
+                email: formData.email,
+                password: formData.password,
+                options: {
+                    data: {
+                        first_name: formData.firstName,
+                        last_name: formData.lastName,
+                        role: formData.role
+                    }
+                }
+            })
+
+            if (authError) throw authError
+
+            // 2. Sync with Backend
+            if (authData.user) {
+                const syncResponse = await fetch(`${API_URL}/users/sync`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        supabaseAuthId: authData.user.id,
+                        email: formData.email,
+                        firstName: formData.firstName,
+                        lastName: formData.lastName,
+                        role: formData.role
+                    })
+                })
+
+                if (!syncResponse.ok) {
+                    console.error('Backend sync failed, but account created in Supabase')
+                }
+            }
+
+            // 3. Redirect to Onboarding
+            router.push('/auth/onboarding')
+        } catch (err: any) {
+            setError(err.message || 'An error occurred during signup')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const roles = [
+        { id: 'BUYER', icon: Car, label: 'Member - Buy & Sell Vehicles', sub: 'KYC verified trading' },
+        { id: 'CONTRACTOR', icon: Wrench, label: 'Contractor - Automotive services', sub: 'Vehicle Inspectors • Drivers' },
+        { id: 'FINANCE_PARTNER', icon: CreditCard, label: 'Finance Provider', sub: 'Vehicle financing services' },
+        { id: 'INSURANCE_PARTNER', icon: Shield, label: 'Insurance Provider', sub: 'Vehicle insurance services' },
+        { id: 'ADMIN', icon: Handshake, label: 'Partners Login', sub: 'Collaborate with us' } // ADMIN for partners for now or distinct role
+    ]
+
+    const selectedRole = roles.find(r => r.id === formData.role) || roles[0]
+
     return (
         <div className="min-h-screen pt-24 pb-12 flex items-center justify-center bg-[url('/assets/images/signup-bg.png')] bg-cover bg-center relative">
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
@@ -20,26 +95,64 @@ export default function SignupPage() {
                     <p className="text-gray-300">Join CarMazium to buy, sell, and auction</p>
                 </div>
 
-                <form className="space-y-6">
+                {error && (
+                    <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200 text-sm">
+                        {error}
+                    </div>
+                )}
+
+                <form className="space-y-6" onSubmit={handleSignup}>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <label htmlFor="fname" className="text-xs font-bold uppercase tracking-wide block text-gray-200">First Name</label>
-                            <Input id="fname" type="text" placeholder="John" required className="bg-white/20 border-white/10 text-white placeholder:text-gray-400 focus:bg-white/30" />
+                            <Input
+                                id="fname"
+                                type="text"
+                                placeholder="John"
+                                required
+                                value={formData.firstName}
+                                onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                                className="bg-white/20 border-white/10 text-white placeholder:text-gray-400 focus:bg-white/30"
+                            />
                         </div>
                         <div className="space-y-2">
                             <label htmlFor="lname" className="text-xs font-bold uppercase tracking-wide block text-gray-200">Last Name</label>
-                            <Input id="lname" type="text" placeholder="Doe" required className="bg-white/20 border-white/10 text-white placeholder:text-gray-400 focus:bg-white/30" />
+                            <Input
+                                id="lname"
+                                type="text"
+                                placeholder="Doe"
+                                required
+                                value={formData.lastName}
+                                onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                                className="bg-white/20 border-white/10 text-white placeholder:text-gray-400 focus:bg-white/30"
+                            />
                         </div>
                     </div>
 
                     <div className="space-y-2">
                         <label htmlFor="email" className="text-xs font-bold uppercase tracking-wide block text-gray-200">Email Address</label>
-                        <Input id="email" type="email" placeholder="john@example.com" required className="bg-white/20 border-white/10 text-white placeholder:text-gray-400 focus:bg-white/30" />
+                        <Input
+                            id="email"
+                            type="email"
+                            placeholder="john@example.com"
+                            required
+                            value={formData.email}
+                            onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                            className="bg-white/20 border-white/10 text-white placeholder:text-gray-400 focus:bg-white/30"
+                        />
                     </div>
 
                     <div className="space-y-2">
                         <label htmlFor="password" className="text-xs font-bold uppercase tracking-wide block text-gray-200">Password</label>
-                        <Input id="password" type="password" placeholder="Create a password" required className="bg-white/20 border-white/10 text-white placeholder:text-gray-400 focus:bg-white/30" />
+                        <Input
+                            id="password"
+                            type="password"
+                            placeholder="Create a password"
+                            required
+                            value={formData.password}
+                            onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                            className="bg-white/20 border-white/10 text-white placeholder:text-gray-400 focus:bg-white/30"
+                        />
                     </div>
 
                     <div className="space-y-2 relative group-dropdown">
@@ -49,24 +162,27 @@ export default function SignupPage() {
                             <label htmlFor="dropdown-toggle" className="flex items-center justify-between w-full h-14 px-4 bg-slate-900/60 border border-white/10 rounded-xl cursor-pointer text-white hover:border-primary/50 transition-colors">
                                 <span className="flex items-center gap-3">
                                     <span className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-                                        <Car size={16} />
+                                        <selectedRole.icon size={16} />
                                     </span>
-                                    <span>Member - Buy & Sell Vehicles</span>
+                                    <span>{selectedRole.label}</span>
                                 </span>
                                 <ArrowLeft className="rotate-[-90deg] text-gray-400 peer-checked:rotate-90 transition-transform" size={16} />
                             </label>
 
                             {/* Dropdown Menu */}
                             <div className="absolute top-full left-0 w-full mt-2 bg-slate-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden hidden peer-checked:block z-50 animate-in fade-in zoom-in-95 duration-200">
-                                {[
-                                    { id: 'member', icon: Car, label: 'Member - Buy & Sell Vehicles', sub: 'KYC verified trading' },
-                                    { id: 'contractor', icon: Wrench, label: 'Contractor - Automotive services', sub: 'Vehicle Inspectors • Drivers' },
-                                    { id: 'finance', icon: CreditCard, label: 'Finance Provider', sub: 'Vehicle financing services' },
-                                    { id: 'insurance', icon: Shield, label: 'Insurance Provider', sub: 'Vehicle insurance services' },
-                                    { id: 'partner', icon: Handshake, label: 'Partners Login', sub: 'Collaborate with us' }
-                                ].map((role) => (
-                                    <div key={role.id} className="flex items-center gap-4 p-4 hover:bg-white/5 cursor-pointer border-b border-white/5 last:border-0 transition-colors group">
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${role.id === 'member' ? 'bg-primary/20 text-primary' : 'bg-slate-800 text-gray-400 group-hover:bg-primary/20 group-hover:text-primary'}`}>
+                                {roles.map((role) => (
+                                    <div
+                                        key={role.id}
+                                        onClick={() => {
+                                            setFormData(prev => ({ ...prev, role: role.id as any }))
+                                            // Close dropdown (simplified)
+                                            const toggle = document.getElementById('dropdown-toggle') as HTMLInputElement
+                                            if (toggle) toggle.checked = false
+                                        }}
+                                        className="flex items-center gap-4 p-4 hover:bg-white/5 cursor-pointer border-b border-white/5 last:border-0 transition-colors group"
+                                    >
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${formData.role === role.id ? 'bg-primary/20 text-primary' : 'bg-slate-800 text-gray-400 group-hover:bg-primary/20 group-hover:text-primary'}`}>
                                             <role.icon size={20} />
                                         </div>
                                         <div>
@@ -79,7 +195,9 @@ export default function SignupPage() {
                         </div>
                     </div>
 
-                    <Button className="w-full h-12 text-lg shadow-[0_4px_15px_rgba(237,28,36,0.4)]" shape="default">Create Account</Button>
+                    <Button type="submit" disabled={loading} className="w-full h-12 text-lg shadow-[0_4px_15px_rgba(237,28,36,0.4)]" shape="default">
+                        {loading ? <Loader2 className="animate-spin" /> : 'Create Account'}
+                    </Button>
                 </form>
 
                 <div className="my-8 flex items-center gap-4 text-gray-400">

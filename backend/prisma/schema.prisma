@@ -134,6 +134,7 @@ model User {
   chatRoomsAsInitiator    ChatRoom[]         @relation("Initiator")
   chatRoomsAsParticipant  ChatRoom[]         @relation("Participant")
   messages                Message[]
+  watchlistItems          WatchlistItem[]
 
   @@map("users")
 }
@@ -269,6 +270,7 @@ model Listing {
   insuranceQuotes InsuranceQuote[]
   transactions    Transaction[]
   chatRooms       ChatRoom[]
+  watchlistItems  WatchlistItem[]
 
   @@index([sellerId])
   @@index([vehicleId])
@@ -455,4 +457,23 @@ model Message {
   @@index([chatRoomId])
   @@index([senderId])
   @@map("messages")
+}
+
+// ============================================================================
+// WATCHLIST
+// ============================================================================
+
+model WatchlistItem {
+  id              String    @id @default(uuid())
+  userId          String
+  listingId       String
+  createdAt       DateTime  @default(now())
+  
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listingId])
+  @@index([userId])
+  @@index([listingId])
+  @@map("watchlist_items")
 }

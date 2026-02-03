@@ -33,9 +33,9 @@ export default function ProviderMessagesPage() {
         <div className="min-h-screen pt-20 pb-12 bg-slate-900">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
 
-                <DashboardSidebar role="provider" userName="Apex Customs" userType="Service Provider" />
+                <DashboardSidebar role="provider" />
 
-                <main className="lg:w-3/4 h-[800px] flex gap-6">
+                <main className="flex-1 h-[800px] flex gap-6">
                     {/* Chat List */}
                     <div className="w-1/3 glass-card flex flex-col hidden md:flex">
                         <div className="p-4 border-b border-white/10">

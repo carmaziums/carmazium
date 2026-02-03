@@ -9,6 +9,7 @@ import {
     Query,
     HttpCode,
     HttpStatus,
+    UseGuards,
 } from '@nestjs/common';
 import {
     ApiTags,
@@ -16,6 +17,7 @@ import {
     ApiResponse,
     ApiParam,
     ApiQuery,
+    ApiBearerAuth,
 } from '@nestjs/swagger';
 import { ListingsService } from './listings.service';
 import { CreateListingDto } from './dto/create-listing.dto';
@@ -23,6 +25,8 @@ import { UpdateListingDto } from './dto/update-listing.dto';
 import { ListingFilterDto } from './dto/listing-filter.dto';
 import { StandardResponse, PaginatedResponse } from './dto/response.dto';
 import { Listing } from '@prisma/client';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 /**
  * Custom decorator to extract userId from request
@@ -103,6 +107,57 @@ export class ListingsController {
         const limit = filterDto.limit || 20;
 
         return new PaginatedResponse(data, total, page, limit);
+    }
+
+    /**
+     * Get current user's listings
+     * Requires authentication
+     */
+    @Get('my')
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
+    @ApiOperation({
+        summary: 'Get my listings',
+        description: 'Retrieves all listings belonging to the authenticated user',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'User listings with pagination',
+    })
+    @ApiResponse({
+        status: 401,
+        description: 'Unauthorized',
+    })
+    async findMyListings(
+        @CurrentUser() user: any,
+        @Query() filterDto: ListingFilterDto,
+    ): Promise<PaginatedResponse<Listing>> {
+        const { data, total } = await this.listingsService.findMyListings(user.id, filterDto);
+        const page = filterDto.page || 1;
+        const limit = filterDto.limit || 20;
+        return new PaginatedResponse(data, total, page, limit);
+    }
+
+    /**
+     * Get seller dashboard statistics
+     * Requires authentication
+     */
+    @Get('stats')
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
+    @ApiOperation({
+        summary: 'Get seller stats',
+        description: 'Retrieves dashboard statistics for the authenticated seller',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Seller statistics',
+    })
+    async getSellerStats(
+        @CurrentUser() user: any,
+    ): Promise<StandardResponse<any>> {
+        const stats = await this.listingsService.getSellerStats(user.id);
+        return new StandardResponse(stats);
     }
 
     /**
