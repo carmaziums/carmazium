@@ -37,29 +37,60 @@ export async function uploadImage(
     // Generate unique filename: timestamp-uuid-originalname
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2, 15);
-    const fileExt = file.name.split('.').pop();
+    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
     const fileName = `${timestamp}-${randomId}.${fileExt}`;
 
-    // Upload to Supabase Storage
-    const { data, error } = await supabase.storage
-        .from(bucket)
-        .upload(fileName, file, {
-            cacheControl: '3600',
-            upsert: false,
-        });
+    // Try upload with retry logic
+    let lastError: Error | null = null;
+    const maxRetries = 2;
 
-    if (error) {
-        console.error('Upload error:', error);
-        throw new Error(`Failed to upload image: ${error.message}`);
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+            // Upload to Supabase Storage
+            const { data, error } = await supabase.storage
+                .from(bucket)
+                .upload(fileName, file, {
+                    cacheControl: '3600',
+                    upsert: false,
+                });
+
+            if (error) {
+                // Handle specific error cases
+                if (error.message.includes('Bucket not found')) {
+                    throw new Error(`Storage bucket "${bucket}" not found. Please create it in Supabase Dashboard.`);
+                }
+                if (error.message.includes('row-level security') || error.message.includes('policy')) {
+                    throw new Error('Permission denied. Please check Supabase storage bucket RLS policies.');
+                }
+                if (error.message.includes('signal is aborted')) {
+                    // Retry on signal abort
+                    if (attempt < maxRetries) {
+                        console.warn(`Upload attempt ${attempt + 1} failed, retrying...`);
+                        await new Promise(r => setTimeout(r, 1000 * (attempt + 1))); // Exponential backoff
+                        continue;
+                    }
+                    throw new Error('Upload was interrupted. Please check your internet connection and try again.');
+                }
+                throw new Error(`Failed to upload image: ${error.message}`);
+            }
+
+            // Get public URL
+            const { data: publicUrlData } = supabase.storage
+                .from(bucket)
+                .getPublicUrl(data.path);
+
+            return publicUrlData.publicUrl;
+        } catch (err) {
+            lastError = err instanceof Error ? err : new Error(String(err));
+            if (attempt >= maxRetries) {
+                throw lastError;
+            }
+        }
     }
 
-    // Get public URL
-    const { data: publicUrlData } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(data.path);
-
-    return publicUrlData.publicUrl;
+    throw lastError || new Error('Upload failed after retries');
 }
+
 
 /**
  * Delete an image from Supabase Storage
