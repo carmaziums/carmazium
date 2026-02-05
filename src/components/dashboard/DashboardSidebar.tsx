@@ -93,8 +93,8 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                                 key={link.href}
                                 href={link.href}
                                 className={`flex flex-col items-center justify-center py-2 px-3 rounded-lg min-w-[60px] relative transition-all ${isActive
-                                        ? "text-primary"
-                                        : "text-gray-400 hover:text-white"
+                                    ? "text-primary"
+                                    : "text-gray-400 hover:text-white"
                                     }`}
                             >
                                 <div className="relative">
@@ -153,8 +153,8 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                         </div>
                     </div>
 
-                    {/* All Links */}
-                    {currentLinks.map((link) => {
+                    {/* Overflow Links (items not in bottom bar) */}
+                    {currentLinks.slice(5).map((link) => {
                         const isActive = pathname === link.href
                         const Icon = link.icon
                         return (
@@ -163,8 +163,8 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                                 href={link.href}
                                 onClick={() => setIsMobileMenuOpen(false)}
                                 className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all ${isActive
-                                        ? "bg-primary text-white"
-                                        : "text-gray-300 hover:bg-white/5"
+                                    ? "bg-primary text-white"
+                                    : "text-gray-300 hover:bg-white/5"
                                     }`}
                             >
                                 <div className="flex items-center gap-3">

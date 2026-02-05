@@ -60,9 +60,9 @@ export default function SellerDashboard() {
                     </Link>
                 </DashboardSidebar>
 
-                <main className="flex-1 space-y-8">
+                <main className="flex-1 space-y-8 min-w-0">
                     {/* Stats Row */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div className="glass-card p-6 border border-white/5 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors">
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="p-2 bg-primary/20 rounded-lg"><Car size={18} className="text-primary" /></div>
@@ -147,8 +147,8 @@ export default function SellerDashboard() {
                                                 </td>
                                                 <td className="px-6 py-4 text-center">
                                                     <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold ${listing.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                                                            listing.status === 'SOLD' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
-                                                                'bg-gray-500/10 text-gray-400 border border-gray-500/20'
+                                                        listing.status === 'SOLD' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
+                                                            'bg-gray-500/10 text-gray-400 border border-gray-500/20'
                                                         }`}>
                                                         {listing.status}
                                                     </span>
