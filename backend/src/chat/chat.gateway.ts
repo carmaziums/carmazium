@@ -21,7 +21,11 @@ import { ConfigService } from '@nestjs/config';
  */
 @WebSocketGateway({
     cors: {
-        origin: '*',
+        origin: [
+            'http://localhost:3000',
+            'https://carmazium.vercel.app',
+            'https://carmazium.onrender.com'
+        ],
         credentials: true,
     },
     namespace: '/chat',
@@ -57,12 +61,8 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
                 return;
             }
 
-            // Verify JWT - Supabase JWT secret is base64 encoded
-            const secret = this.configService.get<string>('SUPABASE_JWT_SECRET');
-            const secretBuffer = secret ? Buffer.from(secret, 'base64') : undefined;
-            const payload = this.jwtService.verify(token, {
-                secret: secretBuffer || secret,
-            });
+            // Verify JWT - Uses the config from ChatModule (which handles base64 decoding)
+            const payload = this.jwtService.verify(token);
 
             const userId = payload.sub;
             if (!userId) {

@@ -9,13 +9,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         const secret = configService.get<string>('SUPABASE_JWT_SECRET');
         console.log('JwtStrategy initialized. Secret loaded:', !!secret);
 
-        // Supabase JWT secret is base64 encoded, decode it for verification
-        const secretBuffer = secret ? Buffer.from(secret, 'base64') : undefined;
-
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
-            secretOrKey: secretBuffer || secret!,
+            secretOrKey: secret!,
             algorithms: ['HS256'],
         });
     }

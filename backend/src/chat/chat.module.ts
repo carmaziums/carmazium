@@ -18,10 +18,8 @@ import { PrismaModule } from '../prisma/prisma.module';
             inject: [ConfigService],
             useFactory: (configService: ConfigService) => {
                 const secret = configService.get<string>('SUPABASE_JWT_SECRET');
-                // Supabase JWT secret is base64 encoded, decode it for verification
-                const secretBuffer = secret ? Buffer.from(secret, 'base64') : undefined;
                 return {
-                    secret: secretBuffer || secret,
+                    secret: secret,
                 };
             },
         }),

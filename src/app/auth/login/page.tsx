@@ -23,12 +23,32 @@ export default function LoginPage() {
         setError(null)
 
         try {
-            const { error: authError } = await supabase.auth.signInWithPassword({
+            const { data, error: authError } = await supabase.auth.signInWithPassword({
                 email: formData.email,
                 password: formData.password
             })
 
             if (authError) throw authError
+
+            // Sync with backend to ensure user exists locally
+            if (data.user) {
+                try {
+                    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium.onrender.com'
+                    await fetch(`${API_URL}/users/sync`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            supabaseAuthId: data.user.id,
+                            email: formData.email,
+                            // We might not have metadata on login, but sync handles updates.
+                            // Sending what we have ensures existence.
+                        })
+                    })
+                } catch (syncErr) {
+                    console.error('Login sync failed:', syncErr)
+                    // Continue to dashboard anyway, auth context might retry or show error
+                }
+            }
 
             router.push('/dashboard')
         } catch (err: any) {

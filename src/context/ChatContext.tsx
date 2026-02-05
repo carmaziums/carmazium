@@ -76,7 +76,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
             socket = io(`${getWebSocketUrl()}/chat`, {
                 auth: { token },
-                transports: ['websocket', 'polling'],
+                transports: ['polling', 'websocket'],
                 reconnection: true,
                 reconnectionAttempts: 5,
                 reconnectionDelay: 1000,
