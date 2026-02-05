@@ -57,9 +57,11 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
                 return;
             }
 
-            // Verify JWT
+            // Verify JWT - Supabase JWT secret is base64 encoded
+            const secret = this.configService.get<string>('SUPABASE_JWT_SECRET');
+            const secretBuffer = secret ? Buffer.from(secret, 'base64') : undefined;
             const payload = this.jwtService.verify(token, {
-                secret: this.configService.get<string>('SUPABASE_JWT_SECRET'),
+                secret: secretBuffer || secret,
             });
 
             const userId = payload.sub;

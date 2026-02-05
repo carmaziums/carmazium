@@ -1,7 +1,7 @@
 import { getAccessToken } from './supabase'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium.onrender.com'
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'https://carmazium.onrender.com'
 
 // Re-export getAccessToken for use in ChatContext
 export { getAccessToken }

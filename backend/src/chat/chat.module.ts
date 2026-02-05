@@ -16,9 +16,14 @@ import { PrismaModule } from '../prisma/prisma.module';
         JwtModule.registerAsync({
             imports: [ConfigModule],
             inject: [ConfigService],
-            useFactory: (configService: ConfigService) => ({
-                secret: configService.get<string>('SUPABASE_JWT_SECRET'),
-            }),
+            useFactory: (configService: ConfigService) => {
+                const secret = configService.get<string>('SUPABASE_JWT_SECRET');
+                // Supabase JWT secret is base64 encoded, decode it for verification
+                const secretBuffer = secret ? Buffer.from(secret, 'base64') : undefined;
+                return {
+                    secret: secretBuffer || secret,
+                };
+            },
         }),
     ],
     controllers: [ChatController],
