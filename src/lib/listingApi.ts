@@ -42,12 +42,13 @@ export interface CreateListingResponse {
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium.onrender.com'
 
 export async function createListing(data: CreateListingRequest): Promise<CreateListingResponse> {
+    const token = await getAccessToken()
+
     const response = await fetch(`${API_URL}/listings`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            // TODO: Add authorization header when auth is implemented
-            // 'Authorization': `Bearer ${token}`,
+            ...(token && { 'Authorization': `Bearer ${token}` }),
         },
         body: JSON.stringify(data),
     })

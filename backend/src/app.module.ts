@@ -10,12 +10,15 @@ import { BidsModule } from './bids/bids.module';
 import { WatchlistModule } from './watchlist/watchlist.module';
 import { ServiceRequestsModule } from './service-requests/service-requests.module';
 import { ChatModule } from './chat/chat.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { TasksModule } from './tasks/tasks.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ScheduleModule.forRoot(),
     ListingsModule,
     PrismaModule,
     AuthModule,
@@ -24,6 +27,7 @@ import { ChatModule } from './chat/chat.module';
     WatchlistModule,
     ServiceRequestsModule,
     ChatModule,
+    TasksModule,
   ],
   controllers: [AppController],
   providers: [AppService],

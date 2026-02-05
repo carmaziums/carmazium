@@ -43,9 +43,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setProfile(data)
             } else {
                 console.error('Profile fetch failed:', response.status);
-                // If 401, maybe try to sync? Or just let it be null.
+
                 if (response.status === 401) {
-                    console.warn('Unauthorized - token may be invalid or secret mismatch');
+                    console.warn('Unauthorized - session invalid, signing out...');
+                    // User has a valid Supabase token but backend rejected it (revoked/invalid)
+                    // Force sign out to clear inconsistent state
+                    await supabase.auth.signOut();
+                    setUser(null);
+                    setProfile(null);
                 }
             }
         } catch (error) {
