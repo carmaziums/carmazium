@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Poppins, Montserrat, Inter } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
+import { ConditionalFooter } from "@/components/layout/ConditionalFooter";
 import { MaziumWidget } from "@/components/features/MaziumWidget";
 
 import { Providers } from "@/components/providers/Providers";
@@ -46,7 +46,7 @@ export default function RootLayout({
               <main className="flex-grow pt-20">
                 {children}
               </main>
-              <Footer />
+              <ConditionalFooter />
             </div>
           </ChatProvider>
         </AuthProvider>
