@@ -39,26 +39,13 @@ export interface CreateListingResponse {
 /**
  * Create a new listing
  */
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium.onrender.com'
+import { apiClient } from './apiClient'
 
 export async function createListing(data: CreateListingRequest): Promise<CreateListingResponse> {
-    const token = await getAccessToken()
-
-    const response = await fetch(`${API_URL}/listings`, {
+    return apiClient<CreateListingResponse>('/listings', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            ...(token && { 'Authorization': `Bearer ${token}` }),
-        },
         body: JSON.stringify(data),
     })
-
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Failed to create listing' }))
-        throw new Error(error.message || `HTTP ${response.status}: ${response.statusText}`)
-    }
-
-    return response.json()
 }
 
 /**
@@ -127,42 +114,20 @@ export async function getListings(filters?: ListingFilters): Promise<ListingsRes
         if (filters.limit) params.append('limit', filters.limit.toString())
     }
 
-    const url = `${API_URL}/listings${params.toString() ? `?${params.toString()}` : ''}`
-
-    const response = await fetch(url, {
+    return apiClient<ListingsResponse>(`/listings${params.toString() ? `?${params.toString()}` : ''}`, {
         method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        cache: 'no-store', // Don't cache for fresh data
+        cache: 'no-store',
     })
-
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Failed to fetch listings' }))
-        throw new Error(error.message || `HTTP ${response.status}: ${response.statusText}`)
-    }
-
-    return response.json()
 }
 
 /**
  * Fetch a single listing by slug
  */
 export async function getListingBySlug(slug: string): Promise<Listing> {
-    const response = await fetch(`${API_URL}/listings/${slug}`, {
+    const data = await apiClient<{ data: Listing }>(`/listings/${slug}`, {
         method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-        },
         cache: 'no-store',
     })
-
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Listing not found' }))
-        throw new Error(error.message || `HTTP ${response.status}: ${response.statusText}`)
-    }
-
-    const data = await response.json()
     return data.data
 }
 
@@ -178,16 +143,6 @@ export function formatPrice(price: number | string): string {
 // ============================================================================
 // AUTHENTICATED API CALLS (require JWT token)
 // ============================================================================
-
-import { supabase } from './supabase'
-
-/**
- * Get current user's access token for API calls
- */
-async function getAccessToken(): Promise<string | null> {
-    const { data: { session } } = await supabase.auth.getSession()
-    return session?.access_token || null
-}
 
 /**
  * Seller stats response type
@@ -205,56 +160,21 @@ export interface SellerStats {
  * Fetch current user's listings (authenticated)
  */
 export async function getMyListings(filters?: ListingFilters): Promise<ListingsResponse> {
-    const token = await getAccessToken()
-    if (!token) throw new Error('Not authenticated')
-
     const params = new URLSearchParams()
     if (filters) {
         if (filters.page) params.append('page', filters.page.toString())
         if (filters.limit) params.append('limit', filters.limit.toString())
     }
 
-    const url = `${API_URL}/listings/my${params.toString() ? `?${params.toString()}` : ''}`
-
-    const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
-        cache: 'no-store',
-    })
-
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Failed to fetch your listings' }))
-        throw new Error(error.message || `HTTP ${response.status}`)
-    }
-
-    return response.json()
+    const endpoint = `/listings/my${params.toString() ? `?${params.toString()}` : ''}`
+    return apiClient<ListingsResponse>(endpoint, { method: 'GET', cache: 'no-store' })
 }
 
 /**
  * Fetch seller dashboard statistics (authenticated)
  */
 export async function getSellerStats(): Promise<SellerStats> {
-    const token = await getAccessToken()
-    if (!token) throw new Error('Not authenticated')
-
-    const response = await fetch(`${API_URL}/listings/stats`, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
-        cache: 'no-store',
-    })
-
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Failed to fetch seller stats' }))
-        throw new Error(error.message || `HTTP ${response.status}`)
-    }
-
-    const data = await response.json()
+    const data = await apiClient<{ data: SellerStats }>('/listings/stats', { method: 'GET', cache: 'no-store' })
     return data.data
 }
 
@@ -262,45 +182,17 @@ export async function getSellerStats(): Promise<SellerStats> {
  * Create listing with authentication
  */
 export async function createAuthenticatedListing(data: CreateListingRequest): Promise<CreateListingResponse> {
-    const token = await getAccessToken()
-    if (!token) throw new Error('Not authenticated')
-
-    const response = await fetch(`${API_URL}/listings`, {
+    return apiClient<CreateListingResponse>('/listings', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
         body: JSON.stringify(data),
     })
-
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Failed to create listing' }))
-        throw new Error(error.message || `HTTP ${response.status}: ${response.statusText}`)
-    }
-
-    return response.json()
 }
 
 /**
  * Delete a listing (authenticated)
  */
 export async function deleteListing(listingId: string): Promise<void> {
-    const token = await getAccessToken()
-    if (!token) throw new Error('Not authenticated')
-
-    const response = await fetch(`${API_URL}/listings/${listingId}`, {
-        method: 'DELETE',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
-    })
-
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Failed to delete listing' }))
-        throw new Error(error.message || `HTTP ${response.status}`)
-    }
+    await apiClient(`/listings/${listingId}`, { method: 'DELETE' })
 }
 
 // ============================================================================
@@ -348,48 +240,20 @@ export interface BuyerStats {
  * Get buyer's bids (authenticated)
  */
 export async function getMyBids(page = 1, limit = 20): Promise<BidsResponse> {
-    const token = await getAccessToken()
-    if (!token) throw new Error('Not authenticated')
-
-    const response = await fetch(`${API_URL}/bids/my?page=${page}&limit=${limit}`, {
+    return apiClient<BidsResponse>(`/bids/my?page=${page}&limit=${limit}`, {
         method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
         cache: 'no-store',
     })
-
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Failed to fetch bids' }))
-        throw new Error(error.message || `HTTP ${response.status}`)
-    }
-
-    return response.json()
 }
 
 /**
  * Get buyer dashboard stats (authenticated)
  */
 export async function getBuyerStats(): Promise<BuyerStats> {
-    const token = await getAccessToken()
-    if (!token) throw new Error('Not authenticated')
-
-    const response = await fetch(`${API_URL}/bids/stats`, {
+    const data = await apiClient<{ data: BuyerStats }>('/bids/stats', {
         method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
         cache: 'no-store',
     })
-
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Failed to fetch buyer stats' }))
-        throw new Error(error.message || `HTTP ${response.status}`)
-    }
-
-    const data = await response.json()
     return data.data
 }
 
@@ -397,24 +261,10 @@ export async function getBuyerStats(): Promise<BuyerStats> {
  * Place a bid on a listing (authenticated)
  */
 export async function placeBid(listingId: string, amount: number): Promise<Bid> {
-    const token = await getAccessToken()
-    if (!token) throw new Error('Not authenticated')
-
-    const response = await fetch(`${API_URL}/bids`, {
+    const data = await apiClient<{ data: Bid }>('/bids', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
         body: JSON.stringify({ listingId, amount }),
     })
-
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Failed to place bid' }))
-        throw new Error(error.message || `HTTP ${response.status}`)
-    }
-
-    const data = await response.json()
     return data.data
 }
 
@@ -456,47 +306,19 @@ export interface WatchlistResponse {
  * Get user's watchlist (authenticated)
  */
 export async function getWatchlist(page = 1, limit = 20): Promise<WatchlistResponse> {
-    const token = await getAccessToken()
-    if (!token) throw new Error('Not authenticated')
-
-    const response = await fetch(`${API_URL}/watchlist?page=${page}&limit=${limit}`, {
+    return apiClient<WatchlistResponse>(`/watchlist?page=${page}&limit=${limit}`, {
         method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
         cache: 'no-store',
     })
-
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Failed to fetch watchlist' }))
-        throw new Error(error.message || `HTTP ${response.status}`)
-    }
-
-    return response.json()
 }
 
 /**
  * Add listing to watchlist (authenticated)
  */
 export async function addToWatchlist(listingId: string): Promise<WatchlistItem> {
-    const token = await getAccessToken()
-    if (!token) throw new Error('Not authenticated')
-
-    const response = await fetch(`${API_URL}/watchlist/${listingId}`, {
+    const data = await apiClient<{ data: WatchlistItem }>(`/watchlist/${listingId}`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
     })
-
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Failed to add to watchlist' }))
-        throw new Error(error.message || `HTTP ${response.status}`)
-    }
-
-    const data = await response.json()
     return data.data
 }
 
@@ -504,42 +326,23 @@ export async function addToWatchlist(listingId: string): Promise<WatchlistItem> 
  * Remove listing from watchlist (authenticated)
  */
 export async function removeFromWatchlist(listingId: string): Promise<void> {
-    const token = await getAccessToken()
-    if (!token) throw new Error('Not authenticated')
-
-    const response = await fetch(`${API_URL}/watchlist/${listingId}`, {
+    await apiClient(`/watchlist/${listingId}`, {
         method: 'DELETE',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
     })
-
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Failed to remove from watchlist' }))
-        throw new Error(error.message || `HTTP ${response.status}`)
-    }
 }
 
 /**
  * Check if listing is in watchlist (authenticated)
  */
 export async function isInWatchlist(listingId: string): Promise<boolean> {
-    const token = await getAccessToken()
-    if (!token) return false
-
-    const response = await fetch(`${API_URL}/watchlist/check/${listingId}`, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
-    })
-
-    if (!response.ok) return false
-
-    const data = await response.json()
-    return data.data?.inWatchlist || false
+    try {
+        const data = await apiClient<{ data: { inWatchlist: boolean } }>(`/watchlist/check/${listingId}`, {
+            method: 'GET',
+        })
+        return data.data?.inWatchlist || false
+    } catch (e) {
+        return false
+    }
 }
 
 // ============================================================================
@@ -583,51 +386,23 @@ export interface ContractorStats {
 }
 
 /**
- * Get contractor's service requests (authenticated)
+ * Get contractor's service requests (jobs) (authenticated)
  */
 export async function getContractorJobs(page = 1, limit = 20): Promise<ServiceRequestsResponse> {
-    const token = await getAccessToken()
-    if (!token) throw new Error('Not authenticated')
-
-    const response = await fetch(`${API_URL}/service-requests/contractor?page=${page}&limit=${limit}`, {
+    return apiClient<ServiceRequestsResponse>(`/service-requests/contractor?page=${page}&limit=${limit}`, {
         method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
         cache: 'no-store',
     })
-
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Failed to fetch jobs' }))
-        throw new Error(error.message || `HTTP ${response.status}`)
-    }
-
-    return response.json()
 }
 
 /**
  * Get contractor dashboard stats (authenticated)
  */
 export async function getContractorStats(): Promise<ContractorStats> {
-    const token = await getAccessToken()
-    if (!token) throw new Error('Not authenticated')
-
-    const response = await fetch(`${API_URL}/service-requests/contractor/stats`, {
+    const data = await apiClient<{ data: ContractorStats }>('/service-requests/contractor/stats', {
         method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
         cache: 'no-store',
     })
-
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Failed to fetch contractor stats' }))
-        throw new Error(error.message || `HTTP ${response.status}`)
-    }
-
-    const data = await response.json()
     return data.data
 }
 
@@ -635,25 +410,12 @@ export async function getContractorStats(): Promise<ContractorStats> {
  * Update service request status (authenticated)
  */
 export async function updateJobStatus(requestId: string, status: string): Promise<ServiceRequest> {
-    const token = await getAccessToken()
-    if (!token) throw new Error('Not authenticated')
-
-    const response = await fetch(`${API_URL}/service-requests/${requestId}/status`, {
+    const data = await apiClient<{ data: ServiceRequest }>(`/service-requests/${requestId}/status`, {
         method: 'PATCH',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
         body: JSON.stringify({ status }),
     })
-
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Failed to update job status' }))
-        throw new Error(error.message || `HTTP ${response.status}`)
-    }
-
-    const data = await response.json()
     return data.data
 }
+
 
 

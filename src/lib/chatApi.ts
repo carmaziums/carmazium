@@ -1,10 +1,5 @@
-import { getAccessToken } from './supabase'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium.onrender.com'
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'https://carmazium.onrender.com'
-
 // Re-export getAccessToken for use in ChatContext
-export { getAccessToken }
+export { getAccessToken } from './supabase'
 
 
 // ============================================================================
@@ -71,28 +66,20 @@ export interface ChatMessagesResponse {
 // CHAT REST API FUNCTIONS
 // ============================================================================
 
+import { apiClient } from './apiClient'
+
+// ============================================================================
+// CHAT REST API FUNCTIONS
+// ============================================================================
+
 /**
  * Get all chat rooms for the current user
  */
 export async function getChatRooms(): Promise<ChatRoom[]> {
-    const token = await getAccessToken()
-    if (!token) throw new Error('Not authenticated')
-
-    const response = await fetch(`${API_URL}/chat/rooms`, {
+    const data = await apiClient<ChatRoomsResponse>('/chat/rooms', {
         method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
         cache: 'no-store',
     })
-
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Failed to fetch chat rooms' }))
-        throw new Error(error.message || `HTTP ${response.status}`)
-    }
-
-    const data = await response.json()
     return data.data
 }
 
@@ -100,24 +87,10 @@ export async function getChatRooms(): Promise<ChatRoom[]> {
  * Create or find a chat room with another user
  */
 export async function createChatRoom(participantId: string, listingId?: string): Promise<ChatRoom> {
-    const token = await getAccessToken()
-    if (!token) throw new Error('Not authenticated')
-
-    const response = await fetch(`${API_URL}/chat/rooms`, {
+    const data = await apiClient<{ data: ChatRoom }>('/chat/rooms', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
         body: JSON.stringify({ participantId, listingId }),
     })
-
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Failed to create chat room' }))
-        throw new Error(error.message || `HTTP ${response.status}`)
-    }
-
-    const data = await response.json()
     return data.data
 }
 
@@ -129,51 +102,23 @@ export async function getChatMessages(
     page = 1,
     limit = 50
 ): Promise<ChatMessagesResponse> {
-    const token = await getAccessToken()
-    if (!token) throw new Error('Not authenticated')
-
-    const response = await fetch(
-        `${API_URL}/chat/rooms/${roomId}/messages?page=${page}&limit=${limit}`,
+    return apiClient<ChatMessagesResponse>(
+        `/chat/rooms/${roomId}/messages?page=${page}&limit=${limit}`,
         {
             method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-            },
             cache: 'no-store',
         }
     )
-
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Failed to fetch messages' }))
-        throw new Error(error.message || `HTTP ${response.status}`)
-    }
-
-    return response.json()
 }
 
 /**
  * Send a message (HTTP fallback)
  */
 export async function sendChatMessage(roomId: string, content: string): Promise<ChatMessage> {
-    const token = await getAccessToken()
-    if (!token) throw new Error('Not authenticated')
-
-    const response = await fetch(`${API_URL}/chat/rooms/${roomId}/messages`, {
+    const data = await apiClient<{ data: ChatMessage }>(`/chat/rooms/${roomId}/messages`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
         body: JSON.stringify({ content }),
     })
-
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Failed to send message' }))
-        throw new Error(error.message || `HTTP ${response.status}`)
-    }
-
-    const data = await response.json()
     return data.data
 }
 
@@ -181,23 +126,9 @@ export async function sendChatMessage(roomId: string, content: string): Promise<
  * Mark messages as read
  */
 export async function markMessagesAsRead(roomId: string): Promise<number> {
-    const token = await getAccessToken()
-    if (!token) throw new Error('Not authenticated')
-
-    const response = await fetch(`${API_URL}/chat/rooms/${roomId}/read`, {
+    const data = await apiClient<{ data: { markedCount: number } }>(`/chat/rooms/${roomId}/read`, {
         method: 'PATCH',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
     })
-
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Failed to mark as read' }))
-        throw new Error(error.message || `HTTP ${response.status}`)
-    }
-
-    const data = await response.json()
     return data.data.markedCount
 }
 
@@ -205,29 +136,22 @@ export async function markMessagesAsRead(roomId: string): Promise<number> {
  * Get total unread message count
  */
 export async function getUnreadCount(): Promise<number> {
-    const token = await getAccessToken()
-    if (!token) throw new Error('Not authenticated')
-
-    const response = await fetch(`${API_URL}/chat/unread`, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
-        cache: 'no-store',
-    })
-
-    if (!response.ok) {
-        return 0  // Fail silently for unread count
+    try {
+        const data = await apiClient<{ data: { count: number } }>('/chat/unread', {
+            method: 'GET',
+            cache: 'no-store',
+        })
+        return data.data.count
+    } catch (e) {
+        return 0
     }
-
-    const data = await response.json()
-    return data.data.count
 }
 
 // ============================================================================
 // WEBSOCKET URL HELPER
 // ============================================================================
+
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'https://carmazium.onrender.com'
 
 export function getWebSocketUrl(): string {
     return WS_URL

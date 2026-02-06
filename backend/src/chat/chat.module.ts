@@ -20,6 +20,9 @@ import { PrismaModule } from '../prisma/prisma.module';
                 const secret = configService.get<string>('SUPABASE_JWT_SECRET');
                 return {
                     secret: secret,
+                    verifyOptions: {
+                        algorithms: ['HS256'],
+                    },
                 };
             },
         }),

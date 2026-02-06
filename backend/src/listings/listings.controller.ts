@@ -40,7 +40,7 @@ export class ListingsController {
      * Requires authentication
      */
     @Post()
-    // @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({
@@ -104,7 +104,7 @@ export class ListingsController {
      * Requires authentication
      */
     @Get('my')
-    // @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @ApiOperation({
         summary: 'Get my listings',
@@ -133,7 +133,7 @@ export class ListingsController {
      * Requires authentication
      */
     @Get('stats')
-    // @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @ApiOperation({
         summary: 'Get seller stats',
@@ -184,7 +184,7 @@ export class ListingsController {
      * Requires authentication and ownership
      */
     @Patch(':id')
-    // @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @ApiOperation({
         summary: 'Update a listing',
@@ -221,7 +221,7 @@ export class ListingsController {
      * Requires authentication and ownership
      */
     @Delete(':id')
-    // @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @HttpCode(HttpStatus.OK)
     @ApiOperation({

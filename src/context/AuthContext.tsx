@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/apiClient'
 import { User } from '@supabase/supabase-js'
 
 interface UserProfile {
@@ -28,60 +29,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [profile, setProfile] = useState<UserProfile | null>(null)
     const [loading, setLoading] = useState(true)
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium.onrender.com'
-
-    const fetchProfile = async (userId: string, token: string) => {
-        if (!token) {
-            console.warn('fetchProfile: No token provided');
-            setLoading(false);
-            return;
-        }
-
+    const fetchProfile = async () => {
         try {
-            console.log('Fetching profile for:', userId);
-            const response = await fetch(`${API_URL}/users/me`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            })
-            if (response.ok) {
-                const data = await response.json()
-                setProfile(data)
-            } else {
-                console.error('Profile fetch failed:', response.status);
-
-                if (response.status === 401) {
-                    console.warn('Unauthorized - session invalid, signing out...');
-                    // User has a valid Supabase token but backend rejected it (revoked/invalid)
-                    // Force sign out to clear inconsistent state
-                    // await supabase.auth.signOut();
-                    // setUser(null);
-                    // setProfile(null);
-                    console.warn('Auto-logout disabled for debugging');
-                }
-            }
+            const data = await apiClient<UserProfile>('/users/me');
+            setProfile(data);
         } catch (error) {
-            console.error('Error fetching profile:', error)
+            console.error('Error fetching profile:', error);
+            // apiClient already handles 401 removals and redirects
         } finally {
-            setLoading(false); // Ensure loading stops even on failure
+            setLoading(false);
         }
     }
 
     useEffect(() => {
         // Get initial session
         supabase.auth.getSession().then(({ data: { session } }) => {
-            setUser(session?.user ?? null)
-            if (session?.user && session.access_token) {
-                fetchProfile(session.user.id, session.access_token)
+            const token = session?.access_token || null;
+            if (token) {
+                localStorage.setItem('authToken', token);
             }
-            setLoading(false)
+
+            setUser(session?.user ?? null)
+            if (session?.user && token) {
+                fetchProfile()
+            } else {
+                setLoading(false)
+            }
         })
 
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            const token = session?.access_token || null;
             setUser(session?.user ?? null)
-            if (session?.user && session.access_token) {
-                await fetchProfile(session.user.id, session.access_token)
+
+            if (token) {
+                localStorage.setItem('authToken', token);
+            } else if (event === 'SIGNED_OUT') {
+                localStorage.removeItem('authToken');
+            }
+
+            if (session?.user && token) {
+                await fetchProfile()
             } else {
                 setProfile(null)
             }
@@ -95,6 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const signOut = async () => {
         await supabase.auth.signOut()
+        localStorage.removeItem('authToken')
         setUser(null)
         setProfile(null)
     }
@@ -102,7 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const refreshProfile = async () => {
         const { data: { session } } = await supabase.auth.getSession()
         if (session?.user && session.access_token) {
-            await fetchProfile(session.user.id, session.access_token)
+            await fetchProfile()
         }
     }
 

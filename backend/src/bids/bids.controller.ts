@@ -22,7 +22,7 @@ export class BidsController {
      * Place a bid on an auction listing
      */
     @Post()
-    // @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Place a bid on an auction listing' })
     @ApiResponse({ status: 201, description: 'Bid placed successfully' })
@@ -40,7 +40,7 @@ export class BidsController {
      * Get current user's bids
      */
     @Get('my')
-    // @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Get my bids' })
     @ApiQuery({ name: 'page', required: false, type: Number })
@@ -73,7 +73,7 @@ export class BidsController {
      * Get buyer dashboard stats
      */
     @Get('stats')
-    // @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Get buyer dashboard statistics' })
     async getBuyerStats(@CurrentUser() user: any) {

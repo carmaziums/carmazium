@@ -7,7 +7,14 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // Enable CORS for frontend
-  app.enableCors();
+  app.enableCors({
+    origin: [
+      'http://localhost:3000',
+      'https://carmazium.vercel.app',
+      'https://carmazium.onrender.com'
+    ],
+    credentials: true,
+  });
 
   // Global validation pipe for DTOs
   app.useGlobalPipes(

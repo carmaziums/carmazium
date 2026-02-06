@@ -21,7 +21,7 @@ export class WatchlistController {
      * Get user's watchlist
      */
     @Get()
-    // @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Get my watchlist' })
     @ApiQuery({ name: 'page', required: false, type: Number })
@@ -54,7 +54,7 @@ export class WatchlistController {
      * Add listing to watchlist
      */
     @Post(':listingId')
-    // @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Add listing to watchlist' })
     @ApiParam({ name: 'listingId', description: 'ID of the listing to add' })
@@ -72,7 +72,7 @@ export class WatchlistController {
      * Remove listing from watchlist
      */
     @Delete(':listingId')
-    // @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Remove listing from watchlist' })
     @ApiParam({ name: 'listingId', description: 'ID of the listing to remove' })
@@ -88,7 +88,7 @@ export class WatchlistController {
      * Check if listing is in watchlist
      */
     @Get('check/:listingId')
-    // @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Check if listing is in watchlist' })
     async check(
@@ -103,7 +103,7 @@ export class WatchlistController {
      * Get watchlist count
      */
     @Get('count')
-    // @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Get watchlist count' })
     async getCount(@CurrentUser() user: any) {

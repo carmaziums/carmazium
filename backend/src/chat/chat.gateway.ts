@@ -62,13 +62,9 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
             }
 
             // Verify JWT
-            let payload: any;
-            try {
-                payload = this.jwtService.verify(token);
-            } catch (e) {
-                console.warn('ChatGateway: JWT verification failed, using MOCK payload:', e.message);
-                payload = { sub: 'e1111eb8-e6cf-44cf-bbd3-ea3780615455', email: 'mock@test.com' };
-            }
+            const payload = this.jwtService.verify(token, {
+                algorithms: ['HS256'],
+            });
 
             const userId = payload.sub;
             if (!userId) {
