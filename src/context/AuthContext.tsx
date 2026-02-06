@@ -54,9 +54,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     console.warn('Unauthorized - session invalid, signing out...');
                     // User has a valid Supabase token but backend rejected it (revoked/invalid)
                     // Force sign out to clear inconsistent state
-                    await supabase.auth.signOut();
-                    setUser(null);
-                    setProfile(null);
+                    // await supabase.auth.signOut();
+                    // setUser(null);
+                    // setProfile(null);
+                    console.warn('Auto-logout disabled for debugging');
                 }
             }
         } catch (error) {
