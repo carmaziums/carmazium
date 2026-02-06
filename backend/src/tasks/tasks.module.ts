@@ -6,7 +6,6 @@ import { ConfigModule } from '@nestjs/config';
 
 @Module({
     imports: [
-        ScheduleModule.forRoot(),
         PrismaModule,
         ConfigModule,
     ],
