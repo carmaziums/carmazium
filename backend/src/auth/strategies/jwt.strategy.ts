@@ -7,7 +7,7 @@ import { ConfigService } from '@nestjs/config';
 export class JwtStrategy extends PassportStrategy(Strategy) {
     constructor(configService: ConfigService) {
         const secret = configService.get<string>('SUPABASE_JWT_SECRET');
-        console.log('JwtStrategy initialized. Secret loaded:', !!secret);
+        console.log('JwtStrategy initialized. Secret loaded:', !!secret, 'First 3 chars:', secret ? secret.substring(0, 3) : 'N/A');
 
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),

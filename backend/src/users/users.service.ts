@@ -17,37 +17,45 @@ export class UsersService {
         lastName?: string;
         role?: UserRole;
     }) {
-        // Check if user already exists
-        const existingUser = await this.prisma.user.findFirst({
-            where: {
-                OR: [
-                    { supabaseAuthId: data.supabaseAuthId },
-                    { email: data.email }
-                ]
-            }
-        });
+        try {
+            console.log('Syncing user:', data.email, data.supabaseAuthId);
 
-        if (existingUser) {
-            // If user exists but doesn't have supabaseAuthId (e.g., imported), linking them
-            if (!existingUser.supabaseAuthId) {
+            // Upsert user: Create if not exists, Update if exists (by email or authId)
+            // Since we can't easily upsert on multiple unique fields (email OR supabaseAuthId),
+            // we'll try to find by email first (primary stable identifier for sync).
+
+            const existingUser = await this.prisma.user.findUnique({
+                where: { email: data.email }
+            });
+
+            if (existingUser) {
+                // Update implementation
                 return this.prisma.user.update({
-                    where: { id: existingUser.id },
-                    data: { supabaseAuthId: data.supabaseAuthId }
+                    where: { email: data.email },
+                    data: {
+                        supabaseAuthId: data.supabaseAuthId, // Link auth ID if missing
+                        firstName: data.firstName || existingUser.firstName, // Update only if provided
+                        lastName: data.lastName || existingUser.lastName,
+                        // Don't overwrite role if exists, strictly speaking, unless we want to enforce it
+                    }
                 });
             }
-            return existingUser;
-        }
 
-        // Create new user in our DB
-        return this.prisma.user.create({
-            data: {
-                supabaseAuthId: data.supabaseAuthId,
-                email: data.email,
-                firstName: data.firstName,
-                lastName: data.lastName,
-                role: data.role || UserRole.BUYER,
-            },
-        });
+            // Create new
+            return await this.prisma.user.create({
+                data: {
+                    supabaseAuthId: data.supabaseAuthId,
+                    email: data.email,
+                    firstName: data.firstName,
+                    lastName: data.lastName,
+                    role: data.role || UserRole.BUYER,
+                },
+            });
+        } catch (error) {
+            console.error('Error syncing user:', error);
+            // Return null or rethrow based on preference, but prevent 500 crash for controller
+            throw new ConflictException(`Failed to sync user: ${error.message}`);
+        }
     }
 
     /**

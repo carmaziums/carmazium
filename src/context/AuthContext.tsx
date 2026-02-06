@@ -31,6 +31,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium.onrender.com'
 
     const fetchProfile = async (userId: string, token: string) => {
+        if (!token) {
+            console.warn('fetchProfile: No token provided');
+            setLoading(false);
+            return;
+        }
+
         try {
             console.log('Fetching profile for:', userId);
             const response = await fetch(`${API_URL}/users/me`, {
