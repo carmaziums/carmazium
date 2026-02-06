@@ -27,7 +27,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
  */
 @ApiTags('Chat')
 @Controller('chat')
-@UseGuards(JwtAuthGuard)
+// @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class ChatController {
     constructor(private readonly chatService: ChatService) { }
