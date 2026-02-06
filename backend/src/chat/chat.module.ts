@@ -18,8 +18,16 @@ import { PrismaModule } from '../prisma/prisma.module';
             inject: [ConfigService],
             useFactory: (configService: ConfigService) => {
                 const secret = configService.get<string>('SUPABASE_JWT_SECRET');
+                const isBase64 = secret?.includes('/') || secret?.includes('+') || secret?.endsWith('=');
+
+                console.log('ChatModule JWT Init:', {
+                    hasSecret: !!secret,
+                    length: secret?.length,
+                    isProbablyBase64: isBase64
+                });
+
                 return {
-                    secret: secret,
+                    secret: secret && isBase64 ? Buffer.from(secret, 'base64') : secret,
                     verifyOptions: {
                         algorithms: ['HS256'],
                     },

@@ -61,6 +61,8 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
                 return;
             }
 
+            this.logger.debug(`WebSocket Token received (len: ${token.length}): ${token.substring(0, 10)}...`);
+
             // Verify JWT
             const payload = this.jwtService.verify(token, {
                 algorithms: ['HS256'],

@@ -7,12 +7,18 @@ import { ConfigService } from '@nestjs/config';
 export class JwtStrategy extends PassportStrategy(Strategy) {
     constructor(configService: ConfigService) {
         const secret = configService.get<string>('SUPABASE_JWT_SECRET');
-        console.log('JwtStrategy initialized. Secret loaded:', !!secret, 'First 3 chars:', secret ? secret.substring(0, 3) : 'N/A');
+        const isBase64 = secret?.includes('/') || secret?.includes('+') || secret?.endsWith('=');
+
+        console.log('JwtStrategy Init:', {
+            hasSecret: !!secret,
+            length: secret?.length,
+            isProbablyBase64: isBase64
+        });
 
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
-            secretOrKey: secret!,
+            secretOrKey: secret && isBase64 ? Buffer.from(secret, 'base64') : secret!,
             algorithms: ['HS256'],
         });
     }

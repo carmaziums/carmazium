@@ -22,15 +22,15 @@ export async function apiClient<T>(
     const response = await fetch(`${API_URL}${endpoint}`, config);
 
     if (response.status === 401) {
+        const error = await response.json().catch(() => ({ message: 'Unauthorized' }));
+        console.error('Frontend API 401 Detail:', error);
+
         if (typeof window !== 'undefined') {
             localStorage.removeItem('authToken');
-            // We don't necessarily want a hard redirect here to avoid looping, 
-            // but the user requested it. Let's redirect if not already on login.
             if (!window.location.pathname.includes('/login')) {
                 window.location.href = '/auth/login';
             }
         }
-        const error = await response.json().catch(() => ({ message: 'Unauthorized' }));
         throw new Error(error.message || 'Unauthorized');
     }
 
