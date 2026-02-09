@@ -63,13 +63,22 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
             this.logger.debug(`WebSocket Token received (len: ${token.length}): ${token.substring(0, 10)}...`);
 
-            // Verify JWT
-            const payload = this.jwtService.verify(token, {
-                algorithms: ['HS256'],
-            });
+            // Verify JWT - support both HS256 and RS256 for consistency with JwtStrategy
+            let payload: any;
+            try {
+                payload = this.jwtService.verify(token, {
+                    algorithms: ['HS256', 'RS256'],
+                });
+            } catch (verifyError) {
+                this.logger.error(`JWT verification failed: ${verifyError.message}`);
+                client.emit('error', { code: 'AUTH_FAILED', message: 'Token verification failed' });
+                client.disconnect();
+                return;
+            }
 
             const userId = payload.sub;
             if (!userId) {
+                this.logger.warn(`Connection rejected: No user ID in token - ${client.id}`);
                 client.disconnect();
                 return;
             }
@@ -91,7 +100,8 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
             this.logger.log(`User ${userId} connected with ${roomIds.length} rooms - Socket: ${client.id}`);
         } catch (error) {
-            this.logger.error(`Connection error: ${error.message}`);
+            this.logger.error(`Connection error: ${error.message}`, error.stack);
+            client.emit('error', { code: 'CONNECTION_ERROR', message: 'Authentication failed' });
             client.disconnect();
         }
     }
