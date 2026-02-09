@@ -13,4 +13,8 @@ services:
         value: production
       - key: PORT
         value: 10000
+      # Required: Set these in Render Dashboard (Settings > Environment)
+      # - SUPABASE_URL: Your Supabase project URL
+      # - SUPABASE_JWT_SECRET: From Supabase Dashboard > Settings > API
+      # - DATABASE_URL: Prisma connection string
     autoDeploy: true

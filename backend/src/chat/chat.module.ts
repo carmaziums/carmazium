@@ -26,10 +26,15 @@ import { PrismaModule } from '../prisma/prisma.module';
                     isProbablyBase64: isBase64
                 });
 
+                if (!secret) {
+                    console.error('CRITICAL: SUPABASE_JWT_SECRET is not configured for ChatModule!');
+                }
+
                 return {
                     secret: secret && isBase64 ? Buffer.from(secret, 'base64') : secret,
                     verifyOptions: {
-                        algorithms: ['HS256'],
+                        // Support both HS256 (default) and RS256 for consistency with JwtStrategy
+                        algorithms: ['HS256', 'RS256'],
                     },
                 };
             },
