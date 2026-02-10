@@ -27,7 +27,9 @@ export async function apiClient<T>(
 
         if (typeof window !== 'undefined') {
             localStorage.removeItem('authToken');
-            if (!window.location.pathname.includes('/login')) {
+            // Only redirect if not already on an auth page to prevent redirect loops
+            const isAuthPage = window.location.pathname.startsWith('/auth/');
+            if (!isAuthPage) {
                 window.location.href = '/auth/login';
             }
         }
