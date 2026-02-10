@@ -33,9 +33,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
             const data = await apiClient<UserProfile>('/users/me');
             setProfile(data);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error fetching profile:', error);
-            // apiClient already handles 401 removals and redirects
+            setProfile(null); // Explicitly set to null on failure
+
+            // If it's not a 401 (which is handled by apiClient), 
+            // the user might not be synced with the backend yet
+            if (error.message && !error.message.includes('Unauthorized')) {
+                console.warn('Profile fetch failed - user may need to sync with backend');
+            }
         } finally {
             setLoading(false);
         }

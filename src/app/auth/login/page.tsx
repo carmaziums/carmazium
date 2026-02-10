@@ -7,15 +7,24 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/context/AuthContext"
 
 export default function LoginPage() {
     const router = useRouter()
+    const { user, loading: authLoading } = useAuth()
     const [formData, setFormData] = React.useState({
         email: "",
         password: ""
     })
     const [loading, setLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
+
+    // Redirect authenticated users to dashboard
+    React.useEffect(() => {
+        if (!authLoading && user) {
+            router.push('/dashboard')
+        }
+    }, [user, authLoading, router])
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -56,6 +65,24 @@ export default function LoginPage() {
         } finally {
             setLoading(false)
         }
+    }
+
+    // Show loading while checking auth state
+    if (authLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        )
+    }
+
+    // If user is authenticated, don't render login form (redirect will happen)
+    if (user) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        )
     }
 
     return (
