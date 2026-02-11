@@ -26,13 +26,12 @@ export async function apiClient<T>(
         console.error('Frontend API 401 Detail:', error);
 
         if (typeof window !== 'undefined') {
+            // Clear potentially stale token
             localStorage.removeItem('authToken');
-            // Only redirect if not already on an auth page to prevent redirect loops
-            const isAuthPage = window.location.pathname.startsWith('/auth/');
-            if (!isAuthPage) {
-                window.location.href = '/auth/login';
-            }
         }
+        // Don't hard-redirect here - let the calling code (AuthContext, dashboard pages)
+        // handle the auth failure. Hard redirects cause loops when Supabase session
+        // is still valid but the localStorage token was stale.
         throw new Error(error.message || 'Unauthorized');
     }
 
