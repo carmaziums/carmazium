@@ -11,22 +11,28 @@ export const supabase = createClient(supabaseUrl || 'https://missing-url.supabas
 
 /**
  * Get the current access token from the Supabase session
+ * Always prioritizes the fresh Supabase session token to avoid stale tokens
  * @returns The access token or null if not authenticated
  */
 export async function getAccessToken(): Promise<string | null> {
-    // Try localStorage first for immediate availability
-    const localToken = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-    if (localToken) return localToken;
+    try {
+        // Always get fresh token from Supabase session first
+        const { data: { session } } = await supabase.auth.getSession();
+        const sessionToken = session?.access_token || null;
 
-    const { data: { session } } = await supabase.auth.getSession();
-    const sessionToken = session?.access_token || null;
+        if (sessionToken && typeof window !== 'undefined') {
+            // Keep localStorage in sync with fresh token
+            localStorage.setItem('authToken', sessionToken);
+        }
 
-    // Sync storage if session found it but local didn't
-    if (sessionToken && typeof window !== 'undefined') {
-        localStorage.setItem('authToken', sessionToken);
+        if (sessionToken) return sessionToken;
+    } catch (err) {
+        console.warn('Failed to get Supabase session:', err);
     }
 
-    return sessionToken;
+    // Fallback to localStorage only if Supabase session fetch fails
+    const localToken = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+    return localToken;
 }
 
 
