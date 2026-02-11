@@ -59,10 +59,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
                     return done(null, key as any);
                 }
 
-                // RS256/RS384/RS512: fetch JWKS from Supabase
-                if (alg.startsWith('RS')) {
+                // RS256/RS384/RS512 or ES256/ES384/ES512: fetch JWKS from Supabase
+                if (alg.startsWith('RS') || alg.startsWith('ES')) {
                     if (!supabaseUrl) {
-                        return done(new Error('SUPABASE_URL is not configured. Required for RS256 token verification.'));
+                        return done(new Error('SUPABASE_URL is not configured. Required for RS/ES token verification.'));
                     }
 
                     // Check cache first
@@ -102,7 +102,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
                 }
 
                 // Unsupported algorithm
-                return done(new Error(`Unsupported JWT algorithm: ${alg}. Supported: HS256, RS256, RS384, RS512`));
+                return done(new Error(`Unsupported JWT algorithm: ${alg}. Supported: HS256, RS256, RS384, RS512, ES256, ES384, ES512`));
             } catch (err) {
                 console.error('JWT verification error:', err);
                 return done(err as Error);
@@ -113,7 +113,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
             secretOrKeyProvider,
-            algorithms: ['HS256', 'RS256', 'RS384', 'RS512'],
+            algorithms: ['HS256', 'RS256', 'RS384', 'RS512', 'ES256', 'ES384', 'ES512'],
         });
     }
 
