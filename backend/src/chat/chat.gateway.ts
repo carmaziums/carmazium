@@ -14,6 +14,8 @@ import { ChatService } from './chat.service';
 import { WsMessageDto, WsTypingDto } from './dto';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import * as jwt from 'jsonwebtoken';
+import * as jwkToPem from 'jwk-to-pem';
 
 /**
  * WebSocket Gateway for real-time chat functionality
@@ -36,6 +38,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
     private readonly logger = new Logger(ChatGateway.name);
     private connectedUsers: Map<string, Set<string>> = new Map(); // userId -> Set of socketIds
+    private static jwksCache: { keys: any[]; fetchedAt: number } | null = null;
 
     constructor(
         private readonly chatService: ChatService,
@@ -63,17 +66,53 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
             this.logger.debug(`WebSocket Token received (len: ${token.length}): ${token.substring(0, 10)}...`);
 
-            // Verify JWT - support both HS256 and RS256 for consistency with JwtStrategy
+            // Verify JWT - support HS256 (legacy) and ES256 (current Supabase)
             let payload: any;
             try {
+                // First try HS256 with the configured secret
                 payload = this.jwtService.verify(token, {
-                    algorithms: ['HS256', 'RS256'],
+                    algorithms: ['HS256'],
                 });
-            } catch (verifyError) {
-                this.logger.error(`JWT verification failed: ${verifyError.message}`);
-                client.emit('error', { code: 'AUTH_FAILED', message: 'Token verification failed' });
-                client.disconnect();
-                return;
+            } catch (hs256Error) {
+                // If HS256 fails, try ES256 via JWKS public key
+                try {
+                    const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
+                    if (!supabaseUrl) {
+                        throw new Error('SUPABASE_URL not configured');
+                    }
+
+                    // Decode header to get kid
+                    const decoded = jwt.decode(token, { complete: true }) as any;
+                    if (!decoded || decoded.header.alg !== 'ES256') {
+                        throw new Error(`Unsupported algorithm: ${decoded?.header?.alg || 'unknown'}`);
+                    }
+
+                    // Fetch or use cached JWKS
+                    const now = Date.now();
+                    if (!ChatGateway.jwksCache || (now - ChatGateway.jwksCache.fetchedAt) > 300000) {
+                        const jwksUrl = `${supabaseUrl.replace(/\/$/, '')}/auth/v1/.well-known/jwks.json`;
+                        const res = await fetch(jwksUrl);
+                        if (!res.ok) {
+                            throw new Error(`JWKS fetch failed: HTTP ${res.status}`);
+                        }
+                        const jwks = await res.json();
+                        ChatGateway.jwksCache = { keys: jwks.keys, fetchedAt: now };
+                    }
+
+                    const kid = decoded.header.kid;
+                    const jwk = ChatGateway.jwksCache.keys.find((k: any) => k.kid === kid) || ChatGateway.jwksCache.keys[0];
+                    if (!jwk) {
+                        throw new Error('No matching JWK found');
+                    }
+
+                    const pem = jwkToPem(jwk);
+                    payload = jwt.verify(token, pem, { algorithms: ['ES256'] });
+                } catch (es256Error) {
+                    this.logger.error(`JWT verification failed: ${es256Error.message}`);
+                    client.emit('error', { code: 'AUTH_FAILED', message: 'Token verification failed' });
+                    client.disconnect();
+                    return;
+                }
             }
 
             const userId = payload.sub;
