@@ -325,4 +325,50 @@ export class ListingsService {
             totalRevenue: Number(soldRevenue._sum.price || 0),
         };
     }
+
+    /**
+     * Get seller performance analytics
+     * Returns metrics + per-listing view data for charts
+     */
+    async getSellerPerformance(sellerId: string) {
+        const baseWhere = { sellerId, deletedAt: null };
+
+        const [totalListings, soldCount, viewsAggregate, recentListings] = await Promise.all([
+            this.prisma.listing.count({ where: baseWhere }),
+            this.prisma.listing.count({ where: { ...baseWhere, status: 'SOLD' } }),
+            this.prisma.listing.aggregate({
+                where: baseWhere,
+                _sum: { viewCount: true, price: true },
+            }),
+            this.prisma.listing.findMany({
+                where: baseWhere,
+                select: { id: true, title: true, viewCount: true, createdAt: true },
+                orderBy: { createdAt: 'desc' },
+                take: 12,
+            }),
+        ]);
+
+        const soldRevenue = await this.prisma.listing.aggregate({
+            where: { ...baseWhere, status: 'SOLD' },
+            _sum: { price: true },
+        });
+
+        const totalViews = viewsAggregate._sum.viewCount || 0;
+        const conversionRate = totalViews > 0
+            ? ((soldCount / totalViews) * 100).toFixed(1)
+            : '0.0';
+
+        return {
+            totalRevenue: Number(soldRevenue._sum.price || 0),
+            totalViews,
+            totalListings,
+            conversionRate: parseFloat(conversionRate),
+            recentListingViews: recentListings.map(l => ({
+                id: l.id,
+                title: l.title,
+                views: l.viewCount,
+                date: l.createdAt,
+            })),
+        };
+    }
 }

@@ -151,6 +151,28 @@ export class ListingsController {
     }
 
     /**
+     * Get seller performance analytics
+     * Requires authentication
+     */
+    @Get('performance')
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
+    @ApiOperation({
+        summary: 'Get seller performance analytics',
+        description: 'Returns revenue, views, conversion rate, and per-listing view data for charts',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Seller performance data',
+    })
+    async getSellerPerformance(
+        @CurrentUser() user: any,
+    ): Promise<StandardResponse<any>> {
+        const performance = await this.listingsService.getSellerPerformance(user.id);
+        return new StandardResponse(performance);
+    }
+
+    /**
      * Get a single listing by slug
      * Public endpoint
      * IMPORTANT: This route uses :slug parameter and must come AFTER the /listings route

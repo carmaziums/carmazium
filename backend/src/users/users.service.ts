@@ -118,5 +118,32 @@ export class UsersService {
         });
     }
 
-    // Similarly for other profiles...
+    /**
+     * Update basic profile fields
+     */
+    async updateProfile(supabaseAuthId: string, data: {
+        firstName?: string;
+        lastName?: string;
+        phone?: string;
+        profileImage?: string;
+    }) {
+        const user = await this.prisma.user.findUnique({
+            where: { supabaseAuthId },
+        });
+        if (!user) throw new NotFoundException('User not found');
+
+        return this.prisma.user.update({
+            where: { supabaseAuthId },
+            data: {
+                ...(data.firstName !== undefined && { firstName: data.firstName }),
+                ...(data.lastName !== undefined && { lastName: data.lastName }),
+                ...(data.phone !== undefined && { phone: data.phone }),
+                ...(data.profileImage !== undefined && { profileImage: data.profileImage }),
+            },
+            include: {
+                dealerProfile: true,
+                contractorProfile: true,
+            },
+        });
+    }
 }

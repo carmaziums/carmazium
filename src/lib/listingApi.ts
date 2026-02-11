@@ -417,5 +417,113 @@ export async function updateJobStatus(requestId: string, status: string): Promis
     return data.data
 }
 
+// ============================================================================
+// PROFILE UPDATE API
+// ============================================================================
 
+export interface UpdateProfileRequest {
+    firstName?: string
+    lastName?: string
+    phone?: string
+    profileImage?: string
+}
 
+/**
+ * Update current user's profile (authenticated)
+ */
+export async function updateProfile(data: UpdateProfileRequest): Promise<any> {
+    return apiClient('/users/me', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+    })
+}
+
+// ============================================================================
+// TRANSACTIONS & EARNINGS API
+// ============================================================================
+
+export interface Transaction {
+    id: string
+    listingId: string
+    amount: string | number
+    type: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' | 'REFUND'
+    status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED'
+    stripePaymentId: string | null
+    description: string | null
+    createdAt: string
+    listing?: {
+        id: string
+        title: string
+        slug: string
+        images: string[]
+        make: string | null
+        model: string | null
+        year: number | null
+    }
+}
+
+export interface TransactionsResponse {
+    success: boolean
+    data: Transaction[]
+    pagination: {
+        total: number
+        page: number
+        limit: number
+        totalPages: number
+    }
+}
+
+export interface EarningsStats {
+    available: number
+    pendingClearance: number
+    totalYTD: number
+}
+
+/**
+ * Get user's transactions (authenticated)
+ */
+export async function getMyTransactions(page = 1, limit = 20): Promise<TransactionsResponse> {
+    return apiClient<TransactionsResponse>(`/transactions/my?page=${page}&limit=${limit}`, {
+        method: 'GET',
+        cache: 'no-store',
+    })
+}
+
+/**
+ * Get earnings statistics (authenticated)
+ */
+export async function getEarningsStats(): Promise<EarningsStats> {
+    const data = await apiClient<{ data: EarningsStats }>('/transactions/stats', {
+        method: 'GET',
+        cache: 'no-store',
+    })
+    return data.data
+}
+
+// ============================================================================
+// SELLER PERFORMANCE API
+// ============================================================================
+
+export interface PerformanceStats {
+    totalRevenue: number
+    totalViews: number
+    totalListings: number
+    conversionRate: number
+    recentListingViews: Array<{
+        id: string
+        title: string
+        views: number
+        date: string
+    }>
+}
+
+/**
+ * Get seller performance analytics (authenticated)
+ */
+export async function getSellerPerformance(): Promise<PerformanceStats> {
+    const data = await apiClient<{ data: PerformanceStats }>('/listings/performance', {
+        method: 'GET',
+        cache: 'no-store',
+    })
+    return data.data
+}

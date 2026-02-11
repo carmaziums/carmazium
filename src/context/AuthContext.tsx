@@ -11,7 +11,10 @@ interface UserProfile {
     role: string
     firstName?: string
     lastName?: string
-    // Add other profile fields as needed
+    phone?: string
+    profileImage?: string
+    dealerProfile?: any
+    contractorProfile?: any
 }
 
 interface AuthContextType {
