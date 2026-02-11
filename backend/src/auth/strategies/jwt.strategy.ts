@@ -76,7 +76,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
                     }
 
                     // Fetch fresh JWKS
-                    const jwksUrl = `${supabaseUrl.replace(/\/$/, '')}/auth/v1/keys`;
+                    const jwksUrl = `${supabaseUrl.replace(/\/$/, '')}/auth/v1/.well-known/jwks.json`;
                     console.log('Fetching JWKS from:', jwksUrl);
 
                     const headers: Record<string, string> = {};
