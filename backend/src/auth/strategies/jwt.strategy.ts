@@ -19,6 +19,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     constructor(configService: ConfigService) {
         const secret = configService.get<string>('SUPABASE_JWT_SECRET');
         const supabaseUrl = configService.get<string>('SUPABASE_URL');
+        const supabaseAnonKey = configService.get<string>('SUPABASE_ANON_KEY');
         const isBase64 = secret?.includes('/') || secret?.includes('+') || secret?.endsWith('=');
 
         // Log initialization status for debugging
@@ -78,7 +79,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
                     const jwksUrl = `${supabaseUrl.replace(/\/$/, '')}/auth/v1/keys`;
                     console.log('Fetching JWKS from:', jwksUrl);
 
-                    const res = await fetch(jwksUrl);
+                    const headers: Record<string, string> = {};
+                    if (supabaseAnonKey) {
+                        headers['apikey'] = supabaseAnonKey;
+                    }
+                    const res = await fetch(jwksUrl, { headers });
                     if (!res.ok) {
                         return done(new Error(`Failed to fetch JWKS: HTTP ${res.status} from ${jwksUrl}`));
                     }
