@@ -12,6 +12,7 @@ import { ServiceRequestsModule } from './service-requests/service-requests.modul
 import { ChatModule } from './chat/chat.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TasksModule } from './tasks/tasks.module';
+import { TransactionsModule } from './transactions/transactions.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { TasksModule } from './tasks/tasks.module';
     ServiceRequestsModule,
     ChatModule,
     TasksModule,
+    TransactionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

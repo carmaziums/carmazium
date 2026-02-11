@@ -30,6 +30,22 @@ export class UsersController {
         return this.usersService.getProfile(user.id);
     }
 
+    @Patch('me')
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Update current user profile' })
+    async updateMe(
+        @CurrentUser() user: any,
+        @Body() body: {
+            firstName?: string;
+            lastName?: string;
+            phone?: string;
+            profileImage?: string;
+        },
+    ) {
+        return this.usersService.updateProfile(user.id, body);
+    }
+
     @Post('elevate')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
