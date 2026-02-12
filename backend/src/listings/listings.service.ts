@@ -225,6 +225,27 @@ export class ListingsService {
     }
 
     /**
+     * Update listing status
+     * Allows specific transitions (Draft -> Active -> Sold/Withdrawn)
+     */
+    async updateStatus(
+        id: string,
+        userId: string,
+        status: ListingStatus,
+    ): Promise<Listing> {
+        const listing = await this.findById(id);
+
+        if (listing.sellerId && listing.sellerId !== userId) {
+            throw new ForbiddenException('You do not have permission to update this listing');
+        }
+
+        return this.prisma.listing.update({
+            where: { id },
+            data: { status },
+        });
+    }
+
+    /**
      * Soft delete a listing
      * Sets deletedAt to current timestamp
      * Includes ownership check

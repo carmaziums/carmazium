@@ -7,10 +7,16 @@ import {
     Query,
     UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiOperation,
+    ApiResponse,
+    ApiCookieAuth,
+    ApiQuery,
+} from '@nestjs/swagger';
 import { BidsService } from './bids.service';
 import { CreateBidDto } from './dto/create-bid.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('Bids')
@@ -19,11 +25,11 @@ export class BidsController {
     constructor(private readonly bidsService: BidsService) { }
 
     /**
-     * Place a bid on an auction listing
+     * Place a bid on an auction listing.
      */
     @Post()
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
     @ApiOperation({ summary: 'Place a bid on an auction listing' })
     @ApiResponse({ status: 201, description: 'Bid placed successfully' })
     @ApiResponse({ status: 400, description: 'Invalid bid or listing not an auction' })
@@ -37,11 +43,11 @@ export class BidsController {
     }
 
     /**
-     * Get current user's bids
+     * Get current user's bids.
      */
     @Get('my')
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
     @ApiOperation({ summary: 'Get my bids' })
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -50,13 +56,15 @@ export class BidsController {
         @Query('page') page?: string,
         @Query('limit') limit?: string,
     ) {
-        const { data, total } = await this.bidsService.findMyBids(
-            user.id,
-            parseInt(page || '1'),
-            parseInt(limit || '20'),
-        );
         const pageNum = parseInt(page || '1');
         const limitNum = parseInt(limit || '20');
+
+        const { data, total } = await this.bidsService.findMyBids(
+            user.id,
+            pageNum,
+            limitNum,
+        );
+
         return {
             success: true,
             data,
@@ -70,11 +78,11 @@ export class BidsController {
     }
 
     /**
-     * Get buyer dashboard stats
+     * Get buyer dashboard statistics.
      */
     @Get('stats')
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
     @ApiOperation({ summary: 'Get buyer dashboard statistics' })
     async getBuyerStats(@CurrentUser() user: any) {
         const stats = await this.bidsService.getBuyerStats(user.id);
@@ -82,7 +90,7 @@ export class BidsController {
     }
 
     /**
-     * Get all bids for a specific listing (public)
+     * Get all bids for a specific listing (public).
      */
     @Get('listing/:listingId')
     @ApiOperation({ summary: 'Get all bids for a listing' })

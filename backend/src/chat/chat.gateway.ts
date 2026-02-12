@@ -9,144 +9,101 @@ import {
     MessageBody,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Logger, UseFilters, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Logger, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { WsMessageDto, WsTypingDto } from './dto';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
-import * as jwt from 'jsonwebtoken';
-import * as jwkToPem from 'jwk-to-pem';
 
 /**
- * WebSocket Gateway for real-time chat functionality
- * Handles socket connections, message delivery, and typing indicators
+ * WebSocket Gateway for real-time chat functionality.
+ * Handles socket connections, message delivery, and typing indicators.
+ *
+ * Authentication: Clients must establish an HTTP session first (via /auth/login),
+ * then connect to this gateway. The session cookie is sent with the WebSocket
+ * handshake and the userId is extracted from client.request.session.
  */
 @WebSocketGateway({
     cors: {
         origin: [
             'http://localhost:3000',
             'https://carmazium.vercel.app',
-            'https://carmazium.onrender.com'
+            'https://carmazium.onrender.com',
         ],
         credentials: true,
     },
     namespace: '/chat',
 })
-export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+export class ChatGateway
+    implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
     @WebSocketServer()
     server: Server;
 
     private readonly logger = new Logger(ChatGateway.name);
     private connectedUsers: Map<string, Set<string>> = new Map(); // userId -> Set of socketIds
-    private static jwksCache: { keys: any[]; fetchedAt: number } | null = null;
 
-    constructor(
-        private readonly chatService: ChatService,
-        private readonly jwtService: JwtService,
-        private readonly configService: ConfigService,
-    ) { }
+    constructor(private readonly chatService: ChatService) { }
 
     afterInit(server: Server): void {
         this.logger.log('Chat WebSocket Gateway initialized');
     }
 
     /**
-     * Handle new WebSocket connection
-     * Authenticates user via JWT and auto-joins their chat rooms
+     * Handle new WebSocket connection.
+     * Authenticates user via the session cookie sent during the WS handshake.
+     * The express-session middleware in main.ts populates request.session.
      */
     async handleConnection(client: Socket): Promise<void> {
         try {
-            const token = client.handshake.auth?.token || client.handshake.headers?.authorization?.split(' ')[1];
+            // Extract userId from the session attached to the socket request.
+            // express-session middleware processes the cookie during the handshake,
+            // so we can access the session via client.request.
+            const req = client.request as any;
+            const userId = req?.session?.userId;
 
-            if (!token) {
-                this.logger.warn(`Connection rejected: No token provided - ${client.id}`);
-                client.disconnect();
-                return;
-            }
-
-            this.logger.debug(`WebSocket Token received (len: ${token.length}): ${token.substring(0, 10)}...`);
-
-            // Verify JWT - support HS256 (legacy) and ES256 (current Supabase)
-            let payload: any;
-            try {
-                // First try HS256 with the configured secret
-                payload = this.jwtService.verify(token, {
-                    algorithms: ['HS256'],
-                });
-            } catch (hs256Error) {
-                // If HS256 fails, try ES256 via JWKS public key
-                try {
-                    const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
-                    if (!supabaseUrl) {
-                        throw new Error('SUPABASE_URL not configured');
-                    }
-
-                    // Decode header to get kid
-                    const decoded = jwt.decode(token, { complete: true }) as any;
-                    if (!decoded || decoded.header.alg !== 'ES256') {
-                        throw new Error(`Unsupported algorithm: ${decoded?.header?.alg || 'unknown'}`);
-                    }
-
-                    // Fetch or use cached JWKS
-                    const now = Date.now();
-                    if (!ChatGateway.jwksCache || (now - ChatGateway.jwksCache.fetchedAt) > 300000) {
-                        const jwksUrl = `${supabaseUrl.replace(/\/$/, '')}/auth/v1/.well-known/jwks.json`;
-                        const res = await fetch(jwksUrl);
-                        if (!res.ok) {
-                            throw new Error(`JWKS fetch failed: HTTP ${res.status}`);
-                        }
-                        const jwks = await res.json();
-                        ChatGateway.jwksCache = { keys: jwks.keys, fetchedAt: now };
-                    }
-
-                    const kid = decoded.header.kid;
-                    const jwk = ChatGateway.jwksCache.keys.find((k: any) => k.kid === kid) || ChatGateway.jwksCache.keys[0];
-                    if (!jwk) {
-                        throw new Error('No matching JWK found');
-                    }
-
-                    const pem = jwkToPem(jwk);
-                    payload = jwt.verify(token, pem, { algorithms: ['ES256'] });
-                } catch (es256Error) {
-                    this.logger.error(`JWT verification failed: ${es256Error.message}`);
-                    client.emit('error', { code: 'AUTH_FAILED', message: 'Token verification failed' });
-                    client.disconnect();
-                    return;
-                }
-            }
-
-            const userId = payload.sub;
             if (!userId) {
-                this.logger.warn(`Connection rejected: No user ID in token - ${client.id}`);
+                this.logger.warn(
+                    `Connection rejected: No session or userId - ${client.id}`,
+                );
+                client.emit('error', {
+                    code: 'AUTH_REQUIRED',
+                    message: 'Please log in before connecting to chat',
+                });
                 client.disconnect();
                 return;
             }
 
-            // Store user data on socket
+            // Store user data on socket for later use
             client.data.userId = userId;
 
-            // Track connected user
+            // Track connected user (supports multiple tabs/devices)
             if (!this.connectedUsers.has(userId)) {
                 this.connectedUsers.set(userId, new Set());
             }
             this.connectedUsers.get(userId)?.add(client.id);
 
-            // Auto-join user's chat rooms
+            // Auto-join user's existing chat rooms
             const roomIds = await this.chatService.getUserRoomIds(userId);
             for (const roomId of roomIds) {
                 await client.join(`room:${roomId}`);
             }
 
-            this.logger.log(`User ${userId} connected with ${roomIds.length} rooms - Socket: ${client.id}`);
+            this.logger.log(
+                `User ${userId} connected with ${roomIds.length} rooms - Socket: ${client.id}`,
+            );
         } catch (error) {
-            this.logger.error(`Connection error: ${error.message}`, error.stack);
-            client.emit('error', { code: 'CONNECTION_ERROR', message: 'Authentication failed' });
+            this.logger.error(
+                `Connection error: ${error.message}`,
+                error.stack,
+            );
+            client.emit('error', {
+                code: 'CONNECTION_ERROR',
+                message: 'Authentication failed',
+            });
             client.disconnect();
         }
     }
 
     /**
-     * Handle WebSocket disconnection
+     * Handle WebSocket disconnection.
      */
     handleDisconnect(client: Socket): void {
         const userId = client.data.userId;
@@ -158,12 +115,14 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
                     this.connectedUsers.delete(userId);
                 }
             }
-            this.logger.log(`User ${userId} disconnected - Socket: ${client.id}`);
+            this.logger.log(
+                `User ${userId} disconnected - Socket: ${client.id}`,
+            );
         }
     }
 
     /**
-     * Handle sending a message
+     * Handle sending a message.
      */
     @SubscribeMessage('message:send')
     @UsePipes(new ValidationPipe({ transform: true }))
@@ -175,9 +134,11 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         if (!userId) return;
 
         try {
-            const message = await this.chatService.sendMessage(data.roomId, userId, {
-                content: data.content,
-            });
+            const message = await this.chatService.sendMessage(
+                data.roomId,
+                userId,
+                { content: data.content },
+            );
 
             // Broadcast to all members in the room
             this.server.to(`room:${data.roomId}`).emit('message:new', message);
@@ -187,7 +148,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     }
 
     /**
-     * Handle joining a specific room
+     * Handle joining a specific room.
      */
     @SubscribeMessage('room:join')
     async handleJoinRoom(
@@ -198,7 +159,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         if (!userId) return;
 
         try {
-            // Verify user is member of room
+            // Verify user is a member of the room
             await this.chatService.getRoom(data.roomId, userId);
             await client.join(`room:${data.roomId}`);
             client.emit('room:joined', { roomId: data.roomId });
@@ -208,7 +169,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     }
 
     /**
-     * Handle marking messages as read
+     * Handle marking messages as read.
      */
     @SubscribeMessage('message:read')
     async handleMarkRead(
@@ -219,7 +180,10 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         if (!userId) return;
 
         try {
-            const count = await this.chatService.markMessagesAsRead(data.roomId, userId);
+            const count = await this.chatService.markMessagesAsRead(
+                data.roomId,
+                userId,
+            );
 
             // Notify other user that messages were read
             this.server.to(`room:${data.roomId}`).emit('messages:read', {
@@ -233,7 +197,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     }
 
     /**
-     * Handle typing start indicator
+     * Handle typing start indicator.
      */
     @SubscribeMessage('typing:start')
     @UsePipes(new ValidationPipe({ transform: true }))
@@ -253,7 +217,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     }
 
     /**
-     * Handle typing stop indicator
+     * Handle typing stop indicator.
      */
     @SubscribeMessage('typing:stop')
     @UsePipes(new ValidationPipe({ transform: true }))
@@ -272,14 +236,14 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     }
 
     /**
-     * Check if a user is online
+     * Check if a user is online.
      */
     isUserOnline(userId: string): boolean {
         return this.connectedUsers.has(userId);
     }
 
     /**
-     * Get online user IDs
+     * Get online user IDs.
      */
     getOnlineUsers(): string[] {
         return Array.from(this.connectedUsers.keys());

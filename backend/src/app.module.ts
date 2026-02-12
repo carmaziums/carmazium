@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -13,14 +13,36 @@ import { ChatModule } from './chat/chat.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TasksModule } from './tasks/tasks.module';
 import { TransactionsModule } from './transactions/transactions.module';
+import { AuctionsModule } from './auctions/auctions.module';
+import { FinanceModule } from './finance/finance.module';
+import { InsuranceModule } from './insurance/insurance.module';
+import { AdminModule } from './admin/admin.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { PaymentsModule } from './payments/payments.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { CsrfMiddleware } from './core/middleware/csrf.middleware';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ThrottlerModule.forRoot([{
+      ttl: 60000,
+      limit: 100,
+    }]),
+    HealthModule,
     ScheduleModule.forRoot(),
     ListingsModule,
+    AuctionsModule,
+    FinanceModule,
+    InsuranceModule,
+    AdminModule,
+    NotificationsModule,
+    PaymentsModule,
+    DashboardModule,
     PrismaModule,
     AuthModule,
     UsersModule,
@@ -34,7 +56,14 @@ import { TransactionsModule } from './transactions/transactions.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(CsrfMiddleware)
+      .forRoutes('*');
+  }
+}
+
 
 
 

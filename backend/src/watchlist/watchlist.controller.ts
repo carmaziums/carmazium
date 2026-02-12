@@ -7,9 +7,16 @@ import {
     Query,
     UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiParam } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiOperation,
+    ApiResponse,
+    ApiCookieAuth,
+    ApiQuery,
+    ApiParam,
+} from '@nestjs/swagger';
 import { WatchlistService } from './watchlist.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('Watchlist')
@@ -18,11 +25,11 @@ export class WatchlistController {
     constructor(private readonly watchlistService: WatchlistService) { }
 
     /**
-     * Get user's watchlist
+     * Get user's watchlist.
      */
     @Get()
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
     @ApiOperation({ summary: 'Get my watchlist' })
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -31,13 +38,15 @@ export class WatchlistController {
         @Query('page') page?: string,
         @Query('limit') limit?: string,
     ) {
-        const { data, total } = await this.watchlistService.findAll(
-            user.id,
-            parseInt(page || '1'),
-            parseInt(limit || '20'),
-        );
         const pageNum = parseInt(page || '1');
         const limitNum = parseInt(limit || '20');
+
+        const { data, total } = await this.watchlistService.findAll(
+            user.id,
+            pageNum,
+            limitNum,
+        );
+
         return {
             success: true,
             data,
@@ -51,11 +60,11 @@ export class WatchlistController {
     }
 
     /**
-     * Add listing to watchlist
+     * Add listing to watchlist.
      */
     @Post(':listingId')
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
     @ApiOperation({ summary: 'Add listing to watchlist' })
     @ApiParam({ name: 'listingId', description: 'ID of the listing to add' })
     @ApiResponse({ status: 201, description: 'Added to watchlist' })
@@ -69,11 +78,11 @@ export class WatchlistController {
     }
 
     /**
-     * Remove listing from watchlist
+     * Remove listing from watchlist.
      */
     @Delete(':listingId')
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
     @ApiOperation({ summary: 'Remove listing from watchlist' })
     @ApiParam({ name: 'listingId', description: 'ID of the listing to remove' })
     async remove(
@@ -85,26 +94,29 @@ export class WatchlistController {
     }
 
     /**
-     * Check if listing is in watchlist
+     * Check if listing is in watchlist.
      */
     @Get('check/:listingId')
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
     @ApiOperation({ summary: 'Check if listing is in watchlist' })
     async check(
         @CurrentUser() user: any,
         @Param('listingId') listingId: string,
     ) {
-        const inWatchlist = await this.watchlistService.isInWatchlist(user.id, listingId);
+        const inWatchlist = await this.watchlistService.isInWatchlist(
+            user.id,
+            listingId,
+        );
         return { success: true, data: { inWatchlist } };
     }
 
     /**
-     * Get watchlist count
+     * Get watchlist count.
      */
     @Get('count')
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
     @ApiOperation({ summary: 'Get watchlist count' })
     async getCount(@CurrentUser() user: any) {
         const count = await this.watchlistService.getCount(user.id);

@@ -1,65 +1,92 @@
-import { Controller, Get, Post, Body, Patch, UseGuards, BadRequestException } from '@nestjs/common';
+import {
+    Controller,
+    Get,
+    Post,
+    Body,
+    Patch,
+    UseGuards,
+    BadRequestException,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('Users')
 @Controller('users')
 export class UsersController {
     constructor(private readonly usersService: UsersService) { }
 
-    @Post('sync')
-    @ApiOperation({ summary: 'Sync Supabase user with local database' })
-    async syncUser(@Body() body: {
-        supabaseAuthId: string;
-        email: string;
-        firstName?: string;
-        lastName?: string;
-        role?: UserRole;
-    }) {
-        return this.usersService.syncSupabaseUser(body);
-    }
-
+    /**
+     * Get current authenticated user's profile.
+     */
     @Get('me')
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
     @ApiOperation({ summary: 'Get current user profile' })
     async getMe(@CurrentUser() user: any) {
-        return this.usersService.getProfile(user.id);
+        return {
+            success: true,
+            data: await this.usersService.getProfile(user.id),
+        };
     }
 
+    /**
+     * Update current user's basic profile fields.
+     */
     @Patch('me')
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
     @ApiOperation({ summary: 'Update current user profile' })
     async updateMe(
         @CurrentUser() user: any,
-        @Body() body: {
+        @Body()
+        body: {
             firstName?: string;
             lastName?: string;
             phone?: string;
             profileImage?: string;
         },
     ) {
-        return this.usersService.updateProfile(user.id, body);
+        return {
+            success: true,
+            data: await this.usersService.updateProfile(user.id, body),
+        };
     }
 
+    /**
+     * Request a role elevation or switch.
+     */
     @Post('elevate')
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
     @ApiOperation({ summary: 'Request role elevation/switch' })
-    async elevate(@CurrentUser() user: any, @Body('newRole') newRole: UserRole) {
-        if (!newRole) throw new BadRequestException('New role is required');
-        return this.usersService.requestRoleElevation(user.id, newRole);
+    async elevate(
+        @CurrentUser() user: any,
+        @Body('newRole') newRole: UserRole,
+    ) {
+        if (!newRole) {
+            throw new BadRequestException('New role is required');
+        }
+
+        return {
+            success: true,
+            data: await this.usersService.requestRoleElevation(user.id, newRole),
+        };
     }
 
+    /**
+     * Update dealer profile for the current user.
+     */
     @Patch('dealer-profile')
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
     @ApiOperation({ summary: 'Update dealer profile' })
     async updateDealer(@CurrentUser() user: any, @Body() body: any) {
-        return this.usersService.updateDealerProfile(user.id, body);
+        return {
+            success: true,
+            data: await this.usersService.updateDealerProfile(user.id, body),
+        };
     }
 }

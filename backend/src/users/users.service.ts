@@ -1,4 +1,8 @@
-import { Injectable, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+    Injectable,
+    NotFoundException,
+    BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole } from '@prisma/client';
 
@@ -7,63 +11,36 @@ export class UsersService {
     constructor(private readonly prisma: PrismaService) { }
 
     /**
-     * Sync Supabase user with local database
-     * Called after frontend signup
+     * Find a user by their primary ID (UUID).
      */
-    async syncSupabaseUser(data: {
-        supabaseAuthId: string;
-        email: string;
-        firstName?: string;
-        lastName?: string;
-        role?: UserRole;
-    }) {
-        try {
-            console.log('Syncing user:', data.email, data.supabaseAuthId);
+    async findById(userId: string) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+        });
 
-            // Upsert user: Create if not exists, Update if exists (by email or authId)
-            // Since we can't easily upsert on multiple unique fields (email OR supabaseAuthId),
-            // we'll try to find by email first (primary stable identifier for sync).
-
-            const existingUser = await this.prisma.user.findUnique({
-                where: { email: data.email }
-            });
-
-            if (existingUser) {
-                // Update implementation
-                return this.prisma.user.update({
-                    where: { email: data.email },
-                    data: {
-                        supabaseAuthId: data.supabaseAuthId, // Link auth ID if missing
-                        firstName: data.firstName || existingUser.firstName, // Update only if provided
-                        lastName: data.lastName || existingUser.lastName,
-                        // Don't overwrite role if exists, strictly speaking, unless we want to enforce it
-                    }
-                });
-            }
-
-            // Create new
-            return await this.prisma.user.create({
-                data: {
-                    supabaseAuthId: data.supabaseAuthId,
-                    email: data.email,
-                    firstName: data.firstName,
-                    lastName: data.lastName,
-                    role: data.role || UserRole.BUYER,
-                },
-            });
-        } catch (error) {
-            console.error('Error syncing user:', error);
-            // Return null or rethrow based on preference, but prevent 500 crash for controller
-            throw new ConflictException(`Failed to sync user: ${error.message}`);
+        if (!user) {
+            throw new NotFoundException('User not found');
         }
+
+        return user;
     }
 
     /**
-     * Get user profile with its role-specific profile data
+     * Find a user by email address.
+     * Used internally by AuthService during login.
      */
-    async getProfile(supabaseAuthId: string) {
+    async findByEmail(email: string) {
+        return this.prisma.user.findUnique({
+            where: { email: email.toLowerCase().trim() },
+        });
+    }
+
+    /**
+     * Get user profile with role-specific profile data included.
+     */
+    async getProfile(userId: string) {
         const user = await this.prisma.user.findUnique({
-            where: { supabaseAuthId: supabaseAuthId },
+            where: { id: userId },
             include: {
                 dealerProfile: true,
                 contractorProfile: true,
@@ -76,37 +53,98 @@ export class UsersService {
             throw new NotFoundException('User not found');
         }
 
-        return user;
+        // Strip password hash from response
+        const { passwordHash: _, ...safeUser } = user;
+        return safeUser;
     }
 
     /**
-     * Elevate or switch role
-     * This typically triggers a verification process
+     * Update basic profile fields for the authenticated user.
      */
-    async requestRoleElevation(supabaseAuthId: string, newRole: UserRole) {
-        const user = await this.prisma.user.findUnique({ where: { supabaseAuthId: supabaseAuthId } });
-        if (!user) throw new NotFoundException('User not found');
+    async updateProfile(
+        userId: string,
+        data: {
+            firstName?: string;
+            lastName?: string;
+            phone?: string;
+            profileImage?: string;
+        },
+    ) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+        });
 
-        // Logic for role switching
-        // In a real app, this might create a 'RoleRequest' record for admins to approve
-        // For now, we update it and ensure the profile existence is handled in the UI
-        return this.prisma.user.update({
-            where: { supabaseAuthId: supabaseAuthId },
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        const updated = await this.prisma.user.update({
+            where: { id: userId },
+            data: {
+                ...(data.firstName !== undefined && { firstName: data.firstName }),
+                ...(data.lastName !== undefined && { lastName: data.lastName }),
+                ...(data.phone !== undefined && { phone: data.phone }),
+                ...(data.profileImage !== undefined && {
+                    profileImage: data.profileImage,
+                }),
+            },
+            include: {
+                dealerProfile: true,
+                contractorProfile: true,
+            },
+        });
+
+        const { passwordHash: _, ...safeUser } = updated;
+        return safeUser;
+    }
+
+    /**
+     * Request a role elevation or switch.
+     * In production this would create an approval request; for dev we update directly.
+     */
+    async requestRoleElevation(userId: string, newRole: UserRole) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+        });
+
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        const updated = await this.prisma.user.update({
+            where: { id: userId },
             data: { role: newRole },
         });
+
+        const { passwordHash: _, ...safeUser } = updated;
+        return safeUser;
     }
 
     /**
-     * Create or update a Dealer profile
+     * Create or update a Dealer profile for the authenticated user.
      */
-    async updateDealerProfile(supabaseAuthId: string, data: {
-        companyName: string;
-        vatNumber: string;
-        registrationNumber?: string;
-        businessAddress?: string;
-    }) {
-        const user = await this.prisma.user.findUnique({ where: { supabaseAuthId } });
-        if (!user) throw new NotFoundException('User not found');
+    async updateDealerProfile(
+        userId: string,
+        data: {
+            companyName: string;
+            vatNumber: string;
+            registrationNumber?: string;
+            businessAddress?: string;
+        },
+    ) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+        });
+
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        if (user.role !== UserRole.DEALER) {
+            throw new BadRequestException(
+                'Only users with the DEALER role can have a dealer profile',
+            );
+        }
 
         return this.prisma.dealerProfile.upsert({
             where: { userId: user.id },
@@ -114,35 +152,6 @@ export class UsersService {
             create: {
                 ...data,
                 userId: user.id,
-            },
-        });
-    }
-
-    /**
-     * Update basic profile fields
-     */
-    async updateProfile(supabaseAuthId: string, data: {
-        firstName?: string;
-        lastName?: string;
-        phone?: string;
-        profileImage?: string;
-    }) {
-        const user = await this.prisma.user.findUnique({
-            where: { supabaseAuthId },
-        });
-        if (!user) throw new NotFoundException('User not found');
-
-        return this.prisma.user.update({
-            where: { supabaseAuthId },
-            data: {
-                ...(data.firstName !== undefined && { firstName: data.firstName }),
-                ...(data.lastName !== undefined && { lastName: data.lastName }),
-                ...(data.phone !== undefined && { phone: data.phone }),
-                ...(data.profileImage !== undefined && { profileImage: data.profileImage }),
-            },
-            include: {
-                dealerProfile: true,
-                contractorProfile: true,
             },
         });
     }
