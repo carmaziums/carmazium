@@ -89,4 +89,21 @@ export class UsersController {
             data: await this.usersService.updateDealerProfile(user.id, body),
         };
     }
+
+    /**
+     * Sync endpoint for frontend onboarding.
+     */
+    @Post('sync')
+    @ApiOperation({ summary: 'Sync user from Supabase' })
+    async sync(@Body() body: any) {
+        if (!body.email) {
+            throw new BadRequestException('Email is required for sync');
+        }
+
+        const user = await this.usersService.syncUser(body);
+        return {
+            success: true,
+            data: user,
+        };
+    }
 }

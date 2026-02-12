@@ -5,21 +5,42 @@ import {
     UnauthorizedException,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { AuthService } from '../auth.service';
 
 /**
- * Session-based authentication guard.
- * Checks that the request has a valid session with a userId.
- * Replaces the previous JwtAuthGuard (Passport-based).
+ * Dual-mode authentication guard.
+ * 1. Checks for a valid session cookie (req.session.userId) — preferred path.
+ * 2. Falls back to verifying a Supabase Bearer token from the Authorization header.
+ *    On success, auto-creates a session so future requests use the cookie path.
  */
 @Injectable()
 export class SessionAuthGuard implements CanActivate {
-    canActivate(context: ExecutionContext): boolean {
+    constructor(private readonly authService: AuthService) { }
+
+    async canActivate(context: ExecutionContext): Promise<boolean> {
         const request = context.switchToHttp().getRequest<Request>();
 
-        if (!request.session?.userId) {
-            throw new UnauthorizedException('Not authenticated — please log in');
+        // ── Path 1: Existing session cookie ──────────────────────────
+        if (request.session?.userId) {
+            return true;
         }
 
-        return true;
+        // ── Path 2: Bearer token fallback ────────────────────────────
+        const authHeader = request.headers.authorization;
+        if (authHeader?.startsWith('Bearer ')) {
+            const token = authHeader.slice(7);
+            const user = await this.authService.verifySupabaseToken(token);
+
+            if (user) {
+                // Auto-create session for subsequent requests
+                request.session.userId = user.id;
+                request.session.userRole = user.role;
+                // Populate req.user so @CurrentUser() works immediately
+                (request as any).user = user;
+                return true;
+            }
+        }
+
+        throw new UnauthorizedException('Not authenticated — please log in');
     }
 }

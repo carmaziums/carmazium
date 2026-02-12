@@ -56,6 +56,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const token = session?.access_token || null;
             if (token) {
                 localStorage.setItem('authToken', token);
+
+                // Ensure backend session exists (for SSR/cookies)
+                const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium.onrender.com';
+                fetch(`${API_URL}/auth/supabase-session`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token }),
+                    credentials: 'include',
+                }).catch(err => console.warn('Session restore bridge failed', err));
             }
 
             setUser(session?.user ?? null)

@@ -4,6 +4,7 @@ import { ChatController } from './chat.controller';
 import { ChatGateway } from './chat.gateway';
 import { PrismaModule } from '../prisma/prisma.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { AuthModule } from '../auth/auth.module';
 
 /**
  * Chat module providing real-time messaging functionality.
@@ -11,7 +12,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
  * Authentication is handled via express-session cookies.
  */
 @Module({
-    imports: [PrismaModule, NotificationsModule],
+    imports: [PrismaModule, NotificationsModule, AuthModule],
     controllers: [ChatController],
     providers: [ChatService, ChatGateway],
     exports: [ChatService, ChatGateway],

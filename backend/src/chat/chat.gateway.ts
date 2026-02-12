@@ -11,6 +11,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { Logger, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ChatService } from './chat.service';
+import { AuthService } from '../auth/auth.service';
 import { WsMessageDto, WsTypingDto } from './dto';
 
 /**
@@ -40,7 +41,10 @@ export class ChatGateway
     private readonly logger = new Logger(ChatGateway.name);
     private connectedUsers: Map<string, Set<string>> = new Map(); // userId -> Set of socketIds
 
-    constructor(private readonly chatService: ChatService) { }
+    constructor(
+        private readonly chatService: ChatService,
+        private readonly authService: AuthService,
+    ) { }
 
     afterInit(server: Server): void {
         this.logger.log('Chat WebSocket Gateway initialized');
@@ -48,20 +52,28 @@ export class ChatGateway
 
     /**
      * Handle new WebSocket connection.
-     * Authenticates user via the session cookie sent during the WS handshake.
-     * The express-session middleware in main.ts populates request.session.
+     * Authenticates user via session cookie OR Bearer token (Supabase JWT).
      */
     async handleConnection(client: Socket): Promise<void> {
         try {
-            // Extract userId from the session attached to the socket request.
-            // express-session middleware processes the cookie during the handshake,
-            // so we can access the session via client.request.
+            // 1. Try session cookie first
             const req = client.request as any;
-            const userId = req?.session?.userId;
+            let userId = req?.session?.userId;
+
+            // 2. Fallback to Bearer token in handshake auth
+            if (!userId) {
+                const token = client.handshake.auth?.token || client.handshake.query?.token;
+                if (token) {
+                    const user = await this.authService.verifySupabaseToken(token);
+                    if (user) {
+                        userId = user.id;
+                    }
+                }
+            }
 
             if (!userId) {
                 this.logger.warn(
-                    `Connection rejected: No session or userId - ${client.id}`,
+                    `Connection rejected: No session or valid token - ${client.id}`,
                 );
                 client.emit('error', {
                     code: 'AUTH_REQUIRED',
