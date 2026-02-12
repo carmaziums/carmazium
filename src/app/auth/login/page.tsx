@@ -39,23 +39,19 @@ export default function LoginPage() {
 
             if (authError) throw authError
 
-            // Sync with backend to ensure user exists locally
-            if (data.user) {
+            // Bridge: Create backend session using Supabase token
+            if (data.session?.access_token) {
                 try {
                     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium.onrender.com'
-                    await fetch(`${API_URL}/users/sync`, {
+                    await fetch(`${API_URL}/auth/supabase-session`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            supabaseAuthId: data.user.id,
-                            email: formData.email,
-                            // We might not have metadata on login, but sync handles updates.
-                            // Sending what we have ensures existence.
-                        })
+                        body: JSON.stringify({ token: data.session.access_token }),
+                        credentials: 'include', // Important for setting the cookie
                     })
-                } catch (syncErr) {
-                    console.error('Login sync failed:', syncErr)
-                    // Continue to dashboard anyway, auth context might retry or show error
+                } catch (bridgeErr) {
+                    console.error('Backend session creation failed:', bridgeErr)
+                    // Continue anyway — the dual-mode guard will handle requests via Bearer token
                 }
             }
 

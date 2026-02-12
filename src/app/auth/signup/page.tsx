@@ -59,6 +59,14 @@ export default function SignupPage() {
 
                 if (!syncResponse.ok) {
                     console.error('Backend sync failed, but account created in Supabase')
+                } else {
+                    // Sync successful — create backend session
+                    await fetch(`${API_URL}/auth/supabase-session`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token: (authData.session?.access_token) }),
+                        credentials: 'include',
+                    }).catch(err => console.error('Session bridge failed:', err))
                 }
             }
 

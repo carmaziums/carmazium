@@ -155,4 +155,32 @@ export class UsersService {
             },
         });
     }
+
+    /**
+     * Sync user from Supabase (Legacy Frontend Support).
+     * Creates a user record if it doesn't exist.
+     */
+    async syncUser(data: {
+        id: string;
+        email: string;
+        firstName?: string;
+        lastName?: string;
+    }) {
+        const email = data.email.toLowerCase().trim();
+
+        return this.prisma.user.upsert({
+            where: { email },
+            update: {
+                firstName: data.firstName,
+                lastName: data.lastName,
+            },
+            create: {
+                id: data.id, // Using the provided ID from sync
+                email,
+                firstName: data.firstName,
+                lastName: data.lastName,
+                passwordHash: 'SUPABASE_EXTERNAL_AUTH', // Placeholder since auth is external
+            },
+        });
+    }
 }

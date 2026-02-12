@@ -11,16 +11,30 @@ export class CsrfMiddleware implements NestMiddleware {
             return next();
         }
 
+        // Exclude entry-point routes that don't have a session/token yet
+        const excludedPaths = [
+            '/api/users/sync',
+            '/users/sync',
+            '/api/auth/login',
+            '/auth/login',
+            '/api/auth/register',
+            '/auth/register',
+            '/api/auth/supabase-session',
+            '/auth/supabase-session',
+        ];
+
+        if (excludedPaths.some(path => req.path.startsWith(path))) {
+            return next();
+        }
+
         // Require X-CSRF-Token header for all state-changing requests
-        // In a cross-origin setup (Render/Vercel), custom headers are protected by CORS preflight.
         const csrfHeader = req.headers['x-csrf-token'];
 
         if (!csrfHeader) {
             throw new ForbiddenException('CSRF token missing (X-CSRF-Token header required)');
         }
 
-        // In a full implementation, you would compare this against a token stored in the session/cookie.
-        // For now, simple presence check + CORS restriction is a massive improvement.
         next();
     }
+
 }

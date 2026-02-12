@@ -17,6 +17,7 @@ export async function apiClient<T>(
     const config = {
         ...options,
         headers,
+        credentials: 'include' as RequestCredentials,
     };
 
     const response = await fetch(`${API_URL}${endpoint}`, config);
