@@ -17,15 +17,16 @@ import {
     ApiResponse,
     ApiParam,
     ApiQuery,
-    ApiBearerAuth,
+    ApiCookieAuth,
 } from '@nestjs/swagger';
 import { ListingsService } from './listings.service';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
+import { UpdateStatusDto } from './dto/update-status.dto';
 import { ListingFilterDto } from './dto/listing-filter.dto';
 import { StandardResponse, PaginatedResponse } from './dto/response.dto';
 import { Listing } from '@prisma/client';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 
@@ -40,8 +41,8 @@ export class ListingsController {
      * Requires authentication
      */
     @Post()
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({
         summary: 'Create a new listing',
@@ -104,8 +105,8 @@ export class ListingsController {
      * Requires authentication
      */
     @Get('my')
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
     @ApiOperation({
         summary: 'Get my listings',
         description: 'Retrieves all listings belonging to the authenticated user',
@@ -133,8 +134,8 @@ export class ListingsController {
      * Requires authentication
      */
     @Get('stats')
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
     @ApiOperation({
         summary: 'Get seller stats',
         description: 'Retrieves dashboard statistics for the authenticated seller',
@@ -155,8 +156,8 @@ export class ListingsController {
      * Requires authentication
      */
     @Get('performance')
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
     @ApiOperation({
         summary: 'Get seller performance analytics',
         description: 'Returns revenue, views, conversion rate, and per-listing view data for charts',
@@ -206,8 +207,8 @@ export class ListingsController {
      * Requires authentication and ownership
      */
     @Patch(':id')
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
     @ApiOperation({
         summary: 'Update a listing',
         description: 'Updates a listing. Requires authentication and ownership.',
@@ -239,12 +240,35 @@ export class ListingsController {
     }
 
     /**
+     * Update listing status
+     * Requires authentication and ownership
+     */
+    @Patch(':id/status')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({
+        summary: 'Update listing status',
+        description: 'Updates the status of a listing (e.g. DRAFT -> ACTIVE -> SOLD).',
+    })
+    @ApiParam({ name: 'id', description: 'UUID of the listing' })
+    @ApiResponse({ status: 200, description: 'Status updated successfully' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    async updateStatus(
+        @Param('id') id: string,
+        @Body() updateStatusDto: UpdateStatusDto,
+        @CurrentUser() user: any,
+    ): Promise<StandardResponse<Listing>> {
+        const listing = await this.listingsService.updateStatus(id, user.id, updateStatusDto.status);
+        return new StandardResponse(listing);
+    }
+
+    /**
      * Soft delete a listing
      * Requires authentication and ownership
      */
     @Delete(':id')
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
         summary: 'Delete a listing (soft delete)',

@@ -2,13 +2,19 @@ import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/commo
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRoomDto, SendMessageDto } from './dto';
 import { ChatRoom, Message } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 
 /**
  * Chat service handling all chat room and message operations
  */
 @Injectable()
 export class ChatService {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly notificationsService: NotificationsService,
+        private readonly notificationsGateway: NotificationsGateway,
+    ) { }
 
     /**
      * Find or create a chat room between two users
@@ -195,6 +201,29 @@ export class ChatService {
             where: { id: roomId },
             data: { updatedAt: new Date() },
         });
+
+        // NOTIFICATION LOGIC
+        // Determine recipient
+        const room = await this.prisma.chatRoom.findUnique({
+            where: { id: roomId },
+            select: { initiatorId: true, participantId: true },
+        });
+
+        if (room) {
+            const recipientId = room.initiatorId === senderId ? room.participantId : room.initiatorId;
+
+            // Create notification
+            const notification = await this.notificationsService.create({
+                userId: recipientId,
+                type: 'MESSAGE_RECEIVED',
+                title: 'New Message',
+                message: dto.content.substring(0, 50) + (dto.content.length > 50 ? '...' : ''),
+                data: { roomId, messageId: message.id },
+            });
+
+            // Push real-time notification
+            this.notificationsGateway.sendNotification(recipientId, notification);
+        }
 
         return message;
     }

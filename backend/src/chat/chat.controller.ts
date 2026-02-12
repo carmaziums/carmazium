@@ -12,28 +12,28 @@ import {
     ApiTags,
     ApiOperation,
     ApiResponse,
-    ApiBearerAuth,
+    ApiCookieAuth,
     ApiQuery,
     ApiParam,
 } from '@nestjs/swagger';
 import { ChatService } from './chat.service';
 import { CreateRoomDto, SendMessageDto, MarkReadDto } from './dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 /**
- * REST Controller for chat operations
- * Provides HTTP endpoints for chat room and message management
+ * REST Controller for chat operations.
+ * Provides HTTP endpoints for chat room and message management.
  */
 @ApiTags('Chat')
 @Controller('chat')
-@UseGuards(JwtAuthGuard)
-@ApiBearerAuth()
+@UseGuards(SessionAuthGuard)
+@ApiCookieAuth()
 export class ChatController {
     constructor(private readonly chatService: ChatService) { }
 
     /**
-     * Get all chat rooms for the current user
+     * Get all chat rooms for the current user.
      */
     @Get('rooms')
     @ApiOperation({ summary: 'Get my chat rooms' })
@@ -44,7 +44,7 @@ export class ChatController {
     }
 
     /**
-     * Create or find a chat room with another user
+     * Create or find a chat room with another user.
      */
     @Post('rooms')
     @ApiOperation({ summary: 'Create or find a chat room' })
@@ -53,12 +53,15 @@ export class ChatController {
         @CurrentUser() user: any,
         @Body() createRoomDto: CreateRoomDto,
     ) {
-        const room = await this.chatService.findOrCreateRoom(user.id, createRoomDto);
+        const room = await this.chatService.findOrCreateRoom(
+            user.id,
+            createRoomDto,
+        );
         return { success: true, data: room };
     }
 
     /**
-     * Get a specific chat room
+     * Get a specific chat room.
      */
     @Get('rooms/:id')
     @ApiOperation({ summary: 'Get a chat room' })
@@ -72,7 +75,7 @@ export class ChatController {
     }
 
     /**
-     * Get messages for a chat room
+     * Get messages for a chat room.
      */
     @Get('rooms/:id/messages')
     @ApiOperation({ summary: 'Get messages for a room' })
@@ -85,15 +88,15 @@ export class ChatController {
         @Query('page') page?: string,
         @Query('limit') limit?: string,
     ) {
+        const pageNum = parseInt(page || '1');
+        const limitNum = parseInt(limit || '50');
+
         const { data, total } = await this.chatService.getRoomMessages(
             roomId,
             user.id,
-            parseInt(page || '1'),
-            parseInt(limit || '50'),
+            pageNum,
+            limitNum,
         );
-
-        const pageNum = parseInt(page || '1');
-        const limitNum = parseInt(limit || '50');
 
         return {
             success: true,
@@ -108,7 +111,7 @@ export class ChatController {
     }
 
     /**
-     * Send a message to a room (HTTP fallback for WebSocket)
+     * Send a message to a room (HTTP fallback for WebSocket).
      */
     @Post('rooms/:id/messages')
     @ApiOperation({ summary: 'Send a message' })
@@ -118,12 +121,16 @@ export class ChatController {
         @Param('id') roomId: string,
         @Body() sendMessageDto: SendMessageDto,
     ) {
-        const message = await this.chatService.sendMessage(roomId, user.id, sendMessageDto);
+        const message = await this.chatService.sendMessage(
+            roomId,
+            user.id,
+            sendMessageDto,
+        );
         return { success: true, data: message };
     }
 
     /**
-     * Mark messages as read
+     * Mark messages as read.
      */
     @Patch('rooms/:id/read')
     @ApiOperation({ summary: 'Mark messages as read' })
@@ -137,7 +144,7 @@ export class ChatController {
     }
 
     /**
-     * Get total unread message count
+     * Get total unread message count.
      */
     @Get('unread')
     @ApiOperation({ summary: 'Get unread message count' })

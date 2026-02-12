@@ -1,103 +1,132 @@
 import {
     Controller,
     Get,
+    Post,
     Patch,
     Param,
     Query,
     Body,
     UseGuards,
     NotFoundException,
+    ForbiddenException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery, ApiParam } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiOperation,
+    ApiCookieAuth,
+    ApiQuery,
+    ApiParam,
+    ApiResponse,
+} from '@nestjs/swagger';
 import { ServiceRequestsService } from './service-requests.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CreateServiceRequestDto } from './dto/create-service-request.dto';
+import { UpdateServiceStatusDto } from './dto/update-service-status.dto';
+import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { ServiceStatus } from '@prisma/client';
+import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dto';
+import { ServiceRequest } from '@prisma/client';
 
 @ApiTags('Service Requests')
 @Controller('service-requests')
+@ApiCookieAuth()
+@UseGuards(SessionAuthGuard)
 export class ServiceRequestsController {
-    constructor(private readonly serviceRequestsService: ServiceRequestsService) { }
+    constructor(
+        private readonly serviceRequestsService: ServiceRequestsService,
+    ) { }
 
-    /**
-     * Get contractor's service requests (jobs)
-     */
+    @Post()
+    @ApiOperation({ summary: 'Create a new service request' })
+    @ApiResponse({ status: 201, description: 'Request created' })
+    async create(
+        @Body() createDto: CreateServiceRequestDto,
+        @CurrentUser() user: any,
+    ): Promise<StandardResponse<ServiceRequest>> {
+        const request = await this.serviceRequestsService.create(user.id, createDto);
+        // @ts-ignore - Prisma types might need refresh but runtime is fine
+        return new StandardResponse(request);
+    }
+
+    @Get('my')
+    @ApiOperation({ summary: 'Get my service requests (as requester)' })
+    @ApiQuery({ name: 'page', required: false })
+    @ApiQuery({ name: 'limit', required: false })
+    async findMyRequests(
+        @CurrentUser() user: any,
+        @Query('page') page = 1,
+        @Query('limit') limit = 20,
+    ): Promise<PaginatedResponse<ServiceRequest>> {
+        const { data, total } = await this.serviceRequestsService.findByRequester(
+            user.id,
+            Number(page),
+            Number(limit),
+        );
+        // @ts-ignore
+        return new PaginatedResponse(data, total, Number(page), Number(limit));
+    }
+
     @Get('contractor')
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
-    @ApiOperation({ summary: 'Get my service requests as contractor' })
-    @ApiQuery({ name: 'page', required: false, type: Number })
-    @ApiQuery({ name: 'limit', required: false, type: Number })
+    @ApiOperation({ summary: 'Get my service requests (as contractor)' })
+    @ApiQuery({ name: 'page', required: false })
+    @ApiQuery({ name: 'limit', required: false })
     async findMyJobs(
         @CurrentUser() user: any,
-        @Query('page') page?: string,
-        @Query('limit') limit?: string,
-    ) {
-        const contractorProfileId = await this.serviceRequestsService.getContractorProfileId(user.id);
-        if (!contractorProfileId) {
-            return { success: true, data: [], pagination: { total: 0, page: 1, limit: 20, totalPages: 0 } };
+        @Query('page') page = 1,
+        @Query('limit') limit = 20,
+    ): Promise<PaginatedResponse<ServiceRequest>> {
+        const contractorId = await this.serviceRequestsService.getContractorProfileId(user.id);
+
+        if (!contractorId) {
+            return new PaginatedResponse([], 0, Number(page), Number(limit));
         }
 
         const { data, total } = await this.serviceRequestsService.findByContractor(
-            contractorProfileId,
-            parseInt(page || '1'),
-            parseInt(limit || '20'),
+            contractorId,
+            Number(page),
+            Number(limit),
         );
-
-        const pageNum = parseInt(page || '1');
-        const limitNum = parseInt(limit || '20');
-
-        return {
-            success: true,
-            data,
-            pagination: {
-                total,
-                page: pageNum,
-                limit: limitNum,
-                totalPages: Math.ceil(total / limitNum),
-            },
-        };
+        // @ts-ignore
+        return new PaginatedResponse(data, total, Number(page), Number(limit));
     }
 
-    /**
-     * Get contractor dashboard stats
-     */
     @Get('contractor/stats')
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
     @ApiOperation({ summary: 'Get contractor dashboard statistics' })
-    async getContractorStats(@CurrentUser() user: any) {
-        const contractorProfileId = await this.serviceRequestsService.getContractorProfileId(user.id);
-        if (!contractorProfileId) {
-            return {
-                success: true,
-                data: { pendingJobs: 0, activeJobs: 0, completedJobs: 0, totalEarnings: 0 }
-            };
+    async getContractorStats(@CurrentUser() user: any): Promise<StandardResponse<any>> {
+        const contractorId = await this.serviceRequestsService.getContractorProfileId(user.id);
+
+        if (!contractorId) {
+            return new StandardResponse({
+                pendingJobs: 0,
+                activeJobs: 0,
+                completedJobs: 0,
+                totalEarnings: 0,
+            });
         }
 
-        const stats = await this.serviceRequestsService.getContractorStats(contractorProfileId);
-        return { success: true, data: stats };
+        const stats = await this.serviceRequestsService.getContractorStats(contractorId);
+        return new StandardResponse(stats);
     }
 
-    /**
-     * Update service request status
-     */
     @Patch(':id/status')
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
     @ApiOperation({ summary: 'Update service request status' })
-    @ApiParam({ name: 'id', description: 'Service request ID' })
+    @ApiParam({ name: 'id', description: 'UUID of the service request' })
     async updateStatus(
-        @CurrentUser() user: any,
         @Param('id') id: string,
-        @Body('status') status: ServiceStatus,
-    ) {
-        const contractorProfileId = await this.serviceRequestsService.getContractorProfileId(user.id);
-        if (!contractorProfileId) {
-            throw new NotFoundException('Contractor profile not found');
+        @Body() updateDto: UpdateServiceStatusDto,
+        @CurrentUser() user: any,
+    ): Promise<StandardResponse<ServiceRequest>> {
+        const contractorId = await this.serviceRequestsService.getContractorProfileId(user.id);
+
+        if (!contractorId) {
+            throw new ForbiddenException('User is not a contractor');
         }
 
-        const request = await this.serviceRequestsService.updateStatus(id, contractorProfileId, status);
-        return { success: true, data: request };
+        const request = await this.serviceRequestsService.updateStatus(
+            id,
+            contractorId,
+            updateDto,
+        );
+        // @ts-ignore
+        return new StandardResponse(request);
     }
 }
