@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/Input"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/context/AuthContext"
+import { apiClient } from "@/lib/apiClient"
 
 export default function LoginPage() {
     const router = useRouter()
@@ -42,12 +43,9 @@ export default function LoginPage() {
             // Bridge: Create backend session using Supabase token
             if (data.session?.access_token) {
                 try {
-                    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium.onrender.com'
-                    await fetch(`${API_URL}/auth/supabase-session`, {
+                    await apiClient('/auth/supabase-session', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ token: data.session.access_token }),
-                        credentials: 'include', // Important for setting the cookie
                     })
                 } catch (bridgeErr) {
                     console.error('Backend session creation failed:', bridgeErr)
