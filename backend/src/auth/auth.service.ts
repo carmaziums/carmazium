@@ -150,13 +150,13 @@ export class AuthService {
             const { data, error } = await this.supabase.auth.getUser(token);
 
             if (error || !data.user) {
-                this.logger.warn(`Supabase token verification failed: ${error?.message || 'No user'}`);
+                this.logger.warn(`Supabase token verification failed: ${error?.message || 'No user found in Supabase response'}`);
                 return null;
             }
 
             const email = data.user.email;
             if (!email) {
-                this.logger.warn('Supabase user has no email');
+                this.logger.warn('Supabase user has no email in the token response');
                 return null;
             }
 
@@ -171,15 +171,20 @@ export class AuthService {
                 },
             });
 
-            if (!localUser || localUser.deletedAt) {
-                this.logger.warn(`No local user found for Supabase email: ${email}`);
+            if (!localUser) {
+                this.logger.warn(`No local user found for Supabase email: ${email} - User might need to sync`);
+                return null;
+            }
+
+            if (localUser.deletedAt) {
+                this.logger.warn(`User ${email} is marked as deleted`);
                 return null;
             }
 
             const { passwordHash: _, ...safeUser } = localUser;
             return safeUser;
         } catch (err) {
-            this.logger.error(`Supabase token verification error: ${err.message}`);
+            this.logger.error(`Supabase token verification error: ${err.message}`, err.stack);
             return null;
         }
     }

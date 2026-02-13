@@ -23,7 +23,11 @@ export class CsrfMiddleware implements NestMiddleware {
             '/auth/supabase-session',
         ];
 
+        // Debug logging for CSRF
+        // console.log(`[CsrfMiddleware] Method: ${method}, Path: ${req.path}, OriginalUrl: ${req.originalUrl}`);
+
         if (excludedPaths.some(path => req.path.startsWith(path))) {
+            // console.log(`[CsrfMiddleware] Skipping CSRF for excluded path: ${req.path}`);
             return next();
         }
 
@@ -31,6 +35,7 @@ export class CsrfMiddleware implements NestMiddleware {
         const csrfHeader = req.headers['x-csrf-token'];
 
         if (!csrfHeader) {
+            console.error(`[CsrfMiddleware] Blocked request: ${method} ${req.originalUrl} - Missing X-CSRF-Token`);
             throw new ForbiddenException('CSRF token missing (X-CSRF-Token header required)');
         }
 
