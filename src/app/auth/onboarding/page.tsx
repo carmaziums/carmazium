@@ -4,14 +4,13 @@ import { Button } from "@/components/ui/Button"
 import { CheckCircle, Loader2, Mail } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/context/AuthContext"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { useState, useEffect } from "react"
 
 export default function OnboardingPage() {
     const { user, profile, loading } = useAuth()
     const router = useRouter()
-    const searchParams = useSearchParams()
     const [resending, setResending] = useState(false)
     const [resendSuccess, setResendSuccess] = useState(false)
     const [isVerified, setIsVerified] = useState(false)
@@ -22,14 +21,6 @@ export default function OnboardingPage() {
             setIsVerified(!!user.email_confirmed_at)
         }
     }, [user])
-
-    // Check URL params for verification status
-    useEffect(() => {
-        const verified = searchParams?.get('verified')
-        if (verified === 'true') {
-            setIsVerified(true)
-        }
-    }, [searchParams])
 
     const getBaseUrl = () => {
         if (typeof window !== 'undefined') {
