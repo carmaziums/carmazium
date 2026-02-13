@@ -8,8 +8,12 @@ import { Car, Camera, List, DollarSign, CheckCircle, ArrowRight, ArrowLeft, Gave
 import Image from "next/image"
 import { ImageUpload } from "@/components/listing/ImageUpload"
 import { createListing, formatPrice, type CreateListingRequest } from "@/lib/listingApi"
+import { useAuth } from "@/context/AuthContext"
+import { useRouter } from "next/navigation"
 
 export default function SellPage() {
+    const router = useRouter()
+    const { user, profile, loading: authLoading } = useAuth()
     const [currentStep, setCurrentStep] = React.useState(1)
     const [formData, setFormData] = React.useState({
         // Step 1: Vehicle Info
@@ -42,9 +46,12 @@ export default function SellPage() {
 
     const [sellingMethod, setSellingMethod] = React.useState<'list' | 'retail' | null>(null)
     const [showLoginModal, setShowLoginModal] = React.useState(false)
-    const [isAuthenticated, setIsAuthenticated] = React.useState(false)
     const [isSubmitting, setIsSubmitting] = React.useState(false)
     const [submitError, setSubmitError] = React.useState<string | null>(null)
+
+    // Check authentication and email verification
+    const isAuthenticated = !!user && !!profile
+    const isEmailVerified = !!user?.email_confirmed_at
 
     // Auto-generate title from make, model, year
     React.useEffect(() => {
@@ -68,14 +75,21 @@ export default function SellPage() {
     const handleSellingMethodClick = (method: 'list' | 'retail') => {
         if (!isAuthenticated) {
             setShowLoginModal(true)
-        } else {
-            setSellingMethod(method)
-            // Map selling method to listing type
-            setFormData(prev => ({
-                ...prev,
-                listingType: method === 'list' ? 'CLASSIFIED' : 'AUCTION'
-            }))
+            return
         }
+
+        if (!isEmailVerified) {
+            alert('Please verify your email address before creating a listing. Check your inbox for the verification link.')
+            router.push('/auth/onboarding')
+            return
+        }
+
+        setSellingMethod(method)
+        // Map selling method to listing type
+        setFormData(prev => ({
+            ...prev,
+            listingType: method === 'list' ? 'CLASSIFIED' : 'AUCTION'
+        }))
     }
 
     const validateCurrentStep = (): boolean => {
@@ -104,6 +118,19 @@ export default function SellPage() {
     const handleSubmit = async () => {
         if (!validateCurrentStep()) {
             alert("Please ensure all required fields are filled.")
+            return
+        }
+
+        // Check authentication
+        if (!isAuthenticated) {
+            setShowLoginModal(true)
+            return
+        }
+
+        // Check email verification
+        if (!isEmailVerified) {
+            alert('Please verify your email address before creating a listing. Check your inbox for the verification link.')
+            router.push('/auth/onboarding')
             return
         }
 
@@ -149,9 +176,22 @@ export default function SellPage() {
             setCurrentStep(1)
             setSellingMethod(null)
 
-        } catch (error) {
+            // Redirect to dashboard or listing page
+            router.push(`/buy-cars/${response.data.slug}`)
+
+        } catch (error: any) {
             console.error('Submission error:', error)
-            setSubmitError(error instanceof Error ? error.message : 'Failed to create listing')
+            
+            // Handle authentication errors
+            if (error.message?.includes('Unauthorized') || error.message?.includes('401')) {
+                setSubmitError('Please log in to create a listing.')
+                setShowLoginModal(true)
+            } else if (error.message?.includes('email') || error.message?.includes('verify')) {
+                setSubmitError('Please verify your email address before creating a listing.')
+                router.push('/auth/onboarding')
+            } else {
+                setSubmitError(error.message || 'Failed to create listing. Please try again.')
+            }
         } finally {
             setIsSubmitting(false)
         }
@@ -190,12 +230,26 @@ export default function SellPage() {
                     </div>
 
                     <div className="space-y-3">
-                        <Button onClick={() => { setIsAuthenticated(true); setShowLoginModal(false); }} className="w-full shadow-neon">Log In to Continue</Button>
-                        <Button variant="outline" className="w-full border-white/10 text-gray-400 hover:text-white">Create Account</Button>
+                        <Button 
+                            onClick={() => { 
+                                setShowLoginModal(false)
+                                router.push('/auth/login?redirect=/sell')
+                            }} 
+                            className="w-full shadow-neon"
+                        >
+                            Log In to Continue
+                        </Button>
+                        <Button 
+                            variant="outline" 
+                            className="w-full border-white/10 text-gray-400 hover:text-white"
+                            onClick={() => {
+                                setShowLoginModal(false)
+                                router.push('/auth/signup?redirect=/sell')
+                            }}
+                        >
+                            Create Account
+                        </Button>
                     </div>
-
-                    {/* Bypass for demo */}
-                    <p className="mt-4 text-xs text-gray-600 cursor-pointer hover:text-primary text-center" onClick={() => { setIsAuthenticated(true); setShowLoginModal(false); }}>(Demo: Click to bypass)</p>
                 </div>
             </div>
         )

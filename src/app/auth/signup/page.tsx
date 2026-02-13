@@ -22,17 +22,30 @@ export default function SignupPage() {
 
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium.onrender.com'
 
+    // Get the base URL for email redirects
+    const getBaseUrl = () => {
+        if (typeof window !== 'undefined') {
+            return window.location.origin
+        }
+        // Fallback for SSR
+        return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    }
+
     const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
         setError(null)
 
         try {
-            // 1. Supabase Signup
+            const baseUrl = getBaseUrl()
+            const redirectTo = `${baseUrl}/auth/callback?redirect_to=/auth/onboarding`
+
+            // 1. Supabase Signup with proper email redirect
             const { data: authData, error: authError } = await supabase.auth.signUp({
                 email: formData.email,
                 password: formData.password,
                 options: {
+                    emailRedirectTo: redirectTo,
                     data: {
                         first_name: formData.firstName,
                         last_name: formData.lastName,

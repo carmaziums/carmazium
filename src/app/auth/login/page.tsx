@@ -38,7 +38,22 @@ export default function LoginPage() {
                 password: formData.password
             })
 
-            if (authError) throw authError
+            if (authError) {
+                // Check for email verification error
+                if (authError.message.includes('Email not confirmed') || authError.message.includes('email_not_confirmed')) {
+                    throw new Error('Please verify your email address before logging in. Check your inbox for the verification link.')
+                }
+                throw authError
+            }
+
+            // Check if email is verified
+            if (data.user && !data.user.email_confirmed_at) {
+                // Sign out and redirect to onboarding
+                await supabase.auth.signOut()
+                router.push('/auth/onboarding?verified=false')
+                setError('Please verify your email address before logging in. Check your inbox for the verification link.')
+                return
+            }
 
             // Bridge: Create backend session using Supabase token
             if (data.session?.access_token) {

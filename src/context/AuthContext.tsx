@@ -83,6 +83,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 localStorage.removeItem('authToken');
             }
 
+            // Handle email verification events
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                // Check if email was just verified
+                if (session?.user?.email_confirmed_at && session?.user && token) {
+                    // Ensure backend session exists after verification
+                    try {
+                        await apiClient('/auth/supabase-session', {
+                            method: 'POST',
+                            body: JSON.stringify({ token }),
+                        })
+                    } catch (err) {
+                        console.warn('Session bridge failed after verification:', err)
+                    }
+                }
+            }
+
             if (session?.user && token) {
                 await fetchProfile()
             } else {
