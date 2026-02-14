@@ -45,7 +45,7 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined)
 // ============================================================================
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
-    const { user } = useAuth()
+    const { user, profile, loading: authLoading } = useAuth()
     const [rooms, setRooms] = useState<ChatRoom[]>([])
     const [unreadCount, setUnreadCount] = useState(0)
     const [isConnected, setIsConnected] = useState(false)
@@ -147,13 +147,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         }
     }, [user])
 
-    // Initial load
+    // Initial load only after backend session is ready (profile loaded) to avoid 401s
     useEffect(() => {
-        if (user) {
+        if (user && profile && !authLoading) {
             refreshRooms()
             refreshUnreadCount()
         }
-    }, [user, refreshRooms, refreshUnreadCount])
+    }, [user, profile, authLoading, refreshRooms, refreshUnreadCount])
 
     // Socket actions
     const sendMessage = useCallback((roomId: string, content: string) => {

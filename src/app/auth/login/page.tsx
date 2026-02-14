@@ -55,16 +55,21 @@ export default function LoginPage() {
                 return
             }
 
-            // Bridge: Create backend session using Supabase token
+            // Bridge: create backend session so dashboard and API work (cookie + profile)
             if (data.session?.access_token) {
                 try {
                     await apiClient('/auth/supabase-session', {
                         method: 'POST',
                         body: JSON.stringify({ token: data.session.access_token }),
                     })
-                } catch (bridgeErr) {
-                    console.error('Backend session creation failed:', bridgeErr)
-                    // Continue anyway — the dual-mode guard will handle requests via Bearer token
+                } catch (bridgeErr: any) {
+                    setError(
+                        bridgeErr?.message?.includes('user not found')
+                            ? 'Your account is not set up on the server. Please sign up again or contact support.'
+                            : 'Could not connect to the server. Please try again in a moment.'
+                    )
+                    setLoading(false)
+                    return
                 }
             }
 

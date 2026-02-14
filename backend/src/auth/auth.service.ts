@@ -146,23 +146,31 @@ export class AuthService {
      * Used by the auth bridge to create backend sessions from Supabase JWTs.
      */
     async verifySupabaseToken(token: string) {
+        if (!token?.trim()) {
+            this.logger.warn('verifySupabaseToken: empty token');
+            return null;
+        }
         try {
             const { data, error } = await this.supabase.auth.getUser(token);
 
             if (error || !data.user) {
-                this.logger.warn(`Supabase token verification failed: ${error?.message || 'No user found in Supabase response'}`);
+                this.logger.warn(
+                    `Supabase getUser failed (check SUPABASE_URL/SUPABASE_ANON_KEY match frontend project): ${error?.message || 'No user'}`,
+                );
                 return null;
             }
 
             const email = data.user.email;
             if (!email) {
-                this.logger.warn('Supabase user has no email in the token response');
+                this.logger.warn('Supabase user has no email');
                 return null;
             }
 
+            const emailNorm = email.toLowerCase().trim();
+
             // Look up the local user by email
             let localUser = await this.prisma.user.findUnique({
-                where: { email: email.toLowerCase().trim() },
+                where: { email: emailNorm },
                 include: {
                     dealerProfile: true,
                     contractorProfile: true,
@@ -173,33 +181,42 @@ export class AuthService {
 
             // Auto-sync: if valid Supabase user but no local user, create one (e.g. social signup or missed sync at signup)
             if (!localUser) {
-                const meta = (data.user.user_metadata || {}) as Record<string, string>;
-                const role = meta?.role && Object.values(UserRole).includes(meta.role as UserRole)
-                    ? (meta.role as UserRole)
-                    : UserRole.BUYER;
-                localUser = await this.prisma.user.upsert({
-                    where: { email: email.toLowerCase().trim() },
-                    update: {
-                        firstName: meta.first_name ?? meta.firstName ?? undefined,
-                        lastName: meta.last_name ?? meta.lastName ?? undefined,
-                        ...(role && { role }),
-                    },
-                    create: {
-                        id: data.user.id,
-                        email: email.toLowerCase().trim(),
-                        firstName: meta.first_name ?? meta.firstName ?? null,
-                        lastName: meta.last_name ?? meta.lastName ?? null,
-                        role,
-                        passwordHash: 'SUPABASE_EXTERNAL_AUTH',
-                    },
-                    include: {
-                        dealerProfile: true,
-                        contractorProfile: true,
-                        financePartnerProfile: true,
-                        insurancePartnerProfile: true,
-                    },
-                });
-                this.logger.log(`Auto-synced user from Supabase: ${email}`);
+                try {
+                    const meta = (data.user.user_metadata || {}) as Record<string, string>;
+                    const role =
+                        meta?.role && Object.values(UserRole).includes(meta.role as UserRole)
+                            ? (meta.role as UserRole)
+                            : UserRole.BUYER;
+                    localUser = await this.prisma.user.upsert({
+                        where: { email: emailNorm },
+                        update: {
+                            firstName: meta.first_name ?? meta.firstName ?? undefined,
+                            lastName: meta.last_name ?? meta.lastName ?? undefined,
+                            ...(role && { role }),
+                        },
+                        create: {
+                            id: data.user.id,
+                            email: emailNorm,
+                            firstName: meta.first_name ?? meta.firstName ?? null,
+                            lastName: meta.last_name ?? meta.lastName ?? null,
+                            role,
+                            passwordHash: 'SUPABASE_EXTERNAL_AUTH',
+                        },
+                        include: {
+                            dealerProfile: true,
+                            contractorProfile: true,
+                            financePartnerProfile: true,
+                            insurancePartnerProfile: true,
+                        },
+                    });
+                    this.logger.log(`Auto-synced user from Supabase: ${email}`);
+                } catch (syncErr: any) {
+                    this.logger.error(
+                        `Auto-sync failed for ${email}: ${syncErr?.message || syncErr}`,
+                        syncErr?.stack,
+                    );
+                    return null;
+                }
             }
 
             if (localUser.deletedAt) {
@@ -209,8 +226,8 @@ export class AuthService {
 
             const { passwordHash: _, ...safeUser } = localUser;
             return safeUser;
-        } catch (err) {
-            this.logger.error(`Supabase token verification error: ${err.message}`, err.stack);
+        } catch (err: any) {
+            this.logger.error(`Supabase token verification error: ${err?.message}`, err?.stack);
             return null;
         }
     }
