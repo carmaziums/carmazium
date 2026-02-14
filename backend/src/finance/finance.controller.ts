@@ -7,6 +7,8 @@ import {
     Query,
     Body,
     UseGuards,
+    HttpCode,
+    HttpStatus,
     NotFoundException,
     ForbiddenException,
 } from '@nestjs/common';
@@ -34,6 +36,7 @@ export class FinanceController {
     constructor(private readonly financeService: FinanceService) { }
 
     @Post('apply')
+    @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Submit finance application' })
     @ApiResponse({ status: 201, description: 'Application submitted' })
     async create(

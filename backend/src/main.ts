@@ -147,6 +147,16 @@ async function bootstrap() {
   const port = process.env.PORT ?? 3001;
   await app.listen(port, '0.0.0.0');
 
+  // Graceful shutdown: close Redis adapter connections when present
+  const shutdown = async () => {
+    if (typeof redisIoAdapter.close === 'function') {
+      await redisIoAdapter.close();
+    }
+    process.exit(0);
+  };
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
+
   console.log(`🚀 Server running on http://localhost:${port}`);
   console.log(`📚 Swagger docs available at http://localhost:${port}/api`);
 }

@@ -8,6 +8,7 @@ import {
 import { TransactionsService } from './transactions.service';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dto';
 
 @ApiTags('Transactions')
 @Controller('transactions')
@@ -38,17 +39,7 @@ export class TransactionsController {
             pageNum,
             limitNum,
         );
-
-        return {
-            success: true,
-            data,
-            pagination: {
-                total,
-                page: pageNum,
-                limit: limitNum,
-                totalPages: Math.ceil(total / limitNum),
-            },
-        };
+        return new PaginatedResponse(data, total, pageNum, limitNum);
     }
 
     /**
@@ -60,6 +51,6 @@ export class TransactionsController {
     @ApiOperation({ summary: 'Get earnings statistics' })
     async getEarningsStats(@CurrentUser() user: any) {
         const stats = await this.transactionsService.getEarningsStats(user.id);
-        return { success: true, data: stats };
+        return new StandardResponse(stats);
     }
 }

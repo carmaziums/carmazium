@@ -7,6 +7,8 @@ import {
     Param,
     Delete,
     UseGuards,
+    HttpCode,
+    HttpStatus,
 } from '@nestjs/common';
 import { AuctionsService } from './auctions.service';
 import { CreateAuctionDto } from './dto/create-auction.dto';
@@ -25,6 +27,7 @@ export class AuctionsController {
     @Post()
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()
+    @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Create a new auction' })
     @ApiResponse({ status: 201, description: 'Auction created successfully' })
     async create(

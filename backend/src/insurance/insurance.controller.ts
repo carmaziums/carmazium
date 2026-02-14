@@ -7,6 +7,8 @@ import {
     Query,
     Body,
     UseGuards,
+    HttpCode,
+    HttpStatus,
     NotFoundException,
     ForbiddenException,
 } from '@nestjs/common';
@@ -34,6 +36,7 @@ export class InsuranceController {
     constructor(private readonly insuranceService: InsuranceService) { }
 
     @Post('quote')
+    @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Request insurance quote' })
     @ApiResponse({ status: 201, description: 'Quote requested' })
     async create(

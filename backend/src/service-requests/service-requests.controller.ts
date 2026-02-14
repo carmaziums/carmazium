@@ -7,6 +7,8 @@ import {
     Query,
     Body,
     UseGuards,
+    HttpCode,
+    HttpStatus,
     NotFoundException,
     ForbiddenException,
 } from '@nestjs/common';
@@ -36,6 +38,7 @@ export class ServiceRequestsController {
     ) { }
 
     @Post()
+    @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Create a new service request' })
     @ApiResponse({ status: 201, description: 'Request created' })
     async create(

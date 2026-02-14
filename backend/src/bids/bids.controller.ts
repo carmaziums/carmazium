@@ -6,6 +6,8 @@ import {
     Param,
     Query,
     UseGuards,
+    HttpCode,
+    HttpStatus,
 } from '@nestjs/common';
 import {
     ApiTags,
@@ -18,6 +20,7 @@ import { BidsService } from './bids.service';
 import { CreateBidDto } from './dto/create-bid.dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dto';
 
 @ApiTags('Bids')
 @Controller('bids')
@@ -30,6 +33,7 @@ export class BidsController {
     @Post()
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()
+    @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Place a bid on an auction listing' })
     @ApiResponse({ status: 201, description: 'Bid placed successfully' })
     @ApiResponse({ status: 400, description: 'Invalid bid or listing not an auction' })
@@ -39,7 +43,7 @@ export class BidsController {
         @Body() createBidDto: CreateBidDto,
     ) {
         const bid = await this.bidsService.create(user.id, createBidDto);
-        return { success: true, data: bid };
+        return new StandardResponse(bid);
     }
 
     /**
@@ -64,17 +68,7 @@ export class BidsController {
             pageNum,
             limitNum,
         );
-
-        return {
-            success: true,
-            data,
-            pagination: {
-                total,
-                page: pageNum,
-                limit: limitNum,
-                totalPages: Math.ceil(total / limitNum),
-            },
-        };
+        return new PaginatedResponse(data, total, pageNum, limitNum);
     }
 
     /**
@@ -86,7 +80,7 @@ export class BidsController {
     @ApiOperation({ summary: 'Get buyer dashboard statistics' })
     async getBuyerStats(@CurrentUser() user: any) {
         const stats = await this.bidsService.getBuyerStats(user.id);
-        return { success: true, data: stats };
+        return new StandardResponse(stats);
     }
 
     /**
@@ -96,6 +90,6 @@ export class BidsController {
     @ApiOperation({ summary: 'Get all bids for a listing' })
     async findByListing(@Param('listingId') listingId: string) {
         const bids = await this.bidsService.findByListing(listingId);
-        return { success: true, data: bids };
+        return new StandardResponse(bids);
     }
 }

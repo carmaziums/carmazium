@@ -36,7 +36,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         // Log the error (sanitized for production)
         if (httpStatus >= 500) {
             this.logger.error(
-                `Unhandles Exception: ${exception instanceof Error ? exception.message : exception}`,
+                `Unhandled Exception: ${exception instanceof Error ? exception.message : exception}`,
                 exception instanceof Error ? exception.stack : '',
             );
         }
