@@ -22,11 +22,9 @@ export class CsrfMiddleware implements NestMiddleware {
             '/api/auth/supabase-session',
             '/auth/supabase-session',
         ];
+        const fullPath = req.originalUrl?.split('?')[0] ?? req.path;
 
-        // Debug logging for CSRF
-        // console.log(`[CsrfMiddleware] Method: ${method}, Path: ${req.path}, OriginalUrl: ${req.originalUrl}`);
-
-        if (excludedPaths.some(path => req.path.startsWith(path))) {
+        if (excludedPaths.some(path => req.path.startsWith(path) || fullPath.endsWith(path.replace(/^\//, '')))) {
             // console.log(`[CsrfMiddleware] Skipping CSRF for excluded path: ${req.path}`);
             return next();
         }
