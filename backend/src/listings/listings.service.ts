@@ -100,7 +100,7 @@ export class ListingsService {
      * Automatically excludes soft-deleted items
      */
     async findAll(filterDto: ListingFilterDto): Promise<{ data: Listing[]; total: number }> {
-        const { minPrice, maxPrice, make, year, page = 1, limit = 20 } = filterDto;
+        const { minPrice, maxPrice, make, year, fuelType, transmission, page = 1, limit = 20 } = filterDto;
 
         // Build where clause
         const where: any = {
@@ -122,6 +122,14 @@ export class ListingsService {
 
         if (year) {
             where.year = year;
+        }
+
+        if (fuelType) {
+            where.fuelType = fuelType;
+        }
+
+        if (transmission) {
+            where.transmission = transmission;
         }
 
         // Calculate pagination

@@ -22,6 +22,14 @@ export class SessionAuthGuard implements CanActivate {
 
         // ── Path 1: Existing session cookie ──────────────────────────
         if (request.session?.userId) {
+            // Ensure req.user is set (hydration middleware may run after Nest in some setups)
+            if (!(request as any).user) {
+                const user = await this.authService.validateSession(request.session.userId);
+                if (!user) {
+                    throw new UnauthorizedException('Session invalid — please log in again');
+                }
+                (request as any).user = user;
+            }
             return true;
         }
 

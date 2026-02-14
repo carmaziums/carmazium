@@ -28,13 +28,17 @@ async function bootstrap() {
 
   // ---------------------------------------------------------------------------
   // CORS — allow frontend origins with credentials (cookies)
+  // Production (Vercel): set ALLOWED_ORIGINS=https://carmazium.vercel.app,https://yourdomain.com
   // ---------------------------------------------------------------------------
+  const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
+    : [
+        'http://localhost:3000',
+        'https://carmazium.vercel.app',
+        'https://carmazium.onrender.com',
+      ];
   app.enableCors({
-    origin: [
-      'http://localhost:3000',
-      'https://carmazium.vercel.app',
-      'https://carmazium.onrender.com',
-    ],
+    origin: allowedOrigins,
     credentials: true,
   });
 
@@ -45,8 +49,14 @@ async function bootstrap() {
 
   // ---------------------------------------------------------------------------
   // Session middleware — PostgreSQL-backed session store
+  // Production (Render): set SESSION_SECRET and ensure NODE_ENV=production
+  // so cookie is Secure + SameSite=None for cross-origin (Vercel → Render).
   // ---------------------------------------------------------------------------
   const PgSession = pgConnect(session);
+  const isProduction = process.env.NODE_ENV === 'production';
+  if (isProduction && !process.env.SESSION_SECRET) {
+    console.warn('SESSION_SECRET is not set in production — session cookies may be insecure');
+  }
 
   app.use(
     session({
@@ -61,8 +71,8 @@ async function bootstrap() {
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       },
     }),
