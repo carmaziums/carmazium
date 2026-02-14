@@ -30,8 +30,7 @@ export default function DashboardPage() {
                 router.push('/dashboard/seller')
             }
         } else {
-            // Fallback if profile fetch failed but user exists
-            console.warn('No profile found, redirecting to default dashboard')
+            // Profile fetch failed (e.g. backend session not ready); redirect to default
             router.push('/dashboard/seller')
         }
     }, [user, profile, loading, router])

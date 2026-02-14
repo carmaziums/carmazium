@@ -51,66 +51,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     useEffect(() => {
+        // Establish backend session then fetch profile (avoid 401s on protected routes)
+        const bridgeThenProfile = async (token: string) => {
+            try {
+                await apiClient('/auth/supabase-session', {
+                    method: 'POST',
+                    body: JSON.stringify({ token }),
+                });
+            } catch {
+                // Session bridge failed; profile fetch may still work via Bearer token
+            }
+            await fetchProfile();
+        };
+
         // Get initial session
         supabase.auth.getSession().then(({ data: { session } }) => {
             const token = session?.access_token || null;
+            setUser(session?.user ?? null);
             if (token) {
                 localStorage.setItem('authToken', token);
-
-                // Ensure backend session exists (for SSR/cookies)
-                apiClient('/auth/supabase-session', {
-                    method: 'POST',
-                    body: JSON.stringify({ token }),
-                }).catch(err => console.warn('Session restore bridge failed', err));
-            }
-
-            setUser(session?.user ?? null)
-            if (session?.user && token) {
-                fetchProfile()
+                bridgeThenProfile(token);
             } else {
-                setLoading(false)
+                setLoading(false);
             }
-        })
+        });
 
         // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            const token = session?.access_token || null;
-            setUser(session?.user ?? null)
+        const {
+            data: { subscription },
+        } = supabase.auth.onAuthStateChange(async (event, session) => {
+            const token = session?.access_token ?? null;
+            setUser(session?.user ?? null);
 
             if (token) {
                 localStorage.setItem('authToken', token);
             } else if (event === 'SIGNED_OUT') {
                 localStorage.removeItem('authToken');
+                setProfile(null);
+                setLoading(false);
+                return;
             }
 
-            // Handle email verification events
-            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-                // Check if email was just verified
-                if (session?.user?.email_confirmed_at && session?.user && token) {
-                    // Ensure backend session exists after verification
-                    try {
-                        await apiClient('/auth/supabase-session', {
-                            method: 'POST',
-                            body: JSON.stringify({ token }),
-                        })
-                    } catch (err) {
-                        console.warn('Session bridge failed after verification:', err)
-                    }
-                }
-            }
-
+            // Always establish backend session on sign-in or token refresh, then fetch profile
             if (session?.user && token) {
-                await fetchProfile()
+                if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                    await bridgeThenProfile(token);
+                } else {
+                    await fetchProfile();
+                }
             } else {
-                setProfile(null)
+                setProfile(null);
             }
-            setLoading(false)
-        })
+            setLoading(false);
+        });
 
         return () => {
-            subscription.unsubscribe()
-        }
-    }, [])
+            subscription.unsubscribe();
+        };
+    }, []);
 
     const signOut = async () => {
         await supabase.auth.signOut()
