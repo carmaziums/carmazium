@@ -31,6 +31,18 @@ export class CsrfMiddleware implements NestMiddleware {
             return next();
         }
 
+        // Skip CSRF when request is already authenticated (session or Bearer).
+        // API routes protected by SessionAuthGuard are not vulnerable to cross-site
+        // form POSTs because the browser does not send the session cookie or
+        // Authorization header from another origin.
+        if (req.session?.userId) {
+            return next();
+        }
+        const authHeader = req.headers.authorization;
+        if (authHeader?.startsWith('Bearer ')) {
+            return next();
+        }
+
         // Require X-CSRF-Token header for all state-changing requests
         const csrfHeader = req.headers['x-csrf-token'];
 

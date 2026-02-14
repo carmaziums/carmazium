@@ -161,7 +161,7 @@ export class AuthService {
             }
 
             // Look up the local user by email
-            const localUser = await this.prisma.user.findUnique({
+            let localUser = await this.prisma.user.findUnique({
                 where: { email: email.toLowerCase().trim() },
                 include: {
                     dealerProfile: true,
@@ -171,9 +171,35 @@ export class AuthService {
                 },
             });
 
+            // Auto-sync: if valid Supabase user but no local user, create one (e.g. social signup or missed sync at signup)
             if (!localUser) {
-                this.logger.warn(`No local user found for Supabase email: ${email} - User might need to sync`);
-                return null;
+                const meta = (data.user.user_metadata || {}) as Record<string, string>;
+                const role = meta?.role && Object.values(UserRole).includes(meta.role as UserRole)
+                    ? (meta.role as UserRole)
+                    : UserRole.BUYER;
+                localUser = await this.prisma.user.upsert({
+                    where: { email: email.toLowerCase().trim() },
+                    update: {
+                        firstName: meta.first_name ?? meta.firstName ?? undefined,
+                        lastName: meta.last_name ?? meta.lastName ?? undefined,
+                        ...(role && { role }),
+                    },
+                    create: {
+                        id: data.user.id,
+                        email: email.toLowerCase().trim(),
+                        firstName: meta.first_name ?? meta.firstName ?? null,
+                        lastName: meta.last_name ?? meta.lastName ?? null,
+                        role,
+                        passwordHash: 'SUPABASE_EXTERNAL_AUTH',
+                    },
+                    include: {
+                        dealerProfile: true,
+                        contractorProfile: true,
+                        financePartnerProfile: true,
+                        insurancePartnerProfile: true,
+                    },
+                });
+                this.logger.log(`Auto-synced user from Supabase: ${email}`);
             }
 
             if (localUser.deletedAt) {

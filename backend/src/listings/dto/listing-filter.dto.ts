@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsInt, IsNumber, IsOptional, IsString, Min, IsEnum } from 'class-validator';
+import { FuelType, TransmissionType } from '@prisma/client';
 
 export class ListingFilterDto {
     @ApiPropertyOptional({
@@ -39,6 +40,22 @@ export class ListingFilterDto {
     @IsInt()
     @IsOptional()
     year?: number;
+
+    @ApiPropertyOptional({
+        description: 'Filter by fuel type',
+        enum: ['PETROL', 'DIESEL', 'HYBRID', 'ELECTRIC', 'LPG', 'PLUGIN_HYBRID'],
+    })
+    @IsEnum(FuelType)
+    @IsOptional()
+    fuelType?: FuelType;
+
+    @ApiPropertyOptional({
+        description: 'Filter by transmission type',
+        enum: ['MANUAL', 'AUTOMATIC', 'CVT', 'SEMI_AUTOMATIC'],
+    })
+    @IsEnum(TransmissionType)
+    @IsOptional()
+    transmission?: TransmissionType;
 
     @ApiPropertyOptional({
         description: 'Page number (1-indexed)',

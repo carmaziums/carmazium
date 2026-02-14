@@ -34,8 +34,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const fetchProfile = async () => {
         try {
-            const data = await apiClient<UserProfile>('/users/me');
-            setProfile(data);
+            const response = await apiClient<{ success: boolean; data: UserProfile }>('/users/me');
+            setProfile(response.data);
         } catch (error: any) {
             console.error('Error fetching profile:', error);
             setProfile(null); // Explicitly set to null on failure

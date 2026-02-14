@@ -56,13 +56,13 @@ export default function SignupPage() {
 
             if (authError) throw authError
 
-            // 2. Sync with Backend
+            // 2. Sync with Backend (id + role so backend user matches Supabase and role is persisted)
             if (authData.user) {
                 const syncResponse = await fetch(`${API_URL}/users/sync`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        supabaseAuthId: authData.user.id,
+                        id: authData.user.id,
                         email: formData.email,
                         firstName: formData.firstName,
                         lastName: formData.lastName,

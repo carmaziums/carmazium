@@ -159,26 +159,33 @@ export class UsersService {
     /**
      * Sync user from Supabase (Legacy Frontend Support).
      * Creates a user record if it doesn't exist.
+     * Accepts id or supabaseAuthId; optionally persists role.
      */
     async syncUser(data: {
-        id: string;
+        id?: string;
+        supabaseAuthId?: string;
         email: string;
         firstName?: string;
         lastName?: string;
+        role?: UserRole;
     }) {
         const email = data.email.toLowerCase().trim();
+        const userId = data.id ?? data.supabaseAuthId;
+        const role = data.role && Object.values(UserRole).includes(data.role) ? data.role : undefined;
 
         return this.prisma.user.upsert({
             where: { email },
             update: {
                 firstName: data.firstName,
                 lastName: data.lastName,
+                ...(role !== undefined && { role }),
             },
             create: {
-                id: data.id, // Using the provided ID from sync
+                ...(userId && { id: userId }),
                 email,
                 firstName: data.firstName,
                 lastName: data.lastName,
+                ...(role !== undefined && { role }),
                 passwordHash: 'SUPABASE_EXTERNAL_AUTH', // Placeholder since auth is external
             },
         });
