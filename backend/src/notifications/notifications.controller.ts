@@ -5,6 +5,7 @@ import {
     Param,
     Query,
     UseGuards,
+    NotFoundException,
 } from '@nestjs/common';
 import {
     ApiTags,
@@ -65,6 +66,9 @@ export class NotificationsController {
         @Param('id') id: string,
     ): Promise<StandardResponse<any>> {
         const notification = await this.notificationsService.markAsRead(id, user.id);
+        if (!notification) {
+            throw new NotFoundException('Notification not found');
+        }
         return new StandardResponse(notification);
     }
 }

@@ -32,6 +32,17 @@ export class NotificationsService {
         });
     }
 
+    /**
+     * Get recent unread notifications for catch-up when a user reconnects to the notifications socket.
+     */
+    async getRecentUnread(userId: string, limit = 10) {
+        return this.prisma.notification.findMany({
+            where: { userId, isRead: false },
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+        });
+    }
+
     async markAsRead(id: string, userId: string) {
         // Verify ownership
         const notification = await this.prisma.notification.findFirst({

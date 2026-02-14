@@ -15,6 +15,7 @@ import { PaymentsService } from './payments.service';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse } from '../listings/dto/response.dto';
+import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
 
 @ApiTags('Payments')
 @Controller('payments')
@@ -25,10 +26,10 @@ export class PaymentsController {
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()
     @ApiOperation({ summary: 'Create payment intent (Stub)' })
-    async createIntent(@Body() body: { amount: number; currency?: string }) {
+    async createIntent(@Body() dto: CreatePaymentIntentDto) {
         const intent = await this.paymentsService.createPaymentIntent(
-            body.amount,
-            body.currency,
+            dto.amount,
+            dto.currency,
         );
         return new StandardResponse(intent);
     }

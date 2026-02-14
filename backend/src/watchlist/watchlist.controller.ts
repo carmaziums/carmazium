@@ -6,6 +6,8 @@ import {
     Param,
     Query,
     UseGuards,
+    HttpCode,
+    HttpStatus,
 } from '@nestjs/common';
 import {
     ApiTags,
@@ -18,6 +20,7 @@ import {
 import { WatchlistService } from './watchlist.service';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dto';
 
 @ApiTags('Watchlist')
 @Controller('watchlist')
@@ -46,17 +49,7 @@ export class WatchlistController {
             pageNum,
             limitNum,
         );
-
-        return {
-            success: true,
-            data,
-            pagination: {
-                total,
-                page: pageNum,
-                limit: limitNum,
-                totalPages: Math.ceil(total / limitNum),
-            },
-        };
+        return new PaginatedResponse(data, total, pageNum, limitNum);
     }
 
     /**
@@ -65,6 +58,7 @@ export class WatchlistController {
     @Post(':listingId')
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()
+    @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Add listing to watchlist' })
     @ApiParam({ name: 'listingId', description: 'ID of the listing to add' })
     @ApiResponse({ status: 201, description: 'Added to watchlist' })
@@ -74,7 +68,7 @@ export class WatchlistController {
         @Param('listingId') listingId: string,
     ) {
         const item = await this.watchlistService.add(user.id, listingId);
-        return { success: true, data: item };
+        return new StandardResponse(item);
     }
 
     /**
@@ -83,14 +77,14 @@ export class WatchlistController {
     @Delete(':listingId')
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()
+    @HttpCode(HttpStatus.NO_CONTENT)
     @ApiOperation({ summary: 'Remove listing from watchlist' })
     @ApiParam({ name: 'listingId', description: 'ID of the listing to remove' })
     async remove(
         @CurrentUser() user: any,
         @Param('listingId') listingId: string,
-    ) {
+    ): Promise<void> {
         await this.watchlistService.remove(user.id, listingId);
-        return { success: true };
     }
 
     /**
@@ -108,7 +102,7 @@ export class WatchlistController {
             user.id,
             listingId,
         );
-        return { success: true, data: { inWatchlist } };
+        return new StandardResponse({ inWatchlist });
     }
 
     /**
@@ -120,6 +114,6 @@ export class WatchlistController {
     @ApiOperation({ summary: 'Get watchlist count' })
     async getCount(@CurrentUser() user: any) {
         const count = await this.watchlistService.getCount(user.id);
-        return { success: true, data: { count } };
+        return new StandardResponse({ count });
     }
 }

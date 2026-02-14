@@ -7,7 +7,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
-import { SessionAuthGuard } from '../auth/guards/session-auth.guard'; // Not directly used here but logic similar to ChatGateway
+import { NotificationsService } from './notifications.service';
 
 @WebSocketGateway({
     cors: {
@@ -26,33 +26,51 @@ export class NotificationsGateway
     server: Server;
 
     private readonly logger = new Logger(NotificationsGateway.name);
-    private connectedUsers: Map<string, Set<string>> = new Map(); // userId -> Set of socketIds
+    /** userId -> ordered list of socket ids (oldest first). Max MAX_SOCKETS_PER_USER per user. */
+    private connectedUsers: Map<string, string[]> = new Map();
+    private static readonly MAX_SOCKETS_PER_USER = 5;
+
+    constructor(private readonly notificationsService: NotificationsService) {}
 
     afterInit(server: Server): void {
         this.logger.log('Notifications WebSocket Gateway initialized');
     }
 
-    handleConnection(client: Socket): void {
+    async handleConnection(client: Socket): Promise<void> {
         try {
             const req = client.request as any;
             const userId = req?.session?.userId;
 
             if (!userId) {
-                // For notifications, we might just disconnect without error to avoid spamming logs if user isn't logged in
                 client.disconnect();
                 return;
             }
 
             client.data.userId = userId;
 
-            // Track connected user
-            if (!this.connectedUsers.has(userId)) {
-                this.connectedUsers.set(userId, new Set());
+            // Enforce per-user socket limit (disconnect oldest when over limit)
+            let socketIds = this.connectedUsers.get(userId);
+            if (!socketIds) {
+                socketIds = [];
+                this.connectedUsers.set(userId, socketIds);
             }
-            this.connectedUsers.get(userId)?.add(client.id);
+            while (socketIds.length >= NotificationsGateway.MAX_SOCKETS_PER_USER && socketIds.length > 0) {
+                const oldestId = socketIds.shift();
+                const oldestSocket = this.server.sockets.sockets.get(oldestId!);
+                if (oldestSocket) {
+                    oldestSocket.disconnect(true);
+                }
+            }
+            socketIds.push(client.id);
 
             // Join a room specifically for this user's notifications
             client.join(`user:${userId}`);
+
+            // Catch-up: emit recent unread notifications so reconnecting clients get them
+            const recentUnread = await this.notificationsService.getRecentUnread(userId, 10);
+            for (const notification of recentUnread) {
+                client.emit('notification:new', notification);
+            }
 
             this.logger.log(`User ${userId} connected to notifications - Socket: ${client.id}`);
         } catch (error) {
@@ -63,10 +81,11 @@ export class NotificationsGateway
     handleDisconnect(client: Socket): void {
         const userId = client.data.userId;
         if (userId) {
-            const userSockets = this.connectedUsers.get(userId);
-            if (userSockets) {
-                userSockets.delete(client.id);
-                if (userSockets.size === 0) {
+            const socketIds = this.connectedUsers.get(userId);
+            if (socketIds) {
+                const idx = socketIds.indexOf(client.id);
+                if (idx !== -1) socketIds.splice(idx, 1);
+                if (socketIds.length === 0) {
                     this.connectedUsers.delete(userId);
                 }
             }

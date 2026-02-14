@@ -12,7 +12,7 @@ import { Server, Socket } from 'socket.io';
 import { Logger, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { AuthService } from '../auth/auth.service';
-import { WsMessageDto, WsTypingDto } from './dto';
+import { WsMessageDto, WsTypingDto, WsRoomIdDto } from './dto';
 
 /**
  * WebSocket Gateway for real-time chat functionality.
@@ -39,7 +39,9 @@ export class ChatGateway
     server: Server;
 
     private readonly logger = new Logger(ChatGateway.name);
-    private connectedUsers: Map<string, Set<string>> = new Map(); // userId -> Set of socketIds
+    /** userId -> ordered list of socket ids (oldest first). Max MAX_SOCKETS_PER_USER per user. */
+    private connectedUsers: Map<string, string[]> = new Map();
+    private static readonly MAX_SOCKETS_PER_USER = 5;
 
     constructor(
         private readonly chatService: ChatService,
@@ -86,11 +88,21 @@ export class ChatGateway
             // Store user data on socket for later use
             client.data.userId = userId;
 
-            // Track connected user (supports multiple tabs/devices)
-            if (!this.connectedUsers.has(userId)) {
-                this.connectedUsers.set(userId, new Set());
+            // Enforce per-user socket limit (disconnect oldest when over limit)
+            let socketIds = this.connectedUsers.get(userId);
+            if (!socketIds) {
+                socketIds = [];
+                this.connectedUsers.set(userId, socketIds);
             }
-            this.connectedUsers.get(userId)?.add(client.id);
+            while (socketIds.length >= ChatGateway.MAX_SOCKETS_PER_USER && socketIds.length > 0) {
+                const oldestId = socketIds.shift();
+                const oldestSocket = this.server.sockets.sockets.get(oldestId!);
+                if (oldestSocket) {
+                    oldestSocket.emit('error', { code: 'CONNECTION_LIMIT', message: 'Too many connections; reconnecting.' });
+                    oldestSocket.disconnect(true);
+                }
+            }
+            socketIds.push(client.id);
 
             // Auto-join user's existing chat rooms
             const roomIds = await this.chatService.getUserRoomIds(userId);
@@ -120,10 +132,11 @@ export class ChatGateway
     handleDisconnect(client: Socket): void {
         const userId = client.data.userId;
         if (userId) {
-            const userSockets = this.connectedUsers.get(userId);
-            if (userSockets) {
-                userSockets.delete(client.id);
-                if (userSockets.size === 0) {
+            const socketIds = this.connectedUsers.get(userId);
+            if (socketIds) {
+                const idx = socketIds.indexOf(client.id);
+                if (idx !== -1) socketIds.splice(idx, 1);
+                if (socketIds.length === 0) {
                     this.connectedUsers.delete(userId);
                 }
             }
@@ -163,9 +176,10 @@ export class ChatGateway
      * Handle joining a specific room.
      */
     @SubscribeMessage('room:join')
+    @UsePipes(new ValidationPipe({ transform: true }))
     async handleJoinRoom(
         @ConnectedSocket() client: Socket,
-        @MessageBody() data: { roomId: string },
+        @MessageBody() data: WsRoomIdDto,
     ): Promise<void> {
         const userId = client.data.userId;
         if (!userId) return;
@@ -184,9 +198,10 @@ export class ChatGateway
      * Handle marking messages as read.
      */
     @SubscribeMessage('message:read')
+    @UsePipes(new ValidationPipe({ transform: true }))
     async handleMarkRead(
         @ConnectedSocket() client: Socket,
-        @MessageBody() data: { roomId: string },
+        @MessageBody() data: WsRoomIdDto,
     ): Promise<void> {
         const userId = client.data.userId;
         if (!userId) return;
@@ -251,13 +266,15 @@ export class ChatGateway
      * Check if a user is online.
      */
     isUserOnline(userId: string): boolean {
-        return this.connectedUsers.has(userId);
+        return this.connectedUsers.has(userId) && (this.connectedUsers.get(userId)?.length ?? 0) > 0;
     }
 
     /**
      * Get online user IDs.
      */
     getOnlineUsers(): string[] {
-        return Array.from(this.connectedUsers.keys());
+        return Array.from(this.connectedUsers.keys()).filter(
+            (uid) => (this.connectedUsers.get(uid)?.length ?? 0) > 0,
+        );
     }
 }

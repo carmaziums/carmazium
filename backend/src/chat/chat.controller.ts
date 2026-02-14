@@ -7,6 +7,8 @@ import {
     Body,
     Query,
     UseGuards,
+    HttpCode,
+    HttpStatus,
 } from '@nestjs/common';
 import {
     ApiTags,
@@ -17,9 +19,10 @@ import {
     ApiParam,
 } from '@nestjs/swagger';
 import { ChatService } from './chat.service';
-import { CreateRoomDto, SendMessageDto, MarkReadDto } from './dto';
+import { CreateRoomDto, SendMessageDto } from './dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dto';
 
 /**
  * REST Controller for chat operations.
@@ -40,13 +43,14 @@ export class ChatController {
     @ApiResponse({ status: 200, description: 'List of chat rooms with last message' })
     async getRooms(@CurrentUser() user: any) {
         const rooms = await this.chatService.getUserRooms(user.id);
-        return { success: true, data: rooms };
+        return new StandardResponse(rooms);
     }
 
     /**
      * Create or find a chat room with another user.
      */
     @Post('rooms')
+    @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Create or find a chat room' })
     @ApiResponse({ status: 201, description: 'Chat room created or found' })
     async createRoom(
@@ -57,7 +61,7 @@ export class ChatController {
             user.id,
             createRoomDto,
         );
-        return { success: true, data: room };
+        return new StandardResponse(room);
     }
 
     /**
@@ -71,7 +75,7 @@ export class ChatController {
         @Param('id') roomId: string,
     ) {
         const room = await this.chatService.getRoom(roomId, user.id);
-        return { success: true, data: room };
+        return new StandardResponse(room);
     }
 
     /**
@@ -97,17 +101,7 @@ export class ChatController {
             pageNum,
             limitNum,
         );
-
-        return {
-            success: true,
-            data,
-            pagination: {
-                total,
-                page: pageNum,
-                limit: limitNum,
-                totalPages: Math.ceil(total / limitNum),
-            },
-        };
+        return new PaginatedResponse(data, total, pageNum, limitNum);
     }
 
     /**
@@ -126,7 +120,7 @@ export class ChatController {
             user.id,
             sendMessageDto,
         );
-        return { success: true, data: message };
+        return new StandardResponse(message);
     }
 
     /**
@@ -140,7 +134,7 @@ export class ChatController {
         @Param('id') roomId: string,
     ) {
         const count = await this.chatService.markMessagesAsRead(roomId, user.id);
-        return { success: true, data: { markedCount: count } };
+        return new StandardResponse({ markedCount: count });
     }
 
     /**
@@ -150,6 +144,6 @@ export class ChatController {
     @ApiOperation({ summary: 'Get unread message count' })
     async getUnreadCount(@CurrentUser() user: any) {
         const count = await this.chatService.getUnreadCount(user.id);
-        return { success: true, data: { count } };
+        return new StandardResponse({ count });
     }
 }

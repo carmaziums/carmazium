@@ -51,6 +51,15 @@ export class WsTypingDto {
 }
 
 /**
+ * DTO for room:join and message:read events (roomId only)
+ */
+export class WsRoomIdDto {
+    @IsNotEmpty()
+    @IsUUID()
+    roomId: string;
+}
+
+/**
  * DTO for marking messages as read
  */
 export class MarkReadDto {

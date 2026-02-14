@@ -20,8 +20,11 @@ export class HealthController {
         return this.health.check([
             // Check database connection
             () => this.prisma.pingCheck('database', this.prismaService),
-            // Check if the API itself is responding (self-check)
-            () => this.http.pingCheck('api', 'http://localhost:' + (process.env.PORT || 3001) + '/api'),
+            // Check if the API itself is responding (self-check). Use HEALTH_SELF_URL in containers/proxy.
+            () => this.http.pingCheck(
+                'api',
+                process.env.HEALTH_SELF_URL || `http://localhost:${process.env.PORT || 3001}/api`,
+            ),
         ]);
     }
 }
