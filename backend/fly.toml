@@ -1,0 +1,19 @@
+# fly.toml app configuration file generated for carmazium-backend on 2024-02-14
+
+app = "carmazium-backend" # You might need to change this to a unique name during 'fly launch'
+primary_region = "lhr" # Change to your preferred region
+
+[build]
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[[vm]]
+  memory = "1gb" # NestJS can use a bit of memory, 512mb might be tight for build/start
+  cpu_kind = "shared"
+  cpus = 1
