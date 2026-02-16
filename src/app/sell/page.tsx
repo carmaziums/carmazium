@@ -4,10 +4,11 @@ import * as React from "react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { Textarea } from "@/components/ui/Textarea"
-import { Car, Camera, List, DollarSign, CheckCircle, ArrowRight, ArrowLeft, Gavel, Edit, Loader2 } from "lucide-react"
+import { Car, Camera, List, DollarSign, CheckCircle, ArrowRight, ArrowLeft, Gavel, Edit, Loader2, MapPin } from "lucide-react"
 import Image from "next/image"
 import { ImageUpload } from "@/components/listing/ImageUpload"
 import { createListing, formatPrice, type CreateListingRequest, type BodyTypeValue } from "@/lib/listingApi"
+import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
 
@@ -22,6 +23,7 @@ export default function SellPage() {
         year: "",
         mileage: "",
         bodyType: "" as BodyTypeValue | "",
+        location: "",
 
         // Step 2: Media
         images: [] as string[],
@@ -159,6 +161,7 @@ export default function SellPage() {
                 bhp: formData.bhp ? parseInt(formData.bhp) : undefined,
                 features: formData.features.length > 0 ? formData.features : undefined,
                 bodyType: (formData.bodyType as BodyTypeValue) || undefined,
+                location: formData.location || undefined,
                 status: formData.status,
             }
 
@@ -169,7 +172,7 @@ export default function SellPage() {
 
             // Reset form
             setFormData({
-                make: "", model: "", year: "", mileage: "", bodyType: "",
+                make: "", model: "", year: "", mileage: "", bodyType: "", location: "",
                 images: [], vrm: "", fuelType: "", transmission: "",
                 color: "", doors: "", seats: "", engineSize: "", bhp: "", features: [],
                 description: "", title: "", price: "",
@@ -516,35 +519,39 @@ export default function SellPage() {
                             <div className="space-y-3 mt-2">
                                 <label className="text-sm font-bold uppercase text-gray-400">Body Type</label>
                                 <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                                    {[
-                                        { value: 'SEDAN', label: 'Sedan', icon: '🚗' },
-                                        { value: 'SUV', label: 'SUV', icon: '🚙' },
-                                        { value: 'HATCHBACK', label: 'Hatchback', icon: '🏎️' },
-                                        { value: 'COUPE', label: 'Coupé', icon: '🏁' },
-                                        { value: 'CONVERTIBLE', label: 'Convertible', icon: '🛻' },
-                                        { value: 'ESTATE', label: 'Estate', icon: '🚐' },
-                                        { value: 'CROSSOVER', label: 'Crossover', icon: '🚘' },
-                                        { value: 'SPORTS_CAR', label: 'Sports Car', icon: '🏎️' },
-                                        { value: 'MINIVAN', label: 'Minivan', icon: '🚌' },
-                                        { value: 'PICKUP_TRUCK', label: 'Pickup', icon: '🛻' },
-                                        { value: 'STATION_WAGON', label: 'Wagon', icon: '🚃' },
-                                        { value: 'MPV', label: 'MPV', icon: '🚐' },
-                                        { value: 'VAN', label: 'Van', icon: '🚚' },
-                                    ].map((type) => (
-                                        <button
-                                            key={type.value}
-                                            type="button"
-                                            onClick={() => setFormData(prev => ({ ...prev, bodyType: type.value as BodyTypeValue }))}
-                                            className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all duration-200 cursor-pointer ${formData.bodyType === type.value
-                                                    ? 'border-primary bg-primary/10 text-white shadow-[0_0_15px_rgba(237,28,36,0.2)]'
-                                                    : 'border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/30 hover:text-white'
-                                                }`}
-                                        >
-                                            <span className="text-2xl">{type.icon}</span>
-                                            <span className="text-[10px] font-bold uppercase tracking-wide">{type.label}</span>
-                                        </button>
-                                    ))}
+                                    {BODY_TYPE_KEYS.map((key) => {
+                                        const Icon = BODY_TYPE_ICONS[key]
+                                        const label = BODY_TYPE_LABELS[key]
+                                        return (
+                                            <button
+                                                key={key}
+                                                type="button"
+                                                onClick={() => setFormData(prev => ({ ...prev, bodyType: key as BodyTypeValue }))}
+                                                className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-200 cursor-pointer ${formData.bodyType === key
+                                                        ? 'border-primary bg-primary/10 text-white shadow-[0_0_15px_rgba(237,28,36,0.2)]'
+                                                        : 'border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/30 hover:text-white'
+                                                    }`}
+                                            >
+                                                <Icon className="w-10 h-5" />
+                                                <span className="text-[10px] font-bold uppercase tracking-wide">{label}</span>
+                                            </button>
+                                        )
+                                    })}
                                 </div>
+                            </div>
+
+                            {/* Location */}
+                            <div className="space-y-2 mt-2">
+                                <label className="text-sm font-bold uppercase text-gray-400 flex items-center gap-1.5">
+                                    <MapPin size={14} /> Location
+                                </label>
+                                <Input
+                                    placeholder="e.g. London, Manchester, Birmingham"
+                                    value={formData.location}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                                    className="bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary"
+                                />
+                                <p className="text-xs text-gray-500">Where is the vehicle located? This helps buyers find nearby cars.</p>
                             </div>
                         </div>
                     )}

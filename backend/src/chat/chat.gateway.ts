@@ -96,7 +96,7 @@ export class ChatGateway
             }
             while (socketIds.length >= ChatGateway.MAX_SOCKETS_PER_USER && socketIds.length > 0) {
                 const oldestId = socketIds.shift();
-                const oldestSocket = this.server.sockets.sockets.get(oldestId!);
+                const oldestSocket = this.server?.sockets?.sockets?.get(oldestId!);
                 if (oldestSocket) {
                     oldestSocket.emit('error', { code: 'CONNECTION_LIMIT', message: 'Too many connections; reconnecting.' });
                     oldestSocket.disconnect(true);

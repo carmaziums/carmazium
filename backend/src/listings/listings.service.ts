@@ -108,6 +108,7 @@ export class ListingsService {
                 bhp: createListingDto.bhp ?? null,
                 bodyType: mapBodyType(createListingDto.bodyType),
                 features: createListingDto.features ?? undefined,
+                location: createListingDto.location ?? null,
                 // Seller is optional for now (auth not implemented)
                 sellerId: userId ?? null,
             },
