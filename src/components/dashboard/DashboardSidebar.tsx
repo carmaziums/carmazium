@@ -17,13 +17,17 @@ import {
     Briefcase,
     Menu,
     X,
-    ChevronRight
+    ChevronRight,
+    Banknote,
+    FileText,
+    Shield,
+    ClipboardList
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
 
 interface SidebarProps {
-    role: "buyer" | "seller" | "provider"
+    role: "buyer" | "seller" | "provider" | "finance" | "insurance"
     userName?: string
     userType?: string
     children?: React.ReactNode
@@ -73,6 +77,18 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             { href: "/dashboard/service/jobs", label: "Jobs", icon: Briefcase },
             { href: "/dashboard/service/messages", label: "Messages", icon: MessageSquare, badge: unreadCount },
             { href: "/dashboard/service/settings", label: "Settings", icon: Settings },
+        ],
+        finance: [
+            { href: "/dashboard/finance", label: "Overview", icon: LayoutDashboard },
+            { href: "/dashboard/finance/applications", label: "Applications", icon: FileText },
+            { href: "/dashboard/finance/messages", label: "Messages", icon: MessageSquare, badge: unreadCount },
+            { href: "/dashboard/finance/settings", label: "Settings", icon: Settings },
+        ],
+        insurance: [
+            { href: "/dashboard/insurance", label: "Overview", icon: LayoutDashboard },
+            { href: "/dashboard/insurance/quotes", label: "Quotes", icon: ClipboardList },
+            { href: "/dashboard/insurance/messages", label: "Messages", icon: MessageSquare, badge: unreadCount },
+            { href: "/dashboard/insurance/settings", label: "Settings", icon: Settings },
         ]
     }
 

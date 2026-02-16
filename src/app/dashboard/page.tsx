@@ -26,6 +26,10 @@ export default function DashboardPage() {
                 router.push('/dashboard/seller')
             } else if (role === 'CONTRACTOR') {
                 router.push('/dashboard/service')
+            } else if (role === 'FINANCE_PARTNER') {
+                router.push('/dashboard/finance')
+            } else if (role === 'INSURANCE_PARTNER') {
+                router.push('/dashboard/insurance')
             } else {
                 router.push('/dashboard/seller')
             }
