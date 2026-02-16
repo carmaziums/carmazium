@@ -93,11 +93,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             // Always establish backend session on sign-in or token refresh, then fetch profile
+            // We do this in the background so we don't block the UI loading state
             if (session?.user && token) {
                 if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-                    await bridgeThenProfile(token);
+                    bridgeThenProfile(token);
                 } else {
-                    await fetchProfile();
+                    fetchProfile();
                 }
             } else {
                 setProfile(null);
