@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { fetchWithRetry } from "@/lib/fetchWithRetry"
 import { Loader2 } from "lucide-react"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://carmazium.onrender.com"
@@ -100,17 +101,21 @@ function AuthCallbackContent() {
       const meta = (user.user_metadata || {}) as Record<string, string>
 
       try {
-        const syncRes = await fetch(`${apiBase}/users/sync`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: user.id,
-            email: user.email,
-            firstName: meta.first_name ?? meta.firstName,
-            lastName: meta.last_name ?? meta.lastName,
-            role: meta.role,
-          }),
-        })
+        const syncRes = await fetchWithRetry(
+          `${apiBase}/users/sync`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: user.id,
+              email: user.email,
+              firstName: meta.first_name ?? meta.firstName,
+              lastName: meta.last_name ?? meta.lastName,
+              role: meta.role,
+            }),
+          },
+          { timeoutMs: 60000, retries: 2 }
+        )
         if (!syncRes.ok && syncRes.status !== 403) {
           console.warn("Backend sync returned", syncRes.status)
         }
@@ -119,12 +124,16 @@ function AuthCallbackContent() {
       }
 
       try {
-        await fetch(`${apiBase}/auth/supabase-session`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: accessToken }),
-          credentials: "include",
-        })
+        await fetchWithRetry(
+          `${apiBase}/auth/supabase-session`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: accessToken }),
+            credentials: "include",
+          },
+          { timeoutMs: 60000, retries: 2 }
+        )
       } catch {
         console.warn("Backend session bridge failed")
       }

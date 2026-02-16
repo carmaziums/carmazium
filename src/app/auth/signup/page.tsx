@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { ArrowLeft, Car, Wrench, CreditCard, Shield, Handshake, Loader2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
+import { fetchWithRetry } from "@/lib/fetchWithRetry"
 
 export default function SignupPage() {
     const router = useRouter()
@@ -56,30 +57,41 @@ export default function SignupPage() {
 
             if (authError) throw authError
 
-            // 2. Sync with Backend (id + role so backend user matches Supabase and role is persisted)
+            // 2. Sync with Backend (retry + long timeout for cold start)
             if (authData.user) {
-                const syncResponse = await fetch(`${API_URL}/users/sync`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        id: authData.user.id,
-                        email: formData.email,
-                        firstName: formData.firstName,
-                        lastName: formData.lastName,
-                        role: formData.role
-                    })
-                })
-
-                if (!syncResponse.ok) {
-                    console.error('Backend sync failed, but account created in Supabase')
-                } else {
-                    // Sync successful — create backend session
-                    await fetch(`${API_URL}/auth/supabase-session`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ token: (authData.session?.access_token) }),
-                        credentials: 'include',
-                    }).catch(err => console.error('Session bridge failed:', err))
+                const apiBase = API_URL.replace(/\/$/, '')
+                try {
+                    const syncResponse = await fetchWithRetry(
+                        `${apiBase}/users/sync`,
+                        {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                id: authData.user.id,
+                                email: formData.email,
+                                firstName: formData.firstName,
+                                lastName: formData.lastName,
+                                role: formData.role
+                            })
+                        },
+                        { timeoutMs: 60000, retries: 2 }
+                    )
+                    if (!syncResponse.ok) {
+                        console.error('Backend sync failed, but account created in Supabase')
+                    } else {
+                        await fetchWithRetry(
+                            `${apiBase}/auth/supabase-session`,
+                            {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ token: authData.session?.access_token }),
+                                credentials: 'include',
+                            },
+                            { timeoutMs: 60000, retries: 2 }
+                        ).catch(err => console.error('Session bridge failed:', err))
+                    }
+                } catch (e) {
+                    console.error('Backend sync failed, but account created in Supabase', e)
                 }
             }
 
