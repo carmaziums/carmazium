@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/Button"
 import { AccordionItem } from "@/components/ui/Accordion"
@@ -55,12 +54,16 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
         )
     }
 
+    // Filter out invalid/placeholder image URLs
+    const validImages = listing.images.filter(img =>
+        img && !img.includes('example.com') && (img.startsWith('https://') || img.startsWith('/')))
+
     const vehicle = {
         id: listing.id,
         title: listing.title,
         subtitle: `${listing.engineSize ? `${listing.engineSize}cc` : ''} ${listing.bhp ? `${listing.bhp} BHP` : ''} | ${listing.transmission || ''} | ${listing.fuelType || ''}`,
         price: formatPrice(listing.price),
-        images: listing.images.length > 0 ? listing.images : ["/assets/images/placeholder-car.png"],
+        images: validImages.length > 0 ? validImages : ["/assets/images/placeholder-car.png"],
         specs: {
             year: listing.year?.toString() || "-",
             mileage: listing.mileage ? `${listing.mileage.toLocaleString()} miles` : "-",
@@ -135,11 +138,11 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                         {/* Gallery */}
                         <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-4">
                             <div className="relative aspect-video bg-black rounded-lg overflow-hidden mb-4 group">
-                                <Image
+                                {/* Use img tag for user-uploaded images from any domain */}
+                                <img
                                     src={vehicle.images[activeImage] || vehicle.images[0]}
                                     alt={vehicle.title}
-                                    fill
-                                    className="object-cover"
+                                    className="object-cover w-full h-full absolute inset-0"
                                 />
                                 <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-sm text-white px-3 py-1 rounded-md text-sm font-medium flex items-center gap-2">
                                     <Camera size={16} /> 1/45
@@ -152,7 +155,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                                         onClick={() => setActiveImage(idx)}
                                         className={`relative w-24 h-16 rounded-lg overflow-hidden flex-shrink-0 border-2 transition-all ${activeImage === idx ? 'border-primary ring-2 ring-primary/20' : 'border-transparent opacity-70 hover:opacity-100'}`}
                                     >
-                                        <Image src={img} alt={`Thumb ${idx}`} fill className="object-cover" />
+                                        <img src={img} alt={`Thumb ${idx}`} className="object-cover w-full h-full absolute inset-0" />
                                     </button>
                                 ))}
                             </div>
