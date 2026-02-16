@@ -48,11 +48,15 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
     }, [messages])
 
-    // Subscribe to new messages
+    // Subscribe to new messages (with deduplication)
     React.useEffect(() => {
         const unsubscribe = onNewMessage((message) => {
             if (message.chatRoomId === room.id) {
-                setMessages(prev => [...prev, message])
+                setMessages(prev => {
+                    // Deduplicate: skip if message with same ID already exists
+                    if (prev.some(m => m.id === message.id)) return prev
+                    return [...prev, message]
+                })
                 // Mark as read immediately
                 markAsRead(room.id)
             }
@@ -195,8 +199,8 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                     >
                                         <div
                                             className={`max-w-[75%] px-4 py-2 rounded-2xl ${isOwn
-                                                    ? 'bg-primary text-white rounded-br-sm'
-                                                    : 'bg-slate-700 text-white rounded-bl-sm'
+                                                ? 'bg-primary text-white rounded-br-sm'
+                                                : 'bg-slate-700 text-white rounded-bl-sm'
                                                 }`}
                                         >
                                             <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
