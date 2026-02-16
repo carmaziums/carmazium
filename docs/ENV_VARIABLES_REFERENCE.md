@@ -69,7 +69,7 @@ ALLOWED_ORIGINS=https://carmazium.vercel.app
 **Vercel – add this:**
 
 ```env
-NEXT_PUBLIC_API_URL=https://carmazium.onrender.com
+NEXT_PUBLIC_API_URL=https://carmazium.fly.dev
 ```
 
 (Replace with your real Render URL and Vercel production URL if different.)

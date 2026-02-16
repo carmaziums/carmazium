@@ -96,7 +96,7 @@ All of these can run your existing NestJS backend; the main differences are **pr
 ## 5. Checklist for “Everything Works” (Any Host)
 
 - [ ] Backend env: `ALLOWED_ORIGINS`, `SESSION_SECRET`, `DATABASE_URL`, `NODE_ENV=production`.
-- [ ] Frontend env: `NEXT_PUBLIC_API_URL` = your backend URL (e.g. `https://carmazium.onrender.com`).
+- [ ] Frontend env: `NEXT_PUBLIC_API_URL` = your backend URL (e.g. `https://carmazium.fly.dev`).
 - [ ] Auth callback page builds and runs (Suspense boundary for `useSearchParams`); verification link goes to that page and completes sync + supabase-session.
 - [ ] Critical auth requests (signup sync, callback sync/session) use **long timeout (e.g. 60s)** and **retries (e.g. 2)**.
 - [ ] Backend is either **always-on** (paid plan / VPS) or kept **warm** (cron hitting health), so the first request after signup/verification doesn’t hit a 60s cold start.

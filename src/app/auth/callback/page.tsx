@@ -33,10 +33,10 @@ function AuthCallbackContent() {
     let cancelled = false
 
     const run = async () => {
-      const redirectTo = searchParams.get("redirect_to") || "/auth/onboarding"
-      const code = searchParams.get("code")
-      const error = searchParams.get("error")
-      const errorDescription = searchParams.get("error_description")
+      const redirectTo = searchParams?.get("redirect_to") || "/auth/onboarding"
+      const code = searchParams?.get("code")
+      const error = searchParams?.get("error")
+      const errorDescription = searchParams?.get("error_description")
 
       if (error) {
         setErrorMessage(errorDescription || error)
