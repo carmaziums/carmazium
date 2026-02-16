@@ -1,6 +1,6 @@
 import { getAccessToken } from './supabase';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium.onrender.com';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium.fly.dev';
 
 export async function apiClient<T>(
     endpoint: string,
