@@ -126,7 +126,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
             setEnquiring(true)
             // Create or find existing chat room with the seller about this listing
             const room = await createChatRoom(listing.sellerId, listing.id)
-            router.push(`/dashboard/messages?room=${room.id}`)
+            router.push(`/dashboard/buyer/messages?room=${room.id}`)
         } catch (err: any) {
             console.error('Failed to create chat room:', err)
             alert(err.message || 'Failed to start enquiry. Please try again.')
