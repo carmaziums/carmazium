@@ -27,7 +27,7 @@ import { WsMessageDto, WsTypingDto, WsRoomIdDto } from './dto';
         origin: [
             'http://localhost:3000',
             'https://carmazium.vercel.app',
-            'https://carmazium.onrender.com',
+            'https://carmazium.fly.dev',
         ],
         credentials: true,
     },

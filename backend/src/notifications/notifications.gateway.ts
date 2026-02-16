@@ -14,7 +14,7 @@ import { NotificationsService } from './notifications.service';
         origin: [
             'http://localhost:3000',
             'https://carmazium.vercel.app',
-            'https://carmazium.onrender.com',
+            'https://carmazium.fly.dev',
         ],
         credentials: true,
     },
@@ -30,7 +30,7 @@ export class NotificationsGateway
     private connectedUsers: Map<string, string[]> = new Map();
     private static readonly MAX_SOCKETS_PER_USER = 5;
 
-    constructor(private readonly notificationsService: NotificationsService) {}
+    constructor(private readonly notificationsService: NotificationsService) { }
 
     afterInit(server: Server): void {
         this.logger.log('Notifications WebSocket Gateway initialized');
