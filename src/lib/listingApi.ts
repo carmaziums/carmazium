@@ -2,6 +2,8 @@
  * API Client for Listing Operations
  */
 
+export type BodyTypeValue = 'SEDAN' | 'SUV' | 'HATCHBACK' | 'COUPE' | 'CONVERTIBLE' | 'ESTATE' | 'CROSSOVER' | 'SPORTS_CAR' | 'MINIVAN' | 'PICKUP_TRUCK' | 'STATION_WAGON' | 'MPV' | 'VAN'
+
 export interface CreateListingRequest {
     title: string
     price: number
@@ -15,6 +17,7 @@ export interface CreateListingRequest {
     description?: string
     fuelType?: 'PETROL' | 'DIESEL' | 'ELECTRIC' | 'HYBRID' | 'PLUGIN_HYBRID'
     transmission?: 'MANUAL' | 'AUTOMATIC' | 'SEMI_AUTOMATIC'
+    bodyType?: BodyTypeValue
     status?: 'DRAFT' | 'ACTIVE' | 'SOLD'
     color?: string
     doors?: number
@@ -65,6 +68,7 @@ export interface Listing {
     vrm: string | null
     fuelType: string | null
     transmission: string | null
+    bodyType: string | null
     type: 'AUCTION' | 'CLASSIFIED'
     status: 'DRAFT' | 'ACTIVE' | 'SOLD' | 'WITHDRAWN'
     viewCount: number
@@ -73,7 +77,7 @@ export interface Listing {
     seats: number | null
     engineSize: number | null
     bhp: number | null
-    features: string | string[] | null // JSON string or parsed array
+    features: string | string[] | null
     createdAt: string
     updatedAt: string
 }
@@ -94,7 +98,13 @@ export interface ListingFilters {
     minPrice?: number
     maxPrice?: number
     make?: string
+    model?: string
     year?: number
+    fuelType?: string
+    transmission?: string
+    bodyType?: string
+    sortBy?: string
+    search?: string
     page?: number
     limit?: number
 }
@@ -109,7 +119,13 @@ export async function getListings(filters?: ListingFilters): Promise<ListingsRes
         if (filters.minPrice) params.append('minPrice', filters.minPrice.toString())
         if (filters.maxPrice) params.append('maxPrice', filters.maxPrice.toString())
         if (filters.make) params.append('make', filters.make)
+        if (filters.model) params.append('model', filters.model)
         if (filters.year) params.append('year', filters.year.toString())
+        if (filters.fuelType) params.append('fuelType', filters.fuelType)
+        if (filters.transmission) params.append('transmission', filters.transmission)
+        if (filters.bodyType) params.append('bodyType', filters.bodyType)
+        if (filters.sortBy) params.append('sortBy', filters.sortBy)
+        if (filters.search) params.append('search', filters.search)
         if (filters.page) params.append('page', filters.page.toString())
         if (filters.limit) params.append('limit', filters.limit.toString())
     }

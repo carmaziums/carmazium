@@ -41,6 +41,22 @@ export enum Transmission {
     SEMI_AUTOMATIC = 'SEMI_AUTOMATIC',
 }
 
+export enum BodyType {
+    SEDAN = 'SEDAN',
+    SUV = 'SUV',
+    HATCHBACK = 'HATCHBACK',
+    COUPE = 'COUPE',
+    CONVERTIBLE = 'CONVERTIBLE',
+    ESTATE = 'ESTATE',
+    CROSSOVER = 'CROSSOVER',
+    SPORTS_CAR = 'SPORTS_CAR',
+    MINIVAN = 'MINIVAN',
+    PICKUP_TRUCK = 'PICKUP_TRUCK',
+    STATION_WAGON = 'STATION_WAGON',
+    MPV = 'MPV',
+    VAN = 'VAN',
+}
+
 export class CreateListingDto {
     @ApiProperty({
         description: 'Title of the listing',
@@ -172,6 +188,16 @@ export class CreateListingDto {
     transmission?: Transmission;
 
     @ApiProperty({
+        description: 'Body type of the vehicle',
+        enum: BodyType,
+        example: BodyType.SUV,
+        required: false,
+    })
+    @IsEnum(BodyType)
+    @IsOptional()
+    bodyType?: BodyType;
+
+    @ApiProperty({
         description: 'Exterior color of the vehicle',
         example: 'Misano Blue',
         required: false,
@@ -236,3 +262,4 @@ export class CreateListingDto {
     @IsOptional()
     features?: string[];
 }
+

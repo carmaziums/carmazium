@@ -4,8 +4,82 @@ import * as React from "react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { CarCard } from "@/components/features/CarCard"
-import { Search, Filter, X, Gavel, AlertTriangle, Loader2 } from "lucide-react"
-import { getListings, formatPrice, type Listing } from "@/lib/listingApi"
+import { Search, Filter, X, Gavel, AlertTriangle, Loader2, RotateCcw } from "lucide-react"
+import { getListings, formatPrice, type Listing, type ListingFilters } from "@/lib/listingApi"
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const BODY_TYPES = [
+    { value: 'SEDAN', label: 'Sedan', icon: '🚗' },
+    { value: 'SUV', label: 'SUV', icon: '🚙' },
+    { value: 'HATCHBACK', label: 'Hatchback', icon: '🏎️' },
+    { value: 'COUPE', label: 'Coupé', icon: '🏁' },
+    { value: 'CONVERTIBLE', label: 'Convertible', icon: '🛻' },
+    { value: 'ESTATE', label: 'Estate', icon: '🚐' },
+    { value: 'CROSSOVER', label: 'Crossover', icon: '🚘' },
+    { value: 'SPORTS_CAR', label: 'Sports Car', icon: '🏎️' },
+    { value: 'MINIVAN', label: 'Minivan', icon: '🚌' },
+    { value: 'PICKUP_TRUCK', label: 'Pickup', icon: '🛻' },
+    { value: 'STATION_WAGON', label: 'Wagon', icon: '🚃' },
+    { value: 'MPV', label: 'MPV', icon: '🚐' },
+    { value: 'VAN', label: 'Van', icon: '🚚' },
+] as const
+
+const FUEL_TYPES = ['Petrol', 'Diesel', 'Hybrid', 'Electric', 'Plugin Hybrid'] as const
+const FUEL_MAP: Record<string, string> = {
+    'Petrol': 'PETROL', 'Diesel': 'DIESEL', 'Hybrid': 'HYBRID',
+    'Electric': 'ELECTRIC', 'Plugin Hybrid': 'PLUGIN_HYBRID',
+}
+
+const TRANSMISSION_TYPES = ['Manual', 'Automatic', 'Semi-Automatic'] as const
+const TRANS_MAP: Record<string, string> = {
+    'Manual': 'MANUAL', 'Automatic': 'AUTOMATIC', 'Semi-Automatic': 'SEMI_AUTOMATIC',
+}
+
+const YEAR_OPTIONS = [
+    { label: 'Any Year', value: 0 },
+    { label: '2024+', value: 2024 },
+    { label: '2022+', value: 2022 },
+    { label: '2020+', value: 2020 },
+    { label: '2018+', value: 2018 },
+    { label: '2015+', value: 2015 },
+    { label: '2010+', value: 2010 },
+]
+
+const SORT_OPTIONS = [
+    { label: 'Newest First', value: 'newest' },
+    { label: 'Price: Low → High', value: 'price_asc' },
+    { label: 'Price: High → Low', value: 'price_desc' },
+    { label: 'Mileage: Low → High', value: 'mileage_asc' },
+]
+
+// ─── Filter State ────────────────────────────────────────────────────────────
+
+interface FilterState {
+    search: string
+    make: string
+    minPrice: string
+    maxPrice: string
+    year: number
+    fuelTypes: string[]
+    transmissions: string[]
+    bodyType: string
+    sortBy: string
+}
+
+const INITIAL_FILTERS: FilterState = {
+    search: '',
+    make: '',
+    minPrice: '',
+    maxPrice: '',
+    year: 0,
+    fuelTypes: [],
+    transmissions: [],
+    bodyType: '',
+    sortBy: 'newest',
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 export default function SearchPage() {
     const [isFilterOpen, setIsFilterOpen] = React.useState(false)
@@ -13,37 +87,132 @@ export default function SearchPage() {
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
     const [totalCount, setTotalCount] = React.useState(0)
+    const [filters, setFilters] = React.useState<FilterState>(INITIAL_FILTERS)
+    const [appliedFilters, setAppliedFilters] = React.useState<FilterState>(INITIAL_FILTERS)
 
-    // Fetch listings on mount
-    React.useEffect(() => {
-        async function fetchListings() {
-            try {
-                setLoading(true)
-                setError(null)
-                const response = await getListings({ limit: 20 })
-                setListings(response.data)
-                setTotalCount(response.pagination.total)
-            } catch (err) {
-                console.error('Failed to fetch listings:', err)
-                setError(err instanceof Error ? err.message : 'Failed to load listings')
-            } finally {
-                setLoading(false)
-            }
-        }
+    // Count active filters for badge
+    const activeFilterCount = React.useMemo(() => {
+        let count = 0
+        if (appliedFilters.make) count++
+        if (appliedFilters.minPrice || appliedFilters.maxPrice) count++
+        if (appliedFilters.year) count++
+        if (appliedFilters.fuelTypes.length) count++
+        if (appliedFilters.transmissions.length) count++
+        if (appliedFilters.bodyType) count++
+        return count
+    }, [appliedFilters])
 
-        fetchListings()
+    // Build API filters from state
+    const buildApiFilters = React.useCallback((state: FilterState): ListingFilters => {
+        const apiFilters: ListingFilters = { limit: 20 }
+        if (state.search) apiFilters.search = state.search
+        if (state.make) apiFilters.make = state.make
+        if (state.minPrice) apiFilters.minPrice = parseFloat(state.minPrice)
+        if (state.maxPrice) apiFilters.maxPrice = parseFloat(state.maxPrice)
+        if (state.year) apiFilters.year = state.year
+        if (state.fuelTypes.length === 1) apiFilters.fuelType = FUEL_MAP[state.fuelTypes[0]]
+        if (state.transmissions.length === 1) apiFilters.transmission = TRANS_MAP[state.transmissions[0]]
+        if (state.bodyType) apiFilters.bodyType = state.bodyType
+        if (state.sortBy && state.sortBy !== 'newest') apiFilters.sortBy = state.sortBy
+        return apiFilters
     }, [])
 
-    // Get the first image from a listing or use a placeholder
+    // Fetch listings
+    const fetchListings = React.useCallback(async (filterState: FilterState) => {
+        try {
+            setLoading(true)
+            setError(null)
+            const apiFilters = buildApiFilters(filterState)
+            const response = await getListings(apiFilters)
+
+            let data = response.data
+
+            // Client-side multi-select filtering for fuelType/transmission (API only supports single)
+            if (filterState.fuelTypes.length > 1) {
+                const mapped = filterState.fuelTypes.map(f => FUEL_MAP[f])
+                data = data.filter(l => l.fuelType && mapped.includes(l.fuelType))
+            }
+            if (filterState.transmissions.length > 1) {
+                const mapped = filterState.transmissions.map(t => TRANS_MAP[t])
+                data = data.filter(l => l.transmission && mapped.includes(l.transmission))
+            }
+
+            setListings(data)
+            setTotalCount(response.pagination.total)
+        } catch (err) {
+            console.error('Failed to fetch listings:', err)
+            setError(err instanceof Error ? err.message : 'Failed to load listings')
+        } finally {
+            setLoading(false)
+        }
+    }, [buildApiFilters])
+
+    // Initial fetch
+    React.useEffect(() => {
+        fetchListings(INITIAL_FILTERS)
+    }, [fetchListings])
+
+    // ─── Handlers ────────────────────────────────────────────────────────────
+
+    const handleApplyFilters = () => {
+        setAppliedFilters({ ...filters })
+        fetchListings(filters)
+        setIsFilterOpen(false)
+    }
+
+    const handleResetFilters = () => {
+        setFilters(INITIAL_FILTERS)
+        setAppliedFilters(INITIAL_FILTERS)
+        fetchListings(INITIAL_FILTERS)
+    }
+
+    const handleSearch = () => {
+        const updated = { ...filters }
+        setAppliedFilters(updated)
+        fetchListings(updated)
+    }
+
+    const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') handleSearch()
+    }
+
+    const handleSortChange = (value: string) => {
+        const updated = { ...appliedFilters, sortBy: value }
+        setFilters(prev => ({ ...prev, sortBy: value }))
+        setAppliedFilters(updated)
+        fetchListings(updated)
+    }
+
+    const toggleFuelType = (fuel: string) => {
+        setFilters(prev => ({
+            ...prev,
+            fuelTypes: prev.fuelTypes.includes(fuel)
+                ? prev.fuelTypes.filter(f => f !== fuel)
+                : [...prev.fuelTypes, fuel],
+        }))
+    }
+
+    const toggleTransmission = (trans: string) => {
+        setFilters(prev => ({
+            ...prev,
+            transmissions: prev.transmissions.includes(trans)
+                ? prev.transmissions.filter(t => t !== trans)
+                : [...prev.transmissions, trans],
+        }))
+    }
+
+    // Get the first image or fallback
     const getListingImage = (listing: Listing) => {
         if (listing.images && listing.images.length > 0) {
-            return listing.images[0]
+            const valid = listing.images.find(img => !img.includes('example.com'))
+            if (valid) return valid
         }
-        // Use placeholder based on listing type
         return listing.type === 'AUCTION'
             ? "/assets/images/featured-suv.png"
             : "/assets/images/featured-sports.png"
     }
+
+    // ─── Render ──────────────────────────────────────────────────────────────
 
     return (
         <div className="min-h-screen pb-20">
@@ -54,9 +223,15 @@ export default function SearchPage() {
                     <div className="flex gap-4 max-w-4xl bg-white/10 p-2 rounded-lg backdrop-blur-md border border-white/10 flex-col md:flex-row">
                         <div className="flex-1 relative">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                            <Input placeholder="Search make, model, or keywords..." className="pl-12 bg-white/5 border-white/10 text-white placeholder:text-gray-400 focus:bg-white/10 h-12" />
+                            <Input
+                                placeholder="Search make, model, or keywords..."
+                                value={filters.search}
+                                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                                onKeyDown={handleSearchKeyDown}
+                                className="pl-12 bg-white/5 border-white/10 text-white placeholder:text-gray-400 focus:bg-white/10 h-12"
+                            />
                         </div>
-                        <Button size="lg" className="h-12 px-8">Search</Button>
+                        <Button size="lg" className="h-12 px-8" onClick={handleSearch}>Search</Button>
                     </div>
                 </div>
             </div>
@@ -68,47 +243,97 @@ export default function SearchPage() {
                     variant="outline"
                     onClick={() => setIsFilterOpen(!isFilterOpen)}
                 >
-                    <span className="flex items-center gap-2"><Filter size={18} /> Filters</span>
+                    <span className="flex items-center gap-2">
+                        <Filter size={18} /> Filters
+                        {activeFilterCount > 0 && (
+                            <span className="bg-primary text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">{activeFilterCount}</span>
+                        )}
+                    </span>
                     {isFilterOpen ? <X size={18} /> : null}
                 </Button>
 
                 {/* Sidebar */}
-                <aside className={`lg:w-1/4 glass-card p-6 h-full md:sticky md:top-24 ${isFilterOpen ? 'block' : 'hidden lg:block'}`}>
+                <aside className={`lg:w-1/4 glass-card p-6 h-fit lg:sticky lg:top-24 ${isFilterOpen ? 'block' : 'hidden lg:block'}`}>
                     <h3 className="font-heading font-bold text-xl mb-6 flex justify-between items-center text-white">
-                        Filters <span className="text-xs text-primary font-normal cursor-pointer hover:underline">Reset All</span>
+                        Filters
+                        {activeFilterCount > 0 && (
+                            <button
+                                onClick={handleResetFilters}
+                                className="text-xs text-primary font-normal cursor-pointer hover:underline flex items-center gap-1"
+                            >
+                                <RotateCcw size={12} /> Reset All
+                            </button>
+                        )}
                     </h3>
 
                     <div className="space-y-6">
-                        {/* Make Model */}
+                        {/* Body Type */}
                         <div className="space-y-3">
-                            <label className="text-sm font-bold uppercase text-gray-500 tracking-wide">Make & Model</label>
-                            <select className="w-full h-10 border border-white/10 rounded px-3 text-sm text-white focus:border-primary outline-none bg-slate-800 cursor-pointer">
-                                <option>Any Make</option>
-                                <option>BMW</option>
-                                <option>Mercedes</option>
-                                <option>Audi</option>
-                            </select>
-                            <select className="w-full h-10 border border-white/10 rounded px-3 text-sm text-white focus:border-primary outline-none bg-slate-800 cursor-pointer">
-                                <option>Any Model</option>
-                            </select>
+                            <label className="text-sm font-bold uppercase text-gray-500 tracking-wide">Body Type</label>
+                            <div className="grid grid-cols-3 gap-2">
+                                {BODY_TYPES.map((type) => (
+                                    <button
+                                        key={type.value}
+                                        type="button"
+                                        onClick={() => setFilters(prev => ({
+                                            ...prev,
+                                            bodyType: prev.bodyType === type.value ? '' : type.value,
+                                        }))}
+                                        className={`flex flex-col items-center gap-1 p-2 rounded-lg border text-[10px] font-bold uppercase tracking-wide transition-all cursor-pointer ${filters.bodyType === type.value
+                                                ? 'border-primary bg-primary/10 text-white shadow-[0_0_10px_rgba(237,28,36,0.15)]'
+                                                : 'border-white/10 bg-slate-800/50 text-gray-400 hover:border-white/20 hover:text-gray-300'
+                                            }`}
+                                    >
+                                        <span className="text-lg">{type.icon}</span>
+                                        {type.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Make */}
+                        <div className="space-y-3">
+                            <label className="text-sm font-bold uppercase text-gray-500 tracking-wide">Make</label>
+                            <Input
+                                placeholder="e.g. BMW, Audi..."
+                                value={filters.make}
+                                onChange={(e) => setFilters(prev => ({ ...prev, make: e.target.value }))}
+                                className="h-10 text-sm bg-slate-800 border-white/10 text-white placeholder:text-gray-500"
+                            />
                         </div>
 
                         {/* Price Range */}
                         <div className="space-y-3">
                             <label className="text-sm font-bold uppercase text-gray-500 tracking-wide">Price Range</label>
                             <div className="flex gap-2">
-                                <Input placeholder="Min" type="number" className="h-10 text-sm bg-slate-800 border-white/10 text-white" />
-                                <Input placeholder="Max" type="number" className="h-10 text-sm bg-slate-800 border-white/10 text-white" />
+                                <Input
+                                    placeholder="Min"
+                                    type="number"
+                                    value={filters.minPrice}
+                                    onChange={(e) => setFilters(prev => ({ ...prev, minPrice: e.target.value }))}
+                                    className="h-10 text-sm bg-slate-800 border-white/10 text-white"
+                                />
+                                <Input
+                                    placeholder="Max"
+                                    type="number"
+                                    value={filters.maxPrice}
+                                    onChange={(e) => setFilters(prev => ({ ...prev, maxPrice: e.target.value }))}
+                                    className="h-10 text-sm bg-slate-800 border-white/10 text-white"
+                                />
                             </div>
                         </div>
 
                         {/* Year */}
                         <div className="space-y-3">
                             <label className="text-sm font-bold uppercase text-gray-500 tracking-wide">Year</label>
-                            <select className="w-full h-10 border border-white/10 rounded px-3 text-sm text-white focus:border-primary outline-none bg-slate-800 cursor-pointer">
-                                <option>2020+</option>
-                                <option>2018+</option>
-                                <option>2015+</option>
+                            <select
+                                value={filters.year}
+                                onChange={(e) => setFilters(prev => ({ ...prev, year: parseInt(e.target.value) }))}
+                                className="w-full h-10 border border-white/10 rounded px-3 text-sm text-white focus:border-primary outline-none bg-slate-800 cursor-pointer"
+                            >
+                                {YEAR_OPTIONS.map(opt => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
                             </select>
                         </div>
 
@@ -116,16 +341,39 @@ export default function SearchPage() {
                         <div className="space-y-3">
                             <label className="text-sm font-bold uppercase text-gray-500 tracking-wide">Fuel Type</label>
                             <div className="space-y-2">
-                                {['Petrol', 'Diesel', 'Hybrid', 'Electric'].map(fuel => (
+                                {FUEL_TYPES.map(fuel => (
                                     <label key={fuel} className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer hover:text-primary">
-                                        <input type="checkbox" className="accent-primary rounded w-4 h-4 bg-slate-800 border-white/10" />
+                                        <input
+                                            type="checkbox"
+                                            checked={filters.fuelTypes.includes(fuel)}
+                                            onChange={() => toggleFuelType(fuel)}
+                                            className="accent-primary rounded w-4 h-4 bg-slate-800 border-white/10"
+                                        />
                                         {fuel}
                                     </label>
                                 ))}
                             </div>
                         </div>
 
-                        <Button className="w-full mt-4 shadow-neon">Apply Filters</Button>
+                        {/* Transmission */}
+                        <div className="space-y-3">
+                            <label className="text-sm font-bold uppercase text-gray-500 tracking-wide">Transmission</label>
+                            <div className="space-y-2">
+                                {TRANSMISSION_TYPES.map(trans => (
+                                    <label key={trans} className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer hover:text-primary">
+                                        <input
+                                            type="checkbox"
+                                            checked={filters.transmissions.includes(trans)}
+                                            onChange={() => toggleTransmission(trans)}
+                                            className="accent-primary rounded w-4 h-4 bg-slate-800 border-white/10"
+                                        />
+                                        {trans}
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        <Button className="w-full mt-4 shadow-neon" onClick={handleApplyFilters}>Apply Filters</Button>
                     </div>
 
                     {/* Auction Promo Card */}
@@ -176,13 +424,59 @@ export default function SearchPage() {
                                 <>Showing <span className="font-bold text-white">{listings.length}</span> of <span className="font-bold text-white">{totalCount}</span> vehicles</>
                             )}
                         </p>
-                        <select className="bg-transparent border-none text-sm font-bold text-white cursor-pointer outline-none">
-                            <option className="bg-slate-800 text-white">Sort by: Newest</option>
-                            <option className="bg-slate-800 text-white">Price: Low to High</option>
-                            <option className="bg-slate-800 text-white">Price: High to Low</option>
-                            <option className="bg-slate-800 text-white">Mileage: Low to High</option>
+                        <select
+                            value={appliedFilters.sortBy}
+                            onChange={(e) => handleSortChange(e.target.value)}
+                            className="bg-transparent border border-white/10 rounded-lg px-3 py-2 text-sm font-bold text-white cursor-pointer outline-none hover:border-white/20"
+                        >
+                            {SORT_OPTIONS.map(opt => (
+                                <option key={opt.value} value={opt.value} className="bg-slate-800 text-white">{opt.label}</option>
+                            ))}
                         </select>
                     </div>
+
+                    {/* Active Filters Tags */}
+                    {activeFilterCount > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-6">
+                            {appliedFilters.bodyType && (
+                                <span className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/30 text-primary text-xs font-bold px-3 py-1.5 rounded-full">
+                                    {BODY_TYPES.find(b => b.value === appliedFilters.bodyType)?.icon}{' '}
+                                    {BODY_TYPES.find(b => b.value === appliedFilters.bodyType)?.label}
+                                    <button onClick={() => { const u = { ...appliedFilters, bodyType: '' }; setFilters(u); setAppliedFilters(u); fetchListings(u) }} className="ml-1 hover:text-white"><X size={12} /></button>
+                                </span>
+                            )}
+                            {appliedFilters.make && (
+                                <span className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/30 text-primary text-xs font-bold px-3 py-1.5 rounded-full">
+                                    Make: {appliedFilters.make}
+                                    <button onClick={() => { const u = { ...appliedFilters, make: '' }; setFilters(u); setAppliedFilters(u); fetchListings(u) }} className="ml-1 hover:text-white"><X size={12} /></button>
+                                </span>
+                            )}
+                            {(appliedFilters.minPrice || appliedFilters.maxPrice) && (
+                                <span className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/30 text-primary text-xs font-bold px-3 py-1.5 rounded-full">
+                                    Price: {appliedFilters.minPrice ? `£${appliedFilters.minPrice}` : '£0'} – {appliedFilters.maxPrice ? `£${appliedFilters.maxPrice}` : '∞'}
+                                    <button onClick={() => { const u = { ...appliedFilters, minPrice: '', maxPrice: '' }; setFilters(u); setAppliedFilters(u); fetchListings(u) }} className="ml-1 hover:text-white"><X size={12} /></button>
+                                </span>
+                            )}
+                            {appliedFilters.year > 0 && (
+                                <span className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/30 text-primary text-xs font-bold px-3 py-1.5 rounded-full">
+                                    Year: {appliedFilters.year}+
+                                    <button onClick={() => { const u = { ...appliedFilters, year: 0 }; setFilters(u); setAppliedFilters(u); fetchListings(u) }} className="ml-1 hover:text-white"><X size={12} /></button>
+                                </span>
+                            )}
+                            {appliedFilters.fuelTypes.map(f => (
+                                <span key={f} className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/30 text-primary text-xs font-bold px-3 py-1.5 rounded-full">
+                                    {f}
+                                    <button onClick={() => { const u = { ...appliedFilters, fuelTypes: appliedFilters.fuelTypes.filter(x => x !== f) }; setFilters(u); setAppliedFilters(u); fetchListings(u) }} className="ml-1 hover:text-white"><X size={12} /></button>
+                                </span>
+                            ))}
+                            {appliedFilters.transmissions.map(t => (
+                                <span key={t} className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/30 text-primary text-xs font-bold px-3 py-1.5 rounded-full">
+                                    {t}
+                                    <button onClick={() => { const u = { ...appliedFilters, transmissions: appliedFilters.transmissions.filter(x => x !== t) }; setFilters(u); setAppliedFilters(u); fetchListings(u) }} className="ml-1 hover:text-white"><X size={12} /></button>
+                                </span>
+                            ))}
+                        </div>
+                    )}
 
                     {/* Loading State */}
                     {loading && (
@@ -198,7 +492,7 @@ export default function SearchPage() {
                             <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
                             <h3 className="text-xl font-bold text-white mb-2">Failed to Load Listings</h3>
                             <p className="text-gray-400 mb-4">{error}</p>
-                            <Button onClick={() => window.location.reload()}>Try Again</Button>
+                            <Button onClick={() => fetchListings(appliedFilters)}>Try Again</Button>
                         </div>
                     )}
 
@@ -207,8 +501,16 @@ export default function SearchPage() {
                         <div className="glass-card p-8 text-center">
                             <Search className="w-12 h-12 text-gray-500 mx-auto mb-4" />
                             <h3 className="text-xl font-bold text-white mb-2">No Listings Found</h3>
-                            <p className="text-gray-400 mb-4">Be the first to list your car!</p>
-                            <Button onClick={() => window.location.href = '/sell'}>Sell Your Car</Button>
+                            <p className="text-gray-400 mb-4">
+                                {activeFilterCount > 0
+                                    ? 'Try adjusting your filters or clearing them.'
+                                    : 'Be the first to list your car!'}
+                            </p>
+                            {activeFilterCount > 0 ? (
+                                <Button onClick={handleResetFilters}>Clear All Filters</Button>
+                            ) : (
+                                <Button onClick={() => window.location.href = '/sell'}>Sell Your Car</Button>
+                            )}
                         </div>
                     )}
 
@@ -222,6 +524,10 @@ export default function SearchPage() {
                                     price={formatPrice(listing.price)}
                                     image={getListingImage(listing)}
                                     href={`/buy-cars/${listing.slug}`}
+                                    year={listing.year ?? undefined}
+                                    mileage={listing.mileage ?? undefined}
+                                    fuelType={listing.fuelType ?? undefined}
+                                    bodyType={listing.bodyType ?? undefined}
                                 />
                             ))}
                         </div>

@@ -110,6 +110,24 @@ enum InsuranceQuoteStatus {
   @@map("insurance_quote_status")
 }
 
+enum BodyType {
+  SEDAN
+  SUV
+  HATCHBACK
+  COUPE
+  CONVERTIBLE
+  ESTATE
+  CROSSOVER
+  SPORTS_CAR
+  MINIVAN
+  PICKUP_TRUCK
+  STATION_WAGON
+  MPV
+  VAN
+
+  @@map("body_type")
+}
+
 // ============================================================================
 // USER MANAGEMENT & PROFILES
 // ============================================================================
@@ -267,6 +285,7 @@ model Listing {
   seats           Int?
   engineSize      Int?
   bhp             Int?
+  bodyType        BodyType?
   features        Json?
   
   createdAt       DateTime       @default(now())
