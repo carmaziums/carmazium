@@ -5,16 +5,22 @@ import Link from "next/link"
 import { Button } from "@/components/ui/Button"
 import { AccordionItem } from "@/components/ui/Accordion"
 import { FinanceCalculator } from "@/components/features/FinanceCalculator"
-import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale, Loader2 } from "lucide-react"
+import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale, Loader2, MessageCircle } from "lucide-react"
 import { useCompare } from "@/context/CompareContext"
 import { getListingBySlug, type Listing, formatPrice } from "@/lib/listingApi"
+import { createChatRoom } from "@/lib/chatApi"
+import { useAuth } from "@/context/AuthContext"
+import { useRouter } from "next/navigation"
 
 export default function VehicleDetailsPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = React.use(params)
+    const router = useRouter()
+    const { user } = useAuth()
     const [listing, setListing] = React.useState<Listing | null>(null)
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
     const [activeImage, setActiveImage] = React.useState(0)
+    const [enquiring, setEnquiring] = React.useState(false)
 
     const { addToCompare, removeFromCompare, isInCompare } = useCompare()
     const isCompared = listing ? isInCompare(listing.id) : false
@@ -72,7 +78,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
             doors: listing.doors?.toString() || "-",
             seats: listing.seats?.toString() || "-",
             color: listing.color || "-",
-            mpg: "-", // Not in schema yet
+            mpg: "-",
         }
     }
 
@@ -98,9 +104,40 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
         }
     }
 
+    const handleEnquire = async () => {
+        // Must be logged in
+        if (!user) {
+            router.push('/auth/login?redirect=' + encodeURIComponent(`/buy-cars/${listing.slug}`))
+            return
+        }
+
+        // Can't message yourself
+        if (listing.sellerId && user.id === listing.sellerId) {
+            alert("This is your own listing.")
+            return
+        }
+
+        if (!listing.sellerId) {
+            alert("Unable to contact the seller for this listing.")
+            return
+        }
+
+        try {
+            setEnquiring(true)
+            // Create or find existing chat room with the seller about this listing
+            const room = await createChatRoom(listing.sellerId, listing.id)
+            router.push(`/dashboard/messages?room=${room.id}`)
+        } catch (err: any) {
+            console.error('Failed to create chat room:', err)
+            alert(err.message || 'Failed to start enquiry. Please try again.')
+        } finally {
+            setEnquiring(false)
+        }
+    }
+
     return (
         <div className="min-h-screen bg-slate-900 pt-24 pb-12 relative">
-            {/* Background gradient from original css */}
+            {/* Background gradient */}
             <div className="fixed inset-0 bg-gradient-to-br from-[#0f172a] to-[#1e293b] -z-10" />
 
             <div className="container mx-auto px-5">
@@ -138,14 +175,13 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                         {/* Gallery */}
                         <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-4">
                             <div className="relative aspect-video bg-black rounded-lg overflow-hidden mb-4 group">
-                                {/* Use img tag for user-uploaded images from any domain */}
                                 <img
                                     src={vehicle.images[activeImage] || vehicle.images[0]}
                                     alt={vehicle.title}
                                     className="object-cover w-full h-full absolute inset-0"
                                 />
                                 <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-sm text-white px-3 py-1 rounded-md text-sm font-medium flex items-center gap-2">
-                                    <Camera size={16} /> 1/45
+                                    <Camera size={16} /> {activeImage + 1}/{vehicle.images.length}
                                 </div>
                             </div>
                             <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
@@ -173,7 +209,6 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                                     { label: "Engine", value: vehicle.specs.engine },
                                     { label: "Colour", value: vehicle.specs.color },
                                     { label: "Trans", value: vehicle.specs.transmission },
-                                    // Warranty not available in schema yet
                                 ].map((item, i) => (
                                     <div key={i} className="flex justify-between border-b border-white/5 pb-2">
                                         <span className="text-gray-400 text-sm">{item.label}</span>
@@ -183,7 +218,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                             </div>
                         </div>
 
-                        {/* Features Accordion */}
+                        {/* Features */}
                         <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-8">
                             <h3 className="text-xl font-bold text-white mb-6 border-l-4 border-primary pl-4">Vehicle Features</h3>
                             {listing.features && Array.isArray(listing.features) && listing.features.length > 0 ? (
@@ -200,7 +235,6 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                             )}
                         </div>
 
-                        {/* Finance Calculator */}
                         {/* Finance Calculator */}
                         <FinanceCalculator vehiclePrice={Number(listing.price)} />
                     </div>
@@ -227,13 +261,26 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                                 </div>
 
                                 <div className="space-y-3">
-                                    <Button className="w-full py-6 text-lg" shape="default">Enquire Now</Button>
+                                    <Button
+                                        className="w-full py-6 text-lg"
+                                        shape="default"
+                                        onClick={handleEnquire}
+                                        disabled={enquiring}
+                                    >
+                                        {enquiring ? (
+                                            <><Loader2 className="w-5 h-5 animate-spin mr-2" /> Starting Chat...</>
+                                        ) : (
+                                            <><MessageCircle className="w-5 h-5 mr-2" /> Enquire Now</>
+                                        )}
+                                    </Button>
                                     <Button variant="outline" className="w-full py-6 text-lg border-white/20 text-white hover:bg-white/10">Buy Online</Button>
                                 </div>
                             </div>
 
-                            <div className="bg-white/5 p-4 flex items-center justify-center gap-2 text-gray-400 text-xs hover:text-white cursor-pointer transition-colors">
-                                <MapPin size={14} /> View Location
+                            {/* Location Display */}
+                            <div className="bg-white/5 p-4 flex items-center justify-center gap-2 text-gray-400 text-xs">
+                                <MapPin size={14} />
+                                <span>{listing.location || 'Location not specified'}</span>
                             </div>
                         </div>
                     </div>

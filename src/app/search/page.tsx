@@ -4,26 +4,11 @@ import * as React from "react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { CarCard } from "@/components/features/CarCard"
-import { Search, Filter, X, Gavel, AlertTriangle, Loader2, RotateCcw } from "lucide-react"
+import { Search, Filter, X, Gavel, AlertTriangle, Loader2, RotateCcw, ChevronDown } from "lucide-react"
 import { getListings, formatPrice, type Listing, type ListingFilters } from "@/lib/listingApi"
+import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-
-const BODY_TYPES = [
-    { value: 'SEDAN', label: 'Sedan', icon: '🚗' },
-    { value: 'SUV', label: 'SUV', icon: '🚙' },
-    { value: 'HATCHBACK', label: 'Hatchback', icon: '🏎️' },
-    { value: 'COUPE', label: 'Coupé', icon: '🏁' },
-    { value: 'CONVERTIBLE', label: 'Convertible', icon: '🛻' },
-    { value: 'ESTATE', label: 'Estate', icon: '🚐' },
-    { value: 'CROSSOVER', label: 'Crossover', icon: '🚘' },
-    { value: 'SPORTS_CAR', label: 'Sports Car', icon: '🏎️' },
-    { value: 'MINIVAN', label: 'Minivan', icon: '🚌' },
-    { value: 'PICKUP_TRUCK', label: 'Pickup', icon: '🛻' },
-    { value: 'STATION_WAGON', label: 'Wagon', icon: '🚃' },
-    { value: 'MPV', label: 'MPV', icon: '🚐' },
-    { value: 'VAN', label: 'Van', icon: '🚚' },
-] as const
 
 const FUEL_TYPES = ['Petrol', 'Diesel', 'Hybrid', 'Electric', 'Plugin Hybrid'] as const
 const FUEL_MAP: Record<string, string> = {
@@ -79,6 +64,33 @@ const INITIAL_FILTERS: FilterState = {
     sortBy: 'newest',
 }
 
+// ─── Collapsible Section ─────────────────────────────────────────────────────
+
+function FilterSection({ title, children, defaultOpen = false }: {
+    title: string
+    children: React.ReactNode
+    defaultOpen?: boolean
+}) {
+    const [open, setOpen] = React.useState(defaultOpen)
+
+    return (
+        <div className="border-b border-white/5 pb-4">
+            <button
+                type="button"
+                onClick={() => setOpen(!open)}
+                className="w-full flex items-center justify-between text-sm font-bold uppercase text-gray-400 tracking-wide hover:text-gray-300 transition-colors cursor-pointer py-1"
+            >
+                {title}
+                <ChevronDown
+                    size={16}
+                    className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+                />
+            </button>
+            {open && <div className="mt-3">{children}</div>}
+        </div>
+    )
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function SearchPage() {
@@ -127,7 +139,7 @@ export default function SearchPage() {
 
             let data = response.data
 
-            // Client-side multi-select filtering for fuelType/transmission (API only supports single)
+            // Client-side multi-select filtering (API only supports single value)
             if (filterState.fuelTypes.length > 1) {
                 const mapped = filterState.fuelTypes.map(f => FUEL_MAP[f])
                 data = data.filter(l => l.fuelType && mapped.includes(l.fuelType))
@@ -201,7 +213,7 @@ export default function SearchPage() {
         }))
     }
 
-    // Get the first image or fallback
+    // Image fallback
     const getListingImage = (listing: Listing) => {
         if (listing.images && listing.images.length > 0) {
             const valid = listing.images.find(img => !img.includes('example.com'))
@@ -266,45 +278,47 @@ export default function SearchPage() {
                         )}
                     </h3>
 
-                    <div className="space-y-6">
-                        {/* Body Type */}
-                        <div className="space-y-3">
-                            <label className="text-sm font-bold uppercase text-gray-500 tracking-wide">Body Type</label>
-                            <div className="grid grid-cols-3 gap-2">
-                                {BODY_TYPES.map((type) => (
-                                    <button
-                                        key={type.value}
-                                        type="button"
-                                        onClick={() => setFilters(prev => ({
-                                            ...prev,
-                                            bodyType: prev.bodyType === type.value ? '' : type.value,
-                                        }))}
-                                        className={`flex flex-col items-center gap-1 p-2 rounded-lg border text-[10px] font-bold uppercase tracking-wide transition-all cursor-pointer ${filters.bodyType === type.value
-                                                ? 'border-primary bg-primary/10 text-white shadow-[0_0_10px_rgba(237,28,36,0.15)]'
-                                                : 'border-white/10 bg-slate-800/50 text-gray-400 hover:border-white/20 hover:text-gray-300'
-                                            }`}
-                                    >
-                                        <span className="text-lg">{type.icon}</span>
-                                        {type.label}
-                                    </button>
-                                ))}
+                    <div className="space-y-4">
+                        {/* Body Type — Collapsible Dropdown */}
+                        <FilterSection title="Body Type" defaultOpen={false}>
+                            <div className="space-y-1 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
+                                {BODY_TYPE_KEYS.map((key) => {
+                                    const Icon = BODY_TYPE_ICONS[key]
+                                    const label = BODY_TYPE_LABELS[key]
+                                    const isActive = filters.bodyType === key
+                                    return (
+                                        <button
+                                            key={key}
+                                            type="button"
+                                            onClick={() => setFilters(prev => ({
+                                                ...prev,
+                                                bodyType: prev.bodyType === key ? '' : key,
+                                            }))}
+                                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${isActive
+                                                    ? 'bg-primary/15 text-primary border border-primary/30'
+                                                    : 'text-gray-400 hover:bg-white/5 hover:text-gray-200 border border-transparent'
+                                                }`}
+                                        >
+                                            <Icon className="w-8 h-4 shrink-0" />
+                                            <span>{label}</span>
+                                        </button>
+                                    )
+                                })}
                             </div>
-                        </div>
+                        </FilterSection>
 
                         {/* Make */}
-                        <div className="space-y-3">
-                            <label className="text-sm font-bold uppercase text-gray-500 tracking-wide">Make</label>
+                        <FilterSection title="Make" defaultOpen={true}>
                             <Input
                                 placeholder="e.g. BMW, Audi..."
                                 value={filters.make}
                                 onChange={(e) => setFilters(prev => ({ ...prev, make: e.target.value }))}
                                 className="h-10 text-sm bg-slate-800 border-white/10 text-white placeholder:text-gray-500"
                             />
-                        </div>
+                        </FilterSection>
 
                         {/* Price Range */}
-                        <div className="space-y-3">
-                            <label className="text-sm font-bold uppercase text-gray-500 tracking-wide">Price Range</label>
+                        <FilterSection title="Price Range" defaultOpen={true}>
                             <div className="flex gap-2">
                                 <Input
                                     placeholder="Min"
@@ -321,11 +335,10 @@ export default function SearchPage() {
                                     className="h-10 text-sm bg-slate-800 border-white/10 text-white"
                                 />
                             </div>
-                        </div>
+                        </FilterSection>
 
                         {/* Year */}
-                        <div className="space-y-3">
-                            <label className="text-sm font-bold uppercase text-gray-500 tracking-wide">Year</label>
+                        <FilterSection title="Year" defaultOpen={false}>
                             <select
                                 value={filters.year}
                                 onChange={(e) => setFilters(prev => ({ ...prev, year: parseInt(e.target.value) }))}
@@ -335,14 +348,13 @@ export default function SearchPage() {
                                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                                 ))}
                             </select>
-                        </div>
+                        </FilterSection>
 
                         {/* Fuel Type */}
-                        <div className="space-y-3">
-                            <label className="text-sm font-bold uppercase text-gray-500 tracking-wide">Fuel Type</label>
+                        <FilterSection title="Fuel Type" defaultOpen={false}>
                             <div className="space-y-2">
                                 {FUEL_TYPES.map(fuel => (
-                                    <label key={fuel} className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer hover:text-primary">
+                                    <label key={fuel} className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer hover:text-primary transition-colors">
                                         <input
                                             type="checkbox"
                                             checked={filters.fuelTypes.includes(fuel)}
@@ -353,14 +365,13 @@ export default function SearchPage() {
                                     </label>
                                 ))}
                             </div>
-                        </div>
+                        </FilterSection>
 
                         {/* Transmission */}
-                        <div className="space-y-3">
-                            <label className="text-sm font-bold uppercase text-gray-500 tracking-wide">Transmission</label>
+                        <FilterSection title="Transmission" defaultOpen={false}>
                             <div className="space-y-2">
                                 {TRANSMISSION_TYPES.map(trans => (
-                                    <label key={trans} className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer hover:text-primary">
+                                    <label key={trans} className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer hover:text-primary transition-colors">
                                         <input
                                             type="checkbox"
                                             checked={filters.transmissions.includes(trans)}
@@ -371,9 +382,9 @@ export default function SearchPage() {
                                     </label>
                                 ))}
                             </div>
-                        </div>
+                        </FilterSection>
 
-                        <Button className="w-full mt-4 shadow-neon" onClick={handleApplyFilters}>Apply Filters</Button>
+                        <Button className="w-full mt-2 shadow-neon" onClick={handleApplyFilters}>Apply Filters</Button>
                     </div>
 
                     {/* Auction Promo Card */}
@@ -440,39 +451,38 @@ export default function SearchPage() {
                         <div className="flex flex-wrap gap-2 mb-6">
                             {appliedFilters.bodyType && (
                                 <span className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/30 text-primary text-xs font-bold px-3 py-1.5 rounded-full">
-                                    {BODY_TYPES.find(b => b.value === appliedFilters.bodyType)?.icon}{' '}
-                                    {BODY_TYPES.find(b => b.value === appliedFilters.bodyType)?.label}
-                                    <button onClick={() => { const u = { ...appliedFilters, bodyType: '' }; setFilters(u); setAppliedFilters(u); fetchListings(u) }} className="ml-1 hover:text-white"><X size={12} /></button>
+                                    {BODY_TYPE_LABELS[appliedFilters.bodyType]}
+                                    <button onClick={() => { const u = { ...appliedFilters, bodyType: '' }; setFilters(u); setAppliedFilters(u); fetchListings(u) }} className="ml-1 hover:text-white cursor-pointer"><X size={12} /></button>
                                 </span>
                             )}
                             {appliedFilters.make && (
                                 <span className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/30 text-primary text-xs font-bold px-3 py-1.5 rounded-full">
                                     Make: {appliedFilters.make}
-                                    <button onClick={() => { const u = { ...appliedFilters, make: '' }; setFilters(u); setAppliedFilters(u); fetchListings(u) }} className="ml-1 hover:text-white"><X size={12} /></button>
+                                    <button onClick={() => { const u = { ...appliedFilters, make: '' }; setFilters(u); setAppliedFilters(u); fetchListings(u) }} className="ml-1 hover:text-white cursor-pointer"><X size={12} /></button>
                                 </span>
                             )}
                             {(appliedFilters.minPrice || appliedFilters.maxPrice) && (
                                 <span className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/30 text-primary text-xs font-bold px-3 py-1.5 rounded-full">
                                     Price: {appliedFilters.minPrice ? `£${appliedFilters.minPrice}` : '£0'} – {appliedFilters.maxPrice ? `£${appliedFilters.maxPrice}` : '∞'}
-                                    <button onClick={() => { const u = { ...appliedFilters, minPrice: '', maxPrice: '' }; setFilters(u); setAppliedFilters(u); fetchListings(u) }} className="ml-1 hover:text-white"><X size={12} /></button>
+                                    <button onClick={() => { const u = { ...appliedFilters, minPrice: '', maxPrice: '' }; setFilters(u); setAppliedFilters(u); fetchListings(u) }} className="ml-1 hover:text-white cursor-pointer"><X size={12} /></button>
                                 </span>
                             )}
                             {appliedFilters.year > 0 && (
                                 <span className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/30 text-primary text-xs font-bold px-3 py-1.5 rounded-full">
                                     Year: {appliedFilters.year}+
-                                    <button onClick={() => { const u = { ...appliedFilters, year: 0 }; setFilters(u); setAppliedFilters(u); fetchListings(u) }} className="ml-1 hover:text-white"><X size={12} /></button>
+                                    <button onClick={() => { const u = { ...appliedFilters, year: 0 }; setFilters(u); setAppliedFilters(u); fetchListings(u) }} className="ml-1 hover:text-white cursor-pointer"><X size={12} /></button>
                                 </span>
                             )}
                             {appliedFilters.fuelTypes.map(f => (
                                 <span key={f} className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/30 text-primary text-xs font-bold px-3 py-1.5 rounded-full">
                                     {f}
-                                    <button onClick={() => { const u = { ...appliedFilters, fuelTypes: appliedFilters.fuelTypes.filter(x => x !== f) }; setFilters(u); setAppliedFilters(u); fetchListings(u) }} className="ml-1 hover:text-white"><X size={12} /></button>
+                                    <button onClick={() => { const u = { ...appliedFilters, fuelTypes: appliedFilters.fuelTypes.filter(x => x !== f) }; setFilters(u); setAppliedFilters(u); fetchListings(u) }} className="ml-1 hover:text-white cursor-pointer"><X size={12} /></button>
                                 </span>
                             ))}
                             {appliedFilters.transmissions.map(t => (
                                 <span key={t} className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/30 text-primary text-xs font-bold px-3 py-1.5 rounded-full">
                                     {t}
-                                    <button onClick={() => { const u = { ...appliedFilters, transmissions: appliedFilters.transmissions.filter(x => x !== t) }; setFilters(u); setAppliedFilters(u); fetchListings(u) }} className="ml-1 hover:text-white"><X size={12} /></button>
+                                    <button onClick={() => { const u = { ...appliedFilters, transmissions: appliedFilters.transmissions.filter(x => x !== t) }; setFilters(u); setAppliedFilters(u); fetchListings(u) }} className="ml-1 hover:text-white cursor-pointer"><X size={12} /></button>
                                 </span>
                             ))}
                         </div>

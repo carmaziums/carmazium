@@ -16,6 +16,16 @@ primary_region = 'lhr'
   min_machines_running = 1    # Changed from 0 to ensure always availability
   processes = ['app']
 
+[checks]
+  [checks.health]
+    port = 8080
+    type = "http"
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "30s"
+    method = "GET"
+    path = "/health"
+
 [[vm]]
   cpu_kind = 'shared'
   cpus = 1

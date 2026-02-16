@@ -261,5 +261,14 @@ export class CreateListingDto {
     @IsString({ each: true })
     @IsOptional()
     features?: string[];
+
+    @ApiProperty({
+        description: 'Location where the vehicle is based',
+        example: 'London',
+        required: false,
+    })
+    @IsString()
+    @IsOptional()
+    location?: string;
 }
 

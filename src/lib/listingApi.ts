@@ -18,6 +18,7 @@ export interface CreateListingRequest {
     fuelType?: 'PETROL' | 'DIESEL' | 'ELECTRIC' | 'HYBRID' | 'PLUGIN_HYBRID'
     transmission?: 'MANUAL' | 'AUTOMATIC' | 'SEMI_AUTOMATIC'
     bodyType?: BodyTypeValue
+    location?: string
     status?: 'DRAFT' | 'ACTIVE' | 'SOLD'
     color?: string
     doors?: number
@@ -78,6 +79,8 @@ export interface Listing {
     engineSize: number | null
     bhp: number | null
     features: string | string[] | null
+    location: string | null
+    sellerId: string | null
     createdAt: string
     updatedAt: string
 }
