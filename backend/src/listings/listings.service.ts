@@ -4,10 +4,10 @@ import {
     ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateListingDto, FuelType as DtoFuelType, Transmission as DtoTransmission } from './dto/create-listing.dto';
+import { CreateListingDto, FuelType as DtoFuelType, Transmission as DtoTransmission, BodyType as DtoBodyType } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { ListingFilterDto } from './dto/listing-filter.dto';
-import { Listing, FuelType, TransmissionType, ListingType, ListingStatus } from '@prisma/client';
+import { Listing, FuelType, TransmissionType, BodyType, ListingType, ListingStatus } from '@prisma/client';
 import { randomBytes } from 'crypto';
 
 // Map DTO enums to Prisma enums
@@ -25,12 +25,32 @@ const mapFuelType = (fuel?: DtoFuelType): FuelType | null => {
 
 const mapTransmission = (trans?: DtoTransmission): TransmissionType | null => {
     if (!trans) return null;
-    const map: Record<DtoTransmission, TransmissionType> = {
-        [DtoTransmission.MANUAL]: 'MANUAL',
-        [DtoTransmission.AUTOMATIC]: 'AUTOMATIC',
-        [DtoTransmission.SEMI_AUTOMATIC]: 'SEMI_AUTOMATIC',
+    const map: Record<string, TransmissionType> = {
+        MANUAL: 'MANUAL',
+        AUTOMATIC: 'AUTOMATIC',
+        SEMI_AUTOMATIC: 'SEMI_AUTOMATIC',
     };
-    return map[trans];
+    return map[trans] ?? null;
+};
+
+const mapBodyType = (body?: DtoBodyType): BodyType | null => {
+    if (!body) return null;
+    const map: Record<string, BodyType> = {
+        SEDAN: 'SEDAN',
+        SUV: 'SUV',
+        HATCHBACK: 'HATCHBACK',
+        COUPE: 'COUPE',
+        CONVERTIBLE: 'CONVERTIBLE',
+        ESTATE: 'ESTATE',
+        CROSSOVER: 'CROSSOVER',
+        SPORTS_CAR: 'SPORTS_CAR',
+        MINIVAN: 'MINIVAN',
+        PICKUP_TRUCK: 'PICKUP_TRUCK',
+        STATION_WAGON: 'STATION_WAGON',
+        MPV: 'MPV',
+        VAN: 'VAN',
+    };
+    return map[body] ?? null;
 };
 
 @Injectable()
@@ -86,6 +106,7 @@ export class ListingsService {
                 seats: createListingDto.seats ?? null,
                 engineSize: createListingDto.engineSize ?? null,
                 bhp: createListingDto.bhp ?? null,
+                bodyType: mapBodyType(createListingDto.bodyType),
                 features: createListingDto.features ?? undefined,
                 // Seller is optional for now (auth not implemented)
                 sellerId: userId ?? null,
@@ -100,7 +121,12 @@ export class ListingsService {
      * Automatically excludes soft-deleted items
      */
     async findAll(filterDto: ListingFilterDto): Promise<{ data: Listing[]; total: number }> {
-        const { minPrice, maxPrice, make, year, fuelType, transmission, page = 1, limit = 20 } = filterDto;
+        const {
+            minPrice, maxPrice, make, model, year,
+            fuelType, transmission, bodyType,
+            sortBy, search,
+            page = 1, limit = 20,
+        } = filterDto;
 
         // Build where clause
         const where: any = {
@@ -114,14 +140,15 @@ export class ListingsService {
         }
 
         if (make) {
-            where.make = {
-                contains: make,
-                mode: 'insensitive',
-            };
+            where.make = { contains: make, mode: 'insensitive' };
+        }
+
+        if (model) {
+            where.model = { contains: model, mode: 'insensitive' };
         }
 
         if (year) {
-            where.year = year;
+            where.year = { gte: year };
         }
 
         if (fuelType) {
@@ -132,19 +159,32 @@ export class ListingsService {
             where.transmission = transmission;
         }
 
+        if (bodyType) {
+            where.bodyType = bodyType;
+        }
+
+        // Full-text search across title, make, model
+        if (search) {
+            where.OR = [
+                { title: { contains: search, mode: 'insensitive' } },
+                { make: { contains: search, mode: 'insensitive' } },
+                { model: { contains: search, mode: 'insensitive' } },
+            ];
+        }
+
+        // Dynamic sort
+        let orderBy: any = { createdAt: 'desc' };
+        if (sortBy === 'price_asc') orderBy = { price: 'asc' };
+        else if (sortBy === 'price_desc') orderBy = { price: 'desc' };
+        else if (sortBy === 'mileage_asc') orderBy = { mileage: 'asc' };
+        else if (sortBy === 'year_desc') orderBy = { year: 'desc' };
+
         // Calculate pagination
         const skip = (page - 1) * limit;
 
         // Execute query with count
         const [data, total] = await Promise.all([
-            this.prisma.listing.findMany({
-                where,
-                skip,
-                take: limit,
-                orderBy: {
-                    createdAt: 'desc',
-                },
-            }),
+            this.prisma.listing.findMany({ where, skip, take: limit, orderBy }),
             this.prisma.listing.count({ where }),
         ]);
 

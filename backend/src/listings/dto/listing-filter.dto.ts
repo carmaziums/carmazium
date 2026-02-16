@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsInt, IsNumber, IsOptional, IsString, Min, IsEnum } from 'class-validator';
-import { FuelType, TransmissionType } from '@prisma/client';
+import { FuelType, TransmissionType, BodyType } from '@prisma/client';
 
 export class ListingFilterDto {
     @ApiPropertyOptional({
@@ -33,7 +33,15 @@ export class ListingFilterDto {
     make?: string;
 
     @ApiPropertyOptional({
-        description: 'Filter by year',
+        description: 'Filter by vehicle model',
+        example: 'Q7',
+    })
+    @IsString()
+    @IsOptional()
+    model?: string;
+
+    @ApiPropertyOptional({
+        description: 'Filter by minimum year',
         example: 2015,
     })
     @Type(() => Number)
@@ -56,6 +64,30 @@ export class ListingFilterDto {
     @IsEnum(TransmissionType)
     @IsOptional()
     transmission?: TransmissionType;
+
+    @ApiPropertyOptional({
+        description: 'Filter by body type',
+        enum: ['SEDAN', 'SUV', 'HATCHBACK', 'COUPE', 'CONVERTIBLE', 'ESTATE', 'CROSSOVER', 'SPORTS_CAR', 'MINIVAN', 'PICKUP_TRUCK', 'STATION_WAGON', 'MPV', 'VAN'],
+    })
+    @IsEnum(BodyType)
+    @IsOptional()
+    bodyType?: BodyType;
+
+    @ApiPropertyOptional({
+        description: 'Sort order: newest, price_asc, price_desc, mileage_asc',
+        example: 'newest',
+    })
+    @IsString()
+    @IsOptional()
+    sortBy?: string;
+
+    @ApiPropertyOptional({
+        description: 'Search query for title/make/model',
+        example: 'BMW M4',
+    })
+    @IsString()
+    @IsOptional()
+    search?: string;
 
     @ApiPropertyOptional({
         description: 'Page number (1-indexed)',
