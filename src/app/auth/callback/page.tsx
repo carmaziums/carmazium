@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase"
 import { fetchWithRetry } from "@/lib/fetchWithRetry"
 import { Loader2 } from "lucide-react"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://carmazium.onrender.com"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://carmazium.fly.dev"
 
 /**
  * Parses hash fragment for Supabase auth redirect (e.g. #access_token=...&refresh_token=...&type=signup).

@@ -33,10 +33,10 @@ async function bootstrap() {
   const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
     : [
-        'http://localhost:3000',
-        'https://carmazium.vercel.app',
-        'https://carmazium.onrender.com',
-      ];
+      'http://localhost:3000',
+      'https://carmazium.vercel.app',
+      'https://carmazium.fly.dev',
+    ];
   app.enableCors({
     origin: allowedOrigins,
     credentials: true,
