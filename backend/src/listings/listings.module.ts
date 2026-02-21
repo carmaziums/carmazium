@@ -3,9 +3,10 @@ import { ListingsService } from './listings.service';
 import { ListingsController } from './listings.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AuthModule } from '../auth/auth.module';
+import { SellersModule } from '../sellers/sellers.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule],
+  imports: [PrismaModule, AuthModule, SellersModule],
   controllers: [ListingsController],
   providers: [ListingsService],
   exports: [ListingsService],

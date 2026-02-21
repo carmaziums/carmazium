@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button"
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion"
 import { useRef } from "react"
 import { Calendar, Gauge, Fuel, Car } from "lucide-react"
+import { SellerBadge } from "@/components/ui/SellerBadge"
 
 // ─── Label Mapping ───────────────────────────────────────────────────────────
 
@@ -31,6 +32,8 @@ interface CarCardProps {
     mileage?: number
     fuelType?: string
     bodyType?: string
+    sellerId?: string
+    sellerScore?: number
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -38,6 +41,7 @@ interface CarCardProps {
 export function CarCard({
     title, price, image, href = "#",
     year, mileage, fuelType, bodyType,
+    sellerId, sellerScore
 }: CarCardProps) {
     const ref = useRef<HTMLDivElement>(null)
 
@@ -116,12 +120,16 @@ export function CarCard({
             >
                 <div className="flex justify-between items-start mb-2">
                     <h3 className="text-xl font-bold font-heading text-white tracking-wide group-hover:text-primary transition-colors duration-300">{title}</h3>
-                    <motion.div
-                        className="bg-primary/20 text-primary text-[10px] font-bold px-2 py-1 rounded uppercase tracking items-center flex shrink-0"
-                        whileHover={{ scale: 1.1 }}
-                    >
-                        Verified
-                    </motion.div>
+                    {sellerId && sellerScore !== undefined ? (
+                        <SellerBadge score={sellerScore} sellerUserId={sellerId} size="sm" showLabel />
+                    ) : (
+                        <motion.div
+                            className="bg-primary/20 text-primary text-[10px] font-bold px-2 py-1 rounded uppercase tracking items-center flex shrink-0"
+                            whileHover={{ scale: 1.1 }}
+                        >
+                            Verified
+                        </motion.div>
+                    )}
                 </div>
 
                 <p className="text-white text-2xl font-bold font-mono bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400 mb-3">

@@ -9,6 +9,7 @@ import { UpdateListingDto } from './dto/update-listing.dto';
 import { ListingFilterDto } from './dto/listing-filter.dto';
 import { Listing, FuelType, TransmissionType, BodyType, ListingType, ListingStatus } from '@prisma/client';
 import { randomBytes } from 'crypto';
+import { SellersService } from '../sellers/sellers.service';
 
 // Map DTO enums to Prisma enums
 const mapFuelType = (fuel?: DtoFuelType): FuelType | null => {
@@ -55,7 +56,10 @@ const mapBodyType = (body?: DtoBodyType): BodyType | null => {
 
 @Injectable()
 export class ListingsService {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly sellersService: SellersService,
+    ) { }
 
     /**
      * Generate a URL-friendly slug from title + short UUID
@@ -113,6 +117,11 @@ export class ListingsService {
                 sellerId: userId ?? null,
             },
         });
+
+        // Phase 2: Increment seller's total listings count
+        if (userId && listingStatus === 'ACTIVE') {
+            await this.sellersService.incrementListings(userId);
+        }
 
         return listing;
     }
@@ -185,7 +194,26 @@ export class ListingsService {
 
         // Execute query with count
         const [data, total] = await Promise.all([
-            this.prisma.listing.findMany({ where, skip, take: limit, orderBy }),
+            this.prisma.listing.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy,
+                include: {
+                    seller: {
+                        select: {
+                            id: true,
+                            firstName: true,
+                            lastName: true,
+                            sellerProfile: {
+                                select: {
+                                    reliabilityScore: true
+                                }
+                            }
+                        }
+                    }
+                }
+            }),
             this.prisma.listing.count({ where }),
         ]);
 
@@ -201,6 +229,29 @@ export class ListingsService {
                 slug,
                 deletedAt: null,
             },
+            include: {
+                seller: {
+                    include: {
+                        sellerProfile: {
+                            include: {
+                                reviews: {
+                                    take: 5,
+                                    orderBy: { createdAt: 'desc' },
+                                    include: {
+                                        reviewer: {
+                                            select: {
+                                                firstName: true,
+                                                lastName: true,
+                                                profileImage: true
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         });
 
         if (!listing) {
@@ -270,6 +321,11 @@ export class ListingsService {
             data: updateData,
         });
 
+        // Phase 2: If status changed to ACTIVE, increment seller's listing count
+        if (updateData.status === 'ACTIVE' && updatedListing.sellerId && listing.status !== 'ACTIVE') {
+            await this.sellersService.incrementListings(updatedListing.sellerId);
+        }
+
         return updatedListing;
     }
 
@@ -288,10 +344,22 @@ export class ListingsService {
             throw new ForbiddenException('You do not have permission to update this listing');
         }
 
-        return this.prisma.listing.update({
+        const updated = await this.prisma.listing.update({
             where: { id },
             data: { status },
         });
+
+        // Phase 2: Increment listing count if status changed TO Active from something else
+        if (status === 'ACTIVE' && updated.sellerId && listing.status !== 'ACTIVE') {
+            await this.sellersService.incrementListings(updated.sellerId);
+        }
+
+        // Phase 2: Increment sales count if marked as SOLD
+        if (status === 'SOLD' && updated.sellerId && listing.status !== 'SOLD') {
+            await this.sellersService.incrementSales(updated.sellerId);
+        }
+
+        return updated;
     }
 
     /**
