@@ -154,6 +154,7 @@ model User {
   contractorProfile       ContractorProfile?
   financePartnerProfile   PartnerProfile?    @relation("FinancePartner")
   insurancePartnerProfile PartnerProfile?    @relation("InsurancePartner")
+  sellerProfile           SellerProfile?
   listings                Listing[]
   bids                    Bid[]
   serviceRequests         ServiceRequest[]
@@ -165,8 +166,56 @@ model User {
   messages                Message[]
   notifications           Notification[]
   watchlistItems          WatchlistItem[]
+  sellerReviewsGiven      SellerReview[]     @relation("ReviewerRelation")
 
   @@map("users")
+}
+
+// ============================================================================
+// SELLER PROFILES & REVIEWS
+// ============================================================================
+
+model SellerProfile {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  /// Weighted 0–5.0 score: (avgRating * 0.5) + (responseRate * 0.3) + (salesRatio * 0.2)
+  reliabilityScore Float    @default(0)
+  totalSales       Int      @default(0)
+  totalListings    Int      @default(0)
+  /// Percentage (0–100) of buyer enquiries responded to within 48 hours
+  responseRate     Float    @default(0)
+  /// Average hours to first response; null until first interaction recorded
+  avgResponseHours Float?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviews SellerReview[]
+
+  @@index([userId])
+  @@index([reliabilityScore])
+  @@map("seller_profiles")
+}
+
+model SellerReview {
+  id         String   @id @default(uuid())
+  /// References SellerProfile.id (not User.id)
+  sellerId   String
+  reviewerId String
+  listingId  String?
+  /// 1–5 star rating
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  sellerProfile SellerProfile @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  reviewer      User          @relation("ReviewerRelation", fields: [reviewerId], references: [id])
+
+  @@unique([sellerId, reviewerId, listingId])
+  @@index([sellerId])
+  @@index([reviewerId])
+  @@map("seller_reviews")
 }
 
 model DealerProfile {

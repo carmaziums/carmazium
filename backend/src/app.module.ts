@@ -17,6 +17,7 @@ import { AuctionsModule } from './auctions/auctions.module';
 import { FinanceModule } from './finance/finance.module';
 import { InsuranceModule } from './insurance/insurance.module';
 import { AdminModule } from './admin/admin.module';
+import { SellersModule } from './sellers/sellers.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PaymentsModule } from './payments/payments.module';
 import { DashboardModule } from './dashboard/dashboard.module';
@@ -36,6 +37,7 @@ import { HealthModule } from './health/health.module';
     HealthModule,
     ScheduleModule.forRoot(),
     ListingsModule,
+    SellersModule,
     AuctionsModule,
     FinanceModule,
     InsuranceModule,

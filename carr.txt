@@ -1,0 +1,68 @@
+Carmazium Website Improvement
+Requirements and Strategic
+Recommendations
+1. Auction Policy
+● Auctions have been reviewed and the decision has been made not to proceed with
+them at this stage.
+2. Seller Transparency and Reliability
+● Display all vehicles listed by individual sellers to enhance customer trust and seller
+reliability.
+● Provide a seller reliability score or performance history where applicable.
+3. Sales and Trading Options
+● Temporarily integrate an AutoTrader-style system that supports:
+○ Direct vehicle sales (Buy & Sell)
+○ Auction functionality (if reintroduced in the future)
+● Allow vehicles to be listed for both auction and direct trade simultaneously.
+● No upfront payment should be required from buyers or sellers at the listing stage.
+4. Vehicle Listing Requirements
+● Mandatory VIN number entry at the first step to enable easy and accurate data input.
+● Integration of AI-generated vehicle descriptions based on provided information.
+● Minimum requirement of 30 high-quality images per listing:
+○ Indoor and outdoor photographs
+○ Movable and rearrangeable image placement
+● Inclusion of the seller’s current geolocation.
+● Consider environmental compliance requirements relevant to UK regulations when
+introducing initial listing steps.
+5. Website Features and User Experience
+● Enable dark mode and light mode options.
+● Allow users to browse and search vehicles without logging in.
+● Require user login to access detailed vehicle information.
+● Focus on a lightweight, fast, and user-friendly website structure.
+● Prioritize bug fixes and seamless navigation.
+● Ensure robust database setup and storage management.
+6. Advanced Search and Filter Functionality
+Sell Car Section – Filtering Options:
+● Location:
+○ Nearest first
+○ Farthest first
+● Price:
+○ Lowest to highest
+○ Highest to lowest
+○ Slider-based price range selection
+● Mileage:
+○ Lowest to highest
+○ Highest to lowest
+● Vehicle condition (including CAT classifications)
+● “Best for You” AI-powered recommendations based on:
+○ Recent searches
+○ User behavior
+○ Market trends
+7. Marketing Strategy
+Digital Strategy:
+● Develop and implement marketing strategies through Bitroix, including a clear fee
+and pricing structure.
+● Conduct market research on AutoTrader regions where Carmazium can enter and
+compete effectively.
+● Initial geographic focus: London.
+● Implement professional SEO services to improve organic search rankings and
+visibility.
+8. Data Collection and Lead Generation
+● Allow open browsing to increase traffic.
+● Require login for detailed access to collect user data and generate leads.
+● Strategically gather customer data for future marketing campaigns and potential lead
+monetization.
+9. Priority Focus Areas
+● Eliminate technical bugs.
+● Maintain a clean, modern, and intuitive interface.
+● Ensure fast loading speed and mobile responsiveness.
+● Deliver a light, efficient, and scalable platform
