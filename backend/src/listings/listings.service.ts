@@ -4,12 +4,28 @@ import {
     ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateListingDto, FuelType as DtoFuelType, Transmission as DtoTransmission, BodyType as DtoBodyType } from './dto/create-listing.dto';
+import {
+    CreateListingDto,
+    FuelType as DtoFuelType,
+    Transmission as DtoTransmission,
+    BodyType as DtoBodyType,
+} from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { ListingFilterDto } from './dto/listing-filter.dto';
-import { Listing, FuelType, TransmissionType, BodyType, ListingType, ListingStatus } from '@prisma/client';
+// These types come from @prisma/client and are available once `prisma generate` has run.
+// VehicleCondition and EuroStandard are new — resolve after the migration is applied.
+import {
+    Listing,
+    FuelType,
+    TransmissionType,
+    BodyType,
+    ListingType,
+    ListingStatus,
+} from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { SellersService } from '../sellers/sellers.service';
+
+// ─── Enum mappers ─────────────────────────────────────────────────────────────
 
 // Map DTO enums to Prisma enums
 const mapFuelType = (fuel?: DtoFuelType): FuelType | null => {
@@ -97,12 +113,14 @@ export class ListingsService {
                 status: listingStatus,
                 description: createListingDto.description ?? null,
                 slug,
-                // Denormalized vehicle data on listing
+                // Vehicle identity
                 make: createListingDto.make ?? null,
                 model: createListingDto.model ?? null,
                 year: createListingDto.year,
                 mileage: createListingDto.mileage,
                 vrm: createListingDto.vrm ?? null,
+                vin: createListingDto.vin ?? null,
+                // Technical specs
                 fuelType: mapFuelType(createListingDto.fuelType),
                 transmission: mapTransmission(createListingDto.transmission),
                 color: createListingDto.color ?? null,
@@ -113,7 +131,13 @@ export class ListingsService {
                 bodyType: mapBodyType(createListingDto.bodyType),
                 features: createListingDto.features ?? undefined,
                 location: createListingDto.location ?? null,
-                // Seller is optional for now (auth not implemented)
+                // Phase 3: condition & UK compliance
+                condition: createListingDto.condition ?? null,
+                ulezCompliant: createListingDto.ulezCompliant ?? null,
+                euroStandard: createListingDto.euroStandard ?? null,
+                // Phase 4: CO2 emissions (from DVLA)
+                co2Emissions: createListingDto.co2Emissions ?? null,
+                // Seller
                 sellerId: userId ?? null,
             },
         });
@@ -132,48 +156,63 @@ export class ListingsService {
      */
     async findAll(filterDto: ListingFilterDto): Promise<{ data: Listing[]; total: number }> {
         const {
-            minPrice, maxPrice, make, model, year,
+            minPrice, maxPrice,
+            make, model,
+            minYear, maxYear, year,  // year is deprecated alias for minYear
+            minMileage, maxMileage,
             fuelType, transmission, bodyType,
+            color, minDoors, minSeats,
+            condition, ulezCompliant, euroStandard,
             sortBy, search,
             page = 1, limit = 20,
         } = filterDto;
 
-        // Build where clause
-        const where: any = {
-            deletedAt: null, // Exclude soft-deleted
-        };
+        const where: any = { deletedAt: null };
 
+        // ─── Price range ────────────────────────────────────────────────────
         if (minPrice !== undefined || maxPrice !== undefined) {
             where.price = {};
             if (minPrice !== undefined) where.price.gte = minPrice;
             if (maxPrice !== undefined) where.price.lte = maxPrice;
         }
 
-        if (make) {
-            where.make = { contains: make, mode: 'insensitive' };
+        // ─── Make / Model ───────────────────────────────────────────────────
+        if (make) where.make = { contains: make, mode: 'insensitive' };
+        if (model) where.model = { contains: model, mode: 'insensitive' };
+
+        // ─── Year range ─────────────────────────────────────────────────────
+        const effectiveMinYear = minYear ?? year; // backwards-compat alias
+        if (effectiveMinYear !== undefined || maxYear !== undefined) {
+            where.year = {};
+            if (effectiveMinYear !== undefined) where.year.gte = effectiveMinYear;
+            if (maxYear !== undefined) where.year.lte = maxYear;
         }
 
-        if (model) {
-            where.model = { contains: model, mode: 'insensitive' };
+        // ─── Mileage range ──────────────────────────────────────────────────
+        if (minMileage !== undefined || maxMileage !== undefined) {
+            where.mileage = {};
+            if (minMileage !== undefined) where.mileage.gte = minMileage;
+            if (maxMileage !== undefined) where.mileage.lte = maxMileage;
         }
 
-        if (year) {
-            where.year = { gte: year };
-        }
+        // ─── Enum filters ───────────────────────────────────────────────────
+        if (fuelType) where.fuelType = fuelType;
+        if (transmission) where.transmission = transmission;
+        if (bodyType) where.bodyType = bodyType;
+        if (condition) where.condition = condition;
+        if (euroStandard) where.euroStandard = euroStandard;
 
-        if (fuelType) {
-            where.fuelType = fuelType;
-        }
+        // ─── Colour (case-insensitive) ──────────────────────────────────────
+        if (color) where.color = { contains: color, mode: 'insensitive' };
 
-        if (transmission) {
-            where.transmission = transmission;
-        }
+        // ─── Door / Seat minimums ────────────────────────────────────────────
+        if (minDoors !== undefined) where.doors = { gte: minDoors };
+        if (minSeats !== undefined) where.seats = { gte: minSeats };
 
-        if (bodyType) {
-            where.bodyType = bodyType;
-        }
+        // ─── Boolean compliance filter ───────────────────────────────────────
+        if (ulezCompliant !== undefined) where.ulezCompliant = ulezCompliant;
 
-        // Full-text search across title, make, model
+        // ─── Full-text search ────────────────────────────────────────────────
         if (search) {
             where.OR = [
                 { title: { contains: search, mode: 'insensitive' } },
@@ -182,14 +221,13 @@ export class ListingsService {
             ];
         }
 
-        // Dynamic sort
+        // ─── Sort ────────────────────────────────────────────────────────────
         let orderBy: any = { createdAt: 'desc' };
         if (sortBy === 'price_asc') orderBy = { price: 'asc' };
         else if (sortBy === 'price_desc') orderBy = { price: 'desc' };
         else if (sortBy === 'mileage_asc') orderBy = { mileage: 'asc' };
         else if (sortBy === 'year_desc') orderBy = { year: 'desc' };
 
-        // Calculate pagination
         const skip = (page - 1) * limit;
 
         // Execute query with count

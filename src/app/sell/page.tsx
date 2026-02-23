@@ -4,408 +4,331 @@ import * as React from "react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { Textarea } from "@/components/ui/Textarea"
-import { Car, Camera, List, DollarSign, CheckCircle, ArrowRight, ArrowLeft, Gavel, Edit, Loader2, MapPin } from "lucide-react"
+import {
+    Car, Camera, List, DollarSign, CheckCircle,
+    ArrowRight, ArrowLeft, Loader2, MapPin, ShieldCheck,
+    Edit, BadgeCheck, AlertTriangle, Search, LocateFixed,
+} from "lucide-react"
 import Image from "next/image"
 import { ImageUpload } from "@/components/listing/ImageUpload"
-import { createListing, formatPrice, type CreateListingRequest, type BodyTypeValue } from "@/lib/listingApi"
+import {
+    createListing, dvlaLookup, formatPrice,
+    type CreateListingRequest, type BodyTypeValue,
+    type VehicleConditionValue, type EuroStandardValue,
+} from "@/lib/listingApi"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
 
+// ─── Types ─────────────────────────────────────────────────────────────────────
+
+interface FormData {
+    // Step 1 — Identity
+    vrm: string
+    vin: string
+    make: string
+    model: string
+    year: string
+    bodyType: BodyTypeValue | ""
+    location: string
+    // Step 2 — Condition
+    condition: VehicleConditionValue | ""
+    // Step 3 — Media
+    images: string[]
+    // Step 4 — Technical Specs
+    mileage: string
+    fuelType: string
+    transmission: string
+    color: string
+    doors: string
+    seats: string
+    engineSize: string
+    bhp: string
+    features: string[]
+    description: string
+    title: string
+    // UK Compliance
+    ulezCompliant: boolean | null
+    euroStandard: EuroStandardValue | ""
+    co2Emissions: string
+    // Step 5 — Pricing
+    price: string
+    listingType: "CLASSIFIED" | "AUCTION" | ""
+    status: "DRAFT"
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const STANDARD_CONDITIONS: { value: VehicleConditionValue; label: string; desc: string; color: string }[] = [
+    { value: "EXCELLENT", label: "Excellent", desc: "Showroom condition, near perfect", color: "text-emerald-400 border-emerald-500/40 bg-emerald-500/10" },
+    { value: "GOOD", label: "Good", desc: "Well maintained, minor wear", color: "text-blue-400 border-blue-500/40 bg-blue-500/10" },
+    { value: "FAIR", label: "Fair", desc: "Visible wear, fully functional", color: "text-amber-400 border-amber-500/40 bg-amber-500/10" },
+    { value: "POOR", label: "Poor", desc: "Significant wear or defects", color: "text-red-400 border-red-500/40 bg-red-500/10" },
+]
+
+const CAT_CONDITIONS: { value: VehicleConditionValue; label: string; desc: string }[] = [
+    { value: "CAT_S", label: "CAT S", desc: "Structural damage — repaired, can be re-registered" },
+    { value: "CAT_N", label: "CAT N", desc: "Non-structural damage — repaired, can be re-registered" },
+    { value: "CAT_C", label: "CAT C", desc: "Structural damage — not repaired (write-off)" },
+    { value: "CAT_D", label: "CAT D", desc: "Non-structural damage — not repaired (write-off)" },
+]
+
+const PRESET_FEATURES = [
+    "Navigation", "Leather Seats", "Heated Seats", "Sunroof",
+    "Bluetooth", "Parking Sensors", "Reverse Camera", "Cruise Control",
+    "Climate Control", "Apple CarPlay", "Android Auto", "DAB Radio",
+    "LED Headlights", "Alloy Wheels", "Tow Bar",
+]
+
+const INITIAL_FORM: FormData = {
+    vrm: "", vin: "", make: "", model: "", year: "", bodyType: "", location: "",
+    condition: "",
+    images: [],
+    mileage: "", fuelType: "", transmission: "", color: "",
+    doors: "", seats: "", engineSize: "", bhp: "",
+    features: [], description: "", title: "",
+    ulezCompliant: null, euroStandard: "", co2Emissions: "",
+    price: "", listingType: "", status: "DRAFT",
+}
+
+const STEPS = [
+    { id: 1, icon: Car, title: "Identity" },
+    { id: 2, icon: ShieldCheck, title: "Condition" },
+    { id: 3, icon: Camera, title: "Media" },
+    { id: 4, icon: List, title: "Specs" },
+    { id: 5, icon: DollarSign, title: "Pricing" },
+    { id: 6, icon: CheckCircle, title: "Review" },
+]
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function SelectField({
+    label, value, onChange, options, required = false,
+}: {
+    label: string; value: string; onChange: (v: string) => void
+    options: { value: string; label: string }[]; required?: boolean
+}) {
+    return (
+        <div className="space-y-2">
+            <label className="text-sm font-bold uppercase text-gray-400">{label}{required && " *"}</label>
+            <select
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                className="w-full h-10 rounded-md border border-white/10 bg-slate-900/50 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+            >
+                <option value="">Select {label.toLowerCase()}</option>
+                {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+        </div>
+    )
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
 export default function SellPage() {
     const router = useRouter()
     const { user, profile, loading: authLoading } = useAuth()
+
     const [currentStep, setCurrentStep] = React.useState(1)
-    const [formData, setFormData] = React.useState({
-        // Step 1: Vehicle Info
-        make: "",
-        model: "",
-        year: "",
-        mileage: "",
-        bodyType: "" as BodyTypeValue | "",
-        location: "",
-
-        // Step 2: Media
-        images: [] as string[],
-
-        // Step 3: Specs
-        vrm: "",
-        fuelType: "",
-        transmission: "",
-        color: "",
-        doors: "",
-        seats: "",
-        engineSize: "",
-        bhp: "",
-        features: [] as string[],
-        description: "",
-        title: "",
-
-        // Step 4: Pricing
-        price: "",
-        listingType: "" as 'CLASSIFIED' | 'AUCTION' | "",
-        status: "DRAFT" as const
-    })
-
-    const [sellingMethod, setSellingMethod] = React.useState<'list' | 'retail' | null>(null)
+    const [formData, setFormData] = React.useState<FormData>(INITIAL_FORM)
+    const [sellingMethod, setSellingMethod] = React.useState<"list" | null>(null)
     const [showLoginModal, setShowLoginModal] = React.useState(false)
+    const [showCatSection, setShowCatSection] = React.useState(false)
     const [isSubmitting, setIsSubmitting] = React.useState(false)
     const [submitError, setSubmitError] = React.useState<string | null>(null)
+    const [dvlaLoading, setDvlaLoading] = React.useState(false)
+    const [dvlaError, setDvlaError] = React.useState<string | null>(null)
+    const [dvlaSuccess, setDvlaSuccess] = React.useState(false)
+    const [geoLoading, setGeoLoading] = React.useState(false)
 
-    // Check authentication and email verification
     const isAuthenticated = !!user && !!profile
     const isEmailVerified = !!user?.email_confirmed_at
 
-    // Auto-generate title from make, model, year
+    const set = <K extends keyof FormData>(key: K, val: FormData[K]) =>
+        setFormData(prev => ({ ...prev, [key]: val }))
+
+    // Auto-generate title from make + model + year
     React.useEffect(() => {
         if (formData.make && formData.model && formData.year) {
-            const autoTitle = `${formData.make} ${formData.model} ${formData.year}`
-            if (!formData.title || formData.title === "" || formData.title.includes(formData.make)) {
-                setFormData(prev => ({ ...prev, title: autoTitle }))
+            const auto = `${formData.make} ${formData.model} ${formData.year}`
+            if (!formData.title || formData.title.includes(formData.make)) {
+                set("title", auto)
             }
         }
-    }, [formData.make, formData.model, formData.year, formData.title])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [formData.make, formData.model, formData.year])
 
-    // Scroll to top on step change
     React.useEffect(() => {
-        window.scrollTo({ top: 0, behavior: 'smooth' })
+        window.scrollTo({ top: 0, behavior: "smooth" })
     }, [currentStep, sellingMethod])
 
-    const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, 5))
-    const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1))
-    const goToStep = (step: number) => setCurrentStep(step)
+    // ─── Navigation ─────────────────────────────────────────────────────────────
 
-    const handleSellingMethodClick = (method: 'list' | 'retail') => {
-        if (!isAuthenticated) {
-            setShowLoginModal(true)
-            return
-        }
-
-        if (!isEmailVerified) {
-            alert('Please verify your email address before creating a listing. Check your inbox for the verification link.')
-            router.push('/auth/onboarding')
-            return
-        }
-
-        setSellingMethod(method)
-        // Map selling method to listing type
-        setFormData(prev => ({
-            ...prev,
-            listingType: method === 'list' ? 'CLASSIFIED' : 'AUCTION'
-        }))
-    }
-
-    const validateCurrentStep = (): boolean => {
+    const validateStep = (): boolean => {
         switch (currentStep) {
-            case 1:
-                return !!(formData.make && formData.model && formData.year && formData.mileage)
-            case 2:
-                return formData.images.length > 0
-            case 3:
-                return !!(formData.vrm && formData.fuelType && formData.transmission && formData.title)
-            case 4:
-                return !!(formData.price && formData.listingType)
-            default:
-                return true
+            case 1: return !!(formData.vrm && formData.make && formData.model && formData.year)
+            case 2: return !!formData.condition
+            case 3: return formData.images.length > 0
+            case 4: return !!(formData.mileage && formData.fuelType && formData.transmission && formData.title)
+            case 5: return !!(formData.price && formData.listingType)
+            default: return true
         }
     }
 
-    const handleNextStep = () => {
-        if (!validateCurrentStep()) {
+    const handleNext = () => {
+        if (!validateStep()) {
             alert("Please fill in all required fields before proceeding.")
             return
         }
-        nextStep()
+        setCurrentStep(prev => Math.min(prev + 1, 6))
+    }
+    const handleBack = () => setCurrentStep(prev => Math.max(prev - 1, 1))
+    const goToStep = (n: number) => setCurrentStep(n)
+
+    const handleMethodClick = () => {
+        if (!isAuthenticated) { setShowLoginModal(true); return }
+        if (!isEmailVerified) {
+            alert("Please verify your email address before creating a listing.")
+            router.push("/auth/onboarding")
+            return
+        }
+        setSellingMethod("list")
+        set("listingType", "CLASSIFIED")
     }
 
+    // ─── Submit ──────────────────────────────────────────────────────────────────
+
     const handleSubmit = async () => {
-        if (!validateCurrentStep()) {
-            alert("Please ensure all required fields are filled.")
-            return
-        }
-
-        // Check authentication
-        if (!isAuthenticated) {
-            setShowLoginModal(true)
-            return
-        }
-
-        // Check email verification
-        if (!isEmailVerified) {
-            alert('Please verify your email address before creating a listing. Check your inbox for the verification link.')
-            router.push('/auth/onboarding')
-            return
-        }
+        if (!isAuthenticated) { setShowLoginModal(true); return }
+        if (!isEmailVerified) { router.push("/auth/onboarding"); return }
 
         setIsSubmitting(true)
         setSubmitError(null)
 
         try {
-            const listingData: CreateListingRequest = {
+            const payload: CreateListingRequest = {
                 title: formData.title,
                 price: parseFloat(formData.price),
                 mileage: parseInt(formData.mileage),
                 year: parseInt(formData.year),
                 vrm: formData.vrm,
+                vin: formData.vin || undefined,
                 images: formData.images,
-                listingType: formData.listingType as 'AUCTION' | 'CLASSIFIED',
+                listingType: formData.listingType as "CLASSIFIED" | "AUCTION",
                 make: formData.make || undefined,
                 model: formData.model || undefined,
                 description: formData.description || undefined,
                 fuelType: formData.fuelType as any || undefined,
                 transmission: formData.transmission as any || undefined,
+                bodyType: (formData.bodyType as BodyTypeValue) || undefined,
                 color: formData.color || undefined,
                 doors: formData.doors ? parseInt(formData.doors) : undefined,
                 seats: formData.seats ? parseInt(formData.seats) : undefined,
                 engineSize: formData.engineSize ? parseInt(formData.engineSize) : undefined,
                 bhp: formData.bhp ? parseInt(formData.bhp) : undefined,
                 features: formData.features.length > 0 ? formData.features : undefined,
-                bodyType: (formData.bodyType as BodyTypeValue) || undefined,
                 location: formData.location || undefined,
+                condition: (formData.condition as VehicleConditionValue) || undefined,
+                ulezCompliant: formData.ulezCompliant ?? undefined,
+                euroStandard: (formData.euroStandard as EuroStandardValue) || undefined,
+                co2Emissions: formData.co2Emissions ? parseInt(formData.co2Emissions) : undefined,
                 status: formData.status,
             }
 
-            const response = await createListing(listingData)
-
-            // Success! Redirect or show success message
-            alert(`✅ Listing created successfully! Slug: ${response.data.slug}`)
-
-            // Reset form
-            setFormData({
-                make: "", model: "", year: "", mileage: "", bodyType: "", location: "",
-                images: [], vrm: "", fuelType: "", transmission: "",
-                color: "", doors: "", seats: "", engineSize: "", bhp: "", features: [],
-                description: "", title: "", price: "",
-                listingType: "", status: "DRAFT"
-            })
+            const response = await createListing(payload)
+            setFormData(INITIAL_FORM)
             setCurrentStep(1)
             setSellingMethod(null)
-
-            // Redirect to dashboard or listing page
             router.push(`/buy-cars/${response.data.slug}`)
-
         } catch (error: any) {
-            console.error('Submission error:', error)
-
-            // Handle authentication errors
-            if (error.message?.includes('Unauthorized') || error.message?.includes('401')) {
-                setSubmitError('Please log in to create a listing.')
+            console.error("Submission error:", error)
+            if (error.message?.includes("Unauthorized") || error.message?.includes("401")) {
+                setSubmitError("Please log in to create a listing.")
                 setShowLoginModal(true)
-            } else if (error.message?.includes('email') || error.message?.includes('verify')) {
-                setSubmitError('Please verify your email address before creating a listing.')
-                router.push('/auth/onboarding')
+            } else if (error.message?.includes("email") || error.message?.includes("verify")) {
+                setSubmitError("Please verify your email address.")
+                router.push("/auth/onboarding")
             } else {
-                setSubmitError(error.message || 'Failed to create listing. Please try again.')
+                setSubmitError(error.message || "Failed to create listing. Please try again.")
             }
         } finally {
             setIsSubmitting(false)
         }
     }
 
-    // Login Modal Component
-    const LoginModal = () => {
-        if (!showLoginModal) return null
+    // ─── Shared UI pieces ────────────────────────────────────────────────────────
 
-        return (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-5" onClick={() => setShowLoginModal(false)}>
-                <div className="glass-card p-8 max-w-md w-full relative overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                    <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-6 text-primary shadow-neon">
-                        <Car size={40} />
-                    </div>
-                    <h2 className="text-3xl font-bold font-heading mb-4 text-white text-center">Sell Your Car</h2>
-                    <p className="text-gray-300 mb-8 leading-relaxed text-center">
-                        To ensure a secure community for all our members, please sign in or create an account to list your vehicle.
-                    </p>
+    const inputCls = "bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary"
 
-                    <div className="space-y-4 mb-8">
-                        <div className="p-4 bg-white/5 rounded-lg border border-white/5 text-left flex items-center gap-4">
-                            <CheckCircle className="text-emerald-400 shrink-0" size={20} />
-                            <div>
-                                <p className="font-bold text-white text-sm">Verified Listings</p>
-                                <p className="text-xs text-gray-500">Protecting you from fraud</p>
-                            </div>
-                        </div>
-                        <div className="p-4 bg-white/5 rounded-lg border border-white/5 text-left flex items-center gap-4">
-                            <DollarSign className="text-emerald-400 shrink-0" size={20} />
-                            <div>
-                                <p className="font-bold text-white text-sm">Best Market Value</p>
-                                <p className="text-xs text-gray-500">Smart pricing tools included</p>
-                            </div>
-                        </div>
-                    </div>
+    const ConditionCard = ({ cond, active }: { cond: string; active: boolean }) => (
+        <button
+            type="button"
+            onClick={() => set("condition", cond as VehicleConditionValue)}
+            className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all text-sm font-bold uppercase tracking-wide ${active ? "border-primary bg-primary/10 text-white shadow-neon" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/30"}`}
+        >
+            {cond}
+        </button>
+    )
 
-                    <div className="space-y-3">
-                        <Button
-                            onClick={() => {
-                                setShowLoginModal(false)
-                                router.push('/auth/login?redirect=/sell')
-                            }}
-                            className="w-full shadow-neon"
-                        >
-                            Log In to Continue
-                        </Button>
-                        <Button
-                            variant="outline"
-                            className="w-full border-white/10 text-gray-400 hover:text-white"
-                            onClick={() => {
-                                setShowLoginModal(false)
-                                router.push('/auth/signup?redirect=/sell')
-                            }}
-                        >
-                            Create Account
-                        </Button>
-                    </div>
+    // ─── Login Modal ─────────────────────────────────────────────────────────────
+
+    const LoginModal = () => !showLoginModal ? null : (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-5" onClick={() => setShowLoginModal(false)}>
+            <div className="glass-card p-8 max-w-md w-full relative" onClick={(e) => e.stopPropagation()}>
+                <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-6 text-primary shadow-neon">
+                    <Car size={40} />
+                </div>
+                <h2 className="text-2xl font-bold font-heading mb-3 text-white text-center">Sign In to List</h2>
+                <p className="text-gray-400 mb-6 text-center text-sm">Create an account to add your listing safely.</p>
+                <div className="space-y-3">
+                    <Button onClick={() => { setShowLoginModal(false); router.push("/auth/login?redirect=/sell") }} className="w-full shadow-neon">Log In</Button>
+                    <Button variant="outline" className="w-full border-white/10 text-gray-400 hover:text-white" onClick={() => { setShowLoginModal(false); router.push("/auth/signup?redirect=/sell") }}>Create Account</Button>
                 </div>
             </div>
-        )
-    }
+        </div>
+    )
 
-    // Main Sell Page - Show selling options by default
+    // ─── Landing (method selection) ───────────────────────────────────────────────
 
     if (!sellingMethod) {
         return (
             <>
                 <LoginModal />
                 <div className="min-h-screen py-20">
-                    <div className="container mx-auto px-5 max-w-5xl">
-                        <div className="text-center mb-16">
-                            <h1 className="text-4xl md:text-5xl font-bold font-heading mb-6 text-white">How would you like to sell?</h1>
-                            <p className="text-xl text-gray-300">Choose the method that works best for you.</p>
+                    <div className="container mx-auto px-5 max-w-4xl">
+                        <div className="text-center mb-14">
+                            <h1 className="text-4xl md:text-5xl font-bold font-heading mb-4 text-white">List Your Car</h1>
+                            <p className="text-xl text-gray-400">Reach thousands of buyers across the UK.</p>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-                            {/* Option 1: List Your Car */}
-                            <div
-                                onClick={() => handleSellingMethodClick('list')}
-                                className="glass-card p-10 cursor-pointer hover:border-primary/50 hover:bg-white/5 transition-all duration-300 group relative overflow-hidden"
-                            >
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -z-10 group-hover:bg-primary/20 transition-colors" />
-
-                                <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mb-8 border border-white/10 group-hover:border-primary/50 group-hover:shadow-[0_0_30px_rgba(237,28,36,0.2)] transition-all">
-                                    <List className="text-primary w-10 h-10" />
-                                </div>
-
-                                <h2 className="text-3xl font-bold mb-4 font-heading">List My Car</h2>
-                                <p className="text-gray-400 mb-8 h-12">Create a public listing or auction. You control the price and manage inquiries.</p>
-
-                                <ul className="space-y-3 mb-8 text-gray-300">
-                                    <li className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-400" /> Reach thousands of buyers</li>
-                                    <li className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-400" /> Option for Live Auction</li>
-                                    <li className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-400" /> Maximize sale price</li>
-                                </ul>
-
-                                <Button className="w-full py-6 text-lg group-hover:shadow-neon">Start Listing <ArrowRight className="ml-2" /></Button>
+                        <div
+                            onClick={handleMethodClick}
+                            className="glass-card p-10 cursor-pointer hover:border-primary/50 hover:bg-white/5 transition-all duration-300 group relative overflow-hidden max-w-xl mx-auto"
+                        >
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -z-10 group-hover:bg-primary/20 transition-colors" />
+                            <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mb-8 border border-white/10 group-hover:border-primary/50 group-hover:shadow-[0_0_30px_rgba(237,28,36,0.2)] transition-all">
+                                <List className="text-primary w-10 h-10" />
                             </div>
-
-                            {/* Option 2: Auction Listing */}
-                            <div
-                                onClick={() => handleSellingMethodClick('retail')}
-                                className="glass-card p-10 cursor-pointer hover:border-indigo-500/50 hover:bg-white/5 transition-all duration-300 group relative overflow-hidden"
-                            >
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -z-10 group-hover:bg-indigo-500/20 transition-colors" />
-
-                                <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mb-8 border border-white/10 group-hover:border-primary/50 group-hover:shadow-[0_0_30px_rgba(237,28,36,0.2)] transition-all">
-                                    <Gavel className="text-primary w-10 h-10" />
-                                </div>
-
-                                <h2 className="text-3xl font-bold mb-4 font-heading">Auction Listing</h2>
-                                <p className="text-gray-400 mb-8 h-12">Let buyers bid on your vehicle in a 7-day auction</p>
-
-                                <ul className="space-y-3 mb-8 text-gray-300">
-                                    <li className="flex items-start gap-3"><div className="mt-1"><CheckCircle size={18} className="text-emerald-400" /></div> <span>Free for sellers</span></li>
-                                    <li className="flex items-start gap-3"><div className="mt-1"><CheckCircle size={18} className="text-emerald-400" /></div> <span>Buyers pay £100 winner's fee</span></li>
-                                    <li className="flex items-start gap-3"><div className="mt-1"><CheckCircle size={18} className="text-emerald-400" /></div> <span>Set starting bid, reserve, and Buy It Now</span></li>
-                                    <li className="flex items-start gap-3"><div className="mt-1"><CheckCircle size={18} className="text-emerald-400" /></div> <span>7-day auction duration</span></li>
-                                </ul>
-
-                                <Button className="w-full py-6 text-lg group-hover:shadow-neon">Create Auction Listing <ArrowRight className="ml-2" /></Button>
-                            </div>
+                            <h2 className="text-3xl font-bold mb-3 font-heading">List My Car</h2>
+                            <p className="text-gray-400 mb-8">Create a classified listing with your asking price. Buyers enquire directly.</p>
+                            <ul className="space-y-3 mb-8 text-gray-300">
+                                <li className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-400" /> Free to list</li>
+                                <li className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-400" /> You set the price</li>
+                                <li className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-400" /> Reach thousands of buyers</li>
+                            </ul>
+                            <Button className="w-full py-6 text-lg group-hover:shadow-neon">Start Listing <ArrowRight className="ml-2" /></Button>
                         </div>
 
-
-                        {/* 3 Easy Steps Section */}
-                        <div className="mt-40">
-                            <div className="text-center mb-20">
-                                <h2 className="text-5xl md:text-6xl font-bold font-heading mb-6 text-white uppercase tracking-tight leading-tight">
-                                    Sell Your Car <br /> <span className="text-primary">in 3 Easy Steps</span>
-                                </h2>
-                                <p className="text-gray-400 text-lg max-w-2xl mx-auto">Transform your car into cash with our simple, transparent process</p>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-10 text-left">
-                                {[
-                                    {
-                                        id: 1,
-                                        img: "/assets/images/step1.jpeg",
-                                        title: "Get an Instant Valuation",
-                                        desc: "Skip the guesswork. Get an instant, fair valuation based on live market trends and dealer demand.",
-                                        priceTag: "£26,710"
-                                    },
-                                    {
-                                        id: 2,
-                                        img: "/assets/images/step2.jpeg",
-                                        title: "Get It Sold",
-                                        desc: "Finish your listing. We put your car in front of 5,500+ dealers. Best offer wins.",
-                                        badge: "Listing complete!"
-                                    },
-                                    {
-                                        id: 3,
-                                        img: "/assets/images/step3.jpeg",
-                                        title: "Get Paid Fast",
-                                        desc: "Job done! The dealer collects it for free and can pay you there and then.",
-                                        badge: "You've been paid!"
-                                    }
-                                ].map((step, idx) => (
-                                    <div key={idx} className="group">
-                                        <div className="relative rounded-3xl overflow-hidden mb-6 aspect-[4/3] border border-white/10 shadow-2xl hover:shadow-[0_0_40px_rgba(237,28,36,0.15)] transition-shadow duration-500">
-                                            <Image
-                                                src={step.img}
-                                                alt={step.title}
-                                                fill
-                                                className="object-cover transition-transform duration-700 group-hover:scale-105"
-                                            />
-
-                                            {/* Overlay Gradient */}
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-
-                                            {/* Number Badge */}
-                                            <div className="absolute top-6 left-6 w-14 h-14 bg-primary text-white font-bold text-2xl flex items-center justify-center rounded-xl shadow-lg shadow-primary/50 border border-white/10">
-                                                {step.id}
-                                            </div>
-
-                                            {/* Simulated UI Overlays based on reference */}
-                                            {step.priceTag && (
-                                                <div className="absolute bottom-6 right-6 bg-slate-900/95 backdrop-blur-md border border-white/20 text-white px-5 py-3 rounded-xl flex items-center gap-3 shadow-2xl">
-                                                    <div>
-                                                        <div className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-1">Your free valuation</div>
-                                                        <div className="font-bold text-xl"></div>
-                                                    </div>
-                                                    <DollarSign size={20} className="text-primary" />
-                                                </div>
-                                            )}
-
-                                            {step.id === 2 && (
-                                                <div className="absolute bottom-6 right-6 bg-slate-900/95 backdrop-blur-md border border-white/20 text-white px-5 py-3 rounded-xl flex items-center gap-3 shadow-2xl">
-                                                    <Car size={20} className="text-primary" />
-                                                    <div className="font-bold text-base">Listing complete!</div>
-                                                </div>
-                                            )}
-
-                                            {step.id === 3 && (
-                                                <div className="absolute bottom-6 right-6 bg-slate-900/95 backdrop-blur-md border border-white/20 text-white px-5 py-3 rounded-xl flex items-center gap-3 shadow-2xl">
-                                                    <div className="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">£</div>
-                                                    <div className="font-bold text-base">You've been paid!</div>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <h3 className="text-2xl font-bold font-heading text-white mb-4 uppercase tracking-wide">{step.title}</h3>
-                                        <p className="text-gray-400 leading-relaxed text-base">
-                                            {step.desc}
-                                        </p>
+                        {/* Steps explanation */}
+                        <div className="mt-24 grid grid-cols-2 md:grid-cols-3 gap-6 text-center">
+                            {STEPS.slice(0, 6).map((s) => (
+                                <div key={s.id} className="p-5 glass-card">
+                                    <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center mx-auto mb-3">
+                                        <span className="text-primary font-black text-sm">{s.id}</span>
                                     </div>
-                                ))}
-                            </div>
+                                    <p className="text-white font-semibold text-sm">{s.title}</p>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
@@ -413,505 +336,479 @@ export default function SellPage() {
         )
     }
 
-    const steps = [
-        { id: 1, icon: Car, title: "Vehicle Info" },
-        { id: 2, icon: Camera, title: "Media" },
-        { id: 3, icon: List, title: "Specs" },
-        { id: 4, icon: DollarSign, title: "Pricing" },
-        { id: 5, icon: CheckCircle, title: "Review" },
-    ]
+    // ─── Wizard ───────────────────────────────────────────────────────────────────
 
     return (
         <div className="min-h-screen py-12">
-            <div className="container mx-auto px-5 max-w-4xl">
-                <div className="mb-8">
-                    <Button
-                        variant="ghost"
-                        onClick={() => setSellingMethod(null)}
-                        className="text-gray-400 hover:text-white"
-                    >
-                        <ArrowLeft className="mr-2 h-4 w-4" /> Back to Selection
+            <div className="container mx-auto px-5 max-w-3xl">
+                <LoginModal />
+
+                {/* Back link */}
+                <div className="mb-6">
+                    <Button variant="ghost" onClick={() => setSellingMethod(null)} className="text-gray-400 hover:text-white">
+                        <ArrowLeft className="mr-2 h-4 w-4" /> Back
                     </Button>
                 </div>
 
-                <div className="text-center mb-12">
-                    <h1 className="text-4xl md:text-5xl font-heading font-bold mb-4 text-white">
-                        {sellingMethod === 'list' ? 'List Your Car' : 'Auction Your Car'}
-                    </h1>
-                    <p className="text-gray-300 text-lg">
-                        {sellingMethod === 'list'
-                            ? 'Complete the details below to publish your listing.'
-                            : 'Create your auction listing to reach thousands of buyers.'}
-                    </p>
+                <div className="text-center mb-10">
+                    <h1 className="text-3xl md:text-4xl font-heading font-bold text-white">List Your Car</h1>
+                    <p className="text-gray-400 mt-2">Step {currentStep} of {STEPS.length}</p>
                 </div>
 
-                {/* Progress Bar - Dark Glass */}
-                <div className="glass-card p-6 mb-8 flex justify-between relative overflow-hidden">
-                    {steps.map((step, idx) => (
-                        <div key={step.id} className={`flex flex-col items-center relative z-10 w-full ${currentStep >= step.id ? 'text-primary' : 'text-gray-500'}`}>
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-all border border-white/5 ${currentStep >= step.id ? 'bg-primary text-white shadow-neon' : 'bg-slate-800'}`}>
-                                <step.icon size={20} />
+                {/* Progress stepper */}
+                <div className="glass-card px-6 py-5 mb-8 flex justify-between relative overflow-hidden">
+                    {STEPS.map((step) => (
+                        <div key={step.id} className={`flex flex-col items-center relative z-10 flex-1 ${currentStep >= step.id ? "text-primary" : "text-gray-500"}`}>
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-1.5 border transition-all ${currentStep >= step.id ? "bg-primary text-white shadow-neon border-primary" : "bg-slate-800 border-white/5"}`}>
+                                <step.icon size={16} />
                             </div>
-                            <span className="text-[10px] md:text-xs font-bold uppercase tracking-wide">{step.title}</span>
+                            <span className="text-[9px] md:text-[11px] font-bold uppercase tracking-wide">{step.title}</span>
                         </div>
                     ))}
-                    {/* Progress Line Background */}
-                    <div className="absolute top-[40px] left-0 w-full h-1 bg-white/5 -z-0">
-                        <div
-                            className="h-full bg-primary transition-all duration-500 ease-out shadow-neon"
-                            style={{ width: `${(currentStep - 1) / (steps.length - 1) * 100}%` }}
-                        />
+                    <div className="absolute top-[36px] left-0 w-full h-0.5 bg-white/5 -z-0">
+                        <div className="h-full bg-primary transition-all duration-500 shadow-neon" style={{ width: `${(currentStep - 1) / (STEPS.length - 1) * 100}%` }} />
                     </div>
                 </div>
 
-                {/* Form Content - Dark Glass */}
-                <div className="glass-card p-8 md:p-12 relative overflow-hidden">
-                    {/* Background glow for form */}
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -z-10"></div>
-                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -z-10"></div>
+                {/* Form card */}
+                <div className="glass-card p-8 md:p-10 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -z-10" />
 
-                    {/* Step 1: Vehicle Info */}
+                    {/* ── STEP 1: Identity ──────────────────────────────────────────────── */}
                     {currentStep === 1 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                            <h2 className="text-2xl font-bold font-heading mb-6 border-b border-white/10 pb-4 text-white">Vehicle Identification</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Vehicle Identity</h2>
+
+                            {/* VRM + Lookup */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold uppercase text-gray-400">Registration (VRM) *</label>
+                                <div className="flex gap-3">
+                                    <Input placeholder="e.g. AB12 CDE" value={formData.vrm}
+                                        onChange={(e) => { set("vrm", e.target.value.toUpperCase()); setDvlaSuccess(false); setDvlaError(null) }}
+                                        className={`${inputCls} uppercase font-mono tracking-wider flex-1`} />
+                                    <Button type="button" disabled={!formData.vrm || dvlaLoading}
+                                        onClick={async () => {
+                                            setDvlaLoading(true); setDvlaError(null); setDvlaSuccess(false)
+                                            try {
+                                                const r = await dvlaLookup(formData.vrm)
+                                                if (r.make) set("make", r.make)
+                                                if (r.colour) set("color", r.colour)
+                                                if (r.year) set("year", String(r.year))
+                                                if (r.engineSize) set("engineSize", String(r.engineSize))
+                                                if (r.fuelType) set("fuelType", r.fuelType)
+                                                if (r.euroStandard) set("euroStandard", r.euroStandard as EuroStandardValue)
+                                                if (r.co2Emissions) set("co2Emissions", String(r.co2Emissions))
+                                                setDvlaSuccess(true)
+                                            } catch (err: any) {
+                                                setDvlaError(err.message || "Lookup failed")
+                                            } finally { setDvlaLoading(false) }
+                                        }}
+                                        className="bg-primary hover:bg-primary/90 text-white font-bold px-5 gap-2"
+                                    >
+                                        {dvlaLoading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+                                        Look Up
+                                    </Button>
+                                </div>
+                                <p className="text-xs text-gray-600">UK number plate — click Look Up to auto-fill vehicle details from DVLA.</p>
+                                {dvlaSuccess && <p className="text-xs text-emerald-400 flex items-center gap-1"><BadgeCheck size={12} /> Vehicle data loaded from DVLA — review and edit below.</p>}
+                                {dvlaError && <p className="text-xs text-red-400">{dvlaError}</p>}
+                            </div>
+
+                            {/* VIN */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold uppercase text-gray-400 flex items-center gap-1.5">VIN <span className="text-gray-600 normal-case font-normal text-xs">(optional)</span></label>
+                                <Input placeholder="17-character VIN" value={formData.vin}
+                                    maxLength={17}
+                                    onChange={(e) => set("vin", e.target.value.toUpperCase())}
+                                    className={`${inputCls} font-mono tracking-wider`} />
+                                <p className="text-xs text-gray-600">Vehicle Identification Number — increases buyer trust.</p>
+                            </div>
+
+                            {/* Make / Model / Year */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-gray-400">Make *</label>
-                                    <Input
-                                        placeholder="e.g. BMW"
-                                        value={formData.make}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, make: e.target.value }))}
-                                        className="bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary"
-                                    />
+                                    <Input placeholder="e.g. BMW" value={formData.make} onChange={(e) => set("make", e.target.value)} className={inputCls} />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-gray-400">Model *</label>
-                                    <Input
-                                        placeholder="e.g. M4 Competition"
-                                        value={formData.model}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, model: e.target.value }))}
-                                        className="bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary"
-                                    />
+                                    <Input placeholder="e.g. M4 Competition" value={formData.model} onChange={(e) => set("model", e.target.value)} className={inputCls} />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-gray-400">Year *</label>
-                                    <Input
-                                        type="number"
-                                        placeholder="2023"
-                                        value={formData.year}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, year: e.target.value }))}
-                                        className="bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-gray-400">Mileage *</label>
-                                    <Input
-                                        type="number"
-                                        placeholder="12500"
-                                        value={formData.mileage}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, mileage: e.target.value }))}
-                                        className="bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary"
-                                    />
+                                    <Input type="number" placeholder="2023" value={formData.year} onChange={(e) => set("year", e.target.value)} className={inputCls} />
                                 </div>
                             </div>
 
-                            {/* Body Type Selection */}
-                            <div className="space-y-3 mt-2">
+                            {/* Body Type */}
+                            <div className="space-y-3">
                                 <label className="text-sm font-bold uppercase text-gray-400">Body Type</label>
-                                <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                                <div className="grid grid-cols-3 md:grid-cols-5 gap-2.5">
                                     {BODY_TYPE_KEYS.map((key) => {
                                         const Icon = BODY_TYPE_ICONS[key]
-                                        const label = BODY_TYPE_LABELS[key]
                                         return (
-                                            <button
-                                                key={key}
-                                                type="button"
-                                                onClick={() => setFormData(prev => ({ ...prev, bodyType: key as BodyTypeValue }))}
-                                                className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-200 cursor-pointer ${formData.bodyType === key
-                                                        ? 'border-primary bg-primary/10 text-white shadow-[0_0_15px_rgba(237,28,36,0.2)]'
-                                                        : 'border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/30 hover:text-white'
-                                                    }`}
+                                            <button key={key} type="button"
+                                                onClick={() => set("bodyType", key as BodyTypeValue)}
+                                                className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all ${formData.bodyType === key ? "border-primary bg-primary/10 text-white shadow-[0_0_15px_rgba(237,28,36,0.2)]" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/30"}`}
                                             >
                                                 <Icon className="w-10 h-5" />
-                                                <span className="text-[10px] font-bold uppercase tracking-wide">{label}</span>
+                                                <span className="text-[9px] font-bold uppercase tracking-wide">{BODY_TYPE_LABELS[key]}</span>
                                             </button>
                                         )
                                     })}
                                 </div>
                             </div>
 
-                            {/* Location */}
-                            <div className="space-y-2 mt-2">
-                                <label className="text-sm font-bold uppercase text-gray-400 flex items-center gap-1.5">
-                                    <MapPin size={14} /> Location
-                                </label>
-                                <Input
-                                    placeholder="e.g. London, Manchester, Birmingham"
-                                    value={formData.location}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                                    className="bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary"
-                                />
-                                <p className="text-xs text-gray-500">Where is the vehicle located? This helps buyers find nearby cars.</p>
+                            {/* Location + Geolocation */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold uppercase text-gray-400 flex items-center gap-1.5"><MapPin size={13} /> Location</label>
+                                <div className="flex gap-3">
+                                    <Input placeholder="e.g. London, Manchester" value={formData.location} onChange={(e) => set("location", e.target.value)} className={`${inputCls} flex-1`} />
+                                    <Button type="button" variant="outline" disabled={geoLoading}
+                                        onClick={async () => {
+                                            if (!navigator.geolocation) { alert("Geolocation is not supported by your browser."); return }
+                                            setGeoLoading(true)
+                                            navigator.geolocation.getCurrentPosition(
+                                                async (pos) => {
+                                                    try {
+                                                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`)
+                                                        const data = await res.json()
+                                                        const addr = data.address || {}
+                                                        const loc = [addr.city || addr.town || addr.village, addr.postcode].filter(Boolean).join(", ")
+                                                        if (loc) set("location", loc)
+                                                    } catch { /* silently fail */ }
+                                                    setGeoLoading(false)
+                                                },
+                                                () => { alert("Could not get your location."); setGeoLoading(false) },
+                                                { timeout: 10000 }
+                                            )
+                                        }}
+                                        className="border-white/10 text-gray-400 hover:text-white gap-1.5 px-4"
+                                    >
+                                        {geoLoading ? <Loader2 size={14} className="animate-spin" /> : <LocateFixed size={14} />}
+                                        <span className="hidden md:inline">Use my location</span>
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     )}
 
-                    {/* Step 2: Media */}
+                    {/* ── STEP 2: Condition ─────────────────────────────────────────────── */}
                     {currentStep === 2 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                            <h2 className="text-2xl font-bold font-heading mb-6 border-b border-white/10 pb-4 text-white">Media Upload</h2>
+                            <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Vehicle Condition *</h2>
+                            <p className="text-sm text-gray-400">Select the option that best describes your car&#39;s overall condition.</p>
+
+                            {/* Standard conditions */}
+                            <div className="grid grid-cols-2 gap-3">
+                                {STANDARD_CONDITIONS.map((c) => (
+                                    <button key={c.value} type="button"
+                                        onClick={() => { set("condition", c.value); setShowCatSection(false) }}
+                                        className={`p-4 rounded-xl border-2 text-left transition-all ${formData.condition === c.value ? `${c.color} border-opacity-100` : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"}`}
+                                    >
+                                        <p className="font-bold text-base mb-0.5">{c.label}</p>
+                                        <p className="text-xs opacity-70">{c.desc}</p>
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* CAT toggle */}
+                            <div className="border border-amber-500/20 rounded-xl p-4 bg-amber-500/5">
+                                <button type="button" onClick={() => setShowCatSection(p => !p)}
+                                    className="flex items-center gap-2.5 w-full text-left">
+                                    <AlertTriangle size={16} className="text-amber-400 flex-shrink-0" />
+                                    <span className="text-sm font-semibold text-amber-200">Does this vehicle have a write-off history?</span>
+                                    <span className="ml-auto text-amber-400 text-xs">{showCatSection ? "▲ Hide" : "▼ Show CAT categories"}</span>
+                                </button>
+
+                                {showCatSection && (
+                                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        {CAT_CONDITIONS.map((c) => (
+                                            <button key={c.value} type="button"
+                                                onClick={() => set("condition", c.value)}
+                                                className={`p-3.5 rounded-xl border-2 text-left transition-all ${formData.condition === c.value ? "border-amber-500 bg-amber-500/15 text-amber-200" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-amber-500/30"}`}
+                                            >
+                                                <p className="font-bold text-sm mb-0.5">{c.label}</p>
+                                                <p className="text-xs opacity-70">{c.desc}</p>
+                                            </button>
+                                        ))}
+                                        <p className="col-span-full text-xs text-gray-500 mt-1">UK law requires CAT write-off status to be disclosed. Buyers can still purchase these vehicles.</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {formData.condition && (
+                                <div className="flex items-center gap-2 text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-4 py-2.5">
+                                    <BadgeCheck size={16} />
+                                    Selected: <span className="font-bold">{formData.condition}</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ── STEP 3: Media ─────────────────────────────────────────────────── */}
+                    {currentStep === 3 && (
+                        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
+                            <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Photos *</h2>
+                            <p className="text-sm text-gray-400">Add up to 30 photos. Include interior, exterior, and any notable details.</p>
                             <ImageUpload
-                                onImagesChange={(images) => setFormData(prev => ({ ...prev, images }))}
-                                maxImages={20}
+                                onImagesChange={(imgs) => set("images", imgs)}
+                                maxImages={30}
                                 existingImages={formData.images}
                             />
                         </div>
                     )}
 
-                    {/* Step 3: Specs */}
-                    {currentStep === 3 && (
-                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                            <h2 className="text-2xl font-bold font-heading mb-6 border-b border-white/10 pb-4 text-white">Vehicle Specifications</h2>
+                    {/* ── STEP 4: Technical Specs ───────────────────────────────────────── */}
+                    {currentStep === 4 && (
+                        <div className="space-y-7 animate-in fade-in slide-in-from-bottom-4">
+                            <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Technical Specs</h2>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                {/* Mileage */}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-gray-400">VRM (Registration) *</label>
-                                    <Input
-                                        placeholder="e.g. AB12 CDE"
-                                        value={formData.vrm}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, vrm: e.target.value.toUpperCase() }))}
-                                        className="bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary uppercase"
-                                    />
+                                    <label className="text-sm font-bold uppercase text-gray-400">Mileage *</label>
+                                    <Input type="number" placeholder="e.g. 45000" value={formData.mileage} onChange={(e) => set("mileage", e.target.value)} className={inputCls} />
                                 </div>
 
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-gray-400">Fuel Type *</label>
-                                    <select
-                                        value={formData.fuelType}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, fuelType: e.target.value }))}
-                                        className="w-full h-10 rounded-md border border-white/10 bg-slate-900/50 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                                    >
-                                        <option value="">Select fuel type</option>
-                                        <option value="PETROL">Petrol</option>
-                                        <option value="DIESEL">Diesel</option>
-                                        <option value="ELECTRIC">Electric</option>
-                                        <option value="HYBRID">Hybrid</option>
-                                        <option value="PLUGIN_HYBRID">Plugin Hybrid</option>
-                                    </select>
-                                </div>
+                                {/* Fuel */}
+                                <SelectField label="Fuel Type" required value={formData.fuelType} onChange={(v) => set("fuelType", v)}
+                                    options={[
+                                        { value: "PETROL", label: "Petrol" },
+                                        { value: "DIESEL", label: "Diesel" },
+                                        { value: "ELECTRIC", label: "Electric" },
+                                        { value: "HYBRID", label: "Hybrid" },
+                                        { value: "PLUGIN_HYBRID", label: "Plug-in Hybrid" },
+                                    ]}
+                                />
 
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-gray-400">Transmission *</label>
-                                    <select
-                                        value={formData.transmission}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, transmission: e.target.value }))}
-                                        className="w-full h-10 rounded-md border border-white/10 bg-slate-900/50 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                                    >
-                                        <option value="">Select transmission</option>
-                                        <option value="MANUAL">Manual</option>
-                                        <option value="AUTOMATIC">Automatic</option>
-                                        <option value="SEMI_AUTOMATIC">Semi-Automatic</option>
-                                    </select>
-                                </div>
+                                {/* Transmission */}
+                                <SelectField label="Transmission" required value={formData.transmission} onChange={(v) => set("transmission", v)}
+                                    options={[
+                                        { value: "MANUAL", label: "Manual" },
+                                        { value: "AUTOMATIC", label: "Automatic" },
+                                        { value: "SEMI_AUTOMATIC", label: "Semi-Automatic" },
+                                    ]}
+                                />
 
+                                {/* Colour */}
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-gray-400">Colour</label>
-                                    <Input
-                                        placeholder="e.g. Alpine White"
-                                        value={formData.color}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
-                                        className="bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary"
-                                    />
+                                    <Input placeholder="e.g. Alpine White" value={formData.color} onChange={(e) => set("color", e.target.value)} className={inputCls} />
                                 </div>
 
+                                {/* Engine */}
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-gray-400">Engine Size (cc)</label>
-                                    <Input
-                                        type="number"
-                                        placeholder="e.g. 2993"
-                                        value={formData.engineSize}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, engineSize: e.target.value }))}
-                                        className="bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary"
-                                    />
+                                    <Input type="number" placeholder="e.g. 2993" value={formData.engineSize} onChange={(e) => set("engineSize", e.target.value)} className={inputCls} />
                                 </div>
 
+                                {/* BHP */}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-gray-400">Engine Power (BHP)</label>
-                                    <Input
-                                        type="number"
-                                        placeholder="e.g. 503"
-                                        value={formData.bhp}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, bhp: e.target.value }))}
-                                        className="bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary"
-                                    />
+                                    <label className="text-sm font-bold uppercase text-gray-400">Power (BHP)</label>
+                                    <Input type="number" placeholder="e.g. 503" value={formData.bhp} onChange={(e) => set("bhp", e.target.value)} className={inputCls} />
                                 </div>
 
+                                {/* Doors */}
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-gray-400">Doors</label>
-                                    <Input
-                                        type="number"
-                                        placeholder="e.g. 3"
-                                        value={formData.doors}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, doors: e.target.value }))}
-                                        className="bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary"
-                                    />
+                                    <Input type="number" placeholder="e.g. 4" min={2} max={8} value={formData.doors} onChange={(e) => set("doors", e.target.value)} className={inputCls} />
                                 </div>
 
+                                {/* Seats */}
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-gray-400">Seats</label>
-                                    <Input
-                                        type="number"
-                                        placeholder="e.g. 5"
-                                        value={formData.seats}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, seats: e.target.value }))}
-                                        className="bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary"
-                                    />
+                                    <Input type="number" placeholder="e.g. 5" min={1} max={20} value={formData.seats} onChange={(e) => set("seats", e.target.value)} className={inputCls} />
                                 </div>
                             </div>
 
-                            <div className="space-y-4">
+                            {/* UK Compliance */}
+                            <div className="border border-emerald-500/20 bg-emerald-500/5 rounded-xl p-5 space-y-4">
+                                <h3 className="text-sm font-bold uppercase text-emerald-400 tracking-wider flex items-center gap-2">
+                                    <ShieldCheck size={14} /> UK Compliance
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    {/* ULEZ */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold uppercase text-gray-400">ULEZ / CAZ Compliant?</label>
+                                        <div className="flex gap-3">
+                                            {(["Yes", "No", "Unknown"] as const).map((opt) => {
+                                                const val = opt === "Yes" ? true : opt === "No" ? false : null
+                                                const active = formData.ulezCompliant === val
+                                                return (
+                                                    <button key={opt} type="button"
+                                                        onClick={() => set("ulezCompliant", val)}
+                                                        className={`flex-1 py-2 rounded-lg border text-sm font-semibold transition-all ${active ? "border-emerald-500 bg-emerald-500/20 text-emerald-300" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"}`}
+                                                    >
+                                                        {opt}
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* Euro Standard */}
+                                    <SelectField label="Euro Standard" value={formData.euroStandard} onChange={(v) => set("euroStandard", v as EuroStandardValue)}
+                                        options={[
+                                            { value: "EURO_4", label: "Euro 4" },
+                                            { value: "EURO_5", label: "Euro 5" },
+                                            { value: "EURO_6", label: "Euro 6" },
+                                            { value: "EURO_6D", label: "Euro 6d" },
+                                        ]}
+                                    />
+
+                                    {/* CO2 Emissions */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold uppercase text-gray-400">CO₂ Emissions (g/km)</label>
+                                        <Input type="number" placeholder="e.g. 142" value={formData.co2Emissions}
+                                            onChange={(e) => set("co2Emissions", e.target.value)} className={inputCls} />
+                                        <p className="text-xs text-gray-600">Auto-filled from DVLA when available.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Features */}
+                            <div className="space-y-3">
                                 <label className="text-sm font-bold uppercase text-gray-400">Features</label>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                    {['Navigation', 'Leather Seats', 'Heated Seats', 'Sunroof', 'Bluetooth', 'Parking Sensors', 'Reverse Camera', 'Cruise Control', 'Climate Control', 'Apple CarPlay', 'Android Auto', 'DAB Radio', 'LED Headlights', 'Alloy Wheels', 'Tow Bar'].map((feature) => (
-                                        <div
-                                            key={feature}
-                                            onClick={() => {
-                                                setFormData(prev => {
-                                                    const features = prev.features.includes(feature)
-                                                        ? prev.features.filter(f => f !== feature)
-                                                        : [...prev.features, feature]
-                                                    return { ...prev, features }
-                                                })
-                                            }}
-                                            className={`p-3 rounded-lg border cursor-pointer transition-all flex items-center justify-between ${formData.features.includes(feature)
-                                                ? 'bg-primary/20 border-primary text-primary'
-                                                : 'bg-slate-900/50 border-white/10 text-gray-400 hover:border-white/30'
-                                                }`}
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
+                                    {PRESET_FEATURES.map((f) => (
+                                        <div key={f}
+                                            onClick={() => set("features",
+                                                formData.features.includes(f)
+                                                    ? formData.features.filter(x => x !== f)
+                                                    : [...formData.features, f]
+                                            )}
+                                            className={`p-3 rounded-lg border cursor-pointer transition-all flex items-center justify-between ${formData.features.includes(f) ? "bg-primary/20 border-primary text-primary" : "bg-slate-900/50 border-white/10 text-gray-400 hover:border-white/20"}`}
                                         >
-                                            <span className="text-sm font-medium">{feature}</span>
-                                            {formData.features.includes(feature) && <CheckCircle size={16} />}
+                                            <span className="text-sm font-medium">{f}</span>
+                                            {formData.features.includes(f) && <CheckCircle size={14} />}
                                         </div>
                                     ))}
                                 </div>
                             </div>
 
+                            {/* Title & Description */}
                             <div className="space-y-2">
                                 <label className="text-sm font-bold uppercase text-gray-400">Listing Title *</label>
-                                <Input
-                                    placeholder="e.g. BMW M4 Competition 2023"
-                                    value={formData.title}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                                    className="bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary"
-                                />
-                                <p className="text-xs text-gray-500">This will be the main heading for your listing</p>
+                                <Input placeholder="e.g. BMW M4 Competition 2023" value={formData.title} onChange={(e) => set("title", e.target.value)} className={inputCls} />
                             </div>
-
                             <div className="space-y-2">
-                                <label className="text-sm font-bold uppercase text-gray-400">Description (Optional)</label>
+                                <label className="text-sm font-bold uppercase text-gray-400">Description</label>
                                 <Textarea
-                                    placeholder="Describe your vehicle's condition, service history, features, etc."
+                                    placeholder="Describe condition, service history, any extras..."
                                     value={formData.description}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                                    rows={6}
-                                    className="bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary resize-none"
+                                    onChange={(e) => set("description", e.target.value)}
+                                    rows={5}
+                                    className={`${inputCls} resize-none`}
                                 />
-                                <p className="text-xs text-gray-500">{formData.description.length}/500 characters</p>
+                                <p className="text-xs text-gray-600">{formData.description.length}/1000 characters</p>
                             </div>
                         </div>
                     )}
 
-                    {/* Step 4: Pricing */}
-                    {currentStep === 4 && (
+                    {/* ── STEP 5: Pricing ───────────────────────────────────────────────── */}
+                    {currentStep === 5 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                            <h2 className="text-2xl font-bold font-heading mb-6 border-b border-white/10 pb-4 text-white">Pricing & Listing Type</h2>
+                            <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Pricing *</h2>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-bold uppercase text-gray-400">Price (£) *</label>
+                                <label className="text-sm font-bold uppercase text-gray-400">Asking Price (£) *</label>
                                 <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">£</span>
-                                    <Input
-                                        type="number"
-                                        placeholder="25000"
-                                        value={formData.price}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
-                                        className="bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary pl-8 text-lg"
-                                    />
+                                    <Input type="number" placeholder="25000" value={formData.price}
+                                        onChange={(e) => set("price", e.target.value)}
+                                        className={`${inputCls} pl-8 text-lg`} />
                                 </div>
-                                {formData.price && (
-                                    <p className="text-sm text-gray-400">Display price: {formatPrice(formData.price)}</p>
-                                )}
+                                {formData.price && <p className="text-sm text-gray-400">Display price: {formatPrice(formData.price)}</p>}
                             </div>
 
-                            <div className="space-y-4">
-                                <label className="text-sm font-bold uppercase text-gray-400">Listing Type *</label>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div
-                                        onClick={() => setFormData(prev => ({ ...prev, listingType: 'CLASSIFIED' }))}
-                                        className={`p-6 rounded-xl border-2 cursor-pointer transition-all ${formData.listingType === 'CLASSIFIED'
-                                            ? 'border-primary bg-primary/10 shadow-neon'
-                                            : 'border-white/10 bg-white/5 hover:border-white/20'
-                                            }`}
-                                    >
-                                        <div className="flex items-center gap-3 mb-3">
-                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${formData.listingType === 'CLASSIFIED' ? 'bg-primary' : 'bg-slate-800'
-                                                }`}>
-                                                <List className="w-5 h-5 text-white" />
-                                            </div>
-                                            <h3 className="font-bold text-lg text-white">Classified</h3>
+                            <div>
+                                <label className="text-sm font-bold uppercase text-gray-400 block mb-3">Listing Type *</label>
+                                <div
+                                    onClick={() => set("listingType", "CLASSIFIED")}
+                                    className={`p-5 rounded-xl border-2 cursor-pointer transition-all ${formData.listingType === "CLASSIFIED" ? "border-primary bg-primary/10" : "border-white/10 bg-white/5 hover:border-white/20"}`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-9 h-9 rounded-full flex items-center justify-center ${formData.listingType === "CLASSIFIED" ? "bg-primary" : "bg-slate-800"}`}>
+                                            <List className="w-4 h-4 text-white" />
                                         </div>
-                                        <p className="text-sm text-gray-400">Traditional listing with fixed price</p>
-                                    </div>
-
-                                    <div
-                                        onClick={() => setFormData(prev => ({ ...prev, listingType: 'AUCTION' }))}
-                                        className={`p-6 rounded-xl border-2 cursor-pointer transition-all ${formData.listingType === 'AUCTION'
-                                            ? 'border-primary bg-primary/10 shadow-neon'
-                                            : 'border-white/10 bg-white/5 hover:border-white/20'
-                                            }`}
-                                    >
-                                        <div className="flex items-center gap-3 mb-3">
-                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${formData.listingType === 'AUCTION' ? 'bg-primary' : 'bg-slate-800'
-                                                }`}>
-                                                <Gavel className="w-5 h-5 text-white" />
-                                            </div>
-                                            <h3 className="font-bold text-lg text-white">Auction</h3>
+                                        <div>
+                                            <p className="font-bold text-white">Classified Listing</p>
+                                            <p className="text-sm text-gray-400">Fixed price — buyers contact you directly</p>
                                         </div>
-                                        <p className="text-sm text-gray-400">7-day auction with bidding</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* Step 5: Review */}
-                    {currentStep === 5 && (
-                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-                            <h2 className="text-2xl font-bold font-heading mb-6 border-b border-white/10 pb-4 text-white">Review Your Listing</h2>
+                    {/* ── STEP 6: Review ────────────────────────────────────────────────── */}
+                    {currentStep === 6 && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                            <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Review Your Listing</h2>
 
-                            {/* Vehicle Information */}
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <h3 className="font-bold text-lg text-white">Vehicle Information</h3>
-                                    <Button variant="ghost" size="sm" onClick={() => goToStep(1)} className="text-primary hover:text-primary/80">
-                                        <Edit className="w-4 h-4 mr-1" /> Edit
-                                    </Button>
+                            {/* Vehicle Info */}
+                            <SummarySection title="Vehicle Identity" onEdit={() => goToStep(1)}>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    <SummaryField label="VRM" value={formData.vrm} />
+                                    {formData.vin && <SummaryField label="VIN" value={formData.vin} mono />}
+                                    <SummaryField label="Make" value={formData.make} />
+                                    <SummaryField label="Model" value={formData.model} />
+                                    <SummaryField label="Year" value={formData.year} />
+                                    {formData.bodyType && <SummaryField label="Body" value={formData.bodyType} />}
+                                    {formData.location && <SummaryField label="Location" value={formData.location} />}
                                 </div>
-                                <div className="glass-card p-6 grid grid-cols-2 md:grid-cols-3 gap-4">
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase">Make</p>
-                                        <p className="text-white font-medium">{formData.make}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase">Model</p>
-                                        <p className="text-white font-medium">{formData.model}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase">Year</p>
-                                        <p className="text-white font-medium">{formData.year}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase">Mileage</p>
-                                        <p className="text-white font-medium">{parseInt(formData.mileage).toLocaleString()} miles</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase">VRM</p>
-                                        <p className="text-white font-medium">{formData.vrm}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase">Fuel</p>
-                                        <p className="text-white font-medium">{formData.fuelType}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase">Transmission</p>
-                                        <p className="text-white font-medium">{formData.transmission}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase">Colour</p>
-                                        <p className="text-white font-medium">{formData.color || '-'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase">Engine</p>
-                                        <p className="text-white font-medium">{formData.engineSize ? `${formData.engineSize}cc` : '-'} {formData.bhp ? `(${formData.bhp} BHP)` : ''}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase">Doors / Seats</p>
-                                        <p className="text-white font-medium">{formData.doors || '-'} / {formData.seats || '-'}</p>
-                                    </div>
-                                </div>
-                                {formData.features.length > 0 && (
-                                    <div className="mt-4">
-                                        <p className="text-xs text-gray-500 uppercase mb-2">Features</p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {formData.features.map((f, i) => (
-                                                <span key={i} className="text-xs bg-slate-800 text-gray-300 px-2 py-1 rounded-md border border-white/10">{f}</span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
+                            </SummarySection>
+
+                            {/* Condition */}
+                            <SummarySection title="Condition" onEdit={() => goToStep(2)}>
+                                <SummaryField label="Condition" value={formData.condition} />
+                            </SummarySection>
 
                             {/* Media */}
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <h3 className="font-bold text-lg text-white">Media ({formData.images.length} images)</h3>
-                                    <Button variant="ghost" size="sm" onClick={() => goToStep(2)} className="text-primary hover:text-primary/80">
-                                        <Edit className="w-4 h-4 mr-1" /> Edit
-                                    </Button>
+                            <SummarySection title={`Photos (${formData.images.length})`} onEdit={() => goToStep(3)}>
+                                <div className="grid grid-cols-4 md:grid-cols-6 gap-2">
+                                    {formData.images.slice(0, 12).map((img, i) => (
+                                        <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-white/10">
+                                            <Image src={img} alt={`Photo ${i + 1}`} fill className="object-cover" sizes="80px" />
+                                        </div>
+                                    ))}
                                 </div>
-                                <div className="glass-card p-6">
-                                    <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
-                                        {formData.images.map((img, idx) => (
-                                            <div key={idx} className="relative aspect-video rounded-lg overflow-hidden border border-white/10">
-                                                <Image src={img} alt={`Image ${idx + 1}`} fill className="object-cover" sizes="(max-width: 768px) 33vw, 20vw" />
-                                            </div>
+                            </SummarySection>
+
+                            {/* Specs */}
+                            <SummarySection title="Technical Specs" onEdit={() => goToStep(4)}>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    <SummaryField label="Mileage" value={parseInt(formData.mileage).toLocaleString() + " mi"} />
+                                    <SummaryField label="Fuel" value={formData.fuelType} />
+                                    <SummaryField label="Transmission" value={formData.transmission} />
+                                    {formData.color && <SummaryField label="Colour" value={formData.color} />}
+                                    {formData.engineSize && <SummaryField label="Engine" value={formData.engineSize + "cc"} />}
+                                    {formData.bhp && <SummaryField label="BHP" value={formData.bhp} />}
+                                    {formData.doors && <SummaryField label="Doors" value={formData.doors} />}
+                                    {formData.seats && <SummaryField label="Seats" value={formData.seats} />}
+                                    {formData.ulezCompliant !== null && <SummaryField label="ULEZ" value={formData.ulezCompliant ? "Compliant" : "Non-compliant"} />}
+                                    {formData.euroStandard && <SummaryField label="Euro Standard" value={formData.euroStandard.replace("_", " ")} />}
+                                </div>
+                                {formData.features.length > 0 && (
+                                    <div className="mt-3 flex flex-wrap gap-1.5">
+                                        {formData.features.map((f, i) => (
+                                            <span key={i} className="text-xs bg-slate-800 text-gray-300 px-2 py-1 rounded-md border border-white/10">{f}</span>
                                         ))}
                                     </div>
-                                </div>
-                            </div>
-
-                            {/* Description */}
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <h3 className="font-bold text-lg text-white">Listing Details</h3>
-                                    <Button variant="ghost" size="sm" onClick={() => goToStep(3)} className="text-primary hover:text-primary/80">
-                                        <Edit className="w-4 h-4 mr-1" /> Edit
-                                    </Button>
-                                </div>
-                                <div className="glass-card p-6 space-y-3">
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase mb-1">Title</p>
-                                        <p className="text-white font-bold text-xl">{formData.title}</p>
-                                    </div>
-                                    {formData.description && (
-                                        <div>
-                                            <p className="text-xs text-gray-500 uppercase mb-1">Description</p>
-                                            <p className="text-gray-300 text-sm leading-relaxed">{formData.description}</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                                )}
+                                {formData.title && <div className="mt-3 pt-3 border-t border-white/5"><p className="text-xs text-gray-500 uppercase mb-1">Title</p><p className="text-white font-semibold">{formData.title}</p></div>}
+                                {formData.description && <p className="text-sm text-gray-400 mt-2">{formData.description}</p>}
+                            </SummarySection>
 
                             {/* Pricing */}
-                            <div className="space-y-4">
+                            <SummarySection title="Pricing" onEdit={() => goToStep(5)}>
                                 <div className="flex items-center justify-between">
-                                    <h3 className="font-bold text-lg text-white">Pricing</h3>
-                                    <Button variant="ghost" size="sm" onClick={() => goToStep(4)} className="text-primary hover:text-primary/80">
-                                        <Edit className="w-4 h-4 mr-1" /> Edit
-                                    </Button>
+                                    <p className="text-white font-black text-2xl">{formatPrice(formData.price)}</p>
+                                    <span className="px-3 py-1 rounded-full bg-primary/20 text-primary text-xs font-bold uppercase">{formData.listingType}</span>
                                 </div>
-                                <div className="glass-card p-6 flex items-center justify-between">
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase mb-1">Price</p>
-                                        <p className="text-white font-bold text-3xl">{formatPrice(formData.price)}</p>
-                                    </div>
-                                    <div className={`px-4 py-2 rounded-full ${formData.listingType === 'AUCTION' ? 'bg-indigo-500/20 text-indigo-300' : 'bg-primary/20 text-primary'
-                                        }`}>
-                                        <p className="font-bold uppercase text-sm">{formData.listingType}</p>
-                                    </div>
-                                </div>
-                            </div>
+                            </SummarySection>
 
-                            {/* Error Display */}
                             {submitError && (
                                 <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4">
                                     <p className="text-red-400 text-sm">{submitError}</p>
@@ -920,41 +817,48 @@ export default function SellPage() {
                         </div>
                     )}
 
-                    {/* Navigation Buttons */}
-                    <div className="flex justify-between mt-12 pt-8 border-t border-white/10">
-                        {currentStep > 1 ? (
-                            <Button variant="outline" onClick={prevStep} className="px-8 border-white/20 text-white hover:bg-white/10">
-                                <ArrowLeft className="mr-2 h-4 w-4" /> Previous
+                    {/* Navigation */}
+                    <div className="flex justify-between mt-10 pt-6 border-t border-white/10">
+                        {currentStep > 1
+                            ? <Button variant="outline" onClick={handleBack} className="px-7 border-white/20 text-white hover:bg-white/10"><ArrowLeft className="mr-2 h-4 w-4" /> Back</Button>
+                            : <div />
+                        }
+                        {currentStep < 6
+                            ? <Button onClick={handleNext} className="px-7 shadow-neon">Next <ArrowRight className="ml-2 h-4 w-4" /></Button>
+                            : <Button onClick={handleSubmit} disabled={isSubmitting}
+                                className="px-7 bg-emerald-600 hover:bg-emerald-700 border-none shadow-[0_0_20px_rgba(16,185,129,0.4)] disabled:opacity-50">
+                                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Publishing...</> : <>Publish <CheckCircle className="ml-2 h-4 w-4" /></>}
                             </Button>
-                        ) : (
-                            <div /> // Spacer
-                        )}
-
-                        {currentStep < 5 ? (
-                            <Button onClick={handleNextStep} className="px-8 shadow-neon">
-                                Next Step <ArrowRight className="ml-2 h-4 w-4" />
-                            </Button>
-                        ) : (
-                            <Button
-                                onClick={handleSubmit}
-                                disabled={isSubmitting}
-                                className="px-8 bg-emerald-600 hover:bg-emerald-700 border-none shadow-[0_0_20px_rgba(16,185,129,0.4)] disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {isSubmitting ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Publishing...
-                                    </>
-                                ) : (
-                                    <>
-                                        Publish Listing <CheckCircle className="ml-2 h-4 w-4" />
-                                    </>
-                                )}
-                            </Button>
-                        )}
+                        }
                     </div>
                 </div>
             </div>
+        </div>
+    )
+}
+
+// ─── Review helper components ─────────────────────────────────────────────────
+
+function SummarySection({ title, onEdit, children }: { title: string; onEdit: () => void; children: React.ReactNode }) {
+    return (
+        <div className="space-y-3">
+            <div className="flex items-center justify-between">
+                <h3 className="font-bold text-white">{title}</h3>
+                <button type="button" onClick={onEdit} className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors">
+                    <Edit size={12} /> Edit
+                </button>
+            </div>
+            <div className="glass-card p-5">{children}</div>
+        </div>
+    )
+}
+
+function SummaryField({ label, value, mono = false }: { label: string; value: string | number | undefined; mono?: boolean }) {
+    if (!value) return null
+    return (
+        <div>
+            <p className="text-[10px] text-gray-500 uppercase mb-0.5">{label}</p>
+            <p className={`text-white font-medium text-sm ${mono ? "font-mono tracking-wide" : ""}`}>{value}</p>
         </div>
     )
 }

@@ -1,0 +1,14 @@
+# Database
+# Password URL-encoded: Gb6@Jip/e*xcVEq -> Gb6%40Jip%2Fe*xcVEq
+# Pooled connection for runtime (transaction mode)
+DATABASE_URL="postgresql://postgres.qcqnllehtuczgammazwi:Gb6%40Jip%2Fe*xcVEq@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+# Direct connection for migrations (session mode)
+DIRECT_URL="postgresql://postgres.qcqnllehtuczgammazwi:Gb6%40Jip%2Fe*xcVEq@aws-1-ap-south-1.pooler.supabase.com:5432/postgres"
+
+# Server
+PORT=3001
+NODE_ENV=development
+
+# Session Secret (used for cookie signing)
+# Generated with: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+SESSION_SECRET=FcCD4/6dIbA7BRcuM2K9Q2FLXSP7y6Xl6oJI7Kp74yEwj5P1qF+QPYwOjs9GJKuM9nmyDf+gaRGQmt7qtik/GQ==

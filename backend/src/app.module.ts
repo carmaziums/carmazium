@@ -24,6 +24,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { CsrfMiddleware } from './core/middleware/csrf.middleware';
 import { HealthModule } from './health/health.module';
+import { DvlaModule } from './dvla/dvla.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { HealthModule } from './health/health.module';
     ChatModule,
     TasksModule,
     TransactionsModule,
+    DvlaModule,
   ],
   controllers: [AppController],
   providers: [AppService],
