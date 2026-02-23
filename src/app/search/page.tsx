@@ -4,11 +4,14 @@ import * as React from "react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { CarCard } from "@/components/features/CarCard"
-import { Search, Filter, X, Gavel, AlertTriangle, Loader2, RotateCcw, ChevronDown } from "lucide-react"
-import { getListings, formatPrice, type Listing, type ListingFilters } from "@/lib/listingApi"
+import {
+    Search, Filter, X, Gavel, AlertTriangle, Loader2,
+    RotateCcw, ChevronDown, ShieldCheck,
+} from "lucide-react"
+import { getListings, formatPrice, type Listing, type ListingFilters, type VehicleConditionValue, type EuroStandardValue } from "@/lib/listingApi"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const FUEL_TYPES = ['Petrol', 'Diesel', 'Hybrid', 'Electric', 'Plugin Hybrid'] as const
 const FUEL_MAP: Record<string, string> = {
@@ -21,14 +24,22 @@ const TRANS_MAP: Record<string, string> = {
     'Manual': 'MANUAL', 'Automatic': 'AUTOMATIC', 'Semi-Automatic': 'SEMI_AUTOMATIC',
 }
 
-const YEAR_OPTIONS = [
-    { label: 'Any Year', value: 0 },
-    { label: '2024+', value: 2024 },
-    { label: '2022+', value: 2022 },
-    { label: '2020+', value: 2020 },
-    { label: '2018+', value: 2018 },
-    { label: '2015+', value: 2015 },
-    { label: '2010+', value: 2010 },
+const CONDITION_OPTIONS: { value: VehicleConditionValue; label: string }[] = [
+    { value: 'EXCELLENT', label: 'Excellent' },
+    { value: 'GOOD', label: 'Good' },
+    { value: 'FAIR', label: 'Fair' },
+    { value: 'POOR', label: 'Poor' },
+    { value: 'CAT_S', label: 'CAT S (write-off)' },
+    { value: 'CAT_N', label: 'CAT N (write-off)' },
+    { value: 'CAT_C', label: 'CAT C (write-off)' },
+    { value: 'CAT_D', label: 'CAT D (write-off)' },
+]
+
+const EURO_OPTIONS: { value: EuroStandardValue; label: string }[] = [
+    { value: 'EURO_4', label: 'Euro 4' },
+    { value: 'EURO_5', label: 'Euro 5' },
+    { value: 'EURO_6', label: 'Euro 6' },
+    { value: 'EURO_6D', label: 'Euro 6d' },
 ]
 
 const SORT_OPTIONS = [
@@ -36,62 +47,83 @@ const SORT_OPTIONS = [
     { label: 'Price: Low → High', value: 'price_asc' },
     { label: 'Price: High → Low', value: 'price_desc' },
     { label: 'Mileage: Low → High', value: 'mileage_asc' },
+    { label: 'Year: Newest', value: 'year_desc' },
 ]
 
-// ─── Filter State ────────────────────────────────────────────────────────────
+const CURRENT_YEAR = new Date().getFullYear()
+
+// ─── Filter State ─────────────────────────────────────────────────────────────
 
 interface FilterState {
     search: string
     make: string
+    model: string
     minPrice: string
     maxPrice: string
-    year: number
+    minYear: string
+    maxYear: string
+    minMileage: string
+    maxMileage: string
     fuelTypes: string[]
     transmissions: string[]
     bodyType: string
+    color: string
+    condition: VehicleConditionValue | ''
+    ulezCompliant: 'yes' | 'no' | ''
+    euroStandard: EuroStandardValue | ''
     sortBy: string
 }
 
 const INITIAL_FILTERS: FilterState = {
-    search: '',
-    make: '',
-    minPrice: '',
-    maxPrice: '',
-    year: 0,
-    fuelTypes: [],
-    transmissions: [],
-    bodyType: '',
+    search: '', make: '', model: '',
+    minPrice: '', maxPrice: '',
+    minYear: '', maxYear: '',
+    minMileage: '', maxMileage: '',
+    fuelTypes: [], transmissions: [],
+    bodyType: '', color: '',
+    condition: '', ulezCompliant: '', euroStandard: '',
     sortBy: 'newest',
 }
 
-// ─── Collapsible Section ─────────────────────────────────────────────────────
+// ─── Collapsible Section ──────────────────────────────────────────────────────
 
 function FilterSection({ title, children, defaultOpen = false }: {
-    title: string
-    children: React.ReactNode
-    defaultOpen?: boolean
+    title: string; children: React.ReactNode; defaultOpen?: boolean
 }) {
     const [open, setOpen] = React.useState(defaultOpen)
-
     return (
         <div className="border-b border-white/5 pb-4">
-            <button
-                type="button"
-                onClick={() => setOpen(!open)}
+            <button type="button" onClick={() => setOpen(!open)}
                 className="w-full flex items-center justify-between text-sm font-bold uppercase text-gray-400 tracking-wide hover:text-gray-300 transition-colors cursor-pointer py-1"
             >
                 {title}
-                <ChevronDown
-                    size={16}
-                    className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
-                />
+                <ChevronDown size={16} className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
             </button>
             {open && <div className="mt-3">{children}</div>}
         </div>
     )
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
+// ─── Range Pair Input ─────────────────────────────────────────────────────────
+
+function RangeInputs({ minVal, maxVal, onMinChange, onMaxChange, minPlaceholder = 'Min', maxPlaceholder = 'Max' }: {
+    minVal: string; maxVal: string
+    onMinChange: (v: string) => void; onMaxChange: (v: string) => void
+    minPlaceholder?: string; maxPlaceholder?: string
+}) {
+    return (
+        <div className="flex gap-2">
+            <Input type="number" placeholder={minPlaceholder} value={minVal}
+                onChange={(e) => onMinChange(e.target.value)}
+                className="h-9 text-sm bg-slate-800 border-white/10 text-white" />
+            <Input type="number" placeholder={maxPlaceholder} value={maxVal}
+                onChange={(e) => onMaxChange(e.target.value)}
+                className="h-9 text-sm bg-slate-800 border-white/10 text-white" />
+        </div>
+    )
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function SearchPage() {
     const [isFilterOpen, setIsFilterOpen] = React.useState(false)
@@ -102,44 +134,59 @@ export default function SearchPage() {
     const [filters, setFilters] = React.useState<FilterState>(INITIAL_FILTERS)
     const [appliedFilters, setAppliedFilters] = React.useState<FilterState>(INITIAL_FILTERS)
 
+    const set = <K extends keyof FilterState>(key: K, val: FilterState[K]) =>
+        setFilters(prev => ({ ...prev, [key]: val }))
+
     // Count active filters for badge
     const activeFilterCount = React.useMemo(() => {
         let count = 0
         if (appliedFilters.make) count++
+        if (appliedFilters.model) count++
         if (appliedFilters.minPrice || appliedFilters.maxPrice) count++
-        if (appliedFilters.year) count++
+        if (appliedFilters.minYear || appliedFilters.maxYear) count++
+        if (appliedFilters.minMileage || appliedFilters.maxMileage) count++
         if (appliedFilters.fuelTypes.length) count++
         if (appliedFilters.transmissions.length) count++
         if (appliedFilters.bodyType) count++
+        if (appliedFilters.color) count++
+        if (appliedFilters.condition) count++
+        if (appliedFilters.ulezCompliant) count++
+        if (appliedFilters.euroStandard) count++
         return count
     }, [appliedFilters])
 
     // Build API filters from state
     const buildApiFilters = React.useCallback((state: FilterState): ListingFilters => {
-        const apiFilters: ListingFilters = { limit: 20 }
-        if (state.search) apiFilters.search = state.search
-        if (state.make) apiFilters.make = state.make
-        if (state.minPrice) apiFilters.minPrice = parseFloat(state.minPrice)
-        if (state.maxPrice) apiFilters.maxPrice = parseFloat(state.maxPrice)
-        if (state.year) apiFilters.year = state.year
-        if (state.fuelTypes.length === 1) apiFilters.fuelType = FUEL_MAP[state.fuelTypes[0]]
-        if (state.transmissions.length === 1) apiFilters.transmission = TRANS_MAP[state.transmissions[0]]
-        if (state.bodyType) apiFilters.bodyType = state.bodyType
-        if (state.sortBy && state.sortBy !== 'newest') apiFilters.sortBy = state.sortBy
-        return apiFilters
+        const f: ListingFilters = { limit: 24 }
+        if (state.search) f.search = state.search
+        if (state.make) f.make = state.make
+        if (state.model) f.model = state.model
+        if (state.minPrice) f.minPrice = parseFloat(state.minPrice)
+        if (state.maxPrice) f.maxPrice = parseFloat(state.maxPrice)
+        if (state.minYear) f.minYear = parseInt(state.minYear)
+        if (state.maxYear) f.maxYear = parseInt(state.maxYear)
+        if (state.minMileage) f.minMileage = parseInt(state.minMileage)
+        if (state.maxMileage) f.maxMileage = parseInt(state.maxMileage)
+        if (state.fuelTypes.length === 1) f.fuelType = FUEL_MAP[state.fuelTypes[0]]
+        if (state.transmissions.length === 1) f.transmission = TRANS_MAP[state.transmissions[0]]
+        if (state.bodyType) f.bodyType = state.bodyType
+        if (state.color) f.color = state.color
+        if (state.condition) f.condition = state.condition
+        if (state.ulezCompliant) f.ulezCompliant = state.ulezCompliant === 'yes'
+        if (state.euroStandard) f.euroStandard = state.euroStandard
+        if (state.sortBy && state.sortBy !== 'newest') f.sortBy = state.sortBy
+        return f
     }, [])
 
     // Fetch listings
     const fetchListings = React.useCallback(async (filterState: FilterState) => {
         try {
-            setLoading(true)
-            setError(null)
+            setLoading(true); setError(null)
             const apiFilters = buildApiFilters(filterState)
             const response = await getListings(apiFilters)
 
             let data = response.data
-
-            // Client-side multi-select filtering (API only supports single value)
+            // Client-side multi-select filtering (API supports single enum only)
             if (filterState.fuelTypes.length > 1) {
                 const mapped = filterState.fuelTypes.map(f => FUEL_MAP[f])
                 data = data.filter(l => l.fuelType && mapped.includes(l.fuelType))
@@ -148,9 +195,7 @@ export default function SearchPage() {
                 const mapped = filterState.transmissions.map(t => TRANS_MAP[t])
                 data = data.filter(l => l.transmission && mapped.includes(l.transmission))
             }
-
-            setListings(data)
-            setTotalCount(response.pagination.total)
+            setListings(data); setTotalCount(response.pagination.total)
         } catch (err) {
             console.error('Failed to fetch listings:', err)
             setError(err instanceof Error ? err.message : 'Failed to load listings')
@@ -159,72 +204,49 @@ export default function SearchPage() {
         }
     }, [buildApiFilters])
 
-    // Initial fetch
-    React.useEffect(() => {
-        fetchListings(INITIAL_FILTERS)
-    }, [fetchListings])
+    React.useEffect(() => { fetchListings(INITIAL_FILTERS) }, [fetchListings])
 
-    // ─── Handlers ────────────────────────────────────────────────────────────
+    // ─── Handlers ─────────────────────────────────────────────────────────────
 
     const handleApplyFilters = () => {
         setAppliedFilters({ ...filters })
         fetchListings(filters)
         setIsFilterOpen(false)
     }
-
     const handleResetFilters = () => {
         setFilters(INITIAL_FILTERS)
         setAppliedFilters(INITIAL_FILTERS)
         fetchListings(INITIAL_FILTERS)
     }
-
     const handleSearch = () => {
         const updated = { ...filters }
         setAppliedFilters(updated)
         fetchListings(updated)
     }
-
-    const handleSearchKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') handleSearch()
-    }
-
     const handleSortChange = (value: string) => {
         const updated = { ...appliedFilters, sortBy: value }
         setFilters(prev => ({ ...prev, sortBy: value }))
         setAppliedFilters(updated)
         fetchListings(updated)
     }
+    const toggleFuelType = (f: string) => setFilters(prev => ({ ...prev, fuelTypes: prev.fuelTypes.includes(f) ? prev.fuelTypes.filter(x => x !== f) : [...prev.fuelTypes, f] }))
+    const toggleTransmission = (t: string) => setFilters(prev => ({ ...prev, transmissions: prev.transmissions.includes(t) ? prev.transmissions.filter(x => x !== t) : [...prev.transmissions, t] }))
 
-    const toggleFuelType = (fuel: string) => {
-        setFilters(prev => ({
-            ...prev,
-            fuelTypes: prev.fuelTypes.includes(fuel)
-                ? prev.fuelTypes.filter(f => f !== fuel)
-                : [...prev.fuelTypes, fuel],
-        }))
-    }
-
-    const toggleTransmission = (trans: string) => {
-        setFilters(prev => ({
-            ...prev,
-            transmissions: prev.transmissions.includes(trans)
-                ? prev.transmissions.filter(t => t !== trans)
-                : [...prev.transmissions, trans],
-        }))
-    }
-
-    // Image fallback
     const getListingImage = (listing: Listing) => {
-        if (listing.images && listing.images.length > 0) {
+        if (listing.images?.length > 0) {
             const valid = listing.images.find(img => !img.includes('example.com'))
             if (valid) return valid
         }
-        return listing.type === 'AUCTION'
-            ? "/assets/images/featured-suv.png"
-            : "/assets/images/featured-sports.png"
+        return "/assets/images/featured-sports.png"
     }
 
-    // ─── Render ──────────────────────────────────────────────────────────────
+    // Quick-remove helper for applied filter tags
+    const clearFilter = (patch: Partial<FilterState>) => {
+        const u = { ...appliedFilters, ...patch }
+        setFilters(u); setAppliedFilters(u); fetchListings(u)
+    }
+
+    // ─── Render ───────────────────────────────────────────────────────────────
 
     return (
         <div className="min-h-screen pb-20">
@@ -238,8 +260,8 @@ export default function SearchPage() {
                             <Input
                                 placeholder="Search make, model, or keywords..."
                                 value={filters.search}
-                                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                                onKeyDown={handleSearchKeyDown}
+                                onChange={(e) => set('search', e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                                 className="pl-12 bg-white/5 border-white/10 text-white placeholder:text-gray-400 focus:bg-white/10 h-12"
                             />
                         </div>
@@ -250,11 +272,8 @@ export default function SearchPage() {
 
             <div className="container mx-auto px-5 py-8 flex flex-col lg:flex-row gap-8">
                 {/* Mobile Filter Toggle */}
-                <Button
-                    className="lg:hidden w-full flex items-center justify-between"
-                    variant="outline"
-                    onClick={() => setIsFilterOpen(!isFilterOpen)}
-                >
+                <Button className="lg:hidden w-full flex items-center justify-between" variant="outline"
+                    onClick={() => setIsFilterOpen(!isFilterOpen)}>
                     <span className="flex items-center gap-2">
                         <Filter size={18} /> Filters
                         {activeFilterCount > 0 && (
@@ -264,103 +283,76 @@ export default function SearchPage() {
                     {isFilterOpen ? <X size={18} /> : null}
                 </Button>
 
-                {/* Sidebar */}
-                <aside className={`lg:w-1/4 glass-card p-6 h-fit lg:sticky lg:top-24 ${isFilterOpen ? 'block' : 'hidden lg:block'}`}>
+                {/* ── Sidebar ──────────────────────────────────────────────────── */}
+                <aside className={`lg:w-72 lg:flex-shrink-0 glass-card p-6 h-fit lg:sticky lg:top-24 ${isFilterOpen ? 'block' : 'hidden lg:block'}`}>
                     <h3 className="font-heading font-bold text-xl mb-6 flex justify-between items-center text-white">
                         Filters
                         {activeFilterCount > 0 && (
-                            <button
-                                onClick={handleResetFilters}
-                                className="text-xs text-primary font-normal cursor-pointer hover:underline flex items-center gap-1"
-                            >
+                            <button onClick={handleResetFilters} className="text-xs text-primary font-normal cursor-pointer hover:underline flex items-center gap-1">
                                 <RotateCcw size={12} /> Reset All
                             </button>
                         )}
                     </h3>
 
                     <div className="space-y-4">
-                        {/* Body Type — Collapsible Dropdown */}
-                        <FilterSection title="Body Type" defaultOpen={false}>
-                            <div className="space-y-1 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
+                        {/* Body Type */}
+                        <FilterSection title="Body Type">
+                            <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
                                 {BODY_TYPE_KEYS.map((key) => {
                                     const Icon = BODY_TYPE_ICONS[key]
-                                    const label = BODY_TYPE_LABELS[key]
                                     const isActive = filters.bodyType === key
                                     return (
-                                        <button
-                                            key={key}
-                                            type="button"
-                                            onClick={() => setFilters(prev => ({
-                                                ...prev,
-                                                bodyType: prev.bodyType === key ? '' : key,
-                                            }))}
-                                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${isActive
-                                                    ? 'bg-primary/15 text-primary border border-primary/30'
-                                                    : 'text-gray-400 hover:bg-white/5 hover:text-gray-200 border border-transparent'
-                                                }`}
+                                        <button key={key} type="button"
+                                            onClick={() => set('bodyType', filters.bodyType === key ? '' : key)}
+                                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${isActive ? 'bg-primary/15 text-primary border border-primary/30' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200 border border-transparent'}`}
                                         >
-                                            <Icon className="w-8 h-4 shrink-0" />
-                                            <span>{label}</span>
+                                            <Icon className="w-8 h-4 shrink-0" />{BODY_TYPE_LABELS[key]}
                                         </button>
                                     )
                                 })}
                             </div>
                         </FilterSection>
 
-                        {/* Make */}
-                        <FilterSection title="Make" defaultOpen={true}>
-                            <Input
-                                placeholder="e.g. BMW, Audi..."
-                                value={filters.make}
-                                onChange={(e) => setFilters(prev => ({ ...prev, make: e.target.value }))}
-                                className="h-10 text-sm bg-slate-800 border-white/10 text-white placeholder:text-gray-500"
-                            />
-                        </FilterSection>
-
-                        {/* Price Range */}
-                        <FilterSection title="Price Range" defaultOpen={true}>
-                            <div className="flex gap-2">
-                                <Input
-                                    placeholder="Min"
-                                    type="number"
-                                    value={filters.minPrice}
-                                    onChange={(e) => setFilters(prev => ({ ...prev, minPrice: e.target.value }))}
-                                    className="h-10 text-sm bg-slate-800 border-white/10 text-white"
-                                />
-                                <Input
-                                    placeholder="Max"
-                                    type="number"
-                                    value={filters.maxPrice}
-                                    onChange={(e) => setFilters(prev => ({ ...prev, maxPrice: e.target.value }))}
-                                    className="h-10 text-sm bg-slate-800 border-white/10 text-white"
-                                />
+                        {/* Make & Model */}
+                        <FilterSection title="Make / Model" defaultOpen={true}>
+                            <div className="space-y-2">
+                                <Input placeholder="Make (e.g. BMW)" value={filters.make}
+                                    onChange={(e) => set('make', e.target.value)}
+                                    className="h-9 text-sm bg-slate-800 border-white/10 text-white placeholder:text-gray-500" />
+                                <Input placeholder="Model (e.g. M4)" value={filters.model}
+                                    onChange={(e) => set('model', e.target.value)}
+                                    className="h-9 text-sm bg-slate-800 border-white/10 text-white placeholder:text-gray-500" />
                             </div>
                         </FilterSection>
 
-                        {/* Year */}
-                        <FilterSection title="Year" defaultOpen={false}>
-                            <select
-                                value={filters.year}
-                                onChange={(e) => setFilters(prev => ({ ...prev, year: parseInt(e.target.value) }))}
-                                className="w-full h-10 border border-white/10 rounded px-3 text-sm text-white focus:border-primary outline-none bg-slate-800 cursor-pointer"
-                            >
-                                {YEAR_OPTIONS.map(opt => (
-                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ))}
-                            </select>
+                        {/* Price Range */}
+                        <FilterSection title="Price (£)" defaultOpen={true}>
+                            <RangeInputs minVal={filters.minPrice} maxVal={filters.maxPrice}
+                                onMinChange={(v) => set('minPrice', v)} onMaxChange={(v) => set('maxPrice', v)}
+                                minPlaceholder="Min £" maxPlaceholder="Max £" />
+                        </FilterSection>
+
+                        {/* Year Range */}
+                        <FilterSection title="Year">
+                            <RangeInputs minVal={filters.minYear} maxVal={filters.maxYear}
+                                onMinChange={(v) => set('minYear', v)} onMaxChange={(v) => set('maxYear', v)}
+                                minPlaceholder={`From`} maxPlaceholder={`${CURRENT_YEAR}`} />
+                        </FilterSection>
+
+                        {/* Mileage Range */}
+                        <FilterSection title="Mileage (miles)">
+                            <RangeInputs minVal={filters.minMileage} maxVal={filters.maxMileage}
+                                onMinChange={(v) => set('minMileage', v)} onMaxChange={(v) => set('maxMileage', v)}
+                                minPlaceholder="Min" maxPlaceholder="Max" />
                         </FilterSection>
 
                         {/* Fuel Type */}
-                        <FilterSection title="Fuel Type" defaultOpen={false}>
+                        <FilterSection title="Fuel Type">
                             <div className="space-y-2">
                                 {FUEL_TYPES.map(fuel => (
                                     <label key={fuel} className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer hover:text-primary transition-colors">
-                                        <input
-                                            type="checkbox"
-                                            checked={filters.fuelTypes.includes(fuel)}
-                                            onChange={() => toggleFuelType(fuel)}
-                                            className="accent-primary rounded w-4 h-4 bg-slate-800 border-white/10"
-                                        />
+                                        <input type="checkbox" checked={filters.fuelTypes.includes(fuel)} onChange={() => toggleFuelType(fuel)}
+                                            className="accent-primary rounded w-4 h-4 bg-slate-800 border-white/10" />
                                         {fuel}
                                     </label>
                                 ))}
@@ -368,19 +360,67 @@ export default function SearchPage() {
                         </FilterSection>
 
                         {/* Transmission */}
-                        <FilterSection title="Transmission" defaultOpen={false}>
+                        <FilterSection title="Transmission">
                             <div className="space-y-2">
                                 {TRANSMISSION_TYPES.map(trans => (
                                     <label key={trans} className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer hover:text-primary transition-colors">
-                                        <input
-                                            type="checkbox"
-                                            checked={filters.transmissions.includes(trans)}
-                                            onChange={() => toggleTransmission(trans)}
-                                            className="accent-primary rounded w-4 h-4 bg-slate-800 border-white/10"
-                                        />
+                                        <input type="checkbox" checked={filters.transmissions.includes(trans)} onChange={() => toggleTransmission(trans)}
+                                            className="accent-primary rounded w-4 h-4 bg-slate-800 border-white/10" />
                                         {trans}
                                     </label>
                                 ))}
+                            </div>
+                        </FilterSection>
+
+                        {/* Colour */}
+                        <FilterSection title="Colour">
+                            <Input placeholder="e.g. White, Black, Blue" value={filters.color}
+                                onChange={(e) => set('color', e.target.value)}
+                                className="h-9 text-sm bg-slate-800 border-white/10 text-white placeholder:text-gray-500" />
+                        </FilterSection>
+
+                        {/* Condition */}
+                        <FilterSection title="Condition">
+                            <div className="space-y-1">
+                                {CONDITION_OPTIONS.map(opt => {
+                                    const isActive = filters.condition === opt.value
+                                    const isCat = opt.value.startsWith('CAT')
+                                    return (
+                                        <button key={opt.value} type="button"
+                                            onClick={() => set('condition', filters.condition === opt.value ? '' : opt.value)}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all cursor-pointer ${isActive ? 'bg-primary/15 text-primary border border-primary/30' : isCat ? 'text-amber-500/70 hover:bg-amber-500/10 border border-transparent' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200 border border-transparent'}`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                        </FilterSection>
+
+                        {/* UK Compliance */}
+                        <FilterSection title="UK Compliance">
+                            <div className="space-y-3">
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1.5 flex items-center gap-1"><ShieldCheck size={11} /> ULEZ / CAZ</p>
+                                    <div className="flex gap-2">
+                                        {(['yes', 'no', ''] as const).map((v) => (
+                                            <button key={v} type="button"
+                                                onClick={() => set('ulezCompliant', v)}
+                                                className={`flex-1 py-1.5 rounded-md border text-xs font-semibold transition-all ${filters.ulezCompliant === v && v !== '' ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300' : v === '' ? filters.ulezCompliant === '' ? 'border-primary bg-primary/10 text-primary' : 'border-white/10 text-gray-500' : 'border-white/10 text-gray-400 hover:border-white/20'}`}
+                                            >
+                                                {v === 'yes' ? '✓ ULEZ' : v === 'no' ? '✗ Non' : 'Either'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1.5">Euro Standard</p>
+                                    <select value={filters.euroStandard} onChange={(e) => set('euroStandard', e.target.value as EuroStandardValue | '')}
+                                        className="w-full h-9 border border-white/10 rounded px-3 text-sm text-white outline-none bg-slate-800 cursor-pointer focus:border-primary">
+                                        <option value="">Any</option>
+                                        {EURO_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                    </select>
+                                </div>
                             </div>
                         </FilterSection>
 
@@ -389,106 +429,65 @@ export default function SearchPage() {
 
                     {/* Auction Promo Card */}
                     <div className="mt-8 p-5 rounded-2xl bg-white/5 border border-white/10 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-20 h-20 bg-primary/20 rounded-full blur-2xl -z-10 group-hover:bg-primary/30 transition-colors" />
-
+                        <div className="absolute top-0 right-0 w-20 h-20 bg-primary/20 rounded-full blur-2xl -z-10" />
                         <div className="flex items-center gap-2 mb-3">
                             <Gavel className="text-primary" size={20} />
                             <h3 className="font-bold text-white text-lg">Live Auctions</h3>
                         </div>
-
-                        <p className="text-xs text-gray-400 mb-4 leading-relaxed">
-                            Live marketplace for verified buyers and sellers.
-                        </p>
-
-                        <ul className="space-y-2 mb-4">
-                            {[
-                                "Real-time competitive bidding",
-                                "Open to all verified members",
-                                "Vehicles sold as-seen",
-                                "Secure buyer protection"
-                            ].map((item, i) => (
-                                <li key={i} className="flex items-start gap-2 text-xs text-gray-300">
-                                    <div className="mt-0.5"><div className="w-1.5 h-1.5 rounded-full bg-primary" /></div>
-                                    {item}
-                                </li>
-                            ))}
-                        </ul>
-
+                        <p className="text-xs text-gray-400 mb-3 leading-relaxed">Live marketplace for verified buyers and sellers — coming soon.</p>
                         <div className="bg-amber-900/20 border border-amber-500/20 rounded-lg p-3">
                             <h4 className="text-amber-500 font-bold text-xs mb-1 flex items-center gap-1">
                                 <AlertTriangle size={12} /> Verification Required
                             </h4>
-                            <p className="text-[10px] text-amber-200/70 leading-relaxed">
-                                To list or bid, register as a verified member. Complete KYC verification after signup.
-                            </p>
+                            <p className="text-[10px] text-amber-200/70 leading-relaxed">KYC identity verification required to participate.</p>
                         </div>
                     </div>
                 </aside>
 
-                {/* Results Grid */}
-                <div className="lg:w-3/4">
-                    <div className="flex justify-between items-center mb-6">
+                {/* ── Results Column ─────────────────────────────────────────── */}
+                <div className="flex-1 min-w-0">
+                    {/* Sort Bar */}
+                    <div className="flex justify-between items-center mb-6 gap-4 flex-wrap">
                         <p className="text-gray-400 text-sm">
-                            {loading ? (
-                                <span>Loading...</span>
-                            ) : (
+                            {loading ? <span>Loading...</span> : (
                                 <>Showing <span className="font-bold text-white">{listings.length}</span> of <span className="font-bold text-white">{totalCount}</span> vehicles</>
                             )}
                         </p>
-                        <select
-                            value={appliedFilters.sortBy}
-                            onChange={(e) => handleSortChange(e.target.value)}
-                            className="bg-transparent border border-white/10 rounded-lg px-3 py-2 text-sm font-bold text-white cursor-pointer outline-none hover:border-white/20"
-                        >
+                        <select value={appliedFilters.sortBy} onChange={(e) => handleSortChange(e.target.value)}
+                            className="bg-transparent border border-white/10 rounded-lg px-3 py-2 text-sm font-bold text-white cursor-pointer outline-none hover:border-white/20">
                             {SORT_OPTIONS.map(opt => (
                                 <option key={opt.value} value={opt.value} className="bg-slate-800 text-white">{opt.label}</option>
                             ))}
                         </select>
                     </div>
 
-                    {/* Active Filters Tags */}
+                    {/* Active Filter Tags */}
                     {activeFilterCount > 0 && (
                         <div className="flex flex-wrap gap-2 mb-6">
                             {appliedFilters.bodyType && (
-                                <span className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/30 text-primary text-xs font-bold px-3 py-1.5 rounded-full">
-                                    {BODY_TYPE_LABELS[appliedFilters.bodyType]}
-                                    <button onClick={() => { const u = { ...appliedFilters, bodyType: '' }; setFilters(u); setAppliedFilters(u); fetchListings(u) }} className="ml-1 hover:text-white cursor-pointer"><X size={12} /></button>
-                                </span>
+                                <FilterTag label={BODY_TYPE_LABELS[appliedFilters.bodyType]} onRemove={() => clearFilter({ bodyType: '' })} />
                             )}
-                            {appliedFilters.make && (
-                                <span className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/30 text-primary text-xs font-bold px-3 py-1.5 rounded-full">
-                                    Make: {appliedFilters.make}
-                                    <button onClick={() => { const u = { ...appliedFilters, make: '' }; setFilters(u); setAppliedFilters(u); fetchListings(u) }} className="ml-1 hover:text-white cursor-pointer"><X size={12} /></button>
-                                </span>
-                            )}
+                            {appliedFilters.make && <FilterTag label={`Make: ${appliedFilters.make}`} onRemove={() => clearFilter({ make: '' })} />}
+                            {appliedFilters.model && <FilterTag label={`Model: ${appliedFilters.model}`} onRemove={() => clearFilter({ model: '' })} />}
                             {(appliedFilters.minPrice || appliedFilters.maxPrice) && (
-                                <span className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/30 text-primary text-xs font-bold px-3 py-1.5 rounded-full">
-                                    Price: {appliedFilters.minPrice ? `£${appliedFilters.minPrice}` : '£0'} – {appliedFilters.maxPrice ? `£${appliedFilters.maxPrice}` : '∞'}
-                                    <button onClick={() => { const u = { ...appliedFilters, minPrice: '', maxPrice: '' }; setFilters(u); setAppliedFilters(u); fetchListings(u) }} className="ml-1 hover:text-white cursor-pointer"><X size={12} /></button>
-                                </span>
+                                <FilterTag label={`£${appliedFilters.minPrice || '0'} – £${appliedFilters.maxPrice || '∞'}`} onRemove={() => clearFilter({ minPrice: '', maxPrice: '' })} />
                             )}
-                            {appliedFilters.year > 0 && (
-                                <span className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/30 text-primary text-xs font-bold px-3 py-1.5 rounded-full">
-                                    Year: {appliedFilters.year}+
-                                    <button onClick={() => { const u = { ...appliedFilters, year: 0 }; setFilters(u); setAppliedFilters(u); fetchListings(u) }} className="ml-1 hover:text-white cursor-pointer"><X size={12} /></button>
-                                </span>
+                            {(appliedFilters.minYear || appliedFilters.maxYear) && (
+                                <FilterTag label={`${appliedFilters.minYear || ''}–${appliedFilters.maxYear || ''}`} onRemove={() => clearFilter({ minYear: '', maxYear: '' })} />
                             )}
-                            {appliedFilters.fuelTypes.map(f => (
-                                <span key={f} className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/30 text-primary text-xs font-bold px-3 py-1.5 rounded-full">
-                                    {f}
-                                    <button onClick={() => { const u = { ...appliedFilters, fuelTypes: appliedFilters.fuelTypes.filter(x => x !== f) }; setFilters(u); setAppliedFilters(u); fetchListings(u) }} className="ml-1 hover:text-white cursor-pointer"><X size={12} /></button>
-                                </span>
-                            ))}
-                            {appliedFilters.transmissions.map(t => (
-                                <span key={t} className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/30 text-primary text-xs font-bold px-3 py-1.5 rounded-full">
-                                    {t}
-                                    <button onClick={() => { const u = { ...appliedFilters, transmissions: appliedFilters.transmissions.filter(x => x !== t) }; setFilters(u); setAppliedFilters(u); fetchListings(u) }} className="ml-1 hover:text-white cursor-pointer"><X size={12} /></button>
-                                </span>
-                            ))}
+                            {(appliedFilters.minMileage || appliedFilters.maxMileage) && (
+                                <FilterTag label={`${appliedFilters.minMileage || '0'}–${appliedFilters.maxMileage || '∞'} mi`} onRemove={() => clearFilter({ minMileage: '', maxMileage: '' })} />
+                            )}
+                            {appliedFilters.fuelTypes.map(f => <FilterTag key={f} label={f} onRemove={() => clearFilter({ fuelTypes: appliedFilters.fuelTypes.filter(x => x !== f) })} />)}
+                            {appliedFilters.transmissions.map(t => <FilterTag key={t} label={t} onRemove={() => clearFilter({ transmissions: appliedFilters.transmissions.filter(x => x !== t) })} />)}
+                            {appliedFilters.color && <FilterTag label={`Colour: ${appliedFilters.color}`} onRemove={() => clearFilter({ color: '' })} />}
+                            {appliedFilters.condition && <FilterTag label={`Condition: ${appliedFilters.condition}`} onRemove={() => clearFilter({ condition: '' })} />}
+                            {appliedFilters.ulezCompliant && <FilterTag label={appliedFilters.ulezCompliant === 'yes' ? 'ULEZ Compliant' : 'Non-ULEZ'} onRemove={() => clearFilter({ ulezCompliant: '' })} />}
+                            {appliedFilters.euroStandard && <FilterTag label={appliedFilters.euroStandard.replace('_', ' ')} onRemove={() => clearFilter({ euroStandard: '' })} />}
                         </div>
                     )}
 
-                    {/* Loading State */}
+                    {/* Loading */}
                     {loading && (
                         <div className="flex flex-col items-center justify-center py-20">
                             <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
@@ -496,7 +495,7 @@ export default function SearchPage() {
                         </div>
                     )}
 
-                    {/* Error State */}
+                    {/* Error */}
                     {error && !loading && (
                         <div className="glass-card p-8 text-center">
                             <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
@@ -506,27 +505,24 @@ export default function SearchPage() {
                         </div>
                     )}
 
-                    {/* Empty State */}
+                    {/* Empty */}
                     {!loading && !error && listings.length === 0 && (
                         <div className="glass-card p-8 text-center">
                             <Search className="w-12 h-12 text-gray-500 mx-auto mb-4" />
                             <h3 className="text-xl font-bold text-white mb-2">No Listings Found</h3>
                             <p className="text-gray-400 mb-4">
-                                {activeFilterCount > 0
-                                    ? 'Try adjusting your filters or clearing them.'
-                                    : 'Be the first to list your car!'}
+                                {activeFilterCount > 0 ? 'Try adjusting your filters.' : 'Be the first to list your car!'}
                             </p>
-                            {activeFilterCount > 0 ? (
-                                <Button onClick={handleResetFilters}>Clear All Filters</Button>
-                            ) : (
-                                <Button onClick={() => window.location.href = '/sell'}>Sell Your Car</Button>
-                            )}
+                            {activeFilterCount > 0
+                                ? <Button onClick={handleResetFilters}>Clear All Filters</Button>
+                                : <Button onClick={() => window.location.href = '/sell'}>Sell Your Car</Button>
+                            }
                         </div>
                     )}
 
-                    {/* Listings Grid */}
+                    {/* Grid */}
                     {!loading && !error && listings.length > 0 && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                             {listings.map((listing) => (
                                 <CarCard
                                     key={listing.id}
@@ -546,11 +542,24 @@ export default function SearchPage() {
                     {/* Load More */}
                     {!loading && !error && listings.length > 0 && listings.length < totalCount && (
                         <div className="mt-12 text-center">
-                            <Button variant="outline" size="lg" className="border-gray-300 text-gray-500 hover:text-primary hover:border-primary font-bold">Load More</Button>
+                            <Button variant="outline" size="lg" className="border-gray-300 text-gray-500 hover:text-primary hover:border-primary font-bold">
+                                Load More
+                            </Button>
                         </div>
                     )}
                 </div>
             </div>
         </div>
+    )
+}
+
+// ─── Filter Tag ───────────────────────────────────────────────────────────────
+
+function FilterTag({ label, onRemove }: { label: string; onRemove: () => void }) {
+    return (
+        <span className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/30 text-primary text-xs font-bold px-3 py-1.5 rounded-full">
+            {label}
+            <button onClick={onRemove} className="ml-1 hover:text-white cursor-pointer"><X size={12} /></button>
+        </span>
     )
 }

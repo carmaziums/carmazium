@@ -128,6 +128,34 @@ enum BodyType {
   @@map("body_type")
 }
 
+/// Standard condition + UK insurance write-off categories
+enum VehicleCondition {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  /// Structural damage, repaired — can be re-registered
+  CAT_S
+  /// Non-structural damage, repaired — can be re-registered
+  CAT_N
+  /// Structural damage, not repaired — cannot be re-registered
+  CAT_C
+  /// Non-structural damage, not repaired — cannot be re-registered
+  CAT_D
+
+  @@map("vehicle_condition")
+}
+
+/// European emission standards relevant to UK ULEZ/CAZ zones
+enum EuroStandard {
+  EURO_4
+  EURO_5
+  EURO_6
+  EURO_6D
+
+  @@map("euro_standard")
+}
+
 // ============================================================================
 // USER MANAGEMENT & PROFILES
 // ============================================================================
@@ -337,6 +365,12 @@ model Listing {
   bodyType        BodyType?
   features        Json?
   location        String?
+  // Phase 3: condition and UK compliance fields
+  vin             String?          // VIN (17-char, validated frontend-side)
+  condition       VehicleCondition?
+  ulezCompliant   Boolean?
+  euroStandard    EuroStandard?
+  co2Emissions    Int?             // CO2 g/km (from DVLA VES API)
   
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt

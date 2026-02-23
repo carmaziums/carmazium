@@ -3,6 +3,8 @@
  */
 
 export type BodyTypeValue = 'SEDAN' | 'SUV' | 'HATCHBACK' | 'COUPE' | 'CONVERTIBLE' | 'ESTATE' | 'CROSSOVER' | 'SPORTS_CAR' | 'MINIVAN' | 'PICKUP_TRUCK' | 'STATION_WAGON' | 'MPV' | 'VAN'
+export type VehicleConditionValue = 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR' | 'CAT_S' | 'CAT_N' | 'CAT_C' | 'CAT_D'
+export type EuroStandardValue = 'EURO_4' | 'EURO_5' | 'EURO_6' | 'EURO_6D'
 
 export interface CreateListingRequest {
     title: string
@@ -12,20 +14,28 @@ export interface CreateListingRequest {
     vrm: string
     images: string[]
     listingType: 'AUCTION' | 'CLASSIFIED'
+    // Vehicle identity
     make?: string
     model?: string
+    vin?: string
+    // Condition & compliance
+    condition?: VehicleConditionValue
+    ulezCompliant?: boolean
+    euroStandard?: EuroStandardValue
+    // Technical specs
     description?: string
     fuelType?: 'PETROL' | 'DIESEL' | 'ELECTRIC' | 'HYBRID' | 'PLUGIN_HYBRID'
     transmission?: 'MANUAL' | 'AUTOMATIC' | 'SEMI_AUTOMATIC'
     bodyType?: BodyTypeValue
-    location?: string
-    status?: 'DRAFT' | 'ACTIVE' | 'SOLD'
     color?: string
     doors?: number
     seats?: number
     engineSize?: number
     bhp?: number
     features?: string[]
+    location?: string
+    co2Emissions?: number
+    status?: 'DRAFT' | 'ACTIVE' | 'SOLD'
 }
 
 export interface CreateListingResponse {
@@ -52,6 +62,28 @@ export async function createListing(data: CreateListingRequest): Promise<CreateL
     })
 }
 
+// ─── DVLA Lookup ────────────────────────────────────────────────────────────
+
+export interface DvlaLookupResult {
+    vrm: string
+    make?: string
+    colour?: string
+    year?: number
+    engineSize?: number
+    co2Emissions?: number
+    fuelType?: string
+    euroStandard?: string
+    motStatus?: string
+    taxStatus?: string
+}
+
+export async function dvlaLookup(vrm: string): Promise<DvlaLookupResult> {
+    return apiClient<DvlaLookupResult>('/dvla/lookup', {
+        method: 'POST',
+        body: JSON.stringify({ vrm }),
+    })
+}
+
 /**
  * Listing type returned from API
  */
@@ -67,6 +99,7 @@ export interface Listing {
     year: number | null
     mileage: number | null
     vrm: string | null
+    vin: string | null
     fuelType: string | null
     transmission: string | null
     bodyType: string | null
@@ -80,6 +113,10 @@ export interface Listing {
     bhp: number | null
     features: string | string[] | null
     location: string | null
+    condition: VehicleConditionValue | null
+    ulezCompliant: boolean | null
+    euroStandard: EuroStandardValue | null
+    co2Emissions: number | null
     sellerId: string | null
     createdAt: string
     updatedAt: string
@@ -102,10 +139,21 @@ export interface ListingFilters {
     maxPrice?: number
     make?: string
     model?: string
+    /** @deprecated use minYear */
     year?: number
+    minYear?: number
+    maxYear?: number
+    minMileage?: number
+    maxMileage?: number
     fuelType?: string
     transmission?: string
     bodyType?: string
+    color?: string
+    minDoors?: number
+    minSeats?: number
+    condition?: VehicleConditionValue
+    ulezCompliant?: boolean
+    euroStandard?: EuroStandardValue
     sortBy?: string
     search?: string
     page?: number
@@ -119,14 +167,24 @@ export async function getListings(filters?: ListingFilters): Promise<ListingsRes
     const params = new URLSearchParams()
 
     if (filters) {
-        if (filters.minPrice) params.append('minPrice', filters.minPrice.toString())
-        if (filters.maxPrice) params.append('maxPrice', filters.maxPrice.toString())
+        if (filters.minPrice !== undefined) params.append('minPrice', filters.minPrice.toString())
+        if (filters.maxPrice !== undefined) params.append('maxPrice', filters.maxPrice.toString())
         if (filters.make) params.append('make', filters.make)
         if (filters.model) params.append('model', filters.model)
-        if (filters.year) params.append('year', filters.year.toString())
+        if (filters.minYear !== undefined) params.append('minYear', filters.minYear.toString())
+        if (filters.maxYear !== undefined) params.append('maxYear', filters.maxYear.toString())
+        if (filters.year !== undefined) params.append('year', filters.year.toString())
+        if (filters.minMileage !== undefined) params.append('minMileage', filters.minMileage.toString())
+        if (filters.maxMileage !== undefined) params.append('maxMileage', filters.maxMileage.toString())
         if (filters.fuelType) params.append('fuelType', filters.fuelType)
         if (filters.transmission) params.append('transmission', filters.transmission)
         if (filters.bodyType) params.append('bodyType', filters.bodyType)
+        if (filters.color) params.append('color', filters.color)
+        if (filters.minDoors !== undefined) params.append('minDoors', filters.minDoors.toString())
+        if (filters.minSeats !== undefined) params.append('minSeats', filters.minSeats.toString())
+        if (filters.condition) params.append('condition', filters.condition)
+        if (filters.ulezCompliant !== undefined) params.append('ulezCompliant', filters.ulezCompliant.toString())
+        if (filters.euroStandard) params.append('euroStandard', filters.euroStandard)
         if (filters.sortBy) params.append('sortBy', filters.sortBy)
         if (filters.search) params.append('search', filters.search)
         if (filters.page) params.append('page', filters.page.toString())

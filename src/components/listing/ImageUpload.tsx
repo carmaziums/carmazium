@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Camera, X, Upload, Loader2 } from "lucide-react"
+import { Camera, X, Upload, Loader2, GripVertical, Star } from "lucide-react"
 import Image from "next/image"
 import { uploadImage, deleteImage } from "@/lib/supabase"
 
@@ -13,7 +13,7 @@ interface ImageUploadProps {
 
 export function ImageUpload({
     onImagesChange,
-    maxImages = 20,
+    maxImages = 30,
     existingImages = []
 }: ImageUploadProps) {
     const [images, setImages] = React.useState<string[]>(existingImages)
@@ -21,6 +21,10 @@ export function ImageUpload({
     const [uploadProgress, setUploadProgress] = React.useState(0)
     const [dragActive, setDragActive] = React.useState(false)
     const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+    // ─── Reorder drag state ─────────────────────────────────────────────
+    const [reorderDragIdx, setReorderDragIdx] = React.useState<number | null>(null)
+    const [reorderOverIdx, setReorderOverIdx] = React.useState<number | null>(null)
 
     // Validation constants
     const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
@@ -87,6 +91,7 @@ export function ImageUpload({
         }
     }
 
+    // ─── File drop zone handlers ────────────────────────────────────────
     const handleDrag = (e: React.DragEvent) => {
         e.preventDefault()
         e.stopPropagation()
@@ -118,10 +123,7 @@ export function ImageUpload({
         if (!confirm('Are you sure you want to delete this image?')) return
 
         try {
-            // Delete from Supabase storage
             await deleteImage(imageUrl, 'listings')
-
-            // Remove from state
             setImages(prev => prev.filter((_, i) => i !== index))
         } catch (error) {
             console.error('Delete failed:', error)
@@ -131,6 +133,50 @@ export function ImageUpload({
 
     const openFileDialog = () => {
         fileInputRef.current?.click()
+    }
+
+    // ─── Reorder drag handlers ──────────────────────────────────────────
+    const onReorderDragStart = (e: React.DragEvent, idx: number) => {
+        setReorderDragIdx(idx)
+        e.dataTransfer.effectAllowed = 'move'
+        // Use a transparent 1px image to hide the default ghost
+        const ghost = document.createElement('div')
+        ghost.style.opacity = '0'
+        document.body.appendChild(ghost)
+        e.dataTransfer.setDragImage(ghost, 0, 0)
+        setTimeout(() => document.body.removeChild(ghost), 0)
+    }
+
+    const onReorderDragOver = (e: React.DragEvent, idx: number) => {
+        e.preventDefault()
+        e.dataTransfer.dropEffect = 'move'
+        if (reorderDragIdx !== null && idx !== reorderDragIdx) {
+            setReorderOverIdx(idx)
+        }
+    }
+
+    const onReorderDrop = (e: React.DragEvent, dropIdx: number) => {
+        e.preventDefault()
+        e.stopPropagation()
+        if (reorderDragIdx === null || reorderDragIdx === dropIdx) {
+            setReorderDragIdx(null)
+            setReorderOverIdx(null)
+            return
+        }
+
+        setImages(prev => {
+            const next = [...prev]
+            const [moved] = next.splice(reorderDragIdx, 1)
+            next.splice(dropIdx, 0, moved)
+            return next
+        })
+        setReorderDragIdx(null)
+        setReorderOverIdx(null)
+    }
+
+    const onReorderDragEnd = () => {
+        setReorderDragIdx(null)
+        setReorderOverIdx(null)
     }
 
     return (
@@ -191,47 +237,75 @@ export function ImageUpload({
                 )}
             </div>
 
-            {/* Image Preview Grid */}
+            {/* Image Preview Grid — Drag to reorder */}
             {images.length > 0 && (
                 <div>
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-sm font-bold uppercase text-gray-400">
                             Uploaded Images ({images.length}/{maxImages})
                         </h3>
+                        {images.length > 1 && (
+                            <p className="text-xs text-gray-500">Drag thumbnails to reorder • First image = cover</p>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {images.map((imageUrl, index) => (
-                            <div
-                                key={imageUrl}
-                                className="relative aspect-video bg-slate-800 rounded-lg overflow-hidden border border-white/10 group"
-                            >
-                                <Image
-                                    src={imageUrl}
-                                    alt={`Upload ${index + 1}`}
-                                    fill
-                                    className="object-cover"
-                                    sizes="(max-width: 768px) 50vw, 25vw"
-                                />
+                        {images.map((imageUrl, index) => {
+                            const isDragging = reorderDragIdx === index
+                            const isOver = reorderOverIdx === index
 
-                                {/* Delete Button */}
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        handleDelete(imageUrl, index)
-                                    }}
-                                    className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                                    title="Delete image"
+                            return (
+                                <div
+                                    key={imageUrl}
+                                    draggable
+                                    onDragStart={(e) => onReorderDragStart(e, index)}
+                                    onDragOver={(e) => onReorderDragOver(e, index)}
+                                    onDrop={(e) => onReorderDrop(e, index)}
+                                    onDragEnd={onReorderDragEnd}
+                                    className={`relative aspect-video bg-slate-800 rounded-lg overflow-hidden border group cursor-grab active:cursor-grabbing transition-all duration-200
+                                        ${isDragging ? 'opacity-40 scale-95 border-primary/50' : ''}
+                                        ${isOver ? 'ring-2 ring-primary ring-offset-2 ring-offset-slate-900 scale-[1.02]' : 'border-white/10'}
+                                    `}
                                 >
-                                    <X size={16} />
-                                </button>
+                                    <Image
+                                        src={imageUrl}
+                                        alt={`Upload ${index + 1}`}
+                                        fill
+                                        className="object-cover pointer-events-none"
+                                        sizes="(max-width: 768px) 50vw, 25vw"
+                                    />
 
-                                {/* Image Number Badge */}
-                                <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                                    {index + 1}
+                                    {/* Drag Handle */}
+                                    <div className="absolute top-2 left-2 bg-black/60 text-white rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <GripVertical size={14} />
+                                    </div>
+
+                                    {/* Cover Badge (first image) */}
+                                    {index === 0 && (
+                                        <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-amber-500/90 text-white text-[10px] font-bold uppercase px-2 py-0.5 rounded-full flex items-center gap-1 shadow-lg">
+                                            <Star size={10} fill="currentColor" /> Cover
+                                        </div>
+                                    )}
+
+                                    {/* Delete Button */}
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            handleDelete(imageUrl, index)
+                                        }}
+                                        className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                                        title="Delete image"
+                                    >
+                                        <X size={16} />
+                                    </button>
+
+                                    {/* Image Number Badge */}
+                                    <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                                        {index + 1}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            )
+                        })}
                     </div>
                 </div>
             )}
