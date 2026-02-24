@@ -4,10 +4,11 @@ import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
-import { Menu, X, LogIn, User as UserIcon, LogOut, ChevronDown, Car } from "lucide-react"
+import { Menu, X, LogIn, User as UserIcon, LogOut, ChevronDown, Car, Sun, Moon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
+import { useTheme } from "next-themes"
 
 const navLinks = [
     { name: "Home", href: "/" },
@@ -21,10 +22,13 @@ export function Header() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
     const [isUserMenuOpen, setIsUserMenuOpen] = React.useState(false)
     const [activeLink, setActiveLink] = React.useState("")
+    const [mounted, setMounted] = React.useState(false)
     const pathname = usePathname()
     const router = useRouter()
     const { user, profile, loading, signOut } = useAuth()
+    const { theme, setTheme } = useTheme()
 
+    React.useEffect(() => { setMounted(true) }, [])
     React.useEffect(() => {
         setActiveLink(pathname || "")
     }, [pathname])
@@ -37,14 +41,22 @@ export function Header() {
         router.push('/')
     }
 
+    const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark")
+
     return (
-        <header className="fixed top-0 left-0 w-full z-50 bg-white/10 backdrop-blur-xl border-b border-white/10 shadow-2xl text-white transition-all duration-300">
+        <header className="fixed top-0 left-0 w-full z-50 backdrop-blur-xl border-b shadow-2xl transition-all duration-300"
+            style={{
+                background: 'var(--bg-header)',
+                borderColor: 'var(--border-default)',
+                color: 'var(--text-primary)',
+            }}
+        >
             <div className="container mx-auto px-6 flex justify-between items-center h-20">
 
                 {/* Logo Area */}
                 <div className="flex items-center gap-6">
                     <button
-                        className="md:hidden text-2xl text-white focus:outline-none"
+                        className="md:hidden text-2xl focus:outline-none"
                         onClick={toggleMenu}
                         aria-label="Toggle Menu"
                     >
@@ -57,7 +69,7 @@ export function Header() {
                             alt="CarMazium"
                             width={160}
                             height={40}
-                            className="h-10 w-auto drop-shadow-[0_0_15px_rgba(255,255,255,0.9)]"
+                            className="h-10 w-auto drop-shadow-[0_0_15px_rgba(255,255,255,0.9)] dark:drop-shadow-[0_0_15px_rgba(255,255,255,0.9)]"
                             priority
                         />
                     </Link>
@@ -70,8 +82,8 @@ export function Header() {
                             key={link.name}
                             href={link.href}
                             className={cn(
-                                "text-[0.95rem] font-semibold uppercase tracking-wider text-white/90 hover:text-primary transition-colors pb-1 relative group",
-                                activeLink === link.href && "text-primary"
+                                "text-[0.95rem] font-semibold uppercase tracking-wider hover:text-primary transition-colors pb-1 relative group",
+                                activeLink === link.href ? "text-primary" : "opacity-80 hover:opacity-100"
                             )}
                         >
                             {link.name}
@@ -84,12 +96,36 @@ export function Header() {
                 </nav>
 
                 {/* Action Buttons */}
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
+                    {/* Theme Toggle */}
+                    {mounted && (
+                        <button
+                            onClick={toggleTheme}
+                            className="w-9 h-9 rounded-xl flex items-center justify-center border transition-all duration-300 hover:scale-110"
+                            style={{
+                                borderColor: 'var(--border-default)',
+                                background: 'var(--bg-card)',
+                            }}
+                            aria-label="Toggle theme"
+                            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                        >
+                            {theme === "dark" ? (
+                                <Sun size={16} className="text-amber-400 transition-transform duration-300 rotate-0 hover:rotate-45" />
+                            ) : (
+                                <Moon size={16} className="text-slate-600 transition-transform duration-300 rotate-0 hover:-rotate-12" />
+                            )}
+                        </button>
+                    )}
+
                     {!loading && user ? (
                         <div className="relative">
                             <button
                                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                                className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all group"
+                                className="flex items-center gap-3 px-3 py-2 rounded-xl hover:opacity-90 border transition-all group"
+                                style={{
+                                    background: 'var(--bg-card)',
+                                    borderColor: 'var(--border-default)',
+                                }}
                             >
                                 <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
                                     {profile?.firstName?.[0] || user.email?.[0].toUpperCase()}
@@ -97,33 +133,42 @@ export function Header() {
                                 <span className="hidden lg:block font-semibold text-sm">
                                     {profile?.firstName || 'Account'}
                                 </span>
-                                <ChevronDown size={14} className={cn("text-gray-400 group-hover:text-white transition-transform", isUserMenuOpen && "rotate-180")} />
+                                <ChevronDown size={14} className={cn("opacity-60 group-hover:opacity-100 transition-transform", isUserMenuOpen && "rotate-180")} />
                             </button>
 
                             {/* User Dropdown */}
                             {isUserMenuOpen && (
-                                <div className="absolute top-full right-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl py-2 animate-in fade-in zoom-in-95 duration-200">
-                                    <div className="px-4 py-3 border-b border-white/10 mb-2">
-                                        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Signed in as</p>
-                                        <p className="text-sm font-semibold truncate text-white">{user.email}</p>
+                                <div
+                                    className="absolute top-full right-0 mt-2 w-56 border rounded-2xl shadow-2xl py-2 animate-in fade-in zoom-in-95 duration-200"
+                                    style={{
+                                        background: 'var(--bg-dropdown)',
+                                        borderColor: 'var(--border-default)',
+                                    }}
+                                >
+                                    <div className="px-4 py-3 border-b mb-2" style={{ borderColor: 'var(--border-default)' }}>
+                                        <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>Signed in as</p>
+                                        <p className="text-sm font-semibold truncate">{user.email}</p>
                                     </div>
                                     <Link
                                         href="/dashboard"
                                         onClick={() => setIsUserMenuOpen(false)}
-                                        className="flex items-center gap-3 px-4 py-2 hover:bg-white/5 text-gray-300 hover:text-white text-sm"
+                                        className="flex items-center gap-3 px-4 py-2 hover:bg-primary/5 text-sm transition-colors"
+                                        style={{ color: 'var(--text-secondary)' }}
                                     >
                                         <Car size={16} /> Dashboard
                                     </Link>
                                     <Link
                                         href="/profile"
                                         onClick={() => setIsUserMenuOpen(false)}
-                                        className="flex items-center gap-3 px-4 py-2 hover:bg-white/5 text-gray-300 hover:text-white text-sm"
+                                        className="flex items-center gap-3 px-4 py-2 hover:bg-primary/5 text-sm transition-colors"
+                                        style={{ color: 'var(--text-secondary)' }}
                                     >
                                         <UserIcon size={16} /> Profile Settings
                                     </Link>
                                     <button
                                         onClick={handleSignOut}
-                                        className="w-full flex items-center gap-3 px-4 py-2 hover:bg-red-500/10 text-red-400 hover:text-red-300 text-sm mt-2 border-t border-white/5 pt-4 pb-2"
+                                        className="w-full flex items-center gap-3 px-4 py-2 hover:bg-red-500/10 text-red-400 hover:text-red-300 text-sm mt-2 border-t pt-4 pb-2"
+                                        style={{ borderColor: 'var(--border-default)' }}
                                     >
                                         <LogOut size={16} /> Sign Out
                                     </button>
@@ -135,7 +180,7 @@ export function Header() {
                             <Button
                                 asChild
                                 variant="ghost"
-                                className="hidden md:flex text-sm font-semibold text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+                                className="hidden md:flex text-sm font-semibold hover:text-primary transition-colors"
                             >
                                 <Link href="/auth/signup">
                                     Join as partner
@@ -159,7 +204,13 @@ export function Header() {
 
             {/* Mobile Menu */}
             {isMobileMenuOpen && (
-                <div className="md:hidden absolute top-full left-0 w-full bg-secondary text-white shadow-xl border-t border-white/10 animate-in slide-in-from-top-2">
+                <div
+                    className="md:hidden absolute top-full left-0 w-full shadow-xl border-t animate-in slide-in-from-top-2"
+                    style={{
+                        background: 'var(--bg-dropdown)',
+                        borderColor: 'var(--border-default)',
+                    }}
+                >
                     <nav className="flex flex-col p-6 gap-4 text-center">
                         {navLinks.map((link) => (
                             <Link
@@ -174,9 +225,25 @@ export function Header() {
                                 {link.name}
                             </Link>
                         ))}
+
+                        {/* Mobile Theme Toggle */}
+                        {mounted && (
+                            <button
+                                onClick={toggleTheme}
+                                className="flex items-center justify-center gap-2 py-3 rounded-xl border transition-all"
+                                style={{ borderColor: 'var(--border-default)' }}
+                            >
+                                {theme === "dark" ? (
+                                    <><Sun size={16} className="text-amber-400" /> Light Mode</>
+                                ) : (
+                                    <><Moon size={16} className="text-slate-600" /> Dark Mode</>
+                                )}
+                            </button>
+                        )}
+
                         {!user ? (
                             <>
-                                <Button asChild variant="outline" className="w-full mt-4 border-white/20 text-white hover:bg-white/10">
+                                <Button asChild variant="outline" className="w-full mt-4 border-white/20 hover:bg-primary/5">
                                     <Link href="/auth/signup" onClick={() => setIsMobileMenuOpen(false)}>
                                         Join as partner
                                     </Link>
