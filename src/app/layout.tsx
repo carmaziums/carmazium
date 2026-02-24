@@ -6,6 +6,7 @@ import { ConditionalFooter } from "@/components/layout/ConditionalFooter";
 import { MaziumWidget } from "@/components/features/MaziumWidget";
 
 import { Providers } from "@/components/providers/Providers";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { AuthProvider } from "@/context/AuthContext";
 import { ChatProvider } from "@/context/ChatContext";
 import { CompareProvider } from "@/context/CompareContext";
@@ -35,24 +36,26 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark scroll-smooth" suppressHydrationWarning>
+    <html lang="en" className="scroll-smooth" suppressHydrationWarning>
       <body
         suppressHydrationWarning
-        className={`${inter.className} bg-slate-950 text-slate-50 selection:bg-red-500/30 selection:text-red-200`}
+        className={`${inter.className} selection:bg-red-500/30 selection:text-red-200`}
       >
-        <AuthProvider>
-          <ChatProvider>
-            <CompareProvider>
-              <div className="flex flex-col min-h-screen">
-                <Header />
-                <main className="flex-grow pt-20">
-                  {children}
-                </main>
-                <ConditionalFooter />
-              </div>
-            </CompareProvider>
-          </ChatProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <ChatProvider>
+              <CompareProvider>
+                <div className="flex flex-col min-h-screen">
+                  <Header />
+                  <main className="flex-grow pt-20">
+                    {children}
+                  </main>
+                  <ConditionalFooter />
+                </div>
+              </CompareProvider>
+            </ChatProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
