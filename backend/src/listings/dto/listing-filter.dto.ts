@@ -106,6 +106,28 @@ export class ListingFilterDto {
     @Min(1)
     minSeats?: number;
 
+    // ─── Engine & CO₂ ─────────────────────────────────────────────────────────
+    @ApiPropertyOptional({ description: 'Minimum engine capacity (cc)', example: 1000 })
+    @Type(() => Number)
+    @IsInt()
+    @IsOptional()
+    @Min(0)
+    minEngine?: number;
+
+    @ApiPropertyOptional({ description: 'Maximum engine capacity (cc)', example: 5000 })
+    @Type(() => Number)
+    @IsInt()
+    @IsOptional()
+    @Min(0)
+    maxEngine?: number;
+
+    @ApiPropertyOptional({ description: 'Maximum CO₂ emissions (g/km)', example: 150 })
+    @Type(() => Number)
+    @IsInt()
+    @IsOptional()
+    @Min(0)
+    maxCo2?: number;
+
     // ─── Condition & Compliance ───────────────────────────────────────────────
     @ApiPropertyOptional({ description: 'Filter by vehicle condition', enum: VehicleCondition })
     @IsEnum(VehicleCondition)
