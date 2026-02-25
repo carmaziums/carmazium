@@ -4,11 +4,11 @@ import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
-import { Menu, X, LogIn, User as UserIcon, LogOut, ChevronDown, Car, Sun, Moon } from "lucide-react"
+import { Menu, X, LogIn, User as UserIcon, LogOut, ChevronDown, Car } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
-import { useTheme } from "next-themes"
+
 
 const navLinks = [
     { name: "Home", href: "/" },
@@ -22,13 +22,13 @@ export function Header() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
     const [isUserMenuOpen, setIsUserMenuOpen] = React.useState(false)
     const [activeLink, setActiveLink] = React.useState("")
-    const [mounted, setMounted] = React.useState(false)
+
     const pathname = usePathname()
     const router = useRouter()
     const { user, profile, loading, signOut } = useAuth()
-    const { theme, setTheme } = useTheme()
 
-    React.useEffect(() => { setMounted(true) }, [])
+
+
     React.useEffect(() => {
         setActiveLink(pathname || "")
     }, [pathname])
@@ -41,7 +41,7 @@ export function Header() {
         router.push('/')
     }
 
-    const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark")
+
 
     return (
         <header className="fixed top-0 left-0 w-full z-50 backdrop-blur-xl border-b shadow-2xl transition-all duration-300"
@@ -97,25 +97,6 @@ export function Header() {
 
                 {/* Action Buttons */}
                 <div className="flex items-center gap-3">
-                    {/* Theme Toggle */}
-                    {mounted && (
-                        <button
-                            onClick={toggleTheme}
-                            className="w-9 h-9 rounded-xl flex items-center justify-center border transition-all duration-300 hover:scale-110"
-                            style={{
-                                borderColor: 'var(--border-default)',
-                                background: 'var(--bg-card)',
-                            }}
-                            aria-label="Toggle theme"
-                            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-                        >
-                            {theme === "dark" ? (
-                                <Sun size={16} className="text-amber-400 transition-transform duration-300 rotate-0 hover:rotate-45" />
-                            ) : (
-                                <Moon size={16} className="text-slate-600 transition-transform duration-300 rotate-0 hover:-rotate-12" />
-                            )}
-                        </button>
-                    )}
 
                     {!loading && user ? (
                         <div className="relative">
@@ -226,20 +207,7 @@ export function Header() {
                             </Link>
                         ))}
 
-                        {/* Mobile Theme Toggle */}
-                        {mounted && (
-                            <button
-                                onClick={toggleTheme}
-                                className="flex items-center justify-center gap-2 py-3 rounded-xl border transition-all"
-                                style={{ borderColor: 'var(--border-default)' }}
-                            >
-                                {theme === "dark" ? (
-                                    <><Sun size={16} className="text-amber-400" /> Light Mode</>
-                                ) : (
-                                    <><Moon size={16} className="text-slate-600" /> Dark Mode</>
-                                )}
-                            </button>
-                        )}
+
 
                         {!user ? (
                             <>
