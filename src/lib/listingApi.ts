@@ -151,6 +151,9 @@ export interface ListingFilters {
     color?: string
     minDoors?: number
     minSeats?: number
+    minEngine?: number
+    maxEngine?: number
+    maxCo2?: number
     condition?: VehicleConditionValue
     ulezCompliant?: boolean
     euroStandard?: EuroStandardValue

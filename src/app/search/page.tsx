@@ -1,6 +1,8 @@
 "use client"
 
 import * as React from "react"
+import { Suspense } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { CarCard } from "@/components/features/CarCard"
@@ -68,6 +70,11 @@ interface FilterState {
     transmissions: string[]
     bodyType: string
     color: string
+    minDoors: string
+    minSeats: string
+    minEngine: string
+    maxEngine: string
+    maxCo2: string
     condition: VehicleConditionValue | ''
     ulezCompliant: 'yes' | 'no' | ''
     euroStandard: EuroStandardValue | ''
@@ -81,6 +88,8 @@ const INITIAL_FILTERS: FilterState = {
     minMileage: '', maxMileage: '',
     fuelTypes: [], transmissions: [],
     bodyType: '', color: '',
+    minDoors: '', minSeats: '',
+    minEngine: '', maxEngine: '', maxCo2: '',
     condition: '', ulezCompliant: '', euroStandard: '',
     sortBy: 'newest',
 }
@@ -126,13 +135,69 @@ function RangeInputs({ minVal, maxVal, onMinChange, onMaxChange, minPlaceholder 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function SearchPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center">
+                <Loader2 className="w-10 h-10 text-primary animate-spin" />
+            </div>
+        }>
+            <SearchPageContent />
+        </Suspense>
+    )
+}
+
+function SearchPageContent() {
+    const searchParams = useSearchParams()
+    const router = useRouter()
     const [isFilterOpen, setIsFilterOpen] = React.useState(false)
     const [listings, setListings] = React.useState<Listing[]>([])
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
     const [totalCount, setTotalCount] = React.useState(0)
-    const [filters, setFilters] = React.useState<FilterState>(INITIAL_FILTERS)
+
+    // Hydrate initial filters from URL query params
+    const hydrateFromUrl = React.useCallback((): FilterState => {
+        const p = (k: string) => searchParams.get(k) || ''
+        return {
+            search: p('search'), make: p('make'), model: p('model'),
+            minPrice: p('minPrice'), maxPrice: p('maxPrice'),
+            minYear: p('minYear'), maxYear: p('maxYear'),
+            minMileage: p('minMileage'), maxMileage: p('maxMileage'),
+            fuelTypes: searchParams.get('fuelTypes')?.split(',').filter(Boolean) || [],
+            transmissions: searchParams.get('transmissions')?.split(',').filter(Boolean) || [],
+            bodyType: p('bodyType'), color: p('color'),
+            minDoors: p('minDoors'), minSeats: p('minSeats'),
+            minEngine: p('minEngine'), maxEngine: p('maxEngine'), maxCo2: p('maxCo2'),
+            condition: (p('condition') as VehicleConditionValue) || '',
+            ulezCompliant: (p('ulezCompliant') as 'yes' | 'no') || '',
+            euroStandard: (p('euroStandard') as EuroStandardValue) || '',
+            sortBy: p('sortBy') || 'newest',
+        }
+    }, [searchParams])
+
+    const [filters, setFilters] = React.useState<FilterState>(() => {
+        const fromUrl = typeof window !== 'undefined' ? null : null // will hydrate in effect
+        return INITIAL_FILTERS
+    })
     const [appliedFilters, setAppliedFilters] = React.useState<FilterState>(INITIAL_FILTERS)
+
+    // On mount, hydrate from URL
+    const didHydrate = React.useRef(false)
+    React.useEffect(() => {
+        if (didHydrate.current) return
+        didHydrate.current = true
+        const fromUrl = hydrateFromUrl()
+        const hasAnyParam = Object.entries(fromUrl).some(([k, v]) => {
+            if (k === 'sortBy') return v !== 'newest'
+            if (Array.isArray(v)) return v.length > 0
+            return v !== ''
+        })
+        if (hasAnyParam) {
+            setFilters(fromUrl)
+            setAppliedFilters(fromUrl)
+            fetchListings(fromUrl)
+        }
+    }, [hydrateFromUrl])
 
     const set = <K extends keyof FilterState>(key: K, val: FilterState[K]) =>
         setFilters(prev => ({ ...prev, [key]: val }))
@@ -149,6 +214,10 @@ export default function SearchPage() {
         if (appliedFilters.transmissions.length) count++
         if (appliedFilters.bodyType) count++
         if (appliedFilters.color) count++
+        if (appliedFilters.minDoors) count++
+        if (appliedFilters.minSeats) count++
+        if (appliedFilters.minEngine || appliedFilters.maxEngine) count++
+        if (appliedFilters.maxCo2) count++
         if (appliedFilters.condition) count++
         if (appliedFilters.ulezCompliant) count++
         if (appliedFilters.euroStandard) count++
@@ -171,6 +240,11 @@ export default function SearchPage() {
         if (state.transmissions.length === 1) f.transmission = TRANS_MAP[state.transmissions[0]]
         if (state.bodyType) f.bodyType = state.bodyType
         if (state.color) f.color = state.color
+        if (state.minDoors) f.minDoors = parseInt(state.minDoors)
+        if (state.minSeats) f.minSeats = parseInt(state.minSeats)
+        if (state.minEngine) f.minEngine = parseInt(state.minEngine)
+        if (state.maxEngine) f.maxEngine = parseInt(state.maxEngine)
+        if (state.maxCo2) f.maxCo2 = parseInt(state.maxCo2)
         if (state.condition) f.condition = state.condition
         if (state.ulezCompliant) f.ulezCompliant = state.ulezCompliant === 'yes'
         if (state.euroStandard) f.euroStandard = state.euroStandard
@@ -208,20 +282,36 @@ export default function SearchPage() {
 
     // ─── Handlers ─────────────────────────────────────────────────────────────
 
+    // Sync filters → URL query params
+    const pushFiltersToUrl = React.useCallback((state: FilterState) => {
+        const params = new URLSearchParams()
+        const skip = new Set(['sortBy'])
+        for (const [k, v] of Object.entries(state)) {
+            if (skip.has(k) && v === 'newest') continue
+            if (Array.isArray(v)) { if (v.length) params.set(k, v.join(',')) }
+            else if (v !== '' && v !== undefined) params.set(k, String(v))
+        }
+        const qs = params.toString()
+        router.replace(qs ? `/search?${qs}` : '/search', { scroll: false })
+    }, [router])
+
     const handleApplyFilters = () => {
         setAppliedFilters({ ...filters })
         fetchListings(filters)
+        pushFiltersToUrl(filters)
         setIsFilterOpen(false)
     }
     const handleResetFilters = () => {
         setFilters(INITIAL_FILTERS)
         setAppliedFilters(INITIAL_FILTERS)
         fetchListings(INITIAL_FILTERS)
+        router.replace('/search', { scroll: false })
     }
     const handleSearch = () => {
         const updated = { ...filters }
         setAppliedFilters(updated)
         fetchListings(updated)
+        pushFiltersToUrl(updated)
     }
     const handleSortChange = (value: string) => {
         const updated = { ...appliedFilters, sortBy: value }
@@ -377,6 +467,54 @@ export default function SearchPage() {
                             <Input placeholder="e.g. White, Black, Blue" value={filters.color}
                                 onChange={(e) => set('color', e.target.value)}
                                 className="h-9 text-sm bg-slate-800 border-white/10 text-white placeholder:text-gray-500" />
+                        </FilterSection>
+
+                        {/* Doors */}
+                        <FilterSection title="Doors">
+                            <div className="flex gap-2">
+                                {['2', '3', '4', '5'].map(d => (
+                                    <button key={d} type="button"
+                                        onClick={() => set('minDoors', filters.minDoors === d ? '' : d)}
+                                        className={`flex-1 py-2 rounded-lg border text-sm font-semibold transition-all cursor-pointer ${filters.minDoors === d ? 'border-primary bg-primary/15 text-primary' : 'border-white/10 text-gray-400 hover:border-white/20'}`}
+                                    >{d}+</button>
+                                ))}
+                            </div>
+                        </FilterSection>
+
+                        {/* Seats */}
+                        <FilterSection title="Seats">
+                            <div className="flex gap-2">
+                                {['2', '4', '5', '7'].map(s => (
+                                    <button key={s} type="button"
+                                        onClick={() => set('minSeats', filters.minSeats === s ? '' : s)}
+                                        className={`flex-1 py-2 rounded-lg border text-sm font-semibold transition-all cursor-pointer ${filters.minSeats === s ? 'border-primary bg-primary/15 text-primary' : 'border-white/10 text-gray-400 hover:border-white/20'}`}
+                                    >{s}+</button>
+                                ))}
+                            </div>
+                        </FilterSection>
+
+                        {/* Engine Size */}
+                        <FilterSection title="Engine Size (cc)">
+                            <RangeInputs minVal={filters.minEngine} maxVal={filters.maxEngine}
+                                onMinChange={(v) => set('minEngine', v)} onMaxChange={(v) => set('maxEngine', v)}
+                                minPlaceholder="Min cc" maxPlaceholder="Max cc" />
+                        </FilterSection>
+
+                        {/* CO₂ Emissions */}
+                        <FilterSection title="CO₂ (g/km)">
+                            <div className="space-y-2">
+                                <Input placeholder="Max g/km" type="number" value={filters.maxCo2}
+                                    onChange={(e) => set('maxCo2', e.target.value)}
+                                    className="h-9 text-sm bg-slate-800 border-white/10 text-white placeholder:text-gray-500" />
+                                <div className="flex gap-2">
+                                    {['100', '120', '150', '200'].map(v => (
+                                        <button key={v} type="button"
+                                            onClick={() => set('maxCo2', filters.maxCo2 === v ? '' : v)}
+                                            className={`flex-1 py-1.5 rounded-md border text-xs font-semibold transition-all cursor-pointer ${filters.maxCo2 === v ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300' : 'border-white/10 text-gray-500 hover:border-white/20'}`}
+                                        >≤{v}</button>
+                                    ))}
+                                </div>
+                            </div>
                         </FilterSection>
 
                         {/* Condition */}
