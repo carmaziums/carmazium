@@ -4,6 +4,7 @@ import "./globals.css";
 import { Header } from "@/components/layout/Header";
 import { ConditionalFooter } from "@/components/layout/ConditionalFooter";
 import { MaziumWidget } from "@/components/features/MaziumWidget";
+import { AutoDealerJsonLd } from "@/components/seo/JsonLd";
 
 import { Providers } from "@/components/providers/Providers";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
@@ -26,8 +27,46 @@ const montserrat = Montserrat({
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "CarMazium - Rent Modern Luxury Cars",
-  description: "Find your next car — fast, fair, transparent.",
+  metadataBase: new URL("https://carmazium.co.uk"),
+  title: {
+    default: "CarMazium — Buy & Sell Cars in London",
+    template: "%s | CarMazium",
+  },
+  description:
+    "London's trusted car marketplace. Browse thousands of verified vehicles, sell your car for free, and get the best deals with transparent pricing and seller reviews.",
+  keywords: [
+    "buy cars London",
+    "sell car UK",
+    "used cars",
+    "car marketplace",
+    "CarMazium",
+    "cars for sale",
+    "second hand cars London",
+    "car dealer London",
+  ],
+  openGraph: {
+    type: "website",
+    locale: "en_GB",
+    siteName: "CarMazium",
+    title: "CarMazium — Buy & Sell Cars in London",
+    description:
+      "London's trusted car marketplace. Browse verified vehicles, sell for free, transparent pricing.",
+    url: "https://carmazium.co.uk",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CarMazium — Buy & Sell Cars in London",
+    description:
+      "London's trusted car marketplace. Browse verified vehicles, sell for free, transparent pricing.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  other: {
+    "geo.region": "GB-LND",
+    "geo.placename": "London",
+  },
 };
 
 export default function RootLayout({
@@ -41,6 +80,7 @@ export default function RootLayout({
         suppressHydrationWarning
         className={`${inter.className} selection:bg-red-500/30 selection:text-red-200`}
       >
+        <AutoDealerJsonLd />
         <ThemeProvider>
           <AuthProvider>
             <ChatProvider>

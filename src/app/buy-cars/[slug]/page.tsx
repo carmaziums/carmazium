@@ -11,6 +11,7 @@ import { getListingBySlug, type Listing, formatPrice } from "@/lib/listingApi"
 import { createChatRoom } from "@/lib/chatApi"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
+import { VehicleJsonLd } from "@/components/seo/JsonLd"
 
 export default function VehicleDetailsPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = React.use(params)
@@ -40,6 +41,14 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
         }
         if (slug) fetchListing()
     }, [slug])
+
+    // Client-side document.title for SEO
+    React.useEffect(() => {
+        if (listing) {
+            document.title = `${listing.title} — ${formatPrice(listing.price)} | CarMazium`
+        }
+        return () => { document.title = 'CarMazium — Buy & Sell Cars in London' }
+    }, [listing])
 
     if (loading) {
         return (
@@ -139,6 +148,25 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
         <div className="min-h-screen bg-slate-900 pt-24 pb-12 relative">
             {/* Background gradient */}
             <div className="fixed inset-0 bg-gradient-to-br from-[#0f172a] to-[#1e293b] -z-10" />
+
+            {/* Vehicle JSON-LD */}
+            <VehicleJsonLd
+                name={listing.title}
+                description={`${listing.year} ${listing.make} ${listing.model} — ${formatPrice(listing.price)}. ${listing.mileage?.toLocaleString() || 0} miles, ${listing.fuelType || 'N/A'}, ${listing.transmission || 'N/A'}.`}
+                image={validImages[0]}
+                url={`https://carmazium.co.uk/buy-cars/${listing.slug}`}
+                make={listing.make || 'Unknown'}
+                model={listing.model || 'Unknown'}
+                year={listing.year ?? 0}
+                mileage={listing.mileage ?? undefined}
+                fuelType={listing.fuelType ?? undefined}
+                transmission={listing.transmission ?? undefined}
+                color={listing.color ?? undefined}
+                price={Number(listing.price)}
+                condition={listing.condition ?? undefined}
+                vin={listing.vin ?? undefined}
+                engineSize={listing.engineSize ?? undefined}
+            />
 
             <div className="container mx-auto px-5">
                 {/* Breadcrumb & Header */}
