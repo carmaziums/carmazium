@@ -63,8 +63,8 @@ export default function AuctionsPage() {
         setForm((prev) => ({ ...prev, loading: true, error: null }))
 
         try {
-            // Submit to lead capture endpoint (Phase 8)
-            await fetch("/api/analytics/lead", {
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+            await fetch(`${API_URL}/analytics/email`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email: form.email, source: "auctions_coming_soon" }),

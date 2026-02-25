@@ -195,6 +195,7 @@ model User {
   notifications           Notification[]
   watchlistItems          WatchlistItem[]
   sellerReviewsGiven      SellerReview[]     @relation("ReviewerRelation")
+  analyticsEvents         AnalyticsEvent[]
 
   @@map("users")
 }
@@ -613,4 +614,34 @@ model Notification {
   user User @relation(fields: [userId], references: [id])
   @@index([userId])
   @@map("notifications")
+}
+
+// ============================================================================
+// ANALYTICS & LEAD GENERATION
+// ============================================================================
+
+model AnalyticsEvent {
+  id        String   @id @default(uuid())
+  type      String   // page_view, search, listing_view, filter_apply, login_wall_hit, enquiry
+  payload   Json     @default("{}")
+  sessionId String?
+  userId    String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([type])
+  @@index([createdAt])
+  @@index([sessionId])
+  @@map("analytics_events")
+}
+
+model EmailCapture {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  source    String   // auctions_coming_soon, newsletter, mazium_widget
+  createdAt DateTime @default(now())
+
+  @@index([source])
+  @@map("email_captures")
 }
