@@ -7,6 +7,7 @@
 
 import Link from "next/link"
 import { notFound } from "next/navigation"
+import Image from "next/image"
 import { Star, ShieldCheck, Car, MessageCircle, TrendingUp, Clock, ChevronRight, AlertCircle } from "lucide-react"
 import type { Metadata } from "next"
 
@@ -187,9 +188,11 @@ export default async function SellerProfilePage({ params }: { params: Promise<{ 
                         {/* Avatar */}
                         <div className={`relative flex-shrink-0 rounded-full border-2 ${tier.border} shadow-xl ${tier.glow}`}>
                             {user.profileImage ? (
-                                <img
+                                <Image
                                     src={user.profileImage}
                                     alt={displayName}
+                                    width={112}
+                                    height={112}
                                     className="h-24 w-24 rounded-full object-cover sm:h-28 sm:w-28"
                                 />
                             ) : (
@@ -337,12 +340,13 @@ function ListingCard({ listing }: { listing: Listing }) {
             href={`/vehicle/${listing.slug}`}
             className="group block overflow-hidden rounded-xl border border-white/5 bg-white/2 transition-colors hover:border-primary/30 hover:bg-white/5"
         >
-            <div className="h-36 overflow-hidden bg-slate-800">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+            <div className="relative h-36 overflow-hidden bg-slate-800">
+                <Image
                     src={img}
                     alt={listing.title}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    className="object-cover transition-transform duration-500 group-hover:scale-105"
                 />
             </div>
             <div className="p-3">
@@ -363,7 +367,7 @@ function ReviewCard({ review }: { review: Review }) {
             <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                     {review.reviewer.profileImage ? (
-                        <img src={review.reviewer.profileImage} alt={name} className="h-9 w-9 rounded-full object-cover" />
+                        <Image src={review.reviewer.profileImage} alt={name} width={36} height={36} className="h-9 w-9 rounded-full object-cover" />
                     ) : (
                         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-700 text-sm font-bold">
                             {name.charAt(0).toUpperCase()}

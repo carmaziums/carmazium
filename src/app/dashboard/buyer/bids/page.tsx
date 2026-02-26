@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { getMyBids, formatPrice, type Bid } from "@/lib/listingApi"
@@ -74,7 +75,7 @@ export default function MyBidsPage() {
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-3">
                                                         {bid.listing.images?.[0] && (
-                                                            <img src={bid.listing.images[0]} alt="" className="w-14 h-10 rounded object-cover" />
+                                                            <Image src={bid.listing.images[0]} alt="" width={56} height={40} className="w-14 h-10 rounded object-cover" />
                                                         )}
                                                         <div>
                                                             <div className="font-bold text-white">{bid.listing.title}</div>
@@ -85,8 +86,8 @@ export default function MyBidsPage() {
                                                 <td className="px-6 py-4 font-mono font-bold">{formatPrice(bid.amount)}</td>
                                                 <td className="px-6 py-4">
                                                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${bid.isWinning
-                                                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                                                            : "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                                                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                                        : "bg-amber-500/10 text-amber-500 border-amber-500/20"
                                                         }`}>
                                                         {bid.isWinning ? "Winning" : "Outbid"}
                                                     </span>

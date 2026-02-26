@@ -4,7 +4,8 @@ import * as React from "react"
 import { MessageSquare } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { ChatRoomList } from "@/components/chat/ChatRoomList"
-import { ChatWindow } from "@/components/chat/ChatWindow"
+import dynamic from "next/dynamic"
+const ChatWindow = dynamic(() => import("@/components/chat/ChatWindow").then(mod => mod.ChatWindow), { ssr: false })
 import { useAuth } from "@/context/AuthContext"
 import type { ChatRoom } from "@/lib/chatApi"
 

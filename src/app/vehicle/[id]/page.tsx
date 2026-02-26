@@ -5,7 +5,8 @@ import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/Button"
 import { AccordionItem } from "@/components/ui/Accordion"
-import { FinanceCalculator } from "@/components/features/FinanceCalculator"
+import dynamic from "next/dynamic"
+const FinanceCalculator = dynamic(() => import("@/components/features/FinanceCalculator").then(mod => mod.FinanceCalculator), { ssr: false })
 import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale } from "lucide-react"
 import { useCompare } from "@/context/CompareContext"
 

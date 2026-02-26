@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
@@ -242,7 +243,7 @@ export default function SignupPage() {
                 <div className="flex gap-4">
                     <Button variant="outline" className="flex-1 border-white/20 hover:bg-white/10 text-white h-12">
                         <span className="sr-only">Google</span>
-                        <img src="/assets/images/google-icon.png" alt="Google" className="w-5 h-5 mx-auto" />
+                        <Image src="/assets/images/google-icon.png" alt="Google" width={20} height={20} className="w-5 h-5 mx-auto" />
                     </Button>
                     <Button variant="outline" className="flex-1 border-white/20 hover:bg-white/10 text-white h-12">
                         <span className="sr-only">Apple</span>

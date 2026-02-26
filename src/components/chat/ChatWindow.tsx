@@ -3,6 +3,7 @@
 import * as React from "react"
 import { MessageSquare, Send, Loader2, ArrowLeft, User } from "lucide-react"
 import { Button } from "@/components/ui/Button"
+import Image from "next/image"
 import { useChat } from "@/context/ChatContext"
 import { getChatMessages, sendChatMessage, markMessagesAsRead, type ChatMessage, type ChatRoom } from "@/lib/chatApi"
 
@@ -146,9 +147,9 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                         <ArrowLeft size={20} />
                     </button>
                 )}
-                <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center overflow-hidden">
+                <div className="relative w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center overflow-hidden">
                     {room.otherUser.profileImage ? (
-                        <img src={room.otherUser.profileImage} alt="" className="w-full h-full object-cover" />
+                        <Image src={room.otherUser.profileImage} alt="" fill sizes="40px" className="object-cover" />
                     ) : (
                         <User size={20} className="text-gray-400" />
                     )}

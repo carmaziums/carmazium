@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/Button"
 import { PlusCircle, Eye, TrendingUp, Car, Loader2 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
@@ -137,7 +138,7 @@ export default function SellerDashboard() {
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-3">
                                                         {listing.images?.[0] && (
-                                                            <img src={listing.images[0]} alt="" className="w-12 h-12 rounded-lg object-cover" />
+                                                            <Image src={listing.images[0]} alt="" width={48} height={48} className="w-12 h-12 rounded-lg object-cover" />
                                                         )}
                                                         <div>
                                                             <p className="font-bold text-white">{listing.title}</p>
