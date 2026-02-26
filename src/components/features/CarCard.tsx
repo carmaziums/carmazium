@@ -118,8 +118,8 @@ export function CarCard({
                 className="p-6 relative z-10 flex flex-col flex-1 border-t border-white/5 bg-gradient-to-b from-white/5 to-transparent rounded-b-2xl"
                 style={{ transform: "translateZ(20px)" }}
             >
-                <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-xl font-bold font-heading text-white tracking-wide group-hover:text-primary transition-colors duration-300">{title}</h3>
+                <div className="flex justify-between items-start mb-2 gap-2">
+                    <h3 className="text-lg md:text-xl font-bold font-heading text-white tracking-wide group-hover:text-primary transition-colors duration-300 line-clamp-2">{title}</h3>
                     {sellerId && sellerScore !== undefined ? (
                         <SellerBadge score={sellerScore} sellerUserId={sellerId} size="sm" showLabel />
                     ) : (

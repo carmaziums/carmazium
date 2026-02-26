@@ -2,9 +2,11 @@
 
 import * as React from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/Button"
 import { AccordionItem } from "@/components/ui/Accordion"
-import { FinanceCalculator } from "@/components/features/FinanceCalculator"
+import dynamic from "next/dynamic"
+const FinanceCalculator = dynamic(() => import("@/components/features/FinanceCalculator").then(mod => mod.FinanceCalculator), { ssr: false })
 import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale, Loader2, MessageCircle } from "lucide-react"
 import { useCompare } from "@/context/CompareContext"
 import { getListingBySlug, type Listing, formatPrice } from "@/lib/listingApi"
@@ -203,10 +205,12 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                         {/* Gallery */}
                         <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-4">
                             <div className="relative aspect-video bg-black rounded-lg overflow-hidden mb-4 group">
-                                <img
+                                <Image
                                     src={vehicle.images[activeImage] || vehicle.images[0]}
                                     alt={vehicle.title}
-                                    className="object-cover w-full h-full absolute inset-0"
+                                    fill
+                                    sizes="(max-width: 1024px) 100vw, 66vw"
+                                    className="object-cover"
                                 />
                                 <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-sm text-white px-3 py-1 rounded-md text-sm font-medium flex items-center gap-2">
                                     <Camera size={16} /> {activeImage + 1}/{vehicle.images.length}
@@ -219,7 +223,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                                         onClick={() => setActiveImage(idx)}
                                         className={`relative w-24 h-16 rounded-lg overflow-hidden flex-shrink-0 border-2 transition-all ${activeImage === idx ? 'border-primary ring-2 ring-primary/20' : 'border-transparent opacity-70 hover:opacity-100'}`}
                                     >
-                                        <img src={img} alt={`Thumb ${idx}`} className="object-cover w-full h-full absolute inset-0" />
+                                        <Image src={img} alt={`Thumb ${idx}`} fill sizes="96px" className="object-cover" />
                                     </button>
                                 ))}
                             </div>

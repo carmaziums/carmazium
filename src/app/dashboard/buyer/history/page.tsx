@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Image from "next/image"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { getMyTransactions, formatPrice, type Transaction } from "@/lib/listingApi"
@@ -79,7 +80,7 @@ export default function BuyerHistoryPage() {
                                                 <td className="py-3">
                                                     <div className="flex items-center gap-3">
                                                         {tx.listing?.images?.[0] && (
-                                                            <img src={tx.listing.images[0]} alt="" className="w-12 h-8 rounded object-cover bg-slate-800" />
+                                                            <Image src={tx.listing.images[0]} alt="" width={48} height={32} className="w-12 h-8 rounded object-cover bg-slate-800" />
                                                         )}
                                                         <span className="text-white font-medium">{tx.listing?.title || "Vehicle"}</span>
                                                     </div>
@@ -88,9 +89,9 @@ export default function BuyerHistoryPage() {
                                                 <td className="py-3 text-white font-medium">{formatPrice(Number(tx.amount))}</td>
                                                 <td className="py-3">
                                                     <span className={`text-xs font-bold px-2 py-1 rounded ${tx.status === "COMPLETED" ? "bg-emerald-500/20 text-emerald-400" :
-                                                            tx.status === "PENDING" ? "bg-amber-500/20 text-amber-400" :
-                                                                tx.status === "FAILED" ? "bg-red-500/20 text-red-400" :
-                                                                    "bg-gray-500/20 text-gray-400"
+                                                        tx.status === "PENDING" ? "bg-amber-500/20 text-amber-400" :
+                                                            tx.status === "FAILED" ? "bg-red-500/20 text-red-400" :
+                                                                "bg-gray-500/20 text-gray-400"
                                                         }`}>{tx.status}</span>
                                                 </td>
                                             </tr>

@@ -66,15 +66,15 @@ export default function AdminAnalyticsPage() {
         setLoading(true)
         try {
             const [sumRes, evtRes, emlRes] = await Promise.all([
-                fetch(`${API_URL}/analytics/summary`).then((r) => r.json()),
-                fetch(`${API_URL}/analytics/events?limit=30`).then((r) => r.json()),
-                fetch(`${API_URL}/analytics/emails?limit=30`).then((r) => r.json()),
+                fetch(`${API_URL}/analytics/summary`).then((r) => r.ok ? r.json() : null).catch(() => null),
+                fetch(`${API_URL}/analytics/events?limit=30`).then((r) => r.ok ? r.json() : { events: [], total: 0 }).catch(() => ({ events: [], total: 0 })),
+                fetch(`${API_URL}/analytics/emails?limit=30`).then((r) => r.ok ? r.json() : { emails: [], total: 0 }).catch(() => ({ emails: [], total: 0 })),
             ])
             setSummary(sumRes)
-            setEvents(evtRes.events ?? [])
-            setEventsTotal(evtRes.total ?? 0)
-            setEmails(emlRes.emails ?? [])
-            setEmailsTotal(emlRes.total ?? 0)
+            setEvents(evtRes?.events ?? [])
+            setEventsTotal(evtRes?.total ?? 0)
+            setEmails(emlRes?.emails ?? [])
+            setEmailsTotal(emlRes?.total ?? 0)
         } catch (err) {
             console.error("Failed to load analytics:", err)
         } finally {
@@ -161,7 +161,7 @@ export default function AdminAnalyticsPage() {
                 </div>
 
                 {/* Events by Type */}
-                {summary && summary.eventsByType.length > 0 && (
+                {summary && Array.isArray(summary.eventsByType) && summary.eventsByType.length > 0 && (
                     <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6 mb-8">
                         <h3 className="text-white font-semibold mb-4">Events by Type</h3>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
@@ -191,8 +191,8 @@ export default function AdminAnalyticsPage() {
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === tab
-                                    ? "bg-primary text-white"
-                                    : "text-gray-400 hover:text-white"
+                                ? "bg-primary text-white"
+                                : "text-gray-400 hover:text-white"
                                 }`}
                         >
                             {tab === "events"

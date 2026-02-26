@@ -3,7 +3,8 @@ import { Poppins, Montserrat, Inter } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/Header";
 import { ConditionalFooter } from "@/components/layout/ConditionalFooter";
-import { MaziumWidget } from "@/components/features/MaziumWidget";
+import dynamic from "next/dynamic";
+const MaziumWidget = dynamic(() => import("@/components/features/MaziumWidget").then(mod => mod.MaziumWidget));
 import { AutoDealerJsonLd } from "@/components/seo/JsonLd";
 
 import { Providers } from "@/components/providers/Providers";

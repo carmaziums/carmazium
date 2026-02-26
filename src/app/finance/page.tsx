@@ -2,7 +2,8 @@
 
 import * as React from "react"
 import { Button } from "@/components/ui/Button"
-import { FinanceCalculator } from "@/components/features/FinanceCalculator"
+import dynamic from "next/dynamic"
+const FinanceCalculator = dynamic(() => import("@/components/features/FinanceCalculator").then(mod => mod.FinanceCalculator), { ssr: false })
 import { ArrowRight, CheckCircle, Shield, Banknote, Building2, Landmark, PieChart } from "lucide-react"
 import { motion } from "framer-motion"
 

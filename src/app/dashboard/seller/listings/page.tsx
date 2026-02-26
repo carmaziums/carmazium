@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { getMyListings, deleteListing, formatPrice, type Listing } from "@/lib/listingApi"
 import { useAuth } from "@/context/AuthContext"
@@ -102,7 +103,7 @@ export default function MyListingsPage() {
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-3">
                                                         {listing.images?.[0] && (
-                                                            <img src={listing.images[0]} alt="" className="w-14 h-10 rounded object-cover" />
+                                                            <Image src={listing.images[0]} alt="" width={56} height={40} className="w-14 h-10 rounded object-cover" />
                                                         )}
                                                         <div>
                                                             <div className="font-bold text-white">{listing.title}</div>
@@ -114,8 +115,8 @@ export default function MyListingsPage() {
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${listing.status === "ACTIVE" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
-                                                            listing.status === "SOLD" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
-                                                                "bg-slate-700/50 text-gray-400 border-slate-600"
+                                                        listing.status === "SOLD" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
+                                                            "bg-slate-700/50 text-gray-400 border-slate-600"
                                                         }`}>
                                                         {listing.status}
                                                     </span>
