@@ -118,6 +118,8 @@ export interface Listing {
     euroStandard: EuroStandardValue | null
     co2Emissions: number | null
     sellerId: string | null
+    isFeatured: boolean
+    featuredUntil: string | null
     createdAt: string
     updatedAt: string
 }
@@ -273,6 +275,40 @@ export async function createAuthenticatedListing(data: CreateListingRequest): Pr
  */
 export async function deleteListing(listingId: string): Promise<void> {
     await apiClient(`/listings/${listingId}`, { method: 'DELETE' })
+}
+
+/**
+ * Boost a listing to Featured status for 28 days (authenticated)
+ * In bypass mode: immediately activates. In Stripe mode: returns { url } for redirect.
+ */
+export interface BoostResult {
+    bypassed?: boolean
+    boostId?: string
+    expiresAt?: string
+    url?: string
+    message?: string
+}
+
+export async function boostListing(listingId: string): Promise<BoostResult> {
+    const data = await apiClient<{ data: BoostResult }>(`/featured-boost/${listingId}`, {
+        method: 'POST',
+    })
+    return data.data
+}
+
+/**
+ * Get featured listings (public)
+ */
+export async function getFeaturedListings(): Promise<Listing[]> {
+    try {
+        const data = await apiClient<{ data: Listing[] }>('/listings/featured', {
+            method: 'GET',
+            cache: 'no-store',
+        })
+        return data.data || []
+    } catch {
+        return []
+    }
 }
 
 // ============================================================================

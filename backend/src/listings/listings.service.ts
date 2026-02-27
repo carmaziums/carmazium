@@ -233,11 +233,12 @@ export class ListingsService {
         }
 
         // ─── Sort ────────────────────────────────────────────────────────────
-        let orderBy: any = { createdAt: 'desc' };
-        if (sortBy === 'price_asc') orderBy = { price: 'asc' };
-        else if (sortBy === 'price_desc') orderBy = { price: 'desc' };
-        else if (sortBy === 'mileage_asc') orderBy = { mileage: 'asc' };
-        else if (sortBy === 'year_desc') orderBy = { year: 'desc' };
+        // Featured listings always appear first (regardless of sort), then the selected sort.
+        let orderBy: any[] = [{ isFeatured: 'desc' }, { createdAt: 'desc' }];
+        if (sortBy === 'price_asc') orderBy = [{ isFeatured: 'desc' }, { price: 'asc' }];
+        else if (sortBy === 'price_desc') orderBy = [{ isFeatured: 'desc' }, { price: 'desc' }];
+        else if (sortBy === 'mileage_asc') orderBy = [{ isFeatured: 'desc' }, { mileage: 'asc' }];
+        else if (sortBy === 'year_desc') orderBy = [{ isFeatured: 'desc' }, { year: 'desc' }];
 
         const skip = (page - 1) * limit;
 
@@ -267,6 +268,35 @@ export class ListingsService {
         ]);
 
         return { data, total };
+    }
+
+    /**
+     * Get currently featured listings (isFeatured = true, not expired)
+     * Used for homepage carousel and "Featured" sections
+     */
+    async getFeaturedListings(limit = 8): Promise<Listing[]> {
+        return this.prisma.listing.findMany({
+            where: {
+                deletedAt: null,
+                status: 'ACTIVE',
+                isFeatured: true,
+                featuredUntil: { gt: new Date() },
+            },
+            orderBy: { featuredUntil: 'desc' },
+            take: limit,
+            include: {
+                seller: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        sellerProfile: {
+                            select: { reliabilityScore: true },
+                        },
+                    },
+                },
+            },
+        }) as Promise<Listing[]>;
     }
 
     /**
