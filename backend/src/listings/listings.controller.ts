@@ -101,6 +101,21 @@ export class ListingsController {
     }
 
     /**
+     * Get featured listings (isFeatured = true)
+     * Public endpoint — used for homepage carousel and "Featured" sections
+     */
+    @Get('featured')
+    @ApiOperation({
+        summary: 'Get featured listings',
+        description: 'Returns currently active featured listings, ordered by expiry date.',
+    })
+    @ApiResponse({ status: 200, description: 'Array of featured listings' })
+    async getFeatured(): Promise<StandardResponse<Listing[]>> {
+        const listings = await this.listingsService.getFeaturedListings(8);
+        return new StandardResponse(listings);
+    }
+
+    /**
      * Get current user's listings
      * Requires authentication
      */

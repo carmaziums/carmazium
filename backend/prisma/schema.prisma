@@ -196,6 +196,7 @@ model User {
   watchlistItems          WatchlistItem[]
   sellerReviewsGiven      SellerReview[]     @relation("ReviewerRelation")
   analyticsEvents         AnalyticsEvent[]
+  featuredBoosts          FeaturedBoost[]
 
   @@map("users")
 }
@@ -372,6 +373,9 @@ model Listing {
   ulezCompliant   Boolean?
   euroStandard    EuroStandard?
   co2Emissions    Int?             // CO2 g/km (from DVLA VES API)
+  // Phase 5: Featured boost
+  isFeatured      Boolean  @default(false)
+  featuredUntil   DateTime?
   
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
@@ -382,6 +386,7 @@ model Listing {
   seller          User?          @relation(fields: [sellerId], references: [id])
   auction         Auction?
   bids            Bid[]
+  featuredBoosts  FeaturedBoost[]
   financeApplications FinanceApplication[]
   insuranceQuotes InsuranceQuote[]
   transactions    Transaction[]
@@ -644,4 +649,33 @@ model EmailCapture {
 
   @@index([source])
   @@map("email_captures")
+}
+
+// ============================================================================
+// FEATURED BOOST
+// ============================================================================
+
+model FeaturedBoost {
+  id              String   @id @default(uuid())
+  listingId       String
+  sellerId        String
+  stripeSessionId String?  @unique
+  stripePaymentId String?  @unique
+  amountPaid      Decimal  @db.Decimal(10, 2) @default(25.00)
+  currency        String   @default("gbp")
+  boostedAt       DateTime @default(now())
+  expiresAt       DateTime
+  isActive        Boolean  @default(false)
+  bypassed        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  seller  User    @relation(fields: [sellerId],  references: [id])
+
+  @@index([listingId])
+  @@index([sellerId])
+  @@index([expiresAt])
+  @@index([isActive])
+  @@map("featured_boosts")
 }

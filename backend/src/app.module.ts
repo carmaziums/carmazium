@@ -26,6 +26,7 @@ import { CsrfMiddleware } from './core/middleware/csrf.middleware';
 import { HealthModule } from './health/health.module';
 import { DvlaModule } from './dvla/dvla.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { FeaturedBoostModule } from './featured-boost/featured-boost.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
     TransactionsModule,
     DvlaModule,
     AnalyticsModule,
+    FeaturedBoostModule,
   ],
   controllers: [AppController],
   providers: [AppService],

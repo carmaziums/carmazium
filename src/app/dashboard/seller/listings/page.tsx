@@ -4,9 +4,10 @@ import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
-import { getMyListings, deleteListing, formatPrice, type Listing } from "@/lib/listingApi"
+import { getMyListings, deleteListing, boostListing, formatPrice, type Listing } from "@/lib/listingApi"
 import { useAuth } from "@/context/AuthContext"
-import { PlusCircle, Loader2, Trash2, Eye, Edit, AlertCircle } from "lucide-react"
+import { PlusCircle, Loader2, Trash2, Eye, Zap, X, AlertCircle, CheckCircle2 } from "lucide-react"
+import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 
 export default function MyListingsPage() {
     const { user, loading: authLoading } = useAuth()
@@ -16,6 +17,9 @@ export default function MyListingsPage() {
     const [page, setPage] = React.useState(1)
     const [totalPages, setTotalPages] = React.useState(1)
     const [deleting, setDeleting] = React.useState<string | null>(null)
+    const [boosting, setBoosting] = React.useState<string | null>(null)
+    const [boostTarget, setBoostTarget] = React.useState<Listing | null>(null)
+    const [boostSuccess, setBoostSuccess] = React.useState<string | null>(null)
 
     const fetchListings = React.useCallback(async () => {
         if (!user) return
@@ -34,9 +38,7 @@ export default function MyListingsPage() {
     }, [user, page])
 
     React.useEffect(() => {
-        if (!authLoading && user) {
-            fetchListings()
-        }
+        if (!authLoading && user) fetchListings()
     }, [authLoading, user, fetchListings])
 
     const handleDelete = async (id: string) => {
@@ -52,11 +54,37 @@ export default function MyListingsPage() {
         }
     }
 
+    const handleBoostConfirm = async () => {
+        if (!boostTarget) return
+        try {
+            setBoosting(boostTarget.id)
+            setBoostTarget(null)
+            const result = await boostListing(boostTarget.id)
+            if (result.url) {
+                window.location.href = result.url
+            } else {
+                setBoostSuccess(boostTarget.title)
+                await fetchListings()
+            }
+        } catch (err: any) {
+            alert('Boost failed: ' + err.message)
+        } finally {
+            setBoosting(null)
+        }
+    }
+
+    const getDaysRemaining = (featuredUntil: string | null) => {
+        if (!featuredUntil) return 0
+        return Math.max(0, Math.ceil((new Date(featuredUntil).getTime() - Date.now()) / 86_400_000))
+    }
+
     return (
         <div className="min-h-screen pt-20 pb-12 bg-slate-900">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="seller" />
                 <main className="flex-1 space-y-6">
+
+                    {/* ── Header ─────────────────────────────────── */}
                     <div className="flex justify-between items-center mb-6">
                         <h1 className="text-3xl font-bold font-heading text-white">My Listings</h1>
                         <Link href="/sell" className="bg-primary text-white font-bold py-2 px-6 rounded shadow-neon hover:bg-red-600 transition-colors flex items-center gap-2">
@@ -65,6 +93,20 @@ export default function MyListingsPage() {
                         </Link>
                     </div>
 
+                    {/* ── Boost success banner ─────────────────────── */}
+                    {boostSuccess && (
+                        <div className="bg-amber-400/10 border border-amber-400/30 rounded-lg p-4 flex items-center gap-3 text-amber-400">
+                            <CheckCircle2 size={20} />
+                            <span>
+                                <strong>{boostSuccess}</strong> is now featured for 28 days! It will appear in the Featured Listings section.
+                            </span>
+                            <button onClick={() => setBoostSuccess(null)} className="ml-auto text-amber-400/50 hover:text-amber-400">
+                                <X size={16} />
+                            </button>
+                        </div>
+                    )}
+
+                    {/* ── Error banner ─────────────────────────────── */}
                     {error && (
                         <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 flex items-center gap-3 text-red-400">
                             <AlertCircle size={20} />
@@ -72,6 +114,7 @@ export default function MyListingsPage() {
                         </div>
                     )}
 
+                    {/* ── Table ────────────────────────────────────── */}
                     <div className="glass-card overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
@@ -94,52 +137,90 @@ export default function MyListingsPage() {
                                     ) : listings.length === 0 ? (
                                         <tr>
                                             <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
-                                                No listings yet. <Link href="/sell" className="text-primary hover:underline">Create your first listing!</Link>
+                                                No listings yet.{" "}
+                                                <Link href="/sell" className="text-primary hover:underline">Create your first listing!</Link>
                                             </td>
                                         </tr>
                                     ) : (
-                                        listings.map((listing) => (
-                                            <tr key={listing.id} className="hover:bg-white/5 transition-colors">
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        {listing.images?.[0] && (
-                                                            <Image src={listing.images[0]} alt="" width={56} height={40} className="w-14 h-10 rounded object-cover" />
-                                                        )}
-                                                        <div>
-                                                            <div className="font-bold text-white">{listing.title}</div>
-                                                            <div className="text-xs text-gray-400">
-                                                                {listing.year} • {listing.mileage?.toLocaleString() || 0} miles
+                                        listings.map((listing) => {
+                                            const daysLeft = getDaysRemaining(listing.featuredUntil)
+                                            return (
+                                                <tr
+                                                    key={listing.id}
+                                                    className={`hover:bg-white/5 transition-colors ${listing.isFeatured ? 'border-l-2 border-amber-400/40' : ''}`}
+                                                >
+                                                    {/* Vehicle */}
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            {listing.images?.[0] && (
+                                                                <Image src={listing.images[0]} alt="" width={56} height={40} className="w-14 h-10 rounded object-cover" />
+                                                            )}
+                                                            <div>
+                                                                <div className="font-bold text-white flex items-center gap-2">
+                                                                    {listing.title}
+                                                                    {listing.isFeatured && (
+                                                                        <FeaturedBadge compact daysRemaining={daysLeft} />
+                                                                    )}
+                                                                </div>
+                                                                <div className="text-xs text-gray-400">
+                                                                    {listing.year} • {listing.mileage?.toLocaleString() || 0} miles
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${listing.status === "ACTIVE" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
-                                                        listing.status === "SOLD" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
-                                                            "bg-slate-700/50 text-gray-400 border-slate-600"
-                                                        }`}>
-                                                        {listing.status}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 font-mono font-bold">{formatPrice(listing.price)}</td>
-                                                <td className="px-6 py-4 text-gray-400">{listing.viewCount || 0}</td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex justify-end gap-2">
-                                                        <Link href={`/cars/${listing.slug}`} className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="View">
-                                                            <Eye size={16} />
-                                                        </Link>
-                                                        <button
-                                                            onClick={() => handleDelete(listing.id)}
-                                                            disabled={deleting === listing.id}
-                                                            className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
-                                                            title="Delete"
-                                                        >
-                                                            {deleting === listing.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
+                                                    </td>
+
+                                                    {/* Status */}
+                                                    <td className="px-6 py-4">
+                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${listing.status === "ACTIVE" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                                                                listing.status === "SOLD" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
+                                                                    "bg-slate-700/50 text-gray-400 border-slate-600"
+                                                            }`}>
+                                                            {listing.status}
+                                                        </span>
+                                                    </td>
+
+                                                    {/* Price */}
+                                                    <td className="px-6 py-4 font-mono font-bold">{formatPrice(listing.price)}</td>
+
+                                                    {/* Views */}
+                                                    <td className="px-6 py-4 text-gray-400">{listing.viewCount || 0}</td>
+
+                                                    {/* Actions */}
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex justify-end items-center gap-2">
+                                                            {/* Boost button — only for active non-featured listings */}
+                                                            {listing.status === "ACTIVE" && !listing.isFeatured && (
+                                                                <button
+                                                                    onClick={() => setBoostTarget(listing)}
+                                                                    disabled={boosting === listing.id}
+                                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-400/10 text-amber-400 border border-amber-400/30 hover:bg-amber-400/20 transition-all disabled:opacity-50"
+                                                                    title="Boost this listing for £25"
+                                                                >
+                                                                    {boosting === listing.id ? (
+                                                                        <Loader2 size={12} className="animate-spin" />
+                                                                    ) : (
+                                                                        <Zap size={12} />
+                                                                    )}
+                                                                    Boost £25
+                                                                </button>
+                                                            )}
+
+                                                            <Link href={`/vehicle/${listing.slug}`} className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="View">
+                                                                <Eye size={16} />
+                                                            </Link>
+                                                            <button
+                                                                onClick={() => handleDelete(listing.id)}
+                                                                disabled={deleting === listing.id}
+                                                                className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
+                                                                title="Delete"
+                                                            >
+                                                                {deleting === listing.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )
+                                        })
                                     )}
                                 </tbody>
                             </table>
@@ -148,21 +229,11 @@ export default function MyListingsPage() {
                         {/* Pagination */}
                         {totalPages > 1 && (
                             <div className="p-4 border-t border-white/10 flex justify-center gap-2">
-                                <button
-                                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                                    disabled={page === 1}
-                                    className="px-3 py-1 rounded text-sm bg-slate-800 text-white disabled:opacity-50"
-                                >
+                                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-1 rounded text-sm bg-slate-800 text-white disabled:opacity-50">
                                     Previous
                                 </button>
-                                <span className="px-3 py-1 text-gray-400 text-sm">
-                                    Page {page} of {totalPages}
-                                </span>
-                                <button
-                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                                    disabled={page === totalPages}
-                                    className="px-3 py-1 rounded text-sm bg-slate-800 text-white disabled:opacity-50"
-                                >
+                                <span className="px-3 py-1 text-gray-400 text-sm">Page {page} of {totalPages}</span>
+                                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-3 py-1 rounded text-sm bg-slate-800 text-white disabled:opacity-50">
                                     Next
                                 </button>
                             </div>
@@ -170,6 +241,58 @@ export default function MyListingsPage() {
                     </div>
                 </main>
             </div>
+
+            {/* ── Boost Confirm Modal ─────────────────────────────────── */}
+            {boostTarget && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-slate-800 border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="p-2 rounded-xl bg-amber-400/10">
+                                <Zap size={22} className="text-amber-400" />
+                            </div>
+                            <h2 className="text-xl font-bold text-white">Boost this Listing?</h2>
+                        </div>
+
+                        <div className="space-y-3 text-sm text-gray-300 mb-6">
+                            <p>
+                                Boosting <strong className="text-white">{boostTarget.title}</strong> will:
+                            </p>
+                            <ul className="space-y-2 list-none">
+                                {[
+                                    "⭐  Appear in the Featured Listings section on the homepage",
+                                    "🔝  Pin to the top of all search results",
+                                    "✨  Show a golden Featured badge on your listing",
+                                    "📅  Last for 28 days",
+                                ].map(item => (
+                                    <li key={item} className="flex items-start gap-2 bg-slate-700/50 rounded-lg px-3 py-2">{item}</li>
+                                ))}
+                            </ul>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-amber-400/5 border border-amber-400/20 rounded-xl mb-6">
+                            <span className="text-white font-medium">Total Cost</span>
+                            <span className="text-2xl font-bold text-amber-400">£25.00</span>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setBoostTarget(null)}
+                                className="flex-1 py-2.5 rounded-lg border border-white/10 text-gray-400 hover:bg-white/5 transition-colors text-sm font-medium"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleBoostConfirm}
+                                className="flex-1 py-2.5 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all"
+                                style={{ background: "linear-gradient(135deg, #fbbf24, #f59e0b)", color: "#1e1a0e" }}
+                            >
+                                <Zap size={16} />
+                                Confirm Boost
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
