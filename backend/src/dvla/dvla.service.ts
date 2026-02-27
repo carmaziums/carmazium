@@ -65,17 +65,25 @@ const DVLA_EURO_MAP: Record<string, string> = {
     'EURO 6D': 'EURO_6D',
 };
 
+const DVLA_PROD_URL = 'https://driver-vehicle-licensing.api.gov.uk/vehicle-enquiry/v1/vehicles';
+const DVLA_UAT_URL = 'https://uat.driver-vehicle-licensing.api.gov.uk/vehicle-enquiry/v1/vehicles';
+
 @Injectable()
 export class DvlaService {
     private readonly logger = new Logger(DvlaService.name);
     private readonly apiKey: string | undefined;
-    private readonly baseUrl = 'https://driver-vehicle-licensing.api.gov.uk/vehicle-enquiry/v1/vehicles';
+    private readonly baseUrl: string;
 
     constructor(private configService: ConfigService) {
         this.apiKey = this.configService.get<string>('DVLA_API_KEY');
+        // DVLA_API_URL lets you point to the UAT endpoint for testing.
+        // Defaults to the production URL when not set.
+        this.baseUrl = this.configService.get<string>('DVLA_API_URL') ?? DVLA_PROD_URL;
+
         if (!this.apiKey) {
             this.logger.warn('DVLA_API_KEY is not set — VRM lookup will be unavailable');
         }
+        this.logger.log(`DVLA endpoint: ${this.baseUrl}`);
     }
 
     async lookupVrm(vrm: string): Promise<DvlaLookupResult> {
