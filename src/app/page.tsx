@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { Search, ArrowRight, ShieldCheck, UserCheck, FileText, CheckCircle, Handshake, Shield, Lightbulb, Zap, Star } from "lucide-react"
+import { Search, ArrowRight, ShieldCheck, UserCheck, FileText, CheckCircle, Handshake, Shield, Lightbulb, Star } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { CarCard } from "@/components/features/CarCard"
 import { AnimatedCounter } from "@/components/ui/AnimatedCounter"
@@ -207,59 +207,8 @@ export default function Home() {
         </section>
       )}
 
-      {/* Seller boost CTA strip */}
-      <section className="container mx-auto px-5 mb-20">
-        <div
-          className="rounded-2xl p-8 flex flex-col md:flex-row items-center justify-between gap-6 border border-amber-400/20"
-          style={{ background: 'linear-gradient(135deg, rgba(251,191,36,0.06) 0%, rgba(245,158,11,0.04) 100%)' }}
-        >
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-amber-400/10">
-              <Zap size={28} className="text-amber-400" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-white">Want your listing seen first?</h3>
-              <p className="text-gray-400 text-sm">Boost any active listing to Featured for just £25 — pinned to the top for 28 days.</p>
-            </div>
-          </div>
-          <Link
-            href="/dashboard/seller/listings"
-            className="shrink-0 flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-amber-900"
-            style={{ background: 'linear-gradient(135deg,#fbbf24,#f59e0b)' }}
-          >
-            <Zap size={16} /> Boost My Listing
-          </Link>
-        </div>
-      </section>
 
-      {/* Regular Featured Cars (static placeholder — shown when no real featured listings) */}
-      {!featuredLoading && featuredListings.length === 0 && (
-        <section className="container mx-auto px-5 mb-24">
-          <h2 className="text-3xl font-bold text-center mb-16 font-heading">Featured Cars Available Now</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[
-              { title: "Black SUV (2025)", price: "$32,000", img: "/assets/images/featured-suv.png", id: "black-suv-2025" },
-              { title: "Red Sports (2025)", price: "$58,000", img: "/assets/images/featured-sports.png", id: "red-sports-2025" },
-              { title: "White Sedan (2025)", price: "$28,500", img: "/assets/images/promo-car.png", id: "white-sedan-2025" }
-            ].map((car, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 50 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-              >
-                <CarCard
-                  title={car.title}
-                  price={car.price}
-                  image={car.img}
-                  href={`/buy-cars/${car.id}`}
-                />
-              </motion.div>
-            ))}
-          </div>
-        </section>
-      )}
+
 
       {/* Testimonials Section */}
       <TestimonialsSection />

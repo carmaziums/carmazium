@@ -6,6 +6,7 @@ import { motion, useMotionValue, useSpring, useTransform } from "framer-motion"
 import { useRef } from "react"
 import { Calendar, Gauge, Fuel, Car } from "lucide-react"
 import { SellerBadge } from "@/components/ui/SellerBadge"
+import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 
 // ─── Label Mapping ───────────────────────────────────────────────────────────
 
@@ -34,6 +35,7 @@ interface CarCardProps {
     bodyType?: string
     sellerId?: string
     sellerScore?: number
+    isFeatured?: boolean
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -41,7 +43,7 @@ interface CarCardProps {
 export function CarCard({
     title, price, image, href = "#",
     year, mileage, fuelType, bodyType,
-    sellerId, sellerScore
+    sellerId, sellerScore, isFeatured = false
 }: CarCardProps) {
     const ref = useRef<HTMLDivElement>(null)
 
@@ -78,7 +80,8 @@ export function CarCard({
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
             style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-            className="glass-card h-full flex flex-col perspective-1000 overflow-visible group"
+            className={`glass-card h-full flex flex-col perspective-1000 overflow-visible group relative ${isFeatured ? 'border border-amber-400/30' : ''
+                }`}
         >
             {/* Holographic Shimmer Overlay */}
             <motion.div
@@ -96,6 +99,9 @@ export function CarCard({
                 className="h-[240px] bg-gradient-to-br from-slate-800/50 to-transparent flex items-center justify-center p-6 relative overflow-hidden flex-shrink-0"
                 style={{ transform: "translateZ(0px)" }}
             >
+                {/* Featured Badge */}
+                {isFeatured && <FeaturedBadge />}
+
                 {/* Spotlight Glow */}
                 <div className="absolute inset-0 bg-indigo-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-3xl rounded-full scale-150 mix-blend-screen" />
 
