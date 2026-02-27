@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/Input"
 import { CarCard } from "@/components/features/CarCard"
 import {
     Search, Filter, X, Gavel, AlertTriangle, Loader2,
-    RotateCcw, ChevronDown, ShieldCheck,
+    RotateCcw, ChevronDown, ShieldCheck, Star,
 } from "lucide-react"
-import { getListings, formatPrice, type Listing, type ListingFilters, type VehicleConditionValue, type EuroStandardValue } from "@/lib/listingApi"
+import { getListings, getFeaturedListings, formatPrice, type Listing, type ListingFilters, type VehicleConditionValue, type EuroStandardValue } from "@/lib/listingApi"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -154,6 +154,12 @@ function SearchPageContent() {
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
     const [totalCount, setTotalCount] = React.useState(0)
+    const [featuredListings, setFeaturedListings] = React.useState<Listing[]>([])
+
+    // Fetch featured listings once on mount
+    React.useEffect(() => {
+        getFeaturedListings().then(setFeaturedListings).catch(() => { })
+    }, [])
 
     // Hydrate initial filters from URL query params
     const hydrateFromUrl = React.useCallback((): FilterState => {
@@ -685,6 +691,35 @@ function SearchPageContent() {
                         </div>
                     )}
 
+                    {/* ── Featured Pinned Row ────────────────────────────────── */}
+                    {!loading && featuredListings.length > 0 && (
+                        <div className="mb-8">
+                            <div className="flex items-center gap-2 mb-4">
+                                <Star size={15} className="text-amber-400 fill-amber-400" />
+                                <h2 className="text-sm font-bold uppercase tracking-widest text-amber-400">Featured Listings</h2>
+                                <div className="flex-1 h-px bg-amber-400/20" />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                {featuredListings.map((listing) => (
+                                    <CarCard
+                                        key={listing.id}
+                                        title={listing.title}
+                                        price={formatPrice(listing.price)}
+                                        image={getListingImage(listing)}
+                                        href={`/buy-cars/${listing.slug}`}
+                                        year={listing.year ?? undefined}
+                                        mileage={listing.mileage ?? undefined}
+                                        fuelType={listing.fuelType ?? undefined}
+                                        bodyType={listing.bodyType ?? undefined}
+                                        isFeatured={true}
+                                    />
+                                ))}
+                            </div>
+                            <div className="mt-6 border-b border-white/5" />
+                            <p className="text-xs text-gray-600 mt-3 mb-6">All listings below</p>
+                        </div>
+                    )}
+
                     {/* Grid */}
                     {!loading && !error && listings.length > 0 && (
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -699,6 +734,7 @@ function SearchPageContent() {
                                     mileage={listing.mileage ?? undefined}
                                     fuelType={listing.fuelType ?? undefined}
                                     bodyType={listing.bodyType ?? undefined}
+                                    isFeatured={listing.isFeatured}
                                 />
                             ))}
                         </div>
