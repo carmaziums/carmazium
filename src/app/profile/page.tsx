@@ -10,7 +10,7 @@ export default function ProfilePage() {
     const [loading, setLoading] = React.useState(false)
     const [success, setSuccess] = React.useState<string | null>(null)
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium.fly.dev'
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev';
 
     const handleRoleElevation = async (newRole: string) => {
         setLoading(true)
