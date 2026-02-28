@@ -144,7 +144,7 @@ async function bootstrap() {
   // ---------------------------------------------------------------------------
   // Start server
   // ---------------------------------------------------------------------------
-  const port = process.env.PORT ?? 3001;
+  const port = process.env.PORT ?? 8080;
   await app.listen(port, '0.0.0.0');
 
   // Graceful shutdown: close Redis adapter connections when present
