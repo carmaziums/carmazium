@@ -117,10 +117,10 @@ export default function MyListingsPage() {
                             </div>
                             <div>
                                 <p className="font-bold text-white text-sm">Boost a listing to Featured</p>
-                                <p className="text-gray-400 text-xs">£25 • pinned to the top of search &amp; homepage for 28 days • only active listings can be boosted</p>
+                                <p className="text-gray-400 text-xs">Free during beta — pinned to the top of search &amp; homepage for 28 days</p>
                             </div>
                         </div>
-                        <span className="text-xs text-amber-400/60 font-medium shrink-0">Click ⚡ Boost £25 on any active listing below</span>
+                        <span className="text-xs text-amber-400/60 font-medium shrink-0">Click ⚡ Boost on any listing below</span>
                     </div>
 
                     {/* ── Error banner ─────────────────────────────── */}
@@ -207,28 +207,19 @@ export default function MyListingsPage() {
                                                         <div className="flex justify-end items-center gap-2">
                                                             {/* Boost button */}
                                                             {!listing.isFeatured && (
-                                                                listing.status === "ACTIVE" ? (
-                                                                    <button
-                                                                        onClick={() => setBoostTarget(listing)}
-                                                                        disabled={boosting === listing.id}
-                                                                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-400/10 text-amber-400 border border-amber-400/30 hover:bg-amber-400/20 transition-all disabled:opacity-50"
-                                                                        title="Boost this listing to Featured for £25"
-                                                                    >
-                                                                        {boosting === listing.id ? (
-                                                                            <Loader2 size={12} className="animate-spin" />
-                                                                        ) : (
-                                                                            <Zap size={12} />
-                                                                        )}
-                                                                        Boost £25
-                                                                    </button>
-                                                                ) : (
-                                                                    <span
-                                                                        className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg text-gray-600 border border-white/5 cursor-not-allowed"
-                                                                        title="Activate this listing first to boost it"
-                                                                    >
-                                                                        <Zap size={11} /> Boost
-                                                                    </span>
-                                                                )
+                                                                <button
+                                                                    onClick={() => setBoostTarget(listing)}
+                                                                    disabled={boosting === listing.id}
+                                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-400/10 text-amber-400 border border-amber-400/30 hover:bg-amber-400/20 transition-all disabled:opacity-50"
+                                                                    title="Boost this listing to Featured for 28 days"
+                                                                >
+                                                                    {boosting === listing.id ? (
+                                                                        <Loader2 size={12} className="animate-spin" />
+                                                                    ) : (
+                                                                        <Zap size={12} />
+                                                                    )}
+                                                                    Boost
+                                                                </button>
                                                             )}
 
                                                             <Link href={`/vehicle/${listing.slug}`} className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="View">
@@ -296,8 +287,11 @@ export default function MyListingsPage() {
                         </div>
 
                         <div className="flex items-center justify-between p-4 bg-amber-400/5 border border-amber-400/20 rounded-xl mb-6">
-                            <span className="text-white font-medium">Total Cost</span>
-                            <span className="text-2xl font-bold text-amber-400">£25.00</span>
+                            <div>
+                                <span className="text-white font-medium">Cost</span>
+                                <p className="text-xs text-gray-500 mt-0.5">Payment coming soon — free during beta</p>
+                            </div>
+                            <span className="text-2xl font-bold text-emerald-400">Free</span>
                         </div>
 
                         <div className="flex gap-3">

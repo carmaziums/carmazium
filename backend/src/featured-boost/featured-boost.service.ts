@@ -42,10 +42,6 @@ export class FeaturedBoostService {
             throw new ForbiddenException('You do not own this listing');
         }
 
-        if (listing.status !== 'ACTIVE') {
-            throw new BadRequestException('Only ACTIVE listings can be boosted');
-        }
-
         // Check if already actively featured
         if (listing.isFeatured && listing.featuredUntil && listing.featuredUntil > new Date()) {
             throw new BadRequestException('This listing is already featured');
@@ -99,7 +95,7 @@ export class FeaturedBoostService {
         // Dynamically import Stripe so the module loads even without the key
         const Stripe = (await import('stripe')).default;
         const stripe = new Stripe(this.config.get<string>('STRIPE_SECRET_KEY')!, {
-            apiVersion: '2024-11-20.acacia',
+            apiVersion: '2026-02-25.clover',
         });
 
         const expiresAt = addDays(new Date(), BOOST_DURATION_DAYS);
@@ -158,7 +154,7 @@ export class FeaturedBoostService {
 
         const Stripe = (await import('stripe')).default;
         const stripe = new Stripe(this.config.get<string>('STRIPE_SECRET_KEY')!, {
-            apiVersion: '2024-11-20.acacia',
+            apiVersion: '2026-02-25.clover',
         });
 
         let event: any;
