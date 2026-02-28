@@ -7,13 +7,142 @@ import { Button } from "@/components/ui/Button"
 import { AccordionItem } from "@/components/ui/Accordion"
 import dynamic from "next/dynamic"
 const FinanceCalculator = dynamic(() => import("@/components/features/FinanceCalculator").then(mod => mod.FinanceCalculator), { ssr: false })
-import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale, Loader2, MessageCircle } from "lucide-react"
+import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale, Loader2, MessageCircle, Tag, X, Clock, ThumbsUp, XCircle, AlertTriangle } from "lucide-react"
 import { useCompare } from "@/context/CompareContext"
-import { getListingBySlug, type Listing, formatPrice } from "@/lib/listingApi"
+import { getListingBySlug, makeOffer, type Listing, type LatestOffer, formatPrice } from "@/lib/listingApi"
 import { createChatRoom } from "@/lib/chatApi"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
 import { VehicleJsonLd } from "@/components/seo/JsonLd"
+import { Input } from "@/components/ui/Input"
+
+// ─── Offer Status Chip ───────────────────────────────────────────────────────
+
+function OfferStatusChip({ offer }: { offer: LatestOffer }) {
+    const amount = `£${Number(offer.amount).toLocaleString('en-GB')}`
+    if (offer.status === 'PENDING') return (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm">
+            <Clock size={14} className="shrink-0" />
+            <span>Your offer of <strong>{amount}</strong> is awaiting the seller&apos;s response.</span>
+        </div>
+    )
+    if (offer.status === 'REJECTED') return (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
+            <XCircle size={14} className="shrink-0" />
+            <span>Your offer of <strong>{amount}</strong> was declined. Try a different amount.</span>
+        </div>
+    )
+    if (offer.status === 'ACCEPTED') return (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm">
+            <ThumbsUp size={14} className="shrink-0" />
+            <span>🎉 Your offer of <strong>{amount}</strong> was accepted!</span>
+        </div>
+    )
+    return null
+}
+
+// ─── Offer Modal ─────────────────────────────────────────────────────────────
+
+function OfferModal({
+    listing, onClose, onSuccess,
+}: {
+    listing: Listing
+    onClose: () => void
+    onSuccess: (offer: LatestOffer) => void
+}) {
+    const min = listing.priceMin ? Number(listing.priceMin) : Number(listing.price) * 0.9
+    const max = listing.priceMax ? Number(listing.priceMax) : Number(listing.price)
+    const [amount, setAmount] = React.useState(min)
+    const [message, setMessage] = React.useState("")
+    const [loading, setLoading] = React.useState(false)
+    const [error, setError] = React.useState<string | null>(null)
+
+    const pct = Math.min(100, Math.max(0, ((amount - min) / (max - min)) * 100))
+    const isOutOfRange = amount < min || amount > max
+
+    const handleSubmit = async () => {
+        if (isOutOfRange) return
+        setLoading(true); setError(null)
+        try {
+            const offer = await makeOffer(listing.id, amount, message || undefined)
+            onSuccess(offer as unknown as LatestOffer)
+        } catch (err: any) {
+            setError(err.message || "Failed to submit offer.")
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    return (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-5" onClick={onClose}>
+            <div className="glass-card p-8 max-w-md w-full relative" onClick={(e) => e.stopPropagation()}>
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary to-red-800 rounded-t-2xl" />
+                <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white"><X size={20} /></button>
+
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary"><Tag size={18} /></div>
+                    <div>
+                        <h2 className="text-xl font-bold font-heading text-white">Make an Offer</h2>
+                        <p className="text-xs text-gray-400">{listing.title}</p>
+                    </div>
+                </div>
+
+                <div className="mb-6 p-3 rounded-xl bg-white/5 border border-white/10">
+                    <div className="flex justify-between text-xs text-gray-400 mb-2">
+                        <span>Min: <span className="text-white font-semibold">£{min.toLocaleString('en-GB')}</span></span>
+                        <span>Max: <span className="text-white font-semibold">£{max.toLocaleString('en-GB')}</span></span>
+                    </div>
+                    <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-primary/60 to-primary rounded-full transition-all duration-200" style={{ width: `${pct}%` }} />
+                    </div>
+                </div>
+
+                <div className="mb-4">
+                    <label className="text-sm font-bold uppercase text-gray-400 mb-2 block">Your Offer (£)</label>
+                    <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">£</span>
+                        <Input type="number" value={amount} min={min} max={max} step={100}
+                            onChange={(e) => setAmount(Number(e.target.value))}
+                            className="bg-slate-900/50 border-white/10 text-white pl-8 text-lg focus:border-primary" />
+                    </div>
+                    {isOutOfRange
+                        ? <p className="text-red-400 text-xs mt-1">Must be between £{min.toLocaleString('en-GB')} and £{max.toLocaleString('en-GB')}</p>
+                        : <p className="text-emerald-400 text-xs mt-1">✓ Within the seller&apos;s accepted range</p>
+                    }
+                </div>
+
+                <div className="mb-5">
+                    <input type="range" min={min} max={max} step={100} value={amount}
+                        onChange={(e) => setAmount(Number(e.target.value))}
+                        className="w-full accent-primary cursor-pointer" />
+                </div>
+
+                <div className="mb-6">
+                    <label className="text-sm font-bold uppercase text-gray-400 mb-2 block">
+                        Message <span className="text-gray-600 font-normal normal-case">(optional)</span>
+                    </label>
+                    <textarea value={message} onChange={(e) => setMessage(e.target.value)}
+                        placeholder="e.g. I can collect this weekend..."
+                        rows={3} maxLength={500}
+                        className="w-full bg-slate-900/50 border border-white/10 text-white placeholder:text-gray-600 rounded-md p-3 text-sm resize-none focus:outline-none focus:border-primary" />
+                </div>
+
+                {error && (
+                    <div className="mb-4 flex items-center gap-2 text-red-400 text-sm p-3 bg-red-500/10 rounded-lg border border-red-500/20">
+                        <AlertTriangle size={14} /> {error}
+                    </div>
+                )}
+
+                <div className="flex gap-3">
+                    <Button variant="outline" className="flex-1 border-white/10 text-gray-400 hover:text-white" onClick={onClose}>Cancel</Button>
+                    <Button className="flex-1 shadow-neon" disabled={loading || isOutOfRange} onClick={handleSubmit}>
+                        {loading ? <><Loader2 size={16} className="animate-spin mr-2" />Submitting...</> : `Submit £${amount.toLocaleString('en-GB')}`}
+                    </Button>
+                </div>
+            </div>
+        </div>
+    )
+}
 
 export default function VehicleDetailsPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = React.use(params)
@@ -24,6 +153,9 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
     const [error, setError] = React.useState<string | null>(null)
     const [activeImage, setActiveImage] = React.useState(0)
     const [enquiring, setEnquiring] = React.useState(false)
+    const [showOfferModal, setShowOfferModal] = React.useState(false)
+    const [myLatestOffer, setMyLatestOffer] = React.useState<LatestOffer | null>(null)
+    const [offerSuccess, setOfferSuccess] = React.useState(false)
 
     const { addToCompare, removeFromCompare, isInCompare } = useCompare()
     const isCompared = listing ? isInCompare(listing.id) : false
@@ -34,6 +166,10 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                 setLoading(true)
                 const data = await getListingBySlug(slug)
                 setListing(data)
+                // Populate latest offer for the current user
+                if (data.offers && data.offers.length > 0) {
+                    setMyLatestOffer(data.offers[0])
+                }
             } catch (err) {
                 console.error('Failed to fetch listing:', err)
                 setError('Failed to load vehicle details')
@@ -150,6 +286,24 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
         <div className="min-h-screen bg-slate-900 pt-24 pb-12 relative">
             {/* Background gradient */}
             <div className="fixed inset-0 bg-gradient-to-br from-[#0f172a] to-[#1e293b] -z-10" />
+
+            {/* Offer Modal */}
+            {showOfferModal && listing && (
+                <OfferModal
+                    listing={listing}
+                    onClose={() => setShowOfferModal(false)}
+                    onSuccess={(offer) => { setMyLatestOffer(offer); setShowOfferModal(false); setOfferSuccess(true) }}
+                />
+            )}
+
+            {/* Success toast */}
+            {offerSuccess && (
+                <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 px-5 py-3 rounded-xl shadow-2xl animate-in slide-in-from-bottom-4">
+                    <CheckCircle size={18} />
+                    <span className="text-sm font-semibold">Offer submitted! The seller will respond soon.</span>
+                    <button onClick={() => setOfferSuccess(false)} className="ml-2"><X size={14} /></button>
+                </div>
+            )}
 
             {/* Vehicle JSON-LD */}
             <VehicleJsonLd
@@ -285,27 +439,59 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                                 </div>
 
                                 <div className="mb-6">
-                                    <div className="text-4xl font-bold text-white mb-2">{vehicle.price}</div>
-                                    <div className="inline-block bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded text-xs font-bold mb-4">
-                                        Best Price Guarantee
-                                    </div>
-                                    <p className="text-xs text-gray-400">Price includes VAT. Financing available from 5.9% APR.</p>
+                                    {listing.priceMin && listing.priceMax ? (
+                                        <div>
+                                            <p className="text-xs text-gray-500 mb-1 uppercase font-semibold tracking-wide">Offer Range</p>
+                                            <div className="text-3xl font-bold text-white mb-1">
+                                                £{Number(listing.priceMin).toLocaleString('en-GB')} &ndash; £{Number(listing.priceMax).toLocaleString('en-GB')}
+                                            </div>
+                                            <span className="inline-block text-[10px] font-bold uppercase tracking-wide bg-primary/10 text-primary border border-primary/30 px-2.5 py-1 rounded-full">
+                                                Offers Welcome
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <div className="text-4xl font-bold text-white mb-2">{vehicle.price}</div>
+                                            <div className="inline-block bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded text-xs font-bold mb-4">
+                                                Best Price Guarantee
+                                            </div>
+                                        </div>
+                                    )}
+                                    <p className="text-xs text-gray-400 mt-3">Price includes VAT. Financing available from 5.9% APR.</p>
                                 </div>
 
+                                {/* Latest Offer Status */}
+                                {myLatestOffer && (
+                                    <div className="mb-4">
+                                        <OfferStatusChip offer={myLatestOffer} />
+                                    </div>
+                                )}
                                 <div className="space-y-3">
-                                    <Button
-                                        className="w-full py-6 text-lg"
-                                        shape="default"
-                                        onClick={handleEnquire}
-                                        disabled={enquiring}
-                                    >
-                                        {enquiring ? (
-                                            <><Loader2 className="w-5 h-5 animate-spin mr-2" /> Starting Chat...</>
-                                        ) : (
-                                            <><MessageCircle className="w-5 h-5 mr-2" /> Enquire Now</>
-                                        )}
-                                    </Button>
-                                    <Button variant="outline" className="w-full py-6 text-lg border-white/20 text-white hover:bg-white/10">Buy Online</Button>
+                                    {listing && listing.priceMin && listing.priceMax ? (
+                                        <>
+                                            <Button
+                                                className="w-full py-6 text-lg shadow-neon"
+                                                onClick={() => setShowOfferModal(true)}
+                                                disabled={myLatestOffer?.status === 'PENDING' || myLatestOffer?.status === 'ACCEPTED'}
+                                            >
+                                                {myLatestOffer?.status === 'PENDING'
+                                                    ? '⏳ Offer Pending...'
+                                                    : myLatestOffer?.status === 'ACCEPTED'
+                                                        ? '✓ Offer Accepted'
+                                                        : 'Make an Offer'}
+                                            </Button>
+                                            <Button variant="outline" className="w-full py-6 text-lg border-white/20 text-white hover:bg-white/10" onClick={handleEnquire} disabled={enquiring}>
+                                                {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2" />Starting Chat...</> : <><MessageCircle className="w-5 h-5 mr-2" />Enquire</>}
+                                            </Button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Button className="w-full py-6 text-lg" shape="default" onClick={handleEnquire} disabled={enquiring}>
+                                                {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2" />Starting Chat...</> : <><MessageCircle className="w-5 h-5 mr-2" />Enquire Now</>}
+                                            </Button>
+                                            <Button variant="outline" className="w-full py-6 text-lg border-white/20 text-white hover:bg-white/10">Buy Online</Button>
+                                        </>
+                                    )}
                                 </div>
                             </div>
 

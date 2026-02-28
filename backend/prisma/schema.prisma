@@ -63,6 +63,15 @@ enum ListingStatus {
   @@map("listing_status")
 }
 
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+
+  @@map("offer_status")
+}
+
 enum ServiceStatus {
   PENDING
   ACCEPTED
@@ -197,6 +206,7 @@ model User {
   sellerReviewsGiven      SellerReview[]     @relation("ReviewerRelation")
   analyticsEvents         AnalyticsEvent[]
   featuredBoosts          FeaturedBoost[]
+  offers                  Offer[]
 
   @@map("users")
 }
@@ -376,7 +386,10 @@ model Listing {
   // Phase 5: Featured boost
   isFeatured      Boolean  @default(false)
   featuredUntil   DateTime?
-  
+  // Phase 6: Offering System — price range
+  priceMin        Decimal?       @db.Decimal(12, 2)
+  priceMax        Decimal?       @db.Decimal(12, 2)
+
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   deletedAt       DateTime?
@@ -386,6 +399,7 @@ model Listing {
   seller          User?          @relation(fields: [sellerId], references: [id])
   auction         Auction?
   bids            Bid[]
+  offers          Offer[]
   featuredBoosts  FeaturedBoost[]
   financeApplications FinanceApplication[]
   insuranceQuotes InsuranceQuote[]
@@ -678,4 +692,28 @@ model FeaturedBoost {
   @@index([expiresAt])
   @@index([isActive])
   @@map("featured_boosts")
+}
+
+// ============================================================================
+// OFFERING SYSTEM
+// ============================================================================
+
+model Offer {
+  id        String      @id @default(uuid())
+  listingId String
+  buyerId   String
+  amount    Decimal     @db.Decimal(12, 2)
+  status    OfferStatus @default(PENDING)
+  /// Optional message from buyer to seller
+  message   String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  buyer   User    @relation(fields: [buyerId], references: [id])
+
+  @@index([listingId])
+  @@index([buyerId])
+  @@index([status])
+  @@map("offers")
 }

@@ -93,11 +93,25 @@ export class CreateListingDto {
     @Length(5, 200)
     title: string;
 
-    @ApiProperty({ description: 'Price of the vehicle in GBP', example: 25000.99 })
+    @ApiProperty({ description: 'Asking price of the vehicle in GBP (set from priceMin when using offers)', example: 25000.99 })
     @Type(() => Number)
     @IsNumber({ maxDecimalPlaces: 2 })
     @IsPositive()
     price: number;
+
+    @ApiProperty({ description: 'Minimum acceptable offer price in GBP (enables offer system)', example: 20000, required: false })
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 2 })
+    @IsPositive()
+    @IsOptional()
+    priceMin?: number;
+
+    @ApiProperty({ description: 'Maximum acceptable offer price in GBP', example: 27000, required: false })
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 2 })
+    @IsPositive()
+    @IsOptional()
+    priceMax?: number;
 
     @ApiProperty({ description: 'Mileage in miles', example: 45000 })
     @Type(() => Number)

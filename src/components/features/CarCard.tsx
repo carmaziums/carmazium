@@ -27,6 +27,8 @@ const FUEL_TYPE_LABELS: Record<string, string> = {
 interface CarCardProps {
     title: string
     price: string
+    priceMin?: string | number | null
+    priceMax?: string | number | null
     image: string
     href?: string
     year?: number
@@ -41,7 +43,7 @@ interface CarCardProps {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function CarCard({
-    title, price, image, href = "#",
+    title, price, priceMin, priceMax, image, href = "#",
     year, mileage, fuelType, bodyType,
     sellerId, sellerScore, isFeatured = false
 }: CarCardProps) {
@@ -138,9 +140,21 @@ export function CarCard({
                     )}
                 </div>
 
-                <p className="text-white text-2xl font-bold font-mono bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400 mb-3">
-                    {price}
-                </p>
+                {/* Price Display */}
+                {priceMin && priceMax ? (
+                    <div className="mb-3">
+                        <p className="text-white text-xl font-bold font-mono bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
+                            £{Number(priceMin).toLocaleString('en-GB')} &ndash; £{Number(priceMax).toLocaleString('en-GB')}
+                        </p>
+                        <span className="inline-block mt-1 text-[10px] font-bold uppercase tracking-wide bg-primary/10 text-primary border border-primary/30 px-2 py-0.5 rounded-full">
+                            Offers Welcome
+                        </span>
+                    </div>
+                ) : (
+                    <p className="text-white text-2xl font-bold font-mono bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400 mb-3">
+                        {price}
+                    </p>
+                )}
 
                 {/* Specs Tags */}
                 {hasSpecs && (
