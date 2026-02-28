@@ -21,7 +21,8 @@ import {
     Banknote,
     FileText,
     Shield,
-    ClipboardList
+    ClipboardList,
+    Tag
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
@@ -59,6 +60,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
         buyer: [
             { href: "/dashboard/buyer", label: "Dashboard", icon: LayoutDashboard },
             { href: "/dashboard/buyer/bids", label: "My Bids", icon: Gavel },
+            { href: "/dashboard/buyer/offers", label: "My Offers", icon: Tag },
             { href: "/dashboard/buyer/watchlist", label: "Watchlist", icon: Heart },
             { href: "/dashboard/buyer/messages", label: "Messages", icon: MessageSquare, badge: unreadCount },
             { href: "/dashboard/buyer/history", label: "History", icon: Clock },
@@ -67,6 +69,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
         seller: [
             { href: "/dashboard/seller", label: "Overview", icon: LayoutDashboard },
             { href: "/dashboard/seller/listings", label: "Listings", icon: Car },
+            { href: "/dashboard/seller/offers", label: "Offers", icon: Tag },
             { href: "/dashboard/seller/performance", label: "Stats", icon: BarChart3 },
             { href: "/dashboard/seller/messages", label: "Messages", icon: MessageSquare, badge: unreadCount },
             { href: "/dashboard/seller/earnings", label: "Earnings", icon: DollarSign },

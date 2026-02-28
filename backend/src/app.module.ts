@@ -27,6 +27,7 @@ import { HealthModule } from './health/health.module';
 import { DvlaModule } from './dvla/dvla.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { FeaturedBoostModule } from './featured-boost/featured-boost.module';
+import { OffersModule } from './offers/offers.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { FeaturedBoostModule } from './featured-boost/featured-boost.module';
     DvlaModule,
     AnalyticsModule,
     FeaturedBoostModule,
+    OffersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

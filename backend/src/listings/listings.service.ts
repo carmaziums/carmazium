@@ -108,6 +108,8 @@ export class ListingsService {
             data: {
                 title: createListingDto.title,
                 price: createListingDto.price,
+                priceMin: createListingDto.priceMin ?? null,
+                priceMax: createListingDto.priceMax ?? null,
                 images: createListingDto.images,
                 type: listingType,
                 status: listingStatus,
@@ -329,7 +331,20 @@ export class ListingsService {
                             }
                         }
                     }
-                }
+                },
+                // Include the most recent offer so the buyer can see their offer status
+                offers: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 1,
+                    select: {
+                        id: true,
+                        amount: true,
+                        status: true,
+                        message: true,
+                        buyerId: true,
+                        createdAt: true,
+                    },
+                },
             }
         });
 
@@ -377,6 +392,8 @@ export class ListingsService {
 
         if (updateListingDto.title) updateData.title = updateListingDto.title;
         if (updateListingDto.price) updateData.price = updateListingDto.price;
+        if (updateListingDto.priceMin !== undefined) updateData.priceMin = updateListingDto.priceMin ?? null;
+        if (updateListingDto.priceMax !== undefined) updateData.priceMax = updateListingDto.priceMax ?? null;
         if (updateListingDto.description !== undefined) updateData.description = updateListingDto.description;
         if (updateListingDto.images) updateData.images = updateListingDto.images;
         if (updateListingDto.make) updateData.make = updateListingDto.make;

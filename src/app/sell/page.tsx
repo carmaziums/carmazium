@@ -53,6 +53,8 @@ interface FormData {
     co2Emissions: string
     // Step 5 — Pricing
     price: string
+    priceMin: string
+    priceMax: string
     listingType: "CLASSIFIED" | "AUCTION" | ""
     status: "DRAFT"
 }
@@ -88,7 +90,7 @@ const INITIAL_FORM: FormData = {
     doors: "", seats: "", engineSize: "", bhp: "",
     features: [], description: "", title: "",
     ulezCompliant: null, euroStandard: "", co2Emissions: "",
-    price: "", listingType: "", status: "DRAFT",
+    price: "", priceMin: "", priceMax: "", listingType: "", status: "DRAFT",
 }
 
 const STEPS = [
@@ -170,7 +172,18 @@ export default function SellPage() {
             case 2: return !!formData.condition
             case 3: return formData.images.length > 0
             case 4: return !!(formData.mileage && formData.fuelType && formData.transmission && formData.title)
-            case 5: return !!(formData.price && formData.listingType)
+            case 5: {
+                const hasRange = formData.priceMin && formData.priceMax
+                const hasSingle = !!formData.price
+                if (!hasRange && !hasSingle) return false
+                if (hasRange) {
+                    const min = parseFloat(formData.priceMin)
+                    const max = parseFloat(formData.priceMax)
+                    if (isNaN(min) || isNaN(max) || min <= 0 || max <= 0) return false
+                    if (min >= max) return false
+                }
+                return !!formData.listingType
+            }
             default: return true
         }
     }
@@ -206,9 +219,17 @@ export default function SellPage() {
         setSubmitError(null)
 
         try {
+            const hasRange = formData.priceMin && formData.priceMax
+            const priceMin = hasRange ? parseFloat(formData.priceMin) : undefined
+            const priceMax = hasRange ? parseFloat(formData.priceMax) : undefined
+            // price = priceMin if using offer range, otherwise the single asking price
+            const displayPrice = hasRange ? parseFloat(formData.priceMin) : parseFloat(formData.price)
+
             const payload: CreateListingRequest = {
                 title: formData.title,
-                price: parseFloat(formData.price),
+                price: displayPrice,
+                priceMin,
+                priceMax,
                 mileage: parseInt(formData.mileage),
                 year: parseInt(formData.year),
                 vrm: formData.vrm,
@@ -711,16 +732,91 @@ export default function SellPage() {
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
                             <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Pricing *</h2>
 
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold uppercase text-gray-400">Asking Price (£) *</label>
-                                <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">£</span>
-                                    <Input type="number" placeholder="25000" value={formData.price}
-                                        onChange={(e) => set("price", e.target.value)}
-                                        className={`${inputCls} pl-8 text-lg`} />
-                                </div>
-                                {formData.price && <p className="text-sm text-gray-400">Display price: {formatPrice(formData.price)}</p>}
+                            {/* Pricing Mode Toggle */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => { set("priceMin", ""); set("priceMax", "") }}
+                                    className={`p-4 rounded-xl border-2 text-left transition-all ${!formData.priceMin && !formData.priceMax
+                                            ? "border-primary bg-primary/10 text-white"
+                                            : "border-white/10 bg-white/5 text-gray-400 hover:border-white/20"
+                                        }`}
+                                >
+                                    <p className="font-bold text-sm mb-1">Fixed Price</p>
+                                    <p className="text-xs opacity-70">Set a single asking price</p>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { set("price", formData.priceMin || "") }}
+                                    className={`p-4 rounded-xl border-2 text-left transition-all ${formData.priceMin || formData.priceMax
+                                            ? "border-primary bg-primary/10 text-white"
+                                            : "border-white/10 bg-white/5 text-gray-400 hover:border-white/20"
+                                        }`}
+                                >
+                                    <p className="font-bold text-sm mb-1">Offer Range</p>
+                                    <p className="text-xs opacity-70">Let buyers make offers within a range</p>
+                                </button>
                             </div>
+
+                            {/* Fixed Price Mode */}
+                            {!formData.priceMin && !formData.priceMax && (
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold uppercase text-gray-400">Asking Price (£) *</label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">£</span>
+                                        <Input type="number" placeholder="25000" value={formData.price}
+                                            onChange={(e) => set("price", e.target.value)}
+                                            className={`${inputCls} pl-8 text-lg`} />
+                                    </div>
+                                    {formData.price && <p className="text-sm text-gray-400">Display price: {formatPrice(formData.price)}</p>}
+                                </div>
+                            )}
+
+                            {/* Offer Range Mode */}
+                            {(formData.priceMin || formData.priceMax || (!formData.price && formData.listingType)) && (
+                                <>
+                                    <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
+                                        <p className="text-xs text-primary font-semibold mb-1">💡 Offer Range Mode</p>
+                                        <p className="text-xs text-gray-400">Buyers will see your price range and can submit offers within it. You choose to accept or reject each offer.</p>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-bold uppercase text-gray-400">Minimum Price (£) *</label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">£</span>
+                                                <Input type="number" placeholder="18000" value={formData.priceMin}
+                                                    onChange={(e) => set("priceMin", e.target.value)}
+                                                    className={`${inputCls} pl-8`} />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-bold uppercase text-gray-400">Maximum Price (£) *</label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">£</span>
+                                                <Input type="number" placeholder="22000" value={formData.priceMax}
+                                                    onChange={(e) => set("priceMax", e.target.value)}
+                                                    className={`${inputCls} pl-8`} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {formData.priceMin && formData.priceMax && (() => {
+                                        const min = parseFloat(formData.priceMin)
+                                        const max = parseFloat(formData.priceMax)
+                                        if (!isNaN(min) && !isNaN(max)) {
+                                            const invalid = min >= max
+                                            return (
+                                                <p className={`text-sm ${invalid ? "text-red-400" : "text-emerald-400"}`}>
+                                                    {invalid
+                                                        ? "⚠ Minimum must be less than maximum"
+                                                        : `✓ Range: ${formatPrice(formData.priceMin)} – ${formatPrice(formData.priceMax)}`
+                                                    }
+                                                </p>
+                                            )
+                                        }
+                                        return null
+                                    })()}
+                                </>
+                            )}
 
                             <div>
                                 <label className="text-sm font-bold uppercase text-gray-400 block mb-3">Listing Type *</label>
@@ -734,7 +830,7 @@ export default function SellPage() {
                                         </div>
                                         <div>
                                             <p className="font-bold text-white">Classified Listing</p>
-                                            <p className="text-sm text-gray-400">Fixed price — buyers contact you directly</p>
+                                            <p className="text-sm text-gray-400">Buyers contact you directly to negotiate</p>
                                         </div>
                                     </div>
                                 </div>

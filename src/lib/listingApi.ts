@@ -14,6 +14,9 @@ export interface CreateListingRequest {
     vrm: string
     images: string[]
     listingType: 'AUCTION' | 'CLASSIFIED'
+    // Offer price range (enables offer system)
+    priceMin?: number
+    priceMax?: number
     // Vehicle identity
     make?: string
     model?: string
@@ -120,8 +123,12 @@ export interface Listing {
     sellerId: string | null
     isFeatured: boolean
     featuredUntil: string | null
+    priceMin: string | number | null
+    priceMax: string | number | null
     createdAt: string
     updatedAt: string
+    // Latest offer on this listing (populated in detail view)
+    offers?: LatestOffer[]
 }
 
 export interface ListingsResponse {
@@ -640,6 +647,101 @@ export async function getSellerPerformance(): Promise<PerformanceStats> {
     const data = await apiClient<{ data: PerformanceStats }>('/listings/performance', {
         method: 'GET',
         cache: 'no-store',
+    })
+    return data.data
+}
+
+// ============================================================================
+// OFFERS API FUNCTIONS
+// ============================================================================
+
+export interface LatestOffer {
+    id: string
+    amount: string | number
+    status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'WITHDRAWN'
+    message: string | null
+    buyerId: string
+    createdAt: string
+}
+
+export interface Offer extends LatestOffer {
+    listingId: string
+    updatedAt: string
+    buyer?: {
+        id: string
+        firstName: string | null
+        lastName: string | null
+        email: string
+        profileImage: string | null
+    }
+    listing?: {
+        id: string
+        title: string
+        slug: string
+        images: string[]
+        price: string | number
+        priceMin: string | number | null
+        priceMax: string | number | null
+        status: string
+        make: string | null
+        model: string | null
+        year: number | null
+    }
+}
+
+export interface OffersResponse {
+    success: boolean
+    data: Offer[]
+    timestamp: string
+}
+
+/**
+ * Buyer: Submit an offer on a listing
+ */
+export async function makeOffer(
+    listingId: string,
+    amount: number,
+    message?: string,
+): Promise<Offer> {
+    const data = await apiClient<{ data: Offer }>('/offers', {
+        method: 'POST',
+        body: JSON.stringify({ listingId, amount, message }),
+    })
+    return data.data
+}
+
+/**
+ * Buyer: Get all my submitted offers
+ */
+export async function getMyOffers(): Promise<Offer[]> {
+    const data = await apiClient<OffersResponse>('/offers/my', {
+        method: 'GET',
+        cache: 'no-store',
+    })
+    return data.data
+}
+
+/**
+ * Seller: Get all offers on a specific listing
+ */
+export async function getOffersForListing(listingId: string): Promise<Offer[]> {
+    const data = await apiClient<OffersResponse>(`/offers/listing/${listingId}`, {
+        method: 'GET',
+        cache: 'no-store',
+    })
+    return data.data
+}
+
+/**
+ * Seller: Accept or reject an offer
+ */
+export async function respondToOffer(
+    offerId: string,
+    status: 'ACCEPTED' | 'REJECTED',
+): Promise<Offer> {
+    const data = await apiClient<{ data: Offer }>(`/offers/${offerId}/respond`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
     })
     return data.data
 }

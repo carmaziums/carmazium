@@ -705,6 +705,8 @@ function SearchPageContent() {
                                         key={listing.id}
                                         title={listing.title}
                                         price={formatPrice(listing.price)}
+                                        priceMin={listing.priceMin}
+                                        priceMax={listing.priceMax}
                                         image={getListingImage(listing)}
                                         href={`/buy-cars/${listing.slug}`}
                                         year={listing.year ?? undefined}
@@ -728,6 +730,8 @@ function SearchPageContent() {
                                     key={listing.id}
                                     title={listing.title}
                                     price={formatPrice(listing.price)}
+                                    priceMin={listing.priceMin}
+                                    priceMax={listing.priceMax}
                                     image={getListingImage(listing)}
                                     href={`/buy-cars/${listing.slug}`}
                                     year={listing.year ?? undefined}
