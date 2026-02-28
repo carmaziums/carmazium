@@ -151,7 +151,7 @@ export async function getUnreadCount(): Promise<number> {
 // WEBSOCKET URL HELPER
 // ============================================================================
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || process.env.NEXT_PUBLIC_API_URL || 'https://carmazium.fly.dev'
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL || process.env.NEXT_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev';
 
 export function getWebSocketUrl(): string {
     return WS_URL

@@ -22,7 +22,7 @@ export default function SignupPage() {
     const [loading, setLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium.fly.dev'
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev';
 
     // Get the base URL for email redirects
     const getBaseUrl = () => {
