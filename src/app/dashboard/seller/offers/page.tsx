@@ -9,6 +9,7 @@ import {
 import { getOffersForListing, getMyListings, respondToOffer, type Offer, type Listing } from "@/lib/listingApi"
 import Image from "next/image"
 import Link from "next/link"
+import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -179,109 +180,116 @@ export default function SellerOffersPage() {
     }
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-8">
-            {/* Toast */}
-            {toast && (
-                <div className="fixed bottom-6 right-6 z-50 bg-slate-800 border border-white/10 text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-medium animate-in slide-in-from-bottom-4">
-                    {toast}
-                </div>
-            )}
+        <div className="min-h-screen pt-20 pb-12 bg-slate-900">
+            <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
+                <DashboardSidebar role="seller" />
+                <main className="flex-1 space-y-6">
+                    <div className="max-w-4xl mx-auto">
+                        {/* Toast */}
+                        {toast && (
+                            <div className="fixed bottom-6 right-6 z-50 bg-slate-800 border border-white/10 text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-medium animate-in slide-in-from-bottom-4">
+                                {toast}
+                            </div>
+                        )}
 
-            {/* Header */}
-            <div className="mb-8">
-                <h1 className="text-2xl md:text-3xl font-bold font-heading text-white mb-1 flex items-center gap-3">
-                    <Tag className="text-primary" size={24} /> Incoming Offers
-                </h1>
-                <p className="text-gray-400 text-sm">Review and respond to buyer offers on your listings.</p>
-            </div>
-
-            {loadingListings && (
-                <div className="flex items-center justify-center py-20">
-                    <Loader2 className="animate-spin text-primary w-10 h-10" />
-                </div>
-            )}
-
-            {error && (
-                <div className="glass-card p-8 text-center">
-                    <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
-                    <p className="text-white font-bold mb-2">Failed to load listings</p>
-                    <p className="text-gray-400 text-sm">{error}</p>
-                </div>
-            )}
-
-            {!loadingListings && !error && listings.length === 0 && (
-                <div className="glass-card p-10 text-center">
-                    <Car className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                    <h2 className="text-xl font-bold text-white mb-2">No Listings Yet</h2>
-                    <p className="text-gray-400 mb-6 text-sm">Create your first listing to start receiving offers.</p>
-                    <Link href="/sell">
-                        <Button className="shadow-neon">List My Car</Button>
-                    </Link>
-                </div>
-            )}
-
-            {/* Listings list */}
-            <div className="space-y-4">
-                {listings.map(listing => {
-                    const isOpen = expanded.has(listing.id)
-                    const listingOffers = offers[listing.id] ?? []
-                    const pendingCount = listingOffers.filter(o => o.status === 'PENDING').length
-                    const image = listing.images?.[0] ?? "/assets/images/featured-sports.png"
-
-                    return (
-                        <div key={listing.id} className="glass-card overflow-hidden">
-                            {/* Listing row (clickable header) */}
-                            <button
-                                onClick={() => toggleExpand(listing.id)}
-                                className="w-full flex items-center gap-4 p-5 hover:bg-white/5 transition-colors text-left"
-                            >
-                                <div className="relative w-16 h-12 rounded-lg overflow-hidden shrink-0 bg-slate-800 border border-white/10">
-                                    <Image src={image} alt={listing.title} fill className="object-cover" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="font-bold text-white truncate">{listing.title}</p>
-                                    <p className="text-xs text-gray-400">
-                                        {listing.priceMin && listing.priceMax
-                                            ? `£${Number(listing.priceMin).toLocaleString('en-GB')} – £${Number(listing.priceMax).toLocaleString('en-GB')}`
-                                            : `£${Number(listing.price).toLocaleString('en-GB')}`}
-                                    </p>
-                                </div>
-                                {pendingCount > 0 && (
-                                    <span className="bg-primary text-white text-xs font-bold px-2.5 py-1 rounded-full">
-                                        {pendingCount} pending
-                                    </span>
-                                )}
-                                <ChevronRight size={18} className={`text-gray-500 transition-transform shrink-0 ${isOpen ? 'rotate-90' : ''}`} />
-                            </button>
-
-                            {/* Offers section */}
-                            {isOpen && (
-                                <div className="border-t border-white/10 bg-black/20">
-                                    {loadingOffers[listing.id] ? (
-                                        <div className="flex justify-center py-8">
-                                            <Loader2 className="animate-spin text-primary w-7 h-7" />
-                                        </div>
-                                    ) : listingOffers.length === 0 ? (
-                                        <div className="py-8 text-center text-gray-500 text-sm">
-                                            No offers yet on this listing.
-                                        </div>
-                                    ) : (
-                                        <div className="p-4 space-y-3">
-                                            {listingOffers.map(offer => (
-                                                <OfferRow
-                                                    key={offer.id}
-                                                    offer={offer}
-                                                    onRespond={(id, status) => handleRespond(id, listing.id, status)}
-                                                    responding={responding}
-                                                />
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                        {/* Header */}
+                        <div className="mb-8">
+                            <h1 className="text-2xl md:text-3xl font-bold font-heading text-white mb-1 flex items-center gap-3">
+                                <Tag className="text-primary" size={24} /> Incoming Offers
+                            </h1>
+                            <p className="text-gray-400 text-sm">Review and respond to buyer offers on your listings.</p>
                         </div>
-                    )
-                })}
+
+                        {loadingListings && (
+                            <div className="flex items-center justify-center py-20">
+                                <Loader2 className="animate-spin text-primary w-10 h-10" />
+                            </div>
+                        )}
+
+                        {error && (
+                            <div className="glass-card p-8 text-center">
+                                <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
+                                <p className="text-white font-bold mb-2">Failed to load listings</p>
+                                <p className="text-gray-400 text-sm">{error}</p>
+                            </div>
+                        )}
+
+                        {!loadingListings && !error && listings.length === 0 && (
+                            <div className="glass-card p-10 text-center">
+                                <Car className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                                <h2 className="text-xl font-bold text-white mb-2">No Listings Yet</h2>
+                                <p className="text-gray-400 mb-6 text-sm">Create your first listing to start receiving offers.</p>
+                                <Link href="/sell">
+                                    <Button className="shadow-neon">List My Car</Button>
+                                </Link>
+                            </div>
+                        )}
+
+                        {/* Listings list */}
+                        <div className="space-y-4">
+                            {listings.map(listing => {
+                                const isOpen = expanded.has(listing.id)
+                                const listingOffers = offers[listing.id] ?? []
+                                const pendingCount = listingOffers.filter(o => o.status === 'PENDING').length
+                                const image = listing.images?.[0] ?? "/assets/images/featured-sports.png"
+
+                                return (
+                                    <div key={listing.id} className="glass-card overflow-hidden">
+                                        {/* Listing row (clickable header) */}
+                                        <button
+                                            onClick={() => toggleExpand(listing.id)}
+                                            className="w-full flex items-center gap-4 p-5 hover:bg-white/5 transition-colors text-left"
+                                        >
+                                            <div className="relative w-16 h-12 rounded-lg overflow-hidden shrink-0 bg-slate-800 border border-white/10">
+                                                <Image src={image} alt={listing.title} fill className="object-cover" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-bold text-white truncate">{listing.title}</p>
+                                                <p className="text-xs text-gray-400">
+                                                    {listing.priceMin && listing.priceMax
+                                                        ? `£${Number(listing.priceMin).toLocaleString('en-GB')} – £${Number(listing.priceMax).toLocaleString('en-GB')}`
+                                                        : `£${Number(listing.price).toLocaleString('en-GB')}`}
+                                                </p>
+                                            </div>
+                                            {pendingCount > 0 && (
+                                                <span className="bg-primary text-white text-xs font-bold px-2.5 py-1 rounded-full">
+                                                    {pendingCount} pending
+                                                </span>
+                                            )}
+                                            <ChevronRight size={18} className={`text-gray-500 transition-transform shrink-0 ${isOpen ? 'rotate-90' : ''}`} />
+                                        </button>
+
+                                        {/* Offers section */}
+                                        {isOpen && (
+                                            <div className="border-t border-white/10 bg-black/20">
+                                                {loadingOffers[listing.id] ? (
+                                                    <div className="flex justify-center py-8">
+                                                        <Loader2 className="animate-spin text-primary w-7 h-7" />
+                                                    </div>
+                                                ) : listingOffers.length === 0 ? (
+                                                    <div className="py-8 text-center text-gray-500 text-sm">
+                                                        No offers yet on this listing.
+                                                    </div>
+                                                ) : (
+                                                    <div className="p-4 space-y-3">
+                                                        {listingOffers.map(offer => (
+                                                            <OfferRow
+                                                                key={offer.id}
+                                                                offer={offer}
+                                                                onRespond={(id, status) => handleRespond(id, listing.id, status)}
+                                                                responding={responding}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+                </main>
             </div>
         </div>
     )
