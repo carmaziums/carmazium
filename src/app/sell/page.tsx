@@ -56,7 +56,7 @@ interface FormData {
     priceMin: string
     priceMax: string
     listingType: "CLASSIFIED" | "AUCTION" | ""
-    status: "DRAFT"
+    status: "DRAFT" | "ACTIVE"
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
