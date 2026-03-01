@@ -104,6 +104,10 @@ export class ListingsService {
         const listingStatus: ListingStatus = createListingDto.status === 'ACTIVE' ? 'ACTIVE' :
             createListingDto.status === 'SOLD' ? 'SOLD' : 'DRAFT';
 
+        // Badge tier — default FREE
+        const badgeTier = createListingDto.badgeTier ?? 'FREE';
+        const isPremium = badgeTier === 'PREMIUM';
+
         const listing = await this.prisma.listing.create({
             data: {
                 title: createListingDto.title,
@@ -139,6 +143,11 @@ export class ListingsService {
                 euroStandard: createListingDto.euroStandard ?? null,
                 // Phase 4: CO2 emissions (from DVLA)
                 co2Emissions: createListingDto.co2Emissions ?? null,
+                // Phase 7: Badge tier
+                badgeTier,
+                // Premium tier → auto-activate featured boost (28 days)
+                isFeatured: isPremium,
+                featuredUntil: isPremium ? new Date(Date.now() + 28 * 24 * 60 * 60 * 1000) : null,
                 // Seller
                 sellerId: userId ?? null,
             },

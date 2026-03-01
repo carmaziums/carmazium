@@ -747,6 +747,7 @@ function SearchPageContent() {
                                         fuelType={listing.fuelType ?? undefined}
                                         bodyType={listing.bodyType ?? undefined}
                                         isFeatured={true}
+                                        badgeTier={listing.badgeTier}
                                     />
                                 ))}
                             </div>
@@ -772,6 +773,7 @@ function SearchPageContent() {
                                     fuelType={listing.fuelType ?? undefined}
                                     bodyType={listing.bodyType ?? undefined}
                                     isFeatured={listing.isFeatured}
+                                    badgeTier={listing.badgeTier}
                                 />
                             ))}
                         </div>

@@ -4,7 +4,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/Button"
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion"
 import { useRef } from "react"
-import { Calendar, Gauge, Fuel, Car } from "lucide-react"
+import { Calendar, Gauge, Fuel, Car, BadgeCheck, ShieldCheck } from "lucide-react"
 import { SellerBadge } from "@/components/ui/SellerBadge"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 
@@ -38,6 +38,7 @@ interface CarCardProps {
     sellerId?: string
     sellerScore?: number
     isFeatured?: boolean
+    badgeTier?: string | null
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -45,7 +46,7 @@ interface CarCardProps {
 export function CarCard({
     title, price, priceMin, priceMax, image, href = "#",
     year, mileage, fuelType, bodyType,
-    sellerId, sellerScore, isFeatured = false
+    sellerId, sellerScore, isFeatured = false, badgeTier
 }: CarCardProps) {
     const ref = useRef<HTMLDivElement>(null)
 
@@ -103,6 +104,18 @@ export function CarCard({
             >
                 {/* Featured Badge */}
                 {isFeatured && <FeaturedBadge />}
+
+                {/* Trust Badges Corner */}
+                {(badgeTier === 'STANDARD' || badgeTier === 'PREMIUM') && (
+                    <div className="absolute top-3 right-3 z-30 flex flex-col gap-1.5 items-end drop-shadow-md">
+                        <div className="flex items-center gap-1 bg-white/90 backdrop-blur-md text-emerald-700 text-[10px] font-bold px-2 py-1 rounded shadow-sm border border-emerald-500/30">
+                            <ShieldCheck size={12} className="text-emerald-500" /> Verified
+                        </div>
+                        <div className="flex items-center gap-1 bg-white/90 backdrop-blur-md text-blue-700 text-[10px] font-bold px-2 py-1 rounded shadow-sm border border-blue-500/30">
+                            <BadgeCheck size={12} className="text-blue-500" /> VIN Report
+                        </div>
+                    </div>
+                )}
 
                 {/* Spotlight Glow */}
                 <div className="absolute inset-0 bg-indigo-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-3xl rounded-full scale-150 mix-blend-screen" />
