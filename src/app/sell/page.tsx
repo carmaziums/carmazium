@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/Input"
 import { Textarea } from "@/components/ui/Textarea"
 import {
     Car, Camera, List, DollarSign, CheckCircle,
-    ArrowRight, ArrowLeft, Loader2, MapPin,
-    Edit, BadgeCheck, Search, LocateFixed, TrendingDown,
+    ArrowRight, ArrowLeft, Loader2, Search,
+    BadgeCheck, TrendingDown, Upload, Eye, X,
+    Shield, Star, Sparkles, Zap, MapPin, LocateFixed, Edit
 } from "lucide-react"
 import Image from "next/image"
 import { ImageUpload } from "@/components/listing/ImageUpload"
@@ -52,6 +53,7 @@ interface FormData {
     // Step 4 — Pricing
     priceMin: string
     priceMax: string
+    badgeTier: 'FREE' | 'STANDARD' | 'PREMIUM'
     status: "DRAFT" | "ACTIVE"
 }
 
@@ -79,7 +81,7 @@ const INITIAL_FORM: FormData = {
     doors: "", seats: "", engineSize: "", bhp: "",
     features: [], description: "", title: "",
     ulezCompliant: null, euroStandard: "", co2Emissions: "",
-    priceMin: "", priceMax: "", status: "DRAFT",
+    priceMin: "", priceMax: "", badgeTier: 'FREE', status: "DRAFT",
 }
 
 // ─── Valuation Engine ─────────────────────────────────────────────────────────
@@ -304,6 +306,7 @@ export default function SellPage() {
                 ulezCompliant: formData.ulezCompliant ?? undefined,
                 euroStandard: (formData.euroStandard as EuroStandardValue) || undefined,
                 co2Emissions: formData.co2Emissions ? parseInt(formData.co2Emissions) : undefined,
+                badgeTier: formData.badgeTier,
                 status: formData.status,
             }
 
@@ -845,6 +848,80 @@ export default function SellPage() {
                                 }
                                 return null
                             })()}
+
+                            {/* ── Badge Plan Cards ───────────────────────────────── */}
+                            <div className="pt-2">
+                                <h3 className="text-sm font-bold uppercase text-gray-400 mb-3 flex items-center gap-2">
+                                    <Shield size={16} className="text-primary" /> Seller Badges
+                                </h3>
+                                <p className="text-xs text-gray-500 mb-4">Boost buyer confidence with trust badges on your listing. Badges increase buyer engagement and sell rates.</p>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    {/* Free */}
+                                    <button type="button"
+                                        onClick={() => set('badgeTier', 'FREE')}
+                                        className={`relative rounded-xl border p-4 text-left transition-all ${formData.badgeTier === 'FREE'
+                                            ? 'border-primary bg-primary/10 ring-1 ring-primary/50'
+                                            : 'border-white/10 bg-white/[0.02] hover:border-white/20'
+                                            }`}
+                                    >
+                                        {formData.badgeTier === 'FREE' && <span className="absolute top-2 right-2 text-[10px] bg-primary text-black font-bold px-2 py-0.5 rounded-full">Selected</span>}
+                                        <p className="text-white font-bold text-sm mb-1">Free</p>
+                                        <p className="text-2xl font-black text-white mb-3">£0</p>
+                                        <ul className="space-y-1.5 text-xs text-gray-400">
+                                            <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Standard listing</li>
+                                            <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Offer range system</li>
+                                            <li className="flex items-center gap-1.5 text-gray-600"><X size={12} /> No trust badges</li>
+                                            <li className="flex items-center gap-1.5 text-gray-600"><X size={12} /> No featured boost</li>
+                                        </ul>
+                                    </button>
+
+                                    {/* Standard */}
+                                    <button type="button"
+                                        onClick={() => set('badgeTier', 'STANDARD')}
+                                        className={`relative rounded-xl border p-4 text-left transition-all ${formData.badgeTier === 'STANDARD'
+                                            ? 'border-blue-500 bg-blue-500/10 ring-1 ring-blue-500/50'
+                                            : 'border-white/10 bg-white/[0.02] hover:border-white/20'
+                                            }`}
+                                    >
+                                        {formData.badgeTier === 'STANDARD' && <span className="absolute top-2 right-2 text-[10px] bg-blue-500 text-white font-bold px-2 py-0.5 rounded-full">Selected</span>}
+                                        <p className="text-blue-400 font-bold text-sm mb-1 flex items-center gap-1"><Shield size={14} /> Standard</p>
+                                        <p className="text-2xl font-black text-white mb-3">£10</p>
+                                        <ul className="space-y-1.5 text-xs text-gray-400">
+                                            <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Everything in Free</li>
+                                            <li className="flex items-center gap-1.5"><BadgeCheck size={12} className="text-blue-400" /> VIN Report badge</li>
+                                            <li className="flex items-center gap-1.5"><BadgeCheck size={12} className="text-blue-400" /> Verified Seller badge</li>
+                                            <li className="flex items-center gap-1.5 text-gray-600"><X size={12} /> No featured boost</li>
+                                        </ul>
+                                    </button>
+
+                                    {/* Premium */}
+                                    <button type="button"
+                                        onClick={() => set('badgeTier', 'PREMIUM')}
+                                        className={`relative rounded-xl border p-4 text-left transition-all ${formData.badgeTier === 'PREMIUM'
+                                            ? 'border-amber-500 bg-amber-500/10 ring-1 ring-amber-500/50'
+                                            : 'border-white/10 bg-white/[0.02] hover:border-white/20'
+                                            }`}
+                                    >
+                                        <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold px-3 py-0.5 rounded-full flex items-center gap-1"><Sparkles size={10} /> Best Value</span>
+                                        {formData.badgeTier === 'PREMIUM' && <span className="absolute top-2 right-2 text-[10px] bg-amber-500 text-black font-bold px-2 py-0.5 rounded-full">Selected</span>}
+                                        <p className="text-amber-400 font-bold text-sm mb-1 mt-1 flex items-center gap-1"><Star size={14} /> Premium</p>
+                                        <p className="text-2xl font-black text-white mb-3">£25</p>
+                                        <ul className="space-y-1.5 text-xs text-gray-400">
+                                            <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Everything in Standard</li>
+                                            <li className="flex items-center gap-1.5"><Zap size={12} className="text-amber-400" /> Featured boost (28 days)</li>
+                                            <li className="flex items-center gap-1.5"><Zap size={12} className="text-amber-400" /> Priority in search results</li>
+                                            <li className="flex items-center gap-1.5"><Zap size={12} className="text-amber-400" /> Featured badge on listing</li>
+                                        </ul>
+                                    </button>
+                                </div>
+
+                                {formData.badgeTier !== 'FREE' && (
+                                    <p className="text-xs text-emerald-400 mt-3 flex items-center gap-1">
+                                        <CheckCircle size={12} /> Payment is bypassed during beta — badges are applied immediately at no charge.
+                                    </p>
+                                )}
+                            </div>
                         </div>
                     )}
 
@@ -904,14 +981,34 @@ export default function SellPage() {
 
                             {/* Pricing */}
                             <SummarySection title="Pricing" onEdit={() => goToStep(4)}>
-                                <div className="flex flex-col gap-1">
+                                <div className="flex flex-col gap-2">
                                     <p className="text-white font-black text-2xl">
                                         {formatPrice(formData.priceMin)} – {formatPrice(formData.priceMax)}
                                     </p>
                                     <p className="text-primary text-xs font-bold uppercase">Offer Range</p>
                                     {valuation && (
-                                        <p className="text-gray-500 text-xs mt-1">Estimated market value: {formatPrice(valuation.low)} – {formatPrice(valuation.high)}</p>
+                                        <p className="text-gray-500 text-xs">Estimated market value: {formatPrice(valuation.low)} – {formatPrice(valuation.high)}</p>
                                     )}
+                                    <div className="flex items-center gap-2 mt-1">
+                                        {formData.badgeTier === 'FREE' && (
+                                            <span className="text-xs bg-white/10 text-gray-400 px-2 py-0.5 rounded-md">Free Listing</span>
+                                        )}
+                                        {formData.badgeTier === 'STANDARD' && (
+                                            <>
+                                                <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-md flex items-center gap-1"><BadgeCheck size={10} /> Standard — £10</span>
+                                                <span className="text-xs bg-blue-500/10 text-blue-300 px-2 py-0.5 rounded-md">VIN Report</span>
+                                                <span className="text-xs bg-blue-500/10 text-blue-300 px-2 py-0.5 rounded-md">Verified</span>
+                                            </>
+                                        )}
+                                        {formData.badgeTier === 'PREMIUM' && (
+                                            <>
+                                                <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-md flex items-center gap-1"><Star size={10} /> Premium — £25</span>
+                                                <span className="text-xs bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded-md">VIN Report</span>
+                                                <span className="text-xs bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded-md">Verified</span>
+                                                <span className="text-xs bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded-md">Featured</span>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             </SummarySection>
 
@@ -939,7 +1036,7 @@ export default function SellPage() {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     )
 }
 

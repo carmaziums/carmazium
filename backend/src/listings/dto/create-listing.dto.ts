@@ -255,4 +255,9 @@ export class CreateListingDto {
     @IsString()
     @IsOptional()
     location?: string;
+
+    @ApiProperty({ description: 'Badge tier: FREE, STANDARD (£10), or PREMIUM (£25 + boost)', example: 'FREE', required: false, default: 'FREE' })
+    @IsString()
+    @IsOptional()
+    badgeTier?: string;
 }

@@ -39,6 +39,7 @@ export interface CreateListingRequest {
     location?: string
     co2Emissions?: number
     status?: 'DRAFT' | 'ACTIVE' | 'SOLD'
+    badgeTier?: 'FREE' | 'STANDARD' | 'PREMIUM'
 }
 
 export interface CreateListingResponse {
@@ -130,6 +131,7 @@ export interface Listing {
     sellerId: string | null
     isFeatured: boolean
     featuredUntil: string | null
+    badgeTier: string | null
     priceMin: string | number | null
     priceMax: string | number | null
     createdAt: string

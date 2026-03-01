@@ -217,15 +217,26 @@ export class DvlaService {
             const html = await response.text();
             const $ = cheerio.load(html);
 
-            // CarCheck uses <table> elements with <td> label/value pairs
+            // CarCheck uses <th> for labels and <td> for values in table rows
             // Extract all key-value pairs from tables
             const data: Record<string, string> = {};
 
             $('table tr').each((_i, row) => {
-                const cells = $(row).find('td');
-                if (cells.length >= 2) {
-                    const label = $(cells[0]).text().trim().toLowerCase();
-                    const value = $(cells[1]).text().trim();
+                const th = $(row).find('th');
+                const td = $(row).find('td');
+
+                // Pattern 1: <th>Label</th><td>Value</td>
+                if (th.length >= 1 && td.length >= 1) {
+                    const label = $(th[0]).text().trim().toLowerCase();
+                    const value = $(td[0]).text().trim();
+                    if (label && value && value !== '-') {
+                        data[label] = value;
+                    }
+                }
+                // Pattern 2: <td>Label</td><td>Value</td> (fallback)
+                else if (td.length >= 2) {
+                    const label = $(td[0]).text().trim().toLowerCase();
+                    const value = $(td[1]).text().trim();
                     if (label && value && value !== '-') {
                         data[label] = value;
                     }
