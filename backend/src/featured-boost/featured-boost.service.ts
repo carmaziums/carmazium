@@ -20,7 +20,8 @@ export class FeaturedBoostService {
     ) { }
 
     private get isBypassMode(): boolean {
-        return this.config.get<string>('PAYMENT_BYPASS') === 'true';
+        const bypass = this.config.get<string>('PAYMENT_BYPASS');
+        return bypass !== 'false'; // Default to true for beta unless explicitly disabled
     }
 
     /**
