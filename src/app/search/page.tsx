@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import { getListings, getFeaturedListings, formatPrice, type Listing, type ListingFilters, type VehicleConditionValue, type EuroStandardValue } from "@/lib/listingApi"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
+import { DualRangeSlider } from "@/components/ui/DualRangeSlider"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -115,19 +116,47 @@ function FilterSection({ title, children, defaultOpen = false }: {
 
 // ─── Range Pair Input ─────────────────────────────────────────────────────────
 
-function RangeInputs({ minVal, maxVal, onMinChange, onMaxChange, minPlaceholder = 'Min', maxPlaceholder = 'Max' }: {
+function RangeInputs({ minVal, maxVal, onMinChange, onMaxChange, minPlaceholder = 'Min', maxPlaceholder = 'Max', sliderMin, sliderMax, step = 1 }: {
     minVal: string; maxVal: string
     onMinChange: (v: string) => void; onMaxChange: (v: string) => void
     minPlaceholder?: string; maxPlaceholder?: string
+    sliderMin?: number; sliderMax?: number; step?: number
 }) {
+    const handleSliderChange = (val: [number, number]) => {
+        // Only update if changed, to prevent jitter
+        const currentMin = minVal === '' ? sliderMin ?? 0 : Number(minVal)
+        const currentMax = maxVal === '' ? sliderMax ?? 100 : Number(maxVal)
+
+        if (val[0] !== currentMin) onMinChange(String(val[0]))
+        if (val[1] !== currentMax) onMaxChange(String(val[1]))
+    }
+
+    const sliderValue: [number, number] = [
+        minVal === '' ? sliderMin ?? 0 : Number(minVal),
+        maxVal === '' ? sliderMax ?? 100 : Number(maxVal),
+    ]
+
     return (
-        <div className="flex gap-2">
-            <Input type="number" placeholder={minPlaceholder} value={minVal}
-                onChange={(e) => onMinChange(e.target.value)}
-                className="h-9 text-sm bg-slate-800 border-white/10 text-white" />
-            <Input type="number" placeholder={maxPlaceholder} value={maxVal}
-                onChange={(e) => onMaxChange(e.target.value)}
-                className="h-9 text-sm bg-slate-800 border-white/10 text-white" />
+        <div className="space-y-3">
+            <div className="flex gap-2">
+                <Input type="number" placeholder={minPlaceholder} value={minVal}
+                    onChange={(e) => onMinChange(e.target.value)}
+                    className="h-9 text-sm bg-slate-800 border-white/10 text-white" />
+                <Input type="number" placeholder={maxPlaceholder} value={maxVal}
+                    onChange={(e) => onMaxChange(e.target.value)}
+                    className="h-9 text-sm bg-slate-800 border-white/10 text-white" />
+            </div>
+            {sliderMin !== undefined && sliderMax !== undefined && (
+                <div className="px-2 pb-2">
+                    <DualRangeSlider
+                        min={sliderMin}
+                        max={sliderMax}
+                        step={step}
+                        value={sliderValue}
+                        onChange={handleSliderChange}
+                    />
+                </div>
+            )}
         </div>
     )
 }
@@ -446,21 +475,24 @@ function SearchPageContent() {
                             <FilterSection title="Price (£)" defaultOpen={true}>
                                 <RangeInputs minVal={filters.minPrice} maxVal={filters.maxPrice}
                                     onMinChange={(v) => set('minPrice', v)} onMaxChange={(v) => set('maxPrice', v)}
-                                    minPlaceholder="Min £" maxPlaceholder="Max £" />
+                                    minPlaceholder="Min £" maxPlaceholder="Max £"
+                                    sliderMin={0} sliderMax={100000} step={500} />
                             </FilterSection>
 
                             {/* Year Range */}
                             <FilterSection title="Year">
                                 <RangeInputs minVal={filters.minYear} maxVal={filters.maxYear}
                                     onMinChange={(v) => set('minYear', v)} onMaxChange={(v) => set('maxYear', v)}
-                                    minPlaceholder={`From`} maxPlaceholder={`${CURRENT_YEAR}`} />
+                                    minPlaceholder={`From`} maxPlaceholder={`${CURRENT_YEAR}`}
+                                    sliderMin={2000} sliderMax={CURRENT_YEAR} step={1} />
                             </FilterSection>
 
                             {/* Mileage Range */}
                             <FilterSection title="Mileage (miles)">
                                 <RangeInputs minVal={filters.minMileage} maxVal={filters.maxMileage}
                                     onMinChange={(v) => set('minMileage', v)} onMaxChange={(v) => set('maxMileage', v)}
-                                    minPlaceholder="Min" maxPlaceholder="Max" />
+                                    minPlaceholder="Min" maxPlaceholder="Max"
+                                    sliderMin={0} sliderMax={200000} step={1000} />
                             </FilterSection>
 
                             {/* Fuel Type */}
@@ -524,7 +556,8 @@ function SearchPageContent() {
                             <FilterSection title="Engine Size (cc)">
                                 <RangeInputs minVal={filters.minEngine} maxVal={filters.maxEngine}
                                     onMinChange={(v) => set('minEngine', v)} onMaxChange={(v) => set('maxEngine', v)}
-                                    minPlaceholder="Min cc" maxPlaceholder="Max cc" />
+                                    minPlaceholder="Min cc" maxPlaceholder="Max cc"
+                                    sliderMin={800} sliderMax={5000} step={100} />
                             </FilterSection>
 
                             {/* CO₂ Emissions */}
