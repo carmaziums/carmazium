@@ -171,7 +171,7 @@ export class DvlaService {
         }
 
         // 2. PulseCars Supabase fallback (user owns this site)
-        const pcResult = await this.pulsecarsLookup(normalised);
+        const pcResult = await this.pulsecarsLookup(normalised, vrm.trim().toUpperCase());
         if (pcResult) {
             return pcResult;
         }
@@ -224,14 +224,20 @@ export class DvlaService {
 
     // ─── PulseCars Supabase fallback ──────────────────────────────────────────
 
-    private async pulsecarsLookup(normalised: string): Promise<DvlaLookupResult | null> {
+    private async pulsecarsLookup(normalised: string, original?: string): Promise<DvlaLookupResult | null> {
         try {
             this.logger.log(`PulseCars fallback lookup for VRM: ${normalised}`);
 
             const fields = 'make,model,year,mileage,fuel_type,transmission,engine_size,color,doors,body_type,registration';
+
+            // Build an OR filter to match both "P90PNT" and "P90 PNT" (however it was stored)
+            const forms = [normalised];
+            if (original && original !== normalised) forms.push(original);
+            const orFilter = `(${forms.map(f => `registration.ilike.${f}`).join(',')})`;
+
             const url =
                 `${PC_SUPABASE_URL}/rest/v1/cars` +
-                `?registration=ilike.${encodeURIComponent(normalised)}` +
+                `?or=${encodeURIComponent(orFilter)}` +
                 `&select=${encodeURIComponent(fields)}` +
                 `&limit=1`;
 
