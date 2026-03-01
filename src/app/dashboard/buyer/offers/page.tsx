@@ -2,9 +2,11 @@
 
 import * as React from "react"
 import { getMyOffers, type Offer } from "@/lib/listingApi"
-import { Loader2, AlertTriangle, Tag, Clock, CheckCircle, XCircle, ChevronRight } from "lucide-react"
+import { Loader2, AlertTriangle, Tag, Clock, CheckCircle, XCircle, Eye } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
+import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
+import { useAuth } from "@/context/AuthContext"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -22,7 +24,7 @@ function StatusBadge({ status }: { status: Offer['status'] }) {
         WITHDRAWN: <XCircle size={11} />,
     }
     return (
-        <span className={`inline-flex items-center gap-1 border text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full ${styles[status] ?? ''}`}>
+        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${styles[status] ?? ''}`}>
             {icons[status]} {status}
         </span>
     )
@@ -31,17 +33,17 @@ function StatusBadge({ status }: { status: Offer['status'] }) {
 function StatusMessage({ status, amount }: { status: Offer['status'], amount: string | number }) {
     const formatted = `£${Number(amount).toLocaleString('en-GB')}`
     if (status === 'PENDING') return (
-        <p className="text-xs text-amber-300 mt-1">
+        <p className="text-xs text-amber-300 mt-1.5">
             ⏳ Awaiting seller response for your offer of {formatted}
         </p>
     )
     if (status === 'ACCEPTED') return (
-        <p className="text-xs text-emerald-300 mt-1">
+        <p className="text-xs text-emerald-300 mt-1.5">
             🎉 Your offer of {formatted} was accepted! Contact the seller to complete the purchase.
         </p>
     )
     if (status === 'REJECTED') return (
-        <p className="text-xs text-red-300 mt-1">
+        <p className="text-xs text-red-300 mt-1.5">
             Your offer of {formatted} was declined. You may visit the listing to make a new offer.
         </p>
     )
@@ -51,12 +53,14 @@ function StatusMessage({ status, amount }: { status: Offer['status'], amount: st
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function BuyerOffersPage() {
+    const { user, profile, loading: authLoading } = useAuth()
     const [offers, setOffers] = React.useState<Offer[]>([])
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
 
     React.useEffect(() => {
         const load = async () => {
+            if (!user) return
             try {
                 setLoading(true)
                 const data = await getMyOffers()
@@ -67,94 +71,149 @@ export default function BuyerOffersPage() {
                 setLoading(false)
             }
         }
-        load()
-    }, [])
+        if (!authLoading) {
+            load()
+        }
+    }, [user, authLoading])
+
+    if (authLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            </div>
+        )
+    }
+
+    const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "User")
 
     return (
-        <div className="max-w-3xl mx-auto px-4 py-8">
-            {/* Header */}
-            <div className="mb-8">
-                <h1 className="text-2xl md:text-3xl font-bold font-heading text-white mb-1 flex items-center gap-3">
-                    <Tag className="text-primary" size={24} /> My Offers
-                </h1>
-                <p className="text-gray-400 text-sm">Track all offers you&apos;ve submitted on listings.</p>
-            </div>
+        <div className="min-h-screen pt-20 pb-12 bg-slate-900">
+            <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
+                <DashboardSidebar role="buyer" userName={userName} userType={profile?.role ? `${profile.role} Account` : "Buyer Account"} />
+                <main className="flex-1 space-y-6">
 
-            {loading && (
-                <div className="flex items-center justify-center py-20">
-                    <Loader2 className="animate-spin text-primary w-10 h-10" />
-                </div>
-            )}
-
-            {error && (
-                <div className="glass-card p-8 text-center">
-                    <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
-                    <p className="text-white font-bold mb-2">Failed to load offers</p>
-                    <p className="text-gray-400 text-sm">{error}</p>
-                </div>
-            )}
-
-            {!loading && !error && offers.length === 0 && (
-                <div className="glass-card p-10 text-center">
-                    <Tag className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                    <h2 className="text-xl font-bold text-white mb-2">No Offers Yet</h2>
-                    <p className="text-gray-400 mb-6 text-sm">Browse listings with offer ranges and make your first offer.</p>
-                    <Link href="/search">
-                        <button className="bg-primary text-white font-bold px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors">
+                    {/* ── Header ─────────────────────────────────── */}
+                    <div className="flex justify-between items-center mb-6">
+                        <h1 className="text-3xl font-bold font-heading text-white flex items-center gap-3">
+                            <Tag className="text-primary" size={28} /> My Offers
+                        </h1>
+                        <Link href="/search" className="bg-primary text-white font-bold py-2.5 px-6 rounded-lg shadow-neon hover:scale-105 transition-all flex items-center gap-2">
                             Browse Cars
-                        </button>
-                    </Link>
-                </div>
-            )}
+                        </Link>
+                    </div>
 
-            <div className="space-y-4">
-                {offers.map(offer => {
-                    const listing = offer.listing
-                    const image = listing?.images?.[0] ?? "/assets/images/featured-sports.png"
-                    const slug = listing?.slug ?? ""
-
-                    return (
-                        <div key={offer.id} className="glass-card p-5">
-                            <div className="flex items-start gap-4">
-                                {/* Listing image */}
-                                <Link href={`/buy-cars/${slug}`} className="shrink-0">
-                                    <div className="relative w-20 h-14 rounded-lg overflow-hidden bg-slate-800 border border-white/10">
-                                        <Image src={image} alt={listing?.title ?? ""} fill className="object-cover" />
-                                    </div>
-                                </Link>
-
-                                {/* Details */}
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                                        <Link
-                                            href={`/buy-cars/${slug}`}
-                                            className="font-bold text-white text-sm hover:text-primary transition-colors truncate"
-                                        >
-                                            {listing?.title ?? "Listing"}
-                                        </Link>
-                                        <StatusBadge status={offer.status} />
-                                    </div>
-                                    <p className="text-2xl font-bold text-primary font-mono">
-                                        £{Number(offer.amount).toLocaleString('en-GB')}
-                                    </p>
-                                    <StatusMessage status={offer.status} amount={offer.amount} />
-                                    <p className="text-[10px] text-gray-600 mt-2">
-                                        Submitted {new Date(offer.createdAt).toLocaleDateString('en-GB', {
-                                            day: 'numeric', month: 'short', year: 'numeric',
-                                        })}
-                                    </p>
-                                </div>
-
-                                {/* Go to listing */}
-                                <Link href={`/buy-cars/${slug}`} className="shrink-0">
-                                    <button className="w-8 h-8 rounded-lg border border-white/10 flex items-center justify-center text-gray-500 hover:text-white hover:border-white/30 transition-colors">
-                                        <ChevronRight size={16} />
-                                    </button>
-                                </Link>
-                            </div>
+                    {/* ── Error banner ─────────────────────────────── */}
+                    {error && (
+                        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 flex items-center gap-3 text-red-400">
+                            <AlertTriangle size={20} />
+                            <span>{error}</span>
                         </div>
-                    )
-                })}
+                    )}
+
+                    {/* ── Table ────────────────────────────────────── */}
+                    <div className="glass-card overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead className="bg-slate-800/80 text-gray-400 text-xs uppercase font-bold tracking-wider">
+                                    <tr>
+                                        <th className="px-6 py-5">Vehicle</th>
+                                        <th className="px-6 py-5">Status</th>
+                                        <th className="px-6 py-5">Offer Amount</th>
+                                        <th className="px-6 py-5">Date</th>
+                                        <th className="px-6 py-5 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/5 text-white">
+                                    {loading ? (
+                                        <tr>
+                                            <td colSpan={5} className="px-6 py-16 text-center">
+                                                <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
+                                                <p className="text-gray-400 font-medium">Loading offers...</p>
+                                            </td>
+                                        </tr>
+                                    ) : offers.length === 0 && !error ? (
+                                        <tr>
+                                            <td colSpan={5} className="px-6 py-16 text-center">
+                                                <Tag className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                                                <h2 className="text-xl font-bold text-white mb-2">No Offers Yet</h2>
+                                                <p className="text-gray-400 mb-6 text-sm">Browse listings with offer ranges and make your first offer.</p>
+                                                <Link href="/search">
+                                                    <button className="bg-white/10 text-white border border-white/20 font-bold px-6 py-2.5 rounded-lg hover:bg-white/20 transition-colors">
+                                                        Browse Cars
+                                                    </button>
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        offers.map((offer) => {
+                                            const listing = offer.listing
+                                            const image = listing?.images?.[0] ?? "/assets/images/featured-sports.png"
+                                            const slug = listing?.slug ?? ""
+
+                                            return (
+                                                <tr
+                                                    key={offer.id}
+                                                    className="hover:bg-white/5 transition-colors group"
+                                                >
+                                                    {/* Vehicle */}
+                                                    <td className="px-6 py-5">
+                                                        <div className="flex items-center gap-4">
+                                                            <Link href={`/vehicle/${slug}`} className="shrink-0 relative w-16 h-12 rounded object-cover overflow-hidden bg-slate-800 border border-white/10 group-hover:border-primary/50 transition-colors">
+                                                                <Image src={image} alt={listing?.title ?? ""} fill className="object-cover" />
+                                                            </Link>
+                                                            <div>
+                                                                <Link href={`/vehicle/${slug}`} className="font-bold text-white text-[15px] hover:text-primary transition-colors block mb-1">
+                                                                    {listing?.title ?? "Listing"}
+                                                                </Link>
+                                                                <div className="text-xs text-gray-400">
+                                                                    {listing?.year} • {listing?.make} {listing?.model}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+
+                                                    {/* Status */}
+                                                    <td className="px-6 py-5">
+                                                        <StatusBadge status={offer.status} />
+                                                    </td>
+
+                                                    {/* Offer Amount */}
+                                                    <td className="px-6 py-5">
+                                                        <div className="font-mono text-lg font-bold text-white mb-1">
+                                                            £{Number(offer.amount).toLocaleString('en-GB')}
+                                                        </div>
+                                                        {listing?.price && (
+                                                            <div className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">
+                                                                ASKING: £{Number(listing.price).toLocaleString('en-GB')}
+                                                            </div>
+                                                        )}
+                                                    </td>
+
+                                                    {/* Date */}
+                                                    <td className="px-6 py-5">
+                                                        <div className="text-sm font-medium text-white">
+                                                            {new Date(offer.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                        </div>
+                                                        <div className="text-xs text-gray-500 mt-1">
+                                                            {new Date(offer.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                                                        </div>
+                                                    </td>
+
+                                                    {/* Actions */}
+                                                    <td className="px-6 py-5 text-right">
+                                                        <Link href={`/vehicle/${slug}`} className="inline-flex items-center justify-center w-10 h-10 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]" title="View Listing">
+                                                            <Eye size={18} />
+                                                        </Link>
+                                                    </td>
+                                                </tr>
+                                            )
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </main>
             </div>
         </div>
     )
