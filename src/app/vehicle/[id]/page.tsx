@@ -16,6 +16,7 @@ import {
 import { useCompare } from "@/context/CompareContext"
 import { useAuth } from "@/context/AuthContext"
 import { getListingBySlug, makeOffer, formatPrice, type Listing, type LatestOffer } from "@/lib/listingApi"
+import { useRouter } from "next/navigation"
 
 // ─── Offer Status Chip ───────────────────────────────────────────────────────
 
@@ -212,8 +213,11 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
     const [error, setError] = React.useState<string | null>(null)
     const [activeImage, setActiveImage] = React.useState(0)
     const [showOfferModal, setShowOfferModal] = React.useState(false)
+    const [showLoginModal, setShowLoginModal] = React.useState(false)
     const [myLatestOffer, setMyLatestOffer] = React.useState<LatestOffer | null>(null)
     const [offerSuccess, setOfferSuccess] = React.useState(false)
+
+    const router = useRouter()
 
     // Fetch listing by slug/id
     React.useEffect(() => {
@@ -268,6 +272,24 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
         setOfferSuccess(true)
     }
 
+    // ─── Login Modal ─────────────────────────────────────────────────────────────
+
+    const LoginModal = () => !showLoginModal ? null : (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-5" onClick={() => setShowLoginModal(false)}>
+            <div className="glass-card p-8 max-w-md w-full relative" onClick={(e) => e.stopPropagation()}>
+                <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-6 text-primary shadow-neon">
+                    <CarIcon size={40} />
+                </div>
+                <h2 className="text-2xl font-bold font-heading mb-3 text-white text-center">Sign In to Make an Offer</h2>
+                <p className="text-gray-400 mb-6 text-center text-sm">Create an account or log in to negotiate safely with the seller.</p>
+                <div className="space-y-3">
+                    <Button onClick={() => { setShowLoginModal(false); router.push(`/auth/login?redirect=/vehicle/${id}`) }} className="w-full shadow-neon">Log In</Button>
+                    <Button variant="outline" className="w-full border-white/10 text-gray-400 hover:text-white" onClick={() => { setShowLoginModal(false); router.push(`/auth/signup?redirect=/vehicle/${id}`) }}>Create Account</Button>
+                </div>
+            </div>
+        </div>
+    )
+
     // ─── Loading ─────────────────────────────────────────────────────────────
 
     if (loading) return (
@@ -296,6 +318,8 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
     return (
         <div className="min-h-screen bg-slate-900 pt-24 pb-12 relative">
             <div className="fixed inset-0 bg-gradient-to-br from-[#0f172a] to-[#1e293b] -z-10" />
+
+            <LoginModal />
 
             {/* Offer Modal */}
             {showOfferModal && (
@@ -497,7 +521,10 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                         <>
                                             <Button
                                                 className="w-full py-6 text-lg shadow-neon"
-                                                onClick={() => setShowOfferModal(true)}
+                                                onClick={() => {
+                                                    if (!user) setShowLoginModal(true)
+                                                    else setShowOfferModal(true)
+                                                }}
                                                 disabled={myLatestOffer?.status === 'PENDING' || myLatestOffer?.status === 'ACCEPTED'}
                                             >
                                                 {myLatestOffer?.status === 'PENDING'
