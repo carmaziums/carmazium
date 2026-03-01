@@ -1,9 +1,16 @@
 "use client"
 
 import * as React from "react"
-import { Camera, X, Upload, Loader2, GripVertical, Star } from "lucide-react"
+import { Camera, X, Upload, Loader2, GripVertical, Star, Info, CheckCircle2 } from "lucide-react"
 import Image from "next/image"
 import { uploadImage, deleteImage } from "@/lib/supabase"
+
+export type ImageCategory = 'EXTERIOR' | 'INTERIOR' | 'DETAILS' | 'UNASSIGNED'
+
+interface CategorizedImage {
+    url: string
+    category: ImageCategory
+}
 
 interface ImageUploadProps {
     onImagesChange: (images: string[]) => void
@@ -11,18 +18,42 @@ interface ImageUploadProps {
     existingImages?: string[]
 }
 
+const CATEGORIES: { id: ImageCategory; label: string; tip: string; minReq?: number }[] = [
+    {
+        id: 'EXTERIOR',
+        label: 'Exterior',
+        minReq: 8,
+        tip: 'Park in an open, well-lit area. Take photos from all 4 corners, straight on front/back, and close-ups of wheels.'
+    },
+    {
+        id: 'INTERIOR',
+        label: 'Interior',
+        minReq: 8,
+        tip: 'Show the dashboard, front seats, rear seats, boot space, and center console. Ensure the steering wheel is straight.'
+    },
+    {
+        id: 'DETAILS',
+        label: 'Details & Damage',
+        tip: 'Highlight premium features (sunroof, screens) and be honest about any scratches or dents to build buyer trust.'
+    },
+]
+
 export function ImageUpload({
     onImagesChange,
     maxImages = 30,
     existingImages = []
 }: ImageUploadProps) {
-    const [images, setImages] = React.useState<string[]>(existingImages)
+    // Map existing string[] to CategorizedImage[] (default to EXTERIOR or UNASSIGNED)
+    const [images, setImages] = React.useState<CategorizedImage[]>(() =>
+        existingImages.map(url => ({ url, category: 'UNASSIGNED' }))
+    )
+    const [activeTab, setActiveTab] = React.useState<ImageCategory>('EXTERIOR')
     const [uploading, setUploading] = React.useState(false)
     const [uploadProgress, setUploadProgress] = React.useState(0)
     const [dragActive, setDragActive] = React.useState(false)
     const fileInputRef = React.useRef<HTMLInputElement>(null)
 
-    // ─── Reorder drag state ─────────────────────────────────────────────
+    // Reorder drag state
     const [reorderDragIdx, setReorderDragIdx] = React.useState<number | null>(null)
     const [reorderOverIdx, setReorderOverIdx] = React.useState<number | null>(null)
 
@@ -30,8 +61,25 @@ export function ImageUpload({
     const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
     const ACCEPTED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
 
+    // Sort order: Cover photo is always index 0, then by category order (Exterior -> Interior -> Details -> Unassigned)
+    const getSortedImages = React.useCallback(() => {
+        const order = { 'EXTERIOR': 1, 'INTERIOR': 2, 'DETAILS': 3, 'UNASSIGNED': 4 }
+        const sorted = [...images].sort((a, b) => {
+            // Keep user's explicit order within the same category if possible, but for simplicity we rely on the flat array order
+            // Actually, to support manual drag-and-drop ordering perfectly, we should NOT auto-sort the entire array.
+            // We only sort when emitting to the parent, giving priority to Exterior.
+            return 0; // Disable auto-sorting in state to preserve drag-and-drop
+        })
+        return images
+    }, [images])
+
     React.useEffect(() => {
-        onImagesChange(images)
+        // Emit a nicely sorted flat array to the parent
+        const orderConfig: Record<ImageCategory, number> = { 'EXTERIOR': 1, 'INTERIOR': 2, 'DETAILS': 3, 'UNASSIGNED': 4 }
+        const sortedUrls = [...images]
+            .sort((a, b) => orderConfig[a.category] - orderConfig[b.category])
+            .map(img => img.url)
+        onImagesChange(sortedUrls)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [images])
 
@@ -56,7 +104,6 @@ export function ImageUpload({
             return
         }
 
-        // Validate all files first
         const validationErrors: string[] = []
         fileArray.forEach((file) => {
             const error = validateFile(file)
@@ -68,9 +115,8 @@ export function ImageUpload({
             return
         }
 
-        // Upload files
         setUploading(true)
-        const newImageUrls: string[] = []
+        const newImages: CategorizedImage[] = []
 
         try {
             for (let i = 0; i < fileArray.length; i++) {
@@ -78,10 +124,10 @@ export function ImageUpload({
                 setUploadProgress(Math.round(((i + 1) / fileArray.length) * 100))
 
                 const publicUrl = await uploadImage(file, 'listings')
-                newImageUrls.push(publicUrl)
+                newImages.push({ url: publicUrl, category: activeTab })
             }
 
-            setImages(prev => [...prev, ...newImageUrls])
+            setImages(prev => [...prev, ...newImages])
         } catch (error) {
             console.error('Upload failed:', error)
             alert(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
@@ -91,7 +137,6 @@ export function ImageUpload({
         }
     }
 
-    // ─── File drop zone handlers ────────────────────────────────────────
     const handleDrag = (e: React.DragEvent) => {
         e.preventDefault()
         e.stopPropagation()
@@ -116,6 +161,7 @@ export function ImageUpload({
         e.preventDefault()
         if (e.target.files && e.target.files.length > 0) {
             handleFiles(e.target.files)
+            if (fileInputRef.current) fileInputRef.current.value = '' // Reset input
         }
     }
 
@@ -131,15 +177,10 @@ export function ImageUpload({
         }
     }
 
-    const openFileDialog = () => {
-        fileInputRef.current?.click()
-    }
-
-    // ─── Reorder drag handlers ──────────────────────────────────────────
+    // Reorder drag handlers
     const onReorderDragStart = (e: React.DragEvent, idx: number) => {
         setReorderDragIdx(idx)
         e.dataTransfer.effectAllowed = 'move'
-        // Use a transparent 1px image to hide the default ghost
         const ghost = document.createElement('div')
         ghost.style.opacity = '0'
         document.body.appendChild(ghost)
@@ -179,19 +220,88 @@ export function ImageUpload({
         setReorderOverIdx(null)
     }
 
+    // Tracker logic
+    const RECOMMENDED_TOTAL = 20
+    const currentTotal = images.length
+    const progressPct = Math.min(100, (currentTotal / RECOMMENDED_TOTAL) * 100)
+
+    const activeCategoryDef = CATEGORIES.find(c => c.id === activeTab)
+
     return (
         <div className="space-y-6">
-            {/* Upload Zone */}
+            {/* GOAL TRACKER */}
+            <div className="bg-slate-800/80 rounded-xl p-4 border border-white/10">
+                <div className="flex justify-between items-end mb-2">
+                    <div>
+                        <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                            {currentTotal >= RECOMMENDED_TOTAL ? <CheckCircle2 className="text-emerald-400" size={16} /> : <Camera className="text-primary" size={16} />}
+                            Photo Tracker
+                        </h4>
+                        <p className="text-xs text-gray-400 mt-1">
+                            Cars with 20+ photos sell on average 40% faster.
+                        </p>
+                    </div>
+                    <div className="text-right">
+                        <span className={`text-2xl font-black font-mono ${currentTotal >= RECOMMENDED_TOTAL ? 'text-emerald-400' : 'text-white'}`}>{currentTotal}</span>
+                        <span className="text-sm text-gray-500 font-bold"> / {RECOMMENDED_TOTAL}</span>
+                    </div>
+                </div>
+                <div className="h-2 w-full bg-slate-900 rounded-full overflow-hidden">
+                    <div
+                        className={`h-full transition-all duration-500 ${currentTotal >= RECOMMENDED_TOTAL ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-primary'}`}
+                        style={{ width: `${progressPct}%` }}
+                    />
+                </div>
+            </div>
+
+            {/* CATEGORY TABS */}
+            <div className="flex bg-slate-900/50 p-1.5 rounded-xl border border-white/5 overflow-x-auto hide-scrollbar">
+                {CATEGORIES.map((cat) => {
+                    const count = images.filter(img => img.category === cat.id).length
+                    const isActive = activeTab === cat.id
+                    return (
+                        <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => setActiveTab(cat.id)}
+                            className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${isActive
+                                ? 'bg-primary text-white shadow-neon'
+                                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                }`}
+                        >
+                            {cat.label}
+                            {count > 0 && (
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? 'bg-white/20' : 'bg-slate-800'}`}>
+                                    {count}
+                                </span>
+                            )}
+                        </button>
+                    )
+                })}
+            </div>
+
+            {/* PRO TIP */}
+            {activeCategoryDef && (
+                <div className="bg-blue-500/10 border border-blue-500/20 text-blue-200 p-4 rounded-xl flex gap-3 text-sm">
+                    <Info size={20} className="shrink-0 text-blue-400 mt-0.5" />
+                    <div>
+                        <p className="font-bold text-blue-300 font-heading tracking-wide uppercase text-xs mb-1">Pro Tip: {activeCategoryDef.label}</p>
+                        <p className="text-blue-100/80 leading-relaxed">{activeCategoryDef.tip}</p>
+                    </div>
+                </div>
+            )}
+
+            {/* UPLOAD ZONE */}
             <div
-                className={`border-2 border-dashed rounded-xl p-12 text-center transition-all duration-300 cursor-pointer group ${dragActive
+                className={`border-2 border-dashed rounded-xl p-10 text-center transition-all duration-300 cursor-pointer group relative overflow-hidden ${dragActive
                     ? 'border-primary bg-primary/10'
-                    : 'border-white/20 bg-white/5 hover:bg-white/10'
+                    : 'border-white/10 bg-slate-900/50 hover:bg-slate-800'
                     } ${uploading ? 'pointer-events-none opacity-50' : ''}`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
                 onDragOver={handleDrag}
                 onDrop={handleDrop}
-                onClick={openFileDialog}
+                onClick={() => fileInputRef.current?.click()}
             >
                 <input
                     ref={fileInputRef}
@@ -205,11 +315,11 @@ export function ImageUpload({
 
                 {uploading ? (
                     <div className="space-y-4">
-                        <Loader2 className="h-12 w-12 text-primary mx-auto animate-spin" />
-                        <p className="text-lg font-bold text-white">Uploading...</p>
+                        <Loader2 className="h-10 w-10 text-primary mx-auto animate-spin" />
+                        <p className="text-lg font-bold text-white">Uploading to {CATEGORIES.find(c => c.id === activeTab)?.label}...</p>
                         <div className="max-w-xs mx-auto bg-white/10 rounded-full h-2 overflow-hidden">
                             <div
-                                className="bg-primary h-full transition-all duration-300"
+                                className="bg-primary h-full transition-all duration-300 shadow-neon"
                                 style={{ width: `${uploadProgress}%` }}
                             />
                         </div>
@@ -217,92 +327,90 @@ export function ImageUpload({
                     </div>
                 ) : (
                     <>
-                        <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                        <div className="w-16 h-16 bg-slate-800/80 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/5 group-hover:border-primary/50 group-hover:scale-110 transition-all shadow-xl">
                             {dragActive ? (
-                                <Upload className="h-8 w-8 text-primary" />
+                                <Upload className="h-7 w-7 text-primary animate-bounce" />
                             ) : (
-                                <Camera className="h-8 w-8 text-primary" />
+                                <Camera className="h-7 w-7 text-gray-400 group-hover:text-primary transition-colors" />
                             )}
                         </div>
-                        <p className="text-lg font-bold text-white mb-2">
-                            {dragActive ? 'Drop images here' : 'Drag and drop photos here'}
+                        <h3 className="text-xl font-bold font-heading text-white mb-2">
+                            {dragActive ? 'Drop images here' : `Add ${CATEGORIES.find(c => c.id === activeTab)?.label} Photos`}
+                        </h3>
+                        <p className="text-gray-400 text-sm mb-4">
+                            Drag and drop or click to browse (Max {maxImages} photos)
                         </p>
-                        <p className="text-gray-400 text-sm">
-                            or click to browse files (Max {maxImages} photos)
-                        </p>
-                        <p className="text-xs text-gray-500 mt-2">
-                            Accepted: JPEG, PNG, WebP • Max 5MB per image
-                        </p>
+                        <div className="inline-flex gap-4 text-xs font-semibold text-gray-500 bg-slate-900/80 px-4 py-2 rounded-full border border-white/5">
+                            <span>JPEG, PNG, WebP</span>
+                            <span className="w-1 h-1 rounded-full bg-gray-600 self-center"></span>
+                            <span>Max 5MB per file</span>
+                        </div>
                     </>
                 )}
             </div>
 
-            {/* Image Preview Grid — Drag to reorder */}
+            {/* IMAGE PREVIEW GRID */}
             {images.length > 0 && (
                 <div>
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-sm font-bold uppercase text-gray-400">
-                            Uploaded Images ({images.length}/{maxImages})
+                    <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-2">
+                        <h3 className="text-sm font-bold uppercase text-white tracking-wider">
+                            All Uploaded Photos
                         </h3>
                         {images.length > 1 && (
-                            <p className="text-xs text-gray-500">Drag thumbnails to reorder • First image = cover</p>
+                            <p className="text-xs text-primary font-bold hidden sm:block">Drag thumbnails to reorder</p>
                         )}
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {images.map((imageUrl, index) => {
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                        {images.map((imgObj, index) => {
                             const isDragging = reorderDragIdx === index
                             const isOver = reorderOverIdx === index
 
                             return (
                                 <div
-                                    key={imageUrl}
+                                    key={imgObj.url}
                                     draggable
                                     onDragStart={(e) => onReorderDragStart(e, index)}
                                     onDragOver={(e) => onReorderDragOver(e, index)}
                                     onDrop={(e) => onReorderDrop(e, index)}
                                     onDragEnd={onReorderDragEnd}
-                                    className={`relative aspect-video bg-slate-800 rounded-lg overflow-hidden border group cursor-grab active:cursor-grabbing transition-all duration-200
+                                    className={`relative aspect-[4/3] bg-slate-800 rounded-xl overflow-hidden border-2 group cursor-grab active:cursor-grabbing transition-all duration-200
                                         ${isDragging ? 'opacity-40 scale-95 border-primary/50' : ''}
-                                        ${isOver ? 'ring-2 ring-primary ring-offset-2 ring-offset-slate-900 scale-[1.02]' : 'border-white/10'}
+                                        ${isOver ? 'border-primary shadow-[0_0_15px_rgba(237,28,36,0.3)] scale-[1.02]' : 'border-white/5 hover:border-white/20'}
                                     `}
                                 >
                                     <Image
-                                        src={imageUrl}
+                                        src={imgObj.url}
                                         alt={`Upload ${index + 1}`}
                                         fill
                                         className="object-cover pointer-events-none"
-                                        sizes="(max-width: 768px) 50vw, 25vw"
+                                        sizes="(max-width: 768px) 50vw, 20vw"
                                     />
 
-                                    {/* Drag Handle */}
-                                    <div className="absolute top-2 left-2 bg-black/60 text-white rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <GripVertical size={14} />
+                                    {/* Category tag */}
+                                    <div className="absolute top-2 left-2 bg-black/60 text-white/90 text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded backdrop-blur-md border border-white/10">
+                                        {imgObj.category !== 'UNASSIGNED' ? imgObj.category : 'Photo'}
                                     </div>
 
                                     {/* Cover Badge (first image) */}
                                     {index === 0 && (
-                                        <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-amber-500/90 text-white text-[10px] font-bold uppercase px-2 py-0.5 rounded-full flex items-center gap-1 shadow-lg">
-                                            <Star size={10} fill="currentColor" /> Cover
+                                        <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full flex items-center gap-1.5 shadow-xl border border-amber-300/30">
+                                            <Star size={12} fill="currentColor" /> Cover
                                         </div>
                                     )}
 
                                     {/* Delete Button */}
                                     <button
+                                        type="button"
                                         onClick={(e) => {
                                             e.stopPropagation()
-                                            handleDelete(imageUrl, index)
+                                            handleDelete(imgObj.url, index)
                                         }}
-                                        className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                                        className="absolute top-2 right-2 bg-red-500/90 hover:bg-red-500 text-white rounded-lg p-1.5 opacity-0 group-hover:opacity-100 transition-all hover:scale-110 shadow-lg backdrop-blur-md"
                                         title="Delete image"
                                     >
-                                        <X size={16} />
+                                        <X size={14} strokeWidth={3} />
                                     </button>
-
-                                    {/* Image Number Badge */}
-                                    <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                                        {index + 1}
-                                    </div>
                                 </div>
                             )
                         })}

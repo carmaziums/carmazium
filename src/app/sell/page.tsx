@@ -571,7 +571,7 @@ export default function SellPage() {
                     {currentStep === 3 && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
                             <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Photos *</h2>
-                            <p className="text-sm text-gray-400">Add up to 30 photos. Include interior, exterior, and any notable details.</p>
+                            <p className="text-sm text-gray-400">Aim for at least 20 photos for the best results. Organize them by selecting the relevant category below.</p>
                             <ImageUpload
                                 onImagesChange={(imgs) => set("images", imgs)}
                                 maxImages={30}
@@ -738,8 +738,8 @@ export default function SellPage() {
                                     type="button"
                                     onClick={() => { set("priceMin", ""); set("priceMax", "") }}
                                     className={`p-4 rounded-xl border-2 text-left transition-all ${!formData.priceMin && !formData.priceMax
-                                            ? "border-primary bg-primary/10 text-white"
-                                            : "border-white/10 bg-white/5 text-gray-400 hover:border-white/20"
+                                        ? "border-primary bg-primary/10 text-white"
+                                        : "border-white/10 bg-white/5 text-gray-400 hover:border-white/20"
                                         }`}
                                 >
                                     <p className="font-bold text-sm mb-1">Fixed Price</p>
@@ -749,8 +749,8 @@ export default function SellPage() {
                                     type="button"
                                     onClick={() => { set("price", formData.priceMin || "") }}
                                     className={`p-4 rounded-xl border-2 text-left transition-all ${formData.priceMin || formData.priceMax
-                                            ? "border-primary bg-primary/10 text-white"
-                                            : "border-white/10 bg-white/5 text-gray-400 hover:border-white/20"
+                                        ? "border-primary bg-primary/10 text-white"
+                                        : "border-white/10 bg-white/5 text-gray-400 hover:border-white/20"
                                         }`}
                                 >
                                     <p className="font-bold text-sm mb-1">Offer Range</p>
