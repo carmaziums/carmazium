@@ -84,7 +84,7 @@ export interface DvlaLookupResult {
     transmission?: string
     bodyType?: string
     doors?: number
-    dataSource?: 'DVLA' | 'PULSECARS'
+    dataSource?: 'DVLA' | 'CARCHECK'
 }
 
 export async function dvlaLookup(vrm: string): Promise<DvlaLookupResult> {
