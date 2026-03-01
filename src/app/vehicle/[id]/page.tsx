@@ -81,11 +81,11 @@ function OfferModal({
 
     return (
         <div
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-5"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex justify-center overflow-y-auto p-4 sm:p-5"
             onClick={onClose}
         >
             <div
-                className="glass-card p-8 max-w-md w-full relative"
+                className="glass-card p-6 sm:p-8 max-w-md w-full relative my-auto h-fit"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Glow accent */}
@@ -275,8 +275,8 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
     // ─── Login Modal ─────────────────────────────────────────────────────────────
 
     const LoginModal = () => !showLoginModal ? null : (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-5" onClick={() => setShowLoginModal(false)}>
-            <div className="glass-card p-8 max-w-md w-full relative" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex justify-center overflow-y-auto p-4 sm:p-5" onClick={() => setShowLoginModal(false)}>
+            <div className="glass-card p-8 max-w-md w-full relative my-auto h-fit" onClick={(e) => e.stopPropagation()}>
                 <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-6 text-primary shadow-neon">
                     <CarIcon size={40} />
                 </div>
