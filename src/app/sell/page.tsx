@@ -6,15 +6,15 @@ import { Input } from "@/components/ui/Input"
 import { Textarea } from "@/components/ui/Textarea"
 import {
     Car, Camera, List, DollarSign, CheckCircle,
-    ArrowRight, ArrowLeft, Loader2, MapPin, ShieldCheck,
-    Edit, BadgeCheck, AlertTriangle, Search, LocateFixed,
+    ArrowRight, ArrowLeft, Loader2, MapPin,
+    Edit, BadgeCheck, Search, LocateFixed, TrendingDown,
 } from "lucide-react"
 import Image from "next/image"
 import { ImageUpload } from "@/components/listing/ImageUpload"
 import {
     createListing, dvlaLookup, formatPrice,
     type CreateListingRequest, type BodyTypeValue,
-    type VehicleConditionValue, type EuroStandardValue,
+    type EuroStandardValue,
 } from "@/lib/listingApi"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { useAuth } from "@/context/AuthContext"
@@ -31,11 +31,9 @@ interface FormData {
     year: string
     bodyType: BodyTypeValue | ""
     location: string
-    // Step 2 — Condition
-    condition: VehicleConditionValue | ""
-    // Step 3 — Media
+    // Step 2 — Media
     images: string[]
-    // Step 4 — Technical Specs
+    // Step 3 — Technical Specs
     mileage: string
     fuelType: string
     transmission: string
@@ -51,29 +49,13 @@ interface FormData {
     ulezCompliant: boolean | null
     euroStandard: EuroStandardValue | ""
     co2Emissions: string
-    // Step 5 — Pricing
-    price: string
+    // Step 4 — Pricing
     priceMin: string
     priceMax: string
-    listingType: "CLASSIFIED" | "AUCTION" | ""
     status: "DRAFT" | "ACTIVE"
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const STANDARD_CONDITIONS: { value: VehicleConditionValue; label: string; desc: string; color: string }[] = [
-    { value: "EXCELLENT", label: "Excellent", desc: "Showroom condition, near perfect", color: "text-emerald-400 border-emerald-500/40 bg-emerald-500/10" },
-    { value: "GOOD", label: "Good", desc: "Well maintained, minor wear", color: "text-blue-400 border-blue-500/40 bg-blue-500/10" },
-    { value: "FAIR", label: "Fair", desc: "Visible wear, fully functional", color: "text-amber-400 border-amber-500/40 bg-amber-500/10" },
-    { value: "POOR", label: "Poor", desc: "Significant wear or defects", color: "text-red-400 border-red-500/40 bg-red-500/10" },
-]
-
-const CAT_CONDITIONS: { value: VehicleConditionValue; label: string; desc: string }[] = [
-    { value: "CAT_S", label: "CAT S", desc: "Structural damage — repaired, can be re-registered" },
-    { value: "CAT_N", label: "CAT N", desc: "Non-structural damage — repaired, can be re-registered" },
-    { value: "CAT_C", label: "CAT C", desc: "Structural damage — not repaired (write-off)" },
-    { value: "CAT_D", label: "CAT D", desc: "Non-structural damage — not repaired (write-off)" },
-]
 
 const PRESET_FEATURES = [
     "Navigation", "Leather Seats", "Heated Seats", "Sunroof",
@@ -82,25 +64,96 @@ const PRESET_FEATURES = [
     "LED Headlights", "Alloy Wheels", "Tow Bar",
 ]
 
+const STEPS = [
+    { id: 1, icon: Car, title: "Identity" },
+    { id: 2, icon: Camera, title: "Media" },
+    { id: 3, icon: List, title: "Specs" },
+    { id: 4, icon: DollarSign, title: "Pricing" },
+    { id: 5, icon: CheckCircle, title: "Review" },
+]
+
 const INITIAL_FORM: FormData = {
     vrm: "", vin: "", make: "", model: "", year: "", bodyType: "", location: "",
-    condition: "",
     images: [],
     mileage: "", fuelType: "", transmission: "", color: "",
     doors: "", seats: "", engineSize: "", bhp: "",
     features: [], description: "", title: "",
     ulezCompliant: null, euroStandard: "", co2Emissions: "",
-    price: "", priceMin: "", priceMax: "", listingType: "", status: "DRAFT",
+    priceMin: "", priceMax: "", status: "DRAFT",
 }
 
-const STEPS = [
-    { id: 1, icon: Car, title: "Identity" },
-    { id: 2, icon: ShieldCheck, title: "Condition" },
-    { id: 3, icon: Camera, title: "Media" },
-    { id: 4, icon: List, title: "Specs" },
-    { id: 5, icon: DollarSign, title: "Pricing" },
-    { id: 6, icon: CheckCircle, title: "Review" },
-]
+// ─── Valuation Engine ─────────────────────────────────────────────────────────
+// Based on UK market data: Motorway's "How Much Does Mileage Affect Car Value?"
+// Key factors: age-tiered depreciation, mileage vs UK average (8k mi/yr), fuel type
+
+const BASE_VALUES: Record<string, number> = {
+    "PORSCHE": 75000, "LAND ROVER": 58000, "AUDI": 46000,
+    "BMW": 46000, "MERCEDES": 46000, "MERCEDES-BENZ": 46000,
+    "LEXUS": 42000, "JAGUAR": 40000, "VOLVO": 36000,
+    "VOLKSWAGEN": 32000, "TOYOTA": 30000, "HONDA": 28000,
+    "NISSAN": 26000, "FORD": 26000, "VAUXHALL": 24000,
+    "HYUNDAI": 24000, "KIA": 24000, "SKODA": 26000,
+    "SEAT": 23000, "MAZDA": 27000, "MINI": 28000,
+    "FIAT": 20000, "RENAULT": 21000, "PEUGEOT": 21000,
+    "CITROËN": 20000, "CITROEN": 20000,
+}
+
+const FUEL_MULTIPLIERS: Record<string, number> = {
+    "ELECTRIC": 1.10,
+    "PLUGIN_HYBRID": 1.05,
+    "HYBRID": 1.03,
+    "PETROL": 1.00,
+    "DIESEL": 0.95,
+}
+
+/**
+ * Returns { low, mid, high } estimated values.
+ * Age-tiered depreciation:
+ *   Year 1: -20%, Years 2-3: -15%/yr, Years 4-7: -10%/yr, 8+: -7%/yr
+ * Mileage: UK average = 8,000 mi/yr.
+ *   Every 10k above average: -6%; every 10k below average: +3% (capped at +20%)
+ */
+function estimateValue(make: string, year: string, mileage: string, fuelType: string) {
+    const base = BASE_VALUES[make.toUpperCase()] ?? 28000
+    const currentYear = new Date().getFullYear()
+    const age = Math.max(0, currentYear - Number(year))
+    const miles = Number(mileage)
+
+    // Age-tiered compound depreciation
+    let retained = 1.0
+    for (let y = 1; y <= age; y++) {
+        if (y === 1) retained *= 0.80
+        else if (y <= 3) retained *= 0.85
+        else if (y <= 7) retained *= 0.90
+        else retained *= 0.93
+    }
+
+    // Mileage deviation from UK average (8k mi/yr)
+    const avgMiles = age * 8000
+    const excessMiles = miles - avgMiles
+    // Every 10,000 mi above avg = -6%; below avg = +3%, capped at +20%
+    const mileageAdjustment = excessMiles >= 0
+        ? Math.max(0.50, 1 - (excessMiles / 10000) * 0.06)
+        : Math.min(1.20, 1 + (Math.abs(excessMiles) / 10000) * 0.03)
+
+    // Fuel type modifier
+    const fuelMult = FUEL_MULTIPLIERS[fuelType.toUpperCase()] ?? 1.0
+
+    const mid = Math.max(500, Math.round((base * retained * mileageAdjustment * fuelMult) / 100) * 100)
+    const low = Math.round(mid * 0.93 / 100) * 100
+    const high = Math.round(mid * 1.07 / 100) * 100
+
+    // Depreciation factors for display
+    const ageDropPct = Math.round((1 - retained) * 100)
+    const mileageDropPct = excessMiles > 0
+        ? Math.round(Math.min(50, (excessMiles / 10000) * 6))
+        : 0
+    const mileageBonusPct = excessMiles < 0
+        ? Math.round(Math.min(20, (Math.abs(excessMiles) / 10000) * 3))
+        : 0
+
+    return { low, mid, high, ageDropPct, mileageDropPct, mileageBonusPct, avgMiles }
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -135,13 +188,18 @@ export default function SellPage() {
     const [formData, setFormData] = React.useState<FormData>(INITIAL_FORM)
     const [sellingMethod, setSellingMethod] = React.useState<"list" | null>(null)
     const [showLoginModal, setShowLoginModal] = React.useState(false)
-    const [showCatSection, setShowCatSection] = React.useState(false)
     const [isSubmitting, setIsSubmitting] = React.useState(false)
     const [submitError, setSubmitError] = React.useState<string | null>(null)
     const [dvlaLoading, setDvlaLoading] = React.useState(false)
     const [dvlaError, setDvlaError] = React.useState<string | null>(null)
     const [dvlaSuccess, setDvlaSuccess] = React.useState(false)
     const [geoLoading, setGeoLoading] = React.useState(false)
+
+    // Estimated value — derived from make, year, mileage, fuelType
+    const valuation = React.useMemo(() => {
+        if (!formData.make || !formData.year || !formData.mileage) return null
+        return estimateValue(formData.make, formData.year, formData.mileage, formData.fuelType)
+    }, [formData.make, formData.year, formData.mileage, formData.fuelType])
 
     const isAuthenticated = !!user && !!profile
     const isEmailVerified = !!user?.email_confirmed_at
@@ -169,20 +227,16 @@ export default function SellPage() {
     const validateStep = (): boolean => {
         switch (currentStep) {
             case 1: return !!(formData.vrm && formData.make && formData.model && formData.year)
-            case 2: return !!formData.condition
-            case 3: return formData.images.length > 0
-            case 4: return !!(formData.mileage && formData.fuelType && formData.transmission && formData.title)
-            case 5: {
+            case 2: return formData.images.length > 0
+            case 3: return !!(formData.mileage && formData.fuelType && formData.transmission && formData.title)
+            case 4: {
                 const hasRange = formData.priceMin && formData.priceMax
-                const hasSingle = !!formData.price
-                if (!hasRange && !hasSingle) return false
-                if (hasRange) {
-                    const min = parseFloat(formData.priceMin)
-                    const max = parseFloat(formData.priceMax)
-                    if (isNaN(min) || isNaN(max) || min <= 0 || max <= 0) return false
-                    if (min >= max) return false
-                }
-                return !!formData.listingType
+                if (!hasRange) return false
+                const min = parseFloat(formData.priceMin)
+                const max = parseFloat(formData.priceMax)
+                if (isNaN(min) || isNaN(max) || min <= 0 || max <= 0) return false
+                if (min >= max) return false
+                return true
             }
             default: return true
         }
@@ -193,7 +247,7 @@ export default function SellPage() {
             alert("Please fill in all required fields before proceeding.")
             return
         }
-        setCurrentStep(prev => Math.min(prev + 1, 6))
+        setCurrentStep(prev => Math.min(prev + 1, 5))
     }
     const handleBack = () => setCurrentStep(prev => Math.max(prev - 1, 1))
     const goToStep = (n: number) => setCurrentStep(n)
@@ -206,7 +260,6 @@ export default function SellPage() {
             return
         }
         setSellingMethod("list")
-        set("listingType", "CLASSIFIED")
         set("status", "ACTIVE")
     }
 
@@ -220,11 +273,9 @@ export default function SellPage() {
         setSubmitError(null)
 
         try {
-            const hasRange = formData.priceMin && formData.priceMax
-            const priceMin = hasRange ? parseFloat(formData.priceMin) : undefined
-            const priceMax = hasRange ? parseFloat(formData.priceMax) : undefined
-            // price = priceMin if using offer range, otherwise the single asking price
-            const displayPrice = hasRange ? parseFloat(formData.priceMin) : parseFloat(formData.price)
+            const priceMin = parseFloat(formData.priceMin)
+            const priceMax = parseFloat(formData.priceMax)
+            const displayPrice = priceMin
 
             const payload: CreateListingRequest = {
                 title: formData.title,
@@ -236,7 +287,7 @@ export default function SellPage() {
                 vrm: formData.vrm,
                 vin: formData.vin || undefined,
                 images: formData.images,
-                listingType: formData.listingType as "CLASSIFIED" | "AUCTION",
+                listingType: "CLASSIFIED",
                 make: formData.make || undefined,
                 model: formData.model || undefined,
                 description: formData.description || undefined,
@@ -250,7 +301,6 @@ export default function SellPage() {
                 bhp: formData.bhp ? parseInt(formData.bhp) : undefined,
                 features: formData.features.length > 0 ? formData.features : undefined,
                 location: formData.location || undefined,
-                condition: (formData.condition as VehicleConditionValue) || undefined,
                 ulezCompliant: formData.ulezCompliant ?? undefined,
                 euroStandard: (formData.euroStandard as EuroStandardValue) || undefined,
                 co2Emissions: formData.co2Emissions ? parseInt(formData.co2Emissions) : undefined,
@@ -278,19 +328,9 @@ export default function SellPage() {
         }
     }
 
-    // ─── Shared UI pieces ────────────────────────────────────────────────────────
+    // ─── Shared ──────────────────────────────────────────────────────────────────
 
     const inputCls = "bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary"
-
-    const ConditionCard = ({ cond, active }: { cond: string; active: boolean }) => (
-        <button
-            type="button"
-            onClick={() => set("condition", cond as VehicleConditionValue)}
-            className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all text-sm font-bold uppercase tracking-wide ${active ? "border-primary bg-primary/10 text-white shadow-neon" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/30"}`}
-        >
-            {cond}
-        </button>
-    )
 
     // ─── Login Modal ─────────────────────────────────────────────────────────────
 
@@ -332,18 +372,19 @@ export default function SellPage() {
                                 <List className="text-primary w-10 h-10" />
                             </div>
                             <h2 className="text-3xl font-bold mb-3 font-heading">List My Car</h2>
-                            <p className="text-gray-400 mb-8">Create a classified listing with your asking price. Buyers enquire directly.</p>
+                            <p className="text-gray-400 mb-8">Set your offer range and let buyers submit their best price. You choose who to accept.</p>
                             <ul className="space-y-3 mb-8 text-gray-300">
                                 <li className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-400" /> Free to list</li>
-                                <li className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-400" /> You set the price</li>
+                                <li className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-400" /> DVLA-verified vehicle data</li>
+                                <li className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-400" /> Instant estimated valuation</li>
                                 <li className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-400" /> Reach thousands of buyers</li>
                             </ul>
                             <Button className="w-full py-6 text-lg group-hover:shadow-neon">Start Listing <ArrowRight className="ml-2" /></Button>
                         </div>
 
                         {/* Steps explanation */}
-                        <div className="mt-24 grid grid-cols-2 md:grid-cols-3 gap-6 text-center">
-                            {STEPS.slice(0, 6).map((s) => (
+                        <div className="mt-24 grid grid-cols-2 md:grid-cols-5 gap-6 text-center">
+                            {STEPS.map((s) => (
                                 <div key={s.id} className="p-5 glass-card">
                                     <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center mx-auto mb-3">
                                         <span className="text-primary font-black text-sm">{s.id}</span>
@@ -481,7 +522,7 @@ export default function SellPage() {
                                 </div>
                             </div>
 
-                            {/* Location + Geolocation */}
+                            {/* Location */}
                             <div className="space-y-2">
                                 <label className="text-sm font-bold uppercase text-gray-400 flex items-center gap-1.5"><MapPin size={13} /> Location</label>
                                 <div className="flex gap-3">
@@ -515,61 +556,8 @@ export default function SellPage() {
                         </div>
                     )}
 
-                    {/* ── STEP 2: Condition ─────────────────────────────────────────────── */}
+                    {/* ── STEP 2: Media ─────────────────────────────────────────────────── */}
                     {currentStep === 2 && (
-                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                            <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Vehicle Condition *</h2>
-                            <p className="text-sm text-gray-400">Select the option that best describes your car&#39;s overall condition.</p>
-
-                            {/* Standard conditions */}
-                            <div className="grid grid-cols-2 gap-3">
-                                {STANDARD_CONDITIONS.map((c) => (
-                                    <button key={c.value} type="button"
-                                        onClick={() => { set("condition", c.value); setShowCatSection(false) }}
-                                        className={`p-4 rounded-xl border-2 text-left transition-all ${formData.condition === c.value ? `${c.color} border-opacity-100` : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"}`}
-                                    >
-                                        <p className="font-bold text-base mb-0.5">{c.label}</p>
-                                        <p className="text-xs opacity-70">{c.desc}</p>
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* CAT toggle */}
-                            <div className="border border-amber-500/20 rounded-xl p-4 bg-amber-500/5">
-                                <button type="button" onClick={() => setShowCatSection(p => !p)}
-                                    className="flex items-center gap-2.5 w-full text-left">
-                                    <AlertTriangle size={16} className="text-amber-400 flex-shrink-0" />
-                                    <span className="text-sm font-semibold text-amber-200">Does this vehicle have a write-off history?</span>
-                                    <span className="ml-auto text-amber-400 text-xs">{showCatSection ? "▲ Hide" : "▼ Show CAT categories"}</span>
-                                </button>
-
-                                {showCatSection && (
-                                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        {CAT_CONDITIONS.map((c) => (
-                                            <button key={c.value} type="button"
-                                                onClick={() => set("condition", c.value)}
-                                                className={`p-3.5 rounded-xl border-2 text-left transition-all ${formData.condition === c.value ? "border-amber-500 bg-amber-500/15 text-amber-200" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-amber-500/30"}`}
-                                            >
-                                                <p className="font-bold text-sm mb-0.5">{c.label}</p>
-                                                <p className="text-xs opacity-70">{c.desc}</p>
-                                            </button>
-                                        ))}
-                                        <p className="col-span-full text-xs text-gray-500 mt-1">UK law requires CAT write-off status to be disclosed. Buyers can still purchase these vehicles.</p>
-                                    </div>
-                                )}
-                            </div>
-
-                            {formData.condition && (
-                                <div className="flex items-center gap-2 text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-4 py-2.5">
-                                    <BadgeCheck size={16} />
-                                    Selected: <span className="font-bold">{formData.condition}</span>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* ── STEP 3: Media ─────────────────────────────────────────────────── */}
-                    {currentStep === 3 && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
                             <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Photos *</h2>
                             <p className="text-sm text-gray-400">Aim for at least 20 photos for the best results. Organize them by selecting the relevant category below.</p>
@@ -581,8 +569,8 @@ export default function SellPage() {
                         </div>
                     )}
 
-                    {/* ── STEP 4: Technical Specs ───────────────────────────────────────── */}
-                    {currentStep === 4 && (
+                    {/* ── STEP 3: Technical Specs ───────────────────────────────────────── */}
+                    {currentStep === 3 && (
                         <div className="space-y-7 animate-in fade-in slide-in-from-bottom-4">
                             <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Technical Specs</h2>
 
@@ -647,7 +635,7 @@ export default function SellPage() {
                             {/* UK Compliance */}
                             <div className="border border-emerald-500/20 bg-emerald-500/5 rounded-xl p-5 space-y-4">
                                 <h3 className="text-sm font-bold uppercase text-emerald-400 tracking-wider flex items-center gap-2">
-                                    <ShieldCheck size={14} /> UK Compliance
+                                    <BadgeCheck size={14} /> UK Compliance
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     {/* ULEZ */}
@@ -717,7 +705,7 @@ export default function SellPage() {
                             <div className="space-y-2">
                                 <label className="text-sm font-bold uppercase text-gray-400">Description</label>
                                 <Textarea
-                                    placeholder="Describe condition, service history, any extras..."
+                                    placeholder="Describe service history, any extras, reason for selling..."
                                     value={formData.description}
                                     onChange={(e) => set("description", e.target.value)}
                                     rows={5}
@@ -728,119 +716,133 @@ export default function SellPage() {
                         </div>
                     )}
 
-                    {/* ── STEP 5: Pricing ───────────────────────────────────────────────── */}
-                    {currentStep === 5 && (
+                    {/* ── STEP 4: Pricing ───────────────────────────────────────────────── */}
+                    {currentStep === 4 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                            <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Pricing *</h2>
+                            <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Pricing</h2>
 
-                            {/* Pricing Mode Toggle */}
-                            <div className="grid grid-cols-2 gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => { set("priceMin", ""); set("priceMax", "") }}
-                                    className={`p-4 rounded-xl border-2 text-left transition-all ${!formData.priceMin && !formData.priceMax
-                                        ? "border-primary bg-primary/10 text-white"
-                                        : "border-white/10 bg-white/5 text-gray-400 hover:border-white/20"
-                                        }`}
-                                >
-                                    <p className="font-bold text-sm mb-1">Fixed Price</p>
-                                    <p className="text-xs opacity-70">Set a single asking price</p>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => { set("price", formData.priceMin || "") }}
-                                    className={`p-4 rounded-xl border-2 text-left transition-all ${formData.priceMin || formData.priceMax
-                                        ? "border-primary bg-primary/10 text-white"
-                                        : "border-white/10 bg-white/5 text-gray-400 hover:border-white/20"
-                                        }`}
-                                >
-                                    <p className="font-bold text-sm mb-1">Offer Range</p>
-                                    <p className="text-xs opacity-70">Let buyers make offers within a range</p>
-                                </button>
+                            {/* Estimated Valuation Card */}
+                            {valuation ? (
+                                <div className="rounded-xl bg-gradient-to-br from-blue-600/15 to-indigo-600/10 border border-blue-500/30 p-6 space-y-4">
+                                    <div className="flex items-center gap-2">
+                                        <BadgeCheck className="text-blue-400 shrink-0" size={20} />
+                                        <h3 className="text-blue-300 font-bold uppercase tracking-wider text-sm">Estimated Market Value</h3>
+                                    </div>
+
+                                    {/* Price range */}
+                                    <div>
+                                        <p className="text-4xl font-black text-white tracking-tight">
+                                            {formatPrice(valuation.low)}
+                                            <span className="text-gray-400 text-2xl mx-2">–</span>
+                                            {formatPrice(valuation.high)}
+                                        </p>
+                                        <p className="text-blue-300/70 text-xs mt-1 font-medium">Mid-point estimate: {formatPrice(valuation.mid)}</p>
+                                    </div>
+
+                                    {/* Factors breakdown */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+                                        {valuation.ageDropPct > 0 && (
+                                            <div className="bg-white/5 rounded-lg px-3 py-2.5 flex items-center gap-2">
+                                                <TrendingDown size={14} className="text-amber-400 shrink-0" />
+                                                <div>
+                                                    <p className="text-[10px] text-gray-500 uppercase font-bold">Age impact</p>
+                                                    <p className="text-amber-300 text-sm font-bold">−{valuation.ageDropPct}% depreciation</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {valuation.mileageDropPct > 0 && (
+                                            <div className="bg-white/5 rounded-lg px-3 py-2.5 flex items-center gap-2">
+                                                <TrendingDown size={14} className="text-orange-400 shrink-0" />
+                                                <div>
+                                                    <p className="text-[10px] text-gray-500 uppercase font-bold">High mileage</p>
+                                                    <p className="text-orange-300 text-sm font-bold">−{valuation.mileageDropPct}% vs avg</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {valuation.mileageBonusPct > 0 && (
+                                            <div className="bg-white/5 rounded-lg px-3 py-2.5 flex items-center gap-2">
+                                                <BadgeCheck size={14} className="text-emerald-400 shrink-0" />
+                                                <div>
+                                                    <p className="text-[10px] text-gray-500 uppercase font-bold">Low mileage</p>
+                                                    <p className="text-emerald-300 text-sm font-bold">+{valuation.mileageBonusPct}% premium</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div className="bg-white/5 rounded-lg px-3 py-2.5">
+                                            <p className="text-[10px] text-gray-500 uppercase font-bold">UK avg mileage</p>
+                                            <p className="text-gray-300 text-sm font-bold">{valuation.avgMiles.toLocaleString()} mi/yr</p>
+                                        </div>
+                                    </div>
+
+                                    <p className="text-xs text-gray-500">
+                                        Based on age-tiered UK market depreciation, your mileage vs. the UK average (8,000 mi/yr), and fuel type. You can override the values below.
+                                    </p>
+
+                                    <Button
+                                        type="button"
+                                        className="bg-blue-600 hover:bg-blue-700 text-white border-none w-full sm:w-auto"
+                                        onClick={() => {
+                                            set("priceMin", valuation.low.toString())
+                                            set("priceMax", valuation.high.toString())
+                                        }}
+                                    >
+                                        Use Estimated Range
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="rounded-xl bg-white/5 border border-white/10 p-5 text-center text-gray-500 text-sm">
+                                    Complete vehicle details (make, year, mileage) to see an estimated valuation.
+                                </div>
+                            )}
+
+                            {/* Offer Range */}
+                            <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
+                                <p className="text-xs text-primary font-semibold mb-1">💡 Offer Range</p>
+                                <p className="text-xs text-gray-400">Buyers see your price range and submit offers within it. You choose to accept or reject each offer.</p>
                             </div>
 
-                            {/* Fixed Price Mode */}
-                            {!formData.priceMin && !formData.priceMax && (
+                            <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-gray-400">Asking Price (£) *</label>
+                                    <label className="text-sm font-bold uppercase text-gray-400">Minimum Price (£) *</label>
                                     <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">£</span>
-                                        <Input type="number" placeholder="25000" value={formData.price}
-                                            onChange={(e) => set("price", e.target.value)}
-                                            className={`${inputCls} pl-8 text-lg`} />
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">£</span>
+                                        <Input type="number" placeholder="e.g. 18000" value={formData.priceMin}
+                                            onChange={(e) => set("priceMin", e.target.value)}
+                                            className={`${inputCls} pl-8`} />
                                     </div>
-                                    {formData.price && <p className="text-sm text-gray-400">Display price: {formatPrice(formData.price)}</p>}
                                 </div>
-                            )}
-
-                            {/* Offer Range Mode */}
-                            {(formData.priceMin || formData.priceMax || (!formData.price && formData.listingType)) && (
-                                <>
-                                    <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
-                                        <p className="text-xs text-primary font-semibold mb-1">💡 Offer Range Mode</p>
-                                        <p className="text-xs text-gray-400">Buyers will see your price range and can submit offers within it. You choose to accept or reject each offer.</p>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-bold uppercase text-gray-400">Minimum Price (£) *</label>
-                                            <div className="relative">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">£</span>
-                                                <Input type="number" placeholder="18000" value={formData.priceMin}
-                                                    onChange={(e) => set("priceMin", e.target.value)}
-                                                    className={`${inputCls} pl-8`} />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-bold uppercase text-gray-400">Maximum Price (£) *</label>
-                                            <div className="relative">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">£</span>
-                                                <Input type="number" placeholder="22000" value={formData.priceMax}
-                                                    onChange={(e) => set("priceMax", e.target.value)}
-                                                    className={`${inputCls} pl-8`} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {formData.priceMin && formData.priceMax && (() => {
-                                        const min = parseFloat(formData.priceMin)
-                                        const max = parseFloat(formData.priceMax)
-                                        if (!isNaN(min) && !isNaN(max)) {
-                                            const invalid = min >= max
-                                            return (
-                                                <p className={`text-sm ${invalid ? "text-red-400" : "text-emerald-400"}`}>
-                                                    {invalid
-                                                        ? "⚠ Minimum must be less than maximum"
-                                                        : `✓ Range: ${formatPrice(formData.priceMin)} – ${formatPrice(formData.priceMax)}`
-                                                    }
-                                                </p>
-                                            )
-                                        }
-                                        return null
-                                    })()}
-                                </>
-                            )}
-
-                            <div>
-                                <label className="text-sm font-bold uppercase text-gray-400 block mb-3">Listing Type *</label>
-                                <div
-                                    onClick={() => set("listingType", "CLASSIFIED")}
-                                    className={`p-5 rounded-xl border-2 cursor-pointer transition-all ${formData.listingType === "CLASSIFIED" ? "border-primary bg-primary/10" : "border-white/10 bg-white/5 hover:border-white/20"}`}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-9 h-9 rounded-full flex items-center justify-center ${formData.listingType === "CLASSIFIED" ? "bg-primary" : "bg-slate-800"}`}>
-                                            <List className="w-4 h-4 text-white" />
-                                        </div>
-                                        <div>
-                                            <p className="font-bold text-white">Classified Listing</p>
-                                            <p className="text-sm text-gray-400">Buyers contact you directly to negotiate</p>
-                                        </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold uppercase text-gray-400">Maximum Price (£) *</label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">£</span>
+                                        <Input type="number" placeholder="e.g. 22000" value={formData.priceMax}
+                                            onChange={(e) => set("priceMax", e.target.value)}
+                                            className={`${inputCls} pl-8`} />
                                     </div>
                                 </div>
                             </div>
+
+                            {formData.priceMin && formData.priceMax && (() => {
+                                const min = parseFloat(formData.priceMin)
+                                const max = parseFloat(formData.priceMax)
+                                if (!isNaN(min) && !isNaN(max)) {
+                                    const invalid = min >= max
+                                    return (
+                                        <p className={`text-sm ${invalid ? "text-red-400" : "text-emerald-400"}`}>
+                                            {invalid
+                                                ? "⚠ Minimum must be less than maximum"
+                                                : `✓ Range: ${formatPrice(formData.priceMin)} – ${formatPrice(formData.priceMax)}`
+                                            }
+                                        </p>
+                                    )
+                                }
+                                return null
+                            })()}
                         </div>
                     )}
 
-                    {/* ── STEP 6: Review ────────────────────────────────────────────────── */}
-                    {currentStep === 6 && (
+                    {/* ── STEP 5: Review ────────────────────────────────────────────────── */}
+                    {currentStep === 5 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
                             <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Review Your Listing</h2>
 
@@ -857,13 +859,8 @@ export default function SellPage() {
                                 </div>
                             </SummarySection>
 
-                            {/* Condition */}
-                            <SummarySection title="Condition" onEdit={() => goToStep(2)}>
-                                <SummaryField label="Condition" value={formData.condition} />
-                            </SummarySection>
-
                             {/* Media */}
-                            <SummarySection title={`Photos (${formData.images.length})`} onEdit={() => goToStep(3)}>
+                            <SummarySection title={`Photos (${formData.images.length})`} onEdit={() => goToStep(2)}>
                                 <div className="grid grid-cols-4 md:grid-cols-6 gap-2">
                                     {formData.images.slice(0, 12).map((img, i) => (
                                         <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-white/10">
@@ -874,7 +871,7 @@ export default function SellPage() {
                             </SummarySection>
 
                             {/* Specs */}
-                            <SummarySection title="Technical Specs" onEdit={() => goToStep(4)}>
+                            <SummarySection title="Technical Specs" onEdit={() => goToStep(3)}>
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                                     <SummaryField label="Mileage" value={parseInt(formData.mileage).toLocaleString() + " mi"} />
                                     <SummaryField label="Fuel" value={formData.fuelType} />
@@ -899,10 +896,15 @@ export default function SellPage() {
                             </SummarySection>
 
                             {/* Pricing */}
-                            <SummarySection title="Pricing" onEdit={() => goToStep(5)}>
-                                <div className="flex items-center justify-between">
-                                    <p className="text-white font-black text-2xl">{formatPrice(formData.price)}</p>
-                                    <span className="px-3 py-1 rounded-full bg-primary/20 text-primary text-xs font-bold uppercase">{formData.listingType}</span>
+                            <SummarySection title="Pricing" onEdit={() => goToStep(4)}>
+                                <div className="flex flex-col gap-1">
+                                    <p className="text-white font-black text-2xl">
+                                        {formatPrice(formData.priceMin)} – {formatPrice(formData.priceMax)}
+                                    </p>
+                                    <p className="text-primary text-xs font-bold uppercase">Offer Range</p>
+                                    {valuation && (
+                                        <p className="text-gray-500 text-xs mt-1">Estimated market value: {formatPrice(valuation.low)} – {formatPrice(valuation.high)}</p>
+                                    )}
                                 </div>
                             </SummarySection>
 
@@ -920,7 +922,7 @@ export default function SellPage() {
                             ? <Button variant="outline" onClick={handleBack} className="px-7 border-white/20 text-white hover:bg-white/10"><ArrowLeft className="mr-2 h-4 w-4" /> Back</Button>
                             : <div />
                         }
-                        {currentStep < 6
+                        {currentStep < 5
                             ? <Button onClick={handleNext} className="px-7 shadow-neon">Next <ArrowRight className="ml-2 h-4 w-4" /></Button>
                             : <Button onClick={handleSubmit} disabled={isSubmitting}
                                 className="px-7 bg-emerald-600 hover:bg-emerald-700 border-none shadow-[0_0_20px_rgba(16,185,129,0.4)] disabled:opacity-50">
