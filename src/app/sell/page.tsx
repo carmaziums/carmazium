@@ -207,6 +207,7 @@ export default function SellPage() {
         }
         setSellingMethod("list")
         set("listingType", "CLASSIFIED")
+        set("status", "ACTIVE")
     }
 
     // ─── Submit ──────────────────────────────────────────────────────────────────
