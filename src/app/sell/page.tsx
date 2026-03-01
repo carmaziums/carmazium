@@ -454,6 +454,7 @@ export default function SellPage() {
                                             setDvlaLoading(true); setDvlaError(null); setDvlaSuccess(false)
                                             try {
                                                 const r = await dvlaLookup(formData.vrm)
+                                                // DVLA / PulseCars core fields
                                                 if (r.make) set("make", r.make)
                                                 if (r.colour) set("color", r.colour)
                                                 if (r.year) set("year", String(r.year))
@@ -461,6 +462,12 @@ export default function SellPage() {
                                                 if (r.fuelType) set("fuelType", r.fuelType)
                                                 if (r.euroStandard) set("euroStandard", r.euroStandard as EuroStandardValue)
                                                 if (r.co2Emissions) set("co2Emissions", String(r.co2Emissions))
+                                                // PulseCars bonus fields
+                                                if (r.model) set("model", r.model)
+                                                if (r.mileage) set("mileage", String(r.mileage))
+                                                if (r.transmission) set("transmission", r.transmission)
+                                                if (r.bodyType) set("bodyType", r.bodyType as BodyTypeValue)
+                                                if (r.doors) set("doors", String(r.doors))
                                                 setDvlaSuccess(true)
                                             } catch (err: any) {
                                                 setDvlaError(err.message || "Lookup failed")
@@ -472,8 +479,8 @@ export default function SellPage() {
                                         Look Up
                                     </Button>
                                 </div>
-                                <p className="text-xs text-gray-600">UK number plate — click Look Up to auto-fill vehicle details from DVLA.</p>
-                                {dvlaSuccess && <p className="text-xs text-emerald-400 flex items-center gap-1"><BadgeCheck size={12} /> Vehicle data loaded from DVLA — review and edit below.</p>}
+                                <p className="text-xs text-gray-600">UK number plate — click Look Up to auto-fill vehicle details.</p>
+                                {dvlaSuccess && <p className="text-xs text-emerald-400 flex items-center gap-1"><BadgeCheck size={12} /> Vehicle data loaded — review and edit below.</p>}
                                 {dvlaError && <p className="text-xs text-red-400">{dvlaError}</p>}
                             </div>
 
