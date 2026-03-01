@@ -1,5 +1,6 @@
 import { Injectable, Logger, ServiceUnavailableException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as cheerio from 'cheerio';
 
 // ─── DVLA VES API Response ────────────────────────────────────────────────────
 
@@ -38,13 +39,13 @@ export interface DvlaLookupResult {
     euroStandard?: string;    // mapped to our EuroStandard enum string
     motStatus?: string;
     taxStatus?: string;
-    // ── Bonus fields from PulseCars fallback (DVLA doesn't supply these) ──────
+    // ── Bonus fields (CarCheck fallback can supply these) ─────────────────────
     model?: string;
     mileage?: number;
     transmission?: string;    // MANUAL | AUTOMATIC | SEMI_AUTOMATIC
     bodyType?: string;        // mapped to our BodyType enum string
     doors?: number;
-    dataSource?: 'DVLA' | 'PULSECARS';
+    dataSource?: 'DVLA' | 'CARCHECK';
 }
 
 // ─── Fuel type mapping (DVLA values → our enum) ────────────────────────────────
@@ -72,57 +73,31 @@ const DVLA_EURO_MAP: Record<string, string> = {
     'EURO 6D': 'EURO_6D',
 };
 
-// ─── PulseCars field mappings (PulseCars values → our enums) ──────────────────
+// ─── CarCheck fuel mapping ────────────────────────────────────────────────────
 
-const PC_FUEL_MAP: Record<string, string> = {
-    'Petrol': 'PETROL',
-    'Diesel': 'DIESEL',
-    'Electric': 'ELECTRIC',
-    'Hybrid': 'HYBRID',
-    'Plug-in Hybrid': 'PLUGIN_HYBRID',
-    'Plugin Hybrid': 'PLUGIN_HYBRID',
-    'PETROL': 'PETROL',
-    'DIESEL': 'DIESEL',
-    'ELECTRIC': 'ELECTRIC',
-    'HYBRID': 'HYBRID',
+const CC_FUEL_MAP: Record<string, string> = {
+    'petrol': 'PETROL',
+    'diesel': 'DIESEL',
+    'electric': 'ELECTRIC',
+    'hybrid electric (clean)': 'HYBRID',
+    'hybrid': 'HYBRID',
+    'plug-in hybrid': 'PLUGIN_HYBRID',
+    'gas': 'PETROL',
 };
 
-const PC_TRANSMISSION_MAP: Record<string, string> = {
-    'Manual': 'MANUAL',
-    'Automatic': 'AUTOMATIC',
-    'Semi-Automatic': 'SEMI_AUTOMATIC',
-    'Semi Automatic': 'SEMI_AUTOMATIC',
-    'MANUAL': 'MANUAL',
-    'AUTOMATIC': 'AUTOMATIC',
-};
+// ─── CarCheck gearbox mapping ─────────────────────────────────────────────────
 
-const PC_BODY_MAP: Record<string, string> = {
-    'Saloon': 'SEDAN',
-    'Sedan': 'SEDAN',
-    'Hatchback': 'HATCHBACK',
-    'SUV': 'SUV',
-    'Estate': 'ESTATE',
-    'Coupe': 'COUPE',
-    'Convertible': 'CONVERTIBLE',
-    'MPV': 'MPV',
-    'Van': 'VAN',
-    'Pick-up': 'PICKUP_TRUCK',
-    'Pickup': 'PICKUP_TRUCK',
-    'Crossover': 'CROSSOVER',
-    'Sports': 'SPORTS_CAR',
-    'Station Wagon': 'STATION_WAGON',
+const CC_GEARBOX_MAP: Record<string, string> = {
+    'manual': 'MANUAL',
+    'automatic': 'AUTOMATIC',
+    'semi-automatic': 'SEMI_AUTOMATIC',
+    'cvt': 'AUTOMATIC',
 };
 
 // ─── Endpoints ────────────────────────────────────────────────────────────────
 
 const DVLA_PROD_URL = 'https://driver-vehicle-licensing.api.gov.uk/vehicle-enquiry/v1/vehicles';
-
-/** PulseCars Supabase — owned by the same user; public anon key is intentional */
-const PC_SUPABASE_URL = 'https://thkwimltjygbbtavxiua.supabase.co';
-const PC_ANON_KEY =
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.' +
-    'eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRoa3dpbWx0anlnYmJ0YXZ4aXVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1OTgwNTAsImV4cCI6MjA3NjE3NDA1MH0.' +
-    'gskxdLhiPaIJEZeafdZUgdz0on69MPBvr983w9dPLyg';
+const CARCHECK_BASE = 'https://www.carcheck.co.uk';
 
 @Injectable()
 export class DvlaService {
@@ -132,12 +107,10 @@ export class DvlaService {
 
     constructor(private configService: ConfigService) {
         this.apiKey = this.configService.get<string>('DVLA_API_KEY');
-        // DVLA_API_URL lets you point to the UAT endpoint for testing.
-        // Defaults to the production URL when not set.
         this.baseUrl = this.configService.get<string>('DVLA_API_URL') ?? DVLA_PROD_URL;
 
         if (!this.apiKey) {
-            this.logger.warn('DVLA_API_KEY is not set — will use PulseCars fallback for VRM lookup');
+            this.logger.warn('DVLA_API_KEY is not set — will use CarCheck.co.uk fallback for VRM lookup');
         }
         this.logger.log(`DVLA endpoint: ${this.baseUrl}`);
     }
@@ -162,18 +135,17 @@ export class DvlaService {
                     err?.response?.status === 404;
 
                 if (isNotFound) {
-                    this.logger.warn(`DVLA: vehicle ${normalised} not found — trying PulseCars fallback`);
+                    this.logger.warn(`DVLA: vehicle ${normalised} not found — trying CarCheck fallback`);
                 } else {
-                    this.logger.warn(`DVLA error for ${normalised}: ${err?.message} — trying PulseCars fallback`);
+                    this.logger.warn(`DVLA error for ${normalised}: ${err?.message} — trying CarCheck fallback`);
                 }
-                // fall through to PulseCars
             }
         }
 
-        // 2. PulseCars Supabase fallback (user owns this site)
-        const pcResult = await this.pulsecarsLookup(normalised, vrm.trim().toUpperCase());
-        if (pcResult) {
-            return pcResult;
+        // 2. CarCheck.co.uk scraping fallback
+        const ccResult = await this.carcheckLookup(normalised);
+        if (ccResult) {
+            return ccResult;
         }
 
         // 3. Neither source has the vehicle
@@ -222,73 +194,97 @@ export class DvlaService {
         };
     }
 
-    // ─── PulseCars Supabase fallback ──────────────────────────────────────────
+    // ─── CarCheck.co.uk HTML scraping fallback ────────────────────────────────
 
-    private async pulsecarsLookup(normalised: string, original?: string): Promise<DvlaLookupResult | null> {
+    private async carcheckLookup(normalised: string): Promise<DvlaLookupResult | null> {
         try {
-            this.logger.log(`PulseCars fallback lookup for VRM: ${normalised}`);
+            this.logger.log(`CarCheck fallback lookup for VRM: ${normalised}`);
 
-            const fields = 'make,model,year,mileage,fuel_type,transmission,engine_size,color,doors,body_type,registration';
-
-            // Build an OR filter to match both "P90PNT" and "P90 PNT" (however it was stored)
-            const forms = [normalised];
-            if (original && original !== normalised) forms.push(original);
-            const orFilter = `(${forms.map(f => `registration.ilike.${f}`).join(',')})`;
-
-            const url =
-                `${PC_SUPABASE_URL}/rest/v1/cars` +
-                `?or=${encodeURIComponent(orFilter)}` +
-                `&select=${encodeURIComponent(fields)}` +
-                `&limit=1`;
-
+            const url = `${CARCHECK_BASE}/${normalised}`;
             const response = await fetch(url, {
                 headers: {
-                    apikey: PC_ANON_KEY,
-                    Authorization: `Bearer ${PC_ANON_KEY}`,
-                    Accept: 'application/json',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'en-GB,en;q=0.9',
                 },
             });
 
             if (!response.ok) {
-                this.logger.warn(`PulseCars API returned ${response.status} for ${normalised}`);
+                this.logger.warn(`CarCheck returned ${response.status} for ${normalised}`);
                 return null;
             }
 
-            const rows: any[] = await response.json();
-            if (!Array.isArray(rows) || rows.length === 0) {
-                this.logger.log(`PulseCars: no record for VRM ${normalised}`);
+            const html = await response.text();
+            const $ = cheerio.load(html);
+
+            // CarCheck uses <table> elements with <td> label/value pairs
+            // Extract all key-value pairs from tables
+            const data: Record<string, string> = {};
+
+            $('table tr').each((_i, row) => {
+                const cells = $(row).find('td');
+                if (cells.length >= 2) {
+                    const label = $(cells[0]).text().trim().toLowerCase();
+                    const value = $(cells[1]).text().trim();
+                    if (label && value && value !== '-') {
+                        data[label] = value;
+                    }
+                }
+            });
+
+            this.logger.log(`CarCheck raw data keys: ${Object.keys(data).join(', ')}`);
+
+            // Check if we actually got vehicle data (not a "not found" page)
+            const make = data['make'];
+            if (!make) {
+                this.logger.log(`CarCheck: no vehicle data found for ${normalised}`);
                 return null;
             }
 
-            const car = rows[0];
-            this.logger.log(`PulseCars: found ${car.make} ${car.model} for VRM ${normalised}`);
+            const model = data['model'];
+            const colour = data['colour'] || data['color'];
+            const yearStr = data['year of manufacture'];
+            const gearbox = data['gearbox'];
+            const fuelType = data['fuel type'] || data['fuel'];
 
-            // engine_size is stored in litres (e.g. 2.0); convert to cc for consistency
-            const engineSizeLitres = car.engine_size ? parseFloat(car.engine_size) : NaN;
-            const engineSizeCc = !isNaN(engineSizeLitres) ? Math.round(engineSizeLitres * 1000) : undefined;
+            // Engine capacity: "1.200 cc" or "1998 cc" → parse to cc integer
+            const engineRaw = data['engine capacity'] || data['engine size'];
+            let engineSizeCc: number | undefined;
+            if (engineRaw) {
+                const cleaned = engineRaw.replace(/[^\d.]/g, '');
+                const parsed = parseFloat(cleaned);
+                if (!isNaN(parsed)) {
+                    // If value looks like litres (e.g. 1.200), multiply by 1000
+                    // If already in cc (e.g. 1998), keep as-is
+                    engineSizeCc = parsed < 100 ? Math.round(parsed * 1000) : Math.round(parsed);
+                }
+            }
 
-            return {
-                vrm: car.registration ?? normalised,
-                make: car.make ?? undefined,
-                model: car.model ?? undefined,
-                colour: car.color ?? undefined,
-                year: car.year ? Number(car.year) : undefined,
-                mileage: car.mileage ? Number(car.mileage) : undefined,
+            // CO2: "133 g/km" → parse to integer
+            const co2Raw = data['co2 emission'] || data['co2 emissions'] || data['co2'];
+            let co2: number | undefined;
+            if (co2Raw) {
+                const co2Parsed = parseInt(co2Raw.replace(/[^\d]/g, ''), 10);
+                if (!isNaN(co2Parsed)) co2 = co2Parsed;
+            }
+
+            const result: DvlaLookupResult = {
+                vrm: normalised,
+                make: make?.toUpperCase(),
+                model: model?.toUpperCase(),
+                colour: colour,
+                year: yearStr ? parseInt(yearStr, 10) : undefined,
                 engineSize: engineSizeCc,
-                fuelType: car.fuel_type
-                    ? (PC_FUEL_MAP[car.fuel_type] ?? car.fuel_type.toUpperCase())
-                    : undefined,
-                transmission: car.transmission
-                    ? (PC_TRANSMISSION_MAP[car.transmission] ?? car.transmission.toUpperCase())
-                    : undefined,
-                bodyType: car.body_type
-                    ? (PC_BODY_MAP[car.body_type] ?? car.body_type.toUpperCase())
-                    : undefined,
-                doors: car.doors ? Number(car.doors) : undefined,
-                dataSource: 'PULSECARS',
+                co2Emissions: co2,
+                fuelType: fuelType ? (CC_FUEL_MAP[fuelType.toLowerCase()] ?? fuelType.toUpperCase()) : undefined,
+                transmission: gearbox ? (CC_GEARBOX_MAP[gearbox.toLowerCase()] ?? gearbox.toUpperCase()) : undefined,
+                dataSource: 'CARCHECK',
             };
+
+            this.logger.log(`CarCheck: found ${result.make} ${result.model} (${result.year}) for VRM ${normalised}`);
+            return result;
         } catch (err: any) {
-            this.logger.error(`PulseCars fallback error: ${err?.message}`);
+            this.logger.error(`CarCheck fallback error: ${err?.message}`);
             return null;
         }
     }
