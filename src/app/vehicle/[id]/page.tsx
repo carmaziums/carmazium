@@ -25,19 +25,19 @@ function OfferStatusChip({ offer }: { offer: LatestOffer }) {
     if (offer.status === 'PENDING') return (
         <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm">
             <Clock size={14} className="shrink-0" />
-            <span>Your offer of <strong>{amount}</strong> is awaiting the seller&apos;s response.</span>
+            <span>The latest offer of <strong>{amount}</strong> is awaiting the seller&apos;s response.</span>
         </div>
     )
     if (offer.status === 'REJECTED') return (
         <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
             <XCircle size={14} className="shrink-0" />
-            <span>Your offer of <strong>{amount}</strong> was declined. Try a different amount.</span>
+            <span>The latest offer of <strong>{amount}</strong> was declined. Try a higher amount.</span>
         </div>
     )
     if (offer.status === 'ACCEPTED') return (
         <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm">
             <ThumbsUp size={14} className="shrink-0" />
-            <span>🎉 Your offer of <strong>{amount}</strong> was accepted! Contact the seller to proceed.</span>
+            <span>🎉 An offer of <strong>{amount}</strong> was accepted! Contact the seller to proceed.</span>
         </div>
     )
     return null
@@ -214,7 +214,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
     const [activeImage, setActiveImage] = React.useState(0)
     const [showOfferModal, setShowOfferModal] = React.useState(false)
     const [showLoginModal, setShowLoginModal] = React.useState(false)
-    const [myLatestOffer, setMyLatestOffer] = React.useState<LatestOffer | null>(null)
+    const [latestOffer, setLatestOffer] = React.useState<LatestOffer | null>(null)
     const [offerSuccess, setOfferSuccess] = React.useState(false)
 
     const router = useRouter()
@@ -227,10 +227,9 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                 setError(null)
                 const data = await getListingBySlug(id)
                 setListing(data)
-                // Find if the current user has an offer on this listing
-                if (user && data.offers && data.offers.length > 0) {
-                    const myOffer = data.offers.find(o => o.buyerId === user.id) ?? null
-                    setMyLatestOffer(myOffer)
+                // Show the global latest offer to everyone
+                if (data.offers && data.offers.length > 0) {
+                    setLatestOffer(data.offers[0])
                 }
             } catch (err: any) {
                 setError(err.message || "Failed to load listing")
@@ -267,7 +266,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
     }
 
     const handleOfferSuccess = (offer: LatestOffer) => {
-        setMyLatestOffer(offer)
+        setLatestOffer(offer)
         setShowOfferModal(false)
         setOfferSuccess(true)
     }
@@ -505,9 +504,9 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                 </div>
 
                                 {/* Latest Offer Status */}
-                                {myLatestOffer && (
+                                {latestOffer && (
                                     <div className="mb-4">
-                                        <OfferStatusChip offer={myLatestOffer} />
+                                        <OfferStatusChip offer={latestOffer} />
                                     </div>
                                 )}
 
@@ -525,17 +524,17 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                                     if (!user) setShowLoginModal(true)
                                                     else setShowOfferModal(true)
                                                 }}
-                                                disabled={myLatestOffer?.status === 'PENDING' || myLatestOffer?.status === 'ACCEPTED'}
+                                                disabled={latestOffer?.status === 'PENDING' || latestOffer?.status === 'ACCEPTED'}
                                             >
-                                                {myLatestOffer?.status === 'PENDING'
+                                                {latestOffer?.status === 'PENDING'
                                                     ? '⏳ Offer Pending...'
-                                                    : myLatestOffer?.status === 'ACCEPTED'
+                                                    : latestOffer?.status === 'ACCEPTED'
                                                         ? '✓ Offer Accepted'
                                                         : 'Make an Offer'}
                                             </Button>
-                                            {myLatestOffer?.status === 'REJECTED' && (
+                                            {latestOffer?.status === 'REJECTED' && (
                                                 <p className="text-xs text-gray-500 text-center">
-                                                    Your previous offer was declined — you can submit a new one.
+                                                    The previous offer was declined — you can submit a new one.
                                                 </p>
                                             )}
                                         </>
