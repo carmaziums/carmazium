@@ -78,6 +78,13 @@ export interface DvlaLookupResult {
     euroStandard?: string
     motStatus?: string
     taxStatus?: string
+    // ── Bonus fields from PulseCars fallback ──────────────────────────────
+    model?: string
+    mileage?: number
+    transmission?: string
+    bodyType?: string
+    doors?: number
+    dataSource?: 'DVLA' | 'PULSECARS'
 }
 
 export async function dvlaLookup(vrm: string): Promise<DvlaLookupResult> {
