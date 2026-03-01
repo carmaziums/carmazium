@@ -108,19 +108,23 @@ export default function MyListingsPage() {
 
                     {/* ── Boost CTA strip ───────────────────────────── */}
                     <div
-                        className="rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-amber-400/20"
-                        style={{ background: 'linear-gradient(135deg, rgba(251,191,36,0.06) 0%, rgba(245,158,11,0.03) 100%)' }}
+                        className="relative overflow-hidden rounded-xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-amber-500/30 shadow-[0_0_20px_rgba(245,158,11,0.1)]"
+                        style={{ background: 'linear-gradient(135deg, rgba(251,191,36,0.1) 0%, rgba(245,158,11,0.05) 100%)' }}
                     >
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-amber-400/10 shrink-0">
-                                <Zap size={18} className="text-amber-400" />
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+
+                        <div className="flex items-center gap-4 relative z-10">
+                            <div className="p-3 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-[0_0_15px_rgba(245,158,11,0.4)] shrink-0">
+                                <Zap size={22} className="text-[#1A1A1A] fill-[#1A1A1A]" />
                             </div>
                             <div>
-                                <p className="font-bold text-white text-sm">Boost a listing to Featured</p>
-                                <p className="text-gray-400 text-xs">Free during beta — pinned to the top of search &amp; homepage for 28 days</p>
+                                <h3 className="font-black text-white text-lg tracking-tight mb-0.5">Sell up to 3x faster with Featured</h3>
+                                <p className="text-gray-300 text-sm">Pin your inventory to the top of search &amp; homepage. <strong className="text-amber-400">Free during beta!</strong></p>
                             </div>
                         </div>
-                        <span className="text-xs text-amber-400/60 font-medium shrink-0">Click ⚡ Boost on any listing below</span>
+                        <span className="relative z-10 text-sm font-bold px-4 py-2 rounded-full bg-amber-400/10 text-amber-400 border border-amber-400/20 shrink-0 shadow-[0_0_10px_rgba(251,191,36,0.1)]">
+                            Click ⚡ Boost below
+                        </span>
                     </div>
 
                     {/* ── Error banner ─────────────────────────────── */}
@@ -210,13 +214,13 @@ export default function MyListingsPage() {
                                                                 <button
                                                                     onClick={() => setBoostTarget(listing)}
                                                                     disabled={boosting === listing.id}
-                                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-400/10 text-amber-400 border border-amber-400/30 hover:bg-amber-400/20 transition-all disabled:opacity-50"
+                                                                    className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-black rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-[#1A1A1A] hover:scale-105 hover:shadow-[0_0_12px_rgba(245,158,11,0.5)] transition-all disabled:opacity-50 disabled:hover:scale-100"
                                                                     title="Boost this listing to Featured for 28 days"
                                                                 >
                                                                     {boosting === listing.id ? (
-                                                                        <Loader2 size={12} className="animate-spin" />
+                                                                        <Loader2 size={12} className="animate-spin text-[#1A1A1A]" />
                                                                     ) : (
-                                                                        <Zap size={12} />
+                                                                        <Zap size={12} className="fill-[#1A1A1A]" />
                                                                     )}
                                                                     Boost
                                                                 </button>
@@ -297,16 +301,16 @@ export default function MyListingsPage() {
                         <div className="flex gap-3">
                             <button
                                 onClick={() => setBoostTarget(null)}
-                                className="flex-1 py-2.5 rounded-lg border border-white/10 text-gray-400 hover:bg-white/5 transition-colors text-sm font-medium"
+                                className="flex-1 py-2.5 rounded-full border border-white/10 text-gray-400 hover:bg-white/5 transition-colors text-sm font-bold"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleBoostConfirm}
-                                className="flex-1 py-2.5 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all"
-                                style={{ background: "linear-gradient(135deg, #fbbf24, #f59e0b)", color: "#1e1a0e" }}
+                                disabled={boosting === boostTarget?.id}
+                                className="flex-1 py-2.5 rounded-full font-black text-sm flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(245,158,11,0.5)] bg-gradient-to-r from-amber-400 to-orange-500 text-[#1A1A1A] hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
                             >
-                                <Zap size={16} />
+                                {boosting === boostTarget?.id ? <Loader2 size={16} className="animate-spin text-[#1A1A1A]" /> : <Zap size={16} className="fill-[#1A1A1A]" />}
                                 Confirm Boost
                             </button>
                         </div>

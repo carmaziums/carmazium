@@ -18,43 +18,29 @@ export function FeaturedBadge({ compact = false, daysRemaining }: FeaturedBadgeP
     if (compact) {
         return (
             <span
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold border border-amber-400/40 bg-amber-400/10 text-amber-400"
-                style={{ animation: "featuredPulse 2.5s ease-in-out infinite" }}
+                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider border border-amber-400/50 bg-amber-400/10 text-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.15)] flex-shrink-0"
             >
                 <Zap size={10} className="fill-amber-400 text-amber-400" />
                 FEATURED
                 {daysRemaining !== undefined && (
-                    <span className="ml-1 font-normal text-amber-300/70 text-[10px]">
-                        {daysRemaining}d left
+                    <span className="ml-1 font-bold text-amber-300">
+                        {daysRemaining}D LEFT
                     </span>
                 )}
-                <style>{`
-                    @keyframes featuredPulse {
-                        0%, 100% { box-shadow: 0 0 0 0 rgba(251,191,36,0.0); }
-                        50% { box-shadow: 0 0 8px 2px rgba(251,191,36,0.25); }
-                    }
-                `}</style>
             </span>
         )
     }
 
     return (
         <div
-            className="absolute top-2 left-2 z-10 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold text-amber-900 select-none"
+            className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black tracking-wide text-[#1A1A1A] select-none"
             style={{
-                background: "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)",
-                boxShadow: "0 2px 12px rgba(251,191,36,0.5)",
-                animation: "featuredCardPulse 2.5s ease-in-out infinite",
+                background: "linear-gradient(90deg, #FBBF24 0%, #F59E0B 100%)",
+                boxShadow: "0 0 20px rgba(245, 158, 11, 0.5)",
             }}
         >
-            <Zap size={11} className="fill-amber-900" />
+            <Zap size={12} className="fill-[#1A1A1A] text-[#1A1A1A]" />
             FEATURED
-            <style>{`
-                @keyframes featuredCardPulse {
-                    0%, 100% { box-shadow: 0 2px 12px rgba(251,191,36,0.5); }
-                    50% { box-shadow: 0 2px 20px rgba(251,191,36,0.8); }
-                }
-            `}</style>
         </div>
     )
 }

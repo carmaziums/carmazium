@@ -489,7 +489,11 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
 
                                 {/* Action Buttons */}
                                 <div className="space-y-3">
-                                    {hasOfferRange ? (
+                                    {listing.status !== 'ACTIVE' ? (
+                                        <Button className="w-full py-6 text-lg bg-slate-700 text-gray-300 cursor-not-allowed uppercase" disabled>
+                                            {listing.status === 'DRAFT' ? 'Preview Only (Draft)' : listing.status}
+                                        </Button>
+                                    ) : hasOfferRange ? (
                                         <>
                                             <Button
                                                 className="w-full py-6 text-lg shadow-neon"
