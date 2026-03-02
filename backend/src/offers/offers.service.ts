@@ -226,4 +226,12 @@ export class OffersService {
             orderBy: { createdAt: 'desc' },
         });
     }
+
+    /**
+     * Returns the current authenticated buyer's most recent offer for a listing.
+     * Exposes getLatestOfferForBuyer for use via the REST API.
+     */
+    async getMyOfferForListing(listingId: string, buyerId: string): Promise<Offer | null> {
+        return this.getLatestOfferForBuyer(listingId, buyerId);
+    }
 }

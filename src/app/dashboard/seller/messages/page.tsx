@@ -7,11 +7,20 @@ import { ChatRoomList } from "@/components/chat/ChatRoomList"
 import dynamic from "next/dynamic"
 const ChatWindow = dynamic(() => import("@/components/chat/ChatWindow").then(mod => mod.ChatWindow), { ssr: false })
 import { useAuth } from "@/context/AuthContext"
+import { useChat } from "@/context/ChatContext"
 import type { ChatRoom } from "@/lib/chatApi"
 
 export default function SellerMessagesPage() {
     const { user, profile, loading } = useAuth()
+    const { refreshRooms } = useChat()
     const [selectedRoom, setSelectedRoom] = React.useState<ChatRoom | null>(null)
+
+    // Refresh on mount so new buyer-initiated rooms appear without needing a manual reload
+    React.useEffect(() => {
+        if (!user) return
+        refreshRooms()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user])
 
     if (loading) {
         return (

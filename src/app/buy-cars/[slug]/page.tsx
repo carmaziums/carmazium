@@ -9,7 +9,7 @@ import dynamic from "next/dynamic"
 const FinanceCalculator = dynamic(() => import("@/components/features/FinanceCalculator").then(mod => mod.FinanceCalculator), { ssr: false })
 import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale, Loader2, MessageCircle, Tag, X, Clock, ThumbsUp, XCircle, AlertTriangle } from "lucide-react"
 import { useCompare } from "@/context/CompareContext"
-import { getListingBySlug, makeOffer, type Listing, type LatestOffer, formatPrice } from "@/lib/listingApi"
+import { getListingBySlug, makeOffer, getMyOfferForListing, type Listing, type LatestOffer, formatPrice } from "@/lib/listingApi"
 import { createChatRoom } from "@/lib/chatApi"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
@@ -17,28 +17,76 @@ import { VehicleJsonLd } from "@/components/seo/JsonLd"
 import { Input } from "@/components/ui/Input"
 
 // ─── Offer Status Chip ───────────────────────────────────────────────────────
+// viewerRole: 'buyer' = the person who made the offer
+//              'seller' = the listing owner
+//              'public' = anyone else (logged in or not)
 
-function OfferStatusChip({ offer }: { offer: LatestOffer }) {
+function OfferStatusChip({ offer, viewerRole }: { offer: LatestOffer; viewerRole: 'buyer' | 'seller' | 'public' }) {
     const amount = `£${Number(offer.amount).toLocaleString('en-GB')}`
-    if (offer.status === 'PENDING') return (
-        <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm">
-            <Clock size={14} className="shrink-0" />
-            <span>Your offer of <strong>{amount}</strong> is awaiting the seller&apos;s response.</span>
+
+    // — Buyer view: personalised with status-specific wording —
+    if (viewerRole === 'buyer') {
+        if (offer.status === 'PENDING') return (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm">
+                <Clock size={14} className="shrink-0" />
+                <span>Your offer of <strong>{amount}</strong> is awaiting the seller&apos;s response.</span>
+            </div>
+        )
+        if (offer.status === 'REJECTED') return (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
+                <XCircle size={14} className="shrink-0" />
+                <span>Your offer of <strong>{amount}</strong> was declined. You may submit a new one.</span>
+            </div>
+        )
+        if (offer.status === 'ACCEPTED') return (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm">
+                <ThumbsUp size={14} className="shrink-0" />
+                <span>🎉 Your offer of <strong>{amount}</strong> was accepted! Contact the seller to proceed.</span>
+            </div>
+        )
+        if (offer.status === 'WITHDRAWN') return (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-gray-500/10 border border-gray-500/30 text-gray-300 text-sm">
+                <XCircle size={14} className="shrink-0" />
+                <span>Your previous offer of <strong>{amount}</strong> was withdrawn. You can make a new offer.</span>
+            </div>
+        )
+    }
+
+    // — Seller view: they can see the amount + status, but no action here —
+    if (viewerRole === 'seller') {
+        if (offer.status === 'PENDING') return (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm">
+                <Clock size={14} className="shrink-0" />
+                <span>An offer of <strong>{amount}</strong> is awaiting your response. Manage it in your <strong>Seller Dashboard</strong>.</span>
+            </div>
+        )
+        if (offer.status === 'ACCEPTED') return (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm">
+                <ThumbsUp size={14} className="shrink-0" />
+                <span>You accepted an offer of <strong>{amount}</strong> on this listing.</span>
+            </div>
+        )
+        if (offer.status === 'REJECTED') return (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
+                <XCircle size={14} className="shrink-0" />
+                <span>An offer of <strong>{amount}</strong> was declined.</span>
+            </div>
+        )
+    }
+
+    // — Public view: show amount + neutral status wording, no personal details —
+    const statusLabel =
+        offer.status === 'PENDING' ? 'pending review' :
+            offer.status === 'ACCEPTED' ? 'accepted' :
+                offer.status === 'REJECTED' ? 'declined' :
+                    offer.status === 'WITHDRAWN' ? 'withdrawn' : ''
+
+    return (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 text-sm">
+            <Tag size={14} className="shrink-0" />
+            <span>An offer of <strong className="text-white">{amount}</strong> has been made on this listing{statusLabel ? ` — ${statusLabel}` : ''}.</span>
         </div>
     )
-    if (offer.status === 'REJECTED') return (
-        <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
-            <XCircle size={14} className="shrink-0" />
-            <span>Your offer of <strong>{amount}</strong> was declined. Try a different amount.</span>
-        </div>
-    )
-    if (offer.status === 'ACCEPTED') return (
-        <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm">
-            <ThumbsUp size={14} className="shrink-0" />
-            <span>🎉 Your offer of <strong>{amount}</strong> was accepted!</span>
-        </div>
-    )
-    return null
 }
 
 // ─── Offer Modal ─────────────────────────────────────────────────────────────
@@ -154,7 +202,8 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
     const [activeImage, setActiveImage] = React.useState(0)
     const [enquiring, setEnquiring] = React.useState(false)
     const [showOfferModal, setShowOfferModal] = React.useState(false)
-    const [myLatestOffer, setMyLatestOffer] = React.useState<LatestOffer | null>(null)
+    const [latestOffer, setLatestOffer] = React.useState<LatestOffer | null>(null)   // most recent offer on listing (any buyer) — public display
+    const [myOffer, setMyOffer] = React.useState<LatestOffer | null>(null)            // this user's own offer — drives button state
     const [offerSuccess, setOfferSuccess] = React.useState(false)
 
     const { addToCompare, removeFromCompare, isInCompare } = useCompare()
@@ -166,9 +215,8 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                 setLoading(true)
                 const data = await getListingBySlug(slug)
                 setListing(data)
-                // Populate latest offer for the current user
                 if (data.offers && data.offers.length > 0) {
-                    setMyLatestOffer(data.offers[0])
+                    setLatestOffer(data.offers[0])
                 }
             } catch (err) {
                 console.error('Failed to fetch listing:', err)
@@ -179,6 +227,24 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
         }
         if (slug) fetchListing()
     }, [slug])
+
+    // Separately fetch the current user's own offer for this listing
+    // This runs after the listing is loaded so we have the listing ID
+    React.useEffect(() => {
+        if (!user || !listing) return
+        // Don't fetch for the seller — they can't make offers on their own listing
+        if (listing.sellerId === user.id) return
+        getMyOfferForListing(listing.id).then(setMyOffer).catch(() => { })
+    }, [user, listing])
+
+    // Determine the current viewer's relationship to the offer
+    // Uses myOffer (not latestOffer) so third-party buyers aren't misidentified as 'public'
+    const offerViewerRole: 'buyer' | 'seller' | 'public' = React.useMemo(() => {
+        if (!user || !latestOffer) return 'public'
+        if (listing?.sellerId === user.id) return 'seller'
+        if (myOffer) return 'buyer'   // I have made an offer on this listing
+        return 'public'
+    }, [user, latestOffer, myOffer, listing])
 
     // Client-side document.title for SEO
     React.useEffect(() => {
@@ -292,7 +358,12 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                 <OfferModal
                     listing={listing}
                     onClose={() => setShowOfferModal(false)}
-                    onSuccess={(offer) => { setMyLatestOffer(offer); setShowOfferModal(false); setOfferSuccess(true) }}
+                    onSuccess={(offer) => {
+                        setMyOffer(offer)            // update buyer's own offer
+                        setLatestOffer(offer)         // also update the public display
+                        setShowOfferModal(false)
+                        setOfferSuccess(true)
+                    }}
                 />
             )}
 
@@ -460,36 +531,49 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                                     <p className="text-xs text-gray-400 mt-3">Price includes VAT. Financing available from 5.9% APR.</p>
                                 </div>
 
-                                {/* Latest Offer Status */}
-                                {myLatestOffer && (
+                                {/* Offer Status */}
+                                {/* Buyer sees their own offer chip; seller/public see the listing's latest offer chip */}
+                                {(offerViewerRole === 'buyer' ? myOffer : latestOffer) && (
                                     <div className="mb-4">
-                                        <OfferStatusChip offer={myLatestOffer} />
+                                        <OfferStatusChip
+                                            offer={(offerViewerRole === 'buyer' ? myOffer : latestOffer)!}
+                                            viewerRole={offerViewerRole}
+                                        />
                                     </div>
                                 )}
                                 <div className="space-y-3">
                                     {listing && listing.priceMin && listing.priceMax ? (
                                         <>
-                                            <Button
-                                                className="w-full py-6 text-lg shadow-neon"
-                                                onClick={() => setShowOfferModal(true)}
-                                                disabled={myLatestOffer?.status === 'PENDING' || myLatestOffer?.status === 'ACCEPTED'}
-                                            >
-                                                {myLatestOffer?.status === 'PENDING'
-                                                    ? '⏳ Offer Pending...'
-                                                    : myLatestOffer?.status === 'ACCEPTED'
-                                                        ? '✓ Offer Accepted'
-                                                        : 'Make an Offer'}
-                                            </Button>
-                                            <Button variant="outline" className="w-full py-6 text-lg border-white/20 text-white hover:bg-white/10" onClick={handleEnquire} disabled={enquiring}>
-                                                {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2" />Starting Chat...</> : <><MessageCircle className="w-5 h-5 mr-2" />Enquire</>}
-                                            </Button>
+                                            {/* Only buyers (not the seller, not the listing owner) can make an offer */}
+                                            {listing.sellerId !== user?.id && (
+                                                <Button
+                                                    className="w-full py-6 text-lg shadow-neon"
+                                                    onClick={() => setShowOfferModal(true)}
+                                                    disabled={offerViewerRole === 'buyer' && (myOffer?.status === 'PENDING' || myOffer?.status === 'ACCEPTED')}
+                                                >
+                                                    {offerViewerRole === 'buyer' && myOffer?.status === 'PENDING'
+                                                        ? '⏳ Offer Pending...'
+                                                        : offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'
+                                                            ? '✓ Offer Accepted'
+                                                            : 'Make an Offer'}
+                                                </Button>
+                                            )}
+                                            {listing.sellerId !== user?.id && (
+                                                <Button variant="outline" className="w-full py-6 text-lg border-white/20 text-white hover:bg-white/10" onClick={handleEnquire} disabled={enquiring}>
+                                                    {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2" />Starting Chat...</> : <><MessageCircle className="w-5 h-5 mr-2" />Enquire</>}
+                                                </Button>
+                                            )}
                                         </>
                                     ) : (
                                         <>
-                                            <Button className="w-full py-6 text-lg" shape="default" onClick={handleEnquire} disabled={enquiring}>
-                                                {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2" />Starting Chat...</> : <><MessageCircle className="w-5 h-5 mr-2" />Enquire Now</>}
-                                            </Button>
-                                            <Button variant="outline" className="w-full py-6 text-lg border-white/20 text-white hover:bg-white/10">Buy Online</Button>
+                                            {listing.sellerId !== user?.id && (
+                                                <Button className="w-full py-6 text-lg" shape="default" onClick={handleEnquire} disabled={enquiring}>
+                                                    {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2" />Starting Chat...</> : <><MessageCircle className="w-5 h-5 mr-2" />Enquire Now</>}
+                                                </Button>
+                                            )}
+                                            {listing.sellerId !== user?.id && (
+                                                <Button variant="outline" className="w-full py-6 text-lg border-white/20 text-white hover:bg-white/10">Buy Online</Button>
+                                            )}
                                         </>
                                     )}
                                 </div>
