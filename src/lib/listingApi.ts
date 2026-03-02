@@ -731,6 +731,22 @@ export async function getMyOffers(): Promise<Offer[]> {
 }
 
 /**
+ * Buyer: Get MY latest offer for a specific listing
+ * Returns null if the user has not made any offer on this listing.
+ */
+export async function getMyOfferForListing(listingId: string): Promise<LatestOffer | null> {
+    try {
+        const data = await apiClient<{ data: LatestOffer | null }>(`/offers/my/${listingId}`, {
+            method: 'GET',
+            cache: 'no-store',
+        })
+        return data.data
+    } catch {
+        return null
+    }
+}
+
+/**
  * Seller: Get all offers on a specific listing
  */
 export async function getOffersForListing(listingId: string): Promise<Offer[]> {

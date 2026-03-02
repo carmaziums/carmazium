@@ -24,10 +24,20 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     const [sending, setSending] = React.useState(false)
     const [isTyping, setIsTyping] = React.useState(false)
     const messagesEndRef = React.useRef<HTMLDivElement>(null)
+    const messagesContainerRef = React.useRef<HTMLDivElement>(null)
     const typingTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
+    const isInitialLoad = React.useRef(true)
+
+    /** Returns true if the user is within 150px of the bottom of the chat */
+    const isNearBottom = () => {
+        const container = messagesContainerRef.current
+        if (!container) return true
+        return container.scrollHeight - container.scrollTop - container.clientHeight < 150
+    }
 
     // Fetch initial messages
     React.useEffect(() => {
+        isInitialLoad.current = true
         async function fetchMessages() {
             try {
                 setLoading(true)
@@ -44,9 +54,18 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
         fetchMessages()
     }, [room.id])
 
-    // Scroll to bottom when messages change
+    // Scroll to bottom on new messages — instant on first load, smooth only if near bottom
     React.useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+        if (!messagesEndRef.current) return
+        if (isInitialLoad.current) {
+            // Snap to bottom instantly when the conversation first loads
+            messagesEndRef.current.scrollIntoView({ behavior: "instant" as ScrollBehavior })
+            isInitialLoad.current = false
+        } else if (isNearBottom()) {
+            // Only smooth-scroll when the user is already near the bottom
+            messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+        }
+        // If the user has scrolled up to read older messages, don't interrupt them
     }, [messages])
 
     // Subscribe to new messages (with deduplication)
@@ -172,7 +191,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
                 {loading ? (
                     <div className="flex justify-center py-8">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />

@@ -15,32 +15,74 @@ import {
 } from "lucide-react"
 import { useCompare } from "@/context/CompareContext"
 import { useAuth } from "@/context/AuthContext"
-import { getListingBySlug, makeOffer, formatPrice, type Listing, type LatestOffer } from "@/lib/listingApi"
+import { getListingBySlug, makeOffer, getMyOfferForListing, formatPrice, type Listing, type LatestOffer } from "@/lib/listingApi"
 import { useRouter } from "next/navigation"
 
 // ─── Offer Status Chip ───────────────────────────────────────────────────────
 
-function OfferStatusChip({ offer }: { offer: LatestOffer }) {
+function OfferStatusChip({ offer, viewerRole }: { offer: LatestOffer; viewerRole: 'buyer' | 'seller' | 'public' }) {
     const amount = `£${Number(offer.amount).toLocaleString('en-GB')}`
-    if (offer.status === 'PENDING') return (
-        <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm">
-            <Clock size={14} className="shrink-0" />
-            <span>The latest offer of <strong>{amount}</strong> is awaiting the seller&apos;s response.</span>
+
+    if (viewerRole === 'buyer') {
+        if (offer.status === 'PENDING') return (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm">
+                <Clock size={14} className="shrink-0" />
+                <span>Your offer of <strong>{amount}</strong> is awaiting the seller&apos;s response.</span>
+            </div>
+        )
+        if (offer.status === 'REJECTED') return (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
+                <XCircle size={14} className="shrink-0" />
+                <span>Your offer of <strong>{amount}</strong> was declined. You may submit a new one.</span>
+            </div>
+        )
+        if (offer.status === 'ACCEPTED') return (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm">
+                <ThumbsUp size={14} className="shrink-0" />
+                <span>🎉 Your offer of <strong>{amount}</strong> was accepted! Contact the seller to proceed.</span>
+            </div>
+        )
+        if (offer.status === 'WITHDRAWN') return (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-gray-500/10 border border-gray-500/30 text-gray-300 text-sm">
+                <XCircle size={14} className="shrink-0" />
+                <span>Your previous offer of <strong>{amount}</strong> was withdrawn. You can make a new offer.</span>
+            </div>
+        )
+    }
+
+    if (viewerRole === 'seller') {
+        if (offer.status === 'PENDING') return (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm">
+                <Clock size={14} className="shrink-0" />
+                <span>An offer of <strong>{amount}</strong> is awaiting your response. Manage it in your <strong>Seller Dashboard</strong>.</span>
+            </div>
+        )
+        if (offer.status === 'ACCEPTED') return (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm">
+                <ThumbsUp size={14} className="shrink-0" />
+                <span>You accepted an offer of <strong>{amount}</strong> on this listing.</span>
+            </div>
+        )
+        if (offer.status === 'REJECTED') return (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
+                <XCircle size={14} className="shrink-0" />
+                <span>An offer of <strong>{amount}</strong> was declined.</span>
+            </div>
+        )
+    }
+
+    const statusLabel =
+        offer.status === 'PENDING' ? 'pending review' :
+            offer.status === 'ACCEPTED' ? 'accepted' :
+                offer.status === 'REJECTED' ? 'declined' :
+                    offer.status === 'WITHDRAWN' ? 'withdrawn' : ''
+
+    return (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 text-sm">
+            <Tag size={14} className="shrink-0" />
+            <span>An offer of <strong className="text-white">{amount}</strong> has been made on this listing{statusLabel ? ` — ${statusLabel}` : ''}.</span>
         </div>
     )
-    if (offer.status === 'REJECTED') return (
-        <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
-            <XCircle size={14} className="shrink-0" />
-            <span>The latest offer of <strong>{amount}</strong> was declined. Try a higher amount.</span>
-        </div>
-    )
-    if (offer.status === 'ACCEPTED') return (
-        <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm">
-            <ThumbsUp size={14} className="shrink-0" />
-            <span>🎉 An offer of <strong>{amount}</strong> was accepted! Contact the seller to proceed.</span>
-        </div>
-    )
-    return null
 }
 
 // ─── Offer Modal ─────────────────────────────────────────────────────────────
@@ -214,7 +256,8 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
     const [activeImage, setActiveImage] = React.useState(0)
     const [showOfferModal, setShowOfferModal] = React.useState(false)
     const [showLoginModal, setShowLoginModal] = React.useState(false)
-    const [latestOffer, setLatestOffer] = React.useState<LatestOffer | null>(null)
+    const [latestOffer, setLatestOffer] = React.useState<LatestOffer | null>(null)   // most recent offer on listing (any buyer) — public display
+    const [myOffer, setMyOffer] = React.useState<LatestOffer | null>(null)            // this user's own offer — drives button state
     const [offerSuccess, setOfferSuccess] = React.useState(false)
 
     const router = useRouter()
@@ -239,6 +282,21 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
         }
         load()
     }, [id, user])
+
+    // Separately fetch the current user's own offer for this listing
+    React.useEffect(() => {
+        if (!user || !listing) return
+        if (listing.sellerId === user.id) return  // sellers can't make offers
+        getMyOfferForListing(listing.id).then(setMyOffer).catch(() => { })
+    }, [user, listing])
+
+    // Determine the current viewer's relationship to the offer
+    const offerViewerRole: 'buyer' | 'seller' | 'public' = React.useMemo(() => {
+        if (!user || !latestOffer) return 'public'
+        if (latestOffer.buyerId === user.id) return 'buyer'
+        if (listing?.sellerId === user.id) return 'seller'
+        return 'public'
+    }, [user, latestOffer, listing])
 
     const isCompared = listing ? isInCompare(listing.id) : false
     const hasOfferRange = listing && listing.priceMin && listing.priceMax
@@ -266,7 +324,8 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
     }
 
     const handleOfferSuccess = (offer: LatestOffer) => {
-        setLatestOffer(offer)
+        setMyOffer(offer)        // update buyer's own offer view
+        setLatestOffer(offer)    // update public display
         setShowOfferModal(false)
         setOfferSuccess(true)
     }
@@ -503,10 +562,14 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                     <p className="text-xs text-gray-400 mt-3">Price includes VAT. Financing available from 5.9% APR.</p>
                                 </div>
 
-                                {/* Latest Offer Status */}
-                                {latestOffer && (
+                                {/* Offer Status */}
+                                {/* Buyer sees own offer chip; seller/public see the listing's latest offer */}
+                                {(offerViewerRole === 'buyer' ? myOffer : latestOffer) && (
                                     <div className="mb-4">
-                                        <OfferStatusChip offer={latestOffer} />
+                                        <OfferStatusChip
+                                            offer={(offerViewerRole === 'buyer' ? myOffer : latestOffer)!}
+                                            viewerRole={offerViewerRole}
+                                        />
                                     </div>
                                 )}
 
@@ -516,6 +579,9 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                         <Button className="w-full py-6 text-lg bg-slate-700 text-gray-300 cursor-not-allowed uppercase" disabled>
                                             {listing.status === 'DRAFT' ? 'Preview Only (Draft)' : listing.status}
                                         </Button>
+                                    ) : listing.sellerId === user?.id ? (
+                                        // Seller sees no offer/enquire buttons on their own listing
+                                        <div className="text-center text-gray-500 text-sm py-2">This is your listing.</div>
                                     ) : hasOfferRange ? (
                                         <>
                                             <Button
@@ -524,19 +590,14 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                                     if (!user) setShowLoginModal(true)
                                                     else setShowOfferModal(true)
                                                 }}
-                                                disabled={latestOffer?.status === 'PENDING' || latestOffer?.status === 'ACCEPTED'}
+                                                disabled={offerViewerRole === 'buyer' && (myOffer?.status === 'PENDING' || myOffer?.status === 'ACCEPTED')}
                                             >
-                                                {latestOffer?.status === 'PENDING'
+                                                {offerViewerRole === 'buyer' && myOffer?.status === 'PENDING'
                                                     ? '⏳ Offer Pending...'
-                                                    : latestOffer?.status === 'ACCEPTED'
+                                                    : offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'
                                                         ? '✓ Offer Accepted'
                                                         : 'Make an Offer'}
                                             </Button>
-                                            {latestOffer?.status === 'REJECTED' && (
-                                                <p className="text-xs text-gray-500 text-center">
-                                                    The previous offer was declined — you can submit a new one.
-                                                </p>
-                                            )}
                                         </>
                                     ) : (
                                         <>

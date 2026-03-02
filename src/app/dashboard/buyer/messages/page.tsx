@@ -7,11 +7,33 @@ import { ChatRoomList } from "@/components/chat/ChatRoomList"
 import dynamic from "next/dynamic"
 const ChatWindow = dynamic(() => import("@/components/chat/ChatWindow").then(mod => mod.ChatWindow), { ssr: false })
 import { useAuth } from "@/context/AuthContext"
+import { useChat } from "@/context/ChatContext"
+import { useSearchParams } from "next/navigation"
 import type { ChatRoom } from "@/lib/chatApi"
 
 export default function BuyerMessagesPage() {
     const { user, profile, loading } = useAuth()
+    const { rooms, refreshRooms } = useChat()
+    const searchParams = useSearchParams()
+    const targetRoomId = searchParams.get("room")
     const [selectedRoom, setSelectedRoom] = React.useState<ChatRoom | null>(null)
+
+    // On mount (or when a ?room= param is present), refresh the room list
+    // so a newly-created room appears without a manual page reload
+    React.useEffect(() => {
+        if (!user) return
+        refreshRooms()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user])
+
+    // Once rooms are loaded, auto-select the room specified via ?room= query param
+    React.useEffect(() => {
+        if (!targetRoomId || rooms.length === 0) return
+        // Only auto-select once (don't repeatedly override manual selections)
+        if (selectedRoom?.id === targetRoomId) return
+        const match = rooms.find(r => r.id === targetRoomId)
+        if (match) setSelectedRoom(match)
+    }, [rooms, targetRoomId, selectedRoom])
 
     if (loading) {
         return (

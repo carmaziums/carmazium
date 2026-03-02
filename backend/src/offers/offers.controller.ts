@@ -62,6 +62,21 @@ export class OffersController {
     }
 
     /**
+     * Buyer: Get their own latest offer for a specific listing
+     */
+    @Get('my/:listingId')
+    @ApiOperation({ summary: 'Get my offer for a listing', description: 'Returns the authenticated buyer\'s most recent offer on a specific listing, or null if none.' })
+    @ApiParam({ name: 'listingId', description: 'UUID of the listing' })
+    @ApiResponse({ status: 200, description: 'Buyer\'s latest offer or null' })
+    async getMyOfferForListing(
+        @Param('listingId') listingId: string,
+        @CurrentUser() user: any,
+    ): Promise<StandardResponse<any>> {
+        const offer = await this.offersService.getMyOfferForListing(listingId, user.id);
+        return new StandardResponse(offer);
+    }
+
+    /**
      * Seller: Get all offers on a specific listing they own
      */
     @Get('listing/:listingId')

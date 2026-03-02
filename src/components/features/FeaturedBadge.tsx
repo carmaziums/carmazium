@@ -33,10 +33,10 @@ export function FeaturedBadge({ compact = false, daysRemaining }: FeaturedBadgeP
 
     return (
         <div
-            className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black tracking-wide text-[#1A1A1A] select-none"
+            className="absolute top-0 left-4 z-50 flex items-center gap-1.5 px-3 py-1.5 rounded-b-lg text-[11px] font-black tracking-wide text-[#1A1A1A] select-none shadow-[0_4px_20px_rgba(245,158,11,0.5)]"
             style={{
                 background: "linear-gradient(90deg, #FBBF24 0%, #F59E0B 100%)",
-                boxShadow: "0 0 20px rgba(245, 158, 11, 0.5)",
+                transform: "translateZ(50px)"
             }}
         >
             <Zap size={12} className="fill-[#1A1A1A] text-[#1A1A1A]" />
