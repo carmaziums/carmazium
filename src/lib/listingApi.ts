@@ -38,6 +38,15 @@ export interface CreateListingRequest {
     features?: string[]
     location?: string
     co2Emissions?: number
+    // DVLA extended fields
+    motStatus?: string
+    taxStatus?: string
+    motExpiryDate?: string
+    taxDueDate?: string
+    markedForExport?: boolean
+    monthOfFirstRegistration?: string
+    wheelplan?: string
+    typeApproval?: string
     status?: 'DRAFT' | 'ACTIVE' | 'SOLD'
     badgeTier?: 'FREE' | 'STANDARD' | 'PREMIUM'
 }
@@ -78,14 +87,17 @@ export interface DvlaLookupResult {
     fuelType?: string
     euroStandard?: string
     motStatus?: string
+    motExpiryDate?: string
     taxStatus?: string
-    // ── Bonus fields from PulseCars fallback ──────────────────────────────
-    model?: string
-    mileage?: number
-    transmission?: string
-    bodyType?: string
-    doors?: number
-    dataSource?: 'DVLA' | 'CARCHECK'
+    taxDueDate?: string
+    wheelplan?: string
+    typeApproval?: string
+    revenueWeight?: number
+    markedForExport?: boolean
+    monthOfFirstRegistration?: string
+    dateOfLastV5CIssued?: string
+    realDrivingEmissions?: string
+    dataSource: 'DVLA'
 }
 
 export async function dvlaLookup(vrm: string): Promise<DvlaLookupResult> {
@@ -128,6 +140,15 @@ export interface Listing {
     ulezCompliant: boolean | null
     euroStandard: EuroStandardValue | null
     co2Emissions: number | null
+    // DVLA extended fields
+    motStatus: string | null
+    taxStatus: string | null
+    motExpiryDate: string | null
+    taxDueDate: string | null
+    markedForExport: boolean | null
+    monthOfFirstRegistration: string | null
+    wheelplan: string | null
+    typeApproval: string | null
     sellerId: string | null
     isFeatured: boolean
     featuredUntil: string | null

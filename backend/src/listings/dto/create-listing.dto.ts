@@ -256,6 +256,47 @@ export class CreateListingDto {
     @IsOptional()
     location?: string;
 
+    // ─── DVLA extended fields (auto-filled from VES API) ────────────────────
+    @ApiProperty({ description: 'MOT status from DVLA', example: 'Valid', required: false })
+    @IsString()
+    @IsOptional()
+    motStatus?: string;
+
+    @ApiProperty({ description: 'Tax status from DVLA', example: 'Taxed', required: false })
+    @IsString()
+    @IsOptional()
+    taxStatus?: string;
+
+    @ApiProperty({ description: 'MOT expiry date from DVLA', example: '2025-09-15', required: false })
+    @IsString()
+    @IsOptional()
+    motExpiryDate?: string;
+
+    @ApiProperty({ description: 'Tax due date from DVLA', example: '2025-03-01', required: false })
+    @IsString()
+    @IsOptional()
+    taxDueDate?: string;
+
+    @ApiProperty({ description: 'Whether the vehicle is marked for export', example: false, required: false })
+    @IsBoolean()
+    @IsOptional()
+    markedForExport?: boolean;
+
+    @ApiProperty({ description: 'Month of first registration from DVLA', example: '2015-03', required: false })
+    @IsString()
+    @IsOptional()
+    monthOfFirstRegistration?: string;
+
+    @ApiProperty({ description: 'Wheelplan from DVLA', example: '2 AXLE RIGID BODY', required: false })
+    @IsString()
+    @IsOptional()
+    wheelplan?: string;
+
+    @ApiProperty({ description: 'Type approval from DVLA', example: 'M1', required: false })
+    @IsString()
+    @IsOptional()
+    typeApproval?: string;
+
     @ApiProperty({ description: 'Badge tier: FREE, STANDARD (£10), or PREMIUM (£25 + boost)', example: 'FREE', required: false, default: 'FREE' })
     @IsString()
     @IsOptional()

@@ -143,6 +143,15 @@ export class ListingsService {
                 euroStandard: createListingDto.euroStandard ?? null,
                 // Phase 4: CO2 emissions (from DVLA)
                 co2Emissions: createListingDto.co2Emissions ?? null,
+                // DVLA extended fields
+                motStatus: createListingDto.motStatus ?? null,
+                taxStatus: createListingDto.taxStatus ?? null,
+                motExpiryDate: createListingDto.motExpiryDate ?? null,
+                taxDueDate: createListingDto.taxDueDate ?? null,
+                markedForExport: createListingDto.markedForExport ?? null,
+                monthOfFirstRegistration: createListingDto.monthOfFirstRegistration ?? null,
+                wheelplan: createListingDto.wheelplan ?? null,
+                typeApproval: createListingDto.typeApproval ?? null,
                 // Phase 7: Badge tier
                 badgeTier,
                 // Premium tier → auto-activate featured boost (28 days)
@@ -418,6 +427,15 @@ export class ListingsService {
         if (updateListingDto.listingType) {
             updateData.type = updateListingDto.listingType === 'AUCTION' ? 'AUCTION' : 'CLASSIFIED';
         }
+        // DVLA extended fields
+        if (updateListingDto.motStatus !== undefined) updateData.motStatus = updateListingDto.motStatus;
+        if (updateListingDto.taxStatus !== undefined) updateData.taxStatus = updateListingDto.taxStatus;
+        if (updateListingDto.motExpiryDate !== undefined) updateData.motExpiryDate = updateListingDto.motExpiryDate;
+        if (updateListingDto.taxDueDate !== undefined) updateData.taxDueDate = updateListingDto.taxDueDate;
+        if (updateListingDto.markedForExport !== undefined) updateData.markedForExport = updateListingDto.markedForExport;
+        if (updateListingDto.monthOfFirstRegistration !== undefined) updateData.monthOfFirstRegistration = updateListingDto.monthOfFirstRegistration;
+        if (updateListingDto.wheelplan !== undefined) updateData.wheelplan = updateListingDto.wheelplan;
+        if (updateListingDto.typeApproval !== undefined) updateData.typeApproval = updateListingDto.typeApproval;
 
         // Update the listing
         const updatedListing = await this.prisma.listing.update({
