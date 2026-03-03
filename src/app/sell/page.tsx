@@ -8,7 +8,7 @@ import {
     Car, Camera, List, DollarSign, CheckCircle,
     ArrowRight, ArrowLeft, Loader2, Search,
     BadgeCheck, TrendingDown, Upload, Eye, X,
-    Shield, Star, Sparkles, Zap, MapPin, LocateFixed, Edit
+    Shield, Star, Sparkles, Zap, MapPin, LocateFixed, Edit, Info
 } from "lucide-react"
 import Image from "next/image"
 import { ImageUpload } from "@/components/listing/ImageUpload"
@@ -188,6 +188,19 @@ function SelectField({
                 {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
         </div>
+    )
+}
+// ─── Info Tooltip ─────────────────────────────────────────────────────────────
+
+function InfoTooltip({ text }: { text: string }) {
+    return (
+        <span className="relative group/tip inline-flex items-center ml-1 cursor-help">
+            <Info size={12} className="text-gray-500 group-hover/tip:text-blue-400 transition-colors" />
+            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 rounded-lg bg-slate-800 border border-white/10 px-3 py-2.5 text-xs text-gray-300 leading-relaxed shadow-xl opacity-0 invisible group-hover/tip:opacity-100 group-hover/tip:visible transition-all duration-200 z-50 pointer-events-none">
+                {text}
+                <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-slate-800" />
+            </span>
+        </span>
     )
 }
 
@@ -494,6 +507,18 @@ export default function SellPage() {
                                                 if (r.monthOfFirstRegistration) set("monthOfFirstRegistration", r.monthOfFirstRegistration)
                                                 if (r.wheelplan) set("wheelplan", r.wheelplan)
                                                 if (r.typeApproval) set("typeApproval", r.typeApproval)
+                                                // Auto-infer ULEZ compliance from fuel type + euro standard
+                                                const ft = (r.fuelType || "").toUpperCase()
+                                                const es = (r.euroStandard || "").toUpperCase()
+                                                if (ft === "ELECTRIC" || ft === "PLUGIN_HYBRID") {
+                                                    set("ulezCompliant", true)
+                                                } else if (es.includes("EURO_6") || es === "EURO_6D") {
+                                                    set("ulezCompliant", true)
+                                                } else if (ft === "PETROL" && es === "EURO_4") {
+                                                    set("ulezCompliant", true)
+                                                } else if (es) {
+                                                    set("ulezCompliant", false)
+                                                }
                                                 setDvlaSuccess(true)
                                             } catch (err: any) {
                                                 setDvlaError(err.message || "Lookup failed")
@@ -828,7 +853,9 @@ export default function SellPage() {
                                             <div className="bg-white/5 rounded-lg px-3 py-2.5 flex items-center gap-2">
                                                 <TrendingDown size={14} className="text-amber-400 shrink-0" />
                                                 <div>
-                                                    <p className="text-[10px] text-gray-500 uppercase font-bold">Age impact</p>
+                                                    <p className="text-[10px] text-gray-500 uppercase font-bold flex items-center">Age impact
+                                                        <InfoTooltip text={`Depreciation is calculated by vehicle age using UK market tiers. Year 1: −20%, Years 2–3: −15%/yr, Years 4–7: −10%/yr, 8+: −7%/yr. Your ${formData.year ? new Date().getFullYear() - Number(formData.year) : 0}-year-old vehicle has lost ~${valuation.ageDropPct}% of its original value due to age.`} />
+                                                    </p>
                                                     <p className="text-amber-300 text-sm font-bold">−{valuation.ageDropPct}% depreciation</p>
                                                 </div>
                                             </div>
@@ -837,7 +864,9 @@ export default function SellPage() {
                                             <div className="bg-white/5 rounded-lg px-3 py-2.5 flex items-center gap-2">
                                                 <TrendingDown size={14} className="text-orange-400 shrink-0" />
                                                 <div>
-                                                    <p className="text-[10px] text-gray-500 uppercase font-bold">High mileage</p>
+                                                    <p className="text-[10px] text-gray-500 uppercase font-bold flex items-center">High mileage
+                                                        <InfoTooltip text={`Your mileage is above the UK average of 8,000 miles/year (expected: ${valuation.avgMiles.toLocaleString()} miles for this age). Every 10,000 miles above average reduces value by 6%, capped at −50%. Higher mileage indicates more wear on the engine, transmission, and suspension.`} />
+                                                    </p>
                                                     <p className="text-orange-300 text-sm font-bold">−{valuation.mileageDropPct}% vs avg</p>
                                                 </div>
                                             </div>
@@ -846,13 +875,17 @@ export default function SellPage() {
                                             <div className="bg-white/5 rounded-lg px-3 py-2.5 flex items-center gap-2">
                                                 <BadgeCheck size={14} className="text-emerald-400 shrink-0" />
                                                 <div>
-                                                    <p className="text-[10px] text-gray-500 uppercase font-bold">Low mileage</p>
+                                                    <p className="text-[10px] text-gray-500 uppercase font-bold flex items-center">Low mileage
+                                                        <InfoTooltip text={`Your mileage is below the UK average of 8,000 miles/year (expected: ${valuation.avgMiles.toLocaleString()} miles for this age). Every 10,000 miles below average adds +3% to value, capped at +20%. Lower mileage means less wear and is highly desirable to buyers.`} />
+                                                    </p>
                                                     <p className="text-emerald-300 text-sm font-bold">+{valuation.mileageBonusPct}% premium</p>
                                                 </div>
                                             </div>
                                         )}
                                         <div className="bg-white/5 rounded-lg px-3 py-2.5">
-                                            <p className="text-[10px] text-gray-500 uppercase font-bold">UK avg mileage</p>
+                                            <p className="text-[10px] text-gray-500 uppercase font-bold flex items-center">UK avg mileage
+                                                <InfoTooltip text={`The UK national average is approximately 8,000 miles per year (RAC/DfT data). For a ${formData.year ? new Date().getFullYear() - Number(formData.year) : 0}-year-old car, the expected total mileage is ${valuation.avgMiles.toLocaleString()} miles. This benchmark is used to determine whether your car has above or below-average usage.`} />
+                                            </p>
                                             <p className="text-gray-300 text-sm font-bold">{valuation.avgMiles.toLocaleString()} mi/yr</p>
                                         </div>
                                     </div>
