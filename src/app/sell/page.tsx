@@ -50,6 +50,15 @@ interface FormData {
     ulezCompliant: boolean | null
     euroStandard: EuroStandardValue | ""
     co2Emissions: string
+    // DVLA extended fields
+    motStatus: string
+    taxStatus: string
+    motExpiryDate: string
+    taxDueDate: string
+    markedForExport: boolean | null
+    monthOfFirstRegistration: string
+    wheelplan: string
+    typeApproval: string
     // Step 4 — Pricing
     priceMin: string
     priceMax: string
@@ -81,6 +90,8 @@ const INITIAL_FORM: FormData = {
     doors: "", seats: "", engineSize: "", bhp: "",
     features: [], description: "", title: "",
     ulezCompliant: null, euroStandard: "", co2Emissions: "",
+    motStatus: "", taxStatus: "", motExpiryDate: "", taxDueDate: "",
+    markedForExport: null, monthOfFirstRegistration: "", wheelplan: "", typeApproval: "",
     priceMin: "", priceMax: "", badgeTier: 'FREE', status: "DRAFT",
 }
 
@@ -306,6 +317,15 @@ export default function SellPage() {
                 ulezCompliant: formData.ulezCompliant ?? undefined,
                 euroStandard: (formData.euroStandard as EuroStandardValue) || undefined,
                 co2Emissions: formData.co2Emissions ? parseInt(formData.co2Emissions) : undefined,
+                // DVLA extended fields
+                motStatus: formData.motStatus || undefined,
+                taxStatus: formData.taxStatus || undefined,
+                motExpiryDate: formData.motExpiryDate || undefined,
+                taxDueDate: formData.taxDueDate || undefined,
+                markedForExport: formData.markedForExport ?? undefined,
+                monthOfFirstRegistration: formData.monthOfFirstRegistration || undefined,
+                wheelplan: formData.wheelplan || undefined,
+                typeApproval: formData.typeApproval || undefined,
                 badgeTier: formData.badgeTier,
                 status: formData.status,
             }
@@ -457,7 +477,7 @@ export default function SellPage() {
                                             setDvlaLoading(true); setDvlaError(null); setDvlaSuccess(false)
                                             try {
                                                 const r = await dvlaLookup(formData.vrm)
-                                                // DVLA / PulseCars core fields
+                                                // Core vehicle fields
                                                 if (r.make) set("make", r.make)
                                                 if (r.colour) set("color", r.colour)
                                                 if (r.year) set("year", String(r.year))
@@ -465,12 +485,15 @@ export default function SellPage() {
                                                 if (r.fuelType) set("fuelType", r.fuelType)
                                                 if (r.euroStandard) set("euroStandard", r.euroStandard as EuroStandardValue)
                                                 if (r.co2Emissions) set("co2Emissions", String(r.co2Emissions))
-                                                // PulseCars bonus fields
-                                                if (r.model) set("model", r.model)
-                                                if (r.mileage) set("mileage", String(r.mileage))
-                                                if (r.transmission) set("transmission", r.transmission)
-                                                if (r.bodyType) set("bodyType", r.bodyType as BodyTypeValue)
-                                                if (r.doors) set("doors", String(r.doors))
+                                                // DVLA extended fields
+                                                if (r.motStatus) set("motStatus", r.motStatus)
+                                                if (r.taxStatus) set("taxStatus", r.taxStatus)
+                                                if (r.motExpiryDate) set("motExpiryDate", r.motExpiryDate)
+                                                if (r.taxDueDate) set("taxDueDate", r.taxDueDate)
+                                                if (r.markedForExport !== undefined) set("markedForExport", r.markedForExport)
+                                                if (r.monthOfFirstRegistration) set("monthOfFirstRegistration", r.monthOfFirstRegistration)
+                                                if (r.wheelplan) set("wheelplan", r.wheelplan)
+                                                if (r.typeApproval) set("typeApproval", r.typeApproval)
                                                 setDvlaSuccess(true)
                                             } catch (err: any) {
                                                 setDvlaError(err.message || "Lookup failed")
@@ -486,6 +509,56 @@ export default function SellPage() {
                                 {dvlaSuccess && <p className="text-xs text-emerald-400 flex items-center gap-1"><BadgeCheck size={12} /> Vehicle data loaded — review and edit below.</p>}
                                 {dvlaError && <p className="text-xs text-red-400">{dvlaError}</p>}
                             </div>
+
+                            {/* DVLA Vehicle Data Panel */}
+                            {dvlaSuccess && (formData.motStatus || formData.taxStatus || formData.monthOfFirstRegistration) && (
+                                <div className="border border-blue-500/20 bg-blue-500/5 rounded-xl p-5 space-y-3">
+                                    <h3 className="text-sm font-bold uppercase text-blue-400 tracking-wider flex items-center gap-2">
+                                        <Shield size={14} /> DVLA Vehicle Data
+                                    </h3>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                        {formData.motStatus && (
+                                            <div className="bg-white/5 rounded-lg px-3 py-2.5">
+                                                <p className="text-[10px] text-gray-500 uppercase font-bold">MOT Status</p>
+                                                <p className={`text-sm font-bold ${formData.motStatus.toLowerCase().includes('valid') ? 'text-emerald-400' : 'text-amber-400'}`}>{formData.motStatus}</p>
+                                                {formData.motExpiryDate && <p className="text-[10px] text-gray-500 mt-0.5">Expires: {formData.motExpiryDate}</p>}
+                                            </div>
+                                        )}
+                                        {formData.taxStatus && (
+                                            <div className="bg-white/5 rounded-lg px-3 py-2.5">
+                                                <p className="text-[10px] text-gray-500 uppercase font-bold">Tax Status</p>
+                                                <p className={`text-sm font-bold ${formData.taxStatus.toLowerCase() === 'taxed' ? 'text-emerald-400' : 'text-amber-400'}`}>{formData.taxStatus}</p>
+                                                {formData.taxDueDate && <p className="text-[10px] text-gray-500 mt-0.5">Due: {formData.taxDueDate}</p>}
+                                            </div>
+                                        )}
+                                        {formData.monthOfFirstRegistration && (
+                                            <div className="bg-white/5 rounded-lg px-3 py-2.5">
+                                                <p className="text-[10px] text-gray-500 uppercase font-bold">First Registered</p>
+                                                <p className="text-sm font-bold text-white">{formData.monthOfFirstRegistration}</p>
+                                            </div>
+                                        )}
+                                        {formData.wheelplan && (
+                                            <div className="bg-white/5 rounded-lg px-3 py-2.5">
+                                                <p className="text-[10px] text-gray-500 uppercase font-bold">Wheelplan</p>
+                                                <p className="text-sm font-bold text-white">{formData.wheelplan}</p>
+                                            </div>
+                                        )}
+                                        {formData.typeApproval && (
+                                            <div className="bg-white/5 rounded-lg px-3 py-2.5">
+                                                <p className="text-[10px] text-gray-500 uppercase font-bold">Type Approval</p>
+                                                <p className="text-sm font-bold text-white">{formData.typeApproval}</p>
+                                            </div>
+                                        )}
+                                        {formData.markedForExport !== null && (
+                                            <div className="bg-white/5 rounded-lg px-3 py-2.5">
+                                                <p className="text-[10px] text-gray-500 uppercase font-bold">Marked for Export</p>
+                                                <p className={`text-sm font-bold ${formData.markedForExport ? 'text-red-400' : 'text-emerald-400'}`}>{formData.markedForExport ? 'Yes' : 'No'}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <p className="text-[10px] text-gray-600">Data sourced directly from the DVLA Vehicle Enquiry Service. These fields are stored with your listing for buyer transparency.</p>
+                                </div>
+                            )}
 
                             {/* VIN */}
                             <div className="space-y-2">
@@ -967,7 +1040,24 @@ export default function SellPage() {
                                     {formData.seats && <SummaryField label="Seats" value={formData.seats} />}
                                     {formData.ulezCompliant !== null && <SummaryField label="ULEZ" value={formData.ulezCompliant ? "Compliant" : "Non-compliant"} />}
                                     {formData.euroStandard && <SummaryField label="Euro Standard" value={formData.euroStandard.replace("_", " ")} />}
+                                    {formData.co2Emissions && <SummaryField label="CO₂" value={formData.co2Emissions + " g/km"} />}
                                 </div>
+                                {/* DVLA Data */}
+                                {(formData.motStatus || formData.taxStatus || formData.monthOfFirstRegistration) && (
+                                    <div className="mt-3 pt-3 border-t border-white/5">
+                                        <p className="text-[10px] text-blue-400 uppercase font-bold mb-2 flex items-center gap-1"><Shield size={10} /> DVLA Data</p>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                            {formData.motStatus && <SummaryField label="MOT Status" value={formData.motStatus} />}
+                                            {formData.motExpiryDate && <SummaryField label="MOT Expiry" value={formData.motExpiryDate} />}
+                                            {formData.taxStatus && <SummaryField label="Tax Status" value={formData.taxStatus} />}
+                                            {formData.taxDueDate && <SummaryField label="Tax Due" value={formData.taxDueDate} />}
+                                            {formData.monthOfFirstRegistration && <SummaryField label="First Registered" value={formData.monthOfFirstRegistration} />}
+                                            {formData.wheelplan && <SummaryField label="Wheelplan" value={formData.wheelplan} />}
+                                            {formData.typeApproval && <SummaryField label="Type Approval" value={formData.typeApproval} />}
+                                            {formData.markedForExport !== null && <SummaryField label="Export" value={formData.markedForExport ? "Yes" : "No"} />}
+                                        </div>
+                                    </div>
+                                )}
                                 {formData.features.length > 0 && (
                                     <div className="mt-3 flex flex-wrap gap-1.5">
                                         {formData.features.map((f, i) => (

@@ -476,6 +476,11 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                     { label: "Body Type", value: listing.bodyType },
                                     { label: "Condition", value: listing.condition },
                                     { label: "VRM", value: listing.vrm },
+                                    { label: "MOT Status", value: listing.motStatus ? `${listing.motStatus}${listing.motExpiryDate ? ` (exp. ${listing.motExpiryDate})` : ''}` : null },
+                                    { label: "Tax Status", value: listing.taxStatus ? `${listing.taxStatus}${listing.taxDueDate ? ` (due ${listing.taxDueDate})` : ''}` : null },
+                                    { label: "First Registered", value: listing.monthOfFirstRegistration },
+                                    { label: "Type Approval", value: listing.typeApproval },
+                                    { label: "Wheelplan", value: listing.wheelplan },
                                 ].filter(i => i.value != null).map((item, i) => (
                                     <div key={i} className="flex justify-between border-b border-white/5 pb-2">
                                         <span className="text-gray-400 text-sm">{item.label}</span>

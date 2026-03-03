@@ -383,6 +383,15 @@ model Listing {
   ulezCompliant   Boolean?
   euroStandard    EuroStandard?
   co2Emissions    Int?             // CO2 g/km (from DVLA VES API)
+  // DVLA extended fields (auto-filled from VES API)
+  motStatus       String?          // e.g. "Valid", "Not valid"
+  taxStatus       String?          // e.g. "Taxed", "SORN"
+  motExpiryDate   String?          // ISO date string
+  taxDueDate      String?          // ISO date string
+  markedForExport Boolean?
+  monthOfFirstRegistration String? // e.g. "2015-03"
+  wheelplan       String?          // e.g. "2 AXLE RIGID BODY"
+  typeApproval    String?          // e.g. "M1"
   // Phase 5: Featured boost
   isFeatured      Boolean  @default(false)
   featuredUntil   DateTime?
