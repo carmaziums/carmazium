@@ -4,7 +4,7 @@
 #
 
 app = 'carmazium-hjoh9w'
-primary_region = 'bom'
+primary_region = 'lhr'
 
 [build]
 
