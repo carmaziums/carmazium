@@ -75,6 +75,12 @@ const DVLA_EURO_MAP: Record<string, string> = {
     'EURO 5': 'EURO_5',
     'EURO 6': 'EURO_6',
     'EURO 6D': 'EURO_6D',
+    'EURO 6 DT': 'EURO_6D',
+    'EURO 6 D-TEMP': 'EURO_6D',
+    'EURO 6 AD': 'EURO_6D',
+    'EURO 6 D': 'EURO_6D',
+    'EURO 6D-TEMP': 'EURO_6D',
+    'EURO 6D TEMP': 'EURO_6D',
 };
 
 // ─── Endpoint ─────────────────────────────────────────────────────────────────
