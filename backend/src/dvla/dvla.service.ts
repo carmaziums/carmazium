@@ -125,6 +125,7 @@ export class DvlaService {
             headers: {
                 'x-api-key': this.apiKey!,
                 'Content-Type': 'application/json',
+                'Accept': 'application/json',
             },
             body: JSON.stringify({ registrationNumber: normalised }),
         });
