@@ -269,7 +269,9 @@ export class ListingsService {
         if (sortBy === 'price_asc') orderBy = [{ isFeatured: 'desc' }, { price: 'asc' }];
         else if (sortBy === 'price_desc') orderBy = [{ isFeatured: 'desc' }, { price: 'desc' }];
         else if (sortBy === 'mileage_asc') orderBy = [{ isFeatured: 'desc' }, { mileage: 'asc' }];
+        else if (sortBy === 'mileage_desc') orderBy = [{ isFeatured: 'desc' }, { mileage: 'desc' }];
         else if (sortBy === 'year_desc') orderBy = [{ isFeatured: 'desc' }, { year: 'desc' }];
+        else if (sortBy === 'year_asc') orderBy = [{ isFeatured: 'desc' }, { year: 'asc' }];
 
         const skip = (page - 1) * limit;
 

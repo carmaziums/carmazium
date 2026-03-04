@@ -16,15 +16,16 @@ import { DualRangeSlider } from "@/components/ui/DualRangeSlider"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const FUEL_TYPES = ['Petrol', 'Diesel', 'Hybrid', 'Electric', 'Plugin Hybrid'] as const
+const FUEL_TYPES = ['Petrol', 'Diesel', 'Hybrid', 'Electric', 'Plugin Hybrid', 'LPG', 'Hydrogen Fuel Cell'] as const
 const FUEL_MAP: Record<string, string> = {
     'Petrol': 'PETROL', 'Diesel': 'DIESEL', 'Hybrid': 'HYBRID',
     'Electric': 'ELECTRIC', 'Plugin Hybrid': 'PLUGIN_HYBRID',
+    'LPG': 'LPG', 'Hydrogen Fuel Cell': 'HYDROGEN_CELL',
 }
 
-const TRANSMISSION_TYPES = ['Manual', 'Automatic', 'Semi-Automatic'] as const
+const TRANSMISSION_TYPES = ['Manual', 'Automatic', 'Semi-Automatic', 'CVT'] as const
 const TRANS_MAP: Record<string, string> = {
-    'Manual': 'MANUAL', 'Automatic': 'AUTOMATIC', 'Semi-Automatic': 'SEMI_AUTOMATIC',
+    'Manual': 'MANUAL', 'Automatic': 'AUTOMATIC', 'Semi-Automatic': 'SEMI_AUTOMATIC', 'CVT': 'CVT',
 }
 
 const CONDITION_OPTIONS: { value: VehicleConditionValue; label: string }[] = [
@@ -50,7 +51,9 @@ const SORT_OPTIONS = [
     { label: 'Price: Low → High', value: 'price_asc' },
     { label: 'Price: High → Low', value: 'price_desc' },
     { label: 'Mileage: Low → High', value: 'mileage_asc' },
+    { label: 'Mileage: High → Low', value: 'mileage_desc' },
     { label: 'Year: Newest', value: 'year_desc' },
+    { label: 'Year: Oldest', value: 'year_asc' },
 ]
 
 const CURRENT_YEAR = new Date().getFullYear()
@@ -181,8 +184,10 @@ function SearchPageContent() {
     const [isFilterOpen, setIsFilterOpen] = React.useState(false)
     const [listings, setListings] = React.useState<Listing[]>([])
     const [loading, setLoading] = React.useState(true)
+    const [loadingMore, setLoadingMore] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
     const [totalCount, setTotalCount] = React.useState(0)
+    const [currentPage, setCurrentPage] = React.useState(1)
     const [featuredListings, setFeaturedListings] = React.useState<Listing[]>([])
 
     // Fetch featured listings once on mount
@@ -288,10 +293,13 @@ function SearchPageContent() {
     }, [])
 
     // Fetch listings
-    const fetchListings = React.useCallback(async (filterState: FilterState) => {
+    const fetchListings = React.useCallback(async (filterState: FilterState, page = 1, append = false) => {
         try {
-            setLoading(true); setError(null)
+            if (append) setLoadingMore(true)
+            else { setLoading(true); setCurrentPage(1) }
+            setError(null)
             const apiFilters = buildApiFilters(filterState)
+            apiFilters.page = page
             const response = await getListings(apiFilters)
 
             let data = response.data
@@ -304,12 +312,19 @@ function SearchPageContent() {
                 const mapped = filterState.transmissions.map(t => TRANS_MAP[t])
                 data = data.filter(l => l.transmission && mapped.includes(l.transmission))
             }
-            setListings(data); setTotalCount(response.pagination.total)
+            if (append) {
+                setListings(prev => [...prev, ...data])
+            } else {
+                setListings(data)
+            }
+            setTotalCount(response.pagination.total)
+            setCurrentPage(page)
         } catch (err) {
             console.error('Failed to fetch listings:', err)
             setError(err instanceof Error ? err.message : 'Failed to load listings')
         } finally {
             setLoading(false)
+            setLoadingMore(false)
         }
     }, [buildApiFilters])
 
@@ -782,8 +797,18 @@ function SearchPageContent() {
                     {/* Load More */}
                     {!loading && !error && listings.length > 0 && listings.length < totalCount && (
                         <div className="mt-12 text-center">
-                            <Button variant="outline" size="lg" className="border-gray-300 text-gray-500 hover:text-primary hover:border-primary font-bold">
-                                Load More
+                            <Button
+                                variant="outline"
+                                size="lg"
+                                disabled={loadingMore}
+                                onClick={() => fetchListings(appliedFilters, currentPage + 1, true)}
+                                className="border-white/20 text-gray-300 hover:text-white hover:border-white/40 hover:bg-white/5 font-bold"
+                            >
+                                {loadingMore ? (
+                                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading...</>
+                                ) : (
+                                    `Load More (${listings.length} of ${totalCount})`
+                                )}
                             </Button>
                         </div>
                     )}
