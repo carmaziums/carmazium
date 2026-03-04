@@ -635,24 +635,26 @@ export default function SellPage() {
                                 </div>
                             </div>
 
-                            {/* Body Type */}
-                            <div className="space-y-3">
-                                <label className="text-sm font-bold uppercase text-gray-400">Body Type</label>
-                                <div className="grid grid-cols-3 md:grid-cols-5 gap-2.5">
-                                    {BODY_TYPE_KEYS.map((key) => {
-                                        const Icon = BODY_TYPE_ICONS[key]
-                                        return (
-                                            <button key={key} type="button"
-                                                onClick={() => set("bodyType", key as BodyTypeValue)}
-                                                className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all ${formData.bodyType === key ? "border-primary bg-primary/10 text-white shadow-[0_0_15px_rgba(237,28,36,0.2)]" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/30"}`}
-                                            >
-                                                <Icon className="w-10 h-5" />
-                                                <span className="text-[9px] font-bold uppercase tracking-wide">{BODY_TYPE_LABELS[key]}</span>
-                                            </button>
-                                        )
-                                    })}
+                            {/* Body Type (not for motorcycles) */}
+                            {formData.vehicleType !== 'MOTORCYCLE' && (
+                                <div className="space-y-3">
+                                    <label className="text-sm font-bold uppercase text-gray-400">Body Type</label>
+                                    <div className="grid grid-cols-3 md:grid-cols-5 gap-2.5">
+                                        {BODY_TYPE_KEYS.map((key) => {
+                                            const Icon = BODY_TYPE_ICONS[key]
+                                            return (
+                                                <button key={key} type="button"
+                                                    onClick={() => set("bodyType", key as BodyTypeValue)}
+                                                    className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all ${formData.bodyType === key ? "border-primary bg-primary/10 text-white shadow-[0_0_15px_rgba(237,28,36,0.2)]" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/30"}`}
+                                                >
+                                                    <Icon className="w-10 h-5" />
+                                                    <span className="text-[9px] font-bold uppercase tracking-wide">{BODY_TYPE_LABELS[key]}</span>
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Location */}
                             <div className="space-y-2">
@@ -754,17 +756,21 @@ export default function SellPage() {
                                     <Input type="number" placeholder="e.g. 503" value={formData.bhp} onChange={(e) => set("bhp", e.target.value)} className={inputCls} />
                                 </div>
 
-                                {/* Doors */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-gray-400">Doors</label>
-                                    <Input type="number" placeholder="e.g. 4" min={2} max={8} value={formData.doors} onChange={(e) => set("doors", e.target.value)} className={inputCls} />
-                                </div>
+                                {/* Doors (not for motorcycles) */}
+                                {formData.vehicleType !== 'MOTORCYCLE' && (
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold uppercase text-gray-400">Doors</label>
+                                        <Input type="number" placeholder="e.g. 4" min={2} max={8} value={formData.doors} onChange={(e) => set("doors", e.target.value)} className={inputCls} />
+                                    </div>
+                                )}
 
-                                {/* Seats */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-gray-400">Seats</label>
-                                    <Input type="number" placeholder="e.g. 5" min={1} max={20} value={formData.seats} onChange={(e) => set("seats", e.target.value)} className={inputCls} />
-                                </div>
+                                {/* Seats (not for motorcycles) */}
+                                {formData.vehicleType !== 'MOTORCYCLE' && (
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold uppercase text-gray-400">Seats</label>
+                                        <Input type="number" placeholder="e.g. 5" min={1} max={20} value={formData.seats} onChange={(e) => set("seats", e.target.value)} className={inputCls} />
+                                    </div>
+                                )}
                             </div>
 
                             {/* UK Compliance */}
@@ -847,6 +853,14 @@ export default function SellPage() {
                                     className={`${inputCls} resize-none`}
                                 />
                                 <p className="text-xs text-gray-600">{formData.description.length}/1000 characters</p>
+                                {/* AI-Assisted Description — Coming Soon */}
+                                <div className="mt-2 rounded-lg bg-gradient-to-r from-indigo-600/10 to-violet-600/10 border border-indigo-500/20 p-3 flex items-center gap-3">
+                                    <Sparkles size={16} className="text-indigo-400 shrink-0" />
+                                    <div>
+                                        <p className="text-xs text-indigo-300 font-bold">AI-Assisted Description — Coming Soon</p>
+                                        <p className="text-[10px] text-indigo-400/70">Auto-generate a compelling listing description based on your vehicle details.</p>
+                                    </div>
+                                </div>
                             </div>
 
                             {/* Condition */}
