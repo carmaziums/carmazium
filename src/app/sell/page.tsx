@@ -15,7 +15,7 @@ import { ImageUpload } from "@/components/listing/ImageUpload"
 import {
     createListing, dvlaLookup, formatPrice,
     type CreateListingRequest, type BodyTypeValue,
-    type EuroStandardValue,
+    type EuroStandardValue, type VehicleTypeValue,
 } from "@/lib/listingApi"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { useAuth } from "@/context/AuthContext"
@@ -24,7 +24,8 @@ import { useRouter } from "next/navigation"
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
 interface FormData {
-    // Step 1 — Identity
+    // Step 1 — Vehicle Details (merged Identity + Specs)
+    vehicleType: VehicleTypeValue
     vrm: string
     vin: string
     make: string
@@ -32,9 +33,6 @@ interface FormData {
     year: string
     bodyType: BodyTypeValue | ""
     location: string
-    // Step 2 — Media
-    images: string[]
-    // Step 3 — Technical Specs
     mileage: string
     fuelType: string
     transmission: string
@@ -46,6 +44,9 @@ interface FormData {
     features: string[]
     description: string
     title: string
+    // Condition
+    condition: string
+    isImported: boolean
     // UK Compliance
     ulezCompliant: boolean | null
     euroStandard: EuroStandardValue | ""
@@ -59,7 +60,9 @@ interface FormData {
     monthOfFirstRegistration: string
     wheelplan: string
     typeApproval: string
-    // Step 4 — Pricing
+    // Step 2 — Media
+    images: string[]
+    // Step 3 — Pricing
     priceMin: string
     priceMax: string
     badgeTier: 'FREE' | 'STANDARD' | 'PREMIUM'
@@ -76,22 +79,22 @@ const PRESET_FEATURES = [
 ]
 
 const STEPS = [
-    { id: 1, icon: Car, title: "Identity" },
+    { id: 1, icon: Car, title: "Details" },
     { id: 2, icon: Camera, title: "Media" },
-    { id: 3, icon: List, title: "Specs" },
-    { id: 4, icon: DollarSign, title: "Pricing" },
-    { id: 5, icon: CheckCircle, title: "Review" },
+    { id: 3, icon: DollarSign, title: "Pricing" },
+    { id: 4, icon: CheckCircle, title: "Review" },
 ]
 
 const INITIAL_FORM: FormData = {
-    vrm: "", vin: "", make: "", model: "", year: "", bodyType: "", location: "",
-    images: [],
+    vehicleType: "CAR", vrm: "", vin: "", make: "", model: "", year: "", bodyType: "", location: "",
     mileage: "", fuelType: "", transmission: "", color: "",
     doors: "", seats: "", engineSize: "", bhp: "",
     features: [], description: "", title: "",
+    condition: "", isImported: false,
     ulezCompliant: null, euroStandard: "", co2Emissions: "",
     motStatus: "", taxStatus: "", motExpiryDate: "", taxDueDate: "",
     markedForExport: null, monthOfFirstRegistration: "", wheelplan: "", typeApproval: "",
+    images: [],
     priceMin: "", priceMax: "", badgeTier: 'FREE', status: "DRAFT",
 }
 
@@ -252,10 +255,9 @@ export default function SellPage() {
 
     const validateStep = (): boolean => {
         switch (currentStep) {
-            case 1: return !!(formData.vrm && formData.make && formData.model && formData.year)
+            case 1: return !!(formData.vrm && formData.make && formData.model && formData.year && formData.mileage && formData.fuelType && formData.transmission && formData.title)
             case 2: return formData.images.length > 0
-            case 3: return !!(formData.mileage && formData.fuelType && formData.transmission && formData.title)
-            case 4: {
+            case 3: {
                 const hasRange = formData.priceMin && formData.priceMax
                 if (!hasRange) return false
                 const min = parseFloat(formData.priceMin)
@@ -273,7 +275,7 @@ export default function SellPage() {
             alert("Please fill in all required fields before proceeding.")
             return
         }
-        setCurrentStep(prev => Math.min(prev + 1, 5))
+        setCurrentStep(prev => Math.min(prev + 1, 4))
     }
     const handleBack = () => setCurrentStep(prev => Math.max(prev - 1, 1))
     const goToStep = (n: number) => setCurrentStep(n)
@@ -341,6 +343,9 @@ export default function SellPage() {
                 typeApproval: formData.typeApproval || undefined,
                 badgeTier: formData.badgeTier,
                 status: formData.status,
+                vehicleType: formData.vehicleType as VehicleTypeValue,
+                isImported: formData.isImported,
+                condition: formData.condition as any || undefined,
             }
 
             const response = await createListing(payload)
@@ -476,7 +481,26 @@ export default function SellPage() {
                     {/* ── STEP 1: Identity ──────────────────────────────────────────────── */}
                     {currentStep === 1 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                            <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Vehicle Identity</h2>
+                            <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Vehicle Details</h2>
+
+                            {/* Vehicle Type Selector */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold uppercase text-gray-400">Vehicle Type *</label>
+                                <div className="flex gap-3">
+                                    {(["CAR", "HGV", "MOTORCYCLE"] as const).map((vt) => {
+                                        const labels: Record<string, string> = { CAR: "Car", HGV: "HGV / Commercial", MOTORCYCLE: "Motorcycle" }
+                                        const active = formData.vehicleType === vt
+                                        return (
+                                            <button key={vt} type="button"
+                                                onClick={() => set("vehicleType", vt)}
+                                                className={`flex-1 py-3 rounded-xl border text-sm font-bold transition-all ${active ? "border-primary bg-primary/10 text-white shadow-[0_0_15px_rgba(237,28,36,0.2)]" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"}`}
+                                            >
+                                                {labels[vt]}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                            </div>
 
                             {/* VRM + Lookup */}
                             <div className="space-y-2">
@@ -677,10 +701,10 @@ export default function SellPage() {
                         </div>
                     )}
 
-                    {/* ── STEP 3: Technical Specs ───────────────────────────────────────── */}
-                    {currentStep === 3 && (
-                        <div className="space-y-7 animate-in fade-in slide-in-from-bottom-4">
-                            <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Technical Specs</h2>
+                    {/* ── STEP 1 (continued): Technical Specs ─────────────────────── */}
+                    {currentStep === 1 && (
+                        <div className="space-y-7">
+                            <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white mt-8">Technical Specs</h2>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 {/* Mileage */}
@@ -697,6 +721,8 @@ export default function SellPage() {
                                         { value: "ELECTRIC", label: "Electric" },
                                         { value: "HYBRID", label: "Hybrid" },
                                         { value: "PLUGIN_HYBRID", label: "Plug-in Hybrid" },
+                                        { value: "LPG", label: "LPG" },
+                                        { value: "HYDROGEN_CELL", label: "Hydrogen Fuel Cell" },
                                     ]}
                                 />
 
@@ -706,6 +732,7 @@ export default function SellPage() {
                                         { value: "MANUAL", label: "Manual" },
                                         { value: "AUTOMATIC", label: "Automatic" },
                                         { value: "SEMI_AUTOMATIC", label: "Semi-Automatic" },
+                                        { value: "CVT", label: "CVT" },
                                     ]}
                                 />
 
@@ -821,11 +848,57 @@ export default function SellPage() {
                                 />
                                 <p className="text-xs text-gray-600">{formData.description.length}/1000 characters</p>
                             </div>
+
+                            {/* Condition */}
+                            <div className="space-y-3">
+                                <label className="text-sm font-bold uppercase text-gray-400">Vehicle Condition</label>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                                    {([
+                                        { value: "EXCELLENT", label: "Excellent" },
+                                        { value: "GOOD", label: "Good" },
+                                        { value: "FAIR", label: "Fair" },
+                                        { value: "POOR", label: "Poor" },
+                                        { value: "CAT_S", label: "Cat S" },
+                                        { value: "CAT_N", label: "Cat N" },
+                                        { value: "CAT_C", label: "Cat C" },
+                                        { value: "CAT_D", label: "Cat D" },
+                                    ] as const).map((opt) => {
+                                        const active = formData.condition === opt.value
+                                        return (
+                                            <button key={opt.value} type="button"
+                                                onClick={() => set("condition", opt.value)}
+                                                className={`py-2.5 rounded-lg border text-sm font-semibold transition-all ${active ? "border-primary bg-primary/10 text-white" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"}`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Imported Vehicle Warning */}
+                            <div className="space-y-2">
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.isImported}
+                                        onChange={(e) => set("isImported", e.target.checked)}
+                                        className="accent-primary h-4 w-4"
+                                    />
+                                    <span className="text-sm text-gray-300">This vehicle has been imported</span>
+                                </label>
+                                {formData.isImported && (
+                                    <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+                                        <p className="text-red-400 text-sm font-semibold">⚠ Imported vehicles cannot be listed</p>
+                                        <p className="text-red-400/70 text-xs mt-1">CarMazium currently does not accept imported vehicles. Please uncheck this option to continue.</p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
 
-                    {/* ── STEP 4: Pricing ───────────────────────────────────────────────── */}
-                    {currentStep === 4 && (
+                    {/* ── STEP 3: Pricing ───────────────────────────────────────────────── */}
+                    {currentStep === 3 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
                             <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Pricing</h2>
 
@@ -1031,8 +1104,8 @@ export default function SellPage() {
                         </div>
                     )}
 
-                    {/* ── STEP 5: Review ────────────────────────────────────────────────── */}
-                    {currentStep === 5 && (
+                    {/* ── STEP 4: Review ────────────────────────────────────────────────── */}
+                    {currentStep === 4 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
                             <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Review Your Listing</h2>
 
@@ -1061,7 +1134,7 @@ export default function SellPage() {
                             </SummarySection>
 
                             {/* Specs */}
-                            <SummarySection title="Technical Specs" onEdit={() => goToStep(3)}>
+                            <SummarySection title="Technical Specs" onEdit={() => goToStep(1)}>
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                                     <SummaryField label="Mileage" value={parseInt(formData.mileage).toLocaleString() + " mi"} />
                                     <SummaryField label="Fuel" value={formData.fuelType} />
@@ -1103,7 +1176,7 @@ export default function SellPage() {
                             </SummarySection>
 
                             {/* Pricing */}
-                            <SummarySection title="Pricing" onEdit={() => goToStep(4)}>
+                            <SummarySection title="Pricing" onEdit={() => goToStep(3)}>
                                 <div className="flex flex-col gap-2">
                                     <p className="text-white font-black text-2xl">
                                         {formatPrice(formData.priceMin)} – {formatPrice(formData.priceMax)}
@@ -1149,7 +1222,7 @@ export default function SellPage() {
                             ? <Button variant="outline" onClick={handleBack} className="px-7 border-white/20 text-white hover:bg-white/10"><ArrowLeft className="mr-2 h-4 w-4" /> Back</Button>
                             : <div />
                         }
-                        {currentStep < 5
+                        {currentStep < 4
                             ? <Button onClick={handleNext} className="px-7 shadow-neon">Next <ArrowRight className="ml-2 h-4 w-4" /></Button>
                             : <Button onClick={handleSubmit} disabled={isSubmitting}
                                 className="px-7 bg-emerald-600 hover:bg-emerald-700 border-none shadow-[0_0_20px_rgba(16,185,129,0.4)] disabled:opacity-50">

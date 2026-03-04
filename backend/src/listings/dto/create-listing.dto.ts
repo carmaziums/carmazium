@@ -36,12 +36,15 @@ export enum FuelType {
     ELECTRIC = 'ELECTRIC',
     HYBRID = 'HYBRID',
     PLUGIN_HYBRID = 'PLUGIN_HYBRID',
+    LPG = 'LPG',
+    HYDROGEN_CELL = 'HYDROGEN_CELL',
 }
 
 export enum Transmission {
     MANUAL = 'MANUAL',
     AUTOMATIC = 'AUTOMATIC',
     SEMI_AUTOMATIC = 'SEMI_AUTOMATIC',
+    CVT = 'CVT',
 }
 
 export enum BodyType {
@@ -82,6 +85,12 @@ export enum EuroStandard {
     EURO_5 = 'EURO_5',
     EURO_6 = 'EURO_6',
     EURO_6D = 'EURO_6D',
+}
+
+export enum VehicleType {
+    CAR = 'CAR',
+    HGV = 'HGV',
+    MOTORCYCLE = 'MOTORCYCLE',
 }
 
 // ─── DTO ─────────────────────────────────────────────────────────────────────
@@ -301,4 +310,14 @@ export class CreateListingDto {
     @IsString()
     @IsOptional()
     badgeTier?: string;
+
+    @ApiProperty({ description: 'Vehicle type', enum: VehicleType, example: VehicleType.CAR, required: false, default: VehicleType.CAR })
+    @IsEnum(VehicleType)
+    @IsOptional()
+    vehicleType?: VehicleType;
+
+    @ApiProperty({ description: 'Whether this is an imported vehicle', example: false, required: false, default: false })
+    @IsBoolean()
+    @IsOptional()
+    isImported?: boolean;
 }
