@@ -6,7 +6,7 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
-import { ArrowLeft, Car, Wrench, CreditCard, Shield, Handshake, Loader2 } from "lucide-react"
+import { ArrowLeft, Car, Wrench, CreditCard, Shield, Handshake, Loader2, Eye, EyeOff } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { fetchWithRetry } from "@/lib/fetchWithRetry"
 
@@ -20,7 +20,9 @@ export default function SignupPage() {
         role: "BUYER" as "BUYER" | "SELLER" | "DEALER" | "CONTRACTOR" | "FINANCE_PARTNER" | "INSURANCE_PARTNER"
     })
     const [loading, setLoading] = React.useState(false)
+    const [googleLoading, setGoogleLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
+    const [showPassword, setShowPassword] = React.useState(false)
 
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev';
 
@@ -178,15 +180,25 @@ export default function SignupPage() {
 
                     <div className="space-y-2">
                         <label htmlFor="password" className="text-xs font-bold uppercase tracking-wide block text-gray-200">Password</label>
-                        <Input
-                            id="password"
-                            type="password"
-                            placeholder="Create a password"
-                            required
-                            value={formData.password}
-                            onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                            className="bg-white/20 border-white/10 text-white placeholder:text-gray-400 focus:bg-white/30"
-                        />
+                        <div className="relative">
+                            <Input
+                                id="password"
+                                type={showPassword ? "text" : "password"}
+                                placeholder="Create a password"
+                                required
+                                value={formData.password}
+                                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                                className="bg-white/20 border-white/10 text-white placeholder:text-gray-400 focus:bg-white/30 pr-11"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(prev => !prev)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                                aria-label={showPassword ? "Hide password" : "Show password"}
+                            >
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                        </div>
                     </div>
 
                     <div className="space-y-2 relative group-dropdown">
@@ -241,15 +253,38 @@ export default function SignupPage() {
                 </div>
 
                 <div className="flex gap-4">
-                    <Button variant="outline" className="flex-1 border-white/20 hover:bg-white/10 text-white h-12">
-                        <span className="sr-only">Google</span>
-                        <Image src="/assets/images/google-icon.png" alt="Google" width={20} height={20} className="w-5 h-5 mx-auto" />
+                    <Button
+                        variant="outline"
+                        disabled={googleLoading}
+                        onClick={async () => {
+                            setGoogleLoading(true)
+                            setError(null)
+                            try {
+                                const redirectTo = `${getBaseUrl()}/auth/callback?redirect_to=/auth/onboarding`
+                                const { error: oauthError } = await supabase.auth.signInWithOAuth({
+                                    provider: 'google',
+                                    options: { redirectTo },
+                                })
+                                if (oauthError) throw oauthError
+                            } catch (err: any) {
+                                setError(err.message || 'Google sign-up failed')
+                                setGoogleLoading(false)
+                            }
+                        }}
+                        className="flex-1 border-white/20 hover:bg-white/10 text-white h-12 gap-3"
+                    >
+                        {googleLoading ? (
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                            <Image src="/assets/images/google-icon.png" alt="Google" width={20} height={20} className="w-5 h-5" />
+                        )}
+                        <span className="text-sm font-medium">Google</span>
                     </Button>
-                    <Button variant="outline" className="flex-1 border-white/20 hover:bg-white/10 text-white h-12">
-                        <span className="sr-only">Apple</span>
-                        <svg className="w-5 h-5 mx-auto fill-current" viewBox="0 0 24 24">
+                    <Button variant="outline" className="flex-1 border-white/20 hover:bg-white/10 text-white h-12 gap-3">
+                        <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
                             <path d="M17.05 20.28c-.98.95-2.05.88-3.08.38-1.09-.54-2.08-.55-3.18 0-1.15.58-1.95.5-3.04-.54-2.61-2.5-3.26-6.84-.75-10.42 1.48-2.11 3.53-2.3 4.96-.86.74.75 1.54.91 2.37.07 1.3-1.32 3.19-1.21 4.79-.18.15.65.3.93.42 1.13-2.19-1.57-2.9-4.22-1.77-5.91 2.5 1.7 3.25 4.79 1.48 7.08-1.07 1.41-2.08 2.44-3.56 3.9l1.36 5.35z" />
                         </svg>
+                        <span className="text-sm font-medium">Apple</span>
                     </Button>
                 </div>
 
