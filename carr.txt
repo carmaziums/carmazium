@@ -1,68 +1,65 @@
-Carmazium Website Improvement
-Requirements and Strategic
-Recommendations
-1. Auction Policy
-● Auctions have been reviewed and the decision has been made not to proceed with
-them at this stage.
-2. Seller Transparency and Reliability
-● Display all vehicles listed by individual sellers to enhance customer trust and seller
-reliability.
-● Provide a seller reliability score or performance history where applicable.
-3. Sales and Trading Options
-● Temporarily integrate an AutoTrader-style system that supports:
-○ Direct vehicle sales (Buy & Sell)
-○ Auction functionality (if reintroduced in the future)
-● Allow vehicles to be listed for both auction and direct trade simultaneously.
-● No upfront payment should be required from buyers or sellers at the listing stage.
-4. Vehicle Listing Requirements
-● Mandatory VIN number entry at the first step to enable easy and accurate data input.
-● Integration of AI-generated vehicle descriptions based on provided information.
-● Minimum requirement of 30 high-quality images per listing:
-○ Indoor and outdoor photographs
-○ Movable and rearrangeable image placement
-● Inclusion of the seller’s current geolocation.
-● Consider environmental compliance requirements relevant to UK regulations when
-introducing initial listing steps.
-5. Website Features and User Experience
-● Enable dark mode and light mode options.
-● Allow users to browse and search vehicles without logging in.
-● Require user login to access detailed vehicle information.
-● Focus on a lightweight, fast, and user-friendly website structure.
-● Prioritize bug fixes and seamless navigation.
-● Ensure robust database setup and storage management.
-6. Advanced Search and Filter Functionality
-Sell Car Section – Filtering Options:
-● Location:
-○ Nearest first
-○ Farthest first
-● Price:
-○ Lowest to highest
-○ Highest to lowest
-○ Slider-based price range selection
-● Mileage:
-○ Lowest to highest
-○ Highest to lowest
-● Vehicle condition (including CAT classifications)
-● “Best for You” AI-powered recommendations based on:
-○ Recent searches
-○ User behavior
-○ Market trends
-7. Marketing Strategy
-Digital Strategy:
-● Develop and implement marketing strategies through Bitroix, including a clear fee
-and pricing structure.
-● Conduct market research on AutoTrader regions where Carmazium can enter and
-compete effectively.
-● Initial geographic focus: London.
-● Implement professional SEO services to improve organic search rankings and
-visibility.
-8. Data Collection and Lead Generation
-● Allow open browsing to increase traffic.
-● Require login for detailed access to collect user data and generate leads.
-● Strategically gather customer data for future marketing campaigns and potential lead
-monetization.
-9. Priority Focus Areas
-● Eliminate technical bugs.
-● Maintain a clean, modern, and intuitive interface.
-● Ensure fast loading speed and mobile responsiveness.
-● Deliver a light, efficient, and scalable platform
+Merge 1 and 3 step of listing since we are using DVLA API for most of the information to be autofilled,
+
+
+________________________________________
+1. Account & Authentication
+•	Implement Show/Forget Password functionality with clear password management options.
+•	Introduce authentication methods, including Google API and additional third-party login options.
+
+2. Vehicle Listing Structure
+•	Vehicle types to include: Car and HGV initially.
+•	Structured vehicle input fields:
+o	Make and model positioned correctly in the listing hierarchy.
+o	Body type placement to be improved (not positioned at the top).
+•	Additional fuel types to include:
+o	LPG
+o	Hydrogen Cell
+•	Transmission options to include:
+o	Semi-automatic
+o	CVT
+•	Vehicle condition classification:
+o	New or Used grading system.
+•	Imported vehicles to be excluded from listings.
+
+3. Sorting & Filters
+•	Mileage filters: High-to-Low and Low-to-High.
+•	Year filters:
+o	Newest first
+o	Oldest first
+
+4. Listing Page & Categories
+•	Minimum 16 listings per page on the listing view.
+•	Motorcycle category to be introduced if required in selling flow.
+•	AI-assisted listing details for auto-filling vehicle information.
+
+5. Listing Tiers & Visibility
+•	Free listings: Standard visibility (e.g., red).
+•	Paid listings: Premium visibility (e.g., blue).
+•	Listings remain active until the vehicle is sold for the uploader.
+
+6. Reports & Verification
+•	Full HPI report to be attached to listings.
+•	Pricing considerations:
+o	Basic HPI: £10
+o	Free non-blurred report option under consideration.
+
+7. Notifications & Offers
+•	Multi-device notifications for offers.
+•	General notification system across the platform.
+•	Status update flow:
+o	Offer accepted → Deal closed notification.
+
+8. Pricing Model
+•	Basic listing:
+o	Market price: £12
+o	Proposed charge: £9.99
+•	Premium listing benefits:
+o	Finance check inclusion.
+o	Example cost discussion: £10 service vs £25 charge.
+•	Basic listing option also discussed at £1 entry-level pricing.
+
+9. Media & External Integrations
+•	Option to provide external links from services such as:
+o	YouTube
+o	Reels or short-form video platforms
+
