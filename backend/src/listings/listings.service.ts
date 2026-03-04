@@ -2,6 +2,7 @@ import {
     Injectable,
     NotFoundException,
     ForbiddenException,
+    BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -36,6 +37,8 @@ const mapFuelType = (fuel?: DtoFuelType): FuelType | null => {
         [DtoFuelType.ELECTRIC]: 'ELECTRIC',
         [DtoFuelType.HYBRID]: 'HYBRID',
         [DtoFuelType.PLUGIN_HYBRID]: 'PLUGIN_HYBRID',
+        [DtoFuelType.LPG]: 'LPG',
+        [DtoFuelType.HYDROGEN_CELL]: 'HYDROGEN_CELL',
     };
     return map[fuel];
 };
@@ -46,6 +49,7 @@ const mapTransmission = (trans?: DtoTransmission): TransmissionType | null => {
         MANUAL: 'MANUAL',
         AUTOMATIC: 'AUTOMATIC',
         SEMI_AUTOMATIC: 'SEMI_AUTOMATIC',
+        CVT: 'CVT',
     };
     return map[trans] ?? null;
 };
@@ -108,6 +112,11 @@ export class ListingsService {
         const badgeTier = createListingDto.badgeTier ?? 'FREE';
         const isPremium = badgeTier === 'PREMIUM';
 
+        // Block imported vehicles
+        if (createListingDto.isImported) {
+            throw new BadRequestException('Imported vehicles cannot be listed on CarMazium.');
+        }
+
         const listing = await this.prisma.listing.create({
             data: {
                 title: createListingDto.title,
@@ -159,6 +168,9 @@ export class ListingsService {
                 featuredUntil: isPremium ? new Date(Date.now() + 28 * 24 * 60 * 60 * 1000) : null,
                 // Seller
                 sellerId: userId ?? null,
+                // Vehicle type & import status
+                vehicleType: createListingDto.vehicleType ?? 'CAR',
+                isImported: createListingDto.isImported ?? false,
             },
         });
 

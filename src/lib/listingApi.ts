@@ -5,6 +5,7 @@
 export type BodyTypeValue = 'SEDAN' | 'SUV' | 'HATCHBACK' | 'COUPE' | 'CONVERTIBLE' | 'ESTATE' | 'CROSSOVER' | 'SPORTS_CAR' | 'MINIVAN' | 'PICKUP_TRUCK' | 'STATION_WAGON' | 'MPV' | 'VAN'
 export type VehicleConditionValue = 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR' | 'CAT_S' | 'CAT_N' | 'CAT_C' | 'CAT_D'
 export type EuroStandardValue = 'EURO_4' | 'EURO_5' | 'EURO_6' | 'EURO_6D'
+export type VehicleTypeValue = 'CAR' | 'HGV' | 'MOTORCYCLE'
 
 export interface CreateListingRequest {
     title: string
@@ -27,8 +28,8 @@ export interface CreateListingRequest {
     euroStandard?: EuroStandardValue
     // Technical specs
     description?: string
-    fuelType?: 'PETROL' | 'DIESEL' | 'ELECTRIC' | 'HYBRID' | 'PLUGIN_HYBRID'
-    transmission?: 'MANUAL' | 'AUTOMATIC' | 'SEMI_AUTOMATIC'
+    fuelType?: 'PETROL' | 'DIESEL' | 'ELECTRIC' | 'HYBRID' | 'PLUGIN_HYBRID' | 'LPG' | 'HYDROGEN_CELL'
+    transmission?: 'MANUAL' | 'AUTOMATIC' | 'SEMI_AUTOMATIC' | 'CVT'
     bodyType?: BodyTypeValue
     color?: string
     doors?: number
@@ -49,6 +50,8 @@ export interface CreateListingRequest {
     typeApproval?: string
     status?: 'DRAFT' | 'ACTIVE' | 'SOLD'
     badgeTier?: 'FREE' | 'STANDARD' | 'PREMIUM'
+    vehicleType?: VehicleTypeValue
+    isImported?: boolean
 }
 
 export interface CreateListingResponse {

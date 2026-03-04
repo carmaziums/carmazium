@@ -34,6 +34,7 @@ enum FuelType {
   ELECTRIC
   LPG
   PLUGIN_HYBRID
+  HYDROGEN_CELL
 
   @@map("fuel_type")
 }
@@ -52,6 +53,14 @@ enum ListingType {
   CLASSIFIED
 
   @@map("listing_type")
+}
+
+enum VehicleType {
+  CAR
+  HGV
+  MOTORCYCLE
+
+  @@map("vehicle_type")
 }
 
 enum ListingStatus {
@@ -360,6 +369,8 @@ model Listing {
   images          String[]       // Array of Supabase URLs
   slug            String         @unique
   viewCount       Int            @default(0)
+  vehicleType     VehicleType    @default(CAR)
+  isImported      Boolean        @default(false)
   
   // Denormalized vehicle fields for simpler queries
   make            String?
