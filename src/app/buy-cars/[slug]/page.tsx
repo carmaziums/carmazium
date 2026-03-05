@@ -9,7 +9,7 @@ import dynamic from "next/dynamic"
 const FinanceCalculator = dynamic(() => import("@/components/features/FinanceCalculator").then(mod => mod.FinanceCalculator), { ssr: false })
 import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale, Loader2, MessageCircle, Tag, X, Clock, ThumbsUp, XCircle, AlertTriangle } from "lucide-react"
 import { useCompare } from "@/context/CompareContext"
-import { getListingBySlug, makeOffer, getMyOfferForListing, type Listing, type LatestOffer, formatPrice } from "@/lib/listingApi"
+import { getListingBySlug, makeOffer, getMyOfferForListing, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, type Listing, type LatestOffer, formatPrice } from "@/lib/listingApi"
 import { createChatRoom } from "@/lib/chatApi"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
@@ -205,6 +205,9 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
     const [latestOffer, setLatestOffer] = React.useState<LatestOffer | null>(null)   // most recent offer on listing (any buyer) — public display
     const [myOffer, setMyOffer] = React.useState<LatestOffer | null>(null)            // this user's own offer — drives button state
     const [offerSuccess, setOfferSuccess] = React.useState(false)
+    const [isWatchlisted, setIsWatchlisted] = React.useState(false)
+    const [watchlistLoading, setWatchlistLoading] = React.useState(false)
+    const [shareToast, setShareToast] = React.useState(false)
 
     const { addToCompare, removeFromCompare, isInCompare } = useCompare()
     const isCompared = listing ? isInCompare(listing.id) : false
@@ -235,6 +238,12 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
         // Don't fetch for the seller — they can't make offers on their own listing
         if (listing.sellerId === user.id) return
         getMyOfferForListing(listing.id).then(setMyOffer).catch(() => { })
+    }, [user, listing])
+
+    // Check if listing is in user's watchlist
+    React.useEffect(() => {
+        if (!user || !listing) return
+        checkWatchlist(listing.id).then(setIsWatchlisted).catch(() => { })
     }, [user, listing])
 
     // Determine the current viewer's relationship to the offer
@@ -348,6 +357,48 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
         }
     }
 
+    const handleShare = async () => {
+        const url = window.location.href
+        const shareData = {
+            title: listing.title,
+            text: `Check out this ${listing.title} — ${formatPrice(listing.price)} on CarMazium`,
+            url,
+        }
+        try {
+            if (navigator.share) {
+                await navigator.share(shareData)
+            } else {
+                await navigator.clipboard.writeText(url)
+                setShareToast(true)
+                setTimeout(() => setShareToast(false), 2500)
+            }
+        } catch {
+            // User cancelled share dialog — no-op
+        }
+    }
+
+    const handleWatchlist = async () => {
+        if (!user) {
+            router.push('/auth/login?redirect=' + encodeURIComponent(`/buy-cars/${listing.slug}`))
+            return
+        }
+        if (watchlistLoading) return
+        setWatchlistLoading(true)
+        try {
+            if (isWatchlisted) {
+                await removeFromWatchlist(listing.id)
+                setIsWatchlisted(false)
+            } else {
+                await addToWatchlist(listing.id)
+                setIsWatchlisted(true)
+            }
+        } catch (err: any) {
+            console.error('Watchlist error:', err)
+        } finally {
+            setWatchlistLoading(false)
+        }
+    }
+
     return (
         <div className="min-h-screen bg-slate-900 pt-24 pb-12 relative">
             {/* Background gradient */}
@@ -376,6 +427,14 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                 </div>
             )}
 
+            {/* Share toast */}
+            {shareToast && (
+                <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-blue-500/20 border border-blue-500/40 text-blue-300 px-5 py-3 rounded-xl shadow-2xl animate-in slide-in-from-bottom-4">
+                    <Share2 size={16} />
+                    <span className="text-sm font-semibold">Link copied to clipboard!</span>
+                    <button onClick={() => setShareToast(false)} className="ml-2"><X size={14} /></button>
+                </div>
+            )}
             {/* Vehicle JSON-LD */}
             <VehicleJsonLd
                 name={listing.title}
@@ -414,11 +473,17 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                             >
                                 <Scale size={20} className="mr-2" /> {isCompared ? "Compared" : "Compare"}
                             </Button>
-                            <Button variant="outline" size="icon" className="rounded-full border-gray-600 text-gray-400 hover:text-white hover:border-white">
+                            <Button variant="outline" size="icon" className="rounded-full border-gray-600 text-gray-400 hover:text-white hover:border-white" onClick={handleShare}>
                                 <Share2 size={20} />
                             </Button>
-                            <Button variant="outline" size="icon" className="rounded-full border-gray-600 text-gray-400 hover:text-red-500 hover:border-red-500">
-                                <Heart size={20} />
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className={`rounded-full transition-all ${isWatchlisted ? 'bg-red-500/20 border-red-500/50 text-red-500' : 'border-gray-600 text-gray-400 hover:text-red-500 hover:border-red-500'}`}
+                                onClick={handleWatchlist}
+                                disabled={watchlistLoading}
+                            >
+                                <Heart size={20} className={isWatchlisted ? 'fill-red-500' : ''} />
                             </Button>
                         </div>
                     </div>
