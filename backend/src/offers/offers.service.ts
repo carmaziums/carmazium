@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { CreateOfferDto } from './dto/create-offer.dto';
 import { OfferResponseStatus } from './dto/respond-offer.dto';
 import { Offer, OfferStatus } from '@prisma/client';
@@ -15,6 +16,7 @@ export class OffersService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly notificationsService: NotificationsService,
+        private readonly notificationsGateway: NotificationsGateway,
     ) { }
 
     // ─── Buyer: Make an offer ────────────────────────────────────────────────
@@ -70,13 +72,15 @@ export class OffersService {
 
         // Notify the seller
         if (listing.sellerId) {
-            await this.notificationsService.create({
+            const notification = await this.notificationsService.create({
                 userId: listing.sellerId,
                 type: 'OFFER_RECEIVED',
                 title: 'New Offer Received',
                 message: `You received an offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${listing.title}".`,
                 data: { listingId: listing.id, offerId: offer.id },
             });
+            // Push real-time notification via WebSocket
+            this.notificationsGateway.sendNotification(listing.sellerId, notification);
         }
 
         return offer;
@@ -195,6 +199,12 @@ export class OffersService {
                 },
                 data: { status: 'REJECTED' },
             });
+
+            // Mark the listing as SOLD — deal is closed
+            await this.prisma.listing.update({
+                where: { id: offer.listingId },
+                data: { status: 'SOLD' },
+            });
         }
 
         // Notify the buyer
@@ -203,13 +213,27 @@ export class OffersService {
                 ? `Your offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${offer.listing.title}" was accepted! Contact the seller to proceed.`
                 : `Your offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${offer.listing.title}" was declined.`;
 
-        await this.notificationsService.create({
+        const buyerNotification = await this.notificationsService.create({
             userId: offer.buyerId,
             type: prismaStatus === 'ACCEPTED' ? 'OFFER_ACCEPTED' : 'OFFER_REJECTED',
             title: prismaStatus === 'ACCEPTED' ? '🎉 Offer Accepted!' : 'Offer Declined',
             message: notifMessage,
             data: { listingId: offer.listingId, offerId: offer.id },
         });
+        // Push real-time notification to the buyer
+        this.notificationsGateway.sendNotification(offer.buyerId, buyerNotification);
+
+        // If accepted, also notify the seller that the deal is closed
+        if (prismaStatus === 'ACCEPTED' && offer.listing.sellerId) {
+            const sellerNotification = await this.notificationsService.create({
+                userId: offer.listing.sellerId,
+                type: 'DEAL_CLOSED',
+                title: '✅ Deal Closed',
+                message: `You accepted an offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${offer.listing.title}". The listing has been marked as sold.`,
+                data: { listingId: offer.listingId, offerId: offer.id },
+            });
+            this.notificationsGateway.sendNotification(offer.listing.sellerId, sellerNotification);
+        }
 
         return updated;
     }
