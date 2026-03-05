@@ -4,7 +4,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/Button"
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion"
 import { useRef } from "react"
-import { Calendar, Gauge, Fuel, Car, BadgeCheck, ShieldCheck } from "lucide-react"
+import { Calendar, Gauge, Fuel, Car, BadgeCheck, ShieldCheck, Star, Sparkles } from "lucide-react"
 import { SellerBadge } from "@/components/ui/SellerBadge"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 
@@ -20,6 +20,7 @@ const BODY_TYPE_LABELS: Record<string, string> = {
 const FUEL_TYPE_LABELS: Record<string, string> = {
     PETROL: 'Petrol', DIESEL: 'Diesel', ELECTRIC: 'Electric',
     HYBRID: 'Hybrid', PLUGIN_HYBRID: 'Plug-in', LPG: 'LPG',
+    HYDROGEN_CELL: 'Hydrogen',
 }
 
 // ─── Props ───────────────────────────────────────────────────────────────────
@@ -77,14 +78,25 @@ export function CarCard({
 
     const hasSpecs = year || mileage || fuelType || bodyType
 
+    // Tier-based styling
+    const tierBorder =
+        badgeTier === 'PREMIUM' ? 'border-amber-400/40 shadow-[0_0_20px_rgba(245,158,11,0.12)]'
+            : badgeTier === 'STANDARD' ? 'border-blue-400/30'
+                : isFeatured ? 'border-amber-400/30'
+                    : ''
+
+    const tierGlow =
+        badgeTier === 'PREMIUM' ? 'bg-gradient-to-br from-amber-500/5 via-transparent to-amber-500/5'
+            : badgeTier === 'STANDARD' ? 'bg-gradient-to-br from-blue-500/5 via-transparent to-transparent'
+                : ''
+
     return (
         <motion.div
             ref={ref}
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
             style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-            className={`glass-card h-full flex flex-col perspective-1000 overflow-visible group relative ${isFeatured ? 'border border-amber-400/30' : ''
-                }`}
+            className={`glass-card h-full flex flex-col perspective-1000 overflow-visible group relative ${tierBorder || ''} ${tierGlow || ''}`}
         >
             {/* Holographic Shimmer Overlay */}
             <motion.div
@@ -169,6 +181,22 @@ export function CarCard({
                     </p>
                 )}
 
+                {/* Badge Tier Label */}
+                {badgeTier && badgeTier !== 'FREE' && (
+                    <div className="flex items-center gap-2 mb-3">
+                        {badgeTier === 'PREMIUM' && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full">
+                                <Star size={10} className="fill-amber-400" /> Premium
+                            </span>
+                        )}
+                        {badgeTier === 'STANDARD' && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide bg-blue-500/15 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full">
+                                <ShieldCheck size={10} /> Standard
+                            </span>
+                        )}
+                    </div>
+                )}
+
                 {/* Specs Tags */}
                 {hasSpecs && (
                     <div className="flex flex-wrap gap-1.5 mb-4">
@@ -198,7 +226,7 @@ export function CarCard({
                 <div className="mt-auto">
                     <Link href={href} className="block w-full">
                         <Button
-                            className="w-full shadow-lg text-white"
+                            className={`w-full shadow-lg text-white ${badgeTier === 'PREMIUM' ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 border-none' : ''}`}
                             variant="default"
                             size="sm"
                             shape="default"
