@@ -8,6 +8,8 @@ import { MessageSquare, X, Send, Sparkles, Search, ArrowRight, Car } from "lucid
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 
+import { aiChat } from "@/lib/aiApi"
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ChatMessage {
@@ -68,27 +70,35 @@ export function MaziumWidget() {
     }
 
     /**
-     * Process user message — currently a placeholder.
-     * Replace this function body with your LLM API call.
-     * Return value should include `text` (the bot reply) and optionally a `filterCard`.
+     * Process user message via OpenAI-powered backend.
+     * Sends the conversation history and returns AI response with optional filter card.
      */
     const processMessage = async (
-        userMessage: string
+        userMessage: string,
+        currentMessages: ChatMessage[]
     ): Promise<ChatMessage> => {
-        // ──────────────────────────────────────────────────────────────────
-        // 🔌 LLM HOOK — Replace this with your API call
-        // Example return shape:
-        //   {
-        //     role: "bot",
-        //     text: "Here are BMWs under £20k!",
-        //     filterCard: { label: "BMW · Under £20,000", params: { make: "BMW", maxPrice: "20000" } }
-        //   }
-        // ──────────────────────────────────────────────────────────────────
-        await new Promise((r) => setTimeout(r, 1200)) // simulate latency
+        try {
+            // Build conversation history for the API (last 10 messages)
+            const history = [...currentMessages, { role: "user" as const, text: userMessage }]
+                .slice(-10)
+                .map((m) => ({
+                    role: (m.role === "bot" ? "assistant" : "user") as "user" | "assistant",
+                    content: m.text,
+                }))
 
-        return {
-            role: "bot",
-            text: "I'm getting smarter soon! For now, try the quick-reply chips below or use the search filters on the left. 🔍",
+            const result = await aiChat(history)
+
+            return {
+                role: "bot",
+                text: result.text,
+                filterCard: result.filterCard || undefined,
+            }
+        } catch (error) {
+            console.error("AI chat error:", error)
+            return {
+                role: "bot",
+                text: "Something went wrong. Please try again! 🔄",
+            }
         }
     }
 
@@ -98,11 +108,12 @@ export function MaziumWidget() {
         setInput("")
 
         // Add user message
-        setMessages((prev) => [...prev, { role: "user", text }])
+        const updatedMessages = [...messages, { role: "user" as const, text }]
+        setMessages(updatedMessages)
         setIsThinking(true)
 
         try {
-            const reply = await processMessage(text)
+            const reply = await processMessage(text, updatedMessages)
             setMessages((prev) => [...prev, reply])
         } catch {
             setMessages((prev) => [

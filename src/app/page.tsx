@@ -2,19 +2,22 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { Search, ArrowRight, ShieldCheck, UserCheck, FileText, CheckCircle, Handshake, Shield, Lightbulb, Star } from "lucide-react"
+import { Search, ArrowRight, ShieldCheck, UserCheck, FileText, CheckCircle, Handshake, Shield, Lightbulb, Star, Sparkles, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { CarCard } from "@/components/features/CarCard"
 import { AnimatedCounter } from "@/components/ui/AnimatedCounter"
 import { TestimonialsSection } from "@/components/features/TestimonialsSection"
 import { PromoCarousel } from "@/components/features/PromoCarousel"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
-import { motion, useScroll, useTransform } from "framer-motion"
+import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion"
 import { useRef, useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { getFeaturedListings, formatPrice, type Listing } from "@/lib/listingApi"
+import { aiSearch, type AiSearchResult } from "@/lib/aiApi"
 
 export default function Home() {
   const ref = useRef(null)
+  const router = useRouter()
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ["start start", "end start"],
@@ -26,6 +29,11 @@ export default function Home() {
   const [featuredListings, setFeaturedListings] = useState<Listing[]>([])
   const [featuredLoading, setFeaturedLoading] = useState(true)
 
+  // AI Search state
+  const [searchQuery, setSearchQuery] = useState("")
+  const [aiResult, setAiResult] = useState<AiSearchResult | null>(null)
+  const [aiSearching, setAiSearching] = useState(false)
+
   useEffect(() => {
     getFeaturedListings().then(data => {
       setFeaturedListings(data)
@@ -33,10 +41,34 @@ export default function Home() {
     }).catch(() => setFeaturedLoading(false))
   }, [])
 
+  const handleAiSearch = async (e?: React.FormEvent) => {
+    e?.preventDefault()
+    const q = searchQuery.trim()
+    if (!q || aiSearching) return
+
+    setAiSearching(true)
+    setAiResult(null)
+
+    try {
+      const result = await aiSearch(q)
+      setAiResult(result)
+    } catch (err) {
+      console.error("AI search failed:", err)
+      setAiResult({ text: "Something went wrong — try again or use the search page filters!" })
+    } finally {
+      setAiSearching(false)
+    }
+  }
+
+  const handleApplyFilters = (params: Record<string, string>) => {
+    const qs = new URLSearchParams(params).toString()
+    router.push(`/search?${qs}`)
+  }
+
   return (
     <>
       {/* Cinematic Hero Section */}
-      <section ref={ref} className="relative h-[90vh] flex items-center justify-center text-center text-white overflow-hidden">
+      <section ref={ref} className="relative min-h-[90vh] flex items-center justify-center text-center text-white overflow-hidden">
         {/* Video Background */}
         <div className="absolute inset-0 w-full h-full">
           <video
@@ -45,13 +77,11 @@ export default function Home() {
             loop
             playsInline
             className="absolute top-1/2 left-1/2 min-w-full min-h-full object-cover -translate-x-1/2 -translate-y-1/2"
-            onEnded={(e) => e.currentTarget.pause()} // Ensure it stays paused
+            onEnded={(e) => e.currentTarget.pause()}
           >
             <source src="/assets/videos/hero-cinematic.mp4" type="video/mp4" />
-            {/* Fallback to image if video fails */}
             <img src="/assets/images/hero-bg.png" alt="Hero Background" className="w-full h-full object-cover" />
           </video>
-          {/* Gradient Overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-slate-900/80 via-slate-900/50 to-slate-900" />
         </div>
 
@@ -70,18 +100,100 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
           >
-            <form className="flex flex-col md:flex-row w-full max-w-3xl mx-auto mb-10 glass-strong p-2 rounded-3xl border border-white/20 shadow-2xl relative overflow-hidden group">
+            <form
+              onSubmit={handleAiSearch}
+              className="flex flex-col md:flex-row w-full max-w-3xl mx-auto mb-4 glass-strong p-2 rounded-3xl border border-white/20 shadow-2xl relative overflow-hidden group"
+            >
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:animate-shine pointer-events-none" />
               <input
                 type="text"
-                placeholder="e.g. BMW 3 Series, hybrid, low mileage"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Ask AI: e.g. red SUV under £30k, electric car with low mileage..."
                 className="flex-1 bg-transparent px-8 py-4 text-white placeholder:text-gray-400 focus:outline-none text-lg"
               />
-              <Button variant="default" size="lg" shape="pill" className="rounded-2xl px-10 text-lg shadow-neon group-hover:scale-105 transition-transform duration-300">
-                <Search className="mr-2 h-5 w-5" /> Search
+              <Button
+                type="submit"
+                variant="default"
+                size="lg"
+                shape="pill"
+                className="rounded-2xl px-10 text-lg shadow-neon group-hover:scale-105 transition-transform duration-300"
+                disabled={aiSearching || !searchQuery.trim()}
+              >
+                {aiSearching ? (
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                ) : (
+                  <Sparkles className="mr-2 h-5 w-5" />
+                )}
+                {aiSearching ? "Thinking..." : "AI Search"}
               </Button>
             </form>
+
+            {/* Powered by AI badge */}
+            <p className="text-xs text-gray-400 mb-6 flex items-center justify-center gap-1.5">
+              <Sparkles size={12} className="text-primary" />
+              Powered by Mazium AI — describe your dream car in your own words
+            </p>
           </motion.div>
+
+          {/* AI Result Card */}
+          <AnimatePresence>
+            {(aiSearching || aiResult) && (
+              <motion.div
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                transition={{ duration: 0.4 }}
+                className="w-full max-w-3xl mx-auto mb-8"
+              >
+                <div className="glass-strong rounded-2xl border border-white/15 p-6 text-left shadow-2xl backdrop-blur-xl">
+                  {aiSearching ? (
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                        <Sparkles size={20} className="text-primary animate-pulse" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-white">Mazium AI is thinking...</p>
+                        <div className="flex gap-1.5 mt-2">
+                          <span className="w-2 h-2 rounded-full bg-primary/60 animate-bounce [animation-delay:0ms]" />
+                          <span className="w-2 h-2 rounded-full bg-primary/60 animate-bounce [animation-delay:150ms]" />
+                          <span className="w-2 h-2 rounded-full bg-primary/60 animate-bounce [animation-delay:300ms]" />
+                        </div>
+                      </div>
+                    </div>
+                  ) : aiResult && (
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <Sparkles size={20} className="text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-wider text-primary mb-1">AI Recommendation</p>
+                          <p className="text-white text-sm leading-relaxed">{aiResult.text}</p>
+                        </div>
+                      </div>
+
+                      {aiResult.filterCard && (
+                        <button
+                          onClick={() => handleApplyFilters(aiResult.filterCard!.params)}
+                          className="w-full flex items-center gap-3 px-5 py-4 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-all hover:scale-[1.01] group cursor-pointer"
+                        >
+                          <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                            <Search size={18} className="text-primary" />
+                          </div>
+                          <div className="text-left flex-1">
+                            <p className="text-xs font-bold uppercase tracking-wider text-gray-400">View matching cars</p>
+                            <p className="text-base font-semibold text-white">{aiResult.filterCard.label}</p>
+                          </div>
+                          <ArrowRight size={18} className="text-primary group-hover:translate-x-1 transition-transform" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <motion.p
             initial={{ opacity: 0 }}

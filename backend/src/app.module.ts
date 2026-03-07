@@ -28,6 +28,7 @@ import { DvlaModule } from './dvla/dvla.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { FeaturedBoostModule } from './featured-boost/featured-boost.module';
 import { OffersModule } from './offers/offers.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { OffersModule } from './offers/offers.module';
     AnalyticsModule,
     FeaturedBoostModule,
     OffersModule,
+    AiModule,
   ],
   controllers: [AppController],
   providers: [AppService],
