@@ -17,15 +17,17 @@ const poppins = Poppins({
   variable: "--font-poppins",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
 });
 
 const montserrat = Montserrat({
   variable: "--font-montserrat",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({ subsets: ["latin"], display: "swap" })
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://carmazium.co.uk"),
@@ -92,6 +94,7 @@ export default function RootLayout({
                     {children}
                   </main>
                   <ConditionalFooter />
+                  <MaziumWidget />
                 </div>
               </CompareProvider>
             </ChatProvider>

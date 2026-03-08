@@ -297,6 +297,7 @@ export default function Home() {
                             src={listing.images[0]}
                             alt={listing.title}
                             fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
                             className="object-cover group-hover:scale-105 transition-transform duration-500"
                           />
                         ) : (
@@ -435,6 +436,7 @@ export default function Home() {
                   alt={blog.title}
                   width={400}
                   height={250}
+                  sizes="(max-width: 768px) 100vw, 33vw"
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 />
               </div>
