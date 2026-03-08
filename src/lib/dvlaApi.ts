@@ -1,0 +1,30 @@
+import { apiClient } from './apiClient';
+
+// DVLA API types
+export type EuroStandardValue = 'EURO_4' | 'EURO_5' | 'EURO_6' | 'EURO_6D';
+export type BodyTypeValue = 'HATCHBACK' | 'SALOON' | 'ESTATE' | 'SUV' | 'COUPE' | 'CONVERTIBLE' | 'MPV' | 'SPORT' | 'VAN' | 'MINIBUS' | 'CAMPER' | 'PICKUP' | 'OTHER';
+
+export interface DvlaLookupResult {
+    make?: string;
+    colour?: string;
+    year?: number;
+    engineSize?: number;
+    fuelType?: string;
+    euroStandard?: string;
+    co2Emissions?: number;
+    motStatus?: string;
+    taxStatus?: string;
+    motExpiryDate?: string;
+    taxDueDate?: string;
+    markedForExport?: boolean;
+    monthOfFirstRegistration?: string;
+    wheelplan?: string;
+    typeApproval?: string;
+}
+
+export async function dvlaLookup(vrm: string): Promise<DvlaLookupResult> {
+    return apiClient<DvlaLookupResult>('/dvla/lookup', {
+        method: 'POST',
+        body: JSON.stringify({ vrm }),
+    });
+}

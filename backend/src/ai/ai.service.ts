@@ -162,4 +162,36 @@ export class AiService {
             };
         }
     }
+
+    async generateDescription(data: Record<string, any>): Promise<{ text: string }> {
+        try {
+            const prompt = `You are a professional automotive copywriter for CarMazium, London's premium car marketplace.
+Your task is to write a compelling, concise, and sales-optimized vehicle description based on the following details.
+Do NOT use markdown, asterisks, or formatting. Just return the raw text, divided into short, readable paragraphs.
+Make it sound enthusiastic but honest and professional. Highlight key features and condition.
+
+Vehicle Details:
+${JSON.stringify(data, null, 2)}
+`;
+
+            const completion = await this.openai.chat.completions.create({
+                model: 'gpt-4o-mini',
+                messages: [
+                    { role: 'system', content: 'You are an automotive copywriter. Respond ONLY with the raw description text. No markdown, no json wrappers, no asterisks.' },
+                    { role: 'user', content: prompt },
+                ],
+                temperature: 0.7,
+                max_tokens: 400,
+            });
+
+            const content = completion.choices[0]?.message?.content?.trim() || '';
+
+            return { text: content };
+        } catch (error) {
+            this.logger.error('OpenAI generate description error:', error);
+            return {
+                text: 'A beautifully presented vehicle currently available for viewing. Please contact for more detailed information, full service history, and to arrange a test drive.',
+            };
+        }
+    }
 }
