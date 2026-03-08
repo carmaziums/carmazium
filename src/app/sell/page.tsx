@@ -8,15 +8,17 @@ import {
     Car, Camera, List, DollarSign, CheckCircle,
     ArrowRight, ArrowLeft, Loader2, Search,
     BadgeCheck, TrendingDown, Upload, Eye, X,
-    Shield, Star, Sparkles, Zap, MapPin, LocateFixed, Edit, Info
+    Shield, Star, Sparkles, Zap, MapPin, LocateFixed, Edit, Info, Handshake, CreditCard, AlertTriangle
 } from "lucide-react"
 import Image from "next/image"
 import { ImageUpload } from "@/components/listing/ImageUpload"
 import {
-    createListing, dvlaLookup, formatPrice,
+    createListing, formatPrice, uploadImage,
     type CreateListingRequest, type BodyTypeValue,
     type EuroStandardValue, type VehicleTypeValue,
 } from "@/lib/listingApi"
+import { dvlaLookup } from "@/lib/dvlaApi"
+import { aiGenerateDescription } from "@/lib/aiApi"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
@@ -223,6 +225,7 @@ export default function SellPage() {
     const [dvlaError, setDvlaError] = React.useState<string | null>(null)
     const [dvlaSuccess, setDvlaSuccess] = React.useState(false)
     const [geoLoading, setGeoLoading] = React.useState(false)
+    const [isGeneratingDesc, setIsGeneratingDesc] = React.useState(false)
 
     // Estimated value — derived from make, year, mileage, fuelType
     const valuation = React.useMemo(() => {
@@ -853,14 +856,50 @@ export default function SellPage() {
                                     className={`${inputCls} resize-none`}
                                 />
                                 <p className="text-xs text-gray-600">{formData.description.length}/1000 characters</p>
-                                {/* AI-Assisted Description — Coming Soon */}
-                                <div className="mt-2 rounded-lg bg-gradient-to-r from-indigo-600/10 to-violet-600/10 border border-indigo-500/20 p-3 flex items-center gap-3">
-                                    <Sparkles size={16} className="text-indigo-400 shrink-0" />
+                                {/* AI-Assisted Description */}
+                                <Button
+                                    type="button"
+                                    onClick={async () => {
+                                        setIsGeneratingDesc(true)
+                                        try {
+                                            const res = await aiGenerateDescription({
+                                                make: formData.make,
+                                                model: formData.model,
+                                                year: formData.year,
+                                                mileage: formData.mileage,
+                                                condition: formData.condition,
+                                                fuelType: formData.fuelType,
+                                                transmission: formData.transmission,
+                                                color: formData.color,
+                                                features: formData.features,
+                                                vrm: formData.vrm,
+                                                motStatus: formData.motStatus
+                                            })
+                                            set("description", res.text)
+                                        } catch (err) {
+                                            console.error("Failed to generate description:", err)
+                                            alert("Failed to generate description. Please try again.")
+                                        } finally {
+                                            setIsGeneratingDesc(false)
+                                        }
+                                    }}
+                                    disabled={isGeneratingDesc || (!formData.make && !formData.model && !formData.year)}
+                                    className="mt-2 w-full justify-start rounded-lg bg-gradient-to-r from-indigo-600/10 to-violet-600/10 border border-indigo-500/20 p-3 flex items-center gap-3 hover:from-indigo-600/20 hover:to-violet-600/20 h-auto text-left"
+                                >
+                                    {isGeneratingDesc ? (
+                                        <Loader2 size={16} className="text-indigo-400 shrink-0 animate-spin" />
+                                    ) : (
+                                        <Sparkles size={16} className="text-indigo-400 shrink-0" />
+                                    )}
                                     <div>
-                                        <p className="text-xs text-indigo-300 font-bold">AI-Assisted Description — Coming Soon</p>
-                                        <p className="text-[10px] text-indigo-400/70">Auto-generate a compelling listing description based on your vehicle details.</p>
+                                        <p className="text-xs text-indigo-300 font-bold">
+                                            {isGeneratingDesc ? "Generating magical description..." : "Auto-generate with AI"}
+                                        </p>
+                                        <p className="text-[10px] text-indigo-400/70">
+                                            Click to draft a compelling description based on your vehicle details.
+                                        </p>
                                     </div>
-                                </div>
+                                </Button>
                             </div>
 
                             {/* Condition */}

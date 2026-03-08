@@ -17,4 +17,10 @@ export class AiController {
         const result = await this.aiService.chatCompletion(dto.messages);
         return { success: true, data: result };
     }
+
+    @Post('generate-description')
+    async generateDescription(@Body() dto: any) {
+        const result = await this.aiService.generateDescription(dto);
+        return { success: true, data: result };
+    }
 }
