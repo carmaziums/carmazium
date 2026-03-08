@@ -13,10 +13,11 @@ import {
 import Image from "next/image"
 import { ImageUpload } from "@/components/listing/ImageUpload"
 import {
-    createListing, formatPrice, uploadImage,
+    createListing, formatPrice,
     type CreateListingRequest, type BodyTypeValue,
     type EuroStandardValue, type VehicleTypeValue,
 } from "@/lib/listingApi"
+import { uploadImage } from "@/lib/supabase"
 import { dvlaLookup } from "@/lib/dvlaApi"
 import { aiGenerateDescription } from "@/lib/aiApi"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
