@@ -4,7 +4,12 @@ import * as React from "react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { Search, PlusCircle, Briefcase, ArrowRight } from "lucide-react"
-import { GiTowTruck, GiMagnifyingGlass, GiRibbonMedal, GiMoneyStack, GiSpanner, GiUmbrella } from "react-icons/gi"
+import { GiTowTruck } from "react-icons/gi/GiTowTruck"
+import { GiMagnifyingGlass } from "react-icons/gi/GiMagnifyingGlass"
+import { GiRibbonMedal } from "react-icons/gi/GiRibbonMedal"
+import { GiMoneyStack } from "react-icons/gi/GiMoneyStack"
+import { GiSpanner } from "react-icons/gi/GiSpanner"
+import { GiUmbrella } from "react-icons/gi/GiUmbrella"
 
 export default function ServicesPage() {
     const [activeTab, setActiveTab] = React.useState<'services' | 'jobs' | 'post'>('services')

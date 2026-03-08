@@ -383,6 +383,12 @@ export class ListingsService {
             throw new NotFoundException(`Listing with slug "${slug}" not found`);
         }
 
+        // Fire-and-forget strictly incrementing the viewCount logic
+        this.prisma.listing.update({
+            where: { id: listing.id },
+            data: { viewCount: { increment: 1 } },
+        }).catch(err => console.error(`Failed to increment views for ${slug}:`, err));
+
         return listing;
     }
 

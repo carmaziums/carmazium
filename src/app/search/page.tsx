@@ -223,6 +223,7 @@ function SearchPageContent() {
 
     // On mount, hydrate from URL
     const didHydrate = React.useRef(false)
+    const didHydrateWithParams = React.useRef(false)
     React.useEffect(() => {
         if (didHydrate.current) return
         didHydrate.current = true
@@ -233,6 +234,7 @@ function SearchPageContent() {
             return v !== ''
         })
         if (hasAnyParam) {
+            didHydrateWithParams.current = true
             setFilters(fromUrl)
             setAppliedFilters(fromUrl)
             fetchListings(fromUrl)
@@ -328,7 +330,7 @@ function SearchPageContent() {
         }
     }, [buildApiFilters])
 
-    React.useEffect(() => { fetchListings(INITIAL_FILTERS) }, [fetchListings])
+    React.useEffect(() => { if (!didHydrateWithParams.current) fetchListings(INITIAL_FILTERS) }, [fetchListings])
 
     // ─── Handlers ─────────────────────────────────────────────────────────────
 

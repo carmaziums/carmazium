@@ -1,7 +1,12 @@
 "use client"
 
 import { CompareProvider } from "@/context/CompareContext"
-import { CompareDrawer } from "@/components/features/CompareDrawer"
+import dynamic from "next/dynamic"
+
+const CompareDrawer = dynamic(
+    () => import("@/components/features/CompareDrawer").then(mod => mod.CompareDrawer),
+    { ssr: false }
+)
 
 export function Providers({ children }: { children: React.ReactNode }) {
     return (
