@@ -1,65 +1,135 @@
-Merge 1 and 3 step of listing since we are using DVLA API for most of the information to be autofilled,
+Step 1 — Get the Base Market Price
+Use the average of similar cars in the UK market.
+Filter criteria
+Make
+Model
+Year ±1
+Fuel type
+Transmission
+Body type
+SQL Example
+SELECT AVG(price) as base_price
+FROM cars
+WHERE make = :make
+AND model = :model
+AND year BETWEEN :year-1 AND :year+1
+AND fuel_type = :fuel
+AND transmission = :transmission;
+Example:
+Mercedes C-Class 2016
+BasePrice = £15,000
+
+2️⃣ Final UK Car Price Formula
+EstimatedPrice =
+BasePrice
++ MileageAdjustment
++ ConditionAdjustment
++ ServiceHistoryAdjustment
++ TransmissionAdjustment
++ FuelAdjustment
++ OwnershipAdjustment
++ LocationDemandAdjustment
+
+3️⃣ Mileage Adjustment (UK standard)
+Average UK mileage ≈ 10,000 miles/year
+ExpectedMileage = Age × 10000
+MileageDiff = ActualMileage − ExpectedMileage
+
+MileageAdjustment = MileageDiff × (-0.06)
+Example:
+Age = 8
+ExpectedMileage = 80000
+ActualMileage = 60000
+
+MileageDiff = -20000
+
+MileageAdjustment = +£1200
+
+4️⃣ Age Depreciation
+Used cars lose about 6% per year in the UK market.
+AgeAdjustment = BasePrice × (-0.06 × Age)
+Example:
+BasePrice = 15000
+Age = 8
+
+AgeAdjustment = -£7200
+
+5️⃣ Condition Adjustment
+Excellent = +10%
+Good = +5%
+Average = 0
+Fair = -10%
+Poor = -20%
+Formula
+ConditionAdjustment = BasePrice × ConditionRate
+
+6️⃣ Service History Adjustment
+Full service history matters a lot in the UK.
+Full Service History = +5%
+Partial History = +2%
+No History = -5%
+ServiceAdjustment = BasePrice × ServiceRate
+
+7️⃣ Transmission Adjustment
+Automatic cars are more valuable in the UK.
+Automatic = +£1000
+Manual = £0
+
+8️⃣ Fuel Type Adjustment (UK market)
+Electric = +12%
+Hybrid = +6%
+Petrol = 0
+Diesel = -4%
+FuelAdjustment = BasePrice × FuelRate
+
+9️⃣ Ownership Adjustment
+Cars with fewer owners sell for more.
+1 owner = +5%
+2 owners = +2%
+3+ owners = -3%
+OwnershipAdjustment = BasePrice × OwnerRate
+
+🔟 Location Demand Adjustment (UK)
+London / South East = +4%
+Major cities = +2%
+Rural areas = 0
+
+1️⃣1️⃣ Final Formula (Complete)
+EstimatedPrice =
+BasePrice
++ (MileageDiff × -0.06)
++ (BasePrice × ConditionRate)
++ (BasePrice × ServiceRate)
++ TransmissionValue
++ (BasePrice × FuelRate)
++ (BasePrice × OwnerRate)
++ (BasePrice × LocationRate)
 
 
-________________________________________
-1. Account & Authentication
-•	Implement Show/Forget Password functionality with clear password management options.
-•	Introduce authentication methods, including Google API and additional third-party login options.
+Example Calculation
+Car:
+Mercedes C-Class 2016
+Base price = £15,000
+Mileage = 60,000
+Condition = Excellent
+Full service history
+Automatic
+Petrol
+2 owners
+MileageAdjustment = +£1200
+ConditionAdjustment = +£1500
+ServiceAdjustment = +£750
+Transmission = +£1000
+FuelAdjustment = £0
+OwnershipAdjustment = +£300
+LocationAdjustment = +£300
+Final Price
+EstimatedPrice = £20,050
 
-2. Vehicle Listing Structure
-•	Vehicle types to include: Car and HGV initially.
-•	Structured vehicle input fields:
-o	Make and model positioned correctly in the listing hierarchy.
-o	Body type placement to be improved (not positioned at the top).
-•	Additional fuel types to include:
-o	LPG
-o	Hydrogen Cell
-•	Transmission options to include:
-o	Semi-automatic
-o	CVT
-•	Vehicle condition classification:
-o	New or Used grading system.
-•	Imported vehicles to be excluded from listings.
-
-3. Sorting & Filters
-•	Mileage filters: High-to-Low and Low-to-High.
-•	Year filters:
-o	Newest first
-o	Oldest first
-
-4. Listing Page & Categories
-•	Minimum 16 listings per page on the listing view.
-•	Motorcycle category to be introduced if required in selling flow.
-•	AI-assisted listing details for auto-filling vehicle information.
-
-5. Listing Tiers & Visibility
-•	Free listings: Standard visibility (e.g., red).
-•	Paid listings: Premium visibility (e.g., blue).
-•	Listings remain active until the vehicle is sold for the uploader.
-
-6. Reports & Verification
-•	Full HPI report to be attached to listings.
-•	Pricing considerations:
-o	Basic HPI: £10
-o	Free non-blurred report option under consideration.
-
-7. Notifications & Offers
-•	Multi-device notifications for offers.
-•	General notification system across the platform.
-•	Status update flow:
-o	Offer accepted → Deal closed notification.
-
-8. Pricing Model
-•	Basic listing:
-o	Market price: £12
-o	Proposed charge: £9.99
-•	Premium listing benefits:
-o	Finance check inclusion.
-o	Example cost discussion: £10 service vs £25 charge.
-•	Basic listing option also discussed at £1 entry-level pricing.
-
-9. Media & External Integrations
-•	Option to provide external links from services such as:
-o	YouTube
-o	Reels or short-form video platforms
+⭐ Pro Tip (Very Important)
+For accurate valuation, always combine:
+Algorithm price
++
+Real market listing average
+Because the real market data matters more than formulas.
 
