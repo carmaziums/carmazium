@@ -20,6 +20,23 @@ export interface DvlaLookupResult {
     monthOfFirstRegistration?: string;
     wheelplan?: string;
     typeApproval?: string;
+    motHistory?: MotTestResult[];
+}
+
+export interface MotTestResult {
+    completedDate: string;
+    testResult: 'PASSED' | 'FAILED';
+    expiryDate?: string;
+    odometerValue?: string;
+    odometerUnit?: string;
+    motTestNumber: string;
+    defects?: MotTestDefect[];
+}
+
+export interface MotTestDefect {
+    text: string;
+    type: 'ADVISORY' | 'MINOR' | 'MAJOR' | 'DANGEROUS';
+    dangerous: boolean;
 }
 
 export async function dvlaLookup(vrm: string): Promise<DvlaLookupResult> {

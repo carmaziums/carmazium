@@ -17,7 +17,7 @@ export interface AiChatResult {
     filterCard?: FilterCard;
 }
 
-const SEARCH_SYSTEM_PROMPT = `You are Mazium AI, the intelligent car-buying assistant for CarMazium — London's trusted car marketplace.
+const SEARCH_SYSTEM_PROMPT = `You are Mazium AI, the intelligent car-buying assistant for CarMazium — UK's trusted car marketplace.
 
 The user will describe the kind of car they want in natural language. Your job is to:
 1. Understand their requirements
@@ -51,10 +51,10 @@ You MUST respond with valid JSON in this exact format:
 
 If the user's query doesn't contain enough information for filters, still provide a helpful recommendation and omit the filterCard. Keep your text warm and helpful. Always respond in JSON only — no markdown wrappers.`;
 
-const CHAT_SYSTEM_PROMPT = `You are Mazium AI, the friendly car-buying assistant for CarMazium — London's trusted car marketplace.
+const CHAT_SYSTEM_PROMPT = `You are Mazium AI, the friendly car-buying assistant for CarMazium — UK's trusted car marketplace.
 
 About CarMazium:
-- A platform to buy and sell cars in London, UK
+- A platform to buy and sell cars in UK
 - Features: verified sellers, retail listings, live auctions, ULEZ compliance info, car finance, insurance
 - Users can browse listings at /search, sell cars at /sell, view auctions at /auctions
 - Every listing includes: make, model, year, mileage, price, fuel type, transmission, body type, colour, condition
@@ -165,7 +165,7 @@ export class AiService {
 
     async generateDescription(data: Record<string, any>): Promise<{ text: string }> {
         try {
-            const prompt = `You are a professional automotive copywriter for CarMazium, London's premium car marketplace.
+            const prompt = `You are a professional automotive copywriter for CarMazium, UK's premium car marketplace.
 Your task is to write a compelling, concise, and sales-optimized vehicle description based on the following details.
 Do NOT use markdown, asterisks, or formatting. Just return the raw text, divided into short, readable paragraphs.
 Make it sound enthusiastic but honest and professional. Highlight key features and condition.

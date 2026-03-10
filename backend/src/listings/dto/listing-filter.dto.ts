@@ -7,6 +7,7 @@ import {
     BodyType,
     VehicleCondition,
     EuroStandard,
+    VehicleType,
 } from './create-listing.dto';
 
 export class ListingFilterDto {
@@ -144,6 +145,12 @@ export class ListingFilterDto {
     @IsEnum(EuroStandard)
     @IsOptional()
     euroStandard?: EuroStandard;
+
+    // ─── Vehicle Type ────────────────────────────────────────────────────────
+    @ApiPropertyOptional({ description: 'Filter by vehicle type (car, motorcycle, HGV)', enum: VehicleType })
+    @IsEnum(VehicleType)
+    @IsOptional()
+    vehicleType?: VehicleType;
 
     // ─── Sort & Pagination ─────────────────────────────────────────────────────
     @ApiPropertyOptional({

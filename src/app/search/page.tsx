@@ -22,11 +22,18 @@ const FUEL_MAP: Record<string, string> = {
     'Electric': 'ELECTRIC', 'Plugin Hybrid': 'PLUGIN_HYBRID',
     'LPG': 'LPG', 'Hydrogen Fuel Cell': 'HYDROGEN_CELL',
 }
+// Reverse map: API enum values → display labels (used when AI filter cards pass singular fuelType)
+const REVERSE_FUEL_MAP: Record<string, string> = Object.fromEntries(
+    Object.entries(FUEL_MAP).map(([label, value]) => [value, label])
+)
 
 const TRANSMISSION_TYPES = ['Manual', 'Automatic', 'Semi-Automatic', 'CVT'] as const
 const TRANS_MAP: Record<string, string> = {
     'Manual': 'MANUAL', 'Automatic': 'AUTOMATIC', 'Semi-Automatic': 'SEMI_AUTOMATIC', 'CVT': 'CVT',
 }
+const REVERSE_TRANS_MAP: Record<string, string> = Object.fromEntries(
+    Object.entries(TRANS_MAP).map(([label, value]) => [value, label])
+)
 
 const CONDITION_OPTIONS: { value: VehicleConditionValue; label: string }[] = [
     { value: 'EXCELLENT', label: 'Excellent' },
@@ -82,6 +89,7 @@ interface FilterState {
     condition: VehicleConditionValue | ''
     ulezCompliant: 'yes' | 'no' | ''
     euroStandard: EuroStandardValue | ''
+    vehicleType: string
     sortBy: string
 }
 
@@ -95,6 +103,7 @@ const INITIAL_FILTERS: FilterState = {
     minDoors: '', minSeats: '',
     minEngine: '', maxEngine: '', maxCo2: '',
     condition: '', ulezCompliant: '', euroStandard: '',
+    vehicleType: 'CAR',
     sortBy: 'newest',
 }
 
@@ -203,14 +212,17 @@ function SearchPageContent() {
             minPrice: p('minPrice'), maxPrice: p('maxPrice'),
             minYear: p('minYear'), maxYear: p('maxYear'),
             minMileage: p('minMileage'), maxMileage: p('maxMileage'),
-            fuelTypes: searchParams.get('fuelTypes')?.split(',').filter(Boolean) || [],
-            transmissions: searchParams.get('transmissions')?.split(',').filter(Boolean) || [],
+            fuelTypes: searchParams.get('fuelTypes')?.split(',').filter(Boolean)
+                || (searchParams.get('fuelType') ? [REVERSE_FUEL_MAP[searchParams.get('fuelType')!] || searchParams.get('fuelType')!] : []),
+            transmissions: searchParams.get('transmissions')?.split(',').filter(Boolean)
+                || (searchParams.get('transmission') ? [REVERSE_TRANS_MAP[searchParams.get('transmission')!] || searchParams.get('transmission')!] : []),
             bodyType: p('bodyType'), color: p('color'),
             minDoors: p('minDoors'), minSeats: p('minSeats'),
             minEngine: p('minEngine'), maxEngine: p('maxEngine'), maxCo2: p('maxCo2'),
             condition: (p('condition') as VehicleConditionValue) || '',
             ulezCompliant: (p('ulezCompliant') as 'yes' | 'no') || '',
             euroStandard: (p('euroStandard') as EuroStandardValue) || '',
+            vehicleType: p('vehicleType') || 'CAR',
             sortBy: p('sortBy') || 'newest',
         }
     }, [searchParams])
@@ -263,12 +275,13 @@ function SearchPageContent() {
         if (appliedFilters.condition) count++
         if (appliedFilters.ulezCompliant) count++
         if (appliedFilters.euroStandard) count++
+        if (appliedFilters.vehicleType && appliedFilters.vehicleType !== 'CAR') count++
         return count
     }, [appliedFilters])
 
     // Build API filters from state
     const buildApiFilters = React.useCallback((state: FilterState): ListingFilters => {
-        const f: ListingFilters = { limit: 24 }
+        const f: ListingFilters = { limit: 16 }
         if (state.search) f.search = state.search
         if (state.make) f.make = state.make
         if (state.model) f.model = state.model
@@ -290,6 +303,7 @@ function SearchPageContent() {
         if (state.condition) f.condition = state.condition
         if (state.ulezCompliant) f.ulezCompliant = state.ulezCompliant === 'yes'
         if (state.euroStandard) f.euroStandard = state.euroStandard
+        if (state.vehicleType) f.vehicleType = state.vehicleType
         if (state.sortBy && state.sortBy !== 'newest') f.sortBy = state.sortBy
         return f
     }, [])
@@ -436,10 +450,10 @@ function SearchPageContent() {
                 {/* ── Sidebar ──────────────────────────────────────────────────── */}
                 <aside className={`
                     fixed inset-x-0 bottom-0 z-50 flex flex-col h-[85vh] bg-slate-900 border-t border-white/10 rounded-t-3xl shadow-2xl transition-transform duration-300
-                    lg:static lg:h-fit lg:block lg:w-72 lg:flex-shrink-0 lg:glass-card lg:border lg:rounded-2xl lg:shadow-none lg:translate-y-0 lg:sticky lg:top-24 lg:overflow-visible lg:p-6
+                    lg:static lg:w-72 lg:flex-shrink-0 lg:glass-card lg:border lg:rounded-2xl lg:shadow-none lg:translate-y-0 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:flex lg:flex-col lg:overflow-hidden lg:p-0
                     ${isFilterOpen ? 'translate-y-0' : 'translate-y-full lg:translate-y-0'}
                 `}>
-                    <div className="flex justify-between items-center p-6 pb-4 border-b border-white/10 lg:p-0 lg:border-none lg:mb-6">
+                    <div className="flex justify-between items-center p-6 pb-4 border-b border-white/10 lg:px-6 lg:pt-6 lg:pb-4 lg:border-b lg:border-white/5 shrink-0">
                         <h3 className="font-heading font-bold text-xl text-white">Filters</h3>
                         <div className="flex items-center gap-4">
                             {activeFilterCount > 0 && (
@@ -456,9 +470,36 @@ function SearchPageContent() {
                         </div>
                     </div>
 
-                    <div className="px-6 py-4 overflow-y-auto flex-1 lg:p-0 lg:overflow-visible scrollbar-hide">
+                    <div className="px-6 py-4 overflow-y-auto flex-1 scrollbar-hide">
                         <div className="space-y-4">
-                            {/* Body Type */}
+                            {/* Vehicle Category */}
+                            <div className="pb-4 border-b border-white/5">
+                                <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">Vehicle Category</p>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {[
+                                        { value: 'CAR', label: '🚗 Cars' },
+                                        { value: 'MOTORCYCLE', label: '🏍 Bikes' },
+                                        { value: 'HGV', label: '🚛 HGV' },
+                                    ].map((opt) => {
+                                        const active = filters.vehicleType === opt.value
+                                        return (
+                                            <button key={opt.value} type="button"
+                                                onClick={() => setFilters(prev => ({ ...prev, vehicleType: opt.value }))}
+                                                className={`py-2.5 rounded-lg border text-sm font-semibold transition-all text-center ${
+                                                    active
+                                                        ? 'border-primary bg-primary/10 text-white shadow-[0_0_12px_rgba(237,28,36,0.15)]'
+                                                        : 'border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20 hover:text-gray-300'
+                                                }`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Body Type — hidden for motorcycles */}
+                            {filters.vehicleType !== 'MOTORCYCLE' && (
                             <FilterSection title="Body Type">
                                 <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
                                     {BODY_TYPE_KEYS.map((key) => {
@@ -475,6 +516,7 @@ function SearchPageContent() {
                                     })}
                                 </div>
                             </FilterSection>
+                            )}
 
                             {/* Make & Model */}
                             <FilterSection title="Make / Model" defaultOpen={true}>
@@ -639,7 +681,7 @@ function SearchPageContent() {
                                 </div>
                             </FilterSection>
 
-                            <Button className="w-full mt-2 shadow-neon lg:block hidden" onClick={handleApplyFilters}>Apply Filters</Button>
+
                         </div>
 
                         {/* Auction Promo Card */}
@@ -659,9 +701,12 @@ function SearchPageContent() {
                         </div>
                     </div>
 
-                    {/* Footer on mobile */}
-                    <div className="p-4 border-t border-white/10 bg-slate-900 lg:hidden shrink-0">
-                        <Button className="w-full shadow-neon py-6 text-lg" onClick={handleApplyFilters}>Show Results</Button>
+                    {/* Footer — pinned Apply button (visible on both mobile and desktop) */}
+                    <div className="p-4 border-t border-white/10 bg-slate-900 shrink-0 lg:bg-transparent lg:border-white/5">
+                        <Button className="w-full shadow-neon py-6 text-lg lg:py-3 lg:text-sm" onClick={handleApplyFilters}>
+                            <span className="lg:hidden">Show Results</span>
+                            <span className="hidden lg:inline">Apply Filters</span>
+                        </Button>
                     </div>
                 </aside>
 
