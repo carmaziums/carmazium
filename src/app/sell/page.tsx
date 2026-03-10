@@ -47,8 +47,10 @@ interface FormData {
     features: string[]
     description: string
     title: string
-    // Condition
+    // Condition & History
     condition: string
+    serviceHistory: string
+    owners: string
     isImported: boolean
     // UK Compliance
     ulezCompliant: boolean | null
@@ -94,7 +96,7 @@ const INITIAL_FORM: FormData = {
     mileage: "", fuelType: "", transmission: "", color: "",
     doors: "", seats: "", engineSize: "", bhp: "",
     features: [], description: "", title: "",
-    condition: "", isImported: false,
+    condition: "", serviceHistory: "", owners: "", isImported: false,
     ulezCompliant: null, euroStandard: "", co2Emissions: "",
     motStatus: "", taxStatus: "", motExpiryDate: "", taxDueDate: "",
     markedForExport: null, monthOfFirstRegistration: "",
@@ -134,46 +136,86 @@ const FUEL_MULTIPLIERS: Record<string, number> = {
  * Mileage: UK average = 8,000 mi/yr.
  *   Every 10k above average: -6%; every 10k below average: +3% (capped at +20%)
  */
-function estimateValue(make: string, year: string, mileage: string, fuelType: string) {
-    const base = BASE_VALUES[make.toUpperCase()] ?? 28000
+function estimateValue(
+    make: string, year: string, mileage: string, fuelType: string,
+    condition: string, serviceHistory: string, transmission: string,
+    owners: string, location: string
+) {
+    const newBase = BASE_VALUES[make.toUpperCase()] ?? 28000
     const currentYear = new Date().getFullYear()
     const age = Math.max(0, currentYear - Number(year))
-    const miles = Number(mileage)
+    const actualMileage = Number(mileage)
 
-    // Age-tiered compound depreciation
-    let retained = 1.0
-    for (let y = 1; y <= age; y++) {
-        if (y === 1) retained *= 0.80
-        else if (y <= 3) retained *= 0.85
-        else if (y <= 7) retained *= 0.90
-        else retained *= 0.93
+    // 1️⃣ Base Market Price (Depreciated by age at 6% per year per carr.txt step 4)
+    const depreciationFactor = Math.max(0.1, 1 - (0.06 * age))
+    const basePrice = newBase * depreciationFactor
+
+    // 3️⃣ Mileage Adjustment
+    const expectedMileage = age * 10000
+    const mileageDiff = actualMileage - expectedMileage
+    const mileageAdjustmentVal = mileageDiff * -0.06
+
+    // 5️⃣ Condition Adjustment
+    let conditionRate = 0
+    if (condition === "EXCELLENT") conditionRate = 0.10
+    else if (condition === "GOOD") conditionRate = 0.05
+    else if (condition === "FAIR") conditionRate = -0.10
+    else if (condition === "POOR" || condition === "CAT_N" || condition === "CAT_S" || condition === "CAT_C" || condition === "CAT_D") conditionRate = -0.20
+    const conditionAdjustmentVal = basePrice * conditionRate
+
+    // 6️⃣ Service History Adjustment
+    let serviceRate = 0
+    if (serviceHistory === "FULL") serviceRate = 0.05
+    else if (serviceHistory === "PARTIAL") serviceRate = 0.02
+    else if (serviceHistory === "NONE") serviceRate = -0.05
+    const serviceAdjustmentVal = basePrice * serviceRate
+
+    // 7️⃣ Transmission Adjustment
+    const transmissionValue = transmission === "AUTOMATIC" ? 1000 : 0
+
+    // 8️⃣ Fuel Type Adjustment
+    let fuelRate = 0
+    if (fuelType === "ELECTRIC") fuelRate = 0.12
+    else if (fuelType === "HYBRID" || fuelType === "PLUGIN_HYBRID") fuelRate = 0.06
+    else if (fuelType === "DIESEL") fuelRate = -0.04
+    const fuelAdjustmentVal = basePrice * fuelRate
+
+    // 9️⃣ Ownership Adjustment
+    let ownerRate = 0
+    if (owners === "1") ownerRate = 0.05
+    else if (owners === "2") ownerRate = 0.02
+    else if (owners === "3+") ownerRate = -0.03
+    const ownershipAdjustmentVal = basePrice * ownerRate
+
+    // 🔟 Location Demand Adjustment
+    let locationRate = 0
+    const locUpper = location ? location.toUpperCase() : ""
+    if (locUpper.includes("LONDON") || locUpper.includes("SOUTH EAST")) {
+        locationRate = 0.04
+    } else if (locUpper.includes("MANCHESTER") || locUpper.includes("BIRMINGHAM") || locUpper.includes("LEEDS") || locUpper.includes("GLASGOW") || locUpper.includes("LIVERPOOL") || locUpper.includes("SHEFFIELD") || locUpper.includes("BRISTOL") || locUpper.includes("EDINBURGH")) {
+        locationRate = 0.02
     }
+    const locationAdjustmentVal = basePrice * locationRate
 
-    // Mileage deviation from UK average (8k mi/yr)
-    const avgMiles = age * 8000
-    const excessMiles = miles - avgMiles
-    // Every 10,000 mi above avg = -6%; below avg = +3%, capped at +20%
-    const mileageAdjustment = excessMiles >= 0
-        ? Math.max(0.50, 1 - (excessMiles / 10000) * 0.06)
-        : Math.min(1.20, 1 + (Math.abs(excessMiles) / 10000) * 0.03)
+    // 1️⃣1️⃣ Final Formula (Complete)
+    const estimatedPrice = basePrice + mileageAdjustmentVal + conditionAdjustmentVal + serviceAdjustmentVal + transmissionValue + fuelAdjustmentVal + ownershipAdjustmentVal + locationAdjustmentVal
 
-    // Fuel type modifier
-    const fuelMult = FUEL_MULTIPLIERS[fuelType.toUpperCase()] ?? 1.0
-
-    const mid = Math.max(500, Math.round((base * retained * mileageAdjustment * fuelMult) / 100) * 100)
+    const mid = Math.max(500, Math.round(estimatedPrice / 100) * 100)
     const low = Math.round(mid * 0.93 / 100) * 100
     const high = Math.round(mid * 1.07 / 100) * 100
 
-    // Depreciation factors for display
-    const ageDropPct = Math.round((1 - retained) * 100)
-    const mileageDropPct = excessMiles > 0
-        ? Math.round(Math.min(50, (excessMiles / 10000) * 6))
-        : 0
-    const mileageBonusPct = excessMiles < 0
-        ? Math.round(Math.min(20, (Math.abs(excessMiles) / 10000) * 3))
-        : 0
-
-    return { low, mid, high, ageDropPct, mileageDropPct, mileageBonusPct, avgMiles }
+    return { 
+        low, mid, high, 
+        basePrice, 
+        mileageAdjustmentVal, 
+        conditionAdjustmentVal, 
+        serviceAdjustmentVal, 
+        transmissionValue, 
+        fuelAdjustmentVal, 
+        ownershipAdjustmentVal, 
+        locationAdjustmentVal,
+        expectedMileage
+    }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -230,11 +272,15 @@ export default function SellPage() {
     const [geoLoading, setGeoLoading] = React.useState(false)
     const [isGeneratingDesc, setIsGeneratingDesc] = React.useState(false)
 
-    // Estimated value — derived from make, year, mileage, fuelType
+    // Estimated value — derived from complex formula
     const valuation = React.useMemo(() => {
         if (!formData.make || !formData.year || !formData.mileage) return null
-        return estimateValue(formData.make, formData.year, formData.mileage, formData.fuelType)
-    }, [formData.make, formData.year, formData.mileage, formData.fuelType])
+        return estimateValue(
+            formData.make, formData.year, formData.mileage, formData.fuelType,
+            formData.condition, formData.serviceHistory, formData.transmission,
+            formData.owners, formData.location
+        )
+    }, [formData.make, formData.year, formData.mileage, formData.fuelType, formData.condition, formData.serviceHistory, formData.transmission, formData.owners, formData.location])
 
     const isAuthenticated = !!user && !!profile
     const isEmailVerified = !!user?.email_confirmed_at
@@ -976,6 +1022,50 @@ export default function SellPage() {
                                 </div>
                             </div>
 
+                            {/* Service History */}
+                            <div className="space-y-3">
+                                <label className="text-sm font-bold uppercase text-gray-400">Service History</label>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                                    {([
+                                        { value: "FULL", label: "Full History" },
+                                        { value: "PARTIAL", label: "Partial History" },
+                                        { value: "NONE", label: "No History" },
+                                    ] as const).map((opt) => {
+                                        const active = formData.serviceHistory === opt.value
+                                        return (
+                                            <button key={opt.value} type="button"
+                                                onClick={() => set("serviceHistory", opt.value)}
+                                                className={`py-2.5 rounded-lg border text-sm font-semibold transition-all ${active ? "border-primary bg-primary/10 text-white" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"}`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Ownership */}
+                            <div className="space-y-3">
+                                <label className="text-sm font-bold uppercase text-gray-400">Number of Owners</label>
+                                <div className="grid grid-cols-3 gap-2.5">
+                                    {([
+                                        { value: "1", label: "1 Owner" },
+                                        { value: "2", label: "2 Owners" },
+                                        { value: "3+", label: "3+ Owners" },
+                                    ] as const).map((opt) => {
+                                        const active = formData.owners === opt.value
+                                        return (
+                                            <button key={opt.value} type="button"
+                                                onClick={() => set("owners", opt.value)}
+                                                className={`py-2.5 rounded-lg border text-sm font-semibold transition-all ${active ? "border-primary bg-primary/10 text-white" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"}`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+
                             {/* Imported Vehicle Warning */}
                             <div className="space-y-2">
                                 <label className="flex items-center gap-3 cursor-pointer">
@@ -1021,50 +1111,71 @@ export default function SellPage() {
                                     </div>
 
                                     {/* Factors breakdown */}
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
-                                        {valuation.ageDropPct > 0 && (
-                                            <div className="bg-white/5 rounded-lg px-3 py-2.5 flex items-center gap-2">
-                                                <TrendingDown size={14} className="text-amber-400 shrink-0" />
-                                                <div>
-                                                    <p className="text-[10px] text-gray-500 uppercase font-bold flex items-center">Age impact
-                                                        <InfoTooltip text={`Depreciation is calculated by vehicle age using UK market tiers. Year 1: −20%, Years 2–3: −15%/yr, Years 4–7: −10%/yr, 8+: −7%/yr. Your ${formData.year ? new Date().getFullYear() - Number(formData.year) : 0}-year-old vehicle has lost ~${valuation.ageDropPct}% of its original value due to age.`} />
-                                                    </p>
-                                                    <p className="text-amber-300 text-sm font-bold">−{valuation.ageDropPct}% depreciation</p>
-                                                </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                                        <div className="bg-white/5 rounded-lg px-3 py-2.5 flex items-center justify-between">
+                                            <div>
+                                                <p className="text-[10px] text-gray-500 uppercase font-bold flex items-center">Base Price
+                                                    <InfoTooltip text={`Estimated new price minus 6% depreciation per year of age.`} />
+                                                </p>
+                                                <p className="text-gray-300 text-sm font-bold">{formatPrice(valuation.basePrice)}</p>
                                             </div>
-                                        )}
-                                        {valuation.mileageDropPct > 0 && (
-                                            <div className="bg-white/5 rounded-lg px-3 py-2.5 flex items-center gap-2">
-                                                <TrendingDown size={14} className="text-orange-400 shrink-0" />
-                                                <div>
-                                                    <p className="text-[10px] text-gray-500 uppercase font-bold flex items-center">High mileage
-                                                        <InfoTooltip text={`Your mileage is above the UK average of 8,000 miles/year (expected: ${valuation.avgMiles.toLocaleString()} miles for this age). Every 10,000 miles above average reduces value by 6%, capped at −50%. Higher mileage indicates more wear on the engine, transmission, and suspension.`} />
-                                                    </p>
-                                                    <p className="text-orange-300 text-sm font-bold">−{valuation.mileageDropPct}% vs avg</p>
-                                                </div>
-                                            </div>
-                                        )}
-                                        {valuation.mileageBonusPct > 0 && (
-                                            <div className="bg-white/5 rounded-lg px-3 py-2.5 flex items-center gap-2">
-                                                <BadgeCheck size={14} className="text-emerald-400 shrink-0" />
-                                                <div>
-                                                    <p className="text-[10px] text-gray-500 uppercase font-bold flex items-center">Low mileage
-                                                        <InfoTooltip text={`Your mileage is below the UK average of 8,000 miles/year (expected: ${valuation.avgMiles.toLocaleString()} miles for this age). Every 10,000 miles below average adds +3% to value, capped at +20%. Lower mileage means less wear and is highly desirable to buyers.`} />
-                                                    </p>
-                                                    <p className="text-emerald-300 text-sm font-bold">+{valuation.mileageBonusPct}% premium</p>
-                                                </div>
-                                            </div>
-                                        )}
-                                        <div className="bg-white/5 rounded-lg px-3 py-2.5">
-                                            <p className="text-[10px] text-gray-500 uppercase font-bold flex items-center">UK avg mileage
-                                                <InfoTooltip text={`The UK national average is approximately 8,000 miles per year (RAC/DfT data). For a ${formData.year ? new Date().getFullYear() - Number(formData.year) : 0}-year-old car, the expected total mileage is ${valuation.avgMiles.toLocaleString()} miles. This benchmark is used to determine whether your car has above or below-average usage.`} />
-                                            </p>
-                                            <p className="text-gray-300 text-sm font-bold">{valuation.avgMiles.toLocaleString()} mi/yr</p>
                                         </div>
+                                        {valuation.mileageAdjustmentVal !== 0 && (
+                                            <div className="bg-white/5 rounded-lg px-3 py-2.5 flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-[10px] text-gray-500 uppercase font-bold flex items-center">Mileage Adj
+                                                        <InfoTooltip text={`+/- 6% per 10k miles compared to the expected ${valuation.expectedMileage.toLocaleString()} miles.`} />
+                                                    </p>
+                                                    <p className={`text-sm font-bold ${valuation.mileageAdjustmentVal > 0 ? "text-emerald-400" : "text-amber-400"}`}>
+                                                        {valuation.mileageAdjustmentVal > 0 ? "+" : ""}{formatPrice(valuation.mileageAdjustmentVal)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {valuation.conditionAdjustmentVal !== 0 && (
+                                            <div className="bg-white/5 rounded-lg px-3 py-2.5 flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-[10px] text-gray-500 uppercase font-bold">Condition</p>
+                                                    <p className={`text-sm font-bold ${valuation.conditionAdjustmentVal > 0 ? "text-emerald-400" : "text-amber-400"}`}>
+                                                        {valuation.conditionAdjustmentVal > 0 ? "+" : ""}{formatPrice(valuation.conditionAdjustmentVal)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {valuation.serviceAdjustmentVal !== 0 && (
+                                            <div className="bg-white/5 rounded-lg px-3 py-2.5 flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-[10px] text-gray-500 uppercase font-bold">Service History</p>
+                                                    <p className={`text-sm font-bold ${valuation.serviceAdjustmentVal > 0 ? "text-emerald-400" : "text-amber-400"}`}>
+                                                        {valuation.serviceAdjustmentVal > 0 ? "+" : ""}{formatPrice(valuation.serviceAdjustmentVal)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {valuation.fuelAdjustmentVal !== 0 && (
+                                            <div className="bg-white/5 rounded-lg px-3 py-2.5 flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-[10px] text-gray-500 uppercase font-bold">Fuel Type</p>
+                                                    <p className={`text-sm font-bold ${valuation.fuelAdjustmentVal > 0 ? "text-emerald-400" : "text-amber-400"}`}>
+                                                        {valuation.fuelAdjustmentVal > 0 ? "+" : ""}{formatPrice(valuation.fuelAdjustmentVal)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {valuation.ownershipAdjustmentVal !== 0 && (
+                                            <div className="bg-white/5 rounded-lg px-3 py-2.5 flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-[10px] text-gray-500 uppercase font-bold">Owners</p>
+                                                    <p className={`text-sm font-bold ${valuation.ownershipAdjustmentVal > 0 ? "text-emerald-400" : "text-amber-400"}`}>
+                                                        {valuation.ownershipAdjustmentVal > 0 ? "+" : ""}{formatPrice(valuation.ownershipAdjustmentVal)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <p className="text-xs text-gray-500">
-                                        Based on age-tiered UK market depreciation, your mileage vs. the UK average (8,000 mi/yr), and fuel type. You can override the values below.
+                                        Calculated based on UK car market pricing algorithms. Note that transmission (+£1,000 for auto) and London/Major City location (+2-4%) are also factored in. You can override the values below.
                                     </p>
 
                                     <Button
