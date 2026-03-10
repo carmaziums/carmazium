@@ -6,6 +6,7 @@ export type BodyTypeValue = 'HATCHBACK' | 'SALOON' | 'ESTATE' | 'SUV' | 'COUPE' 
 
 export interface DvlaLookupResult {
     make?: string;
+    model?: string;
     colour?: string;
     year?: number;
     engineSize?: number;
