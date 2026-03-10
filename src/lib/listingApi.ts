@@ -320,6 +320,17 @@ export async function deleteListing(listingId: string): Promise<void> {
 }
 
 /**
+ * Update listing status (authenticated)
+ */
+export async function updateListingStatus(listingId: string, status: string): Promise<Listing> {
+    const data = await apiClient<{ data: Listing }>(`/listings/${listingId}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status })
+    })
+    return data.data
+}
+
+/**
  * Boost a listing to Featured status for 28 days (authenticated)
  * In bypass mode: immediately activates. In Stripe mode: returns { url } for redirect.
  */

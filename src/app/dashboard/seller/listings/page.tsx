@@ -4,9 +4,9 @@ import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
-import { getMyListings, deleteListing, boostListing, formatPrice, type Listing } from "@/lib/listingApi"
+import { getMyListings, deleteListing, boostListing, updateListingStatus, formatPrice, type Listing } from "@/lib/listingApi"
 import { useAuth } from "@/context/AuthContext"
-import { PlusCircle, Loader2, Trash2, Eye, Zap, X, AlertCircle, CheckCircle2 } from "lucide-react"
+import { PlusCircle, Loader2, Trash2, Eye, Zap, X, AlertCircle, CheckCircle2, MoreVertical } from "lucide-react"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 
 export default function MyListingsPage() {
@@ -20,6 +20,7 @@ export default function MyListingsPage() {
     const [boosting, setBoosting] = React.useState<string | null>(null)
     const [boostTarget, setBoostTarget] = React.useState<Listing | null>(null)
     const [boostSuccess, setBoostSuccess] = React.useState<string | null>(null)
+    const [updatingStatus, setUpdatingStatus] = React.useState<string | null>(null)
 
     const fetchListings = React.useCallback(async () => {
         if (!user) return
@@ -51,6 +52,19 @@ export default function MyListingsPage() {
             alert('Failed to delete: ' + err.message)
         } finally {
             setDeleting(null)
+        }
+    }
+
+    const handleMarkSold = async (id: string) => {
+        if (!confirm('Mark this listing as Sold?')) return
+        try {
+            setUpdatingStatus(id)
+            await updateListingStatus(id, 'SOLD')
+            setListings(prev => prev.map(l => l.id === id ? { ...l, status: 'SOLD' } : l))
+        } catch (err: any) {
+            alert('Failed to update status: ' + err.message)
+        } finally {
+            setUpdatingStatus(null)
         }
     }
 
@@ -210,7 +224,7 @@ export default function MyListingsPage() {
                                                     <td className="px-6 py-4">
                                                         <div className="flex justify-end items-center gap-2">
                                                             {/* Boost button */}
-                                                            {!listing.isFeatured && (
+                                                            {!listing.isFeatured && listing.status === "ACTIVE" && (
                                                                 <button
                                                                     onClick={() => setBoostTarget(listing)}
                                                                     disabled={boosting === listing.id}
@@ -226,17 +240,34 @@ export default function MyListingsPage() {
                                                                 </button>
                                                             )}
 
-                                                            <Link href={`/vehicle/${listing.slug}`} className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="View">
-                                                                <Eye size={16} />
-                                                            </Link>
-                                                            <button
-                                                                onClick={() => handleDelete(listing.id)}
-                                                                disabled={deleting === listing.id}
-                                                                className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
-                                                                title="Delete"
-                                                            >
-                                                                {deleting === listing.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                                                            </button>
+                                                            <div className="relative group">
+                                                                <button className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
+                                                                    <MoreVertical size={16} />
+                                                                </button>
+
+                                                                {/* Dropdown menu */}
+                                                                <div className="absolute right-0 top-full mt-1 w-36 bg-slate-800 border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20 flex flex-col py-1">
+                                                                    <Link href={`/vehicle/${listing.slug}`} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
+                                                                        <Eye size={14} /> View
+                                                                    </Link>
+                                                                    {listing.status !== 'SOLD' && (
+                                                                        <button 
+                                                                            onClick={() => handleMarkSold(listing.id)} 
+                                                                            disabled={updatingStatus === listing.id}
+                                                                            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-emerald-500/10 hover:text-emerald-400 transition-colors w-full text-left disabled:opacity-50"
+                                                                        >
+                                                                            {updatingStatus === listing.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />} Mark Sold
+                                                                        </button>
+                                                                    )}
+                                                                    <button 
+                                                                        onClick={() => handleDelete(listing.id)} 
+                                                                        disabled={deleting === listing.id} 
+                                                                        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-red-500/10 hover:text-red-400 transition-colors w-full text-left disabled:opacity-50"
+                                                                    >
+                                                                        {deleting === listing.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />} Delete
+                                                                    </button>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     </td>
                                                 </tr>
