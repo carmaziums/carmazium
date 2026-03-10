@@ -8,6 +8,8 @@ export interface DvlaLookupResult {
     make?: string;
     model?: string;
     colour?: string;
+    primaryColour?: string;
+    firstUsedDate?: string;
     year?: number;
     engineSize?: number;
     fuelType?: string;

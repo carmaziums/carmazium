@@ -66,6 +66,8 @@ interface FormData {
     wheelplan: string
     typeApproval: string
     motHistory: any[]
+    firstUsedDate?: string
+    primaryColour?: string
     // Step 2 — Media
     images: string[]
     // Step 3 — Pricing
@@ -101,6 +103,7 @@ const INITIAL_FORM: FormData = {
     motStatus: "", taxStatus: "", motExpiryDate: "", taxDueDate: "",
     markedForExport: null, monthOfFirstRegistration: "",
     wheelplan: "", typeApproval: "", motHistory: [],
+    firstUsedDate: "", primaryColour: "",
     images: [],
     priceMin: "", priceMax: "", badgeTier: 'FREE', status: "DRAFT",
 }
@@ -570,6 +573,9 @@ export default function SellPage() {
                                                 if (r.make) set("make", r.make)
                                                 if (r.model) set("model", r.model)
                                                 
+                                                if (r.primaryColour) set("primaryColour", r.primaryColour)
+                                                if (r.firstUsedDate) set("firstUsedDate", r.firstUsedDate)
+                                                
                                                 if (r.motHistory && r.motHistory.length > 0) {
                                                     set("motHistory", r.motHistory)
                                                     // Autofill mileage from the latest valid MOT (which is usually the first one since it's sorted descending by completedDate)
@@ -663,6 +669,18 @@ export default function SellPage() {
                                             <div className="bg-white/5 rounded-lg px-3 py-2.5">
                                                 <p className="text-[10px] text-gray-500 uppercase font-bold">Marked for Export</p>
                                                 <p className={`text-sm font-bold ${formData.markedForExport ? 'text-red-400' : 'text-emerald-400'}`}>{formData.markedForExport ? 'Yes' : 'No'}</p>
+                                            </div>
+                                        )}
+                                        {formData.firstUsedDate && (
+                                            <div className="bg-white/5 rounded-lg px-3 py-2.5">
+                                                <p className="text-[10px] text-gray-500 uppercase font-bold">First Used Date</p>
+                                                <p className="text-sm font-bold text-white">{formData.firstUsedDate}</p>
+                                            </div>
+                                        )}
+                                        {formData.primaryColour && (
+                                            <div className="bg-white/5 rounded-lg px-3 py-2.5">
+                                                <p className="text-[10px] text-gray-500 uppercase font-bold">Primary Colour</p>
+                                                <p className="text-sm font-bold text-white">{formData.primaryColour}</p>
                                             </div>
                                         )}
                                     </div>
@@ -1377,6 +1395,8 @@ export default function SellPage() {
                                             {formData.taxStatus && <SummaryField label="Tax Status" value={formData.taxStatus} />}
                                             {formData.taxDueDate && <SummaryField label="Tax Due" value={formData.taxDueDate} />}
                                             {formData.monthOfFirstRegistration && <SummaryField label="First Registered" value={formData.monthOfFirstRegistration} />}
+                                            {formData.firstUsedDate && <SummaryField label="First Used" value={formData.firstUsedDate} />}
+                                            {formData.primaryColour && <SummaryField label="Primary Colour" value={formData.primaryColour} />}
                                             {formData.wheelplan && <SummaryField label="Wheelplan" value={formData.wheelplan} />}
                                             {formData.typeApproval && <SummaryField label="Type Approval" value={formData.typeApproval} />}
                                             {formData.markedForExport !== null && <SummaryField label="Export" value={formData.markedForExport ? "Yes" : "No"} />}

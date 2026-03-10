@@ -34,6 +34,8 @@ export interface DvlaLookupResult {
     make?: string;
     model?: string;
     colour?: string;
+    primaryColour?: string;
+    firstUsedDate?: string;
     year?: number;
     engineSize?: number;      // cc
     co2Emissions?: number;    // g/km
@@ -150,9 +152,9 @@ export class DvlaService {
         const combined = dvlaResult.value;
         if (motResult.status === 'fulfilled' && motResult.value) {
             combined.motHistory = motResult.value.motTests;
-            if (motResult.value.model) {
-                combined.model = motResult.value.model;
-            }
+            if (motResult.value.model) combined.model = motResult.value.model;
+            if (motResult.value.primaryColour) combined.primaryColour = motResult.value.primaryColour;
+            if (motResult.value.firstUsedDate) combined.firstUsedDate = motResult.value.firstUsedDate;
         }
 
         return combined;
@@ -212,7 +214,7 @@ export class DvlaService {
 
     // ─── MOT History API REST request ─────────────────────────────────────────
 
-    private async motApiRequest(normalised: string): Promise<{ motTests: MotTestResult[], model?: string } | null> {
+    private async motApiRequest(normalised: string): Promise<{ motTests: MotTestResult[], model?: string, primaryColour?: string, firstUsedDate?: string } | null> {
         const motApiKey = this.configService.get<string>('MOT_API_KEY');
         if (!motApiKey) {
             this.logger.warn('MOT_API_KEY is not set — MOT History lookup will be skipped');
@@ -233,7 +235,7 @@ export class DvlaService {
             if (!response.ok) {
                 if (response.status === 404) {
                     this.logger.log(`No MOT history found for ${normalised}`);
-                    return [];
+                    return { motTests: [] };
                 }
                 const text = await response.text().catch(() => '');
                 this.logger.error(`MOT API error ${response.status}: ${text}`);
@@ -247,7 +249,9 @@ export class DvlaService {
                 const vehicle = data[0];
                 return {
                     motTests: vehicle.motTests || [],
-                    model: vehicle.model
+                    model: vehicle.model,
+                    primaryColour: vehicle.primaryColour,
+                    firstUsedDate: vehicle.firstUsedDate
                 };
             }
             
