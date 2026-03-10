@@ -68,9 +68,7 @@ interface FormData {
     motHistory: any[]
     firstUsedDate?: string
     primaryColour?: string
-    revenueWeight: string
     dateOfLastV5CIssued: string
-    realDrivingEmissions: string
     // Step 2 — Media
     images: string[]
     // Step 3 — Pricing
@@ -106,8 +104,8 @@ const INITIAL_FORM: FormData = {
     motStatus: "", taxStatus: "", motExpiryDate: "", taxDueDate: "",
     markedForExport: null, monthOfFirstRegistration: "",
     wheelplan: "", typeApproval: "", motHistory: [],
-    firstUsedDate: "", primaryColour: "",
-    revenueWeight: "", dateOfLastV5CIssued: "", realDrivingEmissions: "",
+    primaryColour: "",
+    dateOfLastV5CIssued: "",
     images: [],
     priceMin: "", priceMax: "", badgeTier: 'FREE', status: "DRAFT",
 }
@@ -578,7 +576,6 @@ export default function SellPage() {
                                                 if (r.model) set("model", r.model)
                                                 
                                                 if (r.primaryColour) set("primaryColour", r.primaryColour)
-                                                if (r.firstUsedDate) set("firstUsedDate", r.firstUsedDate)
                                                 
                                                 if (r.motHistory && r.motHistory.length > 0) {
                                                     set("motHistory", r.motHistory)
@@ -602,9 +599,7 @@ export default function SellPage() {
                                                 if (r.monthOfFirstRegistration) set("monthOfFirstRegistration", r.monthOfFirstRegistration)
                                                 if (r.wheelplan) set("wheelplan", r.wheelplan)
                                                 if (r.typeApproval) set("typeApproval", r.typeApproval)
-                                                if (r.revenueWeight) set("revenueWeight", String(r.revenueWeight))
                                                 if (r.dateOfLastV5CIssued) set("dateOfLastV5CIssued", r.dateOfLastV5CIssued)
-                                                if (r.realDrivingEmissions) set("realDrivingEmissions", r.realDrivingEmissions)
                                                 // Auto-infer ULEZ compliance from fuel type + euro standard
                                                 const ft = (r.fuelType || "").toUpperCase()
                                                 const es = (r.euroStandard || "").toUpperCase()
@@ -649,11 +644,6 @@ export default function SellPage() {
                                         <label className="text-sm font-bold uppercase text-gray-400">First Registered</label>
                                         <Input placeholder="e.g. 2015-03" value={formData.monthOfFirstRegistration} onChange={(e) => set("monthOfFirstRegistration", e.target.value)} className={inputCls} />
                                     </div>
-                                    {/* First Used */}
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-gray-400">First Used Date</label>
-                                        <Input placeholder="e.g. 2015-03-12" value={formData.firstUsedDate} onChange={(e) => set("firstUsedDate", e.target.value)} className={inputCls} />
-                                    </div>
                                     {/* Last V5C Issued */}
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold uppercase text-gray-400">Last V5C Issued</label>
@@ -688,16 +678,6 @@ export default function SellPage() {
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold uppercase text-gray-400">Wheelplan</label>
                                         <Input placeholder="e.g. 2 AXLE RIGID BODY" value={formData.wheelplan} onChange={(e) => set("wheelplan", e.target.value)} className={inputCls} />
-                                    </div>
-                                    {/* Revenue Weight */}
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-gray-400">Revenue Weight (kg)</label>
-                                        <Input type="number" placeholder="e.g. 2000" value={formData.revenueWeight} onChange={(e) => set("revenueWeight", e.target.value)} className={inputCls} />
-                                    </div>
-                                    {/* Real Driving Emissions */}
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-gray-400">Real Driving Emissions</label>
-                                        <Input placeholder="e.g. 1" value={formData.realDrivingEmissions} onChange={(e) => set("realDrivingEmissions", e.target.value)} className={inputCls} />
                                     </div>
                                     {/* Marked For Export */}
                                     <div className="space-y-2">
@@ -1425,13 +1405,10 @@ export default function SellPage() {
                                             {formData.taxStatus && <SummaryField label="Tax Status" value={formData.taxStatus} />}
                                             {formData.taxDueDate && <SummaryField label="Tax Due" value={formData.taxDueDate} />}
                                             {formData.monthOfFirstRegistration && <SummaryField label="First Registered" value={formData.monthOfFirstRegistration} />}
-                                            {formData.firstUsedDate && <SummaryField label="First Used" value={formData.firstUsedDate} />}
                                             {formData.dateOfLastV5CIssued && <SummaryField label="Last V5C Issued" value={formData.dateOfLastV5CIssued} />}
                                             {formData.primaryColour && <SummaryField label="Primary Colour" value={formData.primaryColour} />}
                                             {formData.wheelplan && <SummaryField label="Wheelplan" value={formData.wheelplan} />}
                                             {formData.typeApproval && <SummaryField label="Type Approval" value={formData.typeApproval} />}
-                                            {formData.revenueWeight && <SummaryField label="Revenue Weight" value={formData.revenueWeight + " kg"} />}
-                                            {formData.realDrivingEmissions && <SummaryField label="Real Driving Emissions" value={formData.realDrivingEmissions} />}
                                             {formData.markedForExport !== null && <SummaryField label="Export" value={formData.markedForExport ? "Yes" : "No"} />}
                                         </div>
                                     </div>

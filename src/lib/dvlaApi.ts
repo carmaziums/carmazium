@@ -9,15 +9,12 @@ export interface DvlaLookupResult {
     model?: string;
     colour?: string;
     primaryColour?: string;
-    firstUsedDate?: string;
     year?: number;
     engineSize?: number;
     fuelType?: string;
     euroStandard?: string;
     co2Emissions?: number;
-    revenueWeight?: number;
     dateOfLastV5CIssued?: string;
-    realDrivingEmissions?: string;
     motStatus?: string;
     taxStatus?: string;
     motExpiryDate?: string;
