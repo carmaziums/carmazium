@@ -8,7 +8,7 @@ import {
     Car, Camera, List, DollarSign, CheckCircle,
     ArrowRight, ArrowLeft, Loader2, Search,
     BadgeCheck, TrendingDown, Upload, Eye, X,
-    Shield, Star, Sparkles, Zap, MapPin, LocateFixed, Edit, Info, Handshake, CreditCard, AlertTriangle
+    Shield, Star, Sparkles, Zap, MapPin, LocateFixed, Edit, Info, Handshake, CreditCard, AlertTriangle, ChevronDown
 } from "lucide-react"
 import Image from "next/image"
 import { ImageUpload } from "@/components/listing/ImageUpload"
@@ -68,6 +68,9 @@ interface FormData {
     motHistory: any[]
     firstUsedDate?: string
     primaryColour?: string
+    revenueWeight: string
+    dateOfLastV5CIssued: string
+    realDrivingEmissions: string
     // Step 2 — Media
     images: string[]
     // Step 3 — Pricing
@@ -104,6 +107,7 @@ const INITIAL_FORM: FormData = {
     markedForExport: null, monthOfFirstRegistration: "",
     wheelplan: "", typeApproval: "", motHistory: [],
     firstUsedDate: "", primaryColour: "",
+    revenueWeight: "", dateOfLastV5CIssued: "", realDrivingEmissions: "",
     images: [],
     priceMin: "", priceMax: "", badgeTier: 'FREE', status: "DRAFT",
 }
@@ -598,6 +602,9 @@ export default function SellPage() {
                                                 if (r.monthOfFirstRegistration) set("monthOfFirstRegistration", r.monthOfFirstRegistration)
                                                 if (r.wheelplan) set("wheelplan", r.wheelplan)
                                                 if (r.typeApproval) set("typeApproval", r.typeApproval)
+                                                if (r.revenueWeight) set("revenueWeight", String(r.revenueWeight))
+                                                if (r.dateOfLastV5CIssued) set("dateOfLastV5CIssued", r.dateOfLastV5CIssued)
+                                                if (r.realDrivingEmissions) set("realDrivingEmissions", r.realDrivingEmissions)
                                                 // Auto-infer ULEZ compliance from fuel type + euro standard
                                                 const ft = (r.fuelType || "").toUpperCase()
                                                 const es = (r.euroStandard || "").toUpperCase()
@@ -626,110 +633,133 @@ export default function SellPage() {
                                 {dvlaError && <p className="text-xs text-red-400">{dvlaError}</p>}
                             </div>
 
-                            {/* DVLA Vehicle Data Panel */}
-                            {dvlaSuccess && (formData.motStatus || formData.taxStatus || formData.monthOfFirstRegistration) && (
-                                <div className="border border-blue-500/20 bg-blue-500/5 rounded-xl p-5 space-y-3">
-                                    <h3 className="text-sm font-bold uppercase text-blue-400 tracking-wider flex items-center gap-2">
-                                        <Shield size={14} /> DVLA Vehicle Data
-                                    </h3>
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                        {formData.motStatus && (
-                                            <div className="bg-white/5 rounded-lg px-3 py-2.5">
-                                                <p className="text-[10px] text-gray-500 uppercase font-bold">MOT Status</p>
-                                                <p className={`text-sm font-bold ${formData.motStatus.toLowerCase().includes('valid') ? 'text-emerald-400' : 'text-amber-400'}`}>{formData.motStatus}</p>
-                                                {formData.motExpiryDate && <p className="text-[10px] text-gray-500 mt-0.5">Expires: {formData.motExpiryDate}</p>}
-                                            </div>
-                                        )}
-                                        {formData.taxStatus && (
-                                            <div className="bg-white/5 rounded-lg px-3 py-2.5">
-                                                <p className="text-[10px] text-gray-500 uppercase font-bold">Tax Status</p>
-                                                <p className={`text-sm font-bold ${formData.taxStatus.toLowerCase() === 'taxed' ? 'text-emerald-400' : 'text-amber-400'}`}>{formData.taxStatus}</p>
-                                                {formData.taxDueDate && <p className="text-[10px] text-gray-500 mt-0.5">Due: {formData.taxDueDate}</p>}
-                                            </div>
-                                        )}
-                                        {formData.monthOfFirstRegistration && (
-                                            <div className="bg-white/5 rounded-lg px-3 py-2.5">
-                                                <p className="text-[10px] text-gray-500 uppercase font-bold">First Registered</p>
-                                                <p className="text-sm font-bold text-white">{formData.monthOfFirstRegistration}</p>
-                                            </div>
-                                        )}
-                                        {formData.wheelplan && (
-                                            <div className="bg-white/5 rounded-lg px-3 py-2.5">
-                                                <p className="text-[10px] text-gray-500 uppercase font-bold">Wheelplan</p>
-                                                <p className="text-sm font-bold text-white">{formData.wheelplan}</p>
-                                            </div>
-                                        )}
-                                        {formData.typeApproval && (
-                                            <div className="bg-white/5 rounded-lg px-3 py-2.5">
-                                                <p className="text-[10px] text-gray-500 uppercase font-bold">Type Approval</p>
-                                                <p className="text-sm font-bold text-white">{formData.typeApproval}</p>
-                                            </div>
-                                        )}
-                                        {formData.markedForExport !== null && (
-                                            <div className="bg-white/5 rounded-lg px-3 py-2.5">
-                                                <p className="text-[10px] text-gray-500 uppercase font-bold">Marked for Export</p>
-                                                <p className={`text-sm font-bold ${formData.markedForExport ? 'text-red-400' : 'text-emerald-400'}`}>{formData.markedForExport ? 'Yes' : 'No'}</p>
-                                            </div>
-                                        )}
-                                        {formData.firstUsedDate && (
-                                            <div className="bg-white/5 rounded-lg px-3 py-2.5">
-                                                <p className="text-[10px] text-gray-500 uppercase font-bold">First Used Date</p>
-                                                <p className="text-sm font-bold text-white">{formData.firstUsedDate}</p>
-                                            </div>
-                                        )}
-                                        {formData.primaryColour && (
-                                            <div className="bg-white/5 rounded-lg px-3 py-2.5">
-                                                <p className="text-[10px] text-gray-500 uppercase font-bold">Primary Colour</p>
-                                                <p className="text-sm font-bold text-white">{formData.primaryColour}</p>
-                                            </div>
-                                        )}
+                            {/* Registration & Compliance Details */}
+                            <div className="mt-8">
+                                <h3 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white flex items-center gap-2">
+                                    <Shield size={20} className="text-blue-400" />
+                                    Registration & Compliance
+                                </h3>
+                                <p className="text-xs text-gray-500 mt-2 mb-6">
+                                    These fields are auto-filled from the DVLA and MOT databases, but can be manually adjusted.
+                                </p>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                    {/* First Registered */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold uppercase text-gray-400">First Registered</label>
+                                        <Input placeholder="e.g. 2015-03" value={formData.monthOfFirstRegistration} onChange={(e) => set("monthOfFirstRegistration", e.target.value)} className={inputCls} />
                                     </div>
-                                    <p className="text-[10px] text-gray-600">Data sourced directly from the DVLA Vehicle Enquiry Service. These fields are stored with your listing for buyer transparency.</p>
-                                    
-                                    {/* MOT History */}
-                                    {formData.motHistory && formData.motHistory.length > 0 && (
-                                        <div className="mt-4 border-t border-blue-500/20 pt-4">
-                                            <h4 className="text-xs font-bold uppercase text-blue-400 mb-3 flex items-center gap-2">
-                                                <List size={12} /> MOT History
-                                            </h4>
-                                            <div className="space-y-2 max-h-48 overflow-y-auto pr-2 scrollbar-hide">
-                                                {formData.motHistory.slice(0, 5).map((test: any, idx: number) => (
-                                                    <div key={idx} className="bg-slate-900/40 rounded-lg p-3 border border-white/5">
-                                                        <div className="flex justify-between items-start mb-1">
-                                                            <div>
-                                                                <p className="text-xs font-bold text-white">{new Date(test.completedDate).toLocaleDateString('en-GB')}</p>
-                                                                {test.odometerValue && (
-                                                                    <p className="text-[10px] text-gray-500">{Number(test.odometerValue).toLocaleString()} {test.odometerUnit}</p>
-                                                                )}
-                                                            </div>
-                                                            <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${test.testResult === 'PASSED' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
-                                                                {test.testResult}
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        {test.defects && test.defects.length > 0 && (
-                                                            <div className="mt-2 space-y-1">
-                                                                {test.defects.map((defect: any, dIdx: number) => (
-                                                                    <div key={dIdx} className="flex gap-1.5 text-[10px]">
-                                                                        <AlertTriangle size={10} className={`mt-0.5 shrink-0 ${defect.type === 'ADVISORY' ? 'text-amber-400' : 'text-red-400'}`} />
-                                                                        <span className={defect.type === 'ADVISORY' ? 'text-amber-200/70' : 'text-red-200/70'}>
-                                                                            <strong className="uppercase mr-1">{defect.type}:</strong>
-                                                                            {defect.text}
-                                                                        </span>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                                {formData.motHistory.length > 5 && (
-                                                    <p className="text-[10px] text-gray-500 text-center pt-2 italic">Showing latest 5 records of {formData.motHistory.length}</p>
-                                                )}
-                                            </div>
+                                    {/* First Used */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold uppercase text-gray-400">First Used Date</label>
+                                        <Input placeholder="e.g. 2015-03-12" value={formData.firstUsedDate} onChange={(e) => set("firstUsedDate", e.target.value)} className={inputCls} />
+                                    </div>
+                                    {/* Last V5C Issued */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold uppercase text-gray-400">Last V5C Issued</label>
+                                        <Input placeholder="e.g. 2021-06-15" value={formData.dateOfLastV5CIssued} onChange={(e) => set("dateOfLastV5CIssued", e.target.value)} className={inputCls} />
+                                    </div>
+                                    {/* MOT Status */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold uppercase text-gray-400">MOT Status</label>
+                                        <Input placeholder="e.g. Valid" value={formData.motStatus} onChange={(e) => set("motStatus", e.target.value)} className={inputCls} />
+                                    </div>
+                                    {/* MOT Expiry */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold uppercase text-gray-400">MOT Expiry Date</label>
+                                        <Input placeholder="e.g. 2024-03-11" value={formData.motExpiryDate} onChange={(e) => set("motExpiryDate", e.target.value)} className={inputCls} />
+                                    </div>
+                                    {/* Tax Status */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold uppercase text-gray-400">Tax Status</label>
+                                        <Input placeholder="e.g. Taxed" value={formData.taxStatus} onChange={(e) => set("taxStatus", e.target.value)} className={inputCls} />
+                                    </div>
+                                    {/* Tax Due Date */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold uppercase text-gray-400">Tax Due Date</label>
+                                        <Input placeholder="e.g. 2024-08-31" value={formData.taxDueDate} onChange={(e) => set("taxDueDate", e.target.value)} className={inputCls} />
+                                    </div>
+                                    {/* Type Approval */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold uppercase text-gray-400">Type Approval</label>
+                                        <Input placeholder="e.g. M1" value={formData.typeApproval} onChange={(e) => set("typeApproval", e.target.value)} className={inputCls} />
+                                    </div>
+                                    {/* Wheelplan */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold uppercase text-gray-400">Wheelplan</label>
+                                        <Input placeholder="e.g. 2 AXLE RIGID BODY" value={formData.wheelplan} onChange={(e) => set("wheelplan", e.target.value)} className={inputCls} />
+                                    </div>
+                                    {/* Revenue Weight */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold uppercase text-gray-400">Revenue Weight (kg)</label>
+                                        <Input type="number" placeholder="e.g. 2000" value={formData.revenueWeight} onChange={(e) => set("revenueWeight", e.target.value)} className={inputCls} />
+                                    </div>
+                                    {/* Real Driving Emissions */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold uppercase text-gray-400">Real Driving Emissions</label>
+                                        <Input placeholder="e.g. 1" value={formData.realDrivingEmissions} onChange={(e) => set("realDrivingEmissions", e.target.value)} className={inputCls} />
+                                    </div>
+                                    {/* Marked For Export */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold uppercase text-gray-400 flex items-center gap-1.5">Marked for Export</label>
+                                        <div className="relative">
+                                            <select
+                                                required
+                                                value={formData.markedForExport === null ? "" : (formData.markedForExport ? "yes" : "no")}
+                                                onChange={(e) => set("markedForExport", e.target.value === "yes" ? true : e.target.value === "no" ? false : null)}
+                                                className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-3.5 text-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500/50 transition-all appearance-none"
+                                            >
+                                                <option value="" disabled>Select</option>
+                                                <option value="yes">Yes</option>
+                                                <option value="no">No</option>
+                                            </select>
+                                            <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                                         </div>
-                                    )}
+                                    </div>
                                 </div>
-                            )}
+                                {/* MOT History - Read Only List */}
+                                {formData.motHistory && formData.motHistory.length > 0 && (
+                                    <div className="mt-6 border border-blue-500/20 bg-blue-500/5 rounded-xl p-5">
+                                        <h4 className="text-sm font-bold uppercase text-blue-400 mb-3 flex items-center gap-2">
+                                            <List size={14} /> MOT History
+                                        </h4>
+                                        <div className="space-y-2 max-h-48 overflow-y-auto pr-2 scrollbar-hide">
+                                            {formData.motHistory.slice(0, 5).map((test: any, idx: number) => (
+                                                <div key={idx} className="bg-slate-900/40 rounded-lg p-3 border border-white/5">
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <div>
+                                                            <p className="text-xs font-bold text-white">{new Date(test.completedDate).toLocaleDateString('en-GB')}</p>
+                                                            {test.odometerValue && (
+                                                                <p className="text-[10px] text-gray-500">{Number(test.odometerValue).toLocaleString()} {test.odometerUnit}</p>
+                                                            )}
+                                                        </div>
+                                                        <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${test.testResult === 'PASSED' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                            {test.testResult}
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    {test.defects && test.defects.length > 0 && (
+                                                        <div className="mt-2 space-y-1">
+                                                            {test.defects.map((defect: any, dIdx: number) => (
+                                                                <div key={dIdx} className="flex gap-1.5 text-[10px]">
+                                                                    <AlertTriangle size={10} className={`mt-0.5 shrink-0 ${defect.type === 'ADVISORY' ? 'text-amber-400' : 'text-red-400'}`} />
+                                                                    <span className={defect.type === 'ADVISORY' ? 'text-amber-200/70' : 'text-red-200/70'}>
+                                                                        <strong className="uppercase mr-1">{defect.type}:</strong>
+                                                                        {defect.text}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            {formData.motHistory.length > 5 && (
+                                                <p className="text-[10px] text-gray-500 text-center pt-2 italic">Showing latest 5 records of {formData.motHistory.length}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
 
                             {/* VIN */}
                             <div className="space-y-2">
@@ -1396,9 +1426,12 @@ export default function SellPage() {
                                             {formData.taxDueDate && <SummaryField label="Tax Due" value={formData.taxDueDate} />}
                                             {formData.monthOfFirstRegistration && <SummaryField label="First Registered" value={formData.monthOfFirstRegistration} />}
                                             {formData.firstUsedDate && <SummaryField label="First Used" value={formData.firstUsedDate} />}
+                                            {formData.dateOfLastV5CIssued && <SummaryField label="Last V5C Issued" value={formData.dateOfLastV5CIssued} />}
                                             {formData.primaryColour && <SummaryField label="Primary Colour" value={formData.primaryColour} />}
                                             {formData.wheelplan && <SummaryField label="Wheelplan" value={formData.wheelplan} />}
                                             {formData.typeApproval && <SummaryField label="Type Approval" value={formData.typeApproval} />}
+                                            {formData.revenueWeight && <SummaryField label="Revenue Weight" value={formData.revenueWeight + " kg"} />}
+                                            {formData.realDrivingEmissions && <SummaryField label="Real Driving Emissions" value={formData.realDrivingEmissions} />}
                                             {formData.markedForExport !== null && <SummaryField label="Export" value={formData.markedForExport ? "Yes" : "No"} />}
                                         </div>
                                     </div>
