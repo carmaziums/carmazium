@@ -32,6 +32,7 @@ export interface DvlaVehicleResponse {
 export interface DvlaLookupResult {
     vrm: string;
     make?: string;
+    model?: string;
     colour?: string;
     year?: number;
     engineSize?: number;      // cc
@@ -148,7 +149,10 @@ export class DvlaService {
 
         const combined = dvlaResult.value;
         if (motResult.status === 'fulfilled' && motResult.value) {
-            combined.motHistory = motResult.value;
+            combined.motHistory = motResult.value.motTests;
+            if (motResult.value.model) {
+                combined.model = motResult.value.model;
+            }
         }
 
         return combined;
@@ -208,7 +212,7 @@ export class DvlaService {
 
     // ─── MOT History API REST request ─────────────────────────────────────────
 
-    private async motApiRequest(normalised: string): Promise<MotTestResult[] | null> {
+    private async motApiRequest(normalised: string): Promise<{ motTests: MotTestResult[], model?: string } | null> {
         const motApiKey = this.configService.get<string>('MOT_API_KEY');
         if (!motApiKey) {
             this.logger.warn('MOT_API_KEY is not set — MOT History lookup will be skipped');
@@ -239,11 +243,15 @@ export class DvlaService {
             const data = await response.json();
             
             // The API returns an array of vehicles (usually just one) with motTests
-            if (Array.isArray(data) && data.length > 0 && data[0].motTests) {
-                return data[0].motTests;
+            if (Array.isArray(data) && data.length > 0) {
+                const vehicle = data[0];
+                return {
+                    motTests: vehicle.motTests || [],
+                    model: vehicle.model
+                };
             }
             
-            return [];
+            return { motTests: [] };
         } catch (error) {
             this.logger.error(`MOT API request failed:`, error);
             return null;

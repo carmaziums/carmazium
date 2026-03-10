@@ -568,6 +568,15 @@ export default function SellPage() {
                                                 const r = await dvlaLookup(formData.vrm)
                                                 // Core vehicle fields
                                                 if (r.make) set("make", r.make)
+                                                if (r.model) set("model", r.model)
+                                                
+                                                if (r.motHistory && r.motHistory.length > 0) {
+                                                    set("motHistory", r.motHistory)
+                                                    // Autofill mileage from the latest valid MOT (which is usually the first one since it's sorted descending by completedDate)
+                                                    const latestOdometer = r.motHistory.find((m: any) => m.odometerValue)?.odometerValue
+                                                    if (latestOdometer) set("mileage", latestOdometer)
+                                                }
+                                                
                                                 if (r.colour) set("color", r.colour)
                                                 if (r.year) set("year", String(r.year))
                                                 if (r.engineSize) set("engineSize", String(r.engineSize))
@@ -583,7 +592,6 @@ export default function SellPage() {
                                                 if (r.monthOfFirstRegistration) set("monthOfFirstRegistration", r.monthOfFirstRegistration)
                                                 if (r.wheelplan) set("wheelplan", r.wheelplan)
                                                 if (r.typeApproval) set("typeApproval", r.typeApproval)
-                                                if (r.motHistory) set("motHistory", r.motHistory)
                                                 // Auto-infer ULEZ compliance from fuel type + euro standard
                                                 const ft = (r.fuelType || "").toUpperCase()
                                                 const es = (r.euroStandard || "").toUpperCase()
