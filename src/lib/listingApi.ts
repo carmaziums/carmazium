@@ -199,6 +199,7 @@ export interface ListingFilters {
     condition?: VehicleConditionValue
     ulezCompliant?: boolean
     euroStandard?: EuroStandardValue
+    vehicleType?: string
     sortBy?: string
     search?: string
     page?: number
@@ -230,6 +231,7 @@ export async function getListings(filters?: ListingFilters): Promise<ListingsRes
         if (filters.condition) params.append('condition', filters.condition)
         if (filters.ulezCompliant !== undefined) params.append('ulezCompliant', filters.ulezCompliant.toString())
         if (filters.euroStandard) params.append('euroStandard', filters.euroStandard)
+        if (filters.vehicleType) params.append('vehicleType', filters.vehicleType)
         if (filters.sortBy) params.append('sortBy', filters.sortBy)
         if (filters.search) params.append('search', filters.search)
         if (filters.page) params.append('page', filters.page.toString())

@@ -1,6 +1,6 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, UsePipes, ValidationPipe } from '@nestjs/common';
 import { AiService } from './ai.service';
-import { AiSearchDto, AiChatDto } from './ai.dto';
+import { AiSearchDto, AiChatDto, AiDescriptionDto } from './ai.dto';
 
 @Controller('ai')
 export class AiController {
@@ -19,7 +19,8 @@ export class AiController {
     }
 
     @Post('generate-description')
-    async generateDescription(@Body() dto: any) {
+    @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: false, transform: true }))
+    async generateDescription(@Body() dto: AiDescriptionDto) {
         const result = await this.aiService.generateDescription(dto);
         return { success: true, data: result };
     }

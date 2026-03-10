@@ -63,6 +63,7 @@ interface FormData {
     monthOfFirstRegistration: string
     wheelplan: string
     typeApproval: string
+    motHistory: any[]
     // Step 2 — Media
     images: string[]
     // Step 3 — Pricing
@@ -96,7 +97,8 @@ const INITIAL_FORM: FormData = {
     condition: "", isImported: false,
     ulezCompliant: null, euroStandard: "", co2Emissions: "",
     motStatus: "", taxStatus: "", motExpiryDate: "", taxDueDate: "",
-    markedForExport: null, monthOfFirstRegistration: "", wheelplan: "", typeApproval: "",
+    markedForExport: null, monthOfFirstRegistration: "",
+    wheelplan: "", typeApproval: "", motHistory: [],
     images: [],
     priceMin: "", priceMax: "", badgeTier: 'FREE', status: "DRAFT",
 }
@@ -535,6 +537,7 @@ export default function SellPage() {
                                                 if (r.monthOfFirstRegistration) set("monthOfFirstRegistration", r.monthOfFirstRegistration)
                                                 if (r.wheelplan) set("wheelplan", r.wheelplan)
                                                 if (r.typeApproval) set("typeApproval", r.typeApproval)
+                                                if (r.motHistory) set("motHistory", r.motHistory)
                                                 // Auto-infer ULEZ compliance from fuel type + euro standard
                                                 const ft = (r.fuelType || "").toUpperCase()
                                                 const es = (r.euroStandard || "").toUpperCase()
@@ -610,6 +613,49 @@ export default function SellPage() {
                                         )}
                                     </div>
                                     <p className="text-[10px] text-gray-600">Data sourced directly from the DVLA Vehicle Enquiry Service. These fields are stored with your listing for buyer transparency.</p>
+                                    
+                                    {/* MOT History */}
+                                    {formData.motHistory && formData.motHistory.length > 0 && (
+                                        <div className="mt-4 border-t border-blue-500/20 pt-4">
+                                            <h4 className="text-xs font-bold uppercase text-blue-400 mb-3 flex items-center gap-2">
+                                                <List size={12} /> MOT History
+                                            </h4>
+                                            <div className="space-y-2 max-h-48 overflow-y-auto pr-2 scrollbar-hide">
+                                                {formData.motHistory.slice(0, 5).map((test: any, idx: number) => (
+                                                    <div key={idx} className="bg-slate-900/40 rounded-lg p-3 border border-white/5">
+                                                        <div className="flex justify-between items-start mb-1">
+                                                            <div>
+                                                                <p className="text-xs font-bold text-white">{new Date(test.completedDate).toLocaleDateString('en-GB')}</p>
+                                                                {test.odometerValue && (
+                                                                    <p className="text-[10px] text-gray-500">{Number(test.odometerValue).toLocaleString()} {test.odometerUnit}</p>
+                                                                )}
+                                                            </div>
+                                                            <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${test.testResult === 'PASSED' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                                {test.testResult}
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        {test.defects && test.defects.length > 0 && (
+                                                            <div className="mt-2 space-y-1">
+                                                                {test.defects.map((defect: any, dIdx: number) => (
+                                                                    <div key={dIdx} className="flex gap-1.5 text-[10px]">
+                                                                        <AlertTriangle size={10} className={`mt-0.5 shrink-0 ${defect.type === 'ADVISORY' ? 'text-amber-400' : 'text-red-400'}`} />
+                                                                        <span className={defect.type === 'ADVISORY' ? 'text-amber-200/70' : 'text-red-200/70'}>
+                                                                            <strong className="uppercase mr-1">{defect.type}:</strong>
+                                                                            {defect.text}
+                                                                        </span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                                {formData.motHistory.length > 5 && (
+                                                    <p className="text-[10px] text-gray-500 text-center pt-2 italic">Showing latest 5 records of {formData.motHistory.length}</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 

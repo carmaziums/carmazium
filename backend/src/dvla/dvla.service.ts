@@ -50,6 +50,25 @@ export interface DvlaLookupResult {
     dateOfLastV5CIssued?: string;
     realDrivingEmissions?: string;
     dataSource: 'DVLA';
+    motHistory?: MotTestResult[];
+}
+
+// ─── MOT History API Response ──────────────────────────────────────────────────
+
+export interface MotTestResult {
+    completedDate: string;
+    testResult: 'PASSED' | 'FAILED';
+    expiryDate?: string;
+    odometerValue?: string;
+    odometerUnit?: string;
+    motTestNumber: string;
+    defects?: MotTestDefect[];
+}
+
+export interface MotTestDefect {
+    text: string;
+    type: 'ADVISORY' | 'MINOR' | 'MAJOR' | 'DANGEROUS';
+    dangerous: boolean;
 }
 
 // ─── Fuel type mapping (DVLA values → our enum) ────────────────────────────────
@@ -118,7 +137,21 @@ export class DvlaService {
             );
         }
 
-        return this.dvlaRequest(normalised);
+        const [dvlaResult, motResult] = await Promise.allSettled([
+            this.dvlaRequest(normalised),
+            this.motApiRequest(normalised)
+        ]);
+
+        if (dvlaResult.status === 'rejected') {
+            throw dvlaResult.reason;
+        }
+
+        const combined = dvlaResult.value;
+        if (motResult.status === 'fulfilled' && motResult.value) {
+            combined.motHistory = motResult.value;
+        }
+
+        return combined;
     }
 
     // ─── DVLA REST request ────────────────────────────────────────────────────
@@ -171,5 +204,49 @@ export class DvlaService {
             realDrivingEmissions: data.realDrivingEmissions,
             dataSource: 'DVLA',
         };
+    }
+
+    // ─── MOT History API REST request ─────────────────────────────────────────
+
+    private async motApiRequest(normalised: string): Promise<MotTestResult[] | null> {
+        const motApiKey = this.configService.get<string>('MOT_API_KEY');
+        if (!motApiKey) {
+            this.logger.warn('MOT_API_KEY is not set — MOT History lookup will be skipped');
+            return null;
+        }
+
+        const url = `https://beta.check-mot.service.gov.uk/trade/vehicles/mot-tests?registration=${normalised}`;
+        
+        try {
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'x-api-key': motApiKey,
+                    'Accept': 'application/json+v6',
+                },
+            });
+
+            if (!response.ok) {
+                if (response.status === 404) {
+                    this.logger.log(`No MOT history found for ${normalised}`);
+                    return [];
+                }
+                const text = await response.text().catch(() => '');
+                this.logger.error(`MOT API error ${response.status}: ${text}`);
+                return null;
+            }
+
+            const data = await response.json();
+            
+            // The API returns an array of vehicles (usually just one) with motTests
+            if (Array.isArray(data) && data.length > 0 && data[0].motTests) {
+                return data[0].motTests;
+            }
+            
+            return [];
+        } catch (error) {
+            this.logger.error(`MOT API request failed:`, error);
+            return null;
+        }
     }
 }

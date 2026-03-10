@@ -196,6 +196,7 @@ export class ListingsService {
             color, minDoors, minSeats,
             minEngine, maxEngine, maxCo2,
             condition, ulezCompliant, euroStandard,
+            vehicleType,
             sortBy, search,
             page = 1, limit = 20,
         } = filterDto;
@@ -233,6 +234,7 @@ export class ListingsService {
         if (bodyType) where.bodyType = bodyType;
         if (condition) where.condition = condition;
         if (euroStandard) where.euroStandard = euroStandard;
+        if (vehicleType) where.vehicleType = vehicleType;
 
         // ─── Colour (case-insensitive) ──────────────────────────────────────
         if (color) where.color = { contains: color, mode: 'insensitive' };
