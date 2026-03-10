@@ -60,7 +60,7 @@ export default function MyListingsPage() {
         try {
             setUpdatingStatus(id)
             await updateListingStatus(id, 'SOLD')
-            setListings(prev => prev.map(l => l.id === id ? { ...l, status: 'SOLD' } : l))
+            setListings(prev => prev.filter(l => l.id !== id))
         } catch (err: any) {
             alert('Failed to update status: ' + err.message)
         } finally {

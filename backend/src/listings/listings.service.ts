@@ -542,6 +542,7 @@ export class ListingsService {
         const where: any = {
             sellerId,
             deletedAt: null,
+            status: { not: 'SOLD' },
         };
 
         // Apply optional filters
