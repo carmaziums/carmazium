@@ -15,6 +15,9 @@ export interface DvlaLookupResult {
     fuelType?: string;
     euroStandard?: string;
     co2Emissions?: number;
+    revenueWeight?: number;
+    dateOfLastV5CIssued?: string;
+    realDrivingEmissions?: string;
     motStatus?: string;
     taxStatus?: string;
     motExpiryDate?: string;
