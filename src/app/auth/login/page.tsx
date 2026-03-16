@@ -6,7 +6,7 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
-import { ArrowLeft, Loader2, Eye, EyeOff } from "lucide-react"
+import { ArrowLeft, Loader2, Eye, EyeOff, Building2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
@@ -216,6 +216,13 @@ export default function LoginPage() {
 
                 <div className="mt-8 text-center text-sm text-gray-300">
                     Don't have an account? <Link href="/auth/signup" className="text-primary font-bold hover:text-red-400 transition-colors">Sign Up</Link>
+                </div>
+
+                <div className="mt-4 text-center">
+                    <Link href="/auth/signup" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors group">
+                        <Building2 size={16} className="text-gray-500 group-hover:text-primary transition-colors" />
+                        <span>Are you a dealer? <span className="text-primary font-semibold">Register your dealership →</span></span>
+                    </Link>
                 </div>
             </div>
         </div>

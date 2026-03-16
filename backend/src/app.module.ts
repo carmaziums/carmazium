@@ -29,6 +29,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { FeaturedBoostModule } from './featured-boost/featured-boost.module';
 import { OffersModule } from './offers/offers.module';
 import { AiModule } from './ai/ai.module';
+import { DealersModule } from './dealers/dealers.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { AiModule } from './ai/ai.module';
     FeaturedBoostModule,
     OffersModule,
     AiModule,
+    DealersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

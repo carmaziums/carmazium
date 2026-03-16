@@ -174,32 +174,54 @@ enum EuroStandard {
   @@map("euro_standard")
 }
 
+/// Dealer staff roles for RBAC within a dealership
+enum DealerRole {
+  ADMIN
+  SALES_AGENT
+  FINANCE_MANAGER
+
+  @@map("dealer_role")
+}
+
+/// CRM lead pipeline statuses
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  NEGOTIATING
+  WON
+  LOST
+
+  @@map("lead_status")
+}
+
 // ============================================================================
 // USER MANAGEMENT & PROFILES
 // ============================================================================
 
 model User {
-  id                String    @id @default(uuid())
-  email             String    @unique
-  passwordHash      String
-  role              UserRole  @default(BUYER)
-  firstName         String?
-  lastName          String?
-  phone             String?
-  profileImage      String?
-  isEmailVerified   Boolean   @default(false)
-  isPhoneVerified   Boolean   @default(false)
-  loginAttempts     Int       @default(0)
-  lockoutUntil      DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  deletedAt         DateTime?
+  id              String    @id @default(uuid())
+  email           String    @unique
+  passwordHash    String
+  role            UserRole  @default(BUYER)
+  firstName       String?
+  lastName        String?
+  phone           String?
+  profileImage    String?
+  isEmailVerified Boolean   @default(false)
+  isPhoneVerified Boolean   @default(false)
+  loginAttempts   Int       @default(0)
+  lockoutUntil    DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
 
   // Relations
   dealerProfile           DealerProfile?
+  dealerStaffMemberships  DealerStaff[]
   contractorProfile       ContractorProfile?
-  financePartnerProfile   PartnerProfile?    @relation("FinancePartner")
-  insurancePartnerProfile PartnerProfile?    @relation("InsurancePartner")
+  financePartnerProfile   PartnerProfile?      @relation("FinancePartner")
+  insurancePartnerProfile PartnerProfile?      @relation("InsurancePartner")
   sellerProfile           SellerProfile?
   listings                Listing[]
   bids                    Bid[]
@@ -207,15 +229,16 @@ model User {
   financeApplications     FinanceApplication[]
   insuranceQuotes         InsuranceQuote[]
   transactions            Transaction[]
-  chatRoomsAsInitiator    ChatRoom[]         @relation("Initiator")
-  chatRoomsAsParticipant  ChatRoom[]         @relation("Participant")
+  chatRoomsAsInitiator    ChatRoom[]           @relation("Initiator")
+  chatRoomsAsParticipant  ChatRoom[]           @relation("Participant")
   messages                Message[]
   notifications           Notification[]
   watchlistItems          WatchlistItem[]
-  sellerReviewsGiven      SellerReview[]     @relation("ReviewerRelation")
+  sellerReviewsGiven      SellerReview[]       @relation("ReviewerRelation")
   analyticsEvents         AnalyticsEvent[]
   featuredBoosts          FeaturedBoost[]
   offers                  Offer[]
+  assignedLeads           Lead[]               @relation("AssignedAgent")
 
   @@map("users")
 }
@@ -268,37 +291,97 @@ model SellerReview {
 }
 
 model DealerProfile {
-  id                String    @id @default(uuid())
-  userId            String    @unique
-  companyName       String
-  vatNumber         String    @unique
+  id                 String    @id @default(uuid())
+  userId             String    @unique
+  companyName        String
+  vatNumber          String    @unique
   registrationNumber String?
-  businessAddress   String?
-  isVerified        Boolean   @default(false)
-  verificationDate  DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  deletedAt         DateTime?
+  businessAddress    String?
+  /// Dealership logo URL
+  logo               String?
+  /// Short description / tagline
+  description        String?
+  /// Contact phone number
+  phone              String?
+  /// Dealership website URL
+  website            String?
+  /// JSON object for opening hours, e.g. {"mon":"9-5","tue":"9-5",...}
+  openingHours       Json?
+  isVerified         Boolean   @default(false)
+  verificationDate   DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  staff DealerStaff[]
+  leads Lead[]
 
+  @@index([userId])
   @@map("dealer_profiles")
 }
 
-model ContractorProfile {
-  id              String    @id @default(uuid())
-  userId          String    @unique
-  serviceTypes    String[]  // e.g., ["Detailing", "Mechanic", "Pre-purchase Inspection"]
-  rating          Float     @default(0)
-  totalReviews    Int       @default(0)
-  serviceArea     String?   // e.g., "London, UK" or JSON for coordinates
-  certifications  String[]
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  deletedAt       DateTime?
+/// Staff members belonging to a dealership, with RBAC roles
+model DealerStaff {
+  id              String     @id @default(uuid())
+  userId          String
+  dealerProfileId String
+  role            DealerRole @default(SALES_AGENT)
+  isActive        Boolean    @default(true)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
-  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  serviceRequests  ServiceRequest[]
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dealerProfile DealerProfile @relation(fields: [dealerProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dealerProfileId])
+  @@index([userId])
+  @@index([dealerProfileId])
+  @@map("dealer_staff")
+}
+
+/// CRM lead tracking for dealerships
+model Lead {
+  id              String     @id @default(uuid())
+  dealerProfileId String
+  listingId       String?
+  /// Sales agent assigned to this lead
+  assignedToId    String?
+  buyerName       String
+  buyerEmail      String?
+  buyerPhone      String?
+  status          LeadStatus @default(NEW)
+  /// Source of the lead: listing_enquiry, chat, offer, walk_in, phone
+  source          String?
+  notes           String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  dealerProfile DealerProfile @relation(fields: [dealerProfileId], references: [id], onDelete: Cascade)
+  listing       Listing?      @relation(fields: [listingId], references: [id])
+  assignedTo    User?         @relation("AssignedAgent", fields: [assignedToId], references: [id])
+
+  @@index([dealerProfileId])
+  @@index([assignedToId])
+  @@index([status])
+  @@index([listingId])
+  @@map("leads")
+}
+
+model ContractorProfile {
+  id             String    @id @default(uuid())
+  userId         String    @unique
+  serviceTypes   String[] // e.g., ["Detailing", "Mechanic", "Pre-purchase Inspection"]
+  rating         Float     @default(0)
+  totalReviews   Int       @default(0)
+  serviceArea    String? // e.g., "London, UK" or JSON for coordinates
+  certifications String[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  serviceRequests ServiceRequest[]
 
   @@map("contractor_profiles")
 }
@@ -307,7 +390,7 @@ model PartnerProfile {
   id              String    @id @default(uuid())
   financeUserId   String?   @unique
   insuranceUserId String?   @unique
-  partnerType     UserRole  // FINANCE_PARTNER or INSURANCE_PARTNER
+  partnerType     UserRole // FINANCE_PARTNER or INSURANCE_PARTNER
   companyName     String
   apiKey          String    @unique
   callbackUrl     String?
@@ -316,10 +399,10 @@ model PartnerProfile {
   updatedAt       DateTime  @updatedAt
   deletedAt       DateTime?
 
-  financeUser             User?                     @relation(fields: [financeUserId], references: [id], onDelete: Cascade, name: "FinancePartner")
-  insuranceUser           User?                     @relation(fields: [insuranceUserId], references: [id], onDelete: Cascade, name: "InsurancePartner")
-  financeApplications     FinanceApplication[]
-  insuranceQuotes         InsuranceQuote[]
+  financeUser         User?                @relation(fields: [financeUserId], references: [id], onDelete: Cascade, name: "FinancePartner")
+  insuranceUser       User?                @relation(fields: [insuranceUserId], references: [id], onDelete: Cascade, name: "InsurancePartner")
+  financeApplications FinanceApplication[]
+  insuranceQuotes     InsuranceQuote[]
 
   @@map("partner_profiles")
 }
@@ -329,26 +412,26 @@ model PartnerProfile {
 // ============================================================================
 
 model Vehicle {
-  id              String           @id @default(uuid())
-  vin             String?          @unique
-  vrm             String?          @unique
-  make            String
-  model           String
-  year            Int
-  fuelType        FuelType?
-  transmission    TransmissionType?
-  mileage         Int?
-  color           String?
-  bodyType        String?
-  doors           Int?
-  seats           Int?
-  engineSize      Int?      // cc, e.g. 2993
-  bhp             Int?
-  features        Json?     // Array of strings: ["Sunroof", "Heated Seats"]
-  metadata        Json?     // JSONB for other flexible specs
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  deletedAt       DateTime?
+  id           String            @id @default(uuid())
+  vin          String?           @unique
+  vrm          String?           @unique
+  make         String
+  model        String
+  year         Int
+  fuelType     FuelType?
+  transmission TransmissionType?
+  mileage      Int?
+  color        String?
+  bodyType     String?
+  doors        Int?
+  seats        Int?
+  engineSize   Int? // cc, e.g. 2993
+  bhp          Int?
+  features     Json? // Array of strings: ["Sunroof", "Heated Seats"]
+  metadata     Json? // JSONB for other flexible specs
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  deletedAt    DateTime?
 
   listings Listing[]
 
@@ -358,76 +441,77 @@ model Vehicle {
 }
 
 model Listing {
-  id              String         @id @default(uuid())
-  vehicleId       String?
-  sellerId        String?
-  type            ListingType    @default(CLASSIFIED)
-  status          ListingStatus  @default(DRAFT)
-  title           String
-  description     String?
-  price           Decimal        @db.Decimal(12, 2)
-  images          String[]       // Array of Supabase URLs
-  slug            String         @unique
-  viewCount       Int            @default(0)
-  vehicleType     VehicleType    @default(CAR)
-  isImported      Boolean        @default(false)
-  
-  // Denormalized vehicle fields for simpler queries
-  make            String?
-  model           String?
-  year            Int?
-  mileage         Int?
-  vrm             String?
-  fuelType        FuelType?
-  transmission    TransmissionType?
-  color           String?
-  doors           Int?
-  seats           Int?
-  engineSize      Int?
-  bhp             Int?
-  bodyType        BodyType?
-  features        Json?
-  location        String?
-  // Phase 3: condition and UK compliance fields
-  vin             String?          // VIN (17-char, validated frontend-side)
-  condition       VehicleCondition?
-  ulezCompliant   Boolean?
-  euroStandard    EuroStandard?
-  co2Emissions    Int?             // CO2 g/km (from DVLA VES API)
-  // DVLA extended fields (auto-filled from VES API)
-  motStatus       String?          // e.g. "Valid", "Not valid"
-  taxStatus       String?          // e.g. "Taxed", "SORN"
-  motExpiryDate   String?          // ISO date string
-  taxDueDate      String?          // ISO date string
-  markedForExport Boolean?
-  monthOfFirstRegistration String? // e.g. "2015-03"
-  wheelplan       String?          // e.g. "2 AXLE RIGID BODY"
-  typeApproval    String?          // e.g. "M1"
-  // Phase 5: Featured boost
-  isFeatured      Boolean  @default(false)
-  featuredUntil   DateTime?
-  // Phase 7: Badge tiers — FREE | STANDARD | PREMIUM
-  badgeTier       String   @default("FREE")
-  // Phase 6: Offering System — price range
-  priceMin        Decimal?       @db.Decimal(12, 2)
-  priceMax        Decimal?       @db.Decimal(12, 2)
+  id          String        @id @default(uuid())
+  vehicleId   String?
+  sellerId    String?
+  type        ListingType   @default(CLASSIFIED)
+  status      ListingStatus @default(DRAFT)
+  title       String
+  description String?
+  price       Decimal       @db.Decimal(12, 2)
+  images      String[] // Array of Supabase URLs
+  slug        String        @unique
+  viewCount   Int           @default(0)
+  vehicleType VehicleType   @default(CAR)
+  isImported  Boolean       @default(false)
 
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  deletedAt       DateTime?
+  // Denormalized vehicle fields for simpler queries
+  make                     String?
+  model                    String?
+  year                     Int?
+  mileage                  Int?
+  vrm                      String?
+  fuelType                 FuelType?
+  transmission             TransmissionType?
+  color                    String?
+  doors                    Int?
+  seats                    Int?
+  engineSize               Int?
+  bhp                      Int?
+  bodyType                 BodyType?
+  features                 Json?
+  location                 String?
+  // Phase 3: condition and UK compliance fields
+  vin                      String? // VIN (17-char, validated frontend-side)
+  condition                VehicleCondition?
+  ulezCompliant            Boolean?
+  euroStandard             EuroStandard?
+  co2Emissions             Int? // CO2 g/km (from DVLA VES API)
+  // DVLA extended fields (auto-filled from VES API)
+  motStatus                String? // e.g. "Valid", "Not valid"
+  taxStatus                String? // e.g. "Taxed", "SORN"
+  motExpiryDate            String? // ISO date string
+  taxDueDate               String? // ISO date string
+  markedForExport          Boolean?
+  monthOfFirstRegistration String? // e.g. "2015-03"
+  wheelplan                String? // e.g. "2 AXLE RIGID BODY"
+  typeApproval             String? // e.g. "M1"
+  // Phase 5: Featured boost
+  isFeatured               Boolean           @default(false)
+  featuredUntil            DateTime?
+  // Phase 7: Badge tiers — FREE | STANDARD | PREMIUM
+  badgeTier                String            @default("FREE")
+  // Phase 6: Offering System — price range
+  priceMin                 Decimal?          @db.Decimal(12, 2)
+  priceMax                 Decimal?          @db.Decimal(12, 2)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   // Relations
-  vehicle         Vehicle?       @relation(fields: [vehicleId], references: [id])
-  seller          User?          @relation(fields: [sellerId], references: [id])
-  auction         Auction?
-  bids            Bid[]
-  offers          Offer[]
-  featuredBoosts  FeaturedBoost[]
+  vehicle             Vehicle?             @relation(fields: [vehicleId], references: [id])
+  seller              User?                @relation(fields: [sellerId], references: [id])
+  auction             Auction?
+  bids                Bid[]
+  offers              Offer[]
+  featuredBoosts      FeaturedBoost[]
   financeApplications FinanceApplication[]
-  insuranceQuotes InsuranceQuote[]
-  transactions    Transaction[]
-  chatRooms       ChatRoom[]
-  watchlistItems  WatchlistItem[]
+  insuranceQuotes     InsuranceQuote[]
+  transactions        Transaction[]
+  chatRooms           ChatRoom[]
+  watchlistItems      WatchlistItem[]
+  leads               Lead[]
 
   @@index([sellerId])
   @@index([vehicleId])
@@ -441,16 +525,16 @@ model Listing {
 // ============================================================================
 
 model Auction {
-  id              String    @id @default(uuid())
-  listingId       String    @unique
-  startTime       DateTime
-  endTime         DateTime
-  reservePrice    Decimal   @db.Decimal(12, 2)
-  startingBid     Decimal   @db.Decimal(12, 2)
-  minIncrement    Decimal   @db.Decimal(12, 2)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  deletedAt       DateTime?
+  id           String    @id @default(uuid())
+  listingId    String    @unique
+  startTime    DateTime
+  endTime      DateTime
+  reservePrice Decimal   @db.Decimal(12, 2)
+  startingBid  Decimal   @db.Decimal(12, 2)
+  minIncrement Decimal   @db.Decimal(12, 2)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
 
   listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
@@ -458,14 +542,14 @@ model Auction {
 }
 
 model Bid {
-  id              String    @id @default(uuid())
-  listingId       String
-  bidderId        String
-  amount          Decimal   @db.Decimal(12, 2)
-  timestamp       DateTime  @default(now())
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  deletedAt       DateTime?
+  id        String    @id @default(uuid())
+  listingId String
+  bidderId  String
+  amount    Decimal   @db.Decimal(12, 2)
+  timestamp DateTime  @default(now())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
   bidder  User    @relation(fields: [bidderId], references: [id])
@@ -480,20 +564,20 @@ model Bid {
 // ============================================================================
 
 model ServiceRequest {
-  id              String         @id @default(uuid())
-  contractorId    String
-  requesterId     String
-  listingId       String?
-  serviceType     String
-  status          ServiceStatus  @default(PENDING)
-  description     String?
-  quotedPrice     Decimal?       @db.Decimal(12, 2)
-  acceptedPrice   Decimal?       @db.Decimal(12, 2)
-  scheduledDate   DateTime?
-  completedDate   DateTime?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  deletedAt       DateTime?
+  id            String        @id @default(uuid())
+  contractorId  String
+  requesterId   String
+  listingId     String?
+  serviceType   String
+  status        ServiceStatus @default(PENDING)
+  description   String?
+  quotedPrice   Decimal?      @db.Decimal(12, 2)
+  acceptedPrice Decimal?      @db.Decimal(12, 2)
+  scheduledDate DateTime?
+  completedDate DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  deletedAt     DateTime?
 
   contractor ContractorProfile @relation(fields: [contractorId], references: [id])
   requester  User              @relation(fields: [requesterId], references: [id])
@@ -505,18 +589,18 @@ model ServiceRequest {
 }
 
 model FinanceApplication {
-  id              String                    @id @default(uuid())
-  listingId       String
-  userId          String
-  partnerId       String
-  depositAmount   Decimal                   @db.Decimal(12, 2)
-  termMonths      Int
-  monthlyPayment  Decimal?                  @db.Decimal(12, 2)
-  status          FinanceApplicationStatus  @default(PENDING)
-  approvalDate    DateTime?
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
-  deletedAt       DateTime?
+  id             String                   @id @default(uuid())
+  listingId      String
+  userId         String
+  partnerId      String
+  depositAmount  Decimal                  @db.Decimal(12, 2)
+  termMonths     Int
+  monthlyPayment Decimal?                 @db.Decimal(12, 2)
+  status         FinanceApplicationStatus @default(PENDING)
+  approvalDate   DateTime?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  deletedAt      DateTime?
 
   listing Listing        @relation(fields: [listingId], references: [id])
   user    User           @relation(fields: [userId], references: [id])
@@ -530,20 +614,20 @@ model FinanceApplication {
 }
 
 model InsuranceQuote {
-  id              String    @id @default(uuid())
-  listingId       String
-  userId          String
-  partnerId       String
-  coverageType    String?
-  quotedPrice     Decimal?  @db.Decimal(12, 2)
-  status          InsuranceQuoteStatus @default(PENDING)
-  driverAge       Int
-  ncbYears        Int
-  hasConvictions  Boolean   @default(false)
-  expiryDate      DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  deletedAt       DateTime?
+  id             String               @id @default(uuid())
+  listingId      String
+  userId         String
+  partnerId      String
+  coverageType   String?
+  quotedPrice    Decimal?             @db.Decimal(12, 2)
+  status         InsuranceQuoteStatus @default(PENDING)
+  driverAge      Int
+  ncbYears       Int
+  hasConvictions Boolean              @default(false)
+  expiryDate     DateTime?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  deletedAt      DateTime?
 
   listing Listing        @relation(fields: [listingId], references: [id])
   user    User           @relation(fields: [userId], references: [id])
@@ -560,16 +644,16 @@ model InsuranceQuote {
 // ============================================================================
 
 model Transaction {
-  id              String             @id @default(uuid())
+  id              String            @id @default(uuid())
   listingId       String
   userId          String
-  amount          Decimal            @db.Decimal(12, 2)
+  amount          Decimal           @db.Decimal(12, 2)
   type            TransactionType
-  status          TransactionStatus  @default(PENDING)
-  stripePaymentId String?            @unique
+  status          TransactionStatus @default(PENDING)
+  stripePaymentId String?           @unique
   description     String?
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
   deletedAt       DateTime?
 
   listing Listing @relation(fields: [listingId], references: [id])
@@ -582,13 +666,13 @@ model Transaction {
 }
 
 model ChatRoom {
-  id              String    @id @default(uuid())
-  initiatorId     String
-  participantId   String
-  listingId       String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  deletedAt       DateTime?
+  id            String    @id @default(uuid())
+  initiatorId   String
+  participantId String
+  listingId     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
 
   initiator   User      @relation("Initiator", fields: [initiatorId], references: [id])
   participant User      @relation("Participant", fields: [participantId], references: [id])
@@ -602,14 +686,14 @@ model ChatRoom {
 }
 
 model Message {
-  id              String    @id @default(uuid())
-  chatRoomId      String
-  senderId        String
-  content         String
-  isRead          Boolean   @default(false)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  deletedAt       DateTime?
+  id         String    @id @default(uuid())
+  chatRoomId String
+  senderId   String
+  content    String
+  isRead     Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
 
   chatRoom ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
   sender   User     @relation(fields: [senderId], references: [id])
@@ -624,11 +708,11 @@ model Message {
 // ============================================================================
 
 model WatchlistItem {
-  id              String    @id @default(uuid())
-  userId          String
-  listingId       String
-  createdAt       DateTime  @default(now())
-  
+  id        String   @id @default(uuid())
+  userId    String
+  listingId String
+  createdAt DateTime @default(now())
+
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
@@ -645,14 +729,15 @@ model WatchlistItem {
 model Notification {
   id        String   @id @default(uuid())
   userId    String
-  type      String   // BID_PLACED, AUCTION_ENDING, MESSAGE_RECEIVED, etc.
+  type      String // BID_PLACED, AUCTION_ENDING, MESSAGE_RECEIVED, etc.
   title     String
   message   String
-  data      Json?    // Contextual data (listingId, bidId, etc.)
+  data      Json? // Contextual data (listingId, bidId, etc.)
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])
+
   @@index([userId])
   @@map("notifications")
 }
@@ -663,7 +748,7 @@ model Notification {
 
 model AnalyticsEvent {
   id        String   @id @default(uuid())
-  type      String   // page_view, search, listing_view, filter_apply, login_wall_hit, enquiry
+  type      String // page_view, search, listing_view, filter_apply, login_wall_hit, enquiry
   payload   Json     @default("{}")
   sessionId String?
   userId    String?
@@ -680,7 +765,7 @@ model AnalyticsEvent {
 model EmailCapture {
   id        String   @id @default(uuid())
   email     String   @unique
-  source    String   // auctions_coming_soon, newsletter, mazium_widget
+  source    String // auctions_coming_soon, newsletter, mazium_widget
   createdAt DateTime @default(now())
 
   @@index([source])
@@ -697,7 +782,7 @@ model FeaturedBoost {
   sellerId        String
   stripeSessionId String?  @unique
   stripePaymentId String?  @unique
-  amountPaid      Decimal  @db.Decimal(10, 2) @default(25.00)
+  amountPaid      Decimal  @default(25.00) @db.Decimal(10, 2)
   currency        String   @default("gbp")
   boostedAt       DateTime @default(now())
   expiresAt       DateTime
@@ -707,7 +792,7 @@ model FeaturedBoost {
   updatedAt       DateTime @updatedAt
 
   listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  seller  User    @relation(fields: [sellerId],  references: [id])
+  seller  User    @relation(fields: [sellerId], references: [id])
 
   @@index([listingId])
   @@index([sellerId])

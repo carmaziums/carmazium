@@ -22,13 +22,16 @@ import {
     FileText,
     Shield,
     ClipboardList,
-    Tag
+    Tag,
+    Users,
+    Kanban,
+    Building2
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
 
 interface SidebarProps {
-    role: "buyer" | "seller" | "provider" | "finance" | "insurance"
+    role: "buyer" | "seller" | "provider" | "finance" | "insurance" | "dealer"
     userName?: string
     userType?: string
     children?: React.ReactNode
@@ -92,6 +95,17 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             { href: "/dashboard/insurance/quotes", label: "Quotes", icon: ClipboardList },
             { href: "/dashboard/insurance/messages", label: "Messages", icon: MessageSquare, badge: unreadCount },
             { href: "/dashboard/insurance/settings", label: "Settings", icon: Settings },
+        ],
+        dealer: [
+            { href: "/dashboard/dealer", label: "Overview", icon: LayoutDashboard },
+            { href: "/dashboard/dealer/inventory", label: "Inventory", icon: Car },
+            { href: "/dashboard/dealer/crm", label: "Leads", icon: Kanban },
+            { href: "/dashboard/dealer/offers", label: "Offers", icon: Tag },
+            { href: "/dashboard/dealer/finance", label: "Finance", icon: DollarSign },
+            { href: "/dashboard/dealer/messages", label: "Messages", icon: MessageSquare, badge: unreadCount },
+            { href: "/dashboard/dealer/analytics", label: "Analytics", icon: BarChart3 },
+            { href: "/dashboard/dealer/team", label: "Team", icon: Users },
+            { href: "/dashboard/dealer/settings", label: "Settings", icon: Settings },
         ]
     }
 
