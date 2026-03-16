@@ -17,24 +17,24 @@ export default function DashboardPage() {
             return
         }
 
-        // If we have a user but no profile (maybe fetch failed), redirect to a default or show error
-        if (profile) {
-            const role = (profile.role || 'BUYER').toUpperCase()
-            if (role === 'BUYER' || role === 'SELLER') {
-                router.push('/dashboard/seller')
-            } else if (role === 'DEALER') {
-                router.push('/dashboard/dealer')
-            } else if (role === 'CONTRACTOR') {
-                router.push('/dashboard/service')
-            } else if (role === 'FINANCE_PARTNER') {
-                router.push('/dashboard/finance')
-            } else if (role === 'INSURANCE_PARTNER') {
-                router.push('/dashboard/insurance')
-            } else {
-                router.push('/dashboard/seller')
-            }
+        // Determine role from profile (backend) OR Supabase user_metadata (fallback)
+        const role = (
+            profile?.role ||
+            (user as any)?.user_metadata?.role ||
+            'BUYER'
+        ).toUpperCase()
+
+        if (role === 'BUYER' || role === 'SELLER') {
+            router.push('/dashboard/seller')
+        } else if (role === 'DEALER') {
+            router.push('/dashboard/dealer')
+        } else if (role === 'CONTRACTOR') {
+            router.push('/dashboard/service')
+        } else if (role === 'FINANCE_PARTNER') {
+            router.push('/dashboard/finance')
+        } else if (role === 'INSURANCE_PARTNER') {
+            router.push('/dashboard/insurance')
         } else {
-            // Profile fetch failed (e.g. backend session not ready); redirect to default
             router.push('/dashboard/seller')
         }
     }, [user, profile, loading, router])
