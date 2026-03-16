@@ -23,7 +23,7 @@ export default function DashboardPage() {
             if (role === 'BUYER' || role === 'SELLER') {
                 router.push('/dashboard/seller')
             } else if (role === 'DEALER') {
-                router.push('/dashboard/seller')
+                router.push('/dashboard/dealer')
             } else if (role === 'CONTRACTOR') {
                 router.push('/dashboard/service')
             } else if (role === 'FINANCE_PARTNER') {

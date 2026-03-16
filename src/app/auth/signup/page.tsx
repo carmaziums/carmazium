@@ -6,7 +6,7 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
-import { ArrowLeft, Car, Wrench, CreditCard, Shield, Handshake, Loader2, Eye, EyeOff } from "lucide-react"
+import { ArrowLeft, Car, Wrench, CreditCard, Shield, Handshake, Loader2, Eye, EyeOff, Building2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { fetchWithRetry } from "@/lib/fetchWithRetry"
 
@@ -109,6 +109,7 @@ export default function SignupPage() {
 
     const roles = [
         { id: 'BUYER', icon: Car, label: 'Member - Buy & Sell Vehicles', sub: 'KYC verified trading' },
+        { id: 'DEALER', icon: Building2, label: 'Dealer - Dealership Account', sub: 'Manage inventory, leads & team' },
         { id: 'CONTRACTOR', icon: Wrench, label: 'Contractor - Automotive services', sub: 'Vehicle Inspectors • Drivers' },
         { id: 'FINANCE_PARTNER', icon: CreditCard, label: 'Finance Provider', sub: 'Vehicle financing services' },
         { id: 'INSURANCE_PARTNER', icon: Shield, label: 'Insurance Provider', sub: 'Vehicle insurance services' },
