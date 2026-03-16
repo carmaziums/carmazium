@@ -4,20 +4,25 @@ import * as React from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/Button"
 import {
-    Car, Eye, TrendingUp, Users, DollarSign, Kanban,
-    PlusCircle, ArrowUpRight, Loader2, Building2, CheckCircle
+    Car, Eye, TrendingUp, Users, Kanban,
+    PlusCircle, ArrowUpRight, Loader2, Building2, CheckCircle,
+    Mail
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
+import { supabase } from "@/lib/supabase"
 
 export default function DealerDashboard() {
     const { user, profile, loading: authLoading } = useAuth()
     const [stats, setStats] = React.useState<any>(null)
     const [loading, setLoading] = React.useState(true)
+    const [resending, setResending] = React.useState(false)
+    const [resendSuccess, setResendSuccess] = React.useState(false)
+
+    const isEmailVerified = !!user?.email_confirmed_at
 
     React.useEffect(() => {
         if (!authLoading && user) {
-            // For now, set mock stats — will be replaced with API call to /dealers/stats
             setStats({
                 companyName: profile?.firstName ? `${profile.firstName}'s Dealership` : "Your Dealership",
                 isVerified: false,
@@ -32,6 +37,27 @@ export default function DealerDashboard() {
             setLoading(false)
         }
     }, [user, authLoading, profile])
+
+    const handleResendEmail = async () => {
+        if (!user?.email) return
+        setResending(true)
+        setResendSuccess(false)
+        try {
+            const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
+            const { error } = await supabase.auth.resend({
+                type: 'signup',
+                email: user.email,
+                options: { emailRedirectTo: `${baseUrl}/auth/callback?redirect_to=/dashboard/dealer` }
+            })
+            if (error) throw error
+            setResendSuccess(true)
+            setTimeout(() => setResendSuccess(false), 5000)
+        } catch (err: any) {
+            console.error('Resend failed:', err)
+        } finally {
+            setResending(false)
+        }
+    }
 
     if (authLoading) {
         return (
@@ -58,30 +84,71 @@ export default function DealerDashboard() {
                 </DashboardSidebar>
 
                 <main className="flex-1 space-y-8 min-w-0">
-                    {/* Welcome Banner */}
-                    <div className="relative overflow-hidden bg-gradient-to-br from-primary/20 via-slate-800/80 to-slate-900 border border-white/10 rounded-2xl p-8">
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
-                        <div className="relative z-10">
-                            <div className="flex items-center gap-3 mb-2">
-                                <Building2 className="text-primary" size={24} />
-                                <h1 className="text-2xl md:text-3xl font-black font-heading tracking-tight">
-                                    Welcome, {userName}!
-                                </h1>
-                                {stats?.isVerified && (
-                                    <span className="inline-flex items-center gap-1 bg-emerald-500/20 text-emerald-400 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-500/30">
-                                        <CheckCircle size={12} /> Verified
-                                    </span>
-                                )}
-                            </div>
-                            <p className="text-gray-400 text-sm max-w-xl">
-                                Your central hub for managing inventory, leads, team, and analytics. Everything you need to run your dealership.
-                            </p>
-                        </div>
-                    </div>
 
-                    {/* KPI Stats Row */}
+                    {/* ── Email Verification Panel ── */}
+                    {!isEmailVerified && (
+                        <div className="relative overflow-hidden bg-gradient-to-br from-amber-500/10 via-slate-800/80 to-slate-900 border border-amber-500/20 rounded-2xl p-8 md:p-12">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
+                            <div className="relative z-10 flex flex-col items-center text-center max-w-lg mx-auto">
+                                <div className="p-4 bg-amber-500/20 rounded-full mb-5">
+                                    <Mail className="h-10 w-10 text-amber-400" />
+                                </div>
+                                <h2 className="text-2xl font-black font-heading tracking-tight mb-2">Verify Your Email</h2>
+                                <p className="text-gray-400 text-sm mb-1">
+                                    We&apos;ve sent a verification link to <strong className="text-white">{user?.email}</strong>
+                                </p>
+                                <p className="text-gray-500 text-sm mb-6">
+                                    Please verify your email address to access your dealer dashboard and start managing your dealership.
+                                </p>
+
+                                {resendSuccess && (
+                                    <div className="mb-4 w-full p-3 bg-emerald-500/20 border border-emerald-500/30 rounded-xl text-emerald-300 text-sm font-medium flex items-center justify-center gap-2">
+                                        <CheckCircle size={16} /> Verification email sent! Check your inbox.
+                                    </div>
+                                )}
+
+                                <Button
+                                    onClick={handleResendEmail}
+                                    disabled={resending}
+                                    className="gap-2 h-11 px-6 shadow-neon"
+                                    shape="default"
+                                >
+                                    {resending ? (
+                                        <><Loader2 className="h-4 w-4 animate-spin" /> Sending...</>
+                                    ) : (
+                                        <><Mail size={16} /> Resend Verification Email</>
+                                    )}
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── Welcome Banner (only when verified) ── */}
+                    {isEmailVerified && (
+                        <div className="relative overflow-hidden bg-gradient-to-br from-primary/20 via-slate-800/80 to-slate-900 border border-white/10 rounded-2xl p-8">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
+                            <div className="relative z-10">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <Building2 className="text-primary" size={24} />
+                                    <h1 className="text-2xl md:text-3xl font-black font-heading tracking-tight">
+                                        Welcome, {userName}!
+                                    </h1>
+                                    {stats?.isVerified && (
+                                        <span className="inline-flex items-center gap-1 bg-emerald-500/20 text-emerald-400 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-500/30">
+                                            <CheckCircle size={12} /> Verified
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-gray-400 text-sm max-w-xl">
+                                    Your central hub for managing inventory, leads, team, and analytics. Everything you need to run your dealership.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── KPI Stats Row ── */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="glass-card p-6 border border-white/5 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors group">
+                        <div className="glass-card p-6 border border-white/5 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors">
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="p-2 bg-primary/20 rounded-lg"><Car size={18} className="text-primary" /></div>
                             </div>
@@ -90,7 +157,7 @@ export default function DealerDashboard() {
                                 {loading ? "..." : stats?.activeListings || 0}
                             </h3>
                         </div>
-                        <div className="glass-card p-6 border border-white/5 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors group">
+                        <div className="glass-card p-6 border border-white/5 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors">
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="p-2 bg-blue-500/20 rounded-lg"><Eye size={18} className="text-blue-400" /></div>
                             </div>
@@ -99,7 +166,7 @@ export default function DealerDashboard() {
                                 {loading ? "..." : stats?.totalViews?.toLocaleString() || 0}
                             </h3>
                         </div>
-                        <div className="glass-card p-6 border border-white/5 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors group">
+                        <div className="glass-card p-6 border border-white/5 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors">
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="p-2 bg-amber-500/20 rounded-lg"><Kanban size={18} className="text-amber-400" /></div>
                             </div>
@@ -108,7 +175,7 @@ export default function DealerDashboard() {
                                 {loading ? "..." : stats?.activeLeads || 0}
                             </h3>
                         </div>
-                        <div className="glass-card p-6 border border-white/5 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors group">
+                        <div className="glass-card p-6 border border-white/5 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors">
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="p-2 bg-emerald-500/20 rounded-lg"><TrendingUp size={18} className="text-emerald-400" /></div>
                             </div>
@@ -119,7 +186,7 @@ export default function DealerDashboard() {
                         </div>
                     </div>
 
-                    {/* Quick Actions */}
+                    {/* ── Quick Actions ── */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <Link href="/dashboard/dealer/inventory" className="glass-card p-5 border border-white/5 bg-white/[0.03] rounded-2xl hover:bg-white/10 transition-all group flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -153,7 +220,7 @@ export default function DealerDashboard() {
                         </Link>
                     </div>
 
-                    {/* Recent Leads */}
+                    {/* ── Recent Leads ── */}
                     <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl">
                         <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
                             <h2 className="text-xl font-black font-heading text-white uppercase tracking-tight">Recent Leads</h2>
