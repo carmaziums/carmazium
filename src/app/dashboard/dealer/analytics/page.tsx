@@ -4,16 +4,33 @@ import * as React from "react"
 import { BarChart3, Eye, TrendingUp, Users, Loader2, Car, Kanban, ArrowDown, ArrowUp } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
+import { apiClient } from "@/lib/apiClient"
 
 export default function DealerAnalyticsPage() {
     const { user, profile, loading: authLoading } = useAuth()
     const [loading, setLoading] = React.useState(true)
+    const [stats, setStats] = React.useState<any>(null)
 
     React.useEffect(() => {
         if (!authLoading && user) {
-            setLoading(false)
+            fetchAnalytics()
         }
     }, [user, authLoading])
+
+    async function fetchAnalytics() {
+        setLoading(true)
+        try {
+            const [statsRes, perfRes] = await Promise.all([
+                apiClient<{ data: any }>('/dealers/stats').catch(() => ({ data: {} })),
+                apiClient<{ data: any }>('/listings/performance').catch(() => ({ data: {} })),
+            ])
+            setStats({ ...(statsRes?.data ?? {}), ...(perfRes?.data ?? {}) })
+        } catch {
+            setStats({})
+        } finally {
+            setLoading(false)
+        }
+    }
 
     const userName = profile?.firstName
         ? `${profile.firstName} ${profile.lastName || ""}`
@@ -53,10 +70,10 @@ export default function DealerAnalyticsPage() {
                             {/* Metric Cards */}
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                                 {[
-                                    { label: "Total Views", value: "0", change: "+0%", icon: Eye, color: "text-blue-400", bg: "bg-blue-500/20", up: true },
-                                    { label: "New Leads", value: "0", change: "+0%", icon: Kanban, color: "text-amber-400", bg: "bg-amber-500/20", up: true },
-                                    { label: "Conversion Rate", value: "0%", change: "+0%", icon: TrendingUp, color: "text-emerald-400", bg: "bg-emerald-500/20", up: true },
-                                    { label: "Revenue", value: "£0", change: "+0%", icon: BarChart3, color: "text-purple-400", bg: "bg-purple-500/20", up: true },
+                                    { label: "Total Views", value: String(stats?.totalViews ?? 0), change: stats?.viewsChange ? `${stats.viewsChange > 0 ? '+' : ''}${stats.viewsChange}%` : "+0%", icon: Eye, color: "text-blue-400", bg: "bg-blue-500/20", up: (stats?.viewsChange ?? 0) >= 0 },
+                                    { label: "New Leads", value: String(stats?.newLeads ?? 0), change: stats?.leadsChange ? `${stats.leadsChange > 0 ? '+' : ''}${stats.leadsChange}%` : "+0%", icon: Kanban, color: "text-amber-400", bg: "bg-amber-500/20", up: (stats?.leadsChange ?? 0) >= 0 },
+                                    { label: "Conversion Rate", value: `${stats?.conversionRate ?? 0}%`, change: stats?.conversionChange ? `${stats.conversionChange > 0 ? '+' : ''}${stats.conversionChange}%` : "+0%", icon: TrendingUp, color: "text-emerald-400", bg: "bg-emerald-500/20", up: (stats?.conversionChange ?? 0) >= 0 },
+                                    { label: "Revenue", value: `£${(stats?.revenue ?? 0).toLocaleString()}`, change: stats?.revenueChange ? `${stats.revenueChange > 0 ? '+' : ''}${stats.revenueChange}%` : "+0%", icon: BarChart3, color: "text-purple-400", bg: "bg-purple-500/20", up: (stats?.revenueChange ?? 0) >= 0 },
                                 ].map(metric => (
                                     <div key={metric.label} className="bg-white/5 border border-white/5 rounded-2xl p-5 hover:bg-white/10 transition-colors">
                                         <div className={`p-2 ${metric.bg} rounded-lg w-fit mb-3`}>

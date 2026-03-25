@@ -9,10 +9,12 @@ import {
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
+import { apiClient } from "@/lib/apiClient"
 
 export default function DealerSettingsPage() {
     const { user, profile, loading: authLoading } = useAuth()
     const [loading, setLoading] = React.useState(true)
+    const [saving, setSaving] = React.useState(false)
     const [activeTab, setActiveTab] = React.useState("profile")
     const [form, setForm] = React.useState({
         companyName: "",
@@ -26,9 +28,55 @@ export default function DealerSettingsPage() {
 
     React.useEffect(() => {
         if (!authLoading && user) {
-            setLoading(false)
+            fetchProfile()
         }
     }, [user, authLoading])
+
+    async function fetchProfile() {
+        setLoading(true)
+        try {
+            const res = await apiClient<{ data: any }>('/users/me')
+            const d = res?.data?.dealerProfile
+            if (d) {
+                setForm(f => ({
+                    ...f,
+                    companyName: d.companyName ?? "",
+                    vatNumber: d.vatNumber ?? "",
+                    registrationNumber: d.registrationNumber ?? "",
+                    businessAddress: d.businessAddress ?? "",
+                    phone: d.phone ?? "",
+                    website: d.website ?? "",
+                    description: d.description ?? "",
+                }))
+            }
+        } catch {
+            // profile may not exist yet, use empty form
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    async function handleSave() {
+        setSaving(true)
+        try {
+            await apiClient('/users/dealer-profile', {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    companyName: form.companyName,
+                    vatNumber: form.vatNumber,
+                    registrationNumber: form.registrationNumber,
+                    businessAddress: form.businessAddress,
+                    phone: form.phone,
+                    website: form.website,
+                    description: form.description,
+                }),
+            })
+        } catch (err) {
+            console.error('Failed to save profile:', err)
+        } finally {
+            setSaving(false)
+        }
+    }
 
     const userName = profile?.firstName
         ? `${profile.firstName} ${profile.lastName || ""}`
@@ -166,8 +214,9 @@ export default function DealerSettingsPage() {
                                     </div>
 
                                     <div className="flex justify-end pt-4 border-t border-white/5">
-                                        <Button className="gap-2 h-10 shadow-neon" shape="default">
-                                            <Save size={16} /> Save Changes
+                                        <Button className="gap-2 h-10 shadow-neon" shape="default" onClick={handleSave} disabled={saving}>
+                                            {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} 
+                                            {saving ? "Saving..." : "Save Changes"}
                                         </Button>
                                     </div>
                                 </div>

@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import {
     Car, Search, Filter, PlusCircle, MoreVertical,
-    Loader2, Eye, Star, ChevronDown, Upload, ArrowUpRight
+    Loader2, Upload
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
+import { apiClient } from "@/lib/apiClient"
 
 const STATUS_COLORS: Record<string, string> = {
     ACTIVE: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
@@ -27,15 +28,39 @@ export default function DealerInventoryPage() {
 
     React.useEffect(() => {
         if (!authLoading && user) {
-            // Mock data — replace with API call
+            fetchListings(searchQuery)
+        }
+    }, [user, authLoading, searchQuery])
+
+    async function fetchListings(search = "") {
+        setLoading(true)
+        try {
+            const query = new URLSearchParams()
+            if (search.trim()) query.set("search", search.trim())
+            const suffix = query.toString() ? `?${query.toString()}` : ""
+            const res = await apiClient<{ data: any[] }>(`/listings/my${suffix}`)
+            setListings(res?.data ?? [])
+        } catch (err) {
+            console.error('Failed to load listings:', err)
             setListings([])
+        } finally {
             setLoading(false)
         }
-    }, [user, authLoading])
+    }
 
     const userName = profile?.firstName
         ? `${profile.firstName} ${profile.lastName || ""}`
         : (user?.email?.split('@')[0] || "Dealer")
+
+    const filteredListings = React.useMemo(() => {
+        const q = searchQuery.trim().toLowerCase()
+        return listings.filter(listing => {
+            const matchesStatus = statusFilter === "ALL" ? true : listing.status === statusFilter
+            const haystack = `${listing.title || ""} ${listing.make || ""} ${listing.model || ""} ${listing.vrm || ""}`.toLowerCase()
+            const matchesSearch = !q || haystack.includes(q)
+            return matchesStatus && matchesSearch
+        })
+    }, [listings, searchQuery, statusFilter])
 
     return (
         <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
@@ -110,7 +135,7 @@ export default function DealerInventoryPage() {
                                                 <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
                                             </td>
                                         </tr>
-                                    ) : !listings.length ? (
+                                    ) : !filteredListings.length ? (
                                         <tr>
                                             <td colSpan={6} className="px-6 py-16 text-center">
                                                 <Car className="h-12 w-12 text-gray-700 mx-auto mb-3" />
@@ -124,7 +149,7 @@ export default function DealerInventoryPage() {
                                             </td>
                                         </tr>
                                     ) : (
-                                        listings.map((listing: any) => (
+                                        filteredListings.map((listing: any) => (
                                             <tr key={listing.id} className="hover:bg-white/5 transition-colors">
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-3">

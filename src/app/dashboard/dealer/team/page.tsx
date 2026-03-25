@@ -9,6 +9,7 @@ import {
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
+import { apiClient } from "@/lib/apiClient"
 
 const ROLE_CONFIG: Record<string, { label: string; icon: any; color: string; bg: string }> = {
     ADMIN: { label: "Admin", icon: Shield, color: "text-primary", bg: "bg-primary/10" },
@@ -23,13 +24,44 @@ export default function DealerTeamPage() {
     const [showInvite, setShowInvite] = React.useState(false)
     const [inviteEmail, setInviteEmail] = React.useState("")
     const [inviteRole, setInviteRole] = React.useState("SALES_AGENT")
+    const [inviting, setInviting] = React.useState(false)
 
     React.useEffect(() => {
         if (!authLoading && user) {
-            setStaff([])
-            setLoading(false)
+            fetchStaff()
         }
     }, [user, authLoading])
+
+    async function fetchStaff() {
+        setLoading(true)
+        try {
+            const res = await apiClient<{ data: any[] }>('/dealers/staff')
+            setStaff(res?.data ?? [])
+        } catch (err) {
+            console.error('Failed to load staff:', err)
+            setStaff([])
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    async function handleInvite() {
+        if (!inviteEmail) return
+        setInviting(true)
+        try {
+            await apiClient('/dealers/staff', {
+                method: 'POST',
+                body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
+            })
+            setInviteEmail("")
+            setShowInvite(false)
+            fetchStaff()
+        } catch (err) {
+            console.error('Failed to invite staff:', err)
+        } finally {
+            setInviting(false)
+        }
+    }
 
     const userName = profile?.firstName
         ? `${profile.firstName} ${profile.lastName || ""}`
@@ -72,8 +104,8 @@ export default function DealerTeamPage() {
                                     <option value="FINANCE_MANAGER">Finance Manager</option>
                                     <option value="ADMIN">Admin</option>
                                 </select>
-                                <Button className="h-10 px-6 whitespace-nowrap shadow-neon" shape="default">
-                                    <Mail size={16} className="mr-2" /> Send Invite
+                                <Button onClick={handleInvite} disabled={inviting} className="h-10 px-6 whitespace-nowrap shadow-neon" shape="default">
+                                    {inviting ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Mail size={16} className="mr-2" />} {inviting ? 'Sending…' : 'Send Invite'}
                                 </Button>
                             </div>
                         </div>
