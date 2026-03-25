@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button"
 import { DollarSign, FileText, Loader2, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
+import { apiClient } from "@/lib/apiClient"
 
 const STATUS_BADGES: Record<string, string> = {
     PENDING: "bg-amber-500/10 text-amber-400 border-amber-500/20",
@@ -20,10 +21,21 @@ export default function DealerFinancePage() {
 
     React.useEffect(() => {
         if (!authLoading && user) {
-            setApplications([])
-            setLoading(false)
+            fetchFinance()
         }
     }, [user, authLoading])
+
+    async function fetchFinance() {
+        setLoading(true)
+        try {
+            const res = await apiClient<{ data: any[] }>('/finance/my')
+            setApplications(res?.data ?? [])
+        } catch {
+            setApplications([])
+        } finally {
+            setLoading(false)
+        }
+    }
 
     const userName = profile?.firstName
         ? `${profile.firstName} ${profile.lastName || ""}`

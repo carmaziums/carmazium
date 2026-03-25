@@ -9,6 +9,7 @@ import {
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
+import { apiClient } from "@/lib/apiClient"
 
 const COLUMNS = [
     { key: "NEW", label: "New", color: "border-blue-500/40", dotColor: "bg-blue-400" },
@@ -23,13 +24,42 @@ export default function DealerCRMPage() {
     const { user, profile, loading: authLoading } = useAuth()
     const [leads, setLeads] = React.useState<any[]>([])
     const [loading, setLoading] = React.useState(true)
+    const [updatingLeadId, setUpdatingLeadId] = React.useState<string | null>(null)
 
     React.useEffect(() => {
         if (!authLoading && user) {
-            setLeads([])
-            setLoading(false)
+            fetchLeads()
         }
     }, [user, authLoading])
+
+    async function fetchLeads() {
+        setLoading(true)
+        try {
+            const res = await apiClient<{ data: any[] }>('/dealers/leads')
+            setLeads(res?.data ?? [])
+        } catch (err) {
+            console.error('Failed to load leads:', err)
+            setLeads([])
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    async function updateLeadStatus(leadId: string, status: string) {
+        setUpdatingLeadId(leadId)
+        try {
+            const res = await apiClient<{ data: any }>(`/dealers/leads/${leadId}`, {
+                method: "PATCH",
+                body: JSON.stringify({ status }),
+            })
+            const updatedLead = res?.data
+            setLeads(prev => prev.map(lead => (lead.id === leadId ? { ...lead, ...updatedLead } : lead)))
+        } catch (err) {
+            console.error("Failed to update lead status:", err)
+        } finally {
+            setUpdatingLeadId(null)
+        }
+    }
 
     const userName = profile?.firstName
         ? `${profile.firstName} ${profile.lastName || ""}`
@@ -96,6 +126,23 @@ export default function DealerCRMPage() {
                                                         {lead.buyerEmail && <Mail size={12} />}
                                                         {lead.buyerPhone && <Phone size={12} />}
                                                         <span className="text-[10px] uppercase tracking-wider ml-auto">{lead.source || 'direct'}</span>
+                                                    </div>
+                                                    <div className="mt-3 pt-3 border-t border-white/10">
+                                                        <label className="text-[10px] text-gray-500 uppercase tracking-wider">
+                                                            Update status
+                                                        </label>
+                                                        <select
+                                                            value={lead.status}
+                                                            disabled={updatingLeadId === lead.id}
+                                                            onChange={e => updateLeadStatus(lead.id, e.target.value)}
+                                                            className="mt-1 w-full bg-slate-800 border border-white/10 text-white rounded-lg px-2 py-1.5 text-xs"
+                                                        >
+                                                            {COLUMNS.map(status => (
+                                                                <option key={status.key} value={status.key}>
+                                                                    {status.label}
+                                                                </option>
+                                                            ))}
+                                                        </select>
                                                     </div>
                                                 </div>
                                             ))

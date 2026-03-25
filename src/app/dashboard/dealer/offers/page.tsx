@@ -8,6 +8,7 @@ import {
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
+import { apiClient } from "@/lib/apiClient"
 
 const STATUS_BADGES: Record<string, string> = {
     PENDING: "bg-amber-500/10 text-amber-400 border-amber-500/20",
@@ -24,10 +25,21 @@ export default function DealerOffersPage() {
 
     React.useEffect(() => {
         if (!authLoading && user) {
-            setOffers([])
-            setLoading(false)
+            fetchOffers()
         }
     }, [user, authLoading])
+
+    async function fetchOffers() {
+        setLoading(true)
+        try {
+            const res = await apiClient<{ data: any[] }>('/offers/my')
+            setOffers(res?.data ?? [])
+        } catch {
+            setOffers([])
+        } finally {
+            setLoading(false)
+        }
+    }
 
     const userName = profile?.firstName
         ? `${profile.firstName} ${profile.lastName || ""}`

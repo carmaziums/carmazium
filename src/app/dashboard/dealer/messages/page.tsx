@@ -1,25 +1,43 @@
 "use client"
 
 import * as React from "react"
-import { MessageSquare, Loader2, Search, Send } from "lucide-react"
-import { Input } from "@/components/ui/Input"
-import { Button } from "@/components/ui/Button"
+import { MessageSquare } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
+import { ChatRoomList } from "@/components/chat/ChatRoomList"
+import dynamic from "next/dynamic"
+const ChatWindow = dynamic(() => import("@/components/chat/ChatWindow").then(mod => mod.ChatWindow), { ssr: false })
 import { useAuth } from "@/context/AuthContext"
+import { useChat } from "@/context/ChatContext"
+import { useSearchParams } from "next/navigation"
+import type { ChatRoom } from "@/lib/chatApi"
 
-export default function DealerMessagesPage() {
-    const { user, profile, loading: authLoading } = useAuth()
-    const [contacts, setContacts] = React.useState<any[]>([])
-    const [loading, setLoading] = React.useState(true)
-    const [activeChat, setActiveChat] = React.useState<string | null>(null)
-    const [message, setMessage] = React.useState("")
+function MessagesContent() {
+    const { user, profile, loading } = useAuth()
+    const { rooms, refreshRooms } = useChat()
+    const searchParams = useSearchParams()
+    const targetRoomId = searchParams.get("room")
+    const [selectedRoom, setSelectedRoom] = React.useState<ChatRoom | null>(null)
 
     React.useEffect(() => {
-        if (!authLoading && user) {
-            setContacts([])
-            setLoading(false)
-        }
-    }, [user, authLoading])
+        if (!user) return
+        refreshRooms()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user])
+
+    React.useEffect(() => {
+        if (!targetRoomId || rooms.length === 0) return
+        if (selectedRoom?.id === targetRoomId) return
+        const match = rooms.find(r => r.id === targetRoomId)
+        if (match) setSelectedRoom(match)
+    }, [rooms, targetRoomId, selectedRoom])
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+            </div>
+        )
+    }
 
     const userName = profile?.firstName
         ? `${profile.firstName} ${profile.lastName || ""}`
@@ -31,84 +49,52 @@ export default function DealerMessagesPage() {
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
                 <main className="flex-1 min-w-0">
-                    <div className="flex flex-col md:flex-row h-[calc(100vh-160px)] border border-white/5 rounded-2xl overflow-hidden bg-white/5">
-                        {/* Contact List */}
-                        <div className="w-full md:w-80 border-r border-white/5 flex flex-col">
-                            <div className="p-4 border-b border-white/5">
-                                <h2 className="text-lg font-black font-heading uppercase tracking-tight mb-3">Messages</h2>
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
-                                    <Input
-                                        placeholder="Search conversations..."
-                                        className="pl-9 bg-white/5 border-white/10 text-white text-sm h-9 placeholder:text-gray-500"
-                                    />
-                                </div>
-                            </div>
-                            <div className="flex-1 overflow-y-auto">
-                                {loading ? (
-                                    <div className="flex items-center justify-center py-12">
-                                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                                    </div>
-                                ) : !contacts.length ? (
-                                    <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-                                        <MessageSquare className="h-10 w-10 text-gray-700 mb-3" />
-                                        <p className="text-gray-500 text-sm font-bold">No conversations</p>
-                                        <p className="text-gray-600 text-xs mt-1">Messages from buyers will appear here</p>
-                                    </div>
-                                ) : (
-                                    contacts.map((contact: any) => (
-                                        <div
-                                            key={contact.id}
-                                            onClick={() => setActiveChat(contact.id)}
-                                            className={`p-4 cursor-pointer border-b border-white/5 hover:bg-white/5 transition-colors ${
-                                                activeChat === contact.id ? 'bg-white/10' : ''
-                                            }`}
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center flex-shrink-0">
-                                                    <span className="text-sm font-bold text-gray-400">{contact.name?.[0]}</span>
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="font-bold text-white text-sm truncate">{contact.name}</p>
-                                                    <p className="text-xs text-gray-500 truncate">{contact.lastMessage}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
+                    <div className="glass-card overflow-hidden h-[calc(100vh-180px)] border border-white/5 bg-white/5 rounded-2xl">
+                        <div className="p-6 border-b border-white/10 flex items-center gap-3 bg-white/5">
+                            <MessageSquare className="text-primary" />
+                            <h2 className="text-xl font-bold font-heading text-white uppercase tracking-tight">Messages</h2>
                         </div>
 
-                        {/* Chat Area */}
-                        <div className="flex-1 flex flex-col">
-                            {!activeChat ? (
-                                <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
-                                    <MessageSquare className="h-16 w-16 text-gray-800 mb-4" />
-                                    <h3 className="text-lg font-bold text-gray-500">Select a conversation</h3>
-                                    <p className="text-gray-600 text-sm mt-1">Choose a contact from the left to start messaging</p>
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="flex-1 p-6 overflow-y-auto">
-                                        {/* Messages will render here */}
+                        <div className="flex h-[calc(100%-80px)]">
+                            {/* Room List */}
+                            <div className={`w-full lg:w-80 border-r border-white/10 ${selectedRoom ? 'hidden lg:block' : ''}`}>
+                                <ChatRoomList
+                                    onSelectRoom={setSelectedRoom}
+                                    selectedRoomId={selectedRoom?.id}
+                                />
+                            </div>
+
+                            {/* Chat Window */}
+                            <div className={`flex-1 ${!selectedRoom ? 'hidden lg:flex lg:items-center lg:justify-center' : ''}`}>
+                                {selectedRoom ? (
+                                    <ChatWindow
+                                        room={selectedRoom}
+                                        onBack={() => setSelectedRoom(null)}
+                                    />
+                                ) : (
+                                    <div className="text-center text-gray-500">
+                                        <MessageSquare className="w-16 h-16 mx-auto mb-4 opacity-30" />
+                                        <p className="text-lg font-bold">Select a conversation</p>
+                                        <p className="text-sm mt-1">Choose from your existing conversations</p>
                                     </div>
-                                    <div className="p-4 border-t border-white/5 flex gap-3">
-                                        <Input
-                                            placeholder="Type a message..."
-                                            value={message}
-                                            onChange={e => setMessage(e.target.value)}
-                                            className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 flex-1"
-                                        />
-                                        <Button className="h-10 px-5 gap-2 shadow-neon" shape="default">
-                                            <Send size={16} />
-                                        </Button>
-                                    </div>
-                                </>
-                            )}
+                                )}
+                            </div>
                         </div>
                     </div>
                 </main>
             </div>
         </div>
+    )
+}
+
+export default function DealerMessagesPage() {
+    return (
+        <React.Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+            </div>
+        }>
+            <MessagesContent />
+        </React.Suspense>
     )
 }

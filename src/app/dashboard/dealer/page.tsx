@@ -11,6 +11,7 @@ import {
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { supabase } from "@/lib/supabase"
+import { apiClient } from "@/lib/apiClient"
 
 export default function DealerDashboard() {
     const { user, profile, loading: authLoading } = useAuth()
@@ -23,6 +24,32 @@ export default function DealerDashboard() {
 
     React.useEffect(() => {
         if (!authLoading && user) {
+            fetchDashboardData()
+        }
+    }, [user, authLoading])
+
+    async function fetchDashboardData() {
+        setLoading(true)
+        try {
+            const [statsRes, leadsRes] = await Promise.all([
+                apiClient<{ data: any }>('/dealers/stats').catch(() => ({ data: null })),
+                apiClient<{ data: any[]; meta?: any }>('/dealers/leads?limit=5').catch(() => ({ data: [] })),
+            ])
+
+            const s = statsRes?.data || {}
+            setStats({
+                companyName: profile?.firstName ? `${profile.firstName}'s Dealership` : "Your Dealership",
+                isVerified: s.isVerified ?? false,
+                activeListings: s.activeListings ?? 0,
+                totalViews: s.totalViews ?? 0,
+                soldListings: s.soldListings ?? 0,
+                activeLeads: s.activeLeads ?? 0,
+                totalRevenue: s.totalRevenue ?? 0,
+                staffCount: s.staffCount ?? 1,
+                recentLeads: leadsRes?.data ?? [],
+            })
+        } catch (err) {
+            console.error('Failed to load dashboard data:', err)
             setStats({
                 companyName: profile?.firstName ? `${profile.firstName}'s Dealership` : "Your Dealership",
                 isVerified: false,
@@ -34,9 +61,10 @@ export default function DealerDashboard() {
                 staffCount: 1,
                 recentLeads: [],
             })
+        } finally {
             setLoading(false)
         }
-    }, [user, authLoading, profile])
+    }
 
     const handleResendEmail = async () => {
         if (!user?.email) return
