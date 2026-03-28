@@ -8,7 +8,7 @@ import {
     Car, Camera, List, DollarSign, CheckCircle,
     ArrowRight, ArrowLeft, Loader2, Search,
     BadgeCheck, TrendingDown, Upload, Eye, X,
-    Shield, Star, Sparkles, Zap, MapPin, LocateFixed, Edit, Info, Handshake, CreditCard, AlertTriangle, ChevronDown
+    Shield, Star, Sparkles, Zap, MapPin, LocateFixed, Edit, Info, Handshake, CreditCard, AlertTriangle, ChevronDown, Lock, FileText
 } from "lucide-react"
 import Image from "next/image"
 import { ImageUpload } from "@/components/listing/ImageUpload"
@@ -259,6 +259,81 @@ function InfoTooltip({ text }: { text: string }) {
     )
 }
 
+// ─── HPI Bait Section ─────────────────────────────────────────────────────────
+
+function HpiBaitSection({ isUnlocked, onUnlock }: { isUnlocked: boolean, onUnlock: () => void }) {
+    if (isUnlocked) {
+        return (
+            <div className="mt-8 relative overflow-hidden rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-6 flex flex-col items-center text-center">
+                 <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center mb-3">
+                     <CheckCircle className="text-emerald-400" size={24} />
+                 </div>
+                 <h3 className="text-lg font-bold text-white mb-1">HPI Report Verified</h3>
+                 <p className="text-sm text-emerald-200/70 mb-4 max-w-sm">Your vehicle is fully cleared. You've earned the Premium Verification Badge which will automatically be added to your listing.</p>
+                 <div className="filter-none blur-none border border-white/10 p-3 rounded bg-slate-900/50 flex gap-2 w-full max-w-sm mx-auto text-left items-center">
+                     <FileText size={20} className="text-blue-400 shrink-0" />
+                     <div className="flex-1 min-w-0">
+                         <p className="text-xs text-white font-bold truncate">HPI_Report_Clear.pdf</p>
+                         <p className="text-[10px] text-gray-500">Official OneAuto Data</p>
+                     </div>
+                     <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-bold uppercase tracking-wider">Verified</span>
+                 </div>
+            </div>
+        )
+    }
+
+    return (
+        <div className="mt-8 relative overflow-hidden rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-orange-500/5 p-6 animate-in fade-in slide-in-from-bottom-4 zoom-in-95 duration-500">
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-amber-500/20 rounded-full blur-2xl pointer-events-none" />
+            <div className="flex flex-col md:flex-row gap-6 relative z-10">
+                <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Shield className="text-amber-400" size={20} />
+                        <h3 className="text-lg font-bold text-white font-heading">Boost Your Sale</h3>
+                    </div>
+                    <p className="text-sm text-gray-300 mb-4">
+                        We've found an official HPI record for this vehicle. Unlocking the full report gives you a <strong className="text-white">Premium Verification Badge</strong>, proven to help cars sell up to 2x faster!
+                    </p>
+                    <ul className="space-y-2 text-xs text-gray-400 mb-6">
+                        <li className="flex items-center gap-2"><CheckCircle size={14} className="text-amber-400" /> Prove there is no outstanding finance</li>
+                        <li className="flex items-center gap-2"><CheckCircle size={14} className="text-amber-400" /> Verify it's never been stolen or written-off</li>
+                        <li className="flex items-center gap-2"><CheckCircle size={14} className="text-amber-400" /> Give buyers complete peace of mind</li>
+                    </ul>
+                    <Button type="button" onClick={onUnlock} className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold px-6 shadow-[0_0_15px_rgba(245,158,11,0.3)] border-none shrink-0 w-full sm:w-auto">
+                        Unlock HPI Report - £9.99
+                    </Button>
+                </div>
+                
+                {/* Simulated Blurred Document */}
+                <div className="w-full md:w-48 shrink-0 flex flex-col items-center">
+                    <div className="w-full h-40 bg-white/5 border border-white/10 rounded-lg relative overflow-hidden shadow-xl p-3 flex flex-col select-none pointer-events-none">
+                        <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center">
+                            <Lock size={24} className="text-white/70 mb-2" />
+                            <span className="text-[10px] font-bold text-white/90 bg-black/60 px-2 py-1 rounded uppercase tracking-widest border border-white/10">Locked</span>
+                        </div>
+                        {/* Fake document content */}
+                        <div className="flex items-center justify-between mb-3 border-b border-white/10 pb-2">
+                            <span className="text-[8px] font-bold text-gray-300">ONEAUTO REPORT</span>
+                            <span className="text-[8px] font-bold text-amber-500">CONFIDENTIAL</span>
+                        </div>
+                        <div className="space-y-1.5 opacity-60">
+                            <div className="h-2 w-3/4 bg-gray-500 rounded" />
+                            <div className="h-2 w-1/2 bg-gray-500 rounded" />
+                            <div className="mt-3 h-2 w-full bg-gray-600 rounded" />
+                            <div className="h-2 w-full bg-gray-600 rounded" />
+                            <div className="h-2 w-4/5 bg-gray-600 rounded" />
+                            <div className="mt-3 h-10 w-full rounded bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
+                                <span className="text-[8px] text-emerald-400 font-bold tracking-widest">CLEAR STATUS</span>
+                            </div>
+                        </div>
+                    </div>
+                    <p className="text-[9px] text-gray-500 text-center mt-2">Data sourced seamlessly via <br/>UK Official Vehicle Records</p>
+                </div>
+            </div>
+        </div>
+    )
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function SellPage() {
@@ -276,6 +351,11 @@ export default function SellPage() {
     const [dvlaSuccess, setDvlaSuccess] = React.useState(false)
     const [geoLoading, setGeoLoading] = React.useState(false)
     const [isGeneratingDesc, setIsGeneratingDesc] = React.useState(false)
+
+    // HPI Payment State
+    const [showHpiModal, setShowHpiModal] = React.useState(false)
+    const [isHpiUnlocked, setIsHpiUnlocked] = React.useState(false)
+    const [isProcessingPayment, setIsProcessingPayment] = React.useState(false)
 
     // Estimated value — derived from complex formula
     const valuation = React.useMemo(() => {
@@ -448,12 +528,79 @@ export default function SellPage() {
         </div>
     )
 
+    // ─── HPI Payment Modal ───────────────────────────────────────────────────────
+
+    const HpiPaymentModal = () => (!showHpiModal || isHpiUnlocked) ? null : (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-5" onClick={() => !isProcessingPayment && setShowHpiModal(false)}>
+            <div className="glass-card p-0 max-w-md w-full relative overflow-hidden flex flex-col text-left" onClick={(e) => e.stopPropagation()}>
+                {/* Header */}
+                <div className="bg-slate-900/80 p-5 border-b border-white/10 flex justify-between items-center">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2"><CreditCard size={18} className="text-primary"/> Secure Checkout</h3>
+                    <button disabled={isProcessingPayment} type="button" onClick={() => setShowHpiModal(false)} className="text-gray-400 hover:text-white transition-colors">
+                        <X size={20} />
+                    </button>
+                </div>
+                
+                {/* Body */}
+                <div className="p-6">
+                     <div className="flex justify-between items-center mb-6">
+                         <div>
+                             <p className="text-white font-bold">Comprehensive HPI Report</p>
+                             <p className="text-xs text-gray-400 mt-1 uppercase font-bold tracking-wider">Powered by OneAuto API</p>
+                         </div>
+                         <div className="text-xl font-black text-white">£9.99</div>
+                     </div>
+                     
+                     <div className="space-y-4 mb-6">
+                          {/* Fake Card Input */}
+                          <div className="space-y-1.5 bg-slate-900/50 p-4 rounded-xl border border-white/5 opacity-50 pointer-events-none">
+                              <label className="text-xs font-bold text-gray-500 uppercase">Card Details</label>
+                              <div className="h-10 bg-black/20 rounded border border-white/10 flex items-center px-3">
+                                  <Lock size={14} className="text-gray-500 mr-2" />
+                                  <span className="text-gray-500 text-sm">•••• •••• •••• ••••</span>
+                              </div>
+                          </div>
+                          
+                          {/* Bypass Note for Beta */}
+                          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 flex items-start gap-2">
+                               <Info size={16} className="text-blue-400 shrink-0 mt-0.5" />
+                               <div>
+                                   <p className="text-xs font-bold text-blue-300">Beta Testing Mode</p>
+                                   <p className="text-[10px] text-blue-400/80 mt-1 leading-relaxed">Payment gateways are disabled on this environment. Use the bypass button below to simulate a successful payment and unlock the HPI report instantly.</p>
+                               </div>
+                          </div>
+                     </div>
+                     
+                     <Button 
+                         disabled={isProcessingPayment}
+                         onClick={() => {
+                             setIsProcessingPayment(true)
+                             setTimeout(() => {
+                                 setIsProcessingPayment(false)
+                                 setIsHpiUnlocked(true)
+                                 setShowHpiModal(false)
+                             }, 1500)
+                         }}
+                         className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-6 text-lg relative overflow-hidden group shadow-neon border-none"
+                     >
+                         {isProcessingPayment ? (
+                             <><Loader2 className="animate-spin mr-2" size={18} /> Processing...</>
+                         ) : (
+                             <>Simulate Payment <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" size={18}/></>
+                         )}
+                     </Button>
+                </div>
+            </div>
+        </div>
+    )
+
     // ─── Landing (method selection) ───────────────────────────────────────────────
 
     if (!sellingMethod) {
         return (
             <>
                 <LoginModal />
+                <HpiPaymentModal />
                 <div className="min-h-screen py-20">
                     <div className="container mx-auto px-5 max-w-4xl">
                         <div className="text-center mb-14">
@@ -503,6 +650,7 @@ export default function SellPage() {
         <div className="min-h-screen py-12">
             <div className="container mx-auto px-5 max-w-3xl">
                 <LoginModal />
+                <HpiPaymentModal />
 
                 {/* Back link */}
                 <div className="mb-6">
@@ -1120,6 +1268,14 @@ export default function SellPage() {
                                     </div>
                                 )}
                             </div>
+
+                            {/* HPI Bait Section (shown after VRM lookup) */}
+                            {dvlaSuccess && (
+                                <HpiBaitSection 
+                                    isUnlocked={isHpiUnlocked} 
+                                    onUnlock={() => setShowHpiModal(true)} 
+                                />
+                            )}
                         </div>
                     )}
 
@@ -1358,6 +1514,12 @@ export default function SellPage() {
 
                             {/* Vehicle Info */}
                             <SummarySection title="Vehicle Identity" onEdit={() => goToStep(1)}>
+                                {isHpiUnlocked && (
+                                    <div className="mb-4 bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-lg flex items-center gap-2">
+                                         <CheckCircle className="text-emerald-400" size={16} />
+                                         <span className="text-sm text-emerald-300 font-bold tracking-wide">HPI Checked & Verified</span>
+                                    </div>
+                                )}
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                                     <SummaryField label="VRM" value={formData.vrm} />
                                     {formData.vin && <SummaryField label="VIN" value={formData.vin} mono />}
