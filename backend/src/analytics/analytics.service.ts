@@ -58,7 +58,7 @@ export class AnalyticsService {
                     take: 7,
                     orderBy: { createdAt: 'desc' },
                     distinct: ['type'],
-                    select: { type: true, createdAt: true, _count: false },
+                    select: { type: true, createdAt: true },
                 }),
             ]);
 

@@ -117,7 +117,7 @@ export class DashboardService {
         const [pending, quoted, declined] = await Promise.all([
             this.prisma.insuranceQuote.count({ where: { status: 'PENDING' } }),
             this.prisma.insuranceQuote.count({ where: { status: 'QUOTED' } }),
-            this.prisma.insuranceQuote.count({ where: { status: 'DECLINED' } }),
+            this.prisma.insuranceQuote.count({ where: { status: 'REJECTED' } }),
         ]);
 
         const recentQuotes = await this.prisma.insuranceQuote.findMany({

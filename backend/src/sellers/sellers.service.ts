@@ -237,13 +237,11 @@ export class SellersService {
         }
 
         // 3. Duplicate review guard
-        const existing = await this.prisma.sellerReview.findUnique({
+        const existing = await this.prisma.sellerReview.findFirst({
             where: {
-                sellerId_reviewerId_listingId: {
-                    sellerId: dto.sellerId,
-                    reviewerId,
-                    listingId: dto.listingId ?? null,
-                },
+                sellerId: dto.sellerId,
+                reviewerId,
+                listingId: dto.listingId ?? null,
             },
         });
 

@@ -4,11 +4,11 @@ import { IsEnum, IsNotEmpty } from 'class-validator';
 
 export class UpdateStatusDto {
     @ApiProperty({
-        enum: ['DRAFT', 'ACTIVE', 'SOLD', 'DELISTED'],
+        enum: ['DRAFT', 'ACTIVE', 'SOLD', 'WITHDRAWN'],
         description: 'New status for the listing',
         example: 'ACTIVE',
     })
     @IsNotEmpty()
-    @IsEnum(['DRAFT', 'ACTIVE', 'SOLD', 'DELISTED'])
-    status: 'DRAFT' | 'ACTIVE' | 'SOLD' | 'DELISTED';
+    @IsEnum(['DRAFT', 'ACTIVE', 'SOLD', 'WITHDRAWN'])
+    status: 'DRAFT' | 'ACTIVE' | 'SOLD' | 'WITHDRAWN';
 }
