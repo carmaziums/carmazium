@@ -63,7 +63,7 @@ export class RedisIoAdapter extends IoAdapter {
             await this.subClient.quit();
             this.subClient = null;
         }
-        this.adapterConstructor = null;
+        this.adapterConstructor = undefined as any;
         this.logger.log('RedisIoAdapter connections closed');
     }
 }
