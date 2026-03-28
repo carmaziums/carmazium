@@ -28,6 +28,8 @@ import { WsMessageDto, WsTypingDto, WsRoomIdDto } from './dto';
             'http://localhost:3000',
             'https://carmazium.vercel.app',
             'https://carmazium.fly.dev',
+            'https://carmazium-hjoh9w.fly.dev',
+            ...(process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()).filter(Boolean) || []),
         ],
         credentials: true,
     },

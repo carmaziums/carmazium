@@ -58,8 +58,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     method: 'POST',
                     body: JSON.stringify({ token }),
                 });
-            } catch {
-                // Session bridge failed; profile fetch may still work via Bearer token
+            } catch (err: any) {
+                console.warn('Session bridge failed:', err?.message);
+                // Profile fetch via Bearer token may still work — continue
             }
             await fetchProfile();
         };
@@ -93,17 +94,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             // Always establish backend session on sign-in or token refresh, then fetch profile
-            // We do this in the background so we don't block the UI loading state
             if (session?.user && token) {
                 if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-                    bridgeThenProfile(token);
+                    await bridgeThenProfile(token);
                 } else {
-                    fetchProfile();
+                    await fetchProfile();
                 }
             } else {
                 setProfile(null);
+                setLoading(false);
             }
-            setLoading(false);
         });
 
         return () => {
