@@ -37,7 +37,85 @@ export async function getAccessToken(): Promise<string | null> {
 
 
 /**
+ * Check if an error is a network/abort-related error that can be retried
+ */
+function isRetryableError(error: any): boolean {
+    if (!error) return false;
+    const message = (error.message || error.statusText || String(error)).toLowerCase();
+    return (
+        message.includes('signal is aborted') ||
+        message.includes('aborterror') ||
+        message.includes('aborted') ||
+        message.includes('network') ||
+        message.includes('failed to fetch') ||
+        message.includes('load failed') ||
+        message.includes('networkerror') ||
+        message.includes('timeout') ||
+        message.includes('econnreset') ||
+        message.includes('econnrefused') ||
+        message.includes('socket hang up')
+    );
+}
+
+/**
+ * Check if an error is a permanent/config error that should NOT be retried
+ */
+function isPermanentError(error: any): { permanent: boolean; message: string } {
+    if (!error) return { permanent: false, message: '' };
+    const msg = error.message || String(error);
+    if (msg.includes('Bucket not found')) {
+        return { permanent: true, message: `Storage bucket not found. Please create it in Supabase Dashboard.` };
+    }
+    if (msg.includes('row-level security') || msg.includes('policy') || msg.includes('Unauthorized') || msg.includes('403')) {
+        return { permanent: true, message: 'Permission denied. Please check Supabase storage bucket RLS policies allow uploads.' };
+    }
+    if (msg.includes('Payload too large') || msg.includes('413')) {
+        return { permanent: true, message: 'File is too large. Please reduce the file size and try again.' };
+    }
+    if (msg.includes('duplicate') || msg.includes('already exists')) {
+        return { permanent: true, message: 'A file with this name already exists.' };
+    }
+    return { permanent: false, message: '' };
+}
+
+/**
+ * Upload a file directly to Supabase Storage REST API using a plain fetch
+ * (bypassing the SDK's internal AbortController which causes premature aborts)
+ */
+async function directUploadToSupabase(
+    file: File,
+    bucket: string,
+    fileName: string
+): Promise<string> {
+    const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/${bucket}/${fileName}`;
+
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+            'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            'Content-Type': file.type || 'application/octet-stream',
+            'x-upsert': 'false',
+            'Cache-Control': 'max-age=3600',
+        },
+        body: file,
+    });
+
+    if (!response.ok) {
+        const errorBody = await response.text().catch(() => '');
+        throw new Error(`Direct upload failed (${response.status}): ${errorBody || response.statusText}`);
+    }
+
+    // Build public URL
+    const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${bucket}/${fileName}`;
+    return publicUrl;
+}
+
+/**
  * Upload an image to Supabase Storage
+ * Uses the Supabase SDK first. If it fails with an abort/network error,
+ * falls back to a direct REST upload that avoids the SDK's internal AbortController.
+ *
  * @param file - The file to upload
  * @param bucket - The storage bucket name (default: 'listings')
  * @returns Public URL of the uploaded file
@@ -57,13 +135,14 @@ export async function uploadImage(
     const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
     const fileName = `${timestamp}-${randomId}.${fileExt}`;
 
-    // Try upload with retry logic
+    // ── Strategy 1: Try with Supabase SDK (2 attempts) ──────────────────────
+    let sdkAttempts = 0;
+    const maxSdkAttempts = 2;
     let lastError: Error | null = null;
-    const maxRetries = 2;
+    let usedDirectFallback = false;
 
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    for (sdkAttempts = 0; sdkAttempts < maxSdkAttempts; sdkAttempts++) {
         try {
-            // Upload to Supabase Storage
             const { data, error } = await supabase.storage
                 .from(bucket)
                 .upload(fileName, file, {
@@ -72,26 +151,25 @@ export async function uploadImage(
                 });
 
             if (error) {
-                // Handle specific error cases
-                if (error.message.includes('Bucket not found')) {
-                    throw new Error(`Storage bucket "${bucket}" not found. Please create it in Supabase Dashboard.`);
+                // Check for permanent errors first
+                const perm = isPermanentError(error);
+                if (perm.permanent) {
+                    throw new Error(perm.message);
                 }
-                if (error.message.includes('row-level security') || error.message.includes('policy')) {
-                    throw new Error('Permission denied. Please check Supabase storage bucket RLS policies.');
+
+                // If it's a retryable error, continue the loop
+                if (isRetryableError(error)) {
+                    console.warn(`[Upload] SDK attempt ${sdkAttempts + 1} failed (retryable): ${error.message}`);
+                    lastError = new Error(error.message);
+                    await new Promise(r => setTimeout(r, 1500 * (sdkAttempts + 1)));
+                    continue;
                 }
-                if (error.message.includes('signal is aborted')) {
-                    // Retry on signal abort
-                    if (attempt < maxRetries) {
-                        console.warn(`Upload attempt ${attempt + 1} failed, retrying...`);
-                        await new Promise(r => setTimeout(r, 1000 * (attempt + 1))); // Exponential backoff
-                        continue;
-                    }
-                    throw new Error('Upload was interrupted. Please check your internet connection and try again.');
-                }
+
+                // Unknown SDK error
                 throw new Error(`Failed to upload image: ${error.message}`);
             }
 
-            // Get public URL
+            // Success! Get public URL
             const { data: publicUrlData } = supabase.storage
                 .from(bucket)
                 .getPublicUrl(data.path);
@@ -99,13 +177,48 @@ export async function uploadImage(
             return publicUrlData.publicUrl;
         } catch (err) {
             lastError = err instanceof Error ? err : new Error(String(err));
-            if (attempt >= maxRetries) {
-                throw lastError;
+
+            // Rethrow permanent errors immediately
+            const perm = isPermanentError(lastError);
+            if (perm.permanent) throw new Error(perm.message);
+
+            // For retryable errors, continue to next SDK attempt or fall through to direct upload
+            if (isRetryableError(lastError) && sdkAttempts < maxSdkAttempts - 1) {
+                console.warn(`[Upload] SDK attempt ${sdkAttempts + 1} caught error, retrying: ${lastError.message}`);
+                await new Promise(r => setTimeout(r, 1500 * (sdkAttempts + 1)));
+                continue;
             }
         }
     }
 
-    throw lastError || new Error('Upload failed after retries');
+    // ── Strategy 2: Direct REST upload (bypasses SDK AbortController) ───────
+    console.warn('[Upload] SDK attempts exhausted. Falling back to direct REST upload...');
+    const maxDirectAttempts = 2;
+
+    for (let directAttempt = 0; directAttempt < maxDirectAttempts; directAttempt++) {
+        try {
+            const publicUrl = await directUploadToSupabase(file, bucket, fileName);
+            console.log('[Upload] Direct REST upload succeeded.');
+            return publicUrl;
+        } catch (err) {
+            lastError = err instanceof Error ? err : new Error(String(err));
+
+            const perm = isPermanentError(lastError);
+            if (perm.permanent) throw new Error(perm.message);
+
+            if (directAttempt < maxDirectAttempts - 1) {
+                console.warn(`[Upload] Direct attempt ${directAttempt + 1} failed, retrying: ${lastError.message}`);
+                await new Promise(r => setTimeout(r, 2000 * (directAttempt + 1)));
+            }
+        }
+    }
+
+    // All strategies exhausted
+    throw new Error(
+        'Unable to upload image after multiple attempts. ' +
+        'This may be caused by a slow or unstable connection. ' +
+        'Please try again in a moment, or try uploading a smaller image.'
+    );
 }
 
 

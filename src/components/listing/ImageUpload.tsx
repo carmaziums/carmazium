@@ -117,24 +117,42 @@ export function ImageUpload({
 
         setUploading(true)
         const newImages: CategorizedImage[] = []
+        let failedCount = 0
+        let lastFailError = ''
 
-        try {
-            for (let i = 0; i < fileArray.length; i++) {
-                const file = fileArray[i]
-                setUploadProgress(Math.round(((i + 1) / fileArray.length) * 100))
+        for (let i = 0; i < fileArray.length; i++) {
+            const file = fileArray[i]
+            setUploadProgress(Math.round(((i) / fileArray.length) * 100))
 
+            try {
                 const publicUrl = await uploadImage(file, 'listings')
                 newImages.push({ url: publicUrl, category: activeTab })
+            } catch (error) {
+                failedCount++
+                lastFailError = error instanceof Error ? error.message : 'Unknown error'
+                console.error(`Upload failed for ${file.name}:`, error)
+                // Continue uploading remaining files instead of stopping
             }
 
-            setImages(prev => [...prev, ...newImages])
-        } catch (error) {
-            console.error('Upload failed:', error)
-            alert(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-        } finally {
-            setUploading(false)
-            setUploadProgress(0)
+            setUploadProgress(Math.round(((i + 1) / fileArray.length) * 100))
         }
+
+        // Save any images that uploaded successfully
+        if (newImages.length > 0) {
+            setImages(prev => [...prev, ...newImages])
+        }
+
+        // Notify user of partial or full failure
+        if (failedCount > 0) {
+            if (newImages.length > 0) {
+                alert(`${newImages.length} image(s) uploaded successfully, but ${failedCount} failed.\n\nError: ${lastFailError}\n\nYou can try uploading the failed images again.`)
+            } else {
+                alert(`Upload failed: ${lastFailError}`)
+            }
+        }
+
+        setUploading(false)
+        setUploadProgress(0)
     }
 
     const handleDrag = (e: React.DragEvent) => {
