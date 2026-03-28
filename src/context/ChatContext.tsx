@@ -56,9 +56,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     const typingCallbacks = useRef<Set<(data: any) => void>>(new Set())
     const readCallbacks = useRef<Set<(data: any) => void>>(new Set())
 
-    // Initialize socket connection
+    // Initialize socket connection — only after profile is loaded (backend session confirmed)
     useEffect(() => {
-        if (!user) {
+        if (!user || !profile) {
             socketRef.current?.disconnect()
             socketRef.current = null
             setIsConnected(false)
@@ -121,7 +121,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             socket?.disconnect()
             socketRef.current = null
         }
-    }, [user])
+    }, [user, profile])
 
     // Fetch rooms and unread count
     const refreshRooms = useCallback(async () => {

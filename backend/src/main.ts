@@ -30,13 +30,17 @@ async function bootstrap() {
   // CORS — allow frontend origins with credentials (cookies)
   // Production (Vercel): set ALLOWED_ORIGINS=https://carmazium.vercel.app,https://yourdomain.com
   // ---------------------------------------------------------------------------
-  const allowedOrigins = process.env.ALLOWED_ORIGINS
+  // Always include core production origins, plus any extras from ALLOWED_ORIGINS
+  const CORE_ORIGINS = [
+    'http://localhost:3000',
+    'https://carmazium.vercel.app',
+    'https://carmazium.fly.dev',
+    'https://carmazium-hjoh9w.fly.dev',
+  ];
+  const extraOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
-    : [
-      'http://localhost:3000',
-      'https://carmazium.vercel.app',
-      'https://carmazium.fly.dev',
-    ];
+    : [];
+  const allowedOrigins = [...new Set([...CORE_ORIGINS, ...extraOrigins])];
   app.enableCors({
     origin: allowedOrigins,
     credentials: true,
