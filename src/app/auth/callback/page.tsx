@@ -44,6 +44,27 @@ function AuthCallbackContent() {
         return
       }
 
+      // ── Parse hash fragment first so we can detect recovery type early ──
+      if (typeof window !== "undefined") {
+        const hashParams = parseHashParams(window.location.hash)
+        const tokenType = hashParams.type  // "recovery", "signup", "magiclink", etc.
+
+        // PASSWORD RECOVERY: set Supabase session, skip backend sync, go to reset page
+        if (tokenType === "recovery" && hashParams.access_token) {
+          try {
+            await supabase.auth.setSession({
+              access_token: hashParams.access_token,
+              refresh_token: hashParams.refresh_token || "",
+            })
+          } catch {
+            // AuthContext may have already consumed the session — safe to continue
+          }
+          if (cancelled) return
+          router.replace("/auth/reset-password")
+          return
+        }
+      }
+
       // 1) PKCE: server redirects with ?code=...
       if (code) {
         const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
@@ -99,7 +120,14 @@ function AuthCallbackContent() {
         }
       }
 
-      // No code and no token in hash -> go to login
+      // Check if session somehow already exists (consumed by AuthContext or Supabase JS client)
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+          router.replace(redirectTo)
+          return
+      }
+
+      // No code, no token, and no active session -> go to login
       router.replace("/auth/login")
     }
 
