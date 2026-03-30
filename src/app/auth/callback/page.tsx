@@ -49,6 +49,12 @@ function AuthCallbackContent() {
         const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
         if (cancelled) return
         if (exchangeError) {
+          // Code might have been consumed via AuthContext
+          const { data: { session: existingSession } } = await supabase.auth.getSession()
+          if (existingSession) {
+            router.replace(redirectTo)
+            return
+          }
           setErrorMessage(exchangeError.message)
           setStatus("error")
           return
@@ -82,6 +88,11 @@ function AuthCallbackContent() {
             return
           }
         } catch (err: any) {
+          if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+            // Concurrent auth call (AuthContext) aborted this. Safe to proceed.
+            router.replace(redirectTo)
+            return
+          }
           setErrorMessage(err?.message || "Failed to complete sign in")
           setStatus("error")
           return
