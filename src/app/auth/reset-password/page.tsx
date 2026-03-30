@@ -43,6 +43,23 @@ export default function ResetPasswordPage() {
 
             if (updateError) throw updateError
 
+            // Successfully updated! This session is no longer a restricted recovery token.
+            // Bridge this fully-authenticated session to the backend explicitly so they can access the dashboard.
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.access_token) {
+                const apiBase = (process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev").replace(/\/$/, "");
+                try {
+                    await fetch(`${apiBase}/auth/supabase-session`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token: session.access_token }),
+                        credentials: 'include'
+                    });
+                } catch (bridgeErr) {
+                    console.warn("Could not bridge session after reset password", bridgeErr);
+                }
+            }
+
             setSuccess(true)
             
             // Redirect to dashboard after a short delay
