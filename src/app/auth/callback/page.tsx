@@ -67,13 +67,19 @@ function AuthCallbackContent() {
 
       // 1) PKCE: server redirects with ?code=...
       if (code) {
+        // Detect password recovery PKCE flow before doing anything expensive
+        // Supabase puts redirect_to=/auth/reset-password in the URL for recovery links
+        const isRecovery =
+          redirectTo.includes("reset-password") ||
+          searchParams?.get("type") === "recovery"
+
         const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
         if (cancelled) return
         if (exchangeError) {
-          // Code might have been consumed via AuthContext
+          // Code might have been consumed by AuthContext already — check if session exists
           const { data: { session: existingSession } } = await supabase.auth.getSession()
           if (existingSession) {
-            router.replace(redirectTo)
+            router.replace(isRecovery ? "/auth/reset-password" : redirectTo)
             return
           }
           setErrorMessage(exchangeError.message)
@@ -81,7 +87,13 @@ function AuthCallbackContent() {
           return
         }
         if (data.session && data.user) {
-          await syncBackendAndRedirect(data.user, data.session.access_token, redirectTo)
+          if (isRecovery) {
+            // Recovery tokens are restricted — skip backend sync, go straight to reset page
+            if (cancelled) return
+            router.replace("/auth/reset-password")
+          } else {
+            await syncBackendAndRedirect(data.user, data.session.access_token, redirectTo)
+          }
         }
         return
       }
