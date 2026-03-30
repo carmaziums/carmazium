@@ -41,22 +41,38 @@ export default function ResetPasswordPage() {
                 password: formData.password
             })
 
-            if (updateError) throw updateError
+            if (updateError) {
+                // Map Supabase error codes to friendly messages
+                const code = (updateError as any).code || ''
+                const msg = updateError.message || ''
+                if (code === 'same_password' || msg.toLowerCase().includes('same password') || msg.toLowerCase().includes('different from')) {
+                    throw new Error('Your new password must be different from your current password.')
+                }
+                if (code === 'weak_password' || msg.toLowerCase().includes('weak')) {
+                    throw new Error('Password is too weak. Please use at least 8 characters with a mix of letters and numbers.')
+                }
+                throw updateError
+            }
 
-            // Successfully updated! This session is no longer a restricted recovery token.
-            // Bridge this fully-authenticated session to the backend explicitly so they can access the dashboard.
+            // Successfully updated — bridge the new (unrestricted) session to the backend.
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.access_token) {
                 const apiBase = (process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev").replace(/\/$/, "");
+                // Use a 10-second timeout so this never hangs the UI
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
                 try {
                     await fetch(`${apiBase}/auth/supabase-session`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ token: session.access_token }),
-                        credentials: 'include'
+                        credentials: 'include',
+                        signal: controller.signal,
                     });
                 } catch (bridgeErr) {
                     console.warn("Could not bridge session after reset password", bridgeErr);
+                } finally {
+                    clearTimeout(timeoutId);
                 }
             }
 
@@ -68,8 +84,7 @@ export default function ResetPasswordPage() {
             }, 3000)
             
         } catch (err: any) {
-            setError(err.message || 'An error occurred while updating your password')
-            // If they are not logged in or token is invalid, they might get an error here.
+            setError(err.message || 'An error occurred while updating your password.')
         } finally {
             setLoading(false)
         }
