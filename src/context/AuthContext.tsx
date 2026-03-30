@@ -71,6 +71,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(session?.user ?? null);
             if (token) {
                 localStorage.setItem('authToken', token);
+
+                // If it's a password recovery flow, skip backend session bridge
+                // Recovery tokens are restricted and will fail backend validation until password is reset
+                if (typeof window !== 'undefined' && 
+                   (window.location.hash.includes('type=recovery') || 
+                    window.location.href.includes('reset-password'))) {
+                    setLoading(false);
+                    return;
+                }
+
                 bridgeThenProfile(token);
             } else {
                 setLoading(false);
@@ -89,6 +99,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             } else if (event === 'SIGNED_OUT') {
                 localStorage.removeItem('authToken');
                 setProfile(null);
+                setLoading(false);
+                return;
+            }
+
+            if (event === 'PASSWORD_RECOVERY') {
+                // Supabase API rejects GET /user with recovery tokens
+                // Skip the backend session bridge to avoid 401s, just let them reset their password
                 setLoading(false);
                 return;
             }
