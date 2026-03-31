@@ -89,10 +89,15 @@ async function directUploadToSupabase(
 ): Promise<string> {
     const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/${bucket}/${fileName}`;
 
+    // Prefer the authenticated user's access token to avoid 403 RLS issues.
+    // Fallback to the ANON key only if not authenticated.
+    const token = await getAccessToken();
+    const authHeader = token ? `Bearer ${token}` : `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`;
+
     const response = await fetch(url, {
         method: 'POST',
         headers: {
-            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+            'Authorization': authHeader,
             'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
             'Content-Type': file.type || 'application/octet-stream',
             'x-upsert': 'false',
