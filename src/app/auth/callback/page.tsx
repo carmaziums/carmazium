@@ -133,15 +133,31 @@ function AuthCallbackContent() {
       }
 
       // Check if session somehow already exists (consumed by AuthContext or Supabase JS client)
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-          router.replace(redirectTo)
-          return
+      try {
+        // Wrap getSession in a rough timeout
+        const sessionPromise = supabase.auth.getSession()
+        const timeoutPromise = new Promise<{data: {session: null}}>((resolve) => setTimeout(() => resolve({data: {session: null}}), 5000))
+        const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise])
+        
+        if (session) {
+            router.replace(redirectTo)
+            return
+        }
+      } catch (e) {
+        console.warn('getSession failed or timed out', e)
       }
 
       // No code, no token, and no active session -> go to login
       router.replace("/auth/login")
     }
+
+    // Safety fallback: if run() hangs for more than 15 seconds, force redirect
+    const fallbackTimer = setTimeout(() => {
+        if (!cancelled && typeof window !== 'undefined') {
+            console.warn('Auth callback took too long. Forcing redirect to login.');
+            window.location.href = '/auth/login';
+        }
+    }, 15000)
 
     async function syncBackendAndRedirect(
       user: { id: string; email?: string; user_metadata?: Record<string, unknown> },
@@ -196,6 +212,7 @@ function AuthCallbackContent() {
     run()
     return () => {
       cancelled = true
+      clearTimeout(fallbackTimer)
     }
   }, [router, searchParams])
 

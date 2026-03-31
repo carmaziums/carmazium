@@ -31,7 +31,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
 
 interface SidebarProps {
-    role: "buyer" | "seller" | "provider" | "finance" | "insurance" | "dealer"
+    role: "buyer" | "seller" | "provider" | "finance" | "insurance" | "dealer" | "admin"
     userName?: string
     userType?: string
     children?: React.ReactNode
@@ -59,7 +59,9 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
 
     const displayType = initialUserType || profile?.role || (role.charAt(0).toUpperCase() + role.slice(1)) + " Account"
 
-    const links = {
+    type LinkObj = { href: string; label: string; icon: React.ElementType; badge?: number }
+
+    const links: Record<string, LinkObj[]> = {
         buyer: [
             { href: "/dashboard/buyer", label: "Dashboard", icon: LayoutDashboard },
             { href: "/dashboard/buyer/bids", label: "My Bids", icon: Gavel },
@@ -106,12 +108,20 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             { href: "/dashboard/dealer/analytics", label: "Analytics", icon: BarChart3 },
             { href: "/dashboard/dealer/team", label: "Team", icon: Users },
             { href: "/dashboard/dealer/settings", label: "Settings", icon: Settings },
+        ],
+        admin: [
+            { href: "/dashboard/admin", label: "Overview", icon: LayoutDashboard },
+            { href: "/dashboard/admin/users", label: "Accounts", icon: Users },
+            { href: "/dashboard/admin/listings", label: "Listings", icon: Car },
+            { href: "/dashboard/admin/settings", label: "Settings", icon: Settings },
         ]
     }
 
-    const currentLinks = links[role] || []
+    const currentLinks = links[role as keyof typeof links] || []
     // Get first 5 items for mobile bottom nav
     const mobileLinks = currentLinks.slice(0, 5)
+
+    const isAdmin = profile?.role === 'ADMIN'
 
     return (
         <>
@@ -270,6 +280,18 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                             )
                         })}
                     </nav>
+
+                    {/* Admin Switcher */}
+                    {isAdmin && role !== 'admin' && (
+                        <div className="mt-4 pt-4 border-t border-white/10">
+                            <Link
+                                href="/dashboard/admin"
+                                className="flex items-center gap-3 px-4 py-2.5 text-blue-400 hover:text-white hover:bg-blue-500/10 rounded-lg transition-all text-sm font-semibold"
+                            >
+                                <Shield size={18} /> Admin Panel
+                            </Link>
+                        </div>
+                    )}
 
                     {/* Children (e.g., Create Listing button) */}
                     {children && (
