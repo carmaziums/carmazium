@@ -13,6 +13,17 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const BCRYPT_ROUNDS = 12;
 
+/** Wraps a promise with a timeout. Rejects with TimeoutError after ms. */
+function withTimeout<T>(promise: Promise<T>, ms: number, label = 'operation'): Promise<T> {
+    return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error(`Timeout: ${label} exceeded ${ms}ms`)), ms);
+        promise.then(
+            (val) => { clearTimeout(timer); resolve(val); },
+            (err) => { clearTimeout(timer); reject(err); }
+        );
+    });
+}
+
 @Injectable()
 export class AuthService {
     private readonly logger = new Logger(AuthService.name);
@@ -151,11 +162,16 @@ export class AuthService {
             return null;
         }
         try {
-            const { data, error } = await this.supabase.auth.getUser(token);
+            // Apply explicit timeout to prevent hanging on network issues (e.g. Fly.io → Supabase)
+            const { data, error } = await withTimeout(
+                this.supabase.auth.getUser(token),
+                10000,
+                'supabase.auth.getUser'
+            );
 
             if (error || !data.user) {
                 this.logger.warn(
-                    `Supabase getUser failed (check SUPABASE_URL/SUPABASE_ANON_KEY match frontend project): ${error?.message || 'No user'}`,
+                    `Supabase getUser failed: ${error?.message || 'No user returned'}`
                 );
                 return null;
             }
@@ -168,18 +184,27 @@ export class AuthService {
 
             const emailNorm = email.toLowerCase().trim();
 
-            // Look up the local user by email
-            let localUser = await this.prisma.user.findUnique({
-                where: { email: emailNorm },
-                include: {
-                    dealerProfile: true,
-                    contractorProfile: true,
-                    financePartnerProfile: true,
-                    insurancePartnerProfile: true,
-                },
-            });
+            // Look up the local user by Supabase ID first (most reliable), then email
+            let localUser = await withTimeout(
+                this.prisma.user.findFirst({
+                    where: {
+                        OR: [
+                            { id: data.user.id },
+                            { email: emailNorm },
+                        ]
+                    },
+                    include: {
+                        dealerProfile: true,
+                        contractorProfile: true,
+                        financePartnerProfile: true,
+                        insurancePartnerProfile: true,
+                    },
+                }),
+                8000,
+                'prisma.user.findFirst'
+            );
 
-            // Auto-sync: if valid Supabase user but no local user, create one (e.g. social signup or missed sync at signup)
+            // Auto-sync: if valid Supabase user but no local user, create one
             if (!localUser) {
                 try {
                     const meta = (data.user.user_metadata || {}) as Record<string, string>;
@@ -187,29 +212,34 @@ export class AuthService {
                         meta?.role && Object.values(UserRole).includes(meta.role as UserRole)
                             ? (meta.role as UserRole)
                             : UserRole.BUYER;
-                    localUser = await this.prisma.user.upsert({
-                        where: { email: emailNorm },
-                        update: {
-                            firstName: meta.first_name ?? meta.firstName ?? undefined,
-                            lastName: meta.last_name ?? meta.lastName ?? undefined,
-                            ...(role && { role }),
-                        },
-                        create: {
-                            id: data.user.id,
-                            email: emailNorm,
-                            firstName: meta.first_name ?? meta.firstName ?? null,
-                            lastName: meta.last_name ?? meta.lastName ?? null,
-                            role,
-                            passwordHash: 'SUPABASE_EXTERNAL_AUTH',
-                        },
-                        include: {
-                            dealerProfile: true,
-                            contractorProfile: true,
-                            financePartnerProfile: true,
-                            insurancePartnerProfile: true,
-                        },
-                    });
-                    this.logger.log(`Auto-synced user from Supabase: ${email}`);
+                    localUser = await withTimeout(
+                        this.prisma.user.upsert({
+                            where: { email: emailNorm },
+                            update: {
+                                id: data.user.id,
+                                firstName: meta.first_name ?? meta.firstName ?? undefined,
+                                lastName: meta.last_name ?? meta.lastName ?? undefined,
+                                ...(role && { role }),
+                            },
+                            create: {
+                                id: data.user.id,
+                                email: emailNorm,
+                                firstName: meta.first_name ?? meta.firstName ?? null,
+                                lastName: meta.last_name ?? meta.lastName ?? null,
+                                role,
+                                passwordHash: 'SUPABASE_EXTERNAL_AUTH',
+                            },
+                            include: {
+                                dealerProfile: true,
+                                contractorProfile: true,
+                                financePartnerProfile: true,
+                                insurancePartnerProfile: true,
+                            },
+                        }),
+                        8000,
+                        'prisma.user.upsert'
+                    );
+                    this.logger.log(`Auto-synced new user from Supabase: ${email} (${data.user.id})`);
                 } catch (syncErr: any) {
                     this.logger.error(
                         `Auto-sync failed for ${email}: ${syncErr?.message || syncErr}`,
