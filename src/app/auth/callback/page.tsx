@@ -68,32 +68,56 @@ function AuthCallbackContent() {
       // 1) PKCE: server redirects with ?code=...
       if (code) {
         // Detect password recovery PKCE flow before doing anything expensive
-        // Supabase puts redirect_to=/auth/reset-password in the URL for recovery links
         const isRecovery =
           redirectTo.includes("reset-password") ||
           searchParams?.get("type") === "recovery"
 
-        const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-        if (cancelled) return
-        if (exchangeError) {
-          // Code might have been consumed by AuthContext already — check if session exists
-          const { data: { session: existingSession } } = await supabase.auth.getSession()
-          if (existingSession) {
-            router.replace(isRecovery ? "/auth/reset-password" : redirectTo)
+        try {
+          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+          if (cancelled) return
+
+          if (exchangeError) {
+            // Code may have been consumed by AuthContext's onAuthStateChange — rescue the session
+            const { data: { session: existingSession } } = await supabase.auth.getSession()
+            if (cancelled) return
+            if (existingSession?.user) {
+              if (isRecovery) {
+                router.replace("/auth/reset-password")
+              } else {
+                await syncBackendAndRedirect(existingSession.user, existingSession.access_token, redirectTo)
+              }
+              return
+            }
+            setErrorMessage(exchangeError.message)
+            setStatus("error")
             return
           }
-          setErrorMessage(exchangeError.message)
-          setStatus("error")
-          return
-        }
-        if (data.session && data.user) {
-          if (isRecovery) {
-            // Recovery tokens are restricted — skip backend sync, go straight to reset page
-            if (cancelled) return
-            router.replace("/auth/reset-password")
-          } else {
-            await syncBackendAndRedirect(data.user, data.session.access_token, redirectTo)
+
+          if (data.session && data.user) {
+            if (isRecovery) {
+              if (cancelled) return
+              router.replace("/auth/reset-password")
+            } else {
+              await syncBackendAndRedirect(data.user, data.session.access_token, redirectTo)
+            }
           }
+        } catch (exchangeErr: any) {
+          // AbortError = AuthContext beat us to the code exchange. Rescue the session.
+          if (exchangeErr?.name === 'AbortError' || exchangeErr?.message?.includes('aborted')) {
+            if (cancelled) return
+            const { data: { session: rescuedSession } } = await supabase.auth.getSession()
+            if (rescuedSession?.user) {
+              if (isRecovery) {
+                router.replace("/auth/reset-password")
+              } else {
+                await syncBackendAndRedirect(rescuedSession.user, rescuedSession.access_token, redirectTo)
+              }
+              return
+            }
+          }
+          // Other errors
+          setErrorMessage(exchangeErr?.message || "Failed to complete sign in")
+          setStatus("error")
         }
         return
       }
@@ -122,8 +146,13 @@ function AuthCallbackContent() {
           }
         } catch (err: any) {
           if (err.name === 'AbortError' || err.message?.includes('aborted')) {
-            // Concurrent auth call (AuthContext) aborted this. Safe to proceed.
-            router.replace(redirectTo)
+            // AuthContext beat us — rescue whatever session it created
+            const { data: { session: rescuedSess } } = await supabase.auth.getSession()
+            if (rescuedSess?.user && !cancelled) {
+              await syncBackendAndRedirect(rescuedSess.user, rescuedSess.access_token, redirectTo)
+              return
+            }
+            if (!cancelled) router.replace(redirectTo)
             return
           }
           setErrorMessage(err?.message || "Failed to complete sign in")
@@ -134,17 +163,18 @@ function AuthCallbackContent() {
 
       // Check if session somehow already exists (consumed by AuthContext or Supabase JS client)
       try {
-        // Wrap getSession in a rough timeout
+        // Give Supabase enough time to settle — 15 seconds
         const sessionPromise = supabase.auth.getSession()
-        const timeoutPromise = new Promise<{data: {session: null}}>((resolve) => setTimeout(() => resolve({data: {session: null}}), 5000))
+        const timeoutPromise = new Promise<{data: {session: null}}>((resolve) => setTimeout(() => resolve({data: {session: null}}), 15000))
         const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise])
         
-        if (session) {
-            router.replace(redirectTo)
+        if (session?.user && !cancelled) {
+            // Still sync the backend even for fallback session recovery
+            await syncBackendAndRedirect(session.user, session.access_token, redirectTo)
             return
         }
       } catch (e) {
-        console.warn('getSession failed or timed out', e)
+        console.warn('getSession fallback failed', e)
       }
 
       // No code, no token, and no active session -> go to login
