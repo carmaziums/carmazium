@@ -194,49 +194,46 @@ function AuthCallbackContent() {
       accessToken: string,
       redirectTo: string
     ) {
+      if (cancelled) return
       const apiBase = API_URL.replace(/\/$/, "")
       const meta = (user.user_metadata || {}) as Record<string, string>
 
-      try {
-        const syncRes = await fetchWithRetry(
-          `${apiBase}/users/sync`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              id: user.id,
-              email: user.email,
-              firstName: meta.first_name ?? meta.firstName,
-              lastName: meta.last_name ?? meta.lastName,
-              role: meta.role,
-            }),
-          },
-          { timeoutMs: 60000, retries: 2 }
-        )
-        if (!syncRes.ok && syncRes.status !== 403) {
-          console.warn("Backend sync returned", syncRes.status)
-        }
-      } catch {
-        console.warn("Backend sync request failed")
-      }
-
-      try {
-        await fetchWithRetry(
-          `${apiBase}/auth/supabase-session`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token: accessToken }),
-            credentials: "include",
-          },
-          { timeoutMs: 60000, retries: 2 }
-        )
-      } catch {
-        console.warn("Backend session bridge failed")
-      }
-
-      if (cancelled) return
+      // Redirect immediately — don't block on backend sync
       router.replace(redirectTo)
+
+      // Fire-and-forget: sync user to local DB in the background
+      // The backend's verifySupabaseToken will auto-create the user on the next API call if this fails
+      const syncController = new AbortController()
+      const syncTimeout = setTimeout(() => syncController.abort(), 15000)
+      fetch(`${apiBase}/users/sync`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: user.id,
+          email: user.email,
+          firstName: meta.first_name ?? meta.firstName,
+          lastName: meta.last_name ?? meta.lastName,
+          role: meta.role,
+        }),
+        signal: syncController.signal,
+      }).then(() => clearTimeout(syncTimeout)).catch((e) => {
+        clearTimeout(syncTimeout)
+        console.warn("Background user sync failed:", e?.message)
+      })
+
+      // Fire-and-forget: bridge the Supabase session to the backend
+      const bridgeController = new AbortController()
+      const bridgeTimeout = setTimeout(() => bridgeController.abort(), 15000)
+      fetch(`${apiBase}/auth/supabase-session`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: accessToken }),
+        credentials: "include",
+        signal: bridgeController.signal,
+      }).then(() => clearTimeout(bridgeTimeout)).catch((e) => {
+        clearTimeout(bridgeTimeout)
+        console.warn("Background session bridge failed:", e?.message)
+      })
     }
 
     run()
