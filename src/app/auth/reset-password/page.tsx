@@ -58,22 +58,19 @@ export default function ResetPasswordPage() {
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.access_token) {
                 const apiBase = (process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev").replace(/\/$/, "");
-                // Use a 10-second timeout so this never hangs the UI
+                // Fire and forget, so we don't block the UI if backend is offline/slow
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000);
-                try {
-                    await fetch(`${apiBase}/auth/supabase-session`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ token: session.access_token }),
-                        credentials: 'include',
-                        signal: controller.signal,
-                    });
-                } catch (bridgeErr) {
+                setTimeout(() => controller.abort(), 10000);
+                
+                fetch(`${apiBase}/auth/supabase-session`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: session.access_token }),
+                    credentials: 'include',
+                    signal: controller.signal,
+                }).catch(bridgeErr => {
                     console.warn("Could not bridge session after reset password", bridgeErr);
-                } finally {
-                    clearTimeout(timeoutId);
-                }
+                });
             }
 
             setSuccess(true)
