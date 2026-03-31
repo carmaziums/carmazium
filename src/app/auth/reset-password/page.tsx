@@ -19,7 +19,6 @@ export default function ResetPasswordPage() {
     const [success, setSuccess] = React.useState(false)
     const [showPassword, setShowPassword] = React.useState(false)
 
-    // Note: User should already be authenticated via the token in the callback redirect
     const handleUpdate = async (e: React.FormEvent) => {
         e.preventDefault()
         
@@ -44,21 +43,25 @@ export default function ResetPasswordPage() {
             if (updateError) {
                 // Map Supabase error codes to friendly messages
                 const code = (updateError as any).code || ''
-                const msg = updateError.message || ''
-                if (code === 'same_password' || msg.toLowerCase().includes('same password') || msg.toLowerCase().includes('different from')) {
+                const msg = (updateError.message || '').toLowerCase()
+                
+                if (code === 'same_password' || msg.includes('same password') || msg.includes('different from')) {
                     throw new Error('Your new password must be different from your current password.')
                 }
-                if (code === 'weak_password' || msg.toLowerCase().includes('weak')) {
+                if (code === 'weak_password' || msg.includes('weak')) {
                     throw new Error('Password is too weak. Please use at least 8 characters with a mix of letters and numbers.')
+                }
+                // Handle 422 or session expiration explicitly
+                if (msg.includes('session') || msg.includes('token') || (updateError as any).status === 422) {
+                    throw new Error('Your password reset link has expired or is invalid. Please request a new one.')
                 }
                 throw updateError
             }
 
-            // Successfully updated — bridge the new (unrestricted) session to the backend.
+            // Successfully updated — bridge the new session to the backend.
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.access_token) {
                 const apiBase = (process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev").replace(/\/$/, "");
-                // Fire and forget, so we don't block the UI if backend is offline/slow
                 const controller = new AbortController();
                 setTimeout(() => controller.abort(), 10000);
                 
@@ -74,14 +77,13 @@ export default function ResetPasswordPage() {
             }
 
             setSuccess(true)
-            
-            // Redirect to dashboard after a short delay
             setTimeout(() => {
                 router.push("/dashboard")
             }, 3000)
             
         } catch (err: any) {
-            setError(err.message || 'An error occurred while updating your password.')
+            console.error("Password update error:", err);
+            setError(err?.message || 'An error occurred while updating your password. Please try again.')
         } finally {
             setLoading(false)
         }
