@@ -15,24 +15,32 @@ export const supabase = createClient(supabaseUrl || 'https://missing-url.supabas
  * @returns The access token or null if not authenticated
  */
 export async function getAccessToken(): Promise<string | null> {
+    if (typeof window === 'undefined') return null;
+
+    // 1. Check local 'authToken'
+    const localToken = localStorage.getItem('authToken');
+    if (localToken) return localToken;
+
+    // 2. Try to manually parse the Supabase session token to circumvent SDK deadlocks
     try {
-        // Always get fresh token from Supabase session first
-        const { data: { session } } = await supabase.auth.getSession();
-        const sessionToken = session?.access_token || null;
-
-        if (sessionToken && typeof window !== 'undefined') {
-            // Keep localStorage in sync with fresh token
-            localStorage.setItem('authToken', sessionToken);
+        // Project ID from URL
+        const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+        const match = url.match(/https:\/\/([^.]+)\.supabase\.co/);
+        if (match && match[1]) {
+            const projectId = match[1];
+            const sbToken = localStorage.getItem(`sb-${projectId}-auth-token`);
+            if (sbToken) {
+                const parsed = JSON.parse(sbToken);
+                if (parsed?.access_token) {
+                    return parsed.access_token;
+                }
+            }
         }
-
-        if (sessionToken) return sessionToken;
-    } catch (err) {
-        console.warn('Failed to get Supabase session:', err);
+    } catch (e) {
+        console.warn('Silent read of supabase token failed:', e);
     }
 
-    // Fallback to localStorage only if Supabase session fetch fails
-    const localToken = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-    return localToken;
+    return null;
 }
 
 
@@ -141,70 +149,13 @@ export async function uploadImage(
     const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
     const fileName = `${timestamp}-${randomId}.${fileExt}`;
 
-    // ── Strategy 1: Try with Supabase SDK (2 attempts) ──────────────────────
-    let sdkAttempts = 0;
-    const maxSdkAttempts = 2;
     let lastError: Error | null = null;
-    let usedDirectFallback = false;
-
-    for (sdkAttempts = 0; sdkAttempts < maxSdkAttempts; sdkAttempts++) {
-        try {
-            const { data, error } = await supabase.storage
-                .from(bucket)
-                .upload(fileName, file, {
-                    cacheControl: '3600',
-                    upsert: false,
-                });
-
-            if (error) {
-                // Check for permanent errors first
-                const perm = isPermanentError(error);
-                if (perm.permanent) {
-                    throw new Error(perm.message);
-                }
-
-                // If it's a retryable error, continue the loop
-                if (isRetryableError(error)) {
-                    console.warn(`[Upload] SDK attempt ${sdkAttempts + 1} failed (retryable): ${error.message}`);
-                    lastError = new Error(error.message);
-                    await new Promise(r => setTimeout(r, 1500 * (sdkAttempts + 1)));
-                    continue;
-                }
-
-                // Unknown SDK error
-                throw new Error(`Failed to upload image: ${error.message}`);
-            }
-
-            // Success! Get public URL
-            const { data: publicUrlData } = supabase.storage
-                .from(bucket)
-                .getPublicUrl(data.path);
-
-            return publicUrlData.publicUrl;
-        } catch (err) {
-            lastError = err instanceof Error ? err : new Error(String(err));
-
-            // Rethrow permanent errors immediately
-            const perm = isPermanentError(lastError);
-            if (perm.permanent) throw new Error(perm.message);
-
-            // For retryable errors, continue to next SDK attempt or fall through to direct upload
-            if (isRetryableError(lastError) && sdkAttempts < maxSdkAttempts - 1) {
-                console.warn(`[Upload] SDK attempt ${sdkAttempts + 1} caught error, retrying: ${lastError.message}`);
-                await new Promise(r => setTimeout(r, 1500 * (sdkAttempts + 1)));
-                continue;
-            }
-        }
-    }
-
-    // ── Strategy 2: Direct REST upload (bypasses SDK AbortController) ───────
-    console.warn('[Upload] SDK attempts exhausted. Falling back to direct REST upload...');
-    const maxDirectAttempts = 2;
+    const maxDirectAttempts = 3;
 
     for (let directAttempt = 0; directAttempt < maxDirectAttempts; directAttempt++) {
         try {
             const publicUrl = await directUploadToSupabase(file, bucket, fileName);
-            console.log('[Upload] Direct REST upload succeeded.');
+            console.log(`[Upload] REST upload succeeded on attempt ${directAttempt + 1}.`);
             return publicUrl;
         } catch (err) {
             lastError = err instanceof Error ? err : new Error(String(err));
@@ -213,7 +164,7 @@ export async function uploadImage(
             if (perm.permanent) throw new Error(perm.message);
 
             if (directAttempt < maxDirectAttempts - 1) {
-                console.warn(`[Upload] Direct attempt ${directAttempt + 1} failed, retrying: ${lastError.message}`);
+                console.warn(`[Upload] Attempt ${directAttempt + 1} failed, retrying: ${lastError.message}`);
                 await new Promise(r => setTimeout(r, 2000 * (directAttempt + 1)));
             }
         }
@@ -223,7 +174,7 @@ export async function uploadImage(
     throw new Error(
         'Unable to upload image after multiple attempts. ' +
         'This may be caused by a slow or unstable connection. ' +
-        'Please try again in a moment, or try uploading a smaller image.'
+        'Please try again in a moment, or try uploading a smaller image. (' + lastError?.message + ')'
     );
 }
 
