@@ -1,4 +1,4 @@
-import { backendRequest } from './apiClient';
+import { apiClient } from './apiClient';
 
 export interface AdminStats {
   totalUsers: number;
@@ -10,22 +10,22 @@ export interface AdminStats {
 }
 
 export async function getAdminStats(): Promise<AdminStats> {
-  const result = await backendRequest<AdminStats>('/admin/stats');
-  return result.data as AdminStats;
+  const result = await apiClient<{ data: AdminStats }>('/admin/stats');
+  return result.data;
 }
 
 export async function getAdminUsers(page = 1, limit = 20) {
-  const result = await backendRequest<any>(`/admin/users?page=${page}&limit=${limit}`);
+  const result = await apiClient<any>(`/admin/users?page=${page}&limit=${limit}`);
   return result;
 }
 
 export async function getAdminListings(page = 1, limit = 20) {
-  const result = await backendRequest<any>(`/admin/listings?page=${page}&limit=${limit}`);
+  const result = await apiClient<any>(`/admin/listings?page=${page}&limit=${limit}`);
   return result;
 }
 
 export async function updateUserRole(userId: string, role: string) {
-  const result = await backendRequest<any>(`/admin/users/${userId}/role`, {
+  const result = await apiClient<any>(`/admin/users/${userId}/role`, {
     method: 'PATCH',
     body: JSON.stringify({ role }),
   });
@@ -33,7 +33,7 @@ export async function updateUserRole(userId: string, role: string) {
 }
 
 export async function deleteListingForce(listingId: string) {
-  const result = await backendRequest<any>(`/admin/listings/${listingId}`, {
+  const result = await apiClient<any>(`/admin/listings/${listingId}`, {
     method: 'DELETE',
   });
   return result;
