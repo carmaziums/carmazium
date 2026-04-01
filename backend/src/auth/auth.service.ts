@@ -204,6 +204,26 @@ export class AuthService {
                 'prisma.user.findFirst'
             );
 
+            const isEmailConfirmed = !!data.user.email_confirmed_at;
+
+            if (localUser && isEmailConfirmed && !localUser.isEmailVerified) {
+                try {
+                    localUser = await this.prisma.user.update({
+                        where: { id: localUser.id },
+                        data: { isEmailVerified: true },
+                        include: {
+                            dealerProfile: true,
+                            contractorProfile: true,
+                            financePartnerProfile: true,
+                            insurancePartnerProfile: true,
+                        },
+                    });
+                    this.logger.log(`Marked email as verified for ${emailNorm}`);
+                } catch (e: any) {
+                    this.logger.error(`Failed to update email verification for ${emailNorm}: ${e?.message}`);
+                }
+            }
+
             // Auto-sync: if valid Supabase user but no local user, create one
             if (!localUser) {
                 try {
@@ -228,6 +248,7 @@ export class AuthService {
                                 lastName: meta.last_name ?? meta.lastName ?? null,
                                 role,
                                 passwordHash: 'SUPABASE_EXTERNAL_AUTH',
+                                isEmailVerified: isEmailConfirmed,
                             },
                             include: {
                                 dealerProfile: true,
