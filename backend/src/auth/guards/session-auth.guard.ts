@@ -41,8 +41,10 @@ export class SessionAuthGuard implements CanActivate {
 
             if (user) {
                 // Auto-create session for subsequent requests
-                request.session.userId = user.id;
-                request.session.userRole = user.role;
+                if (request.session) {
+                    request.session.userId = user.id;
+                    request.session.userRole = user.role;
+                }
                 // Populate req.user so @CurrentUser() works immediately
                 (request as any).user = user;
                 return true;

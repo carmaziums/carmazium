@@ -38,8 +38,10 @@ export class AuthController {
         const user = await this.authService.register(registerDto);
 
         // Auto-login: set session immediately after registration
-        req.session.userId = user.id;
-        req.session.userRole = user.role;
+        if (req.session) {
+            req.session.userId = user.id;
+            req.session.userRole = user.role;
+        }
 
         return {
             success: true,
@@ -64,8 +66,10 @@ export class AuthController {
         const user = await this.authService.login(loginDto);
 
         // Set session data
-        req.session.userId = user.id;
-        req.session.userRole = user.role;
+        if (req.session) {
+            req.session.userId = user.id;
+            req.session.userRole = user.role;
+        }
 
         return {
             success: true,
@@ -84,6 +88,11 @@ export class AuthController {
     @ApiResponse({ status: 200, description: 'Logged out successfully' })
     async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
         return new Promise<{ success: boolean; message: string }>((resolve, reject) => {
+            if (!req.session) {
+                res.clearCookie('sid');
+                resolve({ success: true, message: 'Logged out successfully' });
+                return;
+            }
             req.session.destroy((err) => {
                 if (err) {
                     reject(err);
@@ -136,8 +145,10 @@ export class AuthController {
         }
 
         // Create the backend session
-        req.session.userId = user.id;
-        req.session.userRole = user.role;
+        if (req.session) {
+            req.session.userId = user.id;
+            req.session.userRole = user.role;
+        }
 
         return {
             success: true,
