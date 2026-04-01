@@ -84,11 +84,11 @@ export function ImageUpload({
     }, [images])
 
     const validateFile = (file: File): string | null => {
-        if (!ACCEPTED_TYPES.includes(file.type)) {
-            return `${file.name}: Only JPEG, PNG, and WebP images are allowed`
+        if (!file.type.startsWith('image/') && !ACCEPTED_TYPES.includes(file.type)) {
+            return `${file.name}: Only image files are allowed`
         }
         if (file.size > MAX_FILE_SIZE) {
-            return `${file.name}: File size must be less than 5MB`
+            return `${file.name}: File size must be less than 20MB`
         }
         return null
     }
@@ -100,7 +100,9 @@ export function ImageUpload({
         const remainingSlots = maxImages - images.length
 
         if (fileArray.length > remainingSlots) {
-            alert(`You can only upload ${remainingSlots} more image(s). Maximum is ${maxImages}.`)
+            const err = `You can only upload ${remainingSlots} more image(s). Maximum is ${maxImages}.`
+            console.error('[Upload Validation Error]', err)
+            alert(err)
             return
         }
 
@@ -111,7 +113,9 @@ export function ImageUpload({
         })
 
         if (validationErrors.length > 0) {
-            alert(validationErrors.join('\n'))
+            const errString = validationErrors.join('\n')
+            console.error('[Upload Validation Error]', errString)
+            alert(errString)
             return
         }
 
