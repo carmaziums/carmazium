@@ -104,6 +104,7 @@ async function directUploadToSupabase(
             'Cache-Control': 'max-age=3600',
         },
         body: file,
+        signal: AbortSignal.timeout(30000), // Prevent silent network hangs
     });
 
     if (!response.ok) {
