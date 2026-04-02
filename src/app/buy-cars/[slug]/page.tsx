@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button"
 import { AccordionItem } from "@/components/ui/Accordion"
 import dynamic from "next/dynamic"
 const FinanceCalculator = dynamic(() => import("@/components/features/FinanceCalculator").then(mod => mod.FinanceCalculator), { ssr: false })
-import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale, Loader2, MessageCircle, Tag, X, Clock, ThumbsUp, XCircle, AlertTriangle } from "lucide-react"
+import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale, Loader2, MessageCircle, Tag, X, Clock, ThumbsUp, XCircle, AlertTriangle, BadgeCheck, Star, Sparkles } from "lucide-react"
 import { useCompare } from "@/context/CompareContext"
 import { getListingBySlug, makeOffer, getMyOfferForListing, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, type Listing, type LatestOffer, formatPrice } from "@/lib/listingApi"
 import { createChatRoom } from "@/lib/chatApi"
@@ -15,6 +15,8 @@ import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
 import { VehicleJsonLd } from "@/components/seo/JsonLd"
 import { Input } from "@/components/ui/Input"
+import { SellerBadge } from "@/components/ui/SellerBadge"
+import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 
 // ─── Offer Status Chip ───────────────────────────────────────────────────────
 // viewerRole: 'buyer' = the person who made the offer
@@ -464,6 +466,39 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                         <div>
                             <h1 className="text-3xl md:text-5xl font-bold font-heading text-white mb-2">{vehicle.title}</h1>
                             <p className="text-gray-300 text-lg">{vehicle.subtitle}</p>
+                            {/* Badges Row */}
+                            <div className="flex flex-wrap items-center gap-2 mt-3">
+                                {/* Featured Badge */}
+                                {listing.isFeatured && (
+                                    <FeaturedBadge compact />
+                                )}
+                                {/* Badge Tier */}
+                                {listing.badgeTier && listing.badgeTier !== 'FREE' && (
+                                    <>
+                                        {listing.badgeTier === 'PREMIUM' && (
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded-full">
+                                                <Star size={10} className="fill-amber-400" /> Premium Verified
+                                            </span>
+                                        )}
+                                        {listing.badgeTier === 'STANDARD' && (
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide bg-blue-500/15 text-blue-400 border border-blue-500/30 px-2.5 py-1 rounded-full">
+                                                <ShieldCheck size={10} /> Standard Verified
+                                            </span>
+                                        )}
+                                    </>
+                                )}
+                                {/* Trust badges for STANDARD/PREMIUM */}
+                                {(listing.badgeTier === 'STANDARD' || listing.badgeTier === 'PREMIUM') && (
+                                    <>
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-full">
+                                            <ShieldCheck size={10} /> Verified
+                                        </span>
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/30 px-2.5 py-1 rounded-full">
+                                            <BadgeCheck size={10} /> VIN Report
+                                        </span>
+                                    </>
+                                )}
+                            </div>
                         </div>
                         <div className="flex gap-4">
                             <Button
@@ -595,6 +630,13 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                                     )}
                                     <p className="text-xs text-gray-400 mt-3">Price includes VAT. Financing available from 5.9% APR.</p>
                                 </div>
+
+                                {/* Seller Badge */}
+                                {listing.sellerId && (
+                                    <div className="mb-4 flex items-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10">
+                                        <SellerBadge score={0} sellerUserId={listing.sellerId} size="md" showLabel />
+                                    </div>
+                                )}
 
                                 {/* Offer Status */}
                                 {/* Buyer sees their own offer chip; seller/public see the listing's latest offer chip */}
