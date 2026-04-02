@@ -234,25 +234,30 @@ function SearchPageContent() {
     })
     const [appliedFilters, setAppliedFilters] = React.useState<FilterState>(INITIAL_FILTERS)
 
-    // On mount, hydrate from URL
-    const didHydrate = React.useRef(false)
-    const didHydrateWithParams = React.useRef(false)
+    // Sync filters when searchParams change externally (e.g., from AI widget)
+    const currentQs = searchParams.toString()
+    const lastQs = React.useRef(currentQs)
+    const didInitialHydrate = React.useRef(false)
+
     React.useEffect(() => {
-        if (didHydrate.current) return
-        didHydrate.current = true
-        const fromUrl = hydrateFromUrl()
-        const hasAnyParam = Object.entries(fromUrl).some(([k, v]) => {
-            if (k === 'sortBy') return v !== 'newest'
-            if (Array.isArray(v)) return v.length > 0
-            return v !== ''
-        })
-        if (hasAnyParam) {
-            didHydrateWithParams.current = true
+        if (!didInitialHydrate.current) {
+            didInitialHydrate.current = true
+            const fromUrl = hydrateFromUrl()
+            setFilters(fromUrl)
+            setAppliedFilters(fromUrl)
+            fetchListings(fromUrl)
+            return
+        }
+        
+        // Handle external navigations (e.g. from chatbot)
+        if (lastQs.current !== currentQs) {
+            lastQs.current = currentQs
+            const fromUrl = hydrateFromUrl()
             setFilters(fromUrl)
             setAppliedFilters(fromUrl)
             fetchListings(fromUrl)
         }
-    }, [hydrateFromUrl])
+    }, [currentQs, hydrateFromUrl, fetchListings])
 
     const set = <K extends keyof FilterState>(key: K, val: FilterState[K]) =>
         setFilters(prev => ({ ...prev, [key]: val }))
@@ -345,7 +350,7 @@ function SearchPageContent() {
         }
     }, [buildApiFilters])
 
-    React.useEffect(() => { if (!didHydrateWithParams.current) fetchListings(INITIAL_FILTERS) }, [fetchListings])
+    // (Initial mount fetch relies on didInitialHydrate inside the main effect above)
 
     // ─── Handlers ─────────────────────────────────────────────────────────────
 
@@ -359,6 +364,7 @@ function SearchPageContent() {
             else if (v !== '' && v !== undefined) params.set(k, String(v))
         }
         const qs = params.toString()
+        lastQs.current = qs // Stop useEffect double fetch
         router.replace(qs ? `/search?${qs}` : '/search', { scroll: false })
     }, [router])
 
@@ -372,6 +378,7 @@ function SearchPageContent() {
         setFilters(INITIAL_FILTERS)
         setAppliedFilters(INITIAL_FILTERS)
         fetchListings(INITIAL_FILTERS)
+        lastQs.current = '' // Stop useEffect double fetch
         router.replace('/search', { scroll: false })
     }
     const handleSearch = () => {
