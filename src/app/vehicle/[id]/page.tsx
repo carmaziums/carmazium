@@ -11,7 +11,7 @@ const FinanceCalculator = dynamic(() => import("@/components/features/FinanceCal
 import {
     ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon,
     MapPin, Share2, Heart, Scale, Loader2, AlertTriangle, X, Tag,
-    Clock, XCircle, ThumbsUp,
+    Clock, XCircle, ThumbsUp, Lock, FileSearch,
 } from "lucide-react"
 import { useCompare } from "@/context/CompareContext"
 import { useAuth } from "@/context/AuthContext"
@@ -603,6 +603,79 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                 </div>
                             </div>
                         )}
+
+                        {/* HPI Check Report */}
+                        <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-8 relative overflow-hidden">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xl font-bold text-white border-l-4 border-primary pl-4 flex items-center gap-2">
+                                    <FileSearch className="text-primary" size={20} />
+                                    Comprehensive Vehicle Check
+                                </h3>
+                                <div className="text-xs font-semibold px-2.5 py-1 bg-white/10 text-gray-300 rounded-md border border-white/10">
+                                    Powered by CarMazium
+                                </div>
+                            </div>
+                            
+                            {/* Badges Summary */}
+                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
+                                <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-lg">
+                                    <CheckCircle size={16} className="text-emerald-400 shrink-0" />
+                                    <span className="text-sm text-emerald-300 font-medium">Finance Clear</span>
+                                </div>
+                                <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-lg">
+                                    <CheckCircle size={16} className="text-emerald-400 shrink-0" />
+                                    <span className="text-sm text-emerald-300 font-medium">Not Stolen</span>
+                                </div>
+                                <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-lg">
+                                    <CheckCircle size={16} className="text-emerald-400 shrink-0" />
+                                    <span className="text-sm text-emerald-300 font-medium">Not Scrapped</span>
+                                </div>
+                                <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-lg">
+                                    <CheckCircle size={16} className="text-emerald-400 shrink-0" />
+                                    <span className="text-sm text-emerald-300 font-medium">Mileage Checked</span>
+                                </div>
+                                <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-lg">
+                                    <CheckCircle size={16} className="text-emerald-400 shrink-0" />
+                                    <span className="text-sm text-emerald-300 font-medium">Not Written Off</span>
+                                </div>
+                                {listing.markedForExport ? (
+                                    <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 px-3 py-2 rounded-lg">
+                                        <AlertTriangle size={16} className="text-amber-400 shrink-0" />
+                                        <span className="text-sm text-amber-300 font-medium">Exported</span>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-lg">
+                                        <CheckCircle size={16} className="text-emerald-400 shrink-0" />
+                                        <span className="text-sm text-emerald-300 font-medium">UK Supplied</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Blurred Report Section */}
+                            <div className="relative rounded-xl border border-white/10 overflow-hidden bg-white/5">
+                                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/60 backdrop-blur-[3px] p-6 text-center">
+                                    <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center text-primary mb-4 shadow-neon">
+                                        <Lock size={28} />
+                                    </div>
+                                    <h4 className="text-xl font-bold text-white mb-2">Detailed Report Locked</h4>
+                                    <p className="text-sm text-gray-300 max-w-sm mb-6">
+                                        Unlock the full 50+ point vehicle history check including MOT history, keeper changes, and hidden issues.
+                                    </p>
+                                    <Button className="shadow-neon px-8 hover:scale-105 transition-transform">
+                                        Unlock Full Report for £9.99
+                                    </Button>
+                                </div>
+                                <div className="h-56 relative opacity-40 pointer-events-none grayscale-[0.2]">
+                                    <Image
+                                        src="/assets/images/hpi_report_mockup.png"
+                                        alt="HPI Report Mockup"
+                                        fill
+                                        className="object-cover object-top"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-slate-900/20 to-slate-900/50" />
+                                </div>
+                            </div>
+                        </div>
 
                         {/* Finance Calculator */}
                         <FinanceCalculator vehiclePrice={Number(listing.price)} />
