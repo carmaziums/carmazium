@@ -115,15 +115,15 @@ const INITIAL_FORM: FormData = {
 // Key factors: age-tiered depreciation, mileage vs UK average (8k mi/yr), fuel type
 
 const BASE_VALUES: Record<string, number> = {
-    "PORSCHE": 75000, "LAND ROVER": 58000, "AUDI": 46000,
-    "BMW": 46000, "MERCEDES": 46000, "MERCEDES-BENZ": 46000,
-    "LEXUS": 42000, "JAGUAR": 40000, "VOLVO": 36000,
-    "VOLKSWAGEN": 32000, "TOYOTA": 30000, "HONDA": 28000,
-    "NISSAN": 26000, "FORD": 26000, "VAUXHALL": 24000,
-    "HYUNDAI": 24000, "KIA": 24000, "SKODA": 26000,
-    "SEAT": 23000, "MAZDA": 27000, "MINI": 28000,
-    "FIAT": 20000, "RENAULT": 21000, "PEUGEOT": 21000,
-    "CITROËN": 20000, "CITROEN": 20000,
+    "PORSCHE": 68000, "LAND ROVER": 52000, "AUDI": 41000,
+    "BMW": 41000, "MERCEDES": 41000, "MERCEDES-BENZ": 41000,
+    "LEXUS": 38000, "JAGUAR": 36000, "VOLVO": 32000,
+    "VOLKSWAGEN": 28000, "TOYOTA": 27000, "HONDA": 25000,
+    "NISSAN": 23000, "FORD": 23000, "VAUXHALL": 21000,
+    "HYUNDAI": 21000, "KIA": 21000, "SKODA": 23000,
+    "SEAT": 20000, "MAZDA": 24000, "MINI": 25000,
+    "FIAT": 17000, "RENAULT": 18000, "PEUGEOT": 18000,
+    "CITROËN": 17000, "CITROEN": 17000,
 }
 
 const FUEL_MULTIPLIERS: Record<string, number> = {
@@ -146,62 +146,62 @@ function estimateValue(
     condition: string, serviceHistory: string, transmission: string,
     owners: string, location: string
 ) {
-    const newBase = BASE_VALUES[make.toUpperCase()] ?? 28000
+    const newBase = BASE_VALUES[make.toUpperCase()] ?? 25000
     const currentYear = new Date().getFullYear()
     const age = Math.max(0, currentYear - Number(year))
     const actualMileage = Number(mileage)
 
-    // 1️⃣ Base Market Price (Compounding deprecation: ~10% loss per year)
-    const depreciationFactor = Math.pow(0.90, age)
+    // 1️⃣ Base Market Price (Compounding deprecation: ~13% loss per year)
+    const depreciationFactor = Math.pow(0.87, age)
     let basePrice = newBase * depreciationFactor
-    if (basePrice < 1000) basePrice = 1000 // Floor
+    if (basePrice < 800) basePrice = 800 // Floor
 
-    // 3️⃣ Mileage Adjustment
+    // 3️⃣ Mileage Adjustment (steeper penalty for high mileage)
     const expectedMileage = Math.max(10000, age * 10000)
     const mileageDiff = actualMileage - expectedMileage
-    let mileageRate = (mileageDiff / 10000) * -0.02
-    mileageRate = Math.max(-0.30, Math.min(0.15, mileageRate)) // Cap between -30% and +15%
+    let mileageRate = (mileageDiff / 10000) * -0.03
+    mileageRate = Math.max(-0.35, Math.min(0.10, mileageRate)) // Cap between -35% and +10%
     const mileageAdjustmentVal = basePrice * mileageRate
 
     // 5️⃣ Condition Adjustment
     let conditionRate = 0
-    if (condition === "EXCELLENT") conditionRate = 0.10
-    else if (condition === "GOOD") conditionRate = 0.05
-    else if (condition === "FAIR") conditionRate = -0.05
-    else if (condition === "POOR" || condition === "CAT_N" || condition === "CAT_S" || condition === "CAT_C" || condition === "CAT_D") conditionRate = -0.20
+    if (condition === "EXCELLENT") conditionRate = 0.05
+    else if (condition === "GOOD") conditionRate = 0.02
+    else if (condition === "FAIR") conditionRate = -0.06
+    else if (condition === "POOR" || condition === "CAT_N" || condition === "CAT_S" || condition === "CAT_C" || condition === "CAT_D") conditionRate = -0.25
     const conditionAdjustmentVal = basePrice * conditionRate
 
     // 6️⃣ Service History Adjustment
     let serviceRate = 0
-    if (serviceHistory === "FULL") serviceRate = 0.05
-    else if (serviceHistory === "PARTIAL") serviceRate = 0.02
-    else if (serviceHistory === "NONE") serviceRate = -0.05
+    if (serviceHistory === "FULL") serviceRate = 0.03
+    else if (serviceHistory === "PARTIAL") serviceRate = 0.01
+    else if (serviceHistory === "NONE") serviceRate = -0.06
     const serviceAdjustmentVal = basePrice * serviceRate
 
     // 7️⃣ Transmission Adjustment
-    const transmissionValue = transmission === "AUTOMATIC" ? Math.min(1000, basePrice * 0.05) : 0
+    const transmissionValue = transmission === "AUTOMATIC" ? Math.min(600, basePrice * 0.03) : 0
 
     // 8️⃣ Fuel Type Adjustment
     let fuelRate = 0
-    if (fuelType === "ELECTRIC") fuelRate = 0.08
-    else if (fuelType === "HYBRID" || fuelType === "PLUGIN_HYBRID") fuelRate = 0.05
-    else if (fuelType === "DIESEL") fuelRate = -0.04
+    if (fuelType === "ELECTRIC") fuelRate = 0.05
+    else if (fuelType === "HYBRID" || fuelType === "PLUGIN_HYBRID") fuelRate = 0.03
+    else if (fuelType === "DIESEL") fuelRate = -0.05
     const fuelAdjustmentVal = basePrice * fuelRate
 
     // 9️⃣ Ownership Adjustment
     let ownerRate = 0
-    if (owners === "1") ownerRate = 0.05
-    else if (owners === "2") ownerRate = 0.02
-    else if (owners === "3+") ownerRate = -0.03
+    if (owners === "1") ownerRate = 0.03
+    else if (owners === "2") ownerRate = 0.01
+    else if (owners === "3+") ownerRate = -0.04
     const ownershipAdjustmentVal = basePrice * ownerRate
 
     // 🔟 Location Demand Adjustment
     let locationRate = 0
     const locUpper = location ? location.toUpperCase() : ""
     if (locUpper.includes("LONDON") || locUpper.includes("SOUTH EAST")) {
-        locationRate = 0.04
-    } else if (locUpper.includes("MANCHESTER") || locUpper.includes("BIRMINGHAM") || locUpper.includes("LEEDS") || locUpper.includes("GLASGOW") || locUpper.includes("LIVERPOOL") || locUpper.includes("SHEFFIELD") || locUpper.includes("BRISTOL") || locUpper.includes("EDINBURGH")) {
         locationRate = 0.02
+    } else if (locUpper.includes("MANCHESTER") || locUpper.includes("BIRMINGHAM") || locUpper.includes("LEEDS") || locUpper.includes("GLASGOW") || locUpper.includes("LIVERPOOL") || locUpper.includes("SHEFFIELD") || locUpper.includes("BRISTOL") || locUpper.includes("EDINBURGH")) {
+        locationRate = 0.01
     }
     const locationAdjustmentVal = basePrice * locationRate
 
@@ -210,8 +210,8 @@ function estimateValue(
     if (estimatedPrice < 500) estimatedPrice = 500
 
     const mid = Math.max(500, Math.round(estimatedPrice / 100) * 100)
-    const low = Math.round(mid * 0.93 / 100) * 100
-    const high = Math.round(mid * 1.07 / 100) * 100
+    const low = Math.round(mid * 0.95 / 100) * 100
+    const high = Math.round(mid * 1.05 / 100) * 100
 
     return { 
         low, mid, high, 
