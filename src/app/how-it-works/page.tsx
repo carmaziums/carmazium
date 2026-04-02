@@ -226,9 +226,9 @@ export default function HowItWorksPage() {
                 </div>
               </div>
 
-              <Link href="/auctions">
+              {/* <Link href="/auctions">
                 <Button variant="outline" className="border-white/10 hover:bg-white/5">Check Live Auctions</Button>
-              </Link>
+              </Link> */}
             </div>
 
             <div className="order-1 lg:order-2 relative">

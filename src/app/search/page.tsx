@@ -3,12 +3,13 @@
 import * as React from "react"
 import { Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { CarCard } from "@/components/features/CarCard"
 import {
     Search, Filter, X, Gavel, AlertTriangle, Loader2,
-    RotateCcw, ChevronDown, ShieldCheck, Star,
+    RotateCcw, ChevronDown, ShieldCheck, Star, ArrowRight,
 } from "lucide-react"
 import { getListings, getFeaturedListings, formatPrice, type Listing, type ListingFilters, type VehicleConditionValue, type EuroStandardValue } from "@/lib/listingApi"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
@@ -859,6 +860,29 @@ function SearchPageContent() {
                             </Button>
                         </div>
                     )}
+                </div>
+            </div>
+
+            {/* Compare Options Banner */}
+            <div className="container mx-auto px-5 mt-16 mb-8">
+                <div className="bg-gradient-to-r from-[#1e293b] to-slate-900 border border-white/10 rounded-3xl p-8 md:p-12 text-center relative overflow-hidden group shadow-2xl">
+                    <div className="absolute inset-0 bg-primary/5 group-hover:bg-primary/10 transition-colors duration-500" />
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 blur-[100px] rounded-full pointer-events-none" />
+                    <div className="relative z-10 flex flex-col items-center">
+                        <h2 className="text-3xl font-heading font-bold text-white mb-3 tracking-tight">Still not sure what to Buy?</h2>
+                        <p className="text-gray-400 mb-8 max-w-xl mx-auto text-lg leading-relaxed">
+                            Compare your options side-by-side and find the exact vehicle that suits your needs.
+                        </p>
+                        <Button
+                            asChild
+                            variant="default"
+                            size="lg"
+                            shape="pill"
+                            className="bg-primary hover:bg-primary/90 text-white shadow-neon px-8 py-6 text-lg hover:scale-105 transition-transform"
+                        >
+                            <Link href="/compare">Compare Cars <ArrowRight className="ml-2 w-5 h-5 flex-shrink-0 group-hover:translate-x-1 transition-transform" /></Link>
+                        </Button>
+                    </div>
                 </div>
             </div>
         </div>

@@ -151,20 +151,23 @@ function estimateValue(
     const age = Math.max(0, currentYear - Number(year))
     const actualMileage = Number(mileage)
 
-    // 1️⃣ Base Market Price (Depreciated by age at 6% per year per carr.txt step 4)
-    const depreciationFactor = Math.max(0.1, 1 - (0.06 * age))
-    const basePrice = newBase * depreciationFactor
+    // 1️⃣ Base Market Price (Compounding deprecation: ~10% loss per year)
+    const depreciationFactor = Math.pow(0.90, age)
+    let basePrice = newBase * depreciationFactor
+    if (basePrice < 1000) basePrice = 1000 // Floor
 
     // 3️⃣ Mileage Adjustment
-    const expectedMileage = age * 10000
+    const expectedMileage = Math.max(10000, age * 10000)
     const mileageDiff = actualMileage - expectedMileage
-    const mileageAdjustmentVal = mileageDiff * -0.06
+    let mileageRate = (mileageDiff / 10000) * -0.02
+    mileageRate = Math.max(-0.30, Math.min(0.15, mileageRate)) // Cap between -30% and +15%
+    const mileageAdjustmentVal = basePrice * mileageRate
 
     // 5️⃣ Condition Adjustment
     let conditionRate = 0
     if (condition === "EXCELLENT") conditionRate = 0.10
     else if (condition === "GOOD") conditionRate = 0.05
-    else if (condition === "FAIR") conditionRate = -0.10
+    else if (condition === "FAIR") conditionRate = -0.05
     else if (condition === "POOR" || condition === "CAT_N" || condition === "CAT_S" || condition === "CAT_C" || condition === "CAT_D") conditionRate = -0.20
     const conditionAdjustmentVal = basePrice * conditionRate
 
@@ -176,12 +179,12 @@ function estimateValue(
     const serviceAdjustmentVal = basePrice * serviceRate
 
     // 7️⃣ Transmission Adjustment
-    const transmissionValue = transmission === "AUTOMATIC" ? 1000 : 0
+    const transmissionValue = transmission === "AUTOMATIC" ? Math.min(1000, basePrice * 0.05) : 0
 
     // 8️⃣ Fuel Type Adjustment
     let fuelRate = 0
-    if (fuelType === "ELECTRIC") fuelRate = 0.12
-    else if (fuelType === "HYBRID" || fuelType === "PLUGIN_HYBRID") fuelRate = 0.06
+    if (fuelType === "ELECTRIC") fuelRate = 0.08
+    else if (fuelType === "HYBRID" || fuelType === "PLUGIN_HYBRID") fuelRate = 0.05
     else if (fuelType === "DIESEL") fuelRate = -0.04
     const fuelAdjustmentVal = basePrice * fuelRate
 
@@ -203,7 +206,8 @@ function estimateValue(
     const locationAdjustmentVal = basePrice * locationRate
 
     // 1️⃣1️⃣ Final Formula (Complete)
-    const estimatedPrice = basePrice + mileageAdjustmentVal + conditionAdjustmentVal + serviceAdjustmentVal + transmissionValue + fuelAdjustmentVal + ownershipAdjustmentVal + locationAdjustmentVal
+    let estimatedPrice = basePrice + mileageAdjustmentVal + conditionAdjustmentVal + serviceAdjustmentVal + transmissionValue + fuelAdjustmentVal + ownershipAdjustmentVal + locationAdjustmentVal
+    if (estimatedPrice < 500) estimatedPrice = 500
 
     const mid = Math.max(500, Math.round(estimatedPrice / 100) * 100)
     const low = Math.round(mid * 0.93 / 100) * 100

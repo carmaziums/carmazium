@@ -113,7 +113,7 @@ export default function BuyerDashboard() {
                                 </div>
                             ) : recentBids.length === 0 ? (
                                 <div className="glass-card p-8 text-center text-gray-500">
-                                    No active bids yet. <Link href="/cars" className="text-primary hover:underline">Browse auctions</Link>
+                                    No active bids yet. {/* <Link href="/cars" className="text-primary hover:underline">Browse auctions</Link> */}
                                 </div>
                             ) : (
                                 recentBids.map((bid) => (

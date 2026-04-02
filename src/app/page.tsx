@@ -217,11 +217,11 @@ export default function Home() {
         >
           {/* Top Row: Main Actions */}
           <div className="flex flex-wrap justify-center gap-6 w-full">
-            <Link href="/auctions">
+            {/* <Link href="/auctions">
               <Button size="lg" shape="pill" className="w-full sm:w-auto min-w-[280px] py-7 text-xl shadow-neon hover:scale-105 transition-transform">
                 Browse Auctions <ArrowRight className="ml-2" />
               </Button>
-            </Link>
+            </Link> */}
             <Link href="/search">
               <Button size="lg" shape="pill" variant="dark" className="w-full sm:w-auto min-w-[280px] py-7 text-xl hover:bg-slate-800 hover:border-white/30 border border-white/10 backdrop-blur-md">
                 Retail Listings
