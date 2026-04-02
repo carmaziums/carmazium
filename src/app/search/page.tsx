@@ -239,25 +239,7 @@ function SearchPageContent() {
     const lastQs = React.useRef(currentQs)
     const didInitialHydrate = React.useRef(false)
 
-    React.useEffect(() => {
-        if (!didInitialHydrate.current) {
-            didInitialHydrate.current = true
-            const fromUrl = hydrateFromUrl()
-            setFilters(fromUrl)
-            setAppliedFilters(fromUrl)
-            fetchListings(fromUrl)
-            return
-        }
-        
-        // Handle external navigations (e.g. from chatbot)
-        if (lastQs.current !== currentQs) {
-            lastQs.current = currentQs
-            const fromUrl = hydrateFromUrl()
-            setFilters(fromUrl)
-            setAppliedFilters(fromUrl)
-            fetchListings(fromUrl)
-        }
-    }, [currentQs, hydrateFromUrl, fetchListings])
+    // Effect moved down after fetchListings definition
 
     const set = <K extends keyof FilterState>(key: K, val: FilterState[K]) =>
         setFilters(prev => ({ ...prev, [key]: val }))
@@ -349,6 +331,26 @@ function SearchPageContent() {
             setLoadingMore(false)
         }
     }, [buildApiFilters])
+
+    React.useEffect(() => {
+        if (!didInitialHydrate.current) {
+            didInitialHydrate.current = true
+            const fromUrl = hydrateFromUrl()
+            setFilters(fromUrl)
+            setAppliedFilters(fromUrl)
+            fetchListings(fromUrl)
+            return
+        }
+        
+        // Handle external navigations (e.g. from chatbot)
+        if (lastQs.current !== currentQs) {
+            lastQs.current = currentQs
+            const fromUrl = hydrateFromUrl()
+            setFilters(fromUrl)
+            setAppliedFilters(fromUrl)
+            fetchListings(fromUrl)
+        }
+    }, [currentQs, hydrateFromUrl, fetchListings])
 
     // (Initial mount fetch relies on didInitialHydrate inside the main effect above)
 
