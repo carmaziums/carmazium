@@ -66,7 +66,7 @@ export default function MyBidsPage() {
                                     ) : bids.length === 0 ? (
                                         <tr>
                                             <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
-                                                No bids yet. <Link href="/cars" className="text-primary hover:underline">Browse auctions</Link>
+                                                No bids yet. {/* <Link href="/cars" className="text-primary hover:underline">Browse auctions</Link> */}
                                             </td>
                                         </tr>
                                     ) : (

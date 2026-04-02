@@ -110,6 +110,7 @@ export class AiService {
                 ],
                 temperature: 0.7,
                 max_tokens: 500,
+                response_format: { type: 'json_object' },
             });
 
             const content = completion.choices[0]?.message?.content?.trim();
@@ -117,7 +118,8 @@ export class AiService {
                 return { text: 'I couldn\'t process that query. Try describing the car you\'re looking for!' };
             }
 
-            const parsed = JSON.parse(content) as AiSearchResult;
+            const cleanContent = content.replace(/```json\n?/gi, '').replace(/```\n?/gi, '').trim();
+            const parsed = JSON.parse(cleanContent) as AiSearchResult;
             return parsed;
         } catch (error) {
             this.logger.error('OpenAI search error:', error);
@@ -146,6 +148,7 @@ export class AiService {
                 messages: openAiMessages,
                 temperature: 0.7,
                 max_tokens: 500,
+                response_format: { type: 'json_object' },
             });
 
             const content = completion.choices[0]?.message?.content?.trim();
@@ -153,7 +156,8 @@ export class AiService {
                 return { text: 'I couldn\'t generate a response. Could you try rephrasing?' };
             }
 
-            const parsed = JSON.parse(content) as AiChatResult;
+            const cleanContent = content.replace(/```json\n?/gi, '').replace(/```\n?/gi, '').trim();
+            const parsed = JSON.parse(cleanContent) as AiChatResult;
             return parsed;
         } catch (error) {
             this.logger.error('OpenAI chat error:', error);
