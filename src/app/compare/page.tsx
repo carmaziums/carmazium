@@ -226,7 +226,7 @@ export default function ComparePage() {
                                             <div 
                                                 key={listing.id}
                                                 onClick={() => !isAlreadySelected && selectCar(listing)}
-                                                className={`flex items-center gap-4 p-3 rounded-xl border transition-all ${isAlreadySelected ? 'bg-slate-900/50 border-white/5 opacity-50 cursor-not-allowed' : 'bg-slate-800 border-white/10 cursor-pointer hover:border-primary/50 hover:bg-primary/5'}`}
+                                                className={`relative flex items-center gap-4 p-3 rounded-xl border transition-all ${isAlreadySelected ? 'bg-slate-900/50 border-white/5 opacity-50 cursor-not-allowed' : 'bg-slate-800 border-white/10 cursor-pointer hover:border-primary/50 hover:bg-primary/5'}`}
                                             >
                                                 <div className="w-20 h-16 relative rounded-lg overflow-hidden shrink-0 bg-slate-900">
                                                     <Image src={getListingImage(listing)} alt={listing.title} fill className="object-cover" />
