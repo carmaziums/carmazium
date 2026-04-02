@@ -28,13 +28,19 @@ interface QuickReply {
     action: string // the message text to send
 }
 
-const QUICK_REPLIES: QuickReply[] = [
+const ALL_QUICK_REPLIES: QuickReply[] = [
     { label: "🚗 Show SUVs", action: "Show me SUVs" },
     { label: "💷 Under £15k", action: "Cars under £15,000" },
     { label: "⛽ Diesel only", action: "Diesel cars" },
     { label: "⚡ Electric", action: "Electric vehicles" },
     { label: "📅 2020+", action: "Cars from 2020 onwards" },
     { label: "🏙️ ULEZ", action: "ULEZ compliant cars" },
+    { label: "🔥 Hatchbacks", action: "Show me hot hatchbacks" },
+    { label: "🏎️ Sports Cars", action: "Show me sports cars" },
+    { label: "👨‍👩‍👧‍👦 Family Cars", action: "Spacious family cars" },
+    { label: "🔰 First Cars", action: "Good cars for new drivers" },
+    { label: "🌿 Low CO2", action: "Cars with low CO2 emissions" },
+    { label: "💼 Executive", action: "Executive saloons" }
 ]
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -51,7 +57,21 @@ export function MaziumWidget() {
     const [input, setInput] = React.useState("")
     const [showGreeting, setShowGreeting] = React.useState(false)
     const [isThinking, setIsThinking] = React.useState(false)
+    const [quickReplies, setQuickReplies] = React.useState<QuickReply[]>([])
     const messagesEndRef = React.useRef<HTMLDivElement>(null)
+
+    // Set daily dynamic quick replies on mount
+    React.useEffect(() => {
+        // Deterministic day index
+        const dayIndex = Math.floor(Date.now() / 86400000)
+        const startIndex = (dayIndex * 4) % ALL_QUICK_REPLIES.length
+        
+        const replies = []
+        for (let i = 0; i < 4; i++) {
+            replies.push(ALL_QUICK_REPLIES[(startIndex + i) % ALL_QUICK_REPLIES.length])
+        }
+        setQuickReplies(replies)
+    }, [])
 
     // Auto-scroll to latest message
     React.useEffect(() => {
@@ -125,8 +145,14 @@ export function MaziumWidget() {
         }
     }
 
-    const handleApplyFilterCard = (params: Record<string, string>) => {
-        const qs = new URLSearchParams(params).toString()
+    const handleApplyFilterCard = (params: Record<string, any>) => {
+        const cleanParams: Record<string, string> = {}
+        for (const [key, value] of Object.entries(params)) {
+            if (value !== null && value !== undefined && value !== '') {
+                cleanParams[key] = String(value)
+            }
+        }
+        const qs = new URLSearchParams(cleanParams).toString()
         router.push(`/search?${qs}`)
     }
 
@@ -270,7 +296,7 @@ export function MaziumWidget() {
                 <div className="px-3 py-2 flex gap-2 overflow-x-auto border-t custom-scrollbar"
                     style={{ borderColor: "var(--border-default)" }}
                 >
-                    {QUICK_REPLIES.map((chip) => (
+                    {quickReplies.map((chip) => (
                         <button
                             key={chip.label}
                             onClick={() => handleSend(chip.action)}
