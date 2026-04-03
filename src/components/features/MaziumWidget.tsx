@@ -29,18 +29,18 @@ interface QuickReply {
 }
 
 const ALL_QUICK_REPLIES: QuickReply[] = [
-    { label: "🚗 Show SUVs", action: "Show me SUVs" },
-    { label: "💷 Under £15k", action: "Cars under £15,000" },
-    { label: "⛽ Diesel only", action: "Diesel cars" },
-    { label: "⚡ Electric", action: "Electric vehicles" },
-    { label: "📅 2020+", action: "Cars from 2020 onwards" },
-    { label: "🏙️ ULEZ", action: "ULEZ compliant cars" },
-    { label: "🔥 Hatchbacks", action: "Show me hot hatchbacks" },
-    { label: "🏎️ Sports Cars", action: "Show me sports cars" },
-    { label: "👨‍👩‍👧‍👦 Family Cars", action: "Spacious family cars" },
-    { label: "🔰 First Cars", action: "Good cars for new drivers" },
-    { label: "🌿 Low CO2", action: "Cars with low CO2 emissions" },
-    { label: "💼 Executive", action: "Executive saloons" }
+    { label: "Show SUVs", action: "Show me SUVs" },
+    { label: "Under £15k", action: "Cars under £15,000" },
+    { label: "Diesel only", action: "Diesel cars" },
+    { label: "Electric", action: "Electric vehicles" },
+    { label: "2020+", action: "Cars from 2020 onwards" },
+    { label: "ULEZ", action: "ULEZ compliant cars" },
+    { label: "Hatchbacks", action: "Show me hot hatchbacks" },
+    { label: "Sports Cars", action: "Show me sports cars" },
+    { label: "Family Cars", action: "Spacious family cars" },
+    { label: "First Cars", action: "Good cars for new drivers" },
+    { label: "Low CO2", action: "Cars with low CO2 emissions" },
+    { label: "Executive", action: "Executive saloons" }
 ]
 
 // ─── Component ────────────────────────────────────────────────────────────────
