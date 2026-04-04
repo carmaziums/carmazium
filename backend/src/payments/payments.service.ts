@@ -38,7 +38,7 @@ export class PaymentsService {
         }
 
         const stripe = await this.getStripe();
-        const baseUrl = this.config.get<string>('NEXT_PUBLIC_BASE_URL') || 'http://localhost:3000';
+        const baseUrl = this.config.get<string>('FRONTEND_URL') || this.config.get<string>('NEXT_PUBLIC_BASE_URL') || 'http://localhost:3000';
 
         // Create a pending transaction record
         const transaction = await this.prisma.transaction.create({
