@@ -21,58 +21,60 @@ export function DiscoverSection() {
                 background: "radial-gradient(ellipse 50% 80% at 50% 70%, rgba(237,28,36,0.12) 0%, transparent 70%)",
             }} />
 
-            <div className="relative z-10 container mx-auto px-5 pt-16 pb-0">
-                {/* Heading */}
-                <motion.h2
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.7 }}
-                    className="text-4xl md:text-5xl lg:text-6xl font-bold font-heading text-white text-center mb-4 drop-shadow-lg"
-                >
-                    Discover your perfect car
-                </motion.h2>
+            <div className="relative z-10 pt-16 pb-0">
+                <div className="container mx-auto px-5">
+                    {/* Heading */}
+                    <motion.h2
+                        initial={{ opacity: 0, y: 30 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.7 }}
+                        className="text-4xl md:text-5xl lg:text-6xl font-bold font-heading text-white text-center mb-4 drop-shadow-lg"
+                    >
+                        Discover your perfect car
+                    </motion.h2>
 
-                <motion.p
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.7, delay: 0.15 }}
-                    className="text-gray-300 text-center text-lg md:text-xl max-w-2xl mx-auto mb-12"
-                >
-                    Explore thousands of verified vehicles from trusted sellers
-                </motion.p>
+                    <motion.p
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.7, delay: 0.15 }}
+                        className="text-gray-300 text-center text-lg md:text-xl max-w-2xl mx-auto mb-12"
+                    >
+                        Explore thousands of verified vehicles from trusted sellers
+                    </motion.p>
 
-                {/* CTA */}
-                <motion.div
-                    initial={{ opacity: 0, y: 15 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.6, delay: 0.25 }}
-                    className="flex justify-center mb-12"
-                >
-                    <Link href="/search">
-                        <Button size="lg" shape="pill" className="px-10 py-6 text-lg shadow-neon hover:scale-105 transition-transform">
-                            Browse All Cars <ArrowRight className="ml-2 h-5 w-5" />
-                        </Button>
-                    </Link>
-                </motion.div>
+                    {/* CTA */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 15 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6, delay: 0.25 }}
+                        className="flex justify-center mb-12"
+                    >
+                        <Link href="/search">
+                            <Button size="lg" shape="pill" className="px-10 py-6 text-lg shadow-neon hover:scale-105 transition-transform">
+                                Browse All Cars <ArrowRight className="ml-2 h-5 w-5" />
+                            </Button>
+                        </Link>
+                    </motion.div>
+                </div>
 
-                {/* Three Cars — Hero Image */}
+                {/* Three Cars — Hero Image — FULL WIDTH edge-to-edge */}
                 <motion.div
                     initial={{ opacity: 0, y: 40 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.8, delay: 0.3 }}
-                    className="relative w-full max-w-5xl mx-auto"
+                    className="relative w-full"
                 >
-                    <div className="relative w-full aspect-[2.5/1]">
+                    <div className="relative w-full aspect-[3/1] md:aspect-[3.5/1]">
                         <Image
                             src="/assets/images/discover-hero.png"
                             alt="Discover your perfect car — Blue pickup, Red SUV, White sedan"
                             fill
-                            sizes="(max-width: 768px) 100vw, 80vw"
-                            className="object-contain object-bottom"
+                            sizes="100vw"
+                            className="object-cover object-center"
                             priority
                         />
                     </div>
