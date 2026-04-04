@@ -85,8 +85,7 @@ export function BrowseByBodyType() {
                                         style={{ borderColor: "var(--border-default)" }}
                                     >
                                         {Icon && (
-                                            <Icon className="w-7 h-4 shrink-0 transition-colors duration-200 group-hover:text-primary"
-                                                style={{ color: "var(--text-muted)" } as React.CSSProperties}
+                                            <Icon className="w-7 h-4 shrink-0 transition-colors duration-200 text-[var(--text-muted)] group-hover:text-primary"
                                             />
                                         )}
                                         <span className="text-sm md:text-base font-semibold transition-colors duration-200 group-hover:text-primary"
