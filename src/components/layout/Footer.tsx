@@ -14,9 +14,9 @@ export function Footer() {
                             <Image
                                 src="/assets/images/logo.png"
                                 alt="CarMazium"
-                                width={180}
-                                height={45}
-                                className="h-12 w-auto"
+                                width={400}
+                                height={100}
+                                className="h-24 w-auto"
                                 priority
                             />
                         </Link>
