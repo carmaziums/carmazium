@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/Button"
 import { CarCard } from "@/components/features/CarCard"
 import { AnimatedCounter } from "@/components/ui/AnimatedCounter"
 import { TestimonialsSection } from "@/components/features/TestimonialsSection"
-import { PromoCarousel } from "@/components/features/PromoCarousel"
+import { DiscoverSection } from "@/components/features/DiscoverSection"
+import { BrowseByCategory } from "@/components/features/BrowseByCategory"
+import { BrowseByBodyType } from "@/components/features/BrowseByBodyType"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion"
 import { useRef, useEffect, useState } from "react"
@@ -248,8 +250,10 @@ export default function Home() {
         </motion.div>
       </section>
 
-      {/* Cinematic Promo Section - Now a Carousel */}
-      <PromoCarousel />
+      {/* Discover + Browse Sections */}
+      <DiscoverSection />
+      <BrowseByCategory />
+      <BrowseByBodyType />
 
       {/* ✨ Featured Listings — dynamic from API */}
       {(featuredLoading || featuredListings.length > 0) && (

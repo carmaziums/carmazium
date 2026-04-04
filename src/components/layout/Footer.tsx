@@ -16,7 +16,7 @@ export function Footer() {
                                 alt="CarMazium"
                                 width={180}
                                 height={45}
-                                className="h-12 w-auto drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]"
+                                className="h-12 w-auto"
                                 priority
                             />
                         </Link>
