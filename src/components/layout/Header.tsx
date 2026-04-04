@@ -14,7 +14,6 @@ const navLinks = [
     { name: "Home", href: "/" },
     { name: "Buy Cars", href: "/search" },
     { name: "Sell Cars", href: "/sell" },
-    { name: "Service Hub", href: "/services" },
     { name: "About", href: "/about" },
 ]
 
