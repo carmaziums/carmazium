@@ -1,13 +1,26 @@
 "use client"
 
 import * as React from "react"
+import { Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { XCircle, ArrowLeft, RefreshCw, Home } from "lucide-react"
+import { XCircle, ArrowLeft, RefreshCw, Home, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 
 export default function CheckoutCancelPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center">
+                <Loader2 className="w-10 h-10 text-primary animate-spin" />
+            </div>
+        }>
+            <CheckoutCancelContent />
+        </Suspense>
+    )
+}
+
+function CheckoutCancelContent() {
     const searchParams = useSearchParams()
     const listingId = searchParams.get("listing_id")
 
