@@ -3,7 +3,11 @@ import {
     Get,
     Post,
     Body,
+    Param,
+    Headers,
+    Req,
     UseGuards,
+    RawBody,
 } from '@nestjs/common';
 import {
     ApiTags,
@@ -15,23 +19,39 @@ import { PaymentsService } from './payments.service';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse } from '../listings/dto/response.dto';
-import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
+import { CreateCheckoutSessionDto } from './dto/create-payment-intent.dto';
 
 @ApiTags('Payments')
 @Controller('payments')
 export class PaymentsController {
-    constructor(private readonly paymentsService: PaymentsService) { }
+    constructor(private readonly paymentsService: PaymentsService) {}
 
-    @Post('create-intent')
+    @Post('checkout')
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()
-    @ApiOperation({ summary: 'Create payment intent (Stub)' })
-    async createIntent(@Body() dto: CreatePaymentIntentDto) {
-        const intent = await this.paymentsService.createPaymentIntent(
+    @ApiOperation({ summary: 'Create a Stripe Checkout Session' })
+    @ApiResponse({ status: 201, description: 'Checkout session created — returns redirect URL' })
+    async createCheckout(
+        @Body() dto: CreateCheckoutSessionDto,
+        @CurrentUser() user: any,
+    ) {
+        const result = await this.paymentsService.createCheckoutSession(
+            dto.listingId,
+            user.id,
             dto.amount,
+            dto.type,
             dto.currency,
         );
-        return new StandardResponse(intent);
+        return new StandardResponse(result);
+    }
+
+    @Get('session-status/:sessionId')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Get Stripe Checkout Session status' })
+    async getSessionStatus(@Param('sessionId') sessionId: string) {
+        const status = await this.paymentsService.getSessionStatus(sessionId);
+        return new StandardResponse(status);
     }
 
     @Get('history')
@@ -44,8 +64,14 @@ export class PaymentsController {
     }
 
     @Post('webhook')
-    @ApiOperation({ summary: 'Stripe Webhook Handler (Stub)' })
-    async handleWebhook(@Body() event: any) {
-        return this.paymentsService.handleWebhook(event);
+    @ApiOperation({ summary: 'Stripe Webhook Handler' })
+    @ApiResponse({ status: 200, description: 'Webhook processed' })
+    async handleWebhook(
+        @Headers('stripe-signature') sig: string,
+        @Req() req: any,
+    ) {
+        // rawBody is attached by the raw-body middleware in main.ts
+        const rawBody = req.rawBody;
+        return this.paymentsService.handleWebhook(rawBody, sig);
     }
 }

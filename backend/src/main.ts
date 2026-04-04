@@ -17,6 +17,17 @@ import { loggerConfig } from './core/config/logger.config';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: loggerConfig,
+    rawBody: true,
+  });
+
+  // ---------------------------------------------------------------------------
+  // Raw body capture for Stripe webhook signature verification
+  // ---------------------------------------------------------------------------
+  app.use('/api/payments/webhook', (req: any, _res: any, next: any) => {
+    const chunks: Buffer[] = [];
+    req.on('data', (chunk: Buffer) => chunks.push(chunk));
+    req.on('end', () => { req.rawBody = Buffer.concat(chunks); });
+    next();
   });
 
   // ---------------------------------------------------------------------------

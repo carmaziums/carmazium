@@ -11,7 +11,7 @@ const FinanceCalculator = dynamic(() => import("@/components/features/FinanceCal
 import {
     ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon,
     MapPin, Share2, Heart, Scale, Loader2, AlertTriangle, X, Tag,
-    Clock, XCircle, ThumbsUp, Lock, FileSearch, BadgeCheck, Star, Sparkles, Zap,
+    Clock, XCircle, ThumbsUp, Lock, FileSearch, BadgeCheck, Star, Sparkles, Zap, CreditCard,
 } from "lucide-react"
 import { useCompare } from "@/context/CompareContext"
 import { useAuth } from "@/context/AuthContext"
@@ -785,11 +785,27 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                                         ? '✓ Offer Accepted'
                                                         : 'Make an Offer'}
                                             </Button>
+                                            <Button
+                                                asChild
+                                                variant="outline"
+                                                className="w-full py-6 text-lg border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/50 gap-2"
+                                            >
+                                                <Link href={`/checkout?listing_id=${listing.slug}&mode=deposit`}>
+                                                    <CreditCard size={18} /> Secure Purchase
+                                                </Link>
+                                            </Button>
                                         </>
                                     ) : (
                                         <>
                                             <Button className="w-full py-6 text-lg" shape="default">Enquire Now</Button>
-                                            <Button variant="outline" className="w-full py-6 text-lg border-white/20 text-white hover:bg-white/10">Buy Online</Button>
+                                            <Button
+                                                asChild
+                                                className="w-full py-6 text-lg gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 shadow-lg shadow-emerald-500/20"
+                                            >
+                                                <Link href={`/checkout?listing_id=${listing.slug}&mode=deposit`}>
+                                                    <CreditCard size={18} /> Secure Purchase
+                                                </Link>
+                                            </Button>
                                         </>
                                     )}
                                 </div>
