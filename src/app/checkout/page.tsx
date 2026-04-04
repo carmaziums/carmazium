@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useState, useEffect } from "react"
+import { Suspense, useState, useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
@@ -15,6 +15,18 @@ import { useAuth } from "@/context/AuthContext"
 const DEPOSIT_AMOUNT = 500 // £500 refundable deposit
 
 export default function CheckoutPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center">
+                <Loader2 className="w-10 h-10 text-primary animate-spin" />
+            </div>
+        }>
+            <CheckoutContent />
+        </Suspense>
+    )
+}
+
+function CheckoutContent() {
     const searchParams = useSearchParams()
     const router = useRouter()
     const { user, loading: authLoading } = useAuth()

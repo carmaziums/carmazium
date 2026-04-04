@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { motion } from "framer-motion"
@@ -11,6 +11,18 @@ import { getSessionStatus} from "@/lib/paymentApi"
 import type { SessionStatus } from "@/lib/paymentApi"
 
 export default function CheckoutSuccessPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center">
+                <Loader2 className="w-10 h-10 text-primary animate-spin" />
+            </div>
+        }>
+            <CheckoutSuccessContent />
+        </Suspense>
+    )
+}
+
+function CheckoutSuccessContent() {
     const searchParams = useSearchParams()
     const sessionId = searchParams.get("session_id")
 
