@@ -67,9 +67,9 @@ export function Header() {
                         <Image
                             src="/assets/images/logo.png"
                             alt="CarMazium"
-                            width={280}
-                            height={70}
-                            className="h-20 w-auto"
+                            width={400}
+                            height={100}
+                            className="h-28 w-auto scale-110"
                             priority
                         />
                     </Link>
