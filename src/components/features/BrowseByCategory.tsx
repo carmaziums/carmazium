@@ -62,50 +62,98 @@ export function BrowseByCategory() {
                     Browse by category
                 </motion.h2>
 
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.6, delay: 0.1 }}
-                    className="flex flex-wrap justify-center gap-3 md:gap-4 max-w-3xl mx-auto"
-                >
-                    {CATEGORIES.map((cat, idx) => (
-                        <Link
-                            key={cat.label}
-                            href={buildSearchUrl(cat.params)}
-                            className="group"
-                        >
-                            <motion.span
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                whileInView={{ opacity: 1, scale: 1 }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 0.35, delay: idx * 0.04 }}
-                                whileHover={{ scale: 1.06, y: -2 }}
-                                className="inline-flex items-center px-5 py-2.5 rounded-full text-sm md:text-base font-medium
-                                    border transition-all duration-300 cursor-pointer select-none"
-                                style={{
-                                    color: "var(--text-secondary)",
-                                    borderColor: "var(--border-default)",
-                                    background: "var(--bg-card)",
-                                }}
-                                onMouseEnter={e => {
-                                    const el = e.currentTarget as HTMLElement
-                                    el.style.borderColor = "#ed1c24"
-                                    el.style.color = "#ed1c24"
-                                    el.style.boxShadow = "0 0 16px rgba(237,28,36,0.15)"
-                                }}
-                                onMouseLeave={e => {
-                                    const el = e.currentTarget as HTMLElement
-                                    el.style.borderColor = "var(--border-default)"
-                                    el.style.color = "var(--text-secondary)"
-                                    el.style.boxShadow = "none"
-                                }}
+                <div className="flex flex-col gap-5 items-center">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6, delay: 0.1 }}
+                        className="flex flex-wrap md:flex-nowrap justify-center gap-3 md:gap-3 lg:gap-4 w-full max-w-[1200px] mx-auto px-4"
+                    >
+                        {CATEGORIES.slice(0, 7).map((cat, idx) => (
+                            <Link
+                                key={cat.label}
+                                href={buildSearchUrl(cat.params)}
+                                className="group whitespace-nowrap"
                             >
-                                {cat.label}
-                            </motion.span>
-                        </Link>
-                    ))}
-                </motion.div>
+                                <motion.span
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    whileInView={{ opacity: 1, scale: 1 }}
+                                    viewport={{ once: true }}
+                                    transition={{ duration: 0.35, delay: idx * 0.04 }}
+                                    whileHover={{ scale: 1.05, y: -2 }}
+                                    className="inline-flex items-center px-4 md:px-5 py-2.5 rounded-full text-xs md:text-sm lg:text-base font-medium
+                                        border transition-all duration-300 cursor-pointer select-none"
+                                    style={{
+                                        color: "var(--text-secondary)",
+                                        borderColor: "var(--border-default)",
+                                        background: "var(--bg-card)",
+                                    }}
+                                    onMouseEnter={e => {
+                                        const el = e.currentTarget as HTMLElement
+                                        el.style.borderColor = "#ed1c24"
+                                        el.style.color = "#ed1c24"
+                                        el.style.boxShadow = "0 0 16px rgba(237,28,36,0.15)"
+                                    }}
+                                    onMouseLeave={e => {
+                                        const el = e.currentTarget as HTMLElement
+                                        el.style.borderColor = "var(--border-default)"
+                                        el.style.color = "var(--text-secondary)"
+                                        el.style.boxShadow = "none"
+                                    }}
+                                >
+                                    {cat.label}
+                                </motion.span>
+                            </Link>
+                        ))}
+                    </motion.div>
+
+                    {/* Second line with only one pill */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6, delay: 0.4 }}
+                        className="flex justify-center w-full"
+                    >
+                        {CATEGORIES.slice(7, 8).map((cat) => (
+                            <Link
+                                key={cat.label}
+                                href={buildSearchUrl(cat.params)}
+                                className="group"
+                            >
+                                <motion.span
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    whileInView={{ opacity: 1, scale: 1 }}
+                                    viewport={{ once: true }}
+                                    transition={{ duration: 0.35, delay: 0.1 }}
+                                    whileHover={{ scale: 1.05, y: -2 }}
+                                    className="inline-flex items-center px-4 md:px-5 py-2.5 rounded-full text-xs md:text-sm lg:text-base font-medium
+                                        border transition-all duration-300 cursor-pointer select-none"
+                                    style={{
+                                        color: "var(--text-secondary)",
+                                        borderColor: "var(--border-default)",
+                                        background: "var(--bg-card)",
+                                    }}
+                                    onMouseEnter={e => {
+                                        const el = e.currentTarget as HTMLElement
+                                        el.style.borderColor = "#ed1c24"
+                                        el.style.color = "#ed1c24"
+                                        el.style.boxShadow = "0 0 16px rgba(237,28,36,0.15)"
+                                    }}
+                                    onMouseLeave={e => {
+                                        const el = e.currentTarget as HTMLElement
+                                        el.style.borderColor = "var(--border-default)"
+                                        el.style.color = "var(--text-secondary)"
+                                        el.style.boxShadow = "none"
+                                    }}
+                                >
+                                    {cat.label}
+                                </motion.span>
+                            </Link>
+                        ))}
+                    </motion.div>
+                </div>
             </div>
         </section>
     )

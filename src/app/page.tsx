@@ -209,7 +209,7 @@ export default function Home() {
       </section>
 
       {/* Action Hub */}
-      <section className="py-20 text-center container mx-auto px-5">
+      <section className="pt-8 pb-16 text-center container mx-auto px-5">
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}

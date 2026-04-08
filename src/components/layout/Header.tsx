@@ -43,17 +43,24 @@ export function Header() {
 
 
     return (
-        <header className="fixed top-0 left-0 w-full z-50 backdrop-blur-xl border-b shadow-2xl transition-all duration-300"
+        <header className="fixed top-0 left-0 w-full z-50 border-b shadow-2xl transition-all duration-300"
             style={{
-                background: 'var(--bg-header)',
                 borderColor: 'var(--border-default)',
                 color: 'var(--text-primary)',
             }}
         >
-            <div className="container mx-auto px-6 flex justify-between items-center h-20">
+            <div 
+                className="absolute inset-0 -z-10 backdrop-blur-xl bg-slate-900/90"
+                style={{ 
+                    background: 'var(--bg-header)',
+                    WebkitTransform: 'translate3d(0,0,0)',
+                    transform: 'translate3d(0,0,0)' 
+                }} 
+            />
+            <div className="container mx-auto px-6 flex items-center justify-between h-20 relative z-10">
 
                 {/* Logo Area */}
-                <div className="flex items-center gap-6">
+                <div className="flex-1 flex items-center justify-start gap-6">
                     <button
                         className="md:hidden text-2xl focus:outline-none"
                         onClick={toggleMenu}
@@ -68,14 +75,14 @@ export function Header() {
                             alt="CarMazium"
                             width={400}
                             height={100}
-                            className="h-28 w-auto scale-110"
+                            className="h-10 w-auto"
                             priority
                         />
                     </Link>
                 </div>
 
                 {/* Desktop Nav */}
-                <nav className="hidden md:flex gap-8">
+                <nav className="hidden md:flex flex-none justify-center gap-8">
                     {navLinks.map((link) => (
                         <Link
                             key={link.name}
@@ -95,7 +102,7 @@ export function Header() {
                 </nav>
 
                 {/* Action Buttons */}
-                <div className="flex items-center gap-3">
+                <div className="flex-1 flex items-center justify-end gap-3">
 
                     {!loading && user ? (
                         <div className="relative">

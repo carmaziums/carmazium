@@ -632,7 +632,7 @@ export default function SellPage() {
                         </div>
 
                         {/* Steps explanation */}
-                        <div className="mt-24 grid grid-cols-2 md:grid-cols-5 gap-6 text-center">
+                        <div className="mt-24 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
                             {STEPS.map((s) => (
                                 <div key={s.id} className="p-5 glass-card">
                                     <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center mx-auto mb-3">

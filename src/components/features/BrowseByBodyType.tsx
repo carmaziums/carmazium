@@ -38,66 +38,71 @@ export function BrowseByBodyType() {
                     Browse by body type
                 </motion.h2>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6 max-w-4xl mx-auto">
-                    {BODY_TYPES.map((bt, idx) => {
-                        const Icon = BODY_TYPE_ICONS[bt.key]
-                        return (
-                            <motion.div
-                                key={bt.key}
-                                initial={{ opacity: 0, y: 25 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 0.4, delay: idx * 0.05 }}
+                {/* Infinite Carousel Container */}
+                <div className="relative mt-8 sm:mt-12 overflow-hidden py-4">
+                    {/* Visual Edge Fades for Premium Look */}
+                    <div className="absolute left-0 top-0 bottom-0 w-32 z-10 pointer-events-none bg-gradient-to-r from-[var(--bg-body)] to-transparent" />
+                    <div className="absolute right-0 top-0 bottom-0 w-32 z-10 pointer-events-none bg-gradient-to-l from-[var(--bg-body)] to-transparent" />
+
+                    <motion.div
+                        className="flex gap-6 md:gap-10 w-max"
+                        animate={{
+                            x: ["0%", "-33.3333%"],
+                        }}
+                        transition={{
+                            x: {
+                                repeat: Infinity,
+                                repeatType: "loop",
+                                duration: 35,
+                                ease: "linear",
+                            },
+                        }}
+                        whileHover={{ animationPlayState: "paused" }}
+                        style={{ paddingLeft: "2rem", paddingRight: "2rem" }}
+                    >
+                {/* Duplicated items for infinite loop */}
+                {[...BODY_TYPES, ...BODY_TYPES, ...BODY_TYPES].map((bt, idx) => {
+                    return (
+                        <div
+                            key={`${bt.key}-${idx}`}
+                            className="w-[140px] sm:w-[170px] md:w-[200px] shrink-0"
+                        >
+                            <Link
+                                href={`/search?bodyType=${bt.key}`}
+                                className="group block aspect-square rounded-[1.5rem] overflow-hidden transition-all duration-500 bg-white shadow-sm hover:shadow-xl"
+                                onMouseEnter={e => {
+                                    const el = e.currentTarget as HTMLElement
+                                    el.style.transform = "translateY(-6px)"
+                                }}
+                                onMouseLeave={e => {
+                                    const el = e.currentTarget as HTMLElement
+                                    el.style.transform = "translateY(0)"
+                                }}
                             >
-                                <Link
-                                    href={`/search?bodyType=${bt.key}`}
-                                    className="group block rounded-2xl overflow-hidden transition-all duration-300 border hover:shadow-lg"
-                                    style={{
-                                        background: "var(--bg-card)",
-                                        borderColor: "var(--border-default)",
-                                    }}
-                                    onMouseEnter={e => {
-                                        const el = e.currentTarget as HTMLElement
-                                        el.style.borderColor = "rgba(237,28,36,0.3)"
-                                        el.style.transform = "translateY(-4px)"
-                                    }}
-                                    onMouseLeave={e => {
-                                        const el = e.currentTarget as HTMLElement
-                                        el.style.borderColor = "var(--border-default)"
-                                        el.style.transform = "translateY(0)"
-                                    }}
-                                >
-                                    {/* Image */}
-                                    <div className="relative w-full aspect-[4/3] overflow-hidden"
-                                        style={{ background: "var(--bg-card)" }}
-                                    >
+                                <div className="h-full flex flex-col p-3 sm:p-4">
+                                    {/* Image Section - Centered & Clean */}
+                                    <div className="relative flex-grow flex items-center justify-center bg-transparent">
                                         <Image
                                             src={bt.image}
                                             alt={bt.label}
                                             fill
-                                            sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
-                                            className="object-contain p-3 group-hover:scale-105 transition-transform duration-500"
+                                            sizes="(max-width: 640px) 140px, (max-width: 768px) 170px, 200px"
+                                            className="object-contain p-0.5 group-hover:scale-110 transition-transform duration-700 ease-out mix-blend-multiply brightness-[1.1] contrast-[1.1]"
                                         />
                                     </div>
 
-                                    {/* Label with icon */}
-                                    <div className="flex items-center justify-center gap-2 px-3 py-3 border-t"
-                                        style={{ borderColor: "var(--border-default)" }}
-                                    >
-                                        {Icon && (
-                                            <Icon className="w-7 h-4 shrink-0 transition-colors duration-200 text-[var(--text-muted)] group-hover:text-primary"
-                                            />
-                                        )}
-                                        <span className="text-sm md:text-base font-semibold transition-colors duration-200 group-hover:text-primary"
-                                            style={{ color: "var(--text-primary)" }}
-                                        >
+                                    {/* Label Section - Bold & Clean */}
+                                    <div className="pt-1 text-center">
+                                        <h3 className="text-sm sm:text-base md:text-lg font-extrabold tracking-tight text-[#02162b]">
                                             {bt.label}
-                                        </span>
+                                        </h3>
                                     </div>
-                                </Link>
-                            </motion.div>
-                        )
-                    })}
+                                </div>
+                            </Link>
+                        </div>
+                    )
+                })}
+                    </motion.div>
                 </div>
             </div>
         </section>

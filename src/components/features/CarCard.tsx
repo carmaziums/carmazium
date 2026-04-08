@@ -96,7 +96,7 @@ export function CarCard({
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
             style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-            className={`glass-card h-full flex flex-col perspective-1000 overflow-visible group relative ${tierBorder || ''} ${tierGlow || ''}`}
+            className={`glass-card isolate h-full flex flex-col perspective-1000 overflow-visible group relative ${tierBorder || ''} ${tierGlow || ''}`}
         >
             {/* Holographic Shimmer Overlay */}
             <motion.div
