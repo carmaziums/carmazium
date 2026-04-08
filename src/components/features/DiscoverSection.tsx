@@ -68,7 +68,14 @@ export function DiscoverSection() {
                     transition={{ duration: 0.8, delay: 0.3 }}
                     className="relative w-full"
                 >
-                    <div className="relative w-full aspect-[3/1] md:aspect-[3.5/1]">
+                    <div 
+                        className="relative w-full overflow-hidden"
+                        style={{ 
+                            aspectRatio: '1360 / 389',
+                            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 70%, transparent 100%)',
+                            maskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 70%, transparent 100%)'
+                        }}
+                    >
                         <Image
                             src="/assets/images/discover-hero.png"
                             alt="Discover your perfect car — Blue pickup, Red SUV, White sedan"
@@ -76,13 +83,14 @@ export function DiscoverSection() {
                             sizes="100vw"
                             className="object-cover object-center"
                             priority
+                            unoptimized
                         />
                     </div>
                 </motion.div>
             </div>
 
-            {/* Bottom fade to page background */}
-            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[var(--bg-body)] to-transparent z-20" />
+            {/* Bottom transition overlay — merges the section gradient into the page background */}
+            <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/80 to-transparent z-20 pointer-events-none" />
         </section>
     )
 }

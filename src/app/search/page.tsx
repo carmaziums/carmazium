@@ -459,7 +459,7 @@ function SearchPageContent() {
 
                 {/* ── Sidebar ──────────────────────────────────────────────────── */}
                 <aside className={`
-                    fixed inset-x-0 bottom-0 z-50 flex flex-col h-[85vh] bg-slate-900 border-t border-white/10 rounded-t-3xl shadow-2xl transition-transform duration-300
+                    fixed inset-x-0 bottom-0 z-50 lg:z-10 flex flex-col h-[85vh] bg-slate-900 border-t border-white/10 rounded-t-3xl shadow-2xl transition-transform duration-300
                     lg:static lg:w-72 lg:flex-shrink-0 lg:glass-card lg:border lg:rounded-2xl lg:shadow-none lg:translate-y-0 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:flex lg:flex-col lg:overflow-hidden lg:p-0
                     ${isFilterOpen ? 'translate-y-0' : 'translate-y-full lg:translate-y-0'}
                 `}>
