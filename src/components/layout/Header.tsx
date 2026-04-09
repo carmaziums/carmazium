@@ -15,6 +15,7 @@ const navLinks = [
     { name: "Buy Cars", href: "/search" },
     { name: "Sell Cars", href: "/sell" },
     { name: "About", href: "/about" },
+    { name: "Compare", href: "/compare" },
 ]
 
 export function Header() {

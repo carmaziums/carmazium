@@ -261,7 +261,8 @@ export default function Home() {
           <div className="flex items-center justify-between mb-8">
             <div>
               <h2 className="text-3xl font-bold font-heading flex items-center gap-3">
-                <span style={{ background: 'linear-gradient(135deg,#fbbf24,#f59e0b)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>✨ Featured Listings</span>
+                <Sparkles className="text-amber-400" size={32} strokeWidth={1.25} />
+                <span style={{ background: 'linear-gradient(135deg,#fbbf24,#f59e0b)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Featured Listings</span>
               </h2>
               <p className="text-gray-400 text-sm mt-1">Handpicked, seller-boosted cars — verified &amp; ready to go</p>
             </div>
