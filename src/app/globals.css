@@ -7,6 +7,7 @@
   --font-sans: var(--font-montserrat), sans-serif;
 
   --animate-float: float 6s ease-in-out infinite;
+  --animate-shimmer-sweep: shimmer-sweep 2s infinite linear;
 
   --keyframes-float: {
 
@@ -17,6 +18,15 @@
 
     50% {
       transform: translateY(-10px);
+    }
+  }
+
+  --keyframes-shimmer-sweep: {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
     }
   }
 }
@@ -163,4 +173,31 @@
   ::-webkit-scrollbar-thumb:hover {
     background: var(--scrollbar-hover);
   }
-}
+
+  /* VIP Dealer Utilities */
+  .dealer-glass-card {
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    border-radius: 1rem;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  .dealer-glass-card:hover {
+    transform: scale(1.02);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(59, 130, 246, 0.1) inset;
+  }
+
+  .metallic-foil {
+    background: linear-gradient(135deg, #e3e8ef 0%, #94a3b8 20%, #e3e8ef 40%, #ffffff 50%, #94a3b8 70%, #e3e8ef 100%);
+    background-size: 200% 200%;
+    color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+    animation: shimmer-sweep 3s infinite linear;
+  }
+}

@@ -3,13 +3,21 @@ import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPositive, Min } from 'class
 import { ServiceStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
 
+const ServiceStatusEnum = {
+    PENDING: 'PENDING',
+    ACCEPTED: 'ACCEPTED',
+    IN_PROGRESS: 'IN_PROGRESS',
+    COMPLETED: 'COMPLETED',
+    CANCELLED: 'CANCELLED',
+};
+
 export class UpdateServiceStatusDto {
     @ApiProperty({
         description: 'New status for the service request',
-        enum: ServiceStatus,
-        example: ServiceStatus.ACCEPTED,
+        enum: Object.values(ServiceStatusEnum),
+        example: ServiceStatusEnum.ACCEPTED,
     })
-    @IsEnum(ServiceStatus)
+    @IsEnum(ServiceStatusEnum)
     @IsNotEmpty()
     status: ServiceStatus;
 
@@ -23,3 +31,4 @@ export class UpdateServiceStatusDto {
     @IsPositive()
     price?: number;
 }
+

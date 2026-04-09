@@ -608,13 +608,13 @@ export default function SellPage() {
                 <div className="min-h-screen py-20">
                     <div className="container mx-auto px-5 max-w-4xl">
                         <div className="text-center mb-14">
-                            <h1 className="text-4xl md:text-5xl font-bold font-heading mb-4 text-white">List Your Car</h1>
-                            <p className="text-xl text-gray-400">Reach thousands of buyers across the UK.</p>
+                            <h1 className="text-4xl md:text-5xl font-black font-heading mb-4 text-white tracking-tight uppercase">CURATE YOUR LISTING</h1>
+                            <p className="text-lg text-gray-400 max-w-lg mx-auto">Present your vehicle to thousands of high-intent buyers seeking premium quality.</p>
                         </div>
 
                         <div
                             onClick={handleMethodClick}
-                            className="glass-card p-10 cursor-pointer hover:border-primary/50 hover:bg-white/5 transition-all duration-300 group relative overflow-hidden max-w-xl mx-auto"
+                            className="dealer-glass-card p-10 cursor-pointer hover:border-primary/50 transition-all duration-300 group relative overflow-hidden max-w-xl mx-auto border-white/10 hover:shadow-neon"
                         >
                             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -z-10 group-hover:bg-primary/20 transition-colors" />
                             <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mb-8 border border-white/10 group-hover:border-primary/50 group-hover:shadow-[0_0_30px_rgba(237,28,36,0.2)] transition-all">
@@ -684,8 +684,8 @@ export default function SellPage() {
                 </div>
 
                 {/* Form card */}
-                <div className="glass-card p-8 md:p-10 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -z-10" />
+                <div className="dealer-glass-card p-10 md:p-14 relative overflow-hidden border-white/5 bg-[#0A0A0C]">
+                    <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl -z-10 opacity-60" />
 
                     {/* ── STEP 1: Identity ──────────────────────────────────────────────── */}
                     {currentStep === 1 && (
@@ -717,8 +717,9 @@ export default function SellPage() {
                                 <div className="flex gap-3">
                                     <Input placeholder="e.g. AB12 CDE" value={formData.vrm}
                                         onChange={(e) => { set("vrm", e.target.value.toUpperCase()); setDvlaSuccess(false); setDvlaError(null) }}
-                                        className={`${inputCls} uppercase font-mono tracking-wider flex-1`} />
+                                        className={`${inputCls} uppercase font-mono tracking-widest text-lg h-14 bg-black border-primary/20 focus:border-primary flex-1 max-w-sm`} />
                                     <Button type="button" disabled={!formData.vrm || dvlaLoading}
+                                        className="bg-primary hover:bg-primary/90 text-white font-bold px-8 h-14 uppercase tracking-widest gap-2 shadow-neon transition-transform active:scale-95"
                                         onClick={async () => {
                                             setDvlaLoading(true); setDvlaError(null); setDvlaSuccess(false)
                                             try {
@@ -769,10 +770,9 @@ export default function SellPage() {
                                                 setDvlaError(err.message || "Lookup failed")
                                             } finally { setDvlaLoading(false) }
                                         }}
-                                        className="bg-primary hover:bg-primary/90 text-white font-bold px-5 gap-2"
                                     >
-                                        {dvlaLoading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
-                                        Look Up
+                                        {dvlaLoading ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
+                                        Analyze DVLA
                                     </Button>
                                 </div>
                                 <p className="text-xs text-gray-600">UK number plate — click Look Up to auto-fill vehicle details.</p>
@@ -1290,20 +1290,30 @@ export default function SellPage() {
 
                             {/* Estimated Valuation Card */}
                             {valuation ? (
-                                <div className="rounded-xl bg-gradient-to-br from-blue-600/15 to-indigo-600/10 border border-blue-500/30 p-6 space-y-4">
-                                    <div className="flex items-center gap-2">
-                                        <BadgeCheck className="text-blue-400 shrink-0" size={20} />
-                                        <h3 className="text-blue-300 font-bold uppercase tracking-wider text-sm">Estimated Market Value</h3>
+                                <div className="dealer-glass-card rounded-2xl border-purple-500/30 bg-gradient-to-br from-[#0A0A0C] to-slate-900 p-8 space-y-5 relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/10 blur-3xl pointer-events-none" />
+                                    <div className="flex items-center gap-3 relative z-10">
+                                        <div className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                                            <Sparkles className="text-purple-400 shrink-0" size={20} />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-white font-black font-heading uppercase tracking-widest text-sm">Proprietary Valuation</h3>
+                                            <p className="text-[10px] text-purple-400 font-bold uppercase tracking-widest">Driven by Market Intelligence</p>
+                                        </div>
                                     </div>
 
                                     {/* Price range */}
-                                    <div>
-                                        <p className="text-4xl font-black text-white tracking-tight">
-                                            {formatPrice(valuation.low)}
-                                            <span className="text-gray-400 text-2xl mx-2">–</span>
-                                            {formatPrice(valuation.high)}
+                                    <div className="relative z-10 pt-2 pb-1">
+                                        <div className="inline-block relative">
+                                            <p className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-200 to-gray-500 tracking-tight drop-shadow-xl metallic-foil">
+                                                {formatPrice(valuation.low)}
+                                                <span className="text-gray-500 text-3xl mx-3 font-light">–</span>
+                                                {formatPrice(valuation.high)}
+                                            </p>
+                                        </div>
+                                        <p className="text-gray-400 text-xs mt-2 font-bold uppercase tracking-wider flex items-center gap-2">
+                                            <Activity size={12} className="text-emerald-400" /> Auto-Optimized Midpoint: <strong className="text-white">{formatPrice(valuation.mid)}</strong>
                                         </p>
-                                        <p className="text-blue-300/70 text-xs mt-1 font-medium">Mid-point estimate: {formatPrice(valuation.mid)}</p>
                                     </div>
 
                                     {/* Factors breakdown */}
@@ -1374,16 +1384,18 @@ export default function SellPage() {
                                         Calculated based on UK car market pricing algorithms. Note that transmission (+£1,000 for auto) and London/Major City location (+2-4%) are also factored in. You can override the values below.
                                     </p>
 
-                                    <Button
-                                        type="button"
-                                        className="bg-blue-600 hover:bg-blue-700 text-white border-none w-full sm:w-auto"
-                                        onClick={() => {
-                                            set("priceMin", valuation.low.toString())
-                                            set("priceMax", valuation.high.toString())
-                                        }}
-                                    >
-                                        Use Estimated Range
-                                    </Button>
+                                    <div className="flex flex-col sm:flex-row gap-4 items-center mt-4">
+                                        <Button
+                                            type="button"
+                                            className="bg-purple-600 hover:bg-purple-500 text-white font-bold h-12 w-full sm:w-auto px-6 uppercase tracking-widest text-xs shadow-[0_0_20px_rgba(168,85,247,0.3)] transition-all"
+                                            onClick={() => {
+                                                set("priceMin", valuation.low.toString())
+                                                set("priceMax", valuation.high.toString())
+                                            }}
+                                        >
+                                            <Zap size={14} className="mr-2" /> Apply Intelligent Pricing
+                                        </Button>
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="rounded-xl bg-white/5 border border-white/10 p-5 text-center text-gray-500 text-sm">
