@@ -8,7 +8,7 @@ import {
     Car, Camera, List, DollarSign, CheckCircle,
     ArrowRight, ArrowLeft, Loader2, Search,
     BadgeCheck, TrendingDown, Upload, Eye, X,
-    Shield, Star, Sparkles, Zap, MapPin, LocateFixed, Edit, Info, Handshake, CreditCard, AlertTriangle, ChevronDown, Lock, FileText
+    Shield, Star, Sparkles, Zap, MapPin, LocateFixed, Edit, Info, Handshake, CreditCard, AlertTriangle, ChevronDown, Lock, FileText, Activity
 } from "lucide-react"
 import Image from "next/image"
 import { ImageUpload } from "@/components/listing/ImageUpload"
