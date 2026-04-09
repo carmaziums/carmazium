@@ -121,13 +121,12 @@ export default function ComparePage() {
 
     const SectionHeader = ({ icon: Icon, label }: { icon: React.ElementType; label: string }) => (
         <tr>
-            <td colSpan={4} className="pt-8 pb-4 px-6 sticky left-0 z-10">
-                <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20">
+            <td colSpan={3} className="pt-8 pb-4 px-6 sticky left-0 z-10 bg-slate-900/60 backdrop-blur-md border-y" style={{ borderColor: 'var(--border-default)' }}>
+                <div className="flex items-center gap-3 justify-center">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20 shrink-0">
                         <Icon size={18} className="text-primary" />
                     </div>
                     <span className="font-heading font-bold text-base tracking-wide uppercase text-primary">{label}</span>
-                    <div className="flex-1 h-px bg-gradient-to-r from-primary/20 to-transparent ml-2" />
                 </div>
             </td>
         </tr>
@@ -145,31 +144,27 @@ export default function ComparePage() {
         return (
             <tr className={`border-b transition-colors group ${isEven ? 'bg-white/[0.02]' : ''}`}
                 style={{ borderColor: 'var(--border-default)' }}>
-                <td className="py-4 px-6 font-semibold text-sm sticky left-0 z-10"
-                    style={{
-                        color: 'var(--text-muted)',
-                        background: isEven
-                            ? 'linear-gradient(90deg, rgba(15,23,42,0.7) 80%, transparent)'
-                            : 'linear-gradient(90deg, rgba(15,23,42,0.5) 80%, transparent)',
-                    }}>
-                    {label}
-                </td>
                 {cars.map((car, idx) => (
-                    <td key={idx} className={`py-4 px-6 text-center border-l transition-colors ${bestIdx === idx && car ? 'bg-emerald-500/[0.06]' : ''}`}
-                        style={{ borderColor: 'var(--border-default)' }}>
-                        {car ? (
-                            <div className="flex items-center justify-center gap-2">
-                                <span className={`text-sm font-medium ${bestIdx === idx ? 'text-emerald-400 font-bold' : ''}`}
-                                    style={bestIdx !== idx ? { color: 'var(--text-primary)' } : undefined}>
-                                    {getValue(car)}
-                                </span>
-                                {bestIdx === idx && (
-                                    <Trophy size={13} className="text-emerald-400 shrink-0" />
-                                )}
-                            </div>
-                        ) : (
-                            <span style={{ color: 'var(--text-faint)' }}>—</span>
-                        )}
+                    <td key={idx} className={`py-5 px-6 relative transition-colors border-l ${bestIdx === idx && car ? 'bg-emerald-500/[0.06]' : ''}`}
+                        style={{ borderColor: idx === 0 ? 'transparent' : 'var(--border-default)' }}>
+                        <div className="flex flex-col items-center justify-center gap-2 text-center w-full">
+                            <span className="text-[10px] font-bold tracking-widest uppercase opacity-40 block" style={{ color: 'var(--text-muted)' }}>
+                                {label}
+                            </span>
+                            {car ? (
+                                <div className="flex items-center justify-center gap-2">
+                                    <span className={`text-[15px] font-medium leading-tight ${bestIdx === idx ? 'text-emerald-400 font-bold' : ''}`}
+                                        style={bestIdx !== idx ? { color: 'var(--text-primary)' } : undefined}>
+                                        {getValue(car)}
+                                    </span>
+                                    {bestIdx === idx && (
+                                        <Trophy size={13} className="text-emerald-400 shrink-0" />
+                                    )}
+                                </div>
+                            ) : (
+                                <span style={{ color: 'var(--text-faint)' }}>—</span>
+                            )}
+                        </div>
                     </td>
                 ))}
             </tr>
@@ -225,9 +220,8 @@ export default function ComparePage() {
                                 {/* ── Vehicle Cards Header ─────────────────── */}
                                 <thead>
                                     <tr>
-                                        <th className="w-1/4 p-6 sticky left-0 z-10" style={{ background: 'transparent' }}></th>
                                         {cars.map((car, idx) => (
-                                            <th key={idx} className="w-1/4 p-4 align-top">
+                                            <th key={idx} className="w-1/3 p-4 align-top">
                                                 <AnimatePresence mode="wait">
                                                     {car ? (
                                                         <motion.div
@@ -369,7 +363,7 @@ export default function ComparePage() {
                                 {selectedCars.length === 0 && (
                                     <tbody>
                                         <tr>
-                                            <td colSpan={4} className="py-20 text-center">
+                                            <td colSpan={3} className="py-20 text-center">
                                                 <div className="flex flex-col items-center gap-4">
                                                     <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-700 flex items-center justify-center border border-white/10">
                                                         <Car size={32} style={{ color: 'var(--text-faint)' }} />

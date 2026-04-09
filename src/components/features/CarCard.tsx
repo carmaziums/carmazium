@@ -166,20 +166,16 @@ export function CarCard({
                 </div>
 
                 {/* Price Display */}
-                {priceMin && priceMax ? (
-                    <div className="mb-3">
-                        <p className="text-white text-xl font-bold font-mono bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
-                            £{Number(priceMin).toLocaleString('en-GB')} &ndash; £{Number(priceMax).toLocaleString('en-GB')}
-                        </p>
+                <div className="mb-3">
+                    <p className="text-white text-2xl font-bold font-mono bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
+                        {price}
+                    </p>
+                    {priceMin && priceMax && (
                         <span className="inline-block mt-1 text-[10px] font-bold uppercase tracking-wide bg-primary/10 text-primary border border-primary/30 px-2 py-0.5 rounded-full">
                             Offers Welcome
                         </span>
-                    </div>
-                ) : (
-                    <p className="text-white text-2xl font-bold font-mono bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400 mb-3">
-                        {price}
-                    </p>
-                )}
+                    )}
+                </div>
 
                 {/* Badge Tier Label */}
                 {badgeTier && badgeTier !== 'FREE' && (
