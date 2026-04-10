@@ -310,8 +310,6 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
     }, [user, latestOffer, listing])
 
     const isCompared = listing ? isInCompare(listing.id) : false
-    const hasOfferRange = listing && listing.priceMin && listing.priceMax
-
     const handleCompare = () => {
         if (!listing) return
         if (isCompared) {
@@ -421,9 +419,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
     )
 
     const images = listing.images?.length > 0 ? listing.images : ["/assets/images/featured-sports.png"]
-    const priceDisplay = hasOfferRange
-        ? `£${Number(listing.priceMin).toLocaleString('en-GB')} – £${Number(listing.priceMax).toLocaleString('en-GB')}`
-        : formatPrice(listing.price)
+    const priceDisplay = formatPrice(listing.price)
 
     // ─── Render ─────────────────────────────────────────────────────────────
 
@@ -815,22 +811,12 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                         </span>
                                         <span className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Policies</span>
                                     </div>
-                                    {hasOfferRange ? (
-                                        <div>
-                                            <p className="text-xs text-gray-500 mb-1 uppercase font-semibold tracking-wide">Offer Range</p>
-                                            <div className="text-3xl font-bold text-white mb-1">{priceDisplay}</div>
-                                            <span className="inline-block text-[10px] font-bold uppercase tracking-wide bg-primary/10 text-primary border border-primary/30 px-2.5 py-1 rounded-full">
-                                                Offers Welcome
-                                            </span>
-                                        </div>
-                                    ) : (
-                                        <div>
-                                            <div className="text-4xl font-bold text-white mb-2">{priceDisplay}</div>
-                                            <div className="inline-block bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded text-xs font-bold">
-                                                Best Price Guarantee
-                                            </div>
-                                        </div>
-                                    )}
+                                    <div>
+                                        <div className="text-4xl font-bold text-white mb-2">{priceDisplay}</div>
+                                        <span className="inline-block text-[10px] font-bold uppercase tracking-wide bg-primary/10 text-primary border border-primary/30 px-2.5 py-1 rounded-full mb-4">
+                                            Offers Welcome
+                                        </span>
+                                    </div>
                                     <p className="text-xs text-gray-400 mt-3">Price includes VAT. Financing available from 5.9% APR.</p>
                                 </div>
 
@@ -861,7 +847,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                     ) : listing.sellerId === user?.id ? (
                                         // Seller sees no offer/enquire buttons on their own listing
                                         <div className="text-center text-gray-500 text-sm py-2">This is your listing.</div>
-                                    ) : hasOfferRange ? (
+                                    ) : (
                                         <>
                                             <Button
                                                 className="w-full py-6 text-lg shadow-neon"
@@ -881,18 +867,6 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                                 asChild
                                                 variant="outline"
                                                 className="w-full py-6 text-lg border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/50 gap-2"
-                                            >
-                                                <Link href={`/checkout?listing_id=${listing.slug}&mode=deposit`}>
-                                                    <CreditCard size={18} /> Secure Purchase
-                                                </Link>
-                                            </Button>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Button className="w-full py-6 text-lg" shape="default">Enquire Now</Button>
-                                            <Button
-                                                asChild
-                                                className="w-full py-6 text-lg gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 shadow-lg shadow-emerald-500/20"
                                             >
                                                 <Link href={`/checkout?listing_id=${listing.slug}&mode=deposit`}>
                                                     <CreditCard size={18} /> Secure Purchase
