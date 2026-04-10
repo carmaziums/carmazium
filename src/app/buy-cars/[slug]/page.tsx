@@ -695,24 +695,12 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                                         </span>
                                         <span className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Policies</span>
                                     </div>
-                                    {listing.priceMin && listing.priceMax ? (
-                                        <div>
-                                            <p className="text-xs text-gray-500 mb-1 uppercase font-semibold tracking-wide">Offer Range</p>
-                                            <div className="text-3xl font-bold text-white mb-1">
-                                                £{Number(listing.priceMin).toLocaleString('en-GB')} &ndash; £{Number(listing.priceMax).toLocaleString('en-GB')}
-                                            </div>
-                                            <span className="inline-block text-[10px] font-bold uppercase tracking-wide bg-primary/10 text-primary border border-primary/30 px-2.5 py-1 rounded-full">
-                                                Offers Welcome
-                                            </span>
-                                        </div>
-                                    ) : (
-                                        <div>
-                                            <div className="text-4xl font-bold text-white mb-2">{vehicle.price}</div>
-                                            <div className="inline-block bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded text-xs font-bold mb-4">
-                                                Best Price Guarantee
-                                            </div>
-                                        </div>
-                                    )}
+                                    <div>
+                                        <div className="text-4xl font-bold text-white mb-2">{formatPrice(listing.price)}</div>
+                                        <span className="inline-block text-[10px] font-bold uppercase tracking-wide bg-primary/10 text-primary border border-primary/30 px-2.5 py-1 rounded-full mb-4">
+                                            Offers Welcome
+                                        </span>
+                                    </div>
                                     <p className="text-xs text-gray-400 mt-3">Price includes VAT. Financing available from 5.9% APR.</p>
                                 </div>
 
@@ -734,38 +722,22 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                                     </div>
                                 )}
                                 <div className="space-y-3">
-                                    {listing && listing.priceMin && listing.priceMax ? (
+                                    {listing.sellerId !== user?.id && (
                                         <>
-                                            {/* Only buyers (not the seller, not the listing owner) can make an offer */}
-                                            {listing.sellerId !== user?.id && (
-                                                <Button
-                                                    className="w-full py-6 text-lg shadow-neon"
-                                                    onClick={() => setShowOfferModal(true)}
-                                                    disabled={offerViewerRole === 'buyer' && (myOffer?.status === 'PENDING' || myOffer?.status === 'ACCEPTED')}
-                                                >
-                                                    {offerViewerRole === 'buyer' && myOffer?.status === 'PENDING'
-                                                        ? '⏳ Offer Pending...'
-                                                        : offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'
-                                                            ? '✓ Offer Accepted'
-                                                            : 'Make an Offer'}
-                                                </Button>
-                                            )}
-                                            {listing.sellerId !== user?.id && (
-                                                <Button variant="outline" className="w-full py-6 text-lg border-white/20 text-white hover:bg-white/10" onClick={handleEnquire} disabled={enquiring}>
-                                                    {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2" />Starting Chat...</> : <><MessageCircle className="w-5 h-5 mr-2" />Enquire</>}
-                                                </Button>
-                                            )}
-                                        </>
-                                    ) : (
-                                        <>
-                                            {listing.sellerId !== user?.id && (
-                                                <Button className="w-full py-6 text-lg" shape="default" onClick={handleEnquire} disabled={enquiring}>
-                                                    {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2" />Starting Chat...</> : <><MessageCircle className="w-5 h-5 mr-2" />Enquire Now</>}
-                                                </Button>
-                                            )}
-                                            {listing.sellerId !== user?.id && (
-                                                <Button variant="outline" className="w-full py-6 text-lg border-white/20 text-white hover:bg-white/10">Buy Online</Button>
-                                            )}
+                                            <Button
+                                                className="w-full py-6 text-lg shadow-neon"
+                                                onClick={() => setShowOfferModal(true)}
+                                                disabled={offerViewerRole === 'buyer' && (myOffer?.status === 'PENDING' || myOffer?.status === 'ACCEPTED')}
+                                            >
+                                                {offerViewerRole === 'buyer' && myOffer?.status === 'PENDING'
+                                                    ? '⏳ Offer Pending...'
+                                                    : offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'
+                                                        ? '✓ Offer Accepted'
+                                                        : 'Make an Offer'}
+                                            </Button>
+                                            <Button variant="outline" className="w-full py-6 text-lg border-white/20 text-white hover:bg-white/10" onClick={handleEnquire} disabled={enquiring}>
+                                                {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2" />Starting Chat...</> : <><MessageCircle className="w-5 h-5 mr-2" />Enquire</>}
+                                            </Button>
                                         </>
                                     )}
                                 </div>
