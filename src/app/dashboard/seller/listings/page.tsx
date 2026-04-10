@@ -101,7 +101,7 @@ export default function MyListingsPage() {
                     {/* ── Header ─────────────────────────────────── */}
                     <div className="flex justify-between items-center mb-6">
                         <h1 className="text-3xl font-bold font-heading text-white">My Listings</h1>
-                        <Link href="/sell" className="bg-primary text-white font-bold py-2 px-6 rounded shadow-neon hover:bg-red-600 transition-colors flex items-center gap-2">
+                        <Link href="/dashboard/seller/add-listing" className="bg-primary text-white font-bold py-2 px-6 rounded shadow-neon hover:bg-red-600 transition-colors flex items-center gap-2">
                             <PlusCircle size={18} />
                             Create New Listing
                         </Link>
@@ -173,7 +173,7 @@ export default function MyListingsPage() {
                                         <tr>
                                             <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
                                                 No listings yet.{" "}
-                                                <Link href="/sell" className="text-primary hover:underline">Create your first listing!</Link>
+                                                <Link href="/dashboard/seller/add-listing" className="text-primary hover:underline">Create your first listing!</Link>
                                             </td>
                                         </tr>
                                     ) : (

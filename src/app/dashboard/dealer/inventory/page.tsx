@@ -78,7 +78,7 @@ export default function DealerInventoryPage() {
                         <Button variant="outline" className="border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 gap-2 h-11 px-6 rounded-xl transition-all">
                             <Upload size={16} /> Bulk Import
                         </Button>
-                        <Link href="/sell">
+                        <Link href="/dashboard/dealer/add-listing">
                             <Button className="gap-2 h-11 px-6 rounded-xl shadow-[0_0_20px_rgba(237,28,36,0.3)] bg-gradient-to-r from-red-600 to-red-700 hover:scale-105 transition-transform">
                                 <PlusCircle size={18} /> Add Vehicle
                             </Button>
@@ -140,7 +140,7 @@ export default function DealerInventoryPage() {
                                                 <Car className="h-12 w-12 text-gray-700 mx-auto mb-3" />
                                                 <p className="text-gray-500 font-bold">No vehicles in stock</p>
                                                 <p className="text-gray-600 text-sm mt-1">Add your first vehicle to start selling</p>
-                                                <Link href="/sell">
+                                                <Link href="/dashboard/dealer/add-listing">
                                                     <Button className="mt-4 gap-2" shape="default">
                                                         <PlusCircle size={16} /> Add Vehicle
                                                     </Button>
