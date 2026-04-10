@@ -10,6 +10,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
 import { useSearchParams } from "next/navigation"
 import type { ChatRoom } from "@/lib/chatApi"
+import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 
 function MessagesContent() {
     const { user, profile, loading } = useAuth()
@@ -61,13 +62,13 @@ function MessagesContent() {
                                     <MessageSquare className="text-white" size={20} />
                                 </div>
                                 <div>
-                                    <h2 className="text-xl font-black font-heading text-white uppercase tracking-tighter metallic-foil">Messages</h2>
-                                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Direct Bespoke Communication</p>
+                                    <h2 className="text-xl font-black font-heading text-white uppercase tracking-tighter metallic-foil">
+                                        {DEALER_ROUTE_CONFIG[5].title}
+                                    </h2>
+                                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">
+                                        {DEALER_ROUTE_CONFIG[5].subHeader}
+                                    </p>
                                 </div>
-                            </div>
-                            <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-black/60 rounded-full border border-white/5">
-                                <ShieldCheck size={14} className="text-emerald-400" />
-                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-300">End-to-End Encryption</span>
                             </div>
                         </div>
 

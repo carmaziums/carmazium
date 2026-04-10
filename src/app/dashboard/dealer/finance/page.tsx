@@ -6,6 +6,9 @@ import { DollarSign, FileText, Loader2, Clock, CheckCircle, XCircle, AlertCircle
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
+import { PageHeader } from "@/components/dashboard/PageHeader"
+import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
+import { MetricCard } from "@/components/dashboard/MetricCard"
 
 const STATUS_BADGES: Record<string, string> = {
     PENDING: "bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.1)]",
@@ -47,16 +50,10 @@ export default function DealerFinancePage() {
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
                 <main className="flex-1 space-y-6 min-w-0">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div>
-                            <h1 className="text-3xl font-black font-heading uppercase tracking-tighter metallic-foil">Finance</h1>
-                            <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1 opacity-70">Strategic vehicle financing & liquidity oversight</p>
-                        </div>
-                        <div className="flex items-center gap-3 bg-[#0A0A0C] px-4 py-2 rounded-full border border-white/5">
-                            <ShieldCheck size={14} className="text-amber-400" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-gray-300">Audited Financial Terminal</span>
-                        </div>
-                    </div>
+                    <PageHeader 
+                        title={DEALER_ROUTE_CONFIG[4].title} 
+                        subHeader={DEALER_ROUTE_CONFIG[4].subHeader}
+                    />
 
                     {/* Summary Cards */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -66,21 +63,17 @@ export default function DealerFinancePage() {
                             { label: "Total Funded", short: "Funded", value: applications.filter(a => a.status === "FUNDED").length, icon: DollarSign, color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
                             { label: "Declined", short: "Rejected", value: applications.filter(a => a.status === "REJECTED").length, icon: XCircle, color: "text-red-400", bg: "bg-red-500/10", border: "border-red-500/20" },
                         ].map(stat => (
-                            <div key={stat.label} className="dealer-glass-card p-6 relative overflow-hidden group">
-                                <div className="flex items-center justify-between mb-4 relative z-10">
-                                    <div className={`p-2 rounded-lg border ${stat.bg} ${stat.border}`}>
-                                        <stat.icon size={18} className={stat.color} />
-                                    </div>
-                                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{stat.short}</span>
-                                </div>
-                                <h3 className="text-3xl font-black font-heading text-white relative z-10">
-                                    {stat.value}
-                                </h3>
-                                <p className="text-gray-400 text-xs mt-1 uppercase tracking-widest font-bold relative z-10">{stat.label}</p>
-                                <svg className="absolute bottom-0 left-0 w-full h-12 opacity-20 pointer-events-none" preserveAspectRatio="none" viewBox="0 0 100 100">
-                                    <path d="M0,100 L0,80 Q25,90 50,70 T100,50 L100,100 Z" fill="currentColor" className={stat.color} />
-                                </svg>
-                            </div>
+                            <MetricCard 
+                                key={stat.label}
+                                label={stat.label}
+                                value={stat.value}
+                                icon={stat.icon}
+                                color={stat.color}
+                                bg={stat.bg}
+                                border={stat.border}
+                                statusLabel={stat.short}
+                                loading={loading}
+                            />
                         ))}
                     </div>
 

@@ -12,6 +12,8 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { supabase } from "@/lib/supabase"
 import { apiClient } from "@/lib/apiClient"
+import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
+import { MetricCard } from "@/components/dashboard/MetricCard"
 
 export default function DealerDashboard() {
     const { user, profile, loading: authLoading } = useAuth()
@@ -170,8 +172,12 @@ export default function DealerDashboard() {
                                             <Building2 className="text-white" size={24} />
                                         </div>
                                         <div>
-                                            <h1 className="text-3xl font-black font-heading uppercase tracking-tighter metallic-foil">Overview</h1>
-                                            <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1 opacity-70">Welcome back, {userName}</p>
+                                            <h1 className="text-3xl font-black font-heading uppercase tracking-tighter metallic-foil">
+                                                {DEALER_ROUTE_CONFIG[0].title}
+                                            </h1>
+                                            <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1 opacity-70">
+                                                {DEALER_ROUTE_CONFIG[0].subHeader}, {userName}
+                                            </p>
                                             {stats?.isVerified && (
                                                 <div className="mt-1 flex items-center gap-1.5">
                                                     <ShieldCheck size={14} className="text-amber-400" />
@@ -182,73 +188,51 @@ export default function DealerDashboard() {
                                             )}
                                         </div>
                                     </div>
-                                    <div className="hidden md:flex items-center gap-2 bg-[#0A0A0C]/50 px-4 py-2 rounded-full border border-white/10">
-                                        <Activity size={14} className="text-emerald-400" />
-                                        <span className="text-xs font-bold text-gray-300">System <span className="text-emerald-400">Optimal</span></span>
-                                    </div>
                                 </div>
-                                <p className="text-gray-400 text-sm max-w-2xl leading-relaxed mt-4 border-l-2 border-primary/50 pl-4 py-1">
-                                    Your inventory is currently viewing <strong className="text-white">12% higher</strong> than the regional average today. 
-                                    Consider highlighting your premium SUVs to capitalize on local demand trends.
-                                </p>
                             </div>
                         </div>
                     )}
 
                     {/* ── KPI Stats Row ── */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="dealer-glass-card p-6">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="p-2 bg-primary/10 rounded-lg border border-primary/20"><Car size={18} className="text-primary" /></div>
-                                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Live</span>
-                            </div>
-                            <h3 className="text-3xl font-black font-heading text-white">
-                                {loading ? "..." : stats?.activeListings || 0}
-                            </h3>
-                            <p className="text-gray-400 text-xs mt-1 uppercase tracking-widest font-bold">Active Stock</p>
-                            {/* Synthetic Sparkline */}
-                            <svg className="absolute bottom-0 left-0 w-full h-12 opacity-20" preserveAspectRatio="none" viewBox="0 0 100 100">
-                                <path d="M0,100 L0,80 Q25,90 50,70 T100,50 L100,100 Z" fill="currentColor" className="text-primary" />
-                            </svg>
-                        </div>
-                        <div className="dealer-glass-card p-6">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="p-2 bg-blue-500/10 rounded-lg border border-blue-500/20"><Eye size={18} className="text-blue-400" /></div>
-                                <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded flex items-center gap-1">+14%</span>
-                            </div>
-                            <h3 className="text-3xl font-black font-heading text-white">
-                                {loading ? "..." : stats?.totalViews?.toLocaleString() || 0}
-                            </h3>
-                            <p className="text-gray-400 text-xs mt-1 uppercase tracking-widest font-bold">Total Views</p>
-                            {/* Synthetic Sparkline */}
-                            <svg className="absolute bottom-0 left-0 w-full h-12 opacity-20" preserveAspectRatio="none" viewBox="0 0 100 100">
-                                <path d="M0,100 L0,90 Q25,70 50,80 T100,30 L100,100 Z" fill="currentColor" className="text-blue-400" />
-                            </svg>
-                        </div>
-                        <div className="dealer-glass-card p-6">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="p-2 bg-amber-500/10 rounded-lg border border-amber-500/20"><Kanban size={18} className="text-amber-400" /></div>
-                                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-                            </div>
-                            <h3 className="text-3xl font-black font-heading text-white">
-                                {loading ? "..." : stats?.activeLeads || 0}
-                            </h3>
-                            <p className="text-gray-400 text-xs mt-1 uppercase tracking-widest font-bold">Active Leads</p>
-                            {/* Synthetic Sparkline */}
-                            <svg className="absolute bottom-0 left-0 w-full h-12 opacity-20" preserveAspectRatio="none" viewBox="0 0 100 100">
-                                <path d="M0,100 L0,70 Q25,80 50,60 T100,20 L100,100 Z" fill="currentColor" className="text-amber-400" />
-                            </svg>
-                        </div>
-                        <div className="dealer-glass-card p-6">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20"><TrendingUp size={18} className="text-emerald-400" /></div>
-                                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">MTD</span>
-                            </div>
-                            <h3 className="text-3xl font-black font-heading text-white">
-                                {loading ? "..." : stats?.soldListings || 0}
-                            </h3>
-                            <p className="text-gray-400 text-xs mt-1 uppercase tracking-widest font-bold">Vehicles Sold</p>
-                        </div>
+                        <MetricCard 
+                            label="Active Stock" 
+                            value={stats?.activeListings || 0} 
+                            icon={Car} 
+                            color="text-primary" 
+                            bg="bg-primary/10" 
+                            border="border-primary/20" 
+                            statusLabel="Live" 
+                            loading={loading} 
+                        />
+                        <MetricCard 
+                            label="Total Views" 
+                            value={stats?.totalViews?.toLocaleString() || 0} 
+                            icon={Eye} 
+                            color="text-blue-400" 
+                            bg="bg-blue-500/10" 
+                            border="border-blue-500/20" 
+                            loading={loading} 
+                        />
+                        <MetricCard 
+                            label="Active Leads" 
+                            value={stats?.activeLeads || 0} 
+                            icon={Kanban} 
+                            color="text-amber-400" 
+                            bg="bg-amber-500/10" 
+                            border="border-amber-500/20" 
+                            loading={loading} 
+                        />
+                        <MetricCard 
+                            label="Vehicles Sold" 
+                            value={stats?.soldListings || 0} 
+                            icon={TrendingUp} 
+                            color="text-emerald-400" 
+                            bg="bg-emerald-500/10" 
+                            border="border-emerald-500/20" 
+                            statusLabel="MTD" 
+                            loading={loading} 
+                        />
                     </div>
 
                     {/* ── Quick Actions & Proprietary Insights ── */}
@@ -272,18 +256,8 @@ export default function DealerDashboard() {
                             </div>
                         </Link>
                         
-                        {/* VIP Exclusive Insights Widget */}
-                        <div className="dealer-glass-card p-5 col-span-1 md:col-span-2 relative border-l-2 border-l-purple-500">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 blur-2xl rounded-full" />
-                            <div className="flex items-start gap-4 position-relative z-10">
-                                <div className="p-2.5 bg-purple-500/10 border border-purple-500/30 rounded-xl shrink-0">
-                                    <Sparkles size={20} className="text-purple-400" />
-                                </div>
-                                <div className="flex-1">
-                                    <p className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mb-1 flex items-center gap-1.5"><Zap size={10} /> Exclusive Intel</p>
-                                    <p className="text-sm font-bold text-white leading-tight">Sport hatchbacks under £25k are selling 2x faster this week.</p>
-                                </div>
-                            </div>
+                        <div className="dealer-glass-card p-5 group flex items-center justify-center col-span-1 md:col-span-2">
+                            <p className="text-gray-400 text-sm">Dashboard Overview initialized successfully.</p>
                         </div>
                     </div>
 
@@ -343,27 +317,8 @@ export default function DealerDashboard() {
                             </div>
                         </div>
 
-                        {/* Dedicated Concierge (Takes 1/3 width) */}
-                        <div className="dealer-glass-card flex-1 flex flex-col p-6 text-center border-t-4 border-t-amber-500">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 blur-3xl rounded-full" />
-                            <div className="flex-1 flex flex-col items-center justify-center relative z-10">
-                                <div className="w-16 h-16 rounded-full border-2 border-amber-500/50 p-1 mb-4">
-                                    <div className="w-full h-full rounded-full bg-slate-800 overflow-hidden relative">
-                                        {/* Mock human avatar */}
-                                        <div className="absolute inset-x-0 bottom-0 top-2 bg-slate-700 rounded-t-full"></div>
-                                        <div className="absolute top-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-slate-600"></div>
-                                    </div>
-                                </div>
-                                <h3 className="text-lg font-black font-heading text-white mb-1">Michael O.</h3>
-                                <p className="text-[10px] text-amber-400 font-bold uppercase tracking-widest mb-4 flex items-center gap-1 justify-center"><CheckCircle size={10} /> Dealer Success Partner</p>
-                                <p className="text-xs text-gray-400 mb-6 px-4">
-                                    I'm here to ensure your inventory performs at its peak. Chat with me anytime for pricing strategies or platform help.
-                                </p>
-                                <Button className="w-full bg-[#0A0A0C] border border-white/10 hover:border-amber-500/50 text-white font-bold gap-2">
-                                    <HeartHandshake size={16} className="text-amber-400" />
-                                    Message Michael
-                                </Button>
-                            </div>
+                        <div className="flex-[3] flex flex-col">
+                            {/* Added minimal valid child space since recent leads was placed out of grid layout properly before when the concierge took space */}
                         </div>
                     </div>
                 </main>
