@@ -10,6 +10,8 @@ import {
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
+import { PageHeader } from "@/components/dashboard/PageHeader"
+import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 
 export default function DealerSettingsPage() {
     const { user, profile, loading: authLoading } = useAuth()
@@ -94,10 +96,10 @@ export default function DealerSettingsPage() {
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
                 <main className="flex-1 space-y-6 min-w-0">
-                    <div>
-                        <h1 className="text-3xl font-black font-heading uppercase tracking-tighter metallic-foil">Settings</h1>
-                        <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1 opacity-70">Manage your dealership profile and preferences</p>
-                    </div>
+                    <PageHeader 
+                        title={DEALER_ROUTE_CONFIG[8].title} 
+                        subHeader={DEALER_ROUTE_CONFIG[8].subHeader}
+                    />
 
                     {/* Tab Selector */}
                     <div className="flex gap-1 bg-white/5 p-1 rounded-xl border border-white/5 w-fit">

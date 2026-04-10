@@ -5,6 +5,9 @@ import { BarChart3, Eye, TrendingUp, Users, Loader2, Car, Kanban, ArrowDown, Arr
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
+import { PageHeader } from "@/components/dashboard/PageHeader"
+import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
+import { MetricCard } from "@/components/dashboard/MetricCard"
 
 export default function DealerAnalyticsPage() {
     const { user, profile, loading: authLoading } = useAuth()
@@ -42,16 +45,10 @@ export default function DealerAnalyticsPage() {
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
                 <main className="flex-1 space-y-6 min-w-0">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div>
-                            <h1 className="text-3xl font-black font-heading uppercase tracking-tighter metallic-foil">Analytics</h1>
-                            <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1 opacity-70">Strategic market performance & predictive insights</p>
-                        </div>
-                        <div className="flex items-center gap-3 bg-[#0A0A0C] px-4 py-2 rounded-full border border-white/5">
-                            <Sparkles size={14} className="text-amber-400" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-gray-300">Predictive Engine Active</span>
-                        </div>
-                    </div>
+                    <PageHeader 
+                        title={DEALER_ROUTE_CONFIG[6].title} 
+                        subHeader={DEALER_ROUTE_CONFIG[6].subHeader}
+                    />
 
                     {/* Time Range Selector */}
                     <div className="flex gap-2 p-1 bg-[#0A0A0C] border border-white/5 rounded-xl w-fit">
@@ -76,29 +73,22 @@ export default function DealerAnalyticsPage() {
                             {/* Metric Cards */}
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                                 {[
-                                    { label: "Inventory Velocity", short: "Velocity", value: String(stats?.totalViews ?? 0), change: stats?.viewsChange ? `${stats.viewsChange > 0 ? '+' : ''}${stats.viewsChange}%` : "+12%", icon: Eye, color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20", up: true },
-                                    { label: "Capture Rate", short: "Capture", value: String(stats?.newLeads ?? 0), change: stats?.leadsChange ? `${stats.leadsChange > 0 ? '+' : ''}${stats.leadsChange}%` : "+8%", icon: Zap, color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20", up: true },
-                                    { label: "Engagement Alpha", short: "Alpha", value: `${stats?.conversionRate ?? 0}%`, change: stats?.conversionChange ? `${stats.conversionChange > 0 ? '+' : ''}${stats.conversionChange}%` : "+4%", icon: TrendingUp, color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", up: true },
-                                    { label: "Projected ARR", short: "ARR", value: `£${(stats?.revenue ?? 0).toLocaleString()}`, change: stats?.revenueChange ? `${stats.revenueChange > 0 ? '+' : ''}${stats.revenueChange}%` : "+15%", icon: BarChart3, color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/20", up: true },
+                                    { label: "Inventory Velocity", short: "Velocity", value: String(stats?.totalViews ?? 0), icon: Eye, color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
+                                    { label: "Capture Rate", short: "Capture", value: String(stats?.newLeads ?? 0), icon: Zap, color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
+                                    { label: "Engagement Alpha", short: "Alpha", value: `${stats?.conversionRate ?? 0}%`, icon: TrendingUp, color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+                                    { label: "Projected ARR", short: "ARR", value: `£${(stats?.revenue ?? 0).toLocaleString()}`, icon: BarChart3, color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/20" },
                                 ].map(metric => (
-                                    <div key={metric.label} className="dealer-glass-card p-6 relative overflow-hidden group">
-                                        <div className="flex items-center justify-between mb-4 relative z-10">
-                                            <div className={`p-2 rounded-lg border ${metric.bg} ${metric.border}`}>
-                                                <metric.icon size={18} className={metric.color} />
-                                            </div>
-                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 ${metric.up ? 'text-emerald-400 bg-emerald-500/10' : 'text-red-400 bg-red-500/10'}`}>
-                                                {metric.up ? <ArrowUp size={10} /> : <ArrowDown size={10} />}
-                                                {metric.change}
-                                            </span>
-                                        </div>
-                                        <h3 className="text-3xl font-black font-heading text-white relative z-10 metallic-foil">
-                                            {metric.value}
-                                        </h3>
-                                        <p className="text-gray-400 text-xs mt-1 uppercase tracking-widest font-bold relative z-10">{metric.label}</p>
-                                        <svg className="absolute bottom-0 left-0 w-full h-12 opacity-20 pointer-events-none" preserveAspectRatio="none" viewBox="0 0 100 100">
-                                            <path d="M0,100 L0,80 Q25,90 50,70 T100,50 L100,100 Z" fill="currentColor" className={metric.color} />
-                                        </svg>
-                                    </div>
+                                    <MetricCard 
+                                        key={metric.label}
+                                        label={metric.label}
+                                        value={metric.value}
+                                        icon={metric.icon}
+                                        color={metric.color}
+                                        bg={metric.bg}
+                                        border={metric.border}
+                                        statusLabel={metric.short}
+                                        foilValue={true}
+                                    />
                                 ))}
                             </div>
 

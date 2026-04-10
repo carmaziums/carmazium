@@ -10,6 +10,9 @@ import {
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
+import { PageHeader } from "@/components/dashboard/PageHeader"
+import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
+import { MetricCard } from "@/components/dashboard/MetricCard"
 
 const ROLE_CONFIG: Record<string, { label: string; icon: any; color: string; bg: string }> = {
     ADMIN: { label: "Executive Admin", icon: Shield, color: "text-primary", bg: "bg-primary/10" },
@@ -73,15 +76,14 @@ export default function DealerTeamPage() {
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
                 <main className="flex-1 space-y-6 min-w-0">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div>
-                            <h1 className="text-3xl font-black font-heading uppercase tracking-tighter metallic-foil">Team</h1>
-                            <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1 opacity-70">Manage elite dealership personnel & access protocols</p>
-                        </div>
+                    <PageHeader 
+                        title={DEALER_ROUTE_CONFIG[7].title} 
+                        subHeader={DEALER_ROUTE_CONFIG[7].subHeader}
+                    >
                         <Button onClick={() => setShowInvite(!showInvite)} className="gap-2 h-11 px-6 rounded-xl shadow-[0_0_20px_rgba(237,28,36,0.3)] bg-gradient-to-r from-red-600 to-red-700 hover:scale-105 transition-all">
                             <PlusCircle size={18} /> Add Personnel
                         </Button>
-                    </div>
+                    </PageHeader>
 
                     {/* Invite Form */}
                     {showInvite && (
@@ -126,21 +128,17 @@ export default function DealerTeamPage() {
                         {Object.entries(ROLE_CONFIG).map(([key, config]) => {
                             const count = staff.filter(s => s.role === key).length
                             return (
-                                <div key={key} className="dealer-glass-card p-6 relative overflow-hidden group">
-                                    <div className="flex items-center justify-between mb-4 relative z-10">
-                                        <div className={`p-2 rounded-lg border ${config.bg} border-white/5`}>
-                                            <config.icon size={18} className={config.color} />
-                                        </div>
-                                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Active</span>
-                                    </div>
-                                    <h3 className="text-3xl font-black font-heading text-white relative z-10 metallic-foil">
-                                        {count}
-                                    </h3>
-                                    <p className="text-gray-400 text-xs mt-1 uppercase tracking-widest font-bold relative z-10">{config.label}s</p>
-                                    <svg className="absolute bottom-0 left-0 w-full h-12 opacity-20 pointer-events-none" preserveAspectRatio="none" viewBox="0 0 100 100">
-                                        <path d="M0,100 L0,80 Q25,90 50,70 T100,50 L100,100 Z" fill="currentColor" className={config.color} />
-                                    </svg>
-                                </div>
+                                <MetricCard 
+                                    key={key}
+                                    label={`${config.label}s`}
+                                    value={count}
+                                    icon={config.icon}
+                                    color={config.color}
+                                    bg={config.bg}
+                                    border="border-white/5"
+                                    statusLabel="Active"
+                                    foilValue={true}
+                                />
                             )
                         })}
                     </div>

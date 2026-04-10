@@ -11,6 +11,8 @@ import {
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
+import { PageHeader } from "@/components/dashboard/PageHeader"
+import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 
 const STATUS_COLORS: Record<string, string> = {
     ACTIVE: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
@@ -69,22 +71,19 @@ export default function DealerInventoryPage() {
 
                 <main className="flex-1 space-y-6 min-w-0">
                     {/* Header */}
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div>
-                            <h1 className="text-3xl font-black font-heading uppercase tracking-tighter metallic-foil">Inventory</h1>
-                            <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1 opacity-70">Curate and manage your high-end stock</p>
-                        </div>
-                        <div className="flex gap-4">
-                            <Button variant="outline" className="border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 gap-2 h-11 px-6 rounded-xl transition-all">
-                                <Upload size={16} /> Bulk Import
+                    <PageHeader 
+                        title={DEALER_ROUTE_CONFIG[1].title} 
+                        subHeader={DEALER_ROUTE_CONFIG[1].subHeader}
+                    >
+                        <Button variant="outline" className="border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 gap-2 h-11 px-6 rounded-xl transition-all">
+                            <Upload size={16} /> Bulk Import
+                        </Button>
+                        <Link href="/sell">
+                            <Button className="gap-2 h-11 px-6 rounded-xl shadow-[0_0_20px_rgba(237,28,36,0.3)] bg-gradient-to-r from-red-600 to-red-700 hover:scale-105 transition-transform">
+                                <PlusCircle size={18} /> Add Vehicle
                             </Button>
-                            <Link href="/sell">
-                                <Button className="gap-2 h-11 px-6 rounded-xl shadow-[0_0_20px_rgba(237,28,36,0.3)] bg-gradient-to-r from-red-600 to-red-700 hover:scale-105 transition-transform">
-                                    <PlusCircle size={18} /> Add Vehicle
-                                </Button>
-                            </Link>
-                        </div>
-                    </div>
+                        </Link>
+                    </PageHeader>
 
                     {/* Filters */}
                     <div className="flex flex-col lg:flex-row gap-4 items-center">

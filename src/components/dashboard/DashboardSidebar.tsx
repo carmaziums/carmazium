@@ -29,6 +29,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
+import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 
 interface SidebarProps {
     role: "buyer" | "seller" | "provider" | "finance" | "insurance" | "dealer" | "admin"
@@ -98,17 +99,12 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             { href: "/dashboard/insurance/messages", label: "Messages", icon: MessageSquare, badge: unreadCount },
             { href: "/dashboard/insurance/settings", label: "Settings", icon: Settings },
         ],
-        dealer: [
-            { href: "/dashboard/dealer", label: "Overview", icon: LayoutDashboard },
-            { href: "/dashboard/dealer/inventory", label: "Inventory", icon: Car },
-            { href: "/dashboard/dealer/crm", label: "Leads", icon: Kanban },
-            { href: "/dashboard/dealer/offers", label: "Offers", icon: Tag },
-            { href: "/dashboard/dealer/finance", label: "Finance", icon: DollarSign },
-            { href: "/dashboard/dealer/messages", label: "Messages", icon: MessageSquare, badge: unreadCount },
-            { href: "/dashboard/dealer/analytics", label: "Analytics", icon: BarChart3 },
-            { href: "/dashboard/dealer/team", label: "Team", icon: Users },
-            { href: "/dashboard/dealer/settings", label: "Settings", icon: Settings },
-        ],
+        dealer: DEALER_ROUTE_CONFIG.map(route => ({
+            href: route.href,
+            label: route.label,
+            icon: route.icon,
+            badge: route.href === '/dashboard/dealer/messages' ? unreadCount : undefined
+        })),
         admin: [
             { href: "/dashboard/admin", label: "Overview", icon: LayoutDashboard },
             { href: "/dashboard/admin/users", label: "Accounts", icon: Users },

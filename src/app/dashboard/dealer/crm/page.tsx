@@ -11,6 +11,8 @@ import {
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
+import { PageHeader } from "@/components/dashboard/PageHeader"
+import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 
 const COLUMNS = [
     { key: "NEW", label: "New Leads", color: "border-blue-500/40", dotColor: "bg-blue-400", bg: "from-blue-500/5" },
@@ -74,22 +76,14 @@ export default function DealerCRMPage() {
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
                 <main className="flex-1 space-y-6 min-w-0">
-                    {/* Header */}
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div>
-                            <h1 className="text-3xl font-black font-heading uppercase tracking-tighter metallic-foil">Leads</h1>
-                            <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1 opacity-70">Strategic lead management & conversion tracking</p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <div className="hidden lg:flex items-center gap-2 bg-[#0A0A0C] px-4 py-2 rounded-full border border-white/5">
-                                <Activity size={14} className="text-emerald-400" />
-                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Pipeline Alpha: <span className="text-emerald-400">High Velocity</span></span>
-                            </div>
-                            <Button className="gap-2 h-11 px-6 rounded-xl shadow-[0_0_20px_rgba(237,28,36,0.3)] bg-gradient-to-r from-red-600 to-red-700 hover:scale-105 transition-all" shape="default">
-                                <PlusCircle size={18} /> Add Lead
-                            </Button>
-                        </div>
-                    </div>
+                    <PageHeader 
+                        title={DEALER_ROUTE_CONFIG[2].title} 
+                        subHeader={DEALER_ROUTE_CONFIG[2].subHeader}
+                    >
+                        <Button className="gap-2 h-11 px-6 rounded-xl shadow-[0_0_20px_rgba(237,28,36,0.3)] bg-gradient-to-r from-red-600 to-red-700 hover:scale-105 transition-all" shape="default">
+                            <PlusCircle size={18} /> Add Lead
+                        </Button>
+                    </PageHeader>
 
                     {/* Kanban Board */}
                     {loading ? (
