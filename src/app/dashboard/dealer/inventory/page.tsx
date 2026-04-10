@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import {
     Car, Search, Filter, PlusCircle, MoreVertical,
-    Loader2, Upload
+    Loader2, Upload, TrendingUp, BarChart3, ShieldCheck
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
@@ -69,43 +69,43 @@ export default function DealerInventoryPage() {
 
                 <main className="flex-1 space-y-6 min-w-0">
                     {/* Header */}
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div>
-                            <h1 className="text-2xl font-black font-heading uppercase tracking-tight">Inventory</h1>
-                            <p className="text-gray-400 text-sm">Manage your dealership's vehicle stock</p>
+                            <h1 className="text-3xl font-black font-heading uppercase tracking-tighter metallic-foil">Inventory</h1>
+                            <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1 opacity-70">Curate and manage your high-end stock</p>
                         </div>
-                        <div className="flex gap-3">
-                            <Button variant="outline" className="border-white/10 text-gray-300 hover:bg-white/10 gap-2 h-10">
+                        <div className="flex gap-4">
+                            <Button variant="outline" className="border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 gap-2 h-11 px-6 rounded-xl transition-all">
                                 <Upload size={16} /> Bulk Import
                             </Button>
                             <Link href="/sell">
-                                <Button className="gap-2 h-10 shadow-neon">
-                                    <PlusCircle size={16} /> Add Vehicle
+                                <Button className="gap-2 h-11 px-6 rounded-xl shadow-[0_0_20px_rgba(237,28,36,0.3)] bg-gradient-to-r from-red-600 to-red-700 hover:scale-105 transition-transform">
+                                    <PlusCircle size={18} /> Add Vehicle
                                 </Button>
                             </Link>
                         </div>
                     </div>
 
                     {/* Filters */}
-                    <div className="flex flex-col sm:flex-row gap-3">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
+                    <div className="flex flex-col lg:flex-row gap-4 items-center">
+                        <div className="relative flex-1 w-full">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                             <Input
                                 placeholder="Search by make, model, VRM..."
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
-                                className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-gray-500 h-11"
+                                className="pl-12 bg-[#0A0A0C] border-white/5 text-white placeholder:text-gray-500 h-12 rounded-xl focus:ring-1 focus:ring-primary/50"
                             />
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 p-1 bg-[#0A0A0C] border border-white/5 rounded-xl w-full lg:w-auto overflow-x-auto">
                             {["ALL", "ACTIVE", "DRAFT", "SOLD"].map(s => (
                                 <button
                                     key={s}
                                     onClick={() => setStatusFilter(s)}
-                                    className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-colors ${
+                                    className={`px-5 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
                                         statusFilter === s
-                                            ? 'bg-primary text-white'
-                                            : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                            ? 'vip-tab-active'
+                                            : 'text-gray-500 hover:text-gray-300'
                                     }`}
                                 >
                                     {s}
@@ -115,20 +115,20 @@ export default function DealerInventoryPage() {
                     </div>
 
                     {/* Table */}
-                    <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead className="bg-slate-800/50 text-gray-400 text-[10px] uppercase font-black tracking-widest">
+                    <div className="dealer-glass-card overflow-hidden">
+                        <div className="overflow-x-auto border-t border-white/5">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="vip-table-header">
                                     <tr>
-                                        <th className="px-6 py-4">Vehicle</th>
-                                        <th className="px-6 py-4">Price</th>
-                                        <th className="px-6 py-4 text-center">Status</th>
-                                        <th className="px-6 py-4 text-center">Views</th>
-                                        <th className="px-6 py-4 text-center">Leads</th>
-                                        <th className="px-6 py-4 text-right">Actions</th>
+                                        <th className="px-8 py-5">Vehicle Showcase</th>
+                                        <th className="px-6 py-5">Market Price</th>
+                                        <th className="px-6 py-5 text-center">Status</th>
+                                        <th className="px-6 py-5 text-center">Engagement</th>
+                                        <th className="px-6 py-5 text-center">Hot Leads</th>
+                                        <th className="px-8 py-5 text-right">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-white/5">
+                                <tbody className="divide-y divide-white/[0.03]">
                                     {loading ? (
                                         <tr>
                                             <td colSpan={6} className="px-6 py-12 text-center">
@@ -150,34 +150,69 @@ export default function DealerInventoryPage() {
                                         </tr>
                                     ) : (
                                         filteredListings.map((listing: any) => (
-                                            <tr key={listing.id} className="hover:bg-white/5 transition-colors">
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-14 h-10 bg-slate-800 rounded-lg overflow-hidden flex-shrink-0">
-                                                            {listing.images?.[0] && (
-                                                                <img src={listing.images[0]} alt="" className="w-full h-full object-cover" />
+                                            <tr key={listing.id} className="group hover:bg-white/[0.02] transition-colors relative">
+                                                <td className="px-8 py-6">
+                                                    <div className="flex items-center gap-5">
+                                                        <div className="w-20 h-14 bg-black/40 rounded-xl overflow-hidden border border-white/10 flex-shrink-0 group-hover:scale-105 transition-transform duration-500 shadow-2xl relative">
+                                                            {listing.images?.[0] ? (
+                                                                <img src={listing.images[0]} alt="" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center text-gray-700">
+                                                                    <Car size={20} />
+                                                                </div>
                                                             )}
+                                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                                         </div>
                                                         <div>
-                                                            <p className="font-bold text-white text-sm">{listing.title}</p>
-                                                            <p className="text-xs text-gray-500">{listing.vrm || listing.make} • {listing.mileage?.toLocaleString()} mi</p>
+                                                            <p className="font-black text-white text-base tracking-tight group-hover:text-primary transition-colors">{listing.title}</p>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-2 py-0.5 bg-white/5 rounded border border-white/5">{listing.vrm || "PRIVATE"}</span>
+                                                                <span className="text-[10px] font-bold text-primary italic uppercase tracking-widest">{listing.make}</span>
+                                                                <span className="text-[10px] text-gray-600 font-bold">• {listing.mileage?.toLocaleString()} mi</span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4 font-bold text-white">£{listing.price?.toLocaleString()}</td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <span className={`inline-flex px-2.5 py-1 rounded text-xs font-bold border ${STATUS_COLORS[listing.status] || STATUS_COLORS.DRAFT}`}>
+                                                <td className="px-6 py-6">
+                                                    <div className="flex flex-col">
+                                                        <span className="font-black text-white text-lg tracking-tight">£{listing.price?.toLocaleString()}</span>
+                                                        <span className="text-[9px] text-emerald-400 font-black uppercase tracking-widest inline-flex items-center gap-1">
+                                                            <TrendingUp size={8} /> Market Value Plus
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-6 text-center">
+                                                    <span className={`inline-flex px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest border shadow-sm ${STATUS_COLORS[listing.status] || STATUS_COLORS.DRAFT}`}>
                                                         {listing.status}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4 text-center text-sm text-gray-400">{listing.viewCount || 0}</td>
-                                                <td className="px-6 py-4 text-center text-sm text-gray-400">0</td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <Link href={`/dashboard/dealer/inventory/${listing.id}`}>
-                                                        <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
+                                                <td className="px-6 py-6 text-center">
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <span className="text-white font-black text-sm">{listing.viewCount || 0}</span>
+                                                        <div className="w-16 h-1 bg-white/5 rounded-full overflow-hidden">
+                                                            <div className="h-full bg-blue-500/50" style={{ width: `${Math.min((listing.viewCount || 0) / 10, 100)}%` }} />
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-6 text-center">
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <span className="text-red-400 font-black text-sm">0</span>
+                                                        <div className="w-16 h-1 bg-white/5 rounded-full overflow-hidden">
+                                                            <div className="h-full bg-red-500/50 pulse-glow" style={{ width: '0%' }} />
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-8 py-6 text-right">
+                                                    <div className="flex items-center justify-end gap-2 opactiy-0 group-hover:opacity-100 transition-opacity">
+                                                        <Link href={`/dashboard/dealer/inventory/${listing.id}`}>
+                                                            <Button variant="ghost" size="sm" className="bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/5">
+                                                                <BarChart3 size={16} />
+                                                            </Button>
+                                                        </Link>
+                                                        <Button variant="ghost" size="sm" className="bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/5">
                                                             <MoreVertical size={16} />
                                                         </Button>
-                                                    </Link>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))

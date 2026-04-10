@@ -200,4 +200,27 @@
     background-clip: text;
     animation: shimmer-sweep 3s infinite linear;
   }
+
+  /* Secondary VIP Utilities */
+  .vip-tab-active {
+    background: linear-gradient(to right, #ed1c24, #991b1b);
+    box-shadow: 0 0 15px rgba(237, 28, 36, 0.4);
+    color: white;
+  }
+
+  .vip-table-header {
+    background: rgba(0, 0, 0, 0.4);
+    text-transform: uppercase;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    font-size: 0.65rem;
+    color: #94a3b8;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .shimmer-bg {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+    background-size: 200% 100%;
+    animation: shimmer-sweep 2s infinite linear;
+  }
 }
