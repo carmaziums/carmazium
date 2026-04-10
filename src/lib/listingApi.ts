@@ -704,6 +704,8 @@ export async function getSellerPerformance(): Promise<PerformanceStats> {
 export interface LatestOffer {
     id: string
     amount: string | number
+    amountMin: string | number | null
+    amountMax: string | number | null
     status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'WITHDRAWN'
     message: string | null
     buyerId: string
@@ -748,10 +750,12 @@ export async function makeOffer(
     listingId: string,
     amount: number,
     message?: string,
+    amountMin?: number,
+    amountMax?: number,
 ): Promise<Offer> {
     const data = await apiClient<{ data: Offer }>('/offers', {
         method: 'POST',
-        body: JSON.stringify({ listingId, amount, message }),
+        body: JSON.stringify({ listingId, amount, amountMin, amountMax, message }),
     })
     return data.data
 }

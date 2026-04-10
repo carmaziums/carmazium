@@ -14,11 +14,25 @@ export class CreateOfferDto {
     @IsUUID()
     listingId: string;
 
-    @ApiProperty({ description: 'Offer amount in GBP', example: 12000.00 })
+    @ApiProperty({ description: 'Offer amount in GBP (midpoint, kept for backward-compat)', example: 12000.00 })
     @Type(() => Number)
     @IsNumber({ maxDecimalPlaces: 2 })
     @IsPositive()
     amount: number;
+
+    @ApiProperty({ description: 'Minimum offer amount in GBP (buyer lower bound)', example: 11000.00, required: false })
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 2 })
+    @IsPositive()
+    @IsOptional()
+    amountMin?: number;
+
+    @ApiProperty({ description: 'Maximum offer amount in GBP (buyer upper bound)', example: 13000.00, required: false })
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 2 })
+    @IsPositive()
+    @IsOptional()
+    amountMax?: number;
 
     @ApiProperty({ description: 'Optional message to the seller', example: 'I can collect this weekend.', required: false })
     @IsString()

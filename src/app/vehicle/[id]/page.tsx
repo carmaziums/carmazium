@@ -11,7 +11,7 @@ const FinanceCalculator = dynamic(() => import("@/components/features/FinanceCal
 import {
     ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon,
     MapPin, Share2, Heart, Scale, Loader2, AlertTriangle, X, Tag,
-    Clock, XCircle, ThumbsUp, Lock, FileSearch, BadgeCheck, Star, Sparkles, Zap, CreditCard,
+    Clock, XCircle, ThumbsUp, Lock, FileSearch, BadgeCheck, Star, Sparkles, Zap, CreditCard, Info,
 } from "lucide-react"
 import { useCompare } from "@/context/CompareContext"
 import { useAuth } from "@/context/AuthContext"
@@ -24,30 +24,33 @@ import { useRouter } from "next/navigation"
 
 function OfferStatusChip({ offer, viewerRole }: { offer: LatestOffer; viewerRole: 'buyer' | 'seller' | 'public' }) {
     const amount = `£${Number(offer.amount).toLocaleString('en-GB')}`
+    const amtMin = offer.amountMin ? `£${Number(offer.amountMin).toLocaleString('en-GB')}` : null
+    const amtMax = offer.amountMax ? `£${Number(offer.amountMax).toLocaleString('en-GB')}` : null
+    const amountDisplay = (amtMin && amtMax && amtMin !== amtMax) ? `${amtMin} – ${amtMax}` : amount
 
     if (viewerRole === 'buyer') {
         if (offer.status === 'PENDING') return (
             <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm">
                 <Clock size={14} className="shrink-0" />
-                <span>Your offer of <strong>{amount}</strong> is awaiting the seller&apos;s response.</span>
+                <span>Your offer of <strong>{amountDisplay}</strong> is awaiting the seller&apos;s response.</span>
             </div>
         )
         if (offer.status === 'REJECTED') return (
             <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
                 <XCircle size={14} className="shrink-0" />
-                <span>Your offer of <strong>{amount}</strong> was declined. You may submit a new one.</span>
+                <span>Your offer of <strong>{amountDisplay}</strong> was declined. You may submit a new one.</span>
             </div>
         )
         if (offer.status === 'ACCEPTED') return (
             <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm">
                 <ThumbsUp size={14} className="shrink-0" />
-                <span>🎉 Your offer of <strong>{amount}</strong> was accepted! Contact the seller to proceed.</span>
+                <span>🎉 Your offer of <strong>{amountDisplay}</strong> was accepted! Contact the seller to proceed.</span>
             </div>
         )
         if (offer.status === 'WITHDRAWN') return (
             <div className="flex items-center gap-2 p-3 rounded-xl bg-gray-500/10 border border-gray-500/30 text-gray-300 text-sm">
                 <XCircle size={14} className="shrink-0" />
-                <span>Your previous offer of <strong>{amount}</strong> was withdrawn. You can make a new offer.</span>
+                <span>Your previous offer of <strong>{amountDisplay}</strong> was withdrawn. You can make a new offer.</span>
             </div>
         )
     }
@@ -56,19 +59,19 @@ function OfferStatusChip({ offer, viewerRole }: { offer: LatestOffer; viewerRole
         if (offer.status === 'PENDING') return (
             <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm">
                 <Clock size={14} className="shrink-0" />
-                <span>An offer of <strong>{amount}</strong> is awaiting your response. Manage it in your <strong>Seller Dashboard</strong>.</span>
+                <span>An offer of <strong>{amountDisplay}</strong> is awaiting your response. Manage it in your <strong>Seller Dashboard</strong>.</span>
             </div>
         )
         if (offer.status === 'ACCEPTED') return (
             <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm">
                 <ThumbsUp size={14} className="shrink-0" />
-                <span>You accepted an offer of <strong>{amount}</strong> on this listing.</span>
+                <span>You accepted an offer of <strong>{amountDisplay}</strong> on this listing.</span>
             </div>
         )
         if (offer.status === 'REJECTED') return (
             <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
                 <XCircle size={14} className="shrink-0" />
-                <span>An offer of <strong>{amount}</strong> was declined.</span>
+                <span>An offer of <strong>{amountDisplay}</strong> was declined.</span>
             </div>
         )
     }
@@ -82,7 +85,7 @@ function OfferStatusChip({ offer, viewerRole }: { offer: LatestOffer; viewerRole
     return (
         <div className="flex items-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 text-sm">
             <Tag size={14} className="shrink-0" />
-            <span>An offer of <strong className="text-white">{amount}</strong> has been made on this listing{statusLabel ? ` — ${statusLabel}` : ''}.</span>
+            <span>An offer of <strong className="text-white">{amountDisplay}</strong> has been made on this listing{statusLabel ? ` — ${statusLabel}` : ''}.</span>
         </div>
     )
 }
@@ -98,23 +101,23 @@ function OfferModal({
     onClose: () => void,
     onSuccess: (offer: LatestOffer) => void,
 }) {
-    const min = listing.priceMin ? Number(listing.priceMin) : Number(listing.price) * 0.9
-    const max = listing.priceMax ? Number(listing.priceMax) : Number(listing.price)
+    const askingPrice = Number(listing.price)
 
-    const [amount, setAmount] = React.useState(min)
+    const [offerMin, setOfferMin] = React.useState(Math.round(askingPrice * 0.9))
+    const [offerMax, setOfferMax] = React.useState(askingPrice)
     const [message, setMessage] = React.useState("")
     const [loading, setLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
 
-    const pct = Math.min(100, Math.max(0, ((amount - min) / (max - min)) * 100))
-    const isOutOfRange = amount < min || amount > max
+    const isInvalid = offerMin <= 0 || offerMax <= 0 || offerMin > offerMax
 
     const handleSubmit = async () => {
-        if (isOutOfRange) return
+        if (isInvalid) return
         setLoading(true)
         setError(null)
         try {
-            const offer = await makeOffer(listing.id, amount, message || undefined)
+            const midpoint = Math.round((offerMin + offerMax) / 2)
+            const offer = await makeOffer(listing.id, midpoint, message || undefined, offerMin, offerMax)
             onSuccess(offer as unknown as LatestOffer)
         } catch (err: any) {
             setError(err.message || "Failed to submit offer. Please try again.")
@@ -152,59 +155,56 @@ function OfferModal({
                     </div>
                 </div>
 
-                {/* Price Range indicator */}
+                {/* Asking Price Reference */}
                 <div className="mb-6 p-3 rounded-xl bg-white/5 border border-white/10">
-                    <div className="flex justify-between text-xs text-gray-400 mb-2">
-                        <span>Min: <span className="text-white font-semibold">£{min.toLocaleString('en-GB')}</span></span>
-                        <span>Max: <span className="text-white font-semibold">£{max.toLocaleString('en-GB')}</span></span>
-                    </div>
-                    {/* Track */}
-                    <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                        <div
-                            className="h-full bg-gradient-to-r from-primary/60 to-primary rounded-full transition-all duration-200"
-                            style={{ width: `${pct}%` }}
-                        />
+                    <div className="flex justify-between text-xs text-gray-400">
+                        <span>Seller&apos;s Asking Price</span>
+                        <span className="text-white font-semibold">£{askingPrice.toLocaleString('en-GB')}</span>
                     </div>
                 </div>
 
-                {/* Amount Input */}
+                {/* Buyer Price Range Inputs */}
                 <div className="mb-4">
-                    <label className="text-sm font-bold uppercase text-gray-400 mb-2 block">Your Offer (£)</label>
-                    <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">£</span>
-                        <Input
-                            type="number"
-                            value={amount}
-                            min={min}
-                            max={max}
-                            step={100}
-                            onChange={(e) => setAmount(Number(e.target.value))}
-                            className="bg-slate-900/50 border-white/10 text-white pl-8 text-lg focus:border-primary"
-                        />
+                    <label className="text-sm font-bold uppercase text-gray-400 mb-2 block">Your Price Range</label>
+                    <p className="text-xs text-gray-500 mb-3">Set your minimum and maximum you&apos;re willing to pay. The seller sees your full range.</p>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="text-xs text-gray-500 mb-1 block">Min Offer (£)</label>
+                            <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">£</span>
+                                <Input
+                                    type="number"
+                                    value={offerMin}
+                                    step={100}
+                                    onChange={(e) => setOfferMin(Number(e.target.value))}
+                                    className="bg-slate-900/50 border-white/10 text-white pl-8 focus:border-primary"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-xs text-gray-500 mb-1 block">Max Offer (£)</label>
+                            <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">£</span>
+                                <Input
+                                    type="number"
+                                    value={offerMax}
+                                    step={100}
+                                    onChange={(e) => setOfferMax(Number(e.target.value))}
+                                    className="bg-slate-900/50 border-white/10 text-white pl-8 focus:border-primary"
+                                />
+                            </div>
+                        </div>
                     </div>
-                    {isOutOfRange && (
-                        <p className="text-red-400 text-xs mt-1">
-                            Must be between £{min.toLocaleString('en-GB')} and £{max.toLocaleString('en-GB')}
+                    {isInvalid && offerMin > 0 && offerMax > 0 && (
+                        <p className="text-red-400 text-xs mt-2">
+                            Min offer must be less than or equal to max offer
                         </p>
                     )}
-                    {!isOutOfRange && (
-                        <p className="text-emerald-400 text-xs mt-1">
-                            ✓ Within the seller&apos;s accepted range
+                    {!isInvalid && offerMin > 0 && offerMax > 0 && (
+                        <p className="text-emerald-400 text-xs mt-2">
+                            ✓ Range: £{offerMin.toLocaleString('en-GB')} – £{offerMax.toLocaleString('en-GB')}
                         </p>
                     )}
-                </div>
-
-                {/* Optional range slider */}
-                <div className="mb-5">
-                    <input
-                        type="range"
-                        min={min}
-                        max={max}
-                        step={100}
-                        value={amount}
-                        onChange={(e) => setAmount(Number(e.target.value))}
-                        className="w-full accent-primary cursor-pointer"
-                    />
                 </div>
 
                 {/* Message */}
@@ -234,10 +234,10 @@ function OfferModal({
                     </Button>
                     <Button
                         className="flex-1 shadow-neon"
-                        disabled={loading || isOutOfRange}
+                        disabled={loading || isInvalid}
                         onClick={handleSubmit}
                     >
-                        {loading ? <><Loader2 size={16} className="animate-spin mr-2" /> Submitting...</> : `Submit £${amount.toLocaleString('en-GB')}`}
+                        {loading ? <><Loader2 size={16} className="animate-spin mr-2" /> Submitting...</> : `Submit Offer`}
                     </Button>
                 </div>
             </div>
@@ -506,6 +506,20 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                         </span>
                                     </>
                                 )}
+                                {/* HPI Check Badges for PREMIUM tier */}
+                                {listing.badgeTier === 'PREMIUM' && (
+                                    <>
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-full">
+                                            <CheckCircle size={10} /> Condition Check
+                                        </span>
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-full">
+                                            <CheckCircle size={10} /> Stolen Check
+                                        </span>
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-full">
+                                            <CheckCircle size={10} /> Finance Check
+                                        </span>
+                                    </>
+                                )}
                             </div>
                         </div>
                         <div className="flex gap-3">
@@ -615,6 +629,25 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                             ))}
                                         </div>
                                     </AccordionItem>
+                                    {/* HPI Verification Badges in Features */}
+                                    {listing.badgeTier === 'PREMIUM' && (
+                                        <AccordionItem title="HPI Verification" icon={<ShieldCheck size={18} />}>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div className="flex items-center gap-2 text-sm text-emerald-300">
+                                                    <CheckCircle size={12} className="text-emerald-400 shrink-0" />
+                                                    Condition Check
+                                                </div>
+                                                <div className="flex items-center gap-2 text-sm text-emerald-300">
+                                                    <CheckCircle size={12} className="text-emerald-400 shrink-0" />
+                                                    Stolen Check
+                                                </div>
+                                                <div className="flex items-center gap-2 text-sm text-emerald-300">
+                                                    <CheckCircle size={12} className="text-emerald-400 shrink-0" />
+                                                    Finance Check
+                                                </div>
+                                            </div>
+                                        </AccordionItem>
+                                    )}
                                     <AccordionItem title="Specifications" icon={<Cog size={18} />}>
                                         <div className="text-sm text-gray-400">
                                             {listing.fuelType && <p>Fuel: {listing.fuelType}</p>}
@@ -723,6 +756,18 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                             <div className="p-6">
                                 {/* Price */}
                                 <div className="mb-5">
+                                    {/* Policies tooltip */}
+                                    <div className="flex items-center gap-1.5 mb-3">
+                                        <span className="relative group/policy inline-flex items-center cursor-help">
+                                            <Info size={14} className="text-gray-500 group-hover/policy:text-blue-400 transition-colors" />
+                                            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 rounded-lg bg-slate-800 border border-white/10 px-3 py-2.5 text-xs text-gray-300 leading-relaxed shadow-xl opacity-0 invisible group-hover/policy:opacity-100 group-hover/policy:visible transition-all duration-200 z-50 pointer-events-none">
+                                                <span className="font-bold text-white block mb-1">Policies:</span>
+                                                Payment will not be made on our platform.
+                                                <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-slate-800" />
+                                            </span>
+                                        </span>
+                                        <span className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Policies</span>
+                                    </div>
                                     {hasOfferRange ? (
                                         <div>
                                             <p className="text-xs text-gray-500 mb-1 uppercase font-semibold tracking-wide">Offer Range</p>
