@@ -113,7 +113,7 @@ export default function DealerDashboard() {
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
 
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account">
-                    <Link href="/sell">
+                    <Link href="/dashboard/dealer/add-listing">
                         <Button className="w-full flex items-center gap-2 shadow-neon h-12" shape="default">
                             <PlusCircle size={18} /> Add Vehicle
                         </Button>
