@@ -760,10 +760,10 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                     <div className="flex items-center gap-1.5 mb-3">
                                         <span className="relative group/policy inline-flex items-center cursor-help">
                                             <Info size={14} className="text-gray-500 group-hover/policy:text-blue-400 transition-colors" />
-                                            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 rounded-lg bg-slate-800 border border-white/10 px-3 py-2.5 text-xs text-gray-300 leading-relaxed shadow-xl opacity-0 invisible group-hover/policy:opacity-100 group-hover/policy:visible transition-all duration-200 z-50 pointer-events-none">
+                                            <span className="absolute bottom-full -left-2 mb-2 w-56 rounded-lg bg-slate-800 border border-white/10 px-3 py-2.5 text-xs text-gray-300 leading-relaxed shadow-xl opacity-0 invisible group-hover/policy:opacity-100 group-hover/policy:visible transition-all duration-200 z-50 pointer-events-none">
                                                 <span className="font-bold text-white block mb-1">Policies:</span>
                                                 Payment will not be made on our platform.
-                                                <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-slate-800" />
+                                                <span className="absolute top-full left-3 -mt-px border-4 border-transparent border-t-slate-800" />
                                             </span>
                                         </span>
                                         <span className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Policies</span>
