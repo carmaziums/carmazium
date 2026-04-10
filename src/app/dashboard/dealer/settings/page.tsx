@@ -95,8 +95,8 @@ export default function DealerSettingsPage() {
 
                 <main className="flex-1 space-y-6 min-w-0">
                     <div>
-                        <h1 className="text-2xl font-black font-heading uppercase tracking-tight">Settings</h1>
-                        <p className="text-gray-400 text-sm">Manage your dealership profile and preferences</p>
+                        <h1 className="text-3xl font-black font-heading uppercase tracking-tighter metallic-foil">Settings</h1>
+                        <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1 opacity-70">Manage your dealership profile and preferences</p>
                     </div>
 
                     {/* Tab Selector */}

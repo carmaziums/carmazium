@@ -170,9 +170,8 @@ export default function DealerDashboard() {
                                             <Building2 className="text-white" size={24} />
                                         </div>
                                         <div>
-                                            <h1 className="text-2xl md:text-3xl font-black font-heading tracking-tight flex items-center gap-2">
-                                                Good morning, {userName}.
-                                            </h1>
+                                            <h1 className="text-3xl font-black font-heading uppercase tracking-tighter metallic-foil">Overview</h1>
+                                            <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1 opacity-70">Welcome back, {userName}</p>
                                             {stats?.isVerified && (
                                                 <div className="mt-1 flex items-center gap-1.5">
                                                     <ShieldCheck size={14} className="text-amber-400" />
