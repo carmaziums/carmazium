@@ -66,6 +66,8 @@ export class OffersService {
                 listingId: dto.listingId,
                 buyerId,
                 amount: dto.amount,
+                amountMin: dto.amountMin ?? dto.amount,
+                amountMax: dto.amountMax ?? dto.amount,
                 message: dto.message ?? null,
             },
         });

@@ -399,12 +399,9 @@ export default function SellPage() {
             case 1: return !!(formData.vrm && formData.make && formData.model && formData.year && formData.mileage && formData.fuelType && formData.transmission && formData.title)
             case 2: return formData.images.length > 0
             case 3: {
-                const hasRange = formData.priceMin && formData.priceMax
-                if (!hasRange) return false
-                const min = parseFloat(formData.priceMin)
-                const max = parseFloat(formData.priceMax)
-                if (isNaN(min) || isNaN(max) || min <= 0 || max <= 0) return false
-                if (min >= max) return false
+                if (!formData.priceMin) return false
+                const price = parseFloat(formData.priceMin)
+                if (isNaN(price) || price <= 0) return false
                 return true
             }
             default: return true
@@ -443,7 +440,7 @@ export default function SellPage() {
 
         try {
             const priceMin = parseFloat(formData.priceMin)
-            const priceMax = parseFloat(formData.priceMax)
+            const priceMax = priceMin
             const displayPrice = priceMin
 
             const payload: CreateListingRequest = {
@@ -614,21 +611,26 @@ export default function SellPage() {
 
                         <div
                             onClick={handleMethodClick}
-                            className="dealer-glass-card p-10 cursor-pointer hover:border-primary/50 transition-all duration-300 group relative overflow-hidden max-w-xl mx-auto border-white/10 hover:shadow-neon"
+                            className="relative cursor-pointer group max-w-xl mx-auto"
                         >
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -z-10 group-hover:bg-primary/20 transition-colors" />
-                            <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mb-8 border border-white/10 group-hover:border-primary/50 group-hover:shadow-[0_0_30px_rgba(237,28,36,0.2)] transition-all">
-                                <List className="text-primary w-10 h-10" />
+                            {/* Card glow effect */}
+                            <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/50 via-red-600/30 to-primary/50 rounded-2xl blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                            <div className="relative dealer-glass-card p-10 border-white/10 hover:border-primary/50 transition-all duration-300 overflow-hidden hover:shadow-neon rounded-2xl">
+                                <div className="absolute top-0 right-0 w-40 h-40 bg-primary/10 rounded-full blur-3xl -z-10 group-hover:bg-primary/20 transition-colors" />
+                                <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl -z-10" />
+                                <div className="w-20 h-20 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl flex items-center justify-center mb-8 border border-white/10 group-hover:border-primary/50 group-hover:shadow-[0_0_30px_rgba(237,28,36,0.2)] transition-all">
+                                    <List className="text-primary w-10 h-10" />
+                                </div>
+                                <h2 className="text-3xl font-bold mb-3 font-heading">List My Car</h2>
+                                <p className="text-gray-400 mb-8">Set your asking price and let buyers submit offers. You choose who to accept.</p>
+                                <ul className="space-y-3 mb-8 text-gray-300">
+                                    <li className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-400" /> Free to list</li>
+                                    <li className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-400" /> DVLA-verified vehicle data</li>
+                                    <li className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-400" /> Instant estimated valuation</li>
+                                    <li className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-400" /> Reach thousands of buyers</li>
+                                </ul>
+                                <Button className="w-full py-6 text-lg group-hover:shadow-neon">Start Listing <ArrowRight className="ml-2" /></Button>
                             </div>
-                            <h2 className="text-3xl font-bold mb-3 font-heading">List My Car</h2>
-                            <p className="text-gray-400 mb-8">Set your offer range and let buyers submit their best price. You choose who to accept.</p>
-                            <ul className="space-y-3 mb-8 text-gray-300">
-                                <li className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-400" /> Free to list</li>
-                                <li className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-400" /> DVLA-verified vehicle data</li>
-                                <li className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-400" /> Instant estimated valuation</li>
-                                <li className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-400" /> Reach thousands of buyers</li>
-                            </ul>
-                            <Button className="w-full py-6 text-lg group-hover:shadow-neon">Start Listing <ArrowRight className="ml-2" /></Button>
                         </div>
 
                         {/* Steps explanation */}
@@ -1389,8 +1391,7 @@ export default function SellPage() {
                                             type="button"
                                             className="bg-purple-600 hover:bg-purple-500 text-white font-bold h-12 w-full sm:w-auto px-6 uppercase tracking-widest text-xs shadow-[0_0_20px_rgba(168,85,247,0.3)] transition-all"
                                             onClick={() => {
-                                                set("priceMin", valuation.low.toString())
-                                                set("priceMax", valuation.high.toString())
+                                                set("priceMin", valuation.mid.toString())
                                             }}
                                         >
                                             <Zap size={14} className="mr-2" /> Apply Intelligent Pricing
@@ -1403,44 +1404,28 @@ export default function SellPage() {
                                 </div>
                             )}
 
-                            {/* Offer Range */}
+                            {/* Asking Price */}
                             <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
-                                <p className="text-xs text-primary font-semibold mb-1">💡 Offer Range</p>
-                                <p className="text-xs text-gray-400">Buyers see your price range and submit offers within it. You choose to accept or reject each offer.</p>
+                                <p className="text-xs text-primary font-semibold mb-1">💰 Asking Price</p>
+                                <p className="text-xs text-gray-400">Set your asking price. Buyers can submit offers with their own price range for you to accept or reject.</p>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-gray-400">Minimum Price (£) *</label>
-                                    <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">£</span>
-                                        <Input type="number" placeholder="e.g. 18000" value={formData.priceMin}
-                                            onChange={(e) => set("priceMin", e.target.value)}
-                                            className={`${inputCls} pl-8`} />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-gray-400">Maximum Price (£) *</label>
-                                    <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">£</span>
-                                        <Input type="number" placeholder="e.g. 22000" value={formData.priceMax}
-                                            onChange={(e) => set("priceMax", e.target.value)}
-                                            className={`${inputCls} pl-8`} />
-                                    </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold uppercase text-gray-400">Your Asking Price (£) *</label>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">£</span>
+                                    <Input type="number" placeholder="e.g. 20000" value={formData.priceMin}
+                                        onChange={(e) => set("priceMin", e.target.value)}
+                                        className={`${inputCls} pl-8 text-lg h-14`} />
                                 </div>
                             </div>
 
-                            {formData.priceMin && formData.priceMax && (() => {
-                                const min = parseFloat(formData.priceMin)
-                                const max = parseFloat(formData.priceMax)
-                                if (!isNaN(min) && !isNaN(max)) {
-                                    const invalid = min >= max
+                            {formData.priceMin && (() => {
+                                const price = parseFloat(formData.priceMin)
+                                if (!isNaN(price) && price > 0) {
                                     return (
-                                        <p className={`text-sm ${invalid ? "text-red-400" : "text-emerald-400"}`}>
-                                            {invalid
-                                                ? "⚠ Minimum must be less than maximum"
-                                                : `✓ Range: ${formatPrice(formData.priceMin)} – ${formatPrice(formData.priceMax)}`
-                                            }
+                                        <p className="text-sm text-emerald-400">
+                                            ✓ Asking Price: {formatPrice(formData.priceMin)}
                                         </p>
                                     )
                                 }
@@ -1606,9 +1591,9 @@ export default function SellPage() {
                             <SummarySection title="Pricing" onEdit={() => goToStep(3)}>
                                 <div className="flex flex-col gap-2">
                                     <p className="text-white font-black text-2xl">
-                                        {formatPrice(formData.priceMin)} – {formatPrice(formData.priceMax)}
+                                        {formatPrice(formData.priceMin)}
                                     </p>
-                                    <p className="text-primary text-xs font-bold uppercase">Offer Range</p>
+                                    <p className="text-primary text-xs font-bold uppercase">Asking Price</p>
                                     {valuation && (
                                         <p className="text-gray-500 text-xs">Estimated market value: {formatPrice(valuation.low)} – {formatPrice(valuation.high)}</p>
                                     )}

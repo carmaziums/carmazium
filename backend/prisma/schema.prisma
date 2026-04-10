@@ -810,6 +810,10 @@ model Offer {
   listingId String
   buyerId   String
   amount    Decimal     @db.Decimal(12, 2)
+  /// Buyer's minimum offer price (lower bound of their range)
+  amountMin Decimal?    @db.Decimal(12, 2)
+  /// Buyer's maximum offer price (upper bound of their range)
+  amountMax Decimal?    @db.Decimal(12, 2)
   status    OfferStatus @default(PENDING)
   /// Optional message from buyer to seller
   message   String?

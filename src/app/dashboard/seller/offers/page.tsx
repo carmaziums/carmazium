@@ -67,7 +67,12 @@ function OfferRow({
                     </p>
                     <StatusBadge status={offer.status} />
                 </div>
-                <p className="text-2xl font-bold text-primary font-mono">{formatGBP(offer.amount)}</p>
+                <p className="text-2xl font-bold text-primary font-mono">
+                    {(offer as any).amountMin && (offer as any).amountMax && formatGBP((offer as any).amountMin) !== formatGBP((offer as any).amountMax)
+                        ? `${formatGBP((offer as any).amountMin)} – ${formatGBP((offer as any).amountMax)}`
+                        : formatGBP(offer.amount)
+                    }
+                </p>
                 {offer.message && (
                     <div className="mt-2 flex items-start gap-1.5 text-xs text-gray-400">
                         <MessageSquare size={11} className="mt-0.5 shrink-0 text-gray-500" />
