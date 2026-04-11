@@ -3,7 +3,7 @@
 import { useRef, useEffect, useState } from "react"
 import { motion, useScroll, useTransform } from "framer-motion"
 import { TestimonialCard } from "@/components/ui/TestimonialCard"
-import { ArrowLeft, ArrowRight, TrendingUp, Users, Clock, Award } from "lucide-react"
+import { ArrowLeft, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 
 const TESTIMONIALS = [
@@ -37,12 +37,6 @@ const TESTIMONIALS = [
     }
 ]
 
-const STATS = [
-    { label: "Client Satisfaction", value: "98%", icon: Users },
-    { label: "Avg. Sale Time", value: "48h", icon: Clock },
-    { label: "Successful Trades", value: "£200M+", icon: TrendingUp },
-    { label: "Verified Dealers", value: "500+", icon: Award },
-]
 
 export function TestimonialsSection() {
     const containerRef = useRef<HTMLDivElement>(null)
@@ -107,25 +101,6 @@ export function TestimonialsSection() {
                     </motion.div>
                 </motion.div>
 
-                {/* Data Visuals Strip */}
-                <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-8 border-t border-white/5 pt-12">
-                    {STATS.map((stat, i) => (
-                        <motion.div
-                            key={i}
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ delay: 0.2 + (i * 0.1) }}
-                            className="flex flex-col items-center text-center group"
-                        >
-                            <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 border border-white/5 group-hover:border-primary/30">
-                                <stat.icon className="text-gray-400 group-hover:text-primary transition-colors h-6 w-6" />
-                            </div>
-                            <div className="text-3xl font-bold font-mono text-white mb-1">{stat.value}</div>
-                            <div className="text-sm text-gray-400 uppercase tracking-wider font-medium">{stat.label}</div>
-                        </motion.div>
-                    ))}
-                </div>
             </div>
         </section>
     )
