@@ -62,21 +62,13 @@ export function Header() {
 
                 {/* Logo Area */}
                 <div className="flex-1 flex items-center justify-start gap-6">
-                    <button
-                        className="md:hidden text-2xl focus:outline-none"
-                        onClick={toggleMenu}
-                        aria-label="Toggle Menu"
-                    >
-                        {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
-                    </button>
-
                     <Link href="/" className="flex items-center">
                         <Image
                             src="/assets/images/logo.png"
                             alt="CarMazium"
                             width={400}
                             height={100}
-                            className="h-10 w-auto"
+                            className="h-8 md:h-10 w-auto object-contain"
                             priority
                         />
                     </Link>
@@ -171,7 +163,7 @@ export function Header() {
                                 className="hidden md:flex text-sm font-semibold hover:text-primary transition-colors"
                             >
                                 <Link href="/auth/signup">
-                                    Join as partner
+                                    Sign Up
                                 </Link>
                             </Button>
 
@@ -181,12 +173,20 @@ export function Header() {
                                 shape="default"
                                 className="hidden md:flex gap-2 font-bold px-6 bg-gradient-to-br from-[#ff4d4d] to-[#ed1c24] hover:from-[#ff6b6b] hover:to-[#ff0033]"
                             >
-                                <Link href="/auth/signup">
-                                    <LogIn size={18} /> Sign Up
+                                <Link href="/auth/login">
+                                    <LogIn size={18} /> Login
                                 </Link>
                             </Button>
                         </>
                     )}
+
+                    <button
+                        className="md:hidden text-2xl focus:outline-none ml-2"
+                        onClick={toggleMenu}
+                        aria-label="Toggle Menu"
+                    >
+                        {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
+                    </button>
                 </div>
             </div>
 
@@ -220,12 +220,12 @@ export function Header() {
                             <>
                                 <Button asChild variant="outline" className="w-full mt-4 border-white/20 hover:bg-primary/5">
                                     <Link href="/auth/signup" onClick={() => setIsMobileMenuOpen(false)}>
-                                        Join as partner
+                                        Sign Up
                                     </Link>
                                 </Button>
                                 <Button asChild className="w-full mt-2">
-                                    <Link href="/auth/signup" onClick={() => setIsMobileMenuOpen(false)}>
-                                        Sign Up
+                                    <Link href="/auth/login" onClick={() => setIsMobileMenuOpen(false)}>
+                                        Login
                                     </Link>
                                 </Button>
                             </>

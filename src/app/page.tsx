@@ -70,7 +70,7 @@ export default function Home() {
   return (
     <>
       {/* Cinematic Hero Section */}
-      <section ref={ref} className="relative min-h-[90vh] flex items-center justify-center text-center text-white overflow-hidden">
+      <section ref={ref} className="relative min-h-[90vh] flex items-center justify-center text-center text-white overflow-hidden" style={{ marginTop: '-100px', paddingTop: '100px' }}>
         {/* Video Background */}
         <div className="absolute inset-0 w-full h-full">
           <video
@@ -111,8 +111,8 @@ export default function Home() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Ask AI: e.g. red SUV under £30k, electric car with low mileage..."
-                className="flex-1 bg-transparent px-8 py-4 text-white placeholder:text-gray-400 focus:outline-none text-lg"
+                placeholder="Ask AI: e.g. red SUV under £30k..."
+                className="flex-1 min-w-0 bg-transparent px-8 py-4 text-white placeholder:text-gray-400 focus:outline-none text-lg truncate"
               />
               <Button
                 type="submit"
@@ -132,10 +132,10 @@ export default function Home() {
             </form>
 
             {/* Powered by AI badge */}
-            <p className="text-xs text-gray-400 mb-6 flex items-center justify-center gap-1.5">
-              <Sparkles size={12} className="text-primary" />
-              Powered by Mazium AI — describe your dream car in your own words
-            </p>
+            <div className="text-xs text-gray-400 mb-6 flex items-start justify-center gap-1.5 text-left md:text-center max-w-[260px] md:max-w-none mx-auto md:items-center">
+              <Sparkles size={14} className="text-primary shrink-0 mt-0.5 md:mt-0" />
+              <span>Powered by Mazium AI — describe your dream car in your own words</span>
+            </div>
           </motion.div>
 
           {/* AI Result Card */}
@@ -257,7 +257,7 @@ export default function Home() {
 
       {/* ✨ Featured Listings — dynamic from API */}
       {(featuredLoading || featuredListings.length > 0) && (
-        <section className="container mx-auto px-5 mb-24">
+        <section className="container mx-auto px-5 mb-10 md:mb-16">
           <div className="flex items-center justify-between mb-8">
             <div>
               <h2 className="text-3xl font-bold font-heading flex items-center gap-3">
@@ -403,15 +403,17 @@ export default function Home() {
           >
             <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 blur-[100px] rounded-full group-hover:bg-indigo-500/30 transition-colors duration-500" />
 
-            <div className="relative z-10">
+            <div className="relative z-10 flex flex-col items-center text-center w-full">
               <Lightbulb className="text-primary h-12 w-12 mb-6 mx-auto animate-pulse" />
               <h3 className="text-3xl font-bold mb-4">Get personalised car recommendations</h3>
               <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
                 Sign in or create a free account and we'll highlight cars based on your browsing and interests.
               </p>
-              <Link href="/auth/login">
-                <Button size="lg" shape="pill" className="px-10 py-6 text-lg shadow-neon">Sign in or register <ArrowRight className="ml-2 h-4 w-4" /></Button>
-              </Link>
+              <div className="flex justify-center w-full">
+                <Link href="/auth/login" className="inline-block">
+                  <Button size="lg" shape="pill" className="px-10 py-6 text-lg shadow-neon">Sign in or register <ArrowRight className="ml-2 h-4 w-4" /></Button>
+                </Link>
+              </div>
             </div>
           </motion.div>
         </div>

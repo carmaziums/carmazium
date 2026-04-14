@@ -136,8 +136,8 @@ export default function MyListingsPage() {
                                 <p className="text-gray-300 text-sm">Pin your inventory to the top of search &amp; homepage. <strong className="text-amber-400">Free during beta!</strong></p>
                             </div>
                         </div>
-                        <span className="relative z-10 text-sm font-bold px-4 py-2 rounded-full bg-amber-400/10 text-amber-400 border border-amber-400/20 shrink-0 shadow-[0_0_10px_rgba(251,191,36,0.1)]">
-                            Click ⚡ Boost below
+                        <span className="relative z-10 text-sm font-bold px-4 py-2 rounded-full bg-amber-400/10 text-amber-400 border border-amber-400/20 shrink-0 shadow-[0_0_10px_rgba(251,191,36,0.1)] text-center w-full sm:w-auto">
+                            Boost Now ⚡
                         </span>
                     </div>
 

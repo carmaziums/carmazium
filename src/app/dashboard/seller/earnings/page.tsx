@@ -64,15 +64,15 @@ export default function SellerEarningsPage() {
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
                         {statCards.map(card => (
-                            <div key={card.label} className="glass-card p-6 flex items-center gap-4">
-                                <div className={`w-12 h-12 rounded-lg bg-slate-800 flex items-center justify-center ${card.color}`}>
+                            <div key={card.label} className="glass-card p-4 sm:p-6 flex flex-col aspect-square items-center justify-center text-center gap-3">
+                                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-slate-800 flex items-center justify-center shrink-0 ${card.color}`}>
                                     <card.icon size={24} />
                                 </div>
                                 <div>
-                                    <p className="text-sm text-gray-400">{card.label}</p>
-                                    <p className="text-2xl font-bold text-white">{card.value}</p>
+                                    <p className="text-[10px] sm:text-sm text-gray-400">{card.label}</p>
+                                    <p className="text-lg sm:text-2xl font-bold text-white leading-tight">{card.value}</p>
                                 </div>
                             </div>
                         ))}

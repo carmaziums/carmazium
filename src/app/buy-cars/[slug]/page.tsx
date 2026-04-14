@@ -580,7 +580,75 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                             </div>
                         </div>
 
+                        {/* Mobile Buy Car Box — shown below gallery on small screens */}
+                        <div className="block lg:hidden">
+                            <div className="bg-slate-800 rounded-xl border border-white/10 overflow-hidden shadow-2xl relative">
+                                <div className="h-1 bg-primary w-full absolute top-0" />
+                                <div className="p-6">
+                                    <div className="flex items-center gap-4 mb-6">
+                                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-primary font-bold text-xl">CM</div>
+                                        <div>
+                                            <h4 className="text-white font-bold">CarMazium Premium</h4>
+                                            <p className="text-xs text-primary flex items-center gap-1"><CheckCircle size={12} /> Verified Dealer</p>
+                                        </div>
+                                    </div>
 
+                                    <div className="mb-6">
+                                        <div className="flex items-center gap-1.5 mb-3">
+                                            <Info size={14} className="text-gray-500" />
+                                            <span className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Policies</span>
+                                        </div>
+                                        <div>
+                                            <div className="text-4xl font-bold text-white mb-2">{formatPrice(listing.price)}</div>
+                                            <span className="inline-block text-[10px] font-bold uppercase tracking-wide bg-primary/10 text-primary border border-primary/30 px-2.5 py-1 rounded-full mb-4">
+                                                Offers Welcome
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-gray-400 mt-3">Price includes VAT. Financing available from 5.9% APR.</p>
+                                    </div>
+
+                                    {listing.sellerId && (
+                                        <div className="mb-4 flex items-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10">
+                                            <SellerBadge score={0} sellerUserId={listing.sellerId} size="md" showLabel />
+                                        </div>
+                                    )}
+
+                                    {(offerViewerRole === 'buyer' ? myOffer : latestOffer) && (
+                                        <div className="mb-4">
+                                            <OfferStatusChip
+                                                offer={(offerViewerRole === 'buyer' ? myOffer : latestOffer)!}
+                                                viewerRole={offerViewerRole}
+                                            />
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-3">
+                                        {listing.sellerId !== user?.id && (
+                                            <>
+                                                <Button
+                                                    className="w-full py-6 text-lg shadow-neon"
+                                                    onClick={() => setShowOfferModal(true)}
+                                                    disabled={offerViewerRole === 'buyer' && (myOffer?.status === 'PENDING' || myOffer?.status === 'ACCEPTED')}
+                                                >
+                                                    {offerViewerRole === 'buyer' && myOffer?.status === 'PENDING'
+                                                        ? '⏳ Offer Pending...'
+                                                        : offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'
+                                                            ? '✓ Offer Accepted'
+                                                            : 'Make an Offer'}
+                                                </Button>
+                                                <Button variant="outline" className="w-full py-6 text-lg border-white/20 text-white hover:bg-white/10" onClick={handleEnquire} disabled={enquiring}>
+                                                    {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2" />Starting Chat...</> : <><MessageCircle className="w-5 h-5 mr-2" />Enquire</>}
+                                                </Button>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="bg-white/5 p-4 flex items-center justify-center gap-2 text-gray-400 text-xs">
+                                    <MapPin size={14} />
+                                    <span>{listing.location || 'Location not specified'}</span>
+                                </div>
+                            </div>
+                        </div>
 
                         {/* Features */}
                         <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-8">
@@ -669,8 +737,8 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                         <FinanceCalculator vehiclePrice={Number(listing.price)} />
                     </div>
 
-                    {/* Right Column: Sticky Sidebar */}
-                    <div className="lg:col-span-1">
+                    {/* Right Column: Sticky Sidebar — desktop only */}
+                    <div className="lg:col-span-1 hidden lg:block">
                         <div className="sticky top-28 bg-slate-800 rounded-xl border border-white/10 overflow-hidden shadow-2xl relative">
                             <div className="h-1 bg-primary w-full absolute top-0" />
                             <div className="p-6">
