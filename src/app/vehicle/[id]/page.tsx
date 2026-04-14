@@ -82,12 +82,6 @@ function OfferStatusChip({ offer, viewerRole }: { offer: LatestOffer; viewerRole
                 offer.status === 'REJECTED' ? 'declined' :
                     offer.status === 'WITHDRAWN' ? 'withdrawn' : ''
 
-    const statusLabel =
-        offer.status === 'PENDING' ? 'pending review' :
-            offer.status === 'ACCEPTED' ? 'accepted' :
-                offer.status === 'REJECTED' ? 'declined' :
-                    offer.status === 'WITHDRAWN' ? 'withdrawn' : ''
-
     return (
         <div className="flex items-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 text-sm">
             <Tag size={14} className="shrink-0" />
@@ -461,7 +455,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
 
                 {/* Price Box */}
                 <div className="mb-4">
-                    <div className="text-4xl font-black text-white tracking-tight mb-2">{priceDisplay}</div>
+                    <div className="text-4xl font-black text-white tracking-tight mb-2">{formatPrice(listing.price)}</div>
                     <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-3 py-1 rounded-full mb-3 border border-red-500/20 bg-red-500/10 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.1)]">
                         Offers Welcome
                     </span>
@@ -927,7 +921,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                         <span className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Policies</span>
                                     </div>
                                     <div>
-                                        <div className="text-4xl font-bold text-white mb-2">{priceDisplay}</div>
+                                        <div className="text-4xl font-bold text-white mb-2">{formatPrice(listing.price)}</div>
                                         <span className="inline-block text-[10px] font-bold uppercase tracking-wide bg-primary/10 text-primary border border-primary/30 px-2.5 py-1 rounded-full mb-4">
                                             Offers Welcome
                                         </span>
