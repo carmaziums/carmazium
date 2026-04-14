@@ -183,7 +183,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                 <div className="p-4 space-y-2 max-h-[60vh] overflow-y-auto">
                     {/* User Profile */}
                     <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-xl mb-4">
-                        <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary font-bold text-sm border border-primary/30">
+                        <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-sm border border-primary/30">
                             {(userName || "U").split(" ").filter(Boolean).map(n => n[0]).join("").toUpperCase().slice(0, 2)}
                         </div>
                         <div>
@@ -239,7 +239,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                 <div className="bg-slate-800/50 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sticky top-24">
                     {/* User Profile */}
                     <div className="flex items-center gap-3 mb-6 p-3 bg-slate-700/30 rounded-xl">
-                        <div className="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center text-primary font-bold text-lg border border-primary/30">
+                        <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-lg border border-primary/30">
                             {(userName || "U").split(" ").filter(Boolean).map(n => n[0]).join("").toUpperCase().slice(0, 2)}
                         </div>
                         <div className="overflow-hidden">
@@ -308,8 +308,8 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                 </div>
             </aside>
 
-            {/* Bottom spacing for mobile to account for nav bar */}
-            <div className="h-20 lg:hidden" />
+            {/* Bottom spacing handled by layout.tsx */}
+            <div className="hidden" />
         </>
     )
 }

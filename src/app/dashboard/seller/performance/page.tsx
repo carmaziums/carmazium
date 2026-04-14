@@ -62,14 +62,14 @@ export default function SellerPerformancePage() {
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         {metricCards.map(card => (
-                            <div key={card.label} className="glass-card p-5">
+                            <div key={card.label} className="glass-card p-5 aspect-square flex flex-col items-center justify-center text-center">
                                 <div className="flex items-center gap-3 mb-2">
                                     <card.icon size={20} className={card.color} />
-                                    <span className="text-sm text-gray-400">{card.label}</span>
+                                    <span className="text-xs sm:text-sm text-gray-400">{card.label}</span>
                                 </div>
-                                <p className="text-2xl font-bold text-white">{card.value}</p>
+                                <p className="text-xl sm:text-2xl font-bold text-white">{card.value}</p>
                             </div>
                         ))}
                     </div>

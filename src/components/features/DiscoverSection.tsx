@@ -69,9 +69,8 @@ export function DiscoverSection() {
                     className="relative w-full"
                 >
                     <div 
-                        className="relative w-full overflow-hidden"
+                        className="relative w-full overflow-hidden aspect-[5/2] md:aspect-[1360/389]"
                         style={{ 
-                            aspectRatio: '1360 / 389',
                             WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 70%, transparent 100%)',
                             maskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 70%, transparent 100%)'
                         }}
@@ -90,7 +89,7 @@ export function DiscoverSection() {
             </div>
 
             {/* Bottom transition overlay — merges the section gradient into the page background */}
-            <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/80 to-transparent z-20 pointer-events-none" />
+            <div className="absolute bottom-0 left-0 right-0 h-16 md:h-48 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/80 to-transparent z-20 pointer-events-none" />
         </section>
     )
 }

@@ -55,7 +55,7 @@ export function MaziumWidget() {
         },
     ])
     const [input, setInput] = React.useState("")
-    const [showGreeting, setShowGreeting] = React.useState(false)
+    const [showGreeting, setShowGreeting] = React.useState(true)
     const [isThinking, setIsThinking] = React.useState(false)
     const [quickReplies, setQuickReplies] = React.useState<QuickReply[]>([])
     const messagesEndRef = React.useRef<HTMLDivElement>(null)
@@ -78,10 +78,12 @@ export function MaziumWidget() {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
     }, [messages, isThinking])
 
-    // Show greeting bubble after 30s
+    // Toggle greeting bubble every 20s (show for 20s, hide for 20s)
     React.useEffect(() => {
-        const timer = setTimeout(() => setShowGreeting(true), 30000)
-        return () => clearTimeout(timer)
+        const interval = setInterval(() => {
+            setShowGreeting((prev) => !prev)
+        }, 20000)
+        return () => clearInterval(interval)
     }, [])
 
     const handleToggle = () => {
@@ -155,9 +157,8 @@ export function MaziumWidget() {
         const qs = new URLSearchParams(cleanParams).toString()
         router.push(`/search?${qs}`)
     }
-
     return (
-        <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+        <div className="fixed bottom-24 lg:bottom-6 right-4 sm:right-6 z-50 flex flex-col items-end">
             {/* Chat Window */}
             <div
                 className={cn(

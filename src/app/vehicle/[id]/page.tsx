@@ -11,7 +11,7 @@ const FinanceCalculator = dynamic(() => import("@/components/features/FinanceCal
 import {
     ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon,
     MapPin, Share2, Heart, Scale, Loader2, AlertTriangle, X, Tag,
-    Clock, XCircle, ThumbsUp, Lock, FileSearch, BadgeCheck, Star, Sparkles, Zap, CreditCard, Info,
+    Clock, XCircle, MessageCircle, ThumbsUp, Lock, FileSearch, BadgeCheck, Star, Sparkles, Zap, CreditCard, Info,
 } from "lucide-react"
 import { useCompare } from "@/context/CompareContext"
 import { useAuth } from "@/context/AuthContext"
@@ -81,6 +81,113 @@ function OfferStatusChip({ offer, viewerRole }: { offer: LatestOffer; viewerRole
             offer.status === 'ACCEPTED' ? 'accepted' :
                 offer.status === 'REJECTED' ? 'declined' :
                     offer.status === 'WITHDRAWN' ? 'withdrawn' : ''
+
+    const SidebarContent = () => (
+        <div className="bg-slate-800 rounded-xl border border-white/10 overflow-hidden shadow-2xl relative">
+            <div className="h-1 bg-gradient-to-r from-primary to-primary/80 w-full absolute top-0" />
+            <div className="p-6">
+                
+                {/* Seller Info Block */}
+                {listing.sellerId && (
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-primary font-black text-lg shadow-sm shrink-0">
+                            CM
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-white text-[15px] leading-tight">CarMazium Premium</h3>
+                            <div className="flex items-center gap-1 mt-0.5">
+                                <CheckCircle size={10} className="text-red-500" />
+                                <span className="text-[10px] text-red-500 font-medium">Verified Dealer</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Policies */}
+                <div className="flex items-center gap-1.5 mb-2">
+                    <span className="relative group/policy inline-flex items-center cursor-help">
+                        <Info size={12} className="text-gray-500 group-hover/policy:text-blue-400 transition-colors" />
+                        <span className="absolute bottom-full -left-2 mb-2 w-56 rounded-lg bg-slate-800 border border-white/10 px-3 py-2.5 text-xs text-gray-300 leading-relaxed shadow-xl opacity-0 invisible group-hover/policy:opacity-100 group-hover/policy:visible transition-all duration-200 z-50 pointer-events-none">
+                            <span className="font-bold text-white block mb-1">Policies:</span>
+                            Payment will not be made on our platform.
+                            <span className="absolute top-full left-3 -mt-px border-4 border-transparent border-t-slate-800" />
+                        </span>
+                    </span>
+                    <span className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Policies</span>
+                </div>
+
+                {/* Price Box */}
+                <div className="mb-4">
+                    <div className="text-4xl font-black text-white tracking-tight mb-2">{priceDisplay}</div>
+                    <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-3 py-1 rounded-full mb-3 border border-red-500/20 bg-red-500/10 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.1)]">
+                        Offers Welcome
+                    </span>
+                    <p className="text-[11px] text-gray-400 mt-1 pb-5 border-b border-white/10">Price includes VAT. Financing available from 5.9% APR.</p>
+                </div>
+
+                {/* Review/Rating */}
+                {listing.sellerId && (
+                    <div className="bg-slate-900/60 border border-white/10 rounded-lg flex items-center gap-2 px-3 py-2 mb-6 w-fit">
+                        <Star size={12} className="fill-gray-500 text-gray-500" />
+                        <span className="text-xs font-bold text-gray-400">0.0</span>
+                        <span className="text-xs text-gray-500">No reviews</span>
+                    </div>
+                )}
+
+                {/* Offer Status */}
+                {(offerViewerRole === 'buyer' ? myOffer : latestOffer) && (
+                    <div className="mb-4">
+                        <OfferStatusChip
+                            offer={(offerViewerRole === 'buyer' ? myOffer : latestOffer)!}
+                            viewerRole={offerViewerRole}
+                        />
+                    </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="space-y-3">
+                    {listing.status !== 'ACTIVE' ? (
+                        <Button className="w-full py-6 text-lg bg-slate-700 text-gray-300 font-black uppercase rounded-xl cursor-not-allowed" disabled>
+                            {listing.status === 'DRAFT' ? 'Preview Only (Draft)' : listing.status}
+                        </Button>
+                    ) : listing.sellerId === user?.id ? (
+                        <div className="text-center text-gray-500 text-sm py-2">This is your listing.</div>
+                    ) : (
+                        <>
+                            <Button
+                                className="w-full py-6 text-[15px] font-black uppercase bg-primary hover:bg-red-600 shadow-neon text-white rounded-xl"
+                                onClick={() => {
+                                    if (!user) setShowLoginModal(true)
+                                    else setShowOfferModal(true)
+                                }}
+                                disabled={offerViewerRole === 'buyer' && (myOffer?.status === 'PENDING' || myOffer?.status === 'ACCEPTED')}
+                            >
+                                {offerViewerRole === 'buyer' && myOffer?.status === 'PENDING'
+                                    ? '⏳ Offer Pending...'
+                                    : offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'
+                                        ? '✓ Offer Accepted'
+                                        : 'Make an Offer'}
+                            </Button>
+                            
+                            <Button
+                                variant="outline"
+                                className="w-full py-6 text-[15px] font-black uppercase bg-transparent hover:bg-slate-700 border-white/10 text-white rounded-xl gap-2"
+                            >
+                                <MessageCircle size={18} /> ENQUIRE
+                            </Button>
+                        </>
+                    )}
+                </div>
+
+            </div>
+
+            {/* Footer */}
+            <div className="bg-slate-900/50 p-4 border-t border-white/5 flex items-center justify-center gap-2 text-gray-400 text-[11px]">
+                <MapPin size={12} /> {listing.location || 'Location not specified'}
+            </div>
+        </div>
+    )
+
 
     return (
         <div className="flex items-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 text-sm">
@@ -571,6 +678,11 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                             </div>
                         </div>
 
+                        {/* Mobile Buy Car Box */}
+                        <div className="block lg:hidden mb-8">
+                            <SidebarContent />
+                        </div>
+
                         {/* Key Information */}
                         <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-8">
                             <h3 className="text-xl font-bold text-white mb-6 border-l-4 border-primary pl-4">Key Information</h3>
@@ -792,8 +904,8 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                         <FinanceCalculator vehiclePrice={Number(listing.price)} />
                     </div>
 
-                    {/* Right Column: Sticky Sidebar */}
-                    <div className="lg:col-span-1">
+                    {/* Right Column: Sticky Sidebar — desktop only */}
+                    <div className="lg:col-span-1 hidden lg:block">
                         <div className="sticky top-28 bg-slate-800 rounded-xl border border-white/10 overflow-hidden shadow-2xl relative">
                             <div className="h-1 bg-gradient-to-r from-primary to-red-800 w-full absolute top-0" />
                             <div className="p-6">
@@ -886,6 +998,4 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                     </div>
                 </div>
             </div>
-        </div>
-    )
-}
+                        <SidebarContent />
