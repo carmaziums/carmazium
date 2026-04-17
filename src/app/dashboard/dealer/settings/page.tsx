@@ -102,12 +102,12 @@ export default function DealerSettingsPage() {
                     />
 
                     {/* Tab Selector */}
-                    <div className="flex gap-1 bg-white/5 p-1 rounded-xl border border-white/5 w-fit">
+                    <div className="flex gap-1 bg-white/5 p-1 rounded-xl border border-white/5 w-full max-w-full overflow-x-auto hide-scrollbar">
                         {tabs.map(tab => (
                             <button
                                 key={tab.key}
                                 onClick={() => setActiveTab(tab.key)}
-                                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${
+                                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors whitespace-nowrap shrink-0 ${
                                     activeTab === tab.key
                                         ? 'bg-primary text-white shadow-neon'
                                         : 'text-gray-400 hover:text-white hover:bg-white/5'

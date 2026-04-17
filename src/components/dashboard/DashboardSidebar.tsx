@@ -175,12 +175,12 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
 
             {/* Mobile Full Menu Panel */}
             <div className={`
-                lg:hidden fixed bottom-16 left-0 right-0 z-40
+                lg:hidden fixed bottom-[72px] left-0 right-0 z-40
                 bg-slate-900 border-t border-white/10 rounded-t-2xl
-                transition-transform duration-300 ease-out
-                ${isMobileMenuOpen ? "translate-y-0" : "translate-y-full"}
+                transition-transform duration-300 ease-out shadow-[0_-10px_40px_rgba(0,0,0,0.5)]
+                ${isMobileMenuOpen ? "translate-y-0" : "translate-y-[120%]"}
             `}>
-                <div className="p-4 space-y-2 max-h-[60vh] overflow-y-auto">
+                <div className="p-4 pb-12 space-y-2 max-h-[60vh] overflow-y-auto">
                     {/* User Profile */}
                     <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-xl mb-4">
                         <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-sm border border-primary/30">

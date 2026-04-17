@@ -81,7 +81,7 @@ export default function RootLayout({
     <html lang="en" className="scroll-smooth" suppressHydrationWarning>
       <body
         suppressHydrationWarning
-        className={`${inter.className} selection:bg-red-500/30 selection:text-red-200`}
+        className={`${inter.className} selection:bg-red-500/30 selection:text-red-200 overflow-x-hidden`}
       >
         <AutoDealerJsonLd />
         <ThemeProvider>
