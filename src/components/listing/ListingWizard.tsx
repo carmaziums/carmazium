@@ -283,7 +283,7 @@ function HpiBaitSection({ isUnlocked, onUnlock }: { isUnlocked: boolean, onUnloc
                 <Shield className="text-blue-400" size={24} />
                 <div>
                     <h3 className="text-white font-bold">HPI Vehicle Check</h3>
-                    <p className="text-xs text-gray-400">Verify this vehicle's history to unlock the Premium Trust Badge.</p>
+                    <p className="text-xs text-gray-400">We've found an official HPI record for this vehicle. Unlocking the full report gives you a <strong className="text-white">Premium Verification Badge</strong>, proven to help cars sell up to 2x faster!</p>
                 </div>
             </div>
             <Button type="button" onClick={onUnlock} className="bg-white hover:bg-gray-200 text-black font-bold px-6 shadow-neon shrink-0 w-full sm:w-auto">
