@@ -280,8 +280,8 @@ function HpiBaitSection({ isUnlocked, onUnlock }: { isUnlocked: boolean, onUnloc
     return (
         <div className="mt-8">
             <div className="rounded-xl border border-white/10 bg-slate-900/50 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <Shield className="text-blue-400" size={24} />
+                <div className="flex items-center gap-4">
+                    <Shield className="text-blue-400 shrink-0" size={36} />
                     <div>
                         <h3 className="text-white font-bold">HPI Vehicle Check</h3>
                         <p className="text-xs text-gray-400">We've found an official HPI record for this vehicle. Unlocking the full report gives you a <strong className="text-white">Premium Verification Badge</strong>.</p>
@@ -749,6 +749,19 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <p className="text-xs text-gray-600">UK number plate — click Look Up to auto-fill vehicle details.</p>
                                 {dvlaSuccess && <p className="text-xs text-emerald-400 flex items-center gap-1"><BadgeCheck size={12} /> Vehicle data loaded — review and edit below.</p>}
                                 {dvlaError && <p className="text-xs text-red-400">{dvlaError}</p>}
+                                
+                                {/* Imported Checkbox moved below VRM look up */}
+                                <div className="pt-2">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.isImported}
+                                            onChange={(e) => set("isImported", e.target.checked)}
+                                            className="accent-primary h-4 w-4 shrink-0 rounded border-white/20 bg-slate-800"
+                                        />
+                                        <span className="text-sm text-gray-300">This vehicle has been imported</span>
+                                    </label>
+                                </div>
                             </div>
 
                             {/* Registration & Compliance Details */}
@@ -1156,19 +1169,24 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
 
 
-                            {/* Service History */}
+                            {/* Condition */}
                             <div className="space-y-3">
-                                <label className="text-sm font-bold uppercase text-gray-400">Service History</label>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                                <label className="text-sm font-bold uppercase text-gray-400">Vehicle Condition</label>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
                                     {([
-                                        { value: "FULL", label: "Full History" },
-                                        { value: "PARTIAL", label: "Partial History" },
-                                        { value: "NONE", label: "No History" },
+                                        { value: "EXCELLENT", label: "Excellent" },
+                                        { value: "GOOD", label: "Good" },
+                                        { value: "FAIR", label: "Fair" },
+                                        { value: "POOR", label: "Poor" },
+                                        { value: "CAT_S", label: "Cat S" },
+                                        { value: "CAT_N", label: "Cat N" },
+                                        { value: "CAT_C", label: "Cat C" },
+                                        { value: "CAT_D", label: "Cat D" },
                                     ] as const).map((opt) => {
-                                        const active = formData.serviceHistory === opt.value
+                                        const active = formData.condition === opt.value
                                         return (
                                             <button key={opt.value} type="button"
-                                                onClick={() => set("serviceHistory", opt.value)}
+                                                onClick={() => set("condition", opt.value)}
                                                 className={`py-2.5 rounded-lg border text-sm font-semibold transition-all ${active ? "border-primary bg-primary/10 text-white" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"}`}
                                             >
                                                 {opt.label}
@@ -1200,18 +1218,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 </div>
                             </div>
 
-                            {/* Imported Vehicle Checkbox */}
-                            <div className="space-y-2">
-                                <label className="flex items-center gap-3 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.isImported}
-                                        onChange={(e) => set("isImported", e.target.checked)}
-                                        className="accent-primary h-4 w-4"
-                                    />
-                                    <span className="text-sm text-gray-300 transform translate-y-px">This vehicle has been imported</span>
-                                </label>
-                            </div>
+
 
                             {/* HPI Bait Section (shown after VRM lookup) */}
                             {dvlaSuccess && (
