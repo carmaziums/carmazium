@@ -241,7 +241,7 @@ function SelectField({
             <select
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                className="w-full h-10 rounded-md border border-white/10 bg-slate-900/50 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                className="w-full h-10 rounded-md border border-white/10 bg-slate-900/50 px-3 text-base md:text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
             >
                 <option value="">Select {label.toLowerCase()}</option>
                 {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -268,72 +268,27 @@ function InfoTooltip({ text }: { text: string }) {
 function HpiBaitSection({ isUnlocked, onUnlock }: { isUnlocked: boolean, onUnlock: () => void }) {
     if (isUnlocked) {
         return (
-            <div className="mt-8 relative overflow-hidden rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-6 flex flex-col items-center text-center">
-                 <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center mb-3">
-                     <CheckCircle className="text-emerald-400" size={24} />
-                 </div>
-                 <h3 className="text-lg font-bold text-white mb-1">HPI Report Verified</h3>
-                 <p className="text-sm text-emerald-200/70 mb-4 max-w-sm">Your vehicle is fully cleared. You've earned the Premium Verification Badge which will automatically be added to your listing.</p>
-                 <div className="filter-none blur-none border border-white/10 p-3 rounded bg-slate-900/50 flex gap-2 w-full max-w-sm mx-auto text-left items-center">
-                     <FileText size={20} className="text-blue-400 shrink-0" />
-                     <div className="flex-1 min-w-0">
-                         <p className="text-xs text-white font-bold truncate">HPI_Report_Clear.pdf</p>
-                         <p className="text-[10px] text-gray-500">Official OneAuto Data</p>
-                     </div>
-                     <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-bold uppercase tracking-wider">Verified</span>
+            <div className="mt-8 relative overflow-hidden rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 flex flex-col items-center text-center">
+                 <div className="flex items-center gap-3">
+                     <CheckCircle className="text-emerald-400" size={20} />
+                     <h3 className="text-base font-bold text-emerald-300">HPI Report Verified & Clear</h3>
                  </div>
             </div>
         )
     }
 
     return (
-        <div className="mt-8 relative overflow-hidden rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-orange-500/5 p-6 animate-in fade-in slide-in-from-bottom-4 zoom-in-95 duration-500">
-            <div className="absolute -top-10 -right-10 w-32 h-32 bg-amber-500/20 rounded-full blur-2xl pointer-events-none" />
-            <div className="flex flex-col md:flex-row gap-6 relative z-10">
-                <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                        <Shield className="text-amber-400" size={20} />
-                        <h3 className="text-lg font-bold text-white font-heading">Boost Your Sale</h3>
-                    </div>
-                    <p className="text-sm text-gray-300 mb-4">
-                        We've found an official HPI record for this vehicle. Unlocking the full report gives you a <strong className="text-white">Premium Verification Badge</strong>, proven to help cars sell up to 2x faster!
-                    </p>
-                    <ul className="space-y-2 text-xs text-gray-400 mb-6">
-                        <li className="flex items-center gap-2"><CheckCircle size={14} className="text-amber-400" /> Prove there is no outstanding finance</li>
-                        <li className="flex items-center gap-2"><CheckCircle size={14} className="text-amber-400" /> Verify it's never been stolen or written-off</li>
-                        <li className="flex items-center gap-2"><CheckCircle size={14} className="text-amber-400" /> Give buyers complete peace of mind</li>
-                    </ul>
-                    <Button type="button" onClick={onUnlock} className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold px-6 shadow-[0_0_15px_rgba(245,158,11,0.3)] border-none shrink-0 w-full sm:w-auto">
-                        Unlock HPI Report - £9.99
-                    </Button>
-                </div>
-                
-                {/* Simulated Blurred Document */}
-                <div className="w-full md:w-48 shrink-0 flex flex-col items-center">
-                    <div className="w-full h-40 bg-white/5 border border-white/10 rounded-lg relative overflow-hidden shadow-xl p-3 flex flex-col select-none pointer-events-none">
-                        <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center">
-                            <Lock size={24} className="text-white/70 mb-2" />
-                            <span className="text-[10px] font-bold text-white/90 bg-black/60 px-2 py-1 rounded uppercase tracking-widest border border-white/10">Locked</span>
-                        </div>
-                        {/* Fake document content */}
-                        <div className="flex items-center justify-between mb-3 border-b border-white/10 pb-2">
-                            <span className="text-[8px] font-bold text-gray-300">ONEAUTO REPORT</span>
-                            <span className="text-[8px] font-bold text-amber-500">CONFIDENTIAL</span>
-                        </div>
-                        <div className="space-y-1.5 opacity-60">
-                            <div className="h-2 w-3/4 bg-gray-500 rounded" />
-                            <div className="h-2 w-1/2 bg-gray-500 rounded" />
-                            <div className="mt-3 h-2 w-full bg-gray-600 rounded" />
-                            <div className="h-2 w-full bg-gray-600 rounded" />
-                            <div className="h-2 w-4/5 bg-gray-600 rounded" />
-                            <div className="mt-3 h-10 w-full rounded bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
-                                <span className="text-[8px] text-emerald-400 font-bold tracking-widest">CLEAR STATUS</span>
-                            </div>
-                        </div>
-                    </div>
-                    <p className="text-[9px] text-gray-500 text-center mt-2">Data sourced seamlessly via <br/>UK Official Vehicle Records</p>
+        <div className="mt-8 rounded-xl border border-white/10 bg-slate-900/50 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+                <Shield className="text-blue-400" size={24} />
+                <div>
+                    <h3 className="text-white font-bold">HPI Vehicle Check</h3>
+                    <p className="text-xs text-gray-400">Verify this vehicle's history to unlock the Premium Trust Badge.</p>
                 </div>
             </div>
+            <Button type="button" onClick={onUnlock} className="bg-white hover:bg-gray-200 text-black font-bold px-6 shadow-neon shrink-0 w-full sm:w-auto">
+                Unlock HPI Report
+            </Button>
         </div>
     )
 }
@@ -509,7 +464,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
     // ─── Shared ──────────────────────────────────────────────────────────────────
 
-    const inputCls = "bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary"
+    const inputCls = "bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary text-base md:text-sm"
 
     // ─── Login Modal ─────────────────────────────────────────────────────────────
 
@@ -661,9 +616,18 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 <HpiPaymentModal />
 
                 {/* Back link */}
-                <div className="mb-6">
-                    <Button variant="ghost" onClick={() => setSellingMethod(null)} className="text-gray-400 hover:text-white">
-                        <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                <div className="mb-6 flex items-center">
+                    <Button variant="ghost" className="text-gray-400 hover:text-white group px-2"
+                        onClick={() => {
+                            if (currentStep > 1) {
+                                handleBack()
+                            } else {
+                                setSellingMethod(null)
+                            }
+                        }}
+                    >
+                        <ArrowLeft className="mr-2 h-4 w-4 group-hover:-translate-x-1 transition-transform" /> 
+                        {currentStep > 1 ? "Previous Step" : "Exit"}
                     </Button>
                 </div>
 
@@ -718,12 +682,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             {/* VRM + Lookup */}
                             <div className="space-y-2">
                                 <label className="text-sm font-bold uppercase text-gray-400">Registration (VRM) *</label>
-                                <div className="flex gap-3">
+                                <div className="flex flex-col sm:flex-row gap-3">
                                     <Input placeholder="e.g. AB12 CDE" value={formData.vrm}
                                         onChange={(e) => { set("vrm", e.target.value.toUpperCase()); setDvlaSuccess(false); setDvlaError(null) }}
-                                        className={`${inputCls} uppercase font-mono tracking-widest text-lg h-14 bg-black border-primary/20 focus:border-primary flex-1 max-w-sm`} />
+                                        className={`${inputCls} uppercase font-mono tracking-widest text-lg h-14 bg-black border-primary/20 focus:border-primary flex-1`} />
                                     <Button type="button" disabled={!formData.vrm || dvlaLoading}
-                                        className="bg-primary hover:bg-primary/90 text-white font-bold px-8 h-14 uppercase tracking-widest gap-2 shadow-neon transition-transform active:scale-95"
+                                        className="bg-primary hover:bg-primary/90 text-white font-bold px-8 h-14 uppercase tracking-widest gap-2 shadow-neon transition-transform active:scale-95 w-full sm:w-auto"
                                         onClick={async () => {
                                             setDvlaLoading(true); setDvlaError(null); setDvlaSuccess(false)
                                             try {
@@ -798,12 +762,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     {/* First Registered */}
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold uppercase text-gray-400">First Registered</label>
-                                        <Input placeholder="e.g. 2015-03" value={formData.monthOfFirstRegistration} onChange={(e) => set("monthOfFirstRegistration", e.target.value)} className={inputCls} />
+                                        <Input type="date" min="1972-01-01" max={new Date().toISOString().split('T')[0]} value={formData.monthOfFirstRegistration} onChange={(e) => set("monthOfFirstRegistration", e.target.value)} className={inputCls} />
                                     </div>
                                     {/* Last V5C Issued */}
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold uppercase text-gray-400">Last V5C Issued</label>
-                                        <Input placeholder="e.g. 2021-06-15" value={formData.dateOfLastV5CIssued} onChange={(e) => set("dateOfLastV5CIssued", e.target.value)} className={inputCls} />
+                                        <Input type="date" min="1972-01-01" max={new Date().toISOString().split('T')[0]} value={formData.dateOfLastV5CIssued} onChange={(e) => set("dateOfLastV5CIssued", e.target.value)} className={inputCls} />
                                     </div>
                                     {/* MOT Status */}
                                     <div className="space-y-2">
@@ -813,7 +777,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     {/* MOT Expiry */}
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold uppercase text-gray-400">MOT Expiry Date</label>
-                                        <Input placeholder="e.g. 2024-03-11" value={formData.motExpiryDate} onChange={(e) => set("motExpiryDate", e.target.value)} className={inputCls} />
+                                        <Input type="date" min="1972-01-01" max="2100-12-31" value={formData.motExpiryDate} onChange={(e) => set("motExpiryDate", e.target.value)} className={inputCls} />
                                     </div>
                                     {/* Tax Status */}
                                     <div className="space-y-2">
@@ -823,7 +787,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     {/* Tax Due Date */}
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold uppercase text-gray-400">Tax Due Date</label>
-                                        <Input placeholder="e.g. 2024-08-31" value={formData.taxDueDate} onChange={(e) => set("taxDueDate", e.target.value)} className={inputCls} />
+                                        <Input type="date" min="1972-01-01" max="2100-12-31" value={formData.taxDueDate} onChange={(e) => set("taxDueDate", e.target.value)} className={inputCls} />
                                     </div>
                                     {/* Type Approval */}
                                     <div className="space-y-2">
@@ -985,7 +949,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             <p className="text-sm text-gray-400">Aim for at least 20 photos for the best results. Organize them by selecting the relevant category below.</p>
                             <ImageUpload
                                 onImagesChange={(imgs) => set("images", imgs)}
-                                maxImages={30}
+                                maxImages={50}
                                 existingImages={formData.images}
                             />
                         </div>
@@ -1187,32 +1151,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 </Button>
                             </div>
 
-                            {/* Condition */}
-                            <div className="space-y-3">
-                                <label className="text-sm font-bold uppercase text-gray-400">Vehicle Condition</label>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
-                                    {([
-                                        { value: "EXCELLENT", label: "Excellent" },
-                                        { value: "GOOD", label: "Good" },
-                                        { value: "FAIR", label: "Fair" },
-                                        { value: "POOR", label: "Poor" },
-                                        { value: "CAT_S", label: "Cat S" },
-                                        { value: "CAT_N", label: "Cat N" },
-                                        { value: "CAT_C", label: "Cat C" },
-                                        { value: "CAT_D", label: "Cat D" },
-                                    ] as const).map((opt) => {
-                                        const active = formData.condition === opt.value
-                                        return (
-                                            <button key={opt.value} type="button"
-                                                onClick={() => set("condition", opt.value)}
-                                                className={`py-2.5 rounded-lg border text-sm font-semibold transition-all ${active ? "border-primary bg-primary/10 text-white" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"}`}
-                                            >
-                                                {opt.label}
-                                            </button>
-                                        )
-                                    })}
-                                </div>
-                            </div>
+
 
                             {/* Service History */}
                             <div className="space-y-3">
@@ -1258,7 +1197,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 </div>
                             </div>
 
-                            {/* Imported Vehicle Warning */}
+                            {/* Imported Vehicle Checkbox */}
                             <div className="space-y-2">
                                 <label className="flex items-center gap-3 cursor-pointer">
                                     <input
@@ -1267,14 +1206,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         onChange={(e) => set("isImported", e.target.checked)}
                                         className="accent-primary h-4 w-4"
                                     />
-                                    <span className="text-sm text-gray-300">This vehicle has been imported</span>
+                                    <span className="text-sm text-gray-300 transform translate-y-px">This vehicle has been imported</span>
                                 </label>
-                                {formData.isImported && (
-                                    <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
-                                        <p className="text-red-400 text-sm font-semibold">⚠ Imported vehicles cannot be listed</p>
-                                        <p className="text-red-400/70 text-xs mt-1">CarMazium currently does not accept imported vehicles. Please uncheck this option to continue.</p>
-                                    </div>
-                                )}
                             </div>
 
                             {/* HPI Bait Section (shown after VRM lookup) */}
