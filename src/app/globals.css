@@ -156,22 +156,24 @@
     background: var(--scrollbar-hover);
   }
 
-  /* Scrollbar */
-  ::-webkit-scrollbar {
-    width: 6px;
-  }
+  /* Scrollbar - Only apply to desktop/fine pointers so we don't break mobile overlay scrollbars */
+  @media (pointer: fine) {
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
 
-  ::-webkit-scrollbar-track {
-    background: var(--scrollbar-track);
-  }
+    ::-webkit-scrollbar-track {
+      background: var(--scrollbar-track);
+    }
 
-  ::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb);
-    border-radius: 10px;
-  }
+    ::-webkit-scrollbar-thumb {
+      background: var(--scrollbar-thumb);
+      border-radius: 10px;
+    }
 
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--scrollbar-hover);
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--scrollbar-hover);
+    }
   }
 
   /* VIP Dealer Utilities */
