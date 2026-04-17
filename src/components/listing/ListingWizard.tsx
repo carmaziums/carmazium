@@ -278,17 +278,20 @@ function HpiBaitSection({ isUnlocked, onUnlock }: { isUnlocked: boolean, onUnloc
     }
 
     return (
-        <div className="mt-8 rounded-xl border border-white/10 bg-slate-900/50 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-                <Shield className="text-blue-400" size={24} />
-                <div>
-                    <h3 className="text-white font-bold">HPI Vehicle Check</h3>
-                    <p className="text-xs text-gray-400">We've found an official HPI record for this vehicle. Unlocking the full report gives you a <strong className="text-white">Premium Verification Badge</strong>, proven to help cars sell up to 2x faster!</p>
+        <div className="mt-8">
+            <div className="rounded-xl border border-white/10 bg-slate-900/50 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <Shield className="text-blue-400" size={24} />
+                    <div>
+                        <h3 className="text-white font-bold">HPI Vehicle Check</h3>
+                        <p className="text-xs text-gray-400">We've found an official HPI record for this vehicle. Unlocking the full report gives you a <strong className="text-white">Premium Verification Badge</strong>.</p>
+                    </div>
                 </div>
+                <Button type="button" onClick={onUnlock} className="bg-white hover:bg-gray-200 text-black font-bold px-6 shadow-neon shrink-0 w-full sm:w-auto">
+                    Unlock HPI Report
+                </Button>
             </div>
-            <Button type="button" onClick={onUnlock} className="bg-white hover:bg-gray-200 text-black font-bold px-6 shadow-neon shrink-0 w-full sm:w-auto">
-                Unlock HPI Report
-            </Button>
+            <p className="text-[10px] text-gray-500/80 mt-2 text-center sm:text-left italic">*It is proven to help cars sell up to 2x faster!</p>
         </div>
     )
 }
