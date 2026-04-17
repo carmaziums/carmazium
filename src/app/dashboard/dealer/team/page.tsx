@@ -155,7 +155,7 @@ export default function DealerTeamPage() {
                             <p className="text-gray-600 text-sm mt-1 max-w-sm mx-auto">
                                 Invite sales agents and finance managers to help manage your dealership
                             </p>
-                            <Button onClick={() => setShowInvite(true)} className="mt-5 gap-2" shape="default">
+                            <Button onClick={() => setShowInvite(true)} className="mt-5 gap-2 mx-auto flex items-center justify-center max-w-[280px]" shape="default">
                                 <PlusCircle size={16} /> Invite Your First Member
                             </Button>
                         </div>

@@ -107,14 +107,14 @@ export default function AboutPage() {
                             <div className="absolute inset-0 bg-gradient-to-br from-slate-900/20 to-slate-900/80 pointer-events-none" />
 
                             {/* Live Stats Overlay */}
-                            <div className="absolute bottom-10 left-10 right-10 grid grid-cols-2 gap-8 text-white">
+                            <div className="absolute bottom-6 left-4 right-4 grid grid-cols-2 gap-2 sm:gap-8 text-white text-center sm:text-left">
                                 <div>
-                                    <div className="text-4xl font-bold font-mono text-primary"><AnimatedCounter value={50000} suffix="+" /></div>
-                                    <div className="text-sm opacity-80 uppercase tracking-widest mt-1">Users</div>
+                                    <div className="text-2xl sm:text-4xl font-bold font-mono text-primary truncate"><AnimatedCounter value={50000} suffix="+" /></div>
+                                    <div className="text-xs sm:text-sm opacity-80 uppercase tracking-widest mt-1">Users</div>
                                 </div>
                                 <div>
-                                    <div className="text-4xl font-bold font-mono text-primary"><AnimatedCounter value={200} prefix="£" suffix="M+" /></div>
-                                    <div className="text-sm opacity-80 uppercase tracking-widest mt-1">Traded</div>
+                                    <div className="text-2xl sm:text-4xl font-bold font-mono text-primary truncate"><AnimatedCounter value={200} prefix="£" suffix="M+" /></div>
+                                    <div className="text-xs sm:text-sm opacity-80 uppercase tracking-widest mt-1">Traded</div>
                                 </div>
                             </div>
                         </div>
@@ -219,14 +219,14 @@ export default function AboutPage() {
                         <h2 className="text-4xl font-bold text-white mb-8">Ready to start your journey?</h2>
                         <p className="text-gray-300 mb-10 text-lg">Join the fastest growing luxury automotive community today.</p>
                         <div className="flex flex-col sm:flex-row justify-center gap-6">
-                            <Link href="/search">
-                                <Button size="lg" className="px-10 py-6 text-lg shadow-neon w-full sm:w-auto">Browse Inventory</Button>
+                            <Link href="/search" className="w-full sm:w-auto">
+                                <Button size="lg" className="px-6 sm:px-10 py-6 text-base sm:text-lg shadow-neon w-full whitespace-nowrap">BROWSE INVENTORY</Button>
                             </Link>
-                            <Link href="/how-it-works">
-                                <Button size="lg" variant="outline" className="px-10 py-6 text-lg border-white/20 text-white hover:bg-white/10 w-full sm:w-auto">How It Works</Button>
+                            <Link href="/how-it-works" className="w-full sm:w-auto">
+                                <Button size="lg" variant="outline" className="px-6 sm:px-10 py-6 text-base sm:text-lg border-white/20 text-white hover:bg-white/10 w-full whitespace-nowrap">HOW IT WORKS</Button>
                             </Link>
-                            <Link href="/auth/signup">
-                                <Button size="lg" variant="ghost" className="px-10 py-6 text-lg text-white/70 hover:text-white hover:bg-white/5 w-full sm:w-auto">Create Account</Button>
+                            <Link href="/auth/signup" className="w-full sm:w-auto">
+                                <Button size="lg" variant="ghost" className="px-6 sm:px-10 py-6 text-base sm:text-lg text-white/70 hover:text-white hover:bg-white/5 w-full whitespace-nowrap">CREATE ACCOUNT</Button>
                             </Link>
                         </div>
                     </div>
