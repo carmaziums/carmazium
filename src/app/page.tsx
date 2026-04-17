@@ -68,7 +68,7 @@ export default function Home() {
   }
 
   return (
-    <>
+    <div className="w-full max-w-[100vw] overflow-x-hidden flex flex-col">
       {/* Cinematic Hero Section */}
       <section ref={ref} className="relative min-h-[90vh] flex items-center justify-center text-center text-white overflow-hidden" style={{ marginTop: '-100px', paddingTop: '100px' }}>
         {/* Video Background */}
@@ -456,7 +456,7 @@ export default function Home() {
           ))}
         </div>
       </section>
-    </>
+    </div>
   )
 }
 
