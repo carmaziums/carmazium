@@ -573,9 +573,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             onClick={handleMethodClick}
                             className="relative cursor-pointer group max-w-xl mx-auto"
                         >
-                            {/* Card glow effect */}
-                            <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/50 via-red-600/30 to-primary/50 rounded-2xl blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                            <div className="relative dealer-glass-card p-10 border-white/10 hover:border-primary/50 transition-all duration-300 overflow-hidden hover:shadow-neon rounded-2xl">
+                            <div className="relative dealer-glass-card p-10 border-white/10 hover:border-primary/40 transition-all duration-300 overflow-hidden hover:shadow-[0_10px_40px_rgba(237,28,36,0.15)] rounded-2xl bg-[#0A0A0C]/80">
                                 <div className="absolute top-0 right-0 w-40 h-40 bg-primary/10 rounded-full blur-3xl -z-10 group-hover:bg-primary/20 transition-colors" />
                                 <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl -z-10" />
                                 <div className="w-20 h-20 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl flex items-center justify-center mb-8 border border-white/10 group-hover:border-primary/50 group-hover:shadow-[0_0_30px_rgba(237,28,36,0.2)] transition-all">
