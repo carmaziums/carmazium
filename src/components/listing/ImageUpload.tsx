@@ -5,7 +5,7 @@ import { Camera, X, Upload, Loader2, GripVertical, Star, Info, CheckCircle2 } fr
 import Image from "next/image"
 import { uploadImage, deleteImage } from "@/lib/supabase"
 
-export type ImageCategory = 'EXTERIOR' | 'INTERIOR' | 'DETAILS' | 'UNASSIGNED'
+export type ImageCategory = 'EXTERIOR' | 'INTERIOR' | 'DAMAGE' | 'UNASSIGNED'
 
 interface CategorizedImage {
     url: string
@@ -14,6 +14,7 @@ interface CategorizedImage {
 
 interface ImageUploadProps {
     onImagesChange: (images: string[]) => void
+    onDamageImageCountChange?: (count: number) => void
     maxImages?: number
     existingImages?: string[]
 }
@@ -32,14 +33,15 @@ const CATEGORIES: { id: ImageCategory; label: string; tip: string; minReq?: numb
         tip: 'Show the dashboard, front seats, rear seats, boot space, and center console. Ensure the steering wheel is straight.'
     },
     {
-        id: 'DETAILS',
-        label: 'Details & Damage',
-        tip: 'Highlight premium features (sunroof, screens) and be honest about any scratches or dents to build buyer trust.'
+        id: 'DAMAGE',
+        label: 'Damage',
+        tip: 'Be transparent about any scratches, dents, or wear to build buyer trust and get an accurate valuation.'
     },
 ]
 
 export function ImageUpload({
     onImagesChange,
+    onDamageImageCountChange,
     maxImages = 30,
     existingImages = []
 }: ImageUploadProps) {
@@ -61,9 +63,9 @@ export function ImageUpload({
     const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
     const ACCEPTED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
 
-    // Sort order: Cover photo is always index 0, then by category order (Exterior -> Interior -> Details -> Unassigned)
+    // Sort order: Cover photo is always index 0, then by category order
     const getSortedImages = React.useCallback(() => {
-        const order = { 'EXTERIOR': 1, 'INTERIOR': 2, 'DETAILS': 3, 'UNASSIGNED': 4 }
+        const order = { 'EXTERIOR': 1, 'INTERIOR': 2, 'DAMAGE': 3, 'UNASSIGNED': 4 }
         const sorted = [...images].sort((a, b) => {
             // Keep user's explicit order within the same category if possible, but for simplicity we rely on the flat array order
             // Actually, to support manual drag-and-drop ordering perfectly, we should NOT auto-sort the entire array.
@@ -75,11 +77,15 @@ export function ImageUpload({
 
     React.useEffect(() => {
         // Emit a nicely sorted flat array to the parent
-        const orderConfig: Record<ImageCategory, number> = { 'EXTERIOR': 1, 'INTERIOR': 2, 'DETAILS': 3, 'UNASSIGNED': 4 }
+        const orderConfig: Record<ImageCategory, number> = { 'EXTERIOR': 1, 'INTERIOR': 2, 'DAMAGE': 3, 'UNASSIGNED': 4 }
         const sortedUrls = [...images]
             .sort((a, b) => orderConfig[a.category] - orderConfig[b.category])
             .map(img => img.url)
         onImagesChange(sortedUrls)
+
+        if (onDamageImageCountChange) {
+            onDamageImageCountChange(images.filter(img => img.category === 'DAMAGE').length)
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [images])
 
