@@ -673,9 +673,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         return (
                                             <button key={vt} type="button"
                                                 onClick={() => set("vehicleType", vt)}
-                                                className={`flex-1 py-3 rounded-xl border text-sm font-bold transition-all ${active ? "border-primary bg-primary/10 text-white shadow-[0_0_15px_rgba(237,28,36,0.2)]" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"}`}
+                                                className={`flex-1 py-3 px-2 sm:px-3 rounded-xl border text-xs sm:text-sm font-bold transition-all flex items-center justify-center text-center ${active ? "border-primary bg-primary/10 text-white shadow-[0_0_15px_rgba(237,28,36,0.2)]" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"}`}
                                             >
-                                                {labels[vt]}
+                                                <span className="whitespace-normal break-words leading-tight">{labels[vt]}</span>
                                             </button>
                                         )
                                     })}
