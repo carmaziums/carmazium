@@ -56,14 +56,17 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
 
     // Scroll to bottom on new messages — instant on first load, smooth only if near bottom
     React.useEffect(() => {
-        if (!messagesEndRef.current) return
+        if (!messagesContainerRef.current) return
         if (isInitialLoad.current) {
             // Snap to bottom instantly when the conversation first loads
-            messagesEndRef.current.scrollIntoView({ behavior: "instant" as ScrollBehavior })
+            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
             isInitialLoad.current = false
         } else if (isNearBottom()) {
-            // Only smooth-scroll when the user is already near the bottom
-            messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+            // Only smooth-scroll container when near bottom
+            messagesContainerRef.current.scrollTo({
+                top: messagesContainerRef.current.scrollHeight,
+                behavior: "smooth"
+            })
         }
         // If the user has scrolled up to read older messages, don't interrupt them
     }, [messages])
@@ -105,6 +108,19 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
             if (isConnected) {
                 // Use WebSocket for real-time
                 sendMessage(room.id, content)
+                
+                // Optimistically add message to UI since backend WS does not echo to sender
+                const tempMsg: ChatMessage = {
+                    id: `temp-${Date.now()}`,
+                    chatRoomId: room.id,
+                    senderId: 'optimistic',
+                    content,
+                    isRead: false,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    sender: { id: 'optimistic', firstName: 'Me', lastName: '', profileImage: null }
+                }
+                setMessages(prev => [...prev, tempMsg])
             } else {
                 // Fallback to HTTP
                 const message = await sendChatMessage(room.id, content)
