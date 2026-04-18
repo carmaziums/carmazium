@@ -32,7 +32,7 @@ import { AiModule } from './ai/ai.module';
 import { DealersModule } from './dealers/dealers.module';
 import { PricingModule } from './pricing/pricing.module';
 import { ScraperModule } from './scraper/scraper.module';
-
+import { EmailModule } from './email/email.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -70,6 +70,7 @@ import { ScraperModule } from './scraper/scraper.module';
     DealersModule,
     PricingModule,
     ScraperModule,
+    EmailModule,
   ],
   controllers: [AppController],
   providers: [AppService],
