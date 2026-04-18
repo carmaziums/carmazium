@@ -1,4 +1,4 @@
-import { apiClient } from './apiClient';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev';
 
 export interface EstimatePriceRequest {
     make: string;
@@ -9,6 +9,7 @@ export interface EstimatePriceRequest {
     transmission?: string;
     condition?: string;
     location?: string;
+    damageImageCount?: number;
 }
 
 export interface EstimatePriceResponse {
@@ -18,12 +19,20 @@ export interface EstimatePriceResponse {
     confidence: number;
     comparables: number;
     reasoning: string;
+    damageDeduction?: number;
 }
 
 export async function estimateListingPrice(data: EstimatePriceRequest): Promise<EstimatePriceResponse> {
-    const json = await apiClient<{ data: EstimatePriceResponse }>('/pricing/estimate', {
+    const response = await fetch(`${API_URL}/pricing/estimate`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
     });
-    return json.data;
+
+    if (!response.ok) {
+        const errBody = await response.text().catch(() => '');
+        throw new Error(`Pricing API error (${response.status}): ${errBody}`);
+    }
+
+    return response.json();
 }

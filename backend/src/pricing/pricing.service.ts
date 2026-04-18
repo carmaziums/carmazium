@@ -98,13 +98,23 @@ export class PricingService {
                 this.logger.warn('Failed to cache estimate:', err.message);
             }
 
+            // Apply damage image penalty: every 2 damage photos = 1% deduction
+            const damageCount = dto.damageImageCount || 0;
+            const damagePenaltyPct = Math.floor(damageCount / 2);  // e.g. 5 photos = 2% penalty
+            const damageMultiplier = 1 - (damagePenaltyPct / 100);
+
+            const adjustedLow = Math.round((aiEstimate.low * damageMultiplier) / 100) * 100;
+            const adjustedMid = Math.round((aiEstimate.mid * damageMultiplier) / 100) * 100;
+            const adjustedHigh = Math.round((aiEstimate.high * damageMultiplier) / 100) * 100;
+
             return {
-                low: aiEstimate.low,
-                mid: aiEstimate.mid,
-                high: aiEstimate.high,
+                low: adjustedLow,
+                mid: adjustedMid,
+                high: adjustedHigh,
                 confidence: aiEstimate.confidence,
                 comparables: stats.count,
-                reasoning: aiEstimate.reasoning
+                reasoning: aiEstimate.reasoning,
+                damageDeduction: damagePenaltyPct > 0 ? damagePenaltyPct : undefined,
             };
 
         } catch (error) {
@@ -162,6 +172,7 @@ VEHICLE TO VALUE:
 - Fuel: ${dto.fuelType || 'Unknown'}, Transmission: ${dto.transmission || 'Unknown'}
 - Condition: ${dto.condition || 'GOOD'}
 - Location: ${dto.location || 'Unknown'}
+- Damage photos uploaded: ${dto.damageImageCount || 0} (more photos indicate more visible damage)
 
 MARKET DATA (from ${stats.count} comparable listings scraped in the last 30 days):
 - Median asking price: £${stats.median}
@@ -219,14 +230,21 @@ Respond ONLY in JSON:
         let estimatedPrice = base * Math.pow(0.85, yearOffset);
         estimatedPrice = Math.max(1000, estimatedPrice);
 
+        // Apply damage penalty to fallback too
+        const damageCount = dto.damageImageCount || 0;
+        const damagePenaltyPct = Math.floor(damageCount / 2);
+        const damageMultiplier = 1 - (damagePenaltyPct / 100);
+        estimatedPrice = estimatedPrice * damageMultiplier;
+
         const mid = Math.round(estimatedPrice / 100) * 100;
         return {
-            low: Math.round(mid * 0.9) / 100 * 100,
+            low: Math.round(mid * 0.9 / 100) * 100,
             mid,
-            high: Math.round(mid * 1.1) / 100 * 100,
+            high: Math.round(mid * 1.1 / 100) * 100,
             confidence: 0.1,
             comparables: count,
-            reasoning: "Insufficient market data. Used fallback depreciation formula."
+            reasoning: "Insufficient market data. Used fallback depreciation formula.",
+            damageDeduction: damagePenaltyPct > 0 ? damagePenaltyPct : undefined,
         };
     }
 }

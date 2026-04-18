@@ -202,6 +202,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const [showHpiModal, setShowHpiModal] = React.useState(false)
     const [isHpiUnlocked, setIsHpiUnlocked] = React.useState(false)
     const [isProcessingPayment, setIsProcessingPayment] = React.useState(false)
+    const [damageImageCount, setDamageImageCount] = React.useState(0)
 
     // Estimated value — derived from API
     const [valuation, setValuation] = React.useState<EstimatePriceResponse | null>(null)
@@ -224,7 +225,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             fuelType: formData.fuelType,
             transmission: formData.transmission,
             condition: formData.condition,
-            location: formData.location
+            location: formData.location,
+            damageImageCount: damageImageCount
         }).then((res) => {
             if (isMounted) {
                 setValuation(res)
@@ -238,7 +240,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         })
 
         return () => { isMounted = false }
-    }, [formData.make, formData.model, formData.year, formData.mileage, formData.fuelType, formData.condition, formData.transmission, formData.location])
+    }, [formData.make, formData.model, formData.year, formData.mileage, formData.fuelType, formData.condition, formData.transmission, formData.location, damageImageCount])
 
     const isAuthenticated = !!user
     const isEmailVerified = !!user?.email_confirmed_at
@@ -874,6 +876,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             <p className="text-sm text-gray-400">Aim for at least 20 photos for the best results. Organize them by selecting the relevant category below.</p>
                             <ImageUpload
                                 onImagesChange={(imgs) => set("images", imgs)}
+                                onDamageImageCountChange={setDamageImageCount}
                                 maxImages={50}
                                 existingImages={formData.images}
                             />
@@ -1189,9 +1192,25 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     {/* Reasoning */}
                                     <div className="bg-white/5 rounded-xl p-4 border border-white/10">
                                         <p className="text-sm text-gray-300 italic leading-relaxed">
-                                            "{valuation.reasoning}"
+                                            &quot;{valuation.reasoning}&quot;
                                         </p>
                                     </div>
+
+                                    {/* Damage Penalty Indicator */}
+                                    {valuation.damageDeduction && valuation.damageDeduction > 0 && (
+                                        <div className="flex items-center gap-3 bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
+                                            <div className="p-2 bg-amber-500/20 rounded-lg">
+                                                <Camera className="text-amber-400 shrink-0" size={18} />
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-xs font-bold uppercase text-amber-300 tracking-wider">Damage Photo Adjustment</p>
+                                                <p className="text-[11px] text-amber-200/70 mt-0.5">
+                                                    {damageImageCount} damage photo{damageImageCount !== 1 ? 's' : ''} detected — <strong className="text-amber-300">-{valuation.damageDeduction}%</strong> applied to the estimate.
+                                                    <span className="text-gray-500 ml-1">Every 2 damage photos deducts 1%.</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     <div className="flex flex-col sm:flex-row gap-4 items-center mt-4">
                                         <Button

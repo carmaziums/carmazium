@@ -32,4 +32,8 @@ export class EstimatePriceDto {
     @IsString()
     @IsOptional()
     location?: string;
+
+    @IsNumber()
+    @IsOptional()
+    damageImageCount?: number;
 }
