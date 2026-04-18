@@ -240,7 +240,7 @@ export async function getListings(filters?: ListingFilters): Promise<ListingsRes
 
     return apiClient<ListingsResponse>(`/listings${params.toString() ? `?${params.toString()}` : ''}`, {
         method: 'GET',
-        cache: 'no-store',
+        next: { revalidate: 60 },
     })
 }
 
@@ -250,7 +250,7 @@ export async function getListings(filters?: ListingFilters): Promise<ListingsRes
 export async function getListingBySlug(slug: string): Promise<Listing> {
     const data = await apiClient<{ data: Listing }>(`/listings/${slug}`, {
         method: 'GET',
-        cache: 'no-store',
+        next: { revalidate: 60 },
     })
     return data.data
 }
@@ -356,7 +356,7 @@ export async function getFeaturedListings(): Promise<Listing[]> {
     try {
         const data = await apiClient<{ data: Listing[] }>('/listings/featured', {
             method: 'GET',
-            cache: 'no-store',
+            next: { revalidate: 300 },
         })
         return data.data || []
     } catch {

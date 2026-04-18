@@ -82,7 +82,6 @@ export function DiscoverSection() {
                             sizes="100vw"
                             className="object-cover object-center"
                             priority
-                            unoptimized
                         />
                     </div>
                 </motion.div>

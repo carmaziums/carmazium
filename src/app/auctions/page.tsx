@@ -88,6 +88,7 @@ export default function AuctionsPage() {
                     src="/assets/images/hero-bg.png"
                     alt="Auction coming soon background"
                     fill
+                    sizes="100vw"
                     className="object-cover opacity-25"
                     priority
                 />

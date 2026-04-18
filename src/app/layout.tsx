@@ -3,8 +3,7 @@ import { Poppins, Montserrat, Inter } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/Header";
 import { ConditionalFooter } from "@/components/layout/ConditionalFooter";
-import dynamic from "next/dynamic";
-const MaziumWidget = dynamic(() => import("@/components/features/MaziumWidget").then(mod => mod.MaziumWidget));
+import { MaziumWidgetLoader } from "@/components/features/MaziumWidgetLoader";
 import { AutoDealerJsonLd } from "@/components/seo/JsonLd";
 
 import { Providers } from "@/components/providers/Providers";
@@ -94,7 +93,7 @@ export default function RootLayout({
                     {children}
                   </main>
                   <ConditionalFooter />
-                  <MaziumWidget />
+                  <MaziumWidgetLoader />
                 </div>
               </CompareProvider>
             </ChatProvider>
