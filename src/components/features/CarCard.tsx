@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/Button"
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion"
 import { useRef } from "react"
@@ -134,14 +135,15 @@ export function CarCard({
 
                 <motion.div
                     style={{ transform: "translateZ(40px)" }}
-                    className="relative z-10 w-full h-full flex items-center justify-center"
+                    className="relative z-10 w-full h-full"
                 >
-                    <Link href={href} className="cursor-pointer">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
+                    <Link href={href} className="cursor-pointer block relative w-full h-full">
+                        <Image
                             src={image}
                             alt={title}
-                            className="max-h-full w-auto object-contain drop-shadow-2xl transition-transform duration-500 group-hover:scale-105 group-hover:-rotate-1"
+                            fill
+                            sizes="(max-width: 768px) 90vw, (max-width: 1200px) 45vw, 300px"
+                            className="object-contain drop-shadow-2xl transition-transform duration-500 group-hover:scale-105 group-hover:-rotate-1"
                         />
                     </Link>
                 </motion.div>

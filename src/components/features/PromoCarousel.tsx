@@ -149,6 +149,7 @@ export function PromoCarousel() {
                                                 src={slides[current].src}
                                                 alt={slides[current].subtitle}
                                                 fill
+                                                sizes="(max-width: 768px) 100vw, 50vw"
                                                 className="object-cover transform group-hover:scale-105 transition-transform duration-1000 ease-out"
                                             />
                                         )}

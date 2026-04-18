@@ -10,10 +10,10 @@ import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
 
 
-const navLinks = [
+const navLinks: { name: string; href: string; prefetch?: boolean }[] = [
     { name: "Home", href: "/" },
     { name: "Buy Cars", href: "/search" },
-    { name: "Sell Cars", href: "/sell" },
+    { name: "Sell Cars", href: "/sell", prefetch: false },
     { name: "About", href: "/about" },
     { name: "Compare", href: "/compare" },
 ]
@@ -66,8 +66,9 @@ export function Header() {
                         <Image
                             src="/assets/images/logo.png"
                             alt="CarMazium"
-                            width={400}
-                            height={100}
+                            width={160}
+                            height={40}
+                            sizes="160px"
                             className="h-8 md:h-10 w-auto object-contain"
                             priority
                         />
@@ -80,6 +81,7 @@ export function Header() {
                         <Link
                             key={link.name}
                             href={link.href}
+                            prefetch={link.prefetch}
                             className={cn(
                                 "text-[0.95rem] font-semibold uppercase tracking-wider hover:text-primary transition-colors pb-1 relative group",
                                 activeLink === link.href ? "text-primary" : "opacity-80 hover:opacity-100"
@@ -204,6 +206,7 @@ export function Header() {
                             <Link
                                 key={link.name}
                                 href={link.href}
+                                prefetch={link.prefetch}
                                 className={cn(
                                     "text-lg font-medium py-2 hover:text-primary transition-colors",
                                     activeLink === link.href && "text-primary"
