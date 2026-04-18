@@ -20,6 +20,7 @@ import {
 import { uploadImage } from "@/lib/supabase"
 import { dvlaLookup } from "@/lib/dvlaApi"
 import { aiGenerateDescription } from "@/lib/aiApi"
+import { estimateListingPrice, type EstimatePriceResponse } from "@/lib/pricingApi"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
@@ -108,123 +109,6 @@ const INITIAL_FORM: FormData = {
     dateOfLastV5CIssued: "",
     images: [],
     priceMin: "", priceMax: "", badgeTier: 'FREE', status: "DRAFT",
-}
-
-// ─── Valuation Engine ─────────────────────────────────────────────────────────
-// Based on UK market data: Motorway's "How Much Does Mileage Affect Car Value?"
-// Key factors: age-tiered depreciation, mileage vs UK average (8k mi/yr), fuel type
-
-const BASE_VALUES: Record<string, number> = {
-    "PORSCHE": 68000, "LAND ROVER": 52000, "AUDI": 41000,
-    "BMW": 41000, "MERCEDES": 41000, "MERCEDES-BENZ": 41000,
-    "LEXUS": 38000, "JAGUAR": 36000, "VOLVO": 32000,
-    "VOLKSWAGEN": 28000, "TOYOTA": 27000, "HONDA": 25000,
-    "NISSAN": 23000, "FORD": 23000, "VAUXHALL": 21000,
-    "HYUNDAI": 21000, "KIA": 21000, "SKODA": 23000,
-    "SEAT": 20000, "MAZDA": 24000, "MINI": 25000,
-    "FIAT": 17000, "RENAULT": 18000, "PEUGEOT": 18000,
-    "CITROËN": 17000, "CITROEN": 17000,
-}
-
-const FUEL_MULTIPLIERS: Record<string, number> = {
-    "ELECTRIC": 1.10,
-    "PLUGIN_HYBRID": 1.05,
-    "HYBRID": 1.03,
-    "PETROL": 1.00,
-    "DIESEL": 0.95,
-}
-
-/**
- * Returns { low, mid, high } estimated values.
- * Age-tiered depreciation:
- *   Year 1: -20%, Years 2-3: -15%/yr, Years 4-7: -10%/yr, 8+: -7%/yr
- * Mileage: UK average = 8,000 mi/yr.
- *   Every 10k above average: -6%; every 10k below average: +3% (capped at +20%)
- */
-function estimateValue(
-    make: string, year: string, mileage: string, fuelType: string,
-    condition: string, serviceHistory: string, transmission: string,
-    owners: string, location: string
-) {
-    const newBase = BASE_VALUES[make.toUpperCase()] ?? 25000
-    const currentYear = new Date().getFullYear()
-    const age = Math.max(0, currentYear - Number(year))
-    const actualMileage = Number(mileage)
-
-    // 1️⃣ Base Market Price (Compounding deprecation: ~13% loss per year)
-    const depreciationFactor = Math.pow(0.87, age)
-    let basePrice = newBase * depreciationFactor
-    if (basePrice < 800) basePrice = 800 // Floor
-
-    // 3️⃣ Mileage Adjustment (steeper penalty for high mileage)
-    const expectedMileage = Math.max(10000, age * 10000)
-    const mileageDiff = actualMileage - expectedMileage
-    let mileageRate = (mileageDiff / 10000) * -0.03
-    mileageRate = Math.max(-0.35, Math.min(0.10, mileageRate)) // Cap between -35% and +10%
-    const mileageAdjustmentVal = basePrice * mileageRate
-
-    // 5️⃣ Condition Adjustment
-    let conditionRate = 0
-    if (condition === "EXCELLENT") conditionRate = 0.05
-    else if (condition === "GOOD") conditionRate = 0.02
-    else if (condition === "FAIR") conditionRate = -0.06
-    else if (condition === "POOR" || condition === "CAT_N" || condition === "CAT_S" || condition === "CAT_C" || condition === "CAT_D") conditionRate = -0.25
-    const conditionAdjustmentVal = basePrice * conditionRate
-
-    // 6️⃣ Service History Adjustment
-    let serviceRate = 0
-    if (serviceHistory === "FULL") serviceRate = 0.03
-    else if (serviceHistory === "PARTIAL") serviceRate = 0.01
-    else if (serviceHistory === "NONE") serviceRate = -0.06
-    const serviceAdjustmentVal = basePrice * serviceRate
-
-    // 7️⃣ Transmission Adjustment
-    const transmissionValue = transmission === "AUTOMATIC" ? Math.min(600, basePrice * 0.03) : 0
-
-    // 8️⃣ Fuel Type Adjustment
-    let fuelRate = 0
-    if (fuelType === "ELECTRIC") fuelRate = 0.05
-    else if (fuelType === "HYBRID" || fuelType === "PLUGIN_HYBRID") fuelRate = 0.03
-    else if (fuelType === "DIESEL") fuelRate = -0.05
-    const fuelAdjustmentVal = basePrice * fuelRate
-
-    // 9️⃣ Ownership Adjustment
-    let ownerRate = 0
-    if (owners === "1") ownerRate = 0.03
-    else if (owners === "2") ownerRate = 0.01
-    else if (owners === "3+") ownerRate = -0.04
-    const ownershipAdjustmentVal = basePrice * ownerRate
-
-    // 🔟 Location Demand Adjustment
-    let locationRate = 0
-    const locUpper = location ? location.toUpperCase() : ""
-    if (locUpper.includes("LONDON") || locUpper.includes("SOUTH EAST")) {
-        locationRate = 0.02
-    } else if (locUpper.includes("MANCHESTER") || locUpper.includes("BIRMINGHAM") || locUpper.includes("LEEDS") || locUpper.includes("GLASGOW") || locUpper.includes("LIVERPOOL") || locUpper.includes("SHEFFIELD") || locUpper.includes("BRISTOL") || locUpper.includes("EDINBURGH")) {
-        locationRate = 0.01
-    }
-    const locationAdjustmentVal = basePrice * locationRate
-
-    // 1️⃣1️⃣ Final Formula (Complete)
-    let estimatedPrice = basePrice + mileageAdjustmentVal + conditionAdjustmentVal + serviceAdjustmentVal + transmissionValue + fuelAdjustmentVal + ownershipAdjustmentVal + locationAdjustmentVal
-    if (estimatedPrice < 500) estimatedPrice = 500
-
-    const mid = Math.max(500, Math.round(estimatedPrice / 100) * 100)
-    const low = Math.round(mid * 0.95 / 100) * 100
-    const high = Math.round(mid * 1.05 / 100) * 100
-
-    return { 
-        low, mid, high, 
-        basePrice, 
-        mileageAdjustmentVal, 
-        conditionAdjustmentVal, 
-        serviceAdjustmentVal, 
-        transmissionValue, 
-        fuelAdjustmentVal, 
-        ownershipAdjustmentVal, 
-        locationAdjustmentVal,
-        expectedMileage
-    }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -319,15 +203,42 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const [isHpiUnlocked, setIsHpiUnlocked] = React.useState(false)
     const [isProcessingPayment, setIsProcessingPayment] = React.useState(false)
 
-    // Estimated value — derived from complex formula
-    const valuation = React.useMemo(() => {
-        if (!formData.make || !formData.year || !formData.mileage) return null
-        return estimateValue(
-            formData.make, formData.year, formData.mileage, formData.fuelType,
-            formData.condition, formData.serviceHistory, formData.transmission,
-            formData.owners, formData.location
-        )
-    }, [formData.make, formData.year, formData.mileage, formData.fuelType, formData.condition, formData.serviceHistory, formData.transmission, formData.owners, formData.location])
+    // Estimated value — derived from API
+    const [valuation, setValuation] = React.useState<EstimatePriceResponse | null>(null)
+    const [isValuating, setIsValuating] = React.useState(false)
+
+    React.useEffect(() => {
+        if (!formData.make || !formData.model || !formData.year || !formData.mileage) {
+            setValuation(null)
+            return
+        }
+
+        let isMounted = true
+        setIsValuating(true)
+        
+        estimateListingPrice({
+            make: formData.make,
+            model: formData.model,
+            year: parseInt(formData.year) || 0,
+            mileage: parseInt(formData.mileage) || 0,
+            fuelType: formData.fuelType,
+            transmission: formData.transmission,
+            condition: formData.condition,
+            location: formData.location
+        }).then((res) => {
+            if (isMounted) {
+                setValuation(res)
+                setIsValuating(false)
+            }
+        }).catch((err) => {
+            console.error("Valuation failed:", err)
+            if (isMounted) {
+                setIsValuating(false)
+            }
+        })
+
+        return () => { isMounted = false }
+    }, [formData.make, formData.model, formData.year, formData.mileage, formData.fuelType, formData.condition, formData.transmission, formData.location])
 
     const isAuthenticated = !!user
     const isEmailVerified = !!user?.email_confirmed_at
@@ -1234,7 +1145,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Pricing</h2>
 
                             {/* Estimated Valuation Card */}
-                            {valuation ? (
+                            {isValuating ? (
+                                <div className="dealer-glass-card rounded-2xl border-purple-500/30 bg-gradient-to-br from-[#0A0A0C] to-slate-900 p-8 space-y-5 relative overflow-hidden flex flex-col items-center justify-center min-h-[300px]">
+                                     <Loader2 className="animate-spin text-purple-400 mb-4" size={40} />
+                                     <p className="text-purple-300 font-bold animate-pulse">Analyzing Live Market Data...</p>
+                                     <p className="text-gray-500 text-xs">Scanning AutoTrader, Motors.co.uk, and Gumtree</p>
+                                </div>
+                            ) : valuation ? (
                                 <div className="dealer-glass-card rounded-2xl border-purple-500/30 bg-gradient-to-br from-[#0A0A0C] to-slate-900 p-8 space-y-5 relative overflow-hidden">
                                     <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/10 blur-3xl pointer-events-none" />
                                     <div className="flex items-center gap-3 relative z-10">
@@ -1242,8 +1159,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             <Sparkles className="text-purple-400 shrink-0" size={20} />
                                         </div>
                                         <div>
-                                            <h3 className="text-white font-black font-heading uppercase tracking-widest text-sm">Proprietary Valuation</h3>
-                                            <p className="text-[10px] text-purple-400 font-bold uppercase tracking-widest">Driven by Market Intelligence</p>
+                                            <h3 className="text-white font-black font-heading uppercase tracking-widest text-sm">AI Market Valuation</h3>
+                                            <p className="text-[10px] text-purple-400 font-bold uppercase tracking-widest">Driven by {valuation.comparables} recent market comparables</p>
                                         </div>
                                     </div>
 
@@ -1256,78 +1173,25 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 {formatPrice(valuation.high)}
                                             </p>
                                         </div>
-                                        <p className="text-gray-400 text-xs mt-2 font-bold uppercase tracking-wider flex items-center gap-2">
-                                            <Activity size={12} className="text-emerald-400" /> Auto-Optimized Midpoint: <strong className="text-white">{formatPrice(valuation.mid)}</strong>
-                                        </p>
-                                    </div>
-
-                                    {/* Factors breakdown */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                                        <div className="bg-white/5 rounded-lg px-3 py-2.5 flex items-center justify-between">
-                                            <div>
-                                                <p className="text-[10px] text-gray-500 uppercase font-bold flex items-center">Base Price
-                                                    <InfoTooltip text={`Estimated new price minus 6% depreciation per year of age.`} />
+                                        <div className="flex items-center justify-between mt-3">
+                                            <p className="text-gray-400 text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                                                <Activity size={12} className="text-emerald-400" /> Auto-Optimized Midpoint: <strong className="text-white">{formatPrice(valuation.mid)}</strong>
+                                            </p>
+                                            <div className="flex items-center gap-1.5 bg-slate-900/50 px-3 py-1.5 rounded-full border border-white/5">
+                                                <div className={`w-2 h-2 rounded-full ${valuation.confidence >= 0.7 ? 'bg-emerald-500' : valuation.confidence >= 0.4 ? 'bg-amber-400' : 'bg-red-500'}`} />
+                                                <p className="text-[10px] text-gray-300 font-bold uppercase">
+                                                    {valuation.confidence >= 0.7 ? 'High' : valuation.confidence >= 0.4 ? 'Medium' : 'Low'} Confidence
                                                 </p>
-                                                <p className="text-gray-300 text-sm font-bold">{formatPrice(valuation.basePrice)}</p>
                                             </div>
                                         </div>
-                                        {valuation.mileageAdjustmentVal !== 0 && (
-                                            <div className="bg-white/5 rounded-lg px-3 py-2.5 flex items-center justify-between">
-                                                <div>
-                                                    <p className="text-[10px] text-gray-500 uppercase font-bold flex items-center">Mileage Adj
-                                                        <InfoTooltip text={`+/- 6% per 10k miles compared to the expected ${valuation.expectedMileage.toLocaleString()} miles.`} />
-                                                    </p>
-                                                    <p className={`text-sm font-bold ${valuation.mileageAdjustmentVal > 0 ? "text-emerald-400" : "text-amber-400"}`}>
-                                                        {valuation.mileageAdjustmentVal > 0 ? "+" : ""}{formatPrice(valuation.mileageAdjustmentVal)}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        )}
-                                        {valuation.conditionAdjustmentVal !== 0 && (
-                                            <div className="bg-white/5 rounded-lg px-3 py-2.5 flex items-center justify-between">
-                                                <div>
-                                                    <p className="text-[10px] text-gray-500 uppercase font-bold">Condition</p>
-                                                    <p className={`text-sm font-bold ${valuation.conditionAdjustmentVal > 0 ? "text-emerald-400" : "text-amber-400"}`}>
-                                                        {valuation.conditionAdjustmentVal > 0 ? "+" : ""}{formatPrice(valuation.conditionAdjustmentVal)}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        )}
-                                        {valuation.serviceAdjustmentVal !== 0 && (
-                                            <div className="bg-white/5 rounded-lg px-3 py-2.5 flex items-center justify-between">
-                                                <div>
-                                                    <p className="text-[10px] text-gray-500 uppercase font-bold">Service History</p>
-                                                    <p className={`text-sm font-bold ${valuation.serviceAdjustmentVal > 0 ? "text-emerald-400" : "text-amber-400"}`}>
-                                                        {valuation.serviceAdjustmentVal > 0 ? "+" : ""}{formatPrice(valuation.serviceAdjustmentVal)}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        )}
-                                        {valuation.fuelAdjustmentVal !== 0 && (
-                                            <div className="bg-white/5 rounded-lg px-3 py-2.5 flex items-center justify-between">
-                                                <div>
-                                                    <p className="text-[10px] text-gray-500 uppercase font-bold">Fuel Type</p>
-                                                    <p className={`text-sm font-bold ${valuation.fuelAdjustmentVal > 0 ? "text-emerald-400" : "text-amber-400"}`}>
-                                                        {valuation.fuelAdjustmentVal > 0 ? "+" : ""}{formatPrice(valuation.fuelAdjustmentVal)}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        )}
-                                        {valuation.ownershipAdjustmentVal !== 0 && (
-                                            <div className="bg-white/5 rounded-lg px-3 py-2.5 flex items-center justify-between">
-                                                <div>
-                                                    <p className="text-[10px] text-gray-500 uppercase font-bold">Owners</p>
-                                                    <p className={`text-sm font-bold ${valuation.ownershipAdjustmentVal > 0 ? "text-emerald-400" : "text-amber-400"}`}>
-                                                        {valuation.ownershipAdjustmentVal > 0 ? "+" : ""}{formatPrice(valuation.ownershipAdjustmentVal)}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        )}
                                     </div>
 
-                                    <p className="text-xs text-gray-500">
-                                        Calculated based on UK car market pricing algorithms. Note that transmission (+£1,000 for auto) and London/Major City location (+2-4%) are also factored in. You can override the values below.
-                                    </p>
+                                    {/* Reasoning */}
+                                    <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                                        <p className="text-sm text-gray-300 italic leading-relaxed">
+                                            "{valuation.reasoning}"
+                                        </p>
+                                    </div>
 
                                     <div className="flex flex-col sm:flex-row gap-4 items-center mt-4">
                                         <Button
