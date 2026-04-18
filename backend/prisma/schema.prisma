@@ -828,3 +828,59 @@ model Offer {
   @@index([status])
   @@map("offers")
 }
+
+// ============================================================================
+// AI PRICING SYSTEM
+// ============================================================================
+
+/// Scraped market price data from competitor websites
+model MarketPriceData {
+  id           String   @id @default(uuid())
+  source       String   // AUTOTRADER, MOTORS, GUMTREE, CARGURUS, CARWOW, PULSECARS
+  make         String
+  model        String
+  variant      String?
+  year         Int
+  mileage      Int
+  price        Decimal  @db.Decimal(12, 2)
+  fuelType     String?
+  transmission String?
+  bodyType     String?
+  location     String?
+  sellerType   String?  // PRIVATE or DEALER
+  sourceUrl    String?
+  scrapedAt    DateTime @default(now())
+
+  @@index([make, model, year])
+  @@index([make, model])
+  @@index([scrapedAt])
+  @@map("market_price_data")
+}
+
+/// Cached AI price estimates to avoid re-computation
+model PriceEstimateCache {
+  id           String   @id @default(uuid())
+  make         String
+  model        String
+  year         Int
+  mileage      Int
+  fuelType     String?
+  transmission String?
+  condition    String?
+  location     String?
+
+  /// Computed values
+  estimateLow  Decimal  @db.Decimal(12, 2)
+  estimateMid  Decimal  @db.Decimal(12, 2)
+  estimateHigh Decimal  @db.Decimal(12, 2)
+  comparables  Int      // How many market listings were used
+  confidence   Float    // 0.0 - 1.0 confidence score
+
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime // 24-48hr TTL
+
+  @@unique([make, model, year, mileage, fuelType, transmission, condition])
+  @@index([make, model, year])
+  @@index([expiresAt])
+  @@map("price_estimate_cache")
+}
