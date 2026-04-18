@@ -5,10 +5,14 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole } from '@prisma/client';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class UsersService {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly emailService: EmailService,
+    ) { }
 
     /**
      * Find a user by their primary ID (UUID).
@@ -173,7 +177,12 @@ export class UsersService {
         const userId = data.id ?? data.supabaseAuthId;
         const role = data.role && Object.values(UserRole).includes(data.role) ? data.role : undefined;
 
-        return this.prisma.user.upsert({
+        // Check if user already exists
+        const userExists = await this.prisma.user.findUnique({
+            where: { email },
+        });
+
+        const user = await this.prisma.user.upsert({
             where: { email },
             update: {
                 firstName: data.firstName,
@@ -189,5 +198,12 @@ export class UsersService {
                 passwordHash: 'SUPABASE_EXTERNAL_AUTH', // Placeholder since auth is external
             },
         });
+
+        // Fire and forget welcome email if it's a completely new user
+        if (!userExists) {
+            this.emailService.sendWelcomeEmail(user.email, user.firstName || undefined, user.role).catch(console.error);
+        }
+
+        return user;
     }
 }
