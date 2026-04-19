@@ -132,14 +132,13 @@ export class ScraperService {
             // If empty (e.g. anti-bot block or DOM change), fallback cleanly
             if (listings.length === 0) {
                 this.logger.warn(`No Carwow listings parsed. The DOM selector may have changed or the search returned 0 results.`);
-                return this.generateMockListings('CARWOW', make, model, 4);
+                return [];
             }
 
             return listings;
         } catch (error) {
             this.logger.error(`Carwow scrape failed: ${error.message}`);
-            // Fallback gracefully on 403/timeout
-            return this.generateMockListings('CARWOW', make, model, 4);
+            return [];
         }
     }
 
@@ -170,8 +169,8 @@ export class ScraperService {
             throw new Error("Invalid API response format");
 
         } catch (error) {
-            this.logger.warn(`PulseCars true API unavailable or 404. Falling back to mock data: ${error.message}`);
-            return this.generateMockListings('PULSECARS', make, model, 3);
+            this.logger.warn(`PulseCars true API unavailable or 404. Proceeding without this source: ${error.message}`);
+            return [];
         }
     }
 
