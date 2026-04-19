@@ -8,8 +8,8 @@ export class ScraperCron {
 
     constructor(private scraperService: ScraperService) {}
 
-    // Runs every 6 hours at 02 past the hour
-    @Cron('0 2 */6 * * *')
+    // Runs once a week on Sunday at 00:00
+    @Cron('0 0 * * 0')
     async handleCron() {
         this.logger.log('Starting scheduled web scraping of market prices...');
 

@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { EstimatePriceDto } from './pricing.dto';
 import OpenAI from 'openai';
+import { ScraperService } from '../scraper/scraper.service';
 
 @Injectable()
 export class PricingService {
@@ -11,7 +12,8 @@ export class PricingService {
 
     constructor(
         private prisma: PrismaService,
-        private configService: ConfigService
+        private configService: ConfigService,
+        private scraperService: ScraperService
     ) {
         const apiKey = this.configService.get<string>('OPENAI_API_KEY');
         this.openai = new OpenAI({ apiKey: apiKey || '' });
@@ -48,7 +50,7 @@ export class PricingService {
             }
 
             // 2. Query market comparables
-            const comparables = await this.prisma.marketPriceData.findMany({
+            let comparables = await this.prisma.marketPriceData.findMany({
                 where: {
                     make: dto.make,
                     model: dto.model,
@@ -59,10 +61,42 @@ export class PricingService {
                 orderBy: { scrapedAt: 'desc' }
             });
 
-            // 3. Statistical Analysis
+            // 3. JIT Scraping on Cache Miss
             if (comparables.length < 3) {
-                // Not enough data, return fallback
-                return this.calculateFallback(dto, comparables.length);
+                this.logger.log(`[JIT] Insufficient comparables (${comparables.length}) for ${dto.make} ${dto.model}. Triggering on-demand live scrape...`);
+                
+                try {
+                    // Fetch live data directly from standard market engines
+                    const results = await Promise.all([
+                        this.scraperService.scrapeCarwow(dto.make, dto.model),
+                        this.scraperService.scrapePulseCars(dto.make, dto.model)
+                    ]);
+                    
+                    const allListings = results.flat();
+                    if (allListings.length > 0) {
+                        await this.scraperService.saveScrapedListings(allListings);
+                        
+                        // Re-query successfully populated data
+                        comparables = await this.prisma.marketPriceData.findMany({
+                            where: {
+                                make: dto.make,
+                                model: dto.model,
+                                year: { gte: dto.year - 1, lte: dto.year + 1 },
+                                mileage: { gte: dto.mileage - 20000, lte: dto.mileage + 20000 },
+                            },
+                            take: 50,
+                            orderBy: { scrapedAt: 'desc' }
+                        });
+                        this.logger.log(`[JIT] Newly fetched comparables: ${comparables.length}`);
+                    }
+                } catch (err) {
+                    this.logger.warn(`[JIT] On-demand scrape failed, bypassing: ${err.message}`);
+                }
+
+                // If STILL less than 3 after a JIT scrape loop, fallback gracefully
+                if (comparables.length < 3) {
+                    return this.calculateFallback(dto, comparables.length);
+                }
             }
 
             const stats = this.aggregateComps(comparables);
