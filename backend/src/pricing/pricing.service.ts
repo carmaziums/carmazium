@@ -56,6 +56,7 @@ export class PricingService {
                     model: dto.model,
                     year: { gte: dto.year - 1, lte: dto.year + 1 },
                     mileage: { gte: dto.mileage - 20000, lte: dto.mileage + 20000 },
+                    sourceUrl: { not: { contains: 'example' } }
                 },
                 take: 50,
                 orderBy: { scrapedAt: 'desc' }
@@ -83,6 +84,7 @@ export class PricingService {
                                 model: dto.model,
                                 year: { gte: dto.year - 1, lte: dto.year + 1 },
                                 mileage: { gte: dto.mileage - 20000, lte: dto.mileage + 20000 },
+                                sourceUrl: { not: { contains: 'example' } }
                             },
                             take: 50,
                             orderBy: { scrapedAt: 'desc' }
@@ -95,7 +97,7 @@ export class PricingService {
 
                 // If STILL less than 3 after a JIT scrape loop, fallback gracefully
                 if (comparables.length < 3) {
-                    return this.calculateFallback(dto, comparables.length);
+                    return await this.calculateFallback(dto, comparables.length);
                 }
             }
 
@@ -153,7 +155,7 @@ export class PricingService {
 
         } catch (error) {
             this.logger.error('Error estimating price:', error);
-            return this.calculateFallback(dto, 0);
+            return await this.calculateFallback(dto, 0);
         }
     }
 
@@ -251,20 +253,63 @@ Respond ONLY in JSON:
         };
     }
 
-    private calculateFallback(dto: EstimatePriceDto, count: number) {
-        // Super basic formula if no DB data
-        const baseValues: Record<string, number> = {
-            "PORSCHE": 68000, "LAND ROVER": 52000, "AUDI": 41000,
-            "BMW": 41000, "MERCEDES": 41000, "FORD": 23000,
-            "VOLKSWAGEN": 28000, "HONDA": 25000, "TOYOTA": 27000
-        };
-        const base = baseValues[dto.make.toUpperCase()] || 25000;
+    private async calculateFallback(dto: EstimatePriceDto, count: number) {
+        // Zero-Shot Native AI Fallback
+        if (this.configService.get('OPENAI_API_KEY')) {
+            const prompt = `You are a specialist UK car valuer. We have no direct web-scraped comparables for this exact vehicle right now. 
+Please estimate the current UK Retail Asking Price (cash price) based on your extensive internal knowledge of the automotive market.
+
+VEHICLE:
+- Make: ${dto.make}, Model: ${dto.model}, Year: ${dto.year}
+- Mileage: ${dto.mileage} miles
+- Fuel: ${dto.fuelType || 'Unknown'}, Transmission: ${dto.transmission || 'Unknown'}
+- Condition: ${dto.condition || 'GOOD'}
+
+Respond ONLY in JSON with an estimated lower bound, middle average, and upper bound:
+{
+    "low": <number>,
+    "mid": <number>,
+    "high": <number>,
+    "reasoning": "<1 sentence explanation connecting the specs to the valuation>"
+}`;
+            try {
+                const completion = await this.openai.chat.completions.create({
+                    model: 'gpt-4o-mini',
+                    messages: [{ role: 'user', content: prompt }],
+                    temperature: 0.1,
+                    response_format: { type: 'json_object' }
+                });
+                
+                const content = completion.choices[0]?.message?.content?.trim();
+                if (content) {
+                    const aiFallback = JSON.parse(content);
+                    
+                    // Apply exact same damage multipliers to AI zero-shot output
+                    const damageCount = dto.damageImageCount || 0;
+                    const damagePenaltyPct = Math.floor(damageCount / 2);
+                    const damageMultiplier = 1 - (damagePenaltyPct / 100);
+
+                    return {
+                        low: Math.round((aiFallback.low * damageMultiplier) / 100) * 100,
+                        mid: Math.round((aiFallback.mid * damageMultiplier) / 100) * 100,
+                        high: Math.round((aiFallback.high * damageMultiplier) / 100) * 100,
+                        confidence: 0.3, // 0.3 means zero-shot LLM (no local data, but smart)
+                        comparables: count,
+                        reasoning: "Zero-Shot AI Estimation: " + aiFallback.reasoning,
+                        damageDeduction: damagePenaltyPct > 0 ? damagePenaltyPct : undefined,
+                    };
+                }
+            } catch (e) {
+                this.logger.error("AI Fallback failed. Using math.");
+            }
+        }
+
+        // True last-resort math fallback if OpenAI is down or no key
+        const fallbackBase = 25000;
         const yearOffset = Math.max(0, new Date().getFullYear() - dto.year);
-        
-        let estimatedPrice = base * Math.pow(0.85, yearOffset);
+        let estimatedPrice = fallbackBase * Math.pow(0.85, yearOffset);
         estimatedPrice = Math.max(1000, estimatedPrice);
 
-        // Apply damage penalty to fallback too
         const damageCount = dto.damageImageCount || 0;
         const damagePenaltyPct = Math.floor(damageCount / 2);
         const damageMultiplier = 1 - (damagePenaltyPct / 100);
@@ -275,9 +320,9 @@ Respond ONLY in JSON:
             low: Math.round(mid * 0.9 / 100) * 100,
             mid,
             high: Math.round(mid * 1.1 / 100) * 100,
-            confidence: 0.1,
+            confidence: 0.1, // 0.1 means rigid math fallback (worst case)
             comparables: count,
-            reasoning: "Insufficient market data. Used fallback depreciation formula.",
+            reasoning: "Insufficient market data. Used mathematical baseline.",
             damageDeduction: damagePenaltyPct > 0 ? damagePenaltyPct : undefined,
         };
     }
