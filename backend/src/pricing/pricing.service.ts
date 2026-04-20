@@ -5,6 +5,58 @@ import { EstimatePriceDto } from './pricing.dto';
 import OpenAI from 'openai';
 import { ScraperService } from '../scraper/scraper.service';
 
+// --- Segment classification ---
+const MAKE_SEGMENT_MAP: Record<string, 'budget' | 'mainstream' | 'premium' | 'luxury'> = {
+  dacia: 'budget', skoda: 'budget', seat: 'budget', vauxhall: 'budget',
+  ford: 'budget', fiat: 'budget', renault: 'budget', peugeot: 'budget',
+  citroen: 'budget', nissan: 'budget', hyundai: 'budget', kia: 'budget',
+  suzuki: 'budget', mitsubishi: 'budget',
+
+  volkswagen: 'mainstream', vw: 'mainstream', toyota: 'mainstream',
+  honda: 'mainstream', mazda: 'mainstream', subaru: 'mainstream',
+  volvo: 'mainstream', mini: 'mainstream',
+
+  bmw: 'premium', mercedes: 'premium', 'mercedes-benz': 'premium',
+  audi: 'premium', lexus: 'premium', jaguar: 'premium',
+  'land rover': 'premium', 'range rover': 'premium', tesla: 'premium',
+
+  porsche: 'luxury', maserati: 'luxury', bentley: 'luxury',
+  'rolls-royce': 'luxury', 'aston martin': 'luxury',
+  ferrari: 'luxury', lamborghini: 'luxury', mclaren: 'luxury',
+};
+
+const SEGMENT_CONFIG = {
+  budget:     { base: 12000, annualDecay: 0.80, floor: 800  },
+  mainstream: { base: 22000, annualDecay: 0.83, floor: 1500 },
+  premium:    { base: 42000, annualDecay: 0.78, floor: 3000 },
+  luxury:     { base: 95000, annualDecay: 0.72, floor: 8000 },
+};
+
+const FUEL_MULTIPLIERS: Record<string, number> = {
+  ELECTRIC: 1.08,
+  HYBRID:   1.04,
+  PETROL:   1.00,
+  DIESEL:   0.96, // market sentiment has softened diesel in the UK
+};
+
+const TRANSMISSION_MULTIPLIERS: Record<string, number> = {
+  AUTOMATIC: 1.03,
+  MANUAL:    1.00,
+};
+
+// --- Mileage deviation penalty ---
+function getMileageMultiplier(mileage: number, ageYears: number): number {
+  const expectedMileage = Math.max(1, ageYears) * 8000;
+  const delta = mileage - expectedMileage;
+  const per10k = delta / 10000;
+
+  if (per10k <= 0) {
+    return 1 + Math.min(0.08, Math.abs(per10k) * 0.02);
+  } else {
+    return 1 - Math.min(0.20, per10k * 0.03);
+  }
+}
+
 @Injectable()
 export class PricingService {
     private readonly logger = new Logger(PricingService.name);
@@ -198,6 +250,22 @@ export class PricingService {
             };
         }
 
+        const currentYear = new Date().getFullYear();
+        const expectedMileage = Math.max(0, currentYear - dto.year) * 8000;
+        const mileageDelta = (dto.mileage ?? 0) - expectedMileage;
+        
+        const mileageNote = `- Mileage vs. UK average for this age: ${
+          mileageDelta > 0
+            ? `+${mileageDelta.toLocaleString()} (HIGH — discount from median accordingly)`
+            : `${mileageDelta.toLocaleString()} (LOW — small premium justified)`
+        }`;
+        
+        const damageNote = `- Damage photos uploaded: ${dto.damageImageCount ?? 0}${
+          (dto.damageImageCount ?? 0) > 0
+            ? ` — each pair of photos typically signals a separate damage area; apply a progressive discount from the median price.`
+            : ' — no visible damage indicated.'
+        }`;
+
         const prompt = `You are an expert UK used-car valuation analyst for CarMazium.
 
 Given the following vehicle details and market comparable data, provide an accurate price estimate.
@@ -205,10 +273,11 @@ Given the following vehicle details and market comparable data, provide an accur
 VEHICLE TO VALUE:
 - Make: ${dto.make}, Model: ${dto.model}, Year: ${dto.year}
 - Mileage: ${dto.mileage} miles
+${mileageNote}
 - Fuel: ${dto.fuelType || 'Unknown'}, Transmission: ${dto.transmission || 'Unknown'}
 - Condition: ${dto.condition || 'GOOD'}
 - Location: ${dto.location || 'Unknown'}
-- Damage photos uploaded: ${dto.damageImageCount || 0} (more photos indicate more visible damage)
+${damageNote}
 
 MARKET DATA (from ${stats.count} comparable listings scraped in the last 30 days):
 - Median asking price: £${stats.median}
@@ -261,26 +330,33 @@ Respond ONLY in JSON:
     private async calculateFallback(dto: EstimatePriceDto, count: number) {
         // Zero-Shot Native AI Fallback
         if (this.configService.get('OPENAI_API_KEY')) {
-            const prompt = `You are a specialist UK car valuer. We have no direct web-scraped comparables for this exact vehicle right now. 
-Please estimate the current UK Retail Asking Price (cash price) based on your extensive internal knowledge of the automotive market.
+            const currentYear = new Date().getFullYear();
+            const expectedMileage = Math.max(0, currentYear - dto.year) * 8000;
+            const mileageDelta = (dto.mileage ?? 0) - expectedMileage;
+            const mileageContext = mileageDelta > 5000
+                ? `HIGH mileage: ${mileageDelta.toLocaleString()} miles above UK average for this age — apply meaningful penalty.`
+                : mileageDelta < -5000
+                ? `LOW mileage: ${Math.abs(mileageDelta).toLocaleString()} miles below UK average for this age — slight premium applies.`
+                : `Mileage is close to the UK average for this age (${expectedMileage.toLocaleString()} miles expected).`;
 
-VEHICLE:
-- Make: ${dto.make}, Model: ${dto.model}, Year: ${dto.year}
-- Mileage: ${dto.mileage} miles
-- Fuel: ${dto.fuelType || 'Unknown'}, Transmission: ${dto.transmission || 'Unknown'}
-- Condition: ${dto.condition || 'GOOD'}
+            const prompt = `You are a specialist UK used-car valuer. Today's date is ${new Date().toISOString().split('T')[0]}.
+We have no direct web-scraped comparables for this vehicle right now.
 
-INSTRUCTIONS:
-1. Categorise this vehicle's make into its market segment (Luxury, Premium, Standard, or Budget) and establish a realistic original brand-new MRRP in the UK.
-2. Apply a realistic UK depreciation curve based on the vehicle's age.
-3. Compare the mileage to the UK average of approximately 8,000 miles per year. Apply realistic penalties for above-average mileage and slight premiums for below-average mileage.
+Estimate the current UK Retail Asking Price (private sale / dealer forecourt cash price) using your knowledge of the UK automotive market.
+UK average annual mileage is approximately 8,000 miles.
 
-Respond ONLY in JSON with an estimated lower bound, middle average, and upper bound:
+VEHICLE SPECS:
+- Make: ${dto.make}, Model: ${dto.model}, Year: ${dto.year} (${currentYear - dto.year} years old)
+- Mileage: ${dto.mileage?.toLocaleString()} miles — ${mileageContext}
+- Fuel: ${dto.fuelType ?? 'Unknown'}, Transmission: ${dto.transmission ?? 'Unknown'}
+- Condition: ${dto.condition ?? 'GOOD'}
+
+Return ONLY valid JSON. No markdown, no explanation outside the JSON fields:
 {
-    "low": <number>,
-    "mid": <number>,
-    "high": <number>,
-    "reasoning": "<1 sentence explanation connecting the specs to the valuation>"
+  "low": <integer — realistic lower bound>,
+  "mid": <integer — most likely asking price>,
+  "high": <integer — optimistic upper bound>,
+  "reasoning": "<1 sentence linking key factors — age, mileage deviation, fuel type — to the valuation>"
 }`;
             try {
                 const completion = await this.openai.chat.completions.create({
@@ -315,69 +391,43 @@ Respond ONLY in JSON with an estimated lower bound, middle average, and upper bo
         }
 
         // True last-resort math fallback if OpenAI is down or no key
-        const makeKey = dto.make.toLowerCase();
-        let fallbackBase = 25000;
-        let depreciationRate = 0.15; // 15%
-
-        const luxuryMakes = ['porsche', 'maserati', 'bentley', 'aston martin', 'ferrari', 'lamborghini', 'rolls-royce', 'mclaren'];
-        const premiumMakes = ['bmw', 'mercedes-benz', 'mercedes', 'audi', 'land rover', 'range rover', 'jaguar', 'lexus', 'volvo', 'tesla', 'alfa romeo'];
-        const budgetMakes = ['dacia', 'mg', 'suzuki', 'fiat', 'chevrolet', 'chrysler', 'ssangyong', 'proton'];
-
-        if (luxuryMakes.includes(makeKey)) {
-            fallbackBase = 60000;
-            depreciationRate = 0.12;
-        } else if (premiumMakes.includes(makeKey)) {
-            fallbackBase = 40000;
-            depreciationRate = 0.14;
-        } else if (budgetMakes.includes(makeKey)) {
-            fallbackBase = 15000;
-            depreciationRate = 0.18;
-        } else {
-            fallbackBase = 25000;
-            depreciationRate = 0.15;
-        }
+        const makeKey = dto.make?.toLowerCase().trim() ?? '';
+        const segment = Object.prototype.hasOwnProperty.call(MAKE_SEGMENT_MAP, makeKey) ? MAKE_SEGMENT_MAP[makeKey] : 'mainstream'; // safe default
+        const config  = SEGMENT_CONFIG[segment];
 
         const currentYear = new Date().getFullYear();
-        const yearOffset = Math.max(0, currentYear - dto.year);
-        let estimatedPrice = fallbackBase * Math.pow(1 - depreciationRate, yearOffset);
+        const age         = Math.max(0, currentYear - dto.year);
 
-        // Mileage adjustment based on standard UK market logic (approx ~8,000 miles/yr)
-        const expectedMileage = Math.max(1, yearOffset) * 8000;
-        const mileageDifference = dto.mileage - expectedMileage;
-        
-        // Approx 4% reduction per 10k over, 2% premium per 10k under
-        let mileageAdjustmentRate = 0;
-        if (mileageDifference > 0) {
-            mileageAdjustmentRate = -((mileageDifference / 10000) * 0.04);
-        } else {
-            mileageAdjustmentRate = (Math.abs(mileageDifference) / 10000) * 0.02;
-        }
+        // Age-based depreciation
+        let estimated = config.base * Math.pow(config.annualDecay, age);
+        estimated     = Math.max(config.floor, estimated);
 
-        // Cap the adjustment so it doesn't skew wildly (-50% to +20%)
-        mileageAdjustmentRate = Math.max(-0.5, Math.min(0.2, mileageAdjustmentRate));
-        estimatedPrice = estimatedPrice * (1 + mileageAdjustmentRate);
+        // Mileage deviation on top of age
+        estimated *= getMileageMultiplier(dto.mileage ?? 0, age);
 
-        estimatedPrice = Math.max(1000, estimatedPrice);
+        // Fuel type
+        const fuelKey = (dto.fuelType ?? 'PETROL').toUpperCase();
+        estimated *= Object.prototype.hasOwnProperty.call(FUEL_MULTIPLIERS, fuelKey) ? FUEL_MULTIPLIERS[fuelKey] : 1.0;
 
-        const damageCount = dto.damageImageCount || 0;
+        // Transmission
+        const txKey = (dto.transmission ?? 'MANUAL').toUpperCase();
+        estimated *= Object.prototype.hasOwnProperty.call(TRANSMISSION_MULTIPLIERS, txKey) ? TRANSMISSION_MULTIPLIERS[txKey] : 1.0;
+
+        // Damage penalty
+        const damageCount      = dto.damageImageCount ?? 0;
         const damagePenaltyPct = Math.floor(damageCount / 2);
-        const damageMultiplier = 1 - (damagePenaltyPct / 100);
-        estimatedPrice = estimatedPrice * damageMultiplier;
+        const damageMultiplier = 1 - damagePenaltyPct / 100;
+        estimated *= damageMultiplier;
 
-        const mid = Math.round(estimatedPrice / 100) * 100;
-        
-        let segmentName = 'Standard';
-        if (fallbackBase === 60000) segmentName = 'Luxury';
-        if (fallbackBase === 40000) segmentName = 'Premium';
-        if (fallbackBase === 15000) segmentName = 'Budget';
+        const mid  = Math.round(estimated / 100) * 100;
+        const low  = Math.round((mid * 0.88) / 100) * 100;
+        const high = Math.round((mid * 1.12) / 100) * 100;
 
         return {
-            low: Math.round(mid * 0.9 / 100) * 100,
-            mid,
-            high: Math.round(mid * 1.1 / 100) * 100,
-            confidence: 0.1, // 0.1 means rigid math fallback (worst case)
+            low, mid, high,
+            confidence: 0.15, // slightly more than 0.1 since it's now segment-aware
             comparables: count,
-            reasoning: `Insufficient market data. Mathematical baseline applied (${segmentName} Segment, adjusted for age and mileage).`,
+            reasoning: `Segmented mathematical estimate (${segment} class, ${age} year old vehicle, ${dto.mileage?.toLocaleString()} miles).`,
             damageDeduction: damagePenaltyPct > 0 ? damagePenaltyPct : undefined,
         };
     }
