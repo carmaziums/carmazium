@@ -219,6 +219,11 @@ MARKET DATA (from ${stats.count} comparable listings scraped in the last 30 days
 - Dealer median: £${stats.dealerMedian}
 - Price range: £${stats.minPrice} - £${stats.maxPrice}
 
+INSTRUCTIONS:
+1. Your calculation MUST be anchored to the provided MARKET DATA percentiles.
+2. Consider standard UK mileage for this age (approx 8,000 miles/year). Adjust the value up or down slightly based on this specific vehicle's condition, mileage, and damage.
+3. Do not drift significantly from the market median without establishing strong reasoning (e.g., exceptionally low mileage, or poor condition).
+
 Respond ONLY in JSON:
 {
     "low": <number>,
@@ -265,6 +270,11 @@ VEHICLE:
 - Fuel: ${dto.fuelType || 'Unknown'}, Transmission: ${dto.transmission || 'Unknown'}
 - Condition: ${dto.condition || 'GOOD'}
 
+INSTRUCTIONS:
+1. Categorise this vehicle's make into its market segment (Luxury, Premium, Standard, or Budget) and establish a realistic original brand-new MRRP in the UK.
+2. Apply a realistic UK depreciation curve based on the vehicle's age.
+3. Compare the mileage to the UK average of approximately 8,000 miles per year. Apply realistic penalties for above-average mileage and slight premiums for below-average mileage.
+
 Respond ONLY in JSON with an estimated lower bound, middle average, and upper bound:
 {
     "low": <number>,
@@ -305,9 +315,48 @@ Respond ONLY in JSON with an estimated lower bound, middle average, and upper bo
         }
 
         // True last-resort math fallback if OpenAI is down or no key
-        const fallbackBase = 25000;
-        const yearOffset = Math.max(0, new Date().getFullYear() - dto.year);
-        let estimatedPrice = fallbackBase * Math.pow(0.85, yearOffset);
+        const makeKey = dto.make.toLowerCase();
+        let fallbackBase = 25000;
+        let depreciationRate = 0.15; // 15%
+
+        const luxuryMakes = ['porsche', 'maserati', 'bentley', 'aston martin', 'ferrari', 'lamborghini', 'rolls-royce', 'mclaren'];
+        const premiumMakes = ['bmw', 'mercedes-benz', 'mercedes', 'audi', 'land rover', 'range rover', 'jaguar', 'lexus', 'volvo', 'tesla', 'alfa romeo'];
+        const budgetMakes = ['dacia', 'mg', 'suzuki', 'fiat', 'chevrolet', 'chrysler', 'ssangyong', 'proton'];
+
+        if (luxuryMakes.includes(makeKey)) {
+            fallbackBase = 60000;
+            depreciationRate = 0.12;
+        } else if (premiumMakes.includes(makeKey)) {
+            fallbackBase = 40000;
+            depreciationRate = 0.14;
+        } else if (budgetMakes.includes(makeKey)) {
+            fallbackBase = 15000;
+            depreciationRate = 0.18;
+        } else {
+            fallbackBase = 25000;
+            depreciationRate = 0.15;
+        }
+
+        const currentYear = new Date().getFullYear();
+        const yearOffset = Math.max(0, currentYear - dto.year);
+        let estimatedPrice = fallbackBase * Math.pow(1 - depreciationRate, yearOffset);
+
+        // Mileage adjustment based on standard UK market logic (approx ~8,000 miles/yr)
+        const expectedMileage = Math.max(1, yearOffset) * 8000;
+        const mileageDifference = dto.mileage - expectedMileage;
+        
+        // Approx 4% reduction per 10k over, 2% premium per 10k under
+        let mileageAdjustmentRate = 0;
+        if (mileageDifference > 0) {
+            mileageAdjustmentRate = -((mileageDifference / 10000) * 0.04);
+        } else {
+            mileageAdjustmentRate = (Math.abs(mileageDifference) / 10000) * 0.02;
+        }
+
+        // Cap the adjustment so it doesn't skew wildly (-50% to +20%)
+        mileageAdjustmentRate = Math.max(-0.5, Math.min(0.2, mileageAdjustmentRate));
+        estimatedPrice = estimatedPrice * (1 + mileageAdjustmentRate);
+
         estimatedPrice = Math.max(1000, estimatedPrice);
 
         const damageCount = dto.damageImageCount || 0;
@@ -316,13 +365,19 @@ Respond ONLY in JSON with an estimated lower bound, middle average, and upper bo
         estimatedPrice = estimatedPrice * damageMultiplier;
 
         const mid = Math.round(estimatedPrice / 100) * 100;
+        
+        let segmentName = 'Standard';
+        if (fallbackBase === 60000) segmentName = 'Luxury';
+        if (fallbackBase === 40000) segmentName = 'Premium';
+        if (fallbackBase === 15000) segmentName = 'Budget';
+
         return {
             low: Math.round(mid * 0.9 / 100) * 100,
             mid,
             high: Math.round(mid * 1.1 / 100) * 100,
             confidence: 0.1, // 0.1 means rigid math fallback (worst case)
             comparables: count,
-            reasoning: "Insufficient market data. Used mathematical baseline.",
+            reasoning: `Insufficient market data. Mathematical baseline applied (${segmentName} Segment, adjusted for age and mileage).`,
             damageDeduction: damagePenaltyPct > 0 ? damagePenaltyPct : undefined,
         };
     }
