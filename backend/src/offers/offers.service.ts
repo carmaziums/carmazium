@@ -44,12 +44,15 @@ export class OffersService {
         const min = listing.priceMin !== null ? Number(listing.priceMin) : null;
         const max = listing.priceMax !== null ? Number(listing.priceMax) : null;
 
-        if (min !== null && dto.amount < min) {
+        const buyerMax = dto.amountMax ?? dto.amount;
+        const buyerMin = dto.amountMin ?? dto.amount;
+
+        if (min !== null && buyerMax < min) {
             throw new BadRequestException(
                 `Offer must be at least £${min.toLocaleString('en-GB')} (the seller's minimum).`,
             );
         }
-        if (max !== null && dto.amount > max) {
+        if (max !== null && buyerMin > max) {
             throw new BadRequestException(
                 `Offer cannot exceed £${max.toLocaleString('en-GB')} (the seller's maximum).`,
             );
