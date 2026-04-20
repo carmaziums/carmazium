@@ -23,10 +23,7 @@ import { useRouter } from "next/navigation"
 // ─── Offer Status Chip ───────────────────────────────────────────────────────
 
 function OfferStatusChip({ offer, viewerRole }: { offer: LatestOffer; viewerRole: 'buyer' | 'seller' | 'public' }) {
-    const amount = `£${Number(offer.amount).toLocaleString('en-GB')}`
-    const amtMin = offer.amountMin ? `£${Number(offer.amountMin).toLocaleString('en-GB')}` : null
-    const amtMax = offer.amountMax ? `£${Number(offer.amountMax).toLocaleString('en-GB')}` : null
-    const amountDisplay = (amtMin && amtMax && amtMin !== amtMax) ? `${amtMin} – ${amtMax}` : amount
+    const amountDisplay = `£${Number(offer.amount).toLocaleString('en-GB')}`
 
     if (viewerRole === 'buyer') {
         if (offer.status === 'PENDING') return (
@@ -103,21 +100,19 @@ function OfferModal({
 }) {
     const askingPrice = Number(listing.price)
 
-    const [offerMin, setOfferMin] = React.useState(Math.round(askingPrice * 0.9))
-    const [offerMax, setOfferMax] = React.useState(askingPrice)
+    const [offerAmount, setOfferAmount] = React.useState(Math.round(askingPrice * 0.9))
     const [message, setMessage] = React.useState("")
     const [loading, setLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
 
-    const isInvalid = offerMin <= 0 || offerMax <= 0 || offerMin > offerMax
+    const isInvalid = offerAmount <= 0
 
     const handleSubmit = async () => {
         if (isInvalid) return
         setLoading(true)
         setError(null)
         try {
-            const midpoint = Math.round((offerMin + offerMax) / 2)
-            const offer = await makeOffer(listing.id, midpoint, message || undefined, offerMin, offerMax)
+            const offer = await makeOffer(listing.id, offerAmount, message || undefined)
             onSuccess(offer as unknown as LatestOffer)
         } catch (err: any) {
             setError(err.message || "Failed to submit offer. Please try again.")
@@ -163,48 +158,22 @@ function OfferModal({
                     </div>
                 </div>
 
-                {/* Buyer Price Range Inputs */}
+                {/* Buyer Offer Input */}
                 <div className="mb-4">
-                    <label className="text-sm font-bold uppercase text-gray-400 mb-2 block">Your Price Range</label>
-                    <p className="text-xs text-gray-500 mb-3">Set your minimum and maximum you&apos;re willing to pay. The seller sees your full range.</p>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="text-xs text-gray-500 mb-1 block">Min Offer (£)</label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">£</span>
-                                <Input
-                                    type="number"
-                                    value={offerMin}
-                                    step={100}
-                                    onChange={(e) => setOfferMin(Number(e.target.value))}
-                                    className="bg-slate-900/50 border-white/10 text-white pl-8 focus:border-primary"
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="text-xs text-gray-500 mb-1 block">Max Offer (£)</label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">£</span>
-                                <Input
-                                    type="number"
-                                    value={offerMax}
-                                    step={100}
-                                    onChange={(e) => setOfferMax(Number(e.target.value))}
-                                    className="bg-slate-900/50 border-white/10 text-white pl-8 focus:border-primary"
-                                />
-                            </div>
+                    <label className="text-sm font-bold uppercase text-gray-400 mb-2 block">Your Offer</label>
+                    <p className="text-xs text-gray-500 mb-3">Set the amount you&apos;re willing to pay.</p>
+                    <div>
+                        <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">£</span>
+                            <Input
+                                type="number"
+                                value={offerAmount}
+                                step={100}
+                                onChange={(e) => setOfferAmount(Number(e.target.value))}
+                                className="bg-slate-900/50 border-white/10 text-white pl-8 focus:border-primary"
+                            />
                         </div>
                     </div>
-                    {isInvalid && offerMin > 0 && offerMax > 0 && (
-                        <p className="text-red-400 text-xs mt-2">
-                            Min offer must be less than or equal to max offer
-                        </p>
-                    )}
-                    {!isInvalid && offerMin > 0 && offerMax > 0 && (
-                        <p className="text-emerald-400 text-xs mt-2">
-                            ✓ Range: £{offerMin.toLocaleString('en-GB')} – £{offerMax.toLocaleString('en-GB')}
-                        </p>
-                    )}
                 </div>
 
                 {/* Message */}
