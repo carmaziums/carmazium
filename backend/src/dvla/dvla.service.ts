@@ -52,6 +52,7 @@ export interface DvlaLookupResult {
     monthOfFirstRegistration?: string; // e.g. "2015-03"
     dateOfLastV5CIssued?: string;
     realDrivingEmissions?: string;
+    transmission?: string;
     dataSource: 'DVLA';
     motHistory?: MotTestResult[];
 }
@@ -208,6 +209,7 @@ export class DvlaService {
             monthOfFirstRegistration: data.monthOfFirstRegistration,
             dateOfLastV5CIssued: data.dateOfLastV5CIssued,
             realDrivingEmissions: data.realDrivingEmissions,
+            transmission: (data as any).transmission,
             dataSource: 'DVLA',
         };
     }

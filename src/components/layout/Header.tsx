@@ -13,6 +13,7 @@ import { useAuth } from "@/context/AuthContext"
 const navLinks: { name: string; href: string; prefetch?: boolean }[] = [
     { name: "Home", href: "/" },
     { name: "Buy Cars", href: "/search" },
+    { name: "Sell Cars", href: "/sell", prefetch: false },
     { name: "About", href: "/about" },
     { name: "Compare", href: "/compare" },
 ]
@@ -97,15 +98,6 @@ export function Header() {
 
                 {/* Action Buttons */}
                 <div className="flex-1 flex items-center justify-end gap-3">
-                    <Button
-                        asChild
-                        variant="outline"
-                        className="hidden lg:flex border-primary text-primary hover:bg-primary hover:text-white transition-all font-bold tracking-wide shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:shadow-[0_0_20px_rgba(239,68,68,0.4)]"
-                    >
-                        <Link href="/sell">
-                            List your car for €1
-                        </Link>
-                    </Button>
 
                     {!loading && user ? (
                         <div className="relative">
@@ -224,16 +216,6 @@ export function Header() {
                                 {link.name}
                             </Link>
                         ))}
-                        
-                        <Button
-                            asChild
-                            variant="default"
-                            className="w-full mt-2 bg-gradient-to-r from-primary to-red-600 hover:from-red-600 hover:to-red-700 font-bold"
-                        >
-                            <Link href="/sell" onClick={() => setIsMobileMenuOpen(false)}>
-                                List your car for €1
-                            </Link>
-                        </Button>
 
 
 

@@ -83,12 +83,7 @@ export async function createListing(data: CreateListingRequest): Promise<CreateL
 export interface DvlaLookupResult {
     vrm: string
     make?: string
-    model?: string
-    transmission?: string
-    motHistory?: any[]
     colour?: string
-    primaryColour?: string
-    color?: string
     year?: number
     engineSize?: number
     co2Emissions?: number
@@ -167,6 +162,20 @@ export interface Listing {
     updatedAt: string
     // Latest offer on this listing (populated in detail view)
     offers?: LatestOffer[]
+    // Added seller relation details
+    seller?: {
+        id: string
+        firstName: string | null
+        lastName: string | null
+        profileImage: string | null
+        dealerProfile?: {
+            companyName: string
+            logo: string | null
+            description: string | null
+            phone: string | null
+            website: string | null
+        } | null
+    } | null
 }
 
 export interface ListingsResponse {

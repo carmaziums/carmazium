@@ -362,7 +362,8 @@ export class ListingsService {
                                     }
                                 }
                             }
-                        }
+                        },
+                        dealerProfile: true
                     }
                 },
                 // Include the most recent offer so the buyer can see their offer status

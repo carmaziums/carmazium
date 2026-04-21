@@ -3,6 +3,7 @@
 import Image from "next/image"
 import { Users, Globe, Award, TrendingUp, Handshake, Target, Rocket } from "lucide-react"
 import { motion, useScroll, useTransform } from "framer-motion"
+
 import { AccordionItem } from "@/components/ui/Accordion"
 import { TestimonialsSection } from "@/components/features/TestimonialsSection"
 import { Button } from "@/components/ui/Button"
