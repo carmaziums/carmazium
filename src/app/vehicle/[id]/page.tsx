@@ -281,7 +281,9 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
     const isCompared = listing ? isInCompare(listing.id) : false
     const handleCompare = () => {
         if (!listing) return
-        if (!isCompared) {
+        if (isCompared) {
+            removeFromCompare(listing.id)
+        } else {
             addToCompare({
                 id: listing.id,
                 title: listing.title,
@@ -296,8 +298,8 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                     seats: String(listing.seats ?? ""),
                 }
             })
+            router.push('/compare')
         }
-        router.push('/compare')
     }
 
     const handleOfferSuccess = (offer: LatestOffer) => {
@@ -393,17 +395,55 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
             <div className="p-6">
                 
                 {/* Seller Info Block */}
-                {listing.sellerId && (
+                {listing.seller && (
                     <div className="flex items-center gap-3 mb-6">
-                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-primary font-black text-lg shadow-sm shrink-0">
-                            CM
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-white text-[15px] leading-tight">CarMazium Premium</h3>
-                            <div className="flex items-center gap-1 mt-0.5">
-                                <CheckCircle size={10} className="text-red-500" />
-                                <span className="text-[10px] text-red-500 font-medium">Verified Dealer</span>
+                        {listing.seller.dealerProfile?.logo ? (
+                            <Image src={listing.seller.dealerProfile.logo} alt="Dealer Logo" width={48} height={48} className="w-12 h-12 rounded-full object-cover shrink-0 bg-white" />
+                        ) : listing.seller.profileImage ? (
+                            <Image src={listing.seller.profileImage} alt="Seller Image" width={48} height={48} className="w-12 h-12 rounded-full object-cover shrink-0" />
+                        ) : (
+                            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-primary font-black text-lg shadow-sm shrink-0">
+                                {(listing.seller.dealerProfile?.companyName || listing.seller.firstName || "CM").substring(0, 2).toUpperCase()}
                             </div>
+                        )}
+                        <div>
+                            <h3 className="font-bold text-white text-[15px] leading-tight">
+                                {listing.seller.dealerProfile?.companyName || `${listing.seller.firstName || ''} ${listing.seller.lastName || ''}`.trim() || 'Private Seller'}
+                            </h3>
+                            <div className="flex items-center gap-1 mt-0.5">
+                                {listing.seller.dealerProfile ? (
+                                    <>
+                                        <CheckCircle size={10} className="text-blue-500" />
+                                        <span className="text-[10px] text-blue-500 font-medium">Verified Dealer</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircle size={10} className="text-emerald-500" />
+                                        <span className="text-[10px] text-emerald-500 font-medium">Verified Seller</span>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
+                {/* Dealership Info */}
+                {listing.seller?.dealerProfile && (
+                    <div className="mb-6 space-y-2 text-sm text-gray-300">
+                        {listing.seller.dealerProfile.description && (
+                            <p className="line-clamp-3 text-xs">{listing.seller.dealerProfile.description}</p>
+                        )}
+                        <div className="flex flex-col gap-1 pt-2">
+                            {listing.seller.dealerProfile.phone && (
+                                <a href={`tel:${listing.seller.dealerProfile.phone}`} className="flex items-center gap-2 hover:text-white transition-colors">
+                                    <Phone size={14} className="text-gray-500" /> {listing.seller.dealerProfile.phone}
+                                </a>
+                            )}
+                            {listing.seller.dealerProfile.website && (
+                                <a href={listing.seller.dealerProfile.website} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-white transition-colors">
+                                    <Globe size={14} className="text-gray-500" /> Visit Website
+                                </a>
+                            )}
                         </div>
                     </div>
                 )}
@@ -596,7 +636,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                 className={`rounded-full ${isCompared ? 'bg-primary border-primary text-white' : 'border-gray-600 text-gray-400 hover:text-white hover:border-white'}`}
                                 onClick={handleCompare}
                             >
-                                <Scale size={18} className="mr-2" /> {isCompared ? "View Compare" : "Compare"}
+                                <Scale size={18} className="mr-2" /> {isCompared ? "Compared" : "Compare"}
                             </Button>
                             <Button variant="outline" size="icon" className="rounded-full border-gray-600 text-gray-400 hover:text-white hover:border-white" onClick={handleShare}>
                                 <Share2 size={18} />
@@ -855,7 +895,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                 </div>
                                 <div className="h-56 relative opacity-40 pointer-events-none grayscale-[0.2]">
                                     <Image
-                                        src="/assets/images/Hpi Template.jpg"
+                                        src="/assets/images/hpi_report_mockup.png"
                                         alt="HPI Report Mockup"
                                         fill
                                         className="object-cover object-top"
@@ -897,10 +937,57 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                     <p className="text-xs text-gray-400 mt-3">Price includes VAT. Financing available from 5.9% APR.</p>
                                 </div>
 
-                                {/* Seller Badge */}
-                                {listing.sellerId && (
-                                    <div className="mb-4 flex items-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10">
-                                        <SellerBadge score={0} sellerUserId={listing.sellerId} size="md" showLabel />
+                                {/* Seller Info Block */}
+                                {listing.seller && (
+                                    <div className="flex items-center gap-3 mb-6">
+                                        {listing.seller.dealerProfile?.logo ? (
+                                            <Image src={listing.seller.dealerProfile.logo} alt="Dealer Logo" width={48} height={48} className="w-12 h-12 rounded-full object-cover shrink-0 bg-white" />
+                                        ) : listing.seller.profileImage ? (
+                                            <Image src={listing.seller.profileImage} alt="Seller Image" width={48} height={48} className="w-12 h-12 rounded-full object-cover shrink-0" />
+                                        ) : (
+                                            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-primary font-black text-lg shadow-sm shrink-0">
+                                                {(listing.seller.dealerProfile?.companyName || listing.seller.firstName || "CM").substring(0, 2).toUpperCase()}
+                                            </div>
+                                        )}
+                                        <div>
+                                            <h3 className="font-bold text-white text-[15px] leading-tight">
+                                                {listing.seller.dealerProfile?.companyName || `${listing.seller.firstName || ''} ${listing.seller.lastName || ''}`.trim() || 'Private Seller'}
+                                            </h3>
+                                            <div className="flex items-center gap-1 mt-0.5">
+                                                {listing.seller.dealerProfile ? (
+                                                    <>
+                                                        <CheckCircle size={10} className="text-blue-500" />
+                                                        <span className="text-[10px] text-blue-500 font-medium">Verified Dealer</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <CheckCircle size={10} className="text-emerald-500" />
+                                                        <span className="text-[10px] text-emerald-500 font-medium">Verified Seller</span>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {/* Dealership Info */}
+                                {listing.seller?.dealerProfile && (
+                                    <div className="mb-6 space-y-2 text-sm text-gray-300">
+                                        {listing.seller.dealerProfile.description && (
+                                            <p className="line-clamp-3 text-xs">{listing.seller.dealerProfile.description}</p>
+                                        )}
+                                        <div className="flex flex-col gap-1 pt-2">
+                                            {listing.seller.dealerProfile.phone && (
+                                                <a href={`tel:${listing.seller.dealerProfile.phone}`} className="flex items-center gap-2 hover:text-white transition-colors">
+                                                    <Phone size={14} className="text-gray-500" /> {listing.seller.dealerProfile.phone}
+                                                </a>
+                                            )}
+                                            {listing.seller.dealerProfile.website && (
+                                                <a href={listing.seller.dealerProfile.website} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-white transition-colors">
+                                                    <Globe size={14} className="text-gray-500" /> Visit Website
+                                                </a>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
 

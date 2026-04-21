@@ -91,7 +91,7 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="text-5xl md:text-7xl font-bold font-heading mb-6 leading-tight drop-shadow-2xl"
           >
-            Find your next car <br /> <span className="text-primary tracking-tight">fast, fair, & transparent</span>
+            List your car <br /> <span className="text-primary tracking-tight">for £1</span>
           </motion.h1>
 
           <motion.div
@@ -232,7 +232,7 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
           <div>
             <Link href="/sell">
               <Button variant="outline" shape="pill" className="px-12 py-6 text-base border-primary/50 text-white hover:bg-primary hover:text-white uppercase tracking-wider font-semibold hover:tracking-widest transition-all duration-300">
-                List your car for €1
+                Sell My Car
               </Button>
             </Link>
           </div>

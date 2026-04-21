@@ -114,10 +114,10 @@ const INITIAL_FORM: FormData = {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function SelectField({
-    label, value, onChange, options, required = false, hasError = false
+    label, value, onChange, options, required = false, error = false
 }: {
     label: string; value: string; onChange: (v: string) => void
-    options: { value: string; label: string }[]; required?: boolean; hasError?: boolean
+    options: { value: string; label: string }[]; required?: boolean; error?: boolean
 }) {
     return (
         <div className="space-y-2">
@@ -125,7 +125,7 @@ function SelectField({
             <select
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                className={`w-full h-10 rounded-md border border-white/10 bg-slate-900/50 px-3 text-base md:text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary ${hasError ? "border-red-500 focus:border-red-500 ring-1 ring-red-500" : ""}`}
+                className={`w-full h-10 rounded-md border bg-slate-900/50 px-3 text-base md:text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary ${error ? 'border-red-500' : 'border-white/10'}`}
             >
                 <option value="">Select {label.toLowerCase()}</option>
                 {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -163,19 +163,37 @@ function HpiBaitSection({ isUnlocked, onUnlock }: { isUnlocked: boolean, onUnloc
 
     return (
         <div className="mt-8">
-            <div className="rounded-xl border border-white/10 bg-slate-900/50 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
+            <div className="rounded-xl border border-white/10 bg-slate-900/50 p-5 flex flex-col sm:flex-row items-center justify-between gap-6">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 flex-1">
                     <Shield className="text-blue-400 shrink-0" size={36} />
-                    <div>
-                        <h3 className="text-white font-bold">HPI Vehicle Check</h3>
-                        <p className="text-xs text-gray-400">We've found an official HPI record for this vehicle. Unlocking the full report gives you a <strong className="text-white">Premium Verification Badge</strong>.</p>
+                    <div className="text-center sm:text-left">
+                        <h3 className="text-white font-bold text-lg mb-1">HPI Vehicle Check</h3>
+                        <p className="text-sm text-gray-400 mb-4">We've found an official HPI record for this vehicle. Unlocking the full report gives you a <strong className="text-white">Premium Verification Badge</strong>.</p>
+                        
+                        <div className="relative w-full max-w-sm mx-auto sm:mx-0 rounded-lg overflow-hidden border border-white/10 shadow-xl mb-4 group cursor-pointer" onClick={onUnlock}>
+                            <div className="aspect-[4/3] w-full relative">
+                                <Image
+                                    src="/assets/images/Hpi Template.jpg"
+                                    alt="HPI Report Preview"
+                                    fill
+                                    className="object-cover opacity-60 group-hover:opacity-80 group-hover:scale-105 transition-all duration-500"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent pointer-events-none" />
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    <div className="bg-black/60 backdrop-blur-sm p-3 rounded-full text-white shadow-neon">
+                                        <Lock size={24} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <Button type="button" onClick={onUnlock} className="bg-white hover:bg-gray-200 text-black font-bold px-8 py-6 text-base shadow-neon shrink-0 w-full sm:w-auto">
+                            Unlock HPI Report
+                        </Button>
+                        <p className="text-[10px] text-gray-500/80 mt-3 italic">*It is proven to help cars sell up to 2x faster!</p>
                     </div>
                 </div>
-                <Button type="button" onClick={onUnlock} className="bg-white hover:bg-gray-200 text-black font-bold px-6 shadow-neon shrink-0 w-full sm:w-auto">
-                    Unlock HPI Report
-                </Button>
             </div>
-            <p className="text-[10px] text-gray-500/80 mt-2 text-center sm:text-left italic">*It is proven to help cars sell up to 2x faster!</p>
         </div>
     )
 }
@@ -187,7 +205,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const router = useRouter()
 
     const [currentStep, setCurrentStep] = React.useState(1)
-    const [attemptedNext, setAttemptedNext] = React.useState(false)
     const [formData, setFormData] = React.useState<FormData>(INITIAL_FORM)
     const [sellingMethod, setSellingMethod] = React.useState<"list" | null>(null)
     const [showLoginModal, setShowLoginModal] = React.useState(false)
@@ -198,13 +215,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const [dvlaSuccess, setDvlaSuccess] = React.useState(false)
     const [geoLoading, setGeoLoading] = React.useState(false)
     const [isGeneratingDesc, setIsGeneratingDesc] = React.useState(false)
-    const [customFeature, setCustomFeature] = React.useState("")
 
     // HPI Payment State
     const [showHpiModal, setShowHpiModal] = React.useState(false)
     const [isHpiUnlocked, setIsHpiUnlocked] = React.useState(false)
     const [isProcessingPayment, setIsProcessingPayment] = React.useState(false)
     const [damageImageCount, setDamageImageCount] = React.useState(0)
+    const [hasAttemptedNext, setHasAttemptedNext] = React.useState(false)
 
     // Estimated value — derived from API
     const [valuation, setValuation] = React.useState<EstimatePriceResponse | null>(null)
@@ -282,11 +299,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     }
 
     const handleNext = () => {
-        setAttemptedNext(true)
         if (!validateStep()) {
+            setHasAttemptedNext(true)
+            alert("Please fill in all required fields before proceeding.")
             return
         }
-        setAttemptedNext(false)
+        setHasAttemptedNext(false)
         setCurrentStep(prev => Math.min(prev + 1, 4))
     }
     const handleBack = () => setCurrentStep(prev => Math.max(prev - 1, 1))
@@ -384,8 +402,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     // ─── Shared ──────────────────────────────────────────────────────────────────
 
     const inputCls = "bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary text-base md:text-sm"
-
-    const getErrorCls = (field: keyof FormData) => attemptedNext && !formData[field] ? "border-red-500 focus:border-red-500 ring-1 ring-red-500" : ""
 
     // ─── Login Modal ─────────────────────────────────────────────────────────────
 
@@ -604,7 +620,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <div className="flex flex-col sm:flex-row gap-3">
                                     <Input placeholder="e.g. AB12 CDE" value={formData.vrm}
                                         onChange={(e) => { set("vrm", e.target.value.toUpperCase()); setDvlaSuccess(false); setDvlaError(null) }}
-                                        className={`${inputCls} uppercase font-mono tracking-widest text-lg h-14 bg-black border-primary/20 flex-1 ${getErrorCls("vrm")}`} />
+                                        className={`${inputCls} uppercase font-mono tracking-widest text-lg h-14 bg-black flex-1 ${hasAttemptedNext && !formData.vrm ? 'border-red-500' : 'border-primary/20 focus:border-primary'}`} />
                                     <Button type="button" disabled={!formData.vrm || dvlaLoading}
                                         className="bg-primary hover:bg-primary/90 text-white font-bold px-8 h-14 uppercase tracking-widest gap-2 shadow-neon transition-transform active:scale-95 w-full sm:w-auto"
                                         onClick={async () => {
@@ -627,8 +643,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 if (r.colour) set("color", r.colour)
                                                 if (r.year) set("year", String(r.year))
                                                 if (r.engineSize) set("engineSize", String(r.engineSize))
-                                                if (r.transmission) set("transmission", r.transmission.toUpperCase() === "MANUAL" ? "MANUAL" : r.transmission.toUpperCase().includes("AUTO") ? "AUTOMATIC" : "CVT")
                                                 if (r.fuelType) set("fuelType", r.fuelType)
+                                                if (r.transmission) set("transmission", r.transmission.toUpperCase())
                                                 if (r.euroStandard) set("euroStandard", r.euroStandard as EuroStandardValue)
                                                 if (r.co2Emissions) set("co2Emissions", String(r.co2Emissions))
                                                 // DVLA extended fields
@@ -679,7 +695,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 </p>
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                                    {/* First Registered removed */}
                                     {/* Last V5C Issued */}
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold uppercase text-gray-400">Last V5C Issued</label>
@@ -715,7 +730,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         <label className="text-sm font-bold uppercase text-gray-400">Wheelplan</label>
                                         <Input placeholder="e.g. 2 AXLE RIGID BODY" value={formData.wheelplan} onChange={(e) => set("wheelplan", e.target.value)} className={inputCls} />
                                     </div>
-                                    {/* Marked For Export removed */}
                                 </div>
                                 {/* MOT History - Read Only List */}
                                 {formData.motHistory && formData.motHistory.length > 0 && (
@@ -865,11 +879,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 {/* Mileage */}
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-gray-400">Mileage *</label>
-                                    <Input type="number" placeholder="e.g. 45000" value={formData.mileage} onChange={(e) => set("mileage", e.target.value)} className={inputCls} />
+                                    <Input type="number" placeholder="e.g. 45000" value={formData.mileage} onChange={(e) => set("mileage", e.target.value)} className={`${inputCls} ${hasAttemptedNext && !formData.mileage ? 'border-red-500' : ''}`} />
                                 </div>
 
                                 {/* Fuel */}
-                                <SelectField hasError={attemptedNext && !formData.fuelType} label="Fuel Type" required value={formData.fuelType} onChange={(v) => set("fuelType", v)}
+                                <SelectField label="Fuel Type" required error={hasAttemptedNext && !formData.fuelType} value={formData.fuelType} onChange={(v) => set("fuelType", v)}
                                     options={[
                                         { value: "PETROL", label: "Petrol" },
                                         { value: "DIESEL", label: "Diesel" },
@@ -882,7 +896,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 />
 
                                 {/* Transmission */}
-                                <SelectField hasError={attemptedNext && !formData.transmission} label="Transmission" required value={formData.transmission} onChange={(v) => set("transmission", v)}
+                                <SelectField label="Transmission" required error={hasAttemptedNext && !formData.transmission} value={formData.transmission} onChange={(v) => set("transmission", v)}
                                     options={[
                                         { value: "MANUAL", label: "Manual" },
                                         { value: "AUTOMATIC", label: "Automatic" },
@@ -988,13 +1002,55 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             {formData.features.includes(f) && <CheckCircle size={14} />}
                                         </div>
                                     ))}
+                                    {/* Custom Features */}
+                                    {formData.features.filter(f => !PRESET_FEATURES.includes(f)).map((f, i) => (
+                                        <div key={`custom-${i}`}
+                                            onClick={() => set("features", formData.features.filter(x => x !== f))}
+                                            className="p-3 rounded-lg border cursor-pointer transition-all flex items-center justify-between bg-primary/20 border-primary text-primary"
+                                        >
+                                            <span className="text-sm font-medium">{f}</span>
+                                            <CheckCircle size={14} />
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="flex gap-2 mt-2">
+                                    <Input 
+                                        id="custom-feature-input"
+                                        placeholder="Add a custom feature (e.g. Dashcam)" 
+                                        className={inputCls} 
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                const val = e.currentTarget.value.trim();
+                                                if (val && !formData.features.includes(val)) {
+                                                    set("features", [...formData.features, val]);
+                                                    e.currentTarget.value = '';
+                                                }
+                                            }
+                                        }}
+                                    />
+                                    <Button 
+                                        type="button" 
+                                        variant="outline" 
+                                        onClick={() => {
+                                            const input = document.getElementById('custom-feature-input') as HTMLInputElement;
+                                            const val = input.value.trim();
+                                            if (val && !formData.features.includes(val)) {
+                                                set("features", [...formData.features, val]);
+                                                input.value = '';
+                                            }
+                                        }}
+                                        className="border-white/10 text-white hover:border-primary shrink-0"
+                                    >
+                                        Add
+                                    </Button>
                                 </div>
                             </div>
 
                             {/* Title & Description */}
                             <div className="space-y-2">
                                 <label className="text-sm font-bold uppercase text-gray-400">Listing Title *</label>
-                                <Input placeholder="e.g. BMW M4 Competition 2023" value={formData.title} onChange={(e) => set("title", e.target.value)} className={inputCls} />
+                                <Input placeholder="e.g. BMW M4 Competition 2023" value={formData.title} onChange={(e) => set("title", e.target.value)} className={`${inputCls} ${hasAttemptedNext && !formData.title ? 'border-red-500' : ''}`} />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-bold uppercase text-gray-400">Description</label>
@@ -1054,32 +1110,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
 
 
-                            {/* Condition */}
-                            <div className="space-y-3">
-                                <label className="text-sm font-bold uppercase text-gray-400">Vehicle Condition</label>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
-                                    {([
-                                        { value: "EXCELLENT", label: "Excellent" },
-                                        { value: "GOOD", label: "Good" },
-                                        { value: "FAIR", label: "Fair" },
-                                        { value: "POOR", label: "Poor" },
-                                        { value: "CAT_S", label: "Cat S" },
-                                        { value: "CAT_N", label: "Cat N" },
-                                        { value: "CAT_C", label: "Cat C" },
-                                        { value: "CAT_D", label: "Cat D" },
-                                    ] as const).map((opt) => {
-                                        const active = formData.condition === opt.value
-                                        return (
-                                            <button key={opt.value} type="button"
-                                                onClick={() => set("condition", opt.value)}
-                                                className={`py-2.5 rounded-lg border text-sm font-semibold transition-all ${active ? "border-primary bg-primary/10 text-white" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"}`}
-                                            >
-                                                {opt.label}
-                                            </button>
-                                        )
-                                    })}
-                                </div>
-                            </div>
 
                             {/* Ownership */}
                             <div className="space-y-3">
@@ -1329,49 +1359,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     {formData.bodyType && <SummaryField label="Body" value={formData.bodyType} />}
                                     {formData.location && <SummaryField label="Location" value={formData.location} />}
                                 </div>
-                                <div className="mt-4 flex gap-3">
-                                    <Input 
-                                        placeholder="Add a custom feature..." 
-                                        value={customFeature} 
-                                        onChange={(e) => setCustomFeature(e.target.value)} 
-                                        className={inputCls} 
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter") {
-                                                e.preventDefault();
-                                                if (customFeature.trim() && !formData.features.includes(customFeature.trim())) {
-                                                    set("features", [...formData.features, customFeature.trim()]);
-                                                    setCustomFeature("");
-                                                }
-                                            }
-                                        }}
-                                    />
-                                    <Button 
-                                        type="button" 
-                                        variant="outline" 
-                                        className="border-white/10 hover:bg-white/5"
-                                        onClick={() => {
-                                            if (customFeature.trim() && !formData.features.includes(customFeature.trim())) {
-                                                set("features", [...formData.features, customFeature.trim()]);
-                                                setCustomFeature("");
-                                            }
-                                        }}
-                                    >
-                                        Add
-                                    </Button>
-                                </div>
-                                {/* Display custom features that aren't in PRESET_FEATURES */}
-                                {formData.features.filter(f => !PRESET_FEATURES.includes(f)).length > 0 && (
-                                    <div className="mt-4 flex flex-wrap gap-2">
-                                        {formData.features.filter(f => !PRESET_FEATURES.includes(f)).map((f) => (
-                                            <span key={f} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20">
-                                                {f}
-                                                <button type="button" onClick={() => set("features", formData.features.filter(x => x !== f))} className="hover:text-red-400">
-                                                    <X size={12} />
-                                                </button>
-                                            </span>
-                                        ))}
-                                    </div>
-                                )}
                             </SummarySection>
 
                             {/* Media */}

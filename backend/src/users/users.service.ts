@@ -134,10 +134,6 @@ export class UsersService {
             vatNumber: string;
             registrationNumber?: string;
             businessAddress?: string;
-            logo?: string;
-            description?: string;
-            phone?: string;
-            website?: string;
         },
     ) {
         const user = await this.prisma.user.findUnique({
