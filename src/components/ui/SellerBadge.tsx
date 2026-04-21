@@ -21,7 +21,7 @@ import { Star } from "lucide-react"
 interface SellerBadgeProps {
     score: number
     sellerUserId: string
-    size?: "sm" | "md"
+    size?: "sm" | "md" | "lg"
     showLabel?: boolean
 }
 
@@ -39,8 +39,8 @@ function getTier(score: number): { label: string; color: string; bg: string } {
 
 export function SellerBadge({ score, sellerUserId, size = "sm", showLabel = false }: SellerBadgeProps) {
     const tier = getTier(score)
-    const iconSize = size === "sm" ? 10 : 13
-    const textSize = size === "sm" ? "text-[10px]" : "text-xs"
+    const iconSize = size === "sm" ? 10 : size === "md" ? 13 : 16
+    const textSize = size === "sm" ? "text-[10px]" : size === "md" ? "text-xs" : "text-sm px-3 py-1"
 
     return (
         <Link
