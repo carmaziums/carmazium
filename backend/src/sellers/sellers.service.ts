@@ -99,7 +99,38 @@ export class SellersService {
         });
 
         if (!sellerProfile) {
-            throw new NotFoundException(`Seller profile not found for user "${userId}"`);
+            // Ensure the user actually exists first
+            const user = await this.prisma.user.findUnique({ where: { id: userId } });
+            if (!user) {
+                throw new NotFoundException(`User "${userId}" not found`);
+            }
+            
+            // Auto-create profile
+            await this.ensureProfile(userId);
+            
+            // Fetch again
+            sellerProfile = await this.prisma.sellerProfile.findUnique({
+                where: { userId },
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            firstName: true,
+                            lastName: true,
+                            profileImage: true,
+                            role: true,
+                            createdAt: true,
+                        },
+                    },
+                    reviews: {
+                        select: { rating: true },
+                    },
+                },
+            });
+            
+            if (!sellerProfile) {
+                throw new NotFoundException(`Failed to create seller profile for user "${userId}"`);
+            }
         }
 
         const reviewCount = sellerProfile.reviews.length;

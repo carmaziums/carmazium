@@ -1,25 +1,11 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect } from "react"
-
-interface Vehicle {
-    id: string
-    title: string
-    price: string
-    image: string
-    specs: {
-        year: string
-        mileage: string
-        engine: string
-        transmission: string
-        doors: string
-        seats: string
-    }
-}
+import { Listing } from "@/lib/listingApi"
 
 interface CompareContextType {
-    compareList: Vehicle[]
-    addToCompare: (vehicle: Vehicle) => void
+    compareList: Listing[]
+    addToCompare: (vehicle: Listing) => void
     removeFromCompare: (vehicleId: string) => void
     isInCompare: (vehicleId: string) => boolean
     toggleCompareDrawer: () => void
@@ -29,7 +15,7 @@ interface CompareContextType {
 const CompareContext = createContext<CompareContextType | undefined>(undefined)
 
 export function CompareProvider({ children }: { children: React.ReactNode }) {
-    const [compareList, setCompareList] = useState<Vehicle[]>([])
+    const [compareList, setCompareList] = useState<Listing[]>([])
     const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
     // Load from local storage on mount
@@ -49,16 +35,15 @@ export function CompareProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem("carmazium_compare", JSON.stringify(compareList))
     }, [compareList])
 
-    const addToCompare = (vehicle: Vehicle) => {
-        if (compareList.length >= 2) {
-            // Basic replacement logic: Remove first, add new
-            // Or we could alert. For premium feel, maybe a toast "Comparison full - replacing first item"
-            // For now, let's just replace the first one if full to keep it frictionless
-            setCompareList(prev => [...prev.slice(1), vehicle])
-        } else {
-            setCompareList(prev => [...prev, vehicle])
+    const addToCompare = (vehicle: Listing) => {
+        if (!compareList.some(v => v.id === vehicle.id)) {
+            if (compareList.length >= 3) {
+                setCompareList(prev => [...prev.slice(1), vehicle])
+            } else {
+                setCompareList(prev => [...prev, vehicle])
+            }
         }
-        setIsDrawerOpen(true) // Auto open drawer to show it worked
+        setIsDrawerOpen(false) // Don't auto open drawer because we navigate instead
     }
 
     const removeFromCompare = (vehicleId: string) => {

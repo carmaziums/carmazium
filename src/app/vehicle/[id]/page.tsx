@@ -13,7 +13,6 @@ import {
     MapPin, Share2, Heart, Scale, Loader2, AlertTriangle, X, Tag,
     Clock, XCircle, MessageCircle, ThumbsUp, Lock, FileSearch, BadgeCheck, Star, Sparkles, Zap, CreditCard, Info, Phone, Globe,
 } from "lucide-react"
-import { useCompare } from "@/context/CompareContext"
 import { useAuth } from "@/context/AuthContext"
 import { SellerBadge } from "@/components/ui/SellerBadge"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
@@ -219,12 +218,12 @@ function OfferModal({
 export default function VehicleDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = React.use(params)
     const { user } = useAuth()
-    const { addToCompare, removeFromCompare, isInCompare } = useCompare()
 
     const [listing, setListing] = React.useState<Listing | null>(null)
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
     const [activeImage, setActiveImage] = React.useState(0)
+    const [isDescExpanded, setIsDescExpanded] = React.useState(false)
     const [showOfferModal, setShowOfferModal] = React.useState(false)
     const [showLoginModal, setShowLoginModal] = React.useState(false)
     const [latestOffer, setLatestOffer] = React.useState<LatestOffer | null>(null)   // most recent offer on listing (any buyer) — public display
@@ -278,28 +277,9 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
         return 'public'
     }, [user, latestOffer, listing])
 
-    const isCompared = listing ? isInCompare(listing.id) : false
     const handleCompare = () => {
         if (!listing) return
-        if (isCompared) {
-            removeFromCompare(listing.id)
-        } else {
-            addToCompare({
-                id: listing.id,
-                title: listing.title,
-                price: formatPrice(listing.price),
-                image: listing.images?.[0] ?? "",
-                specs: {
-                    year: String(listing.year ?? ""),
-                    mileage: listing.mileage ? `${listing.mileage.toLocaleString()} mi` : "",
-                    engine: listing.bhp ? `${listing.bhp} bhp` : "",
-                    transmission: listing.transmission ?? "",
-                    doors: String(listing.doors ?? ""),
-                    seats: String(listing.seats ?? ""),
-                }
-            })
-            router.push('/compare')
-        }
+        router.push(`/compare?slug=${listing.slug}`)
     }
 
     const handleOfferSuccess = (offer: LatestOffer) => {
@@ -390,146 +370,163 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
 
     const images = listing.images?.length > 0 ? listing.images : ["/assets/images/featured-sports.png"]
     const SidebarContent = () => (
-        <div className="bg-slate-800 rounded-xl border border-white/10 overflow-hidden shadow-2xl relative">
-            <div className="h-1 bg-gradient-to-r from-primary to-primary/80 w-full absolute top-0" />
-            <div className="p-6">
-                
-                {/* Seller Info Block */}
-                {listing.seller && (
-                    <div className="flex items-center gap-3 mb-6">
-                        {listing.seller.dealerProfile?.logo ? (
-                            <Image src={listing.seller.dealerProfile.logo} alt="Dealer Logo" width={48} height={48} className="w-12 h-12 rounded-full object-cover shrink-0 bg-white" />
-                        ) : listing.seller.profileImage ? (
-                            <Image src={listing.seller.profileImage} alt="Seller Image" width={48} height={48} className="w-12 h-12 rounded-full object-cover shrink-0" />
-                        ) : (
-                            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-primary font-black text-lg shadow-sm shrink-0">
-                                {(listing.seller.dealerProfile?.companyName || listing.seller.firstName || "CM").substring(0, 2).toUpperCase()}
-                            </div>
-                        )}
-                        <div>
-                            <h3 className="font-bold text-white text-[15px] leading-tight">
-                                {listing.seller.dealerProfile?.companyName || `${listing.seller.firstName || ''} ${listing.seller.lastName || ''}`.trim() || 'Private Seller'}
-                            </h3>
-                            <div className="flex items-center gap-1 mt-0.5">
-                                {listing.seller.dealerProfile ? (
-                                    <>
-                                        <CheckCircle size={10} className="text-blue-500" />
-                                        <span className="text-[10px] text-blue-500 font-medium">Verified Dealer</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <CheckCircle size={10} className="text-emerald-500" />
-                                        <span className="text-[10px] text-emerald-500 font-medium">Verified Seller</span>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
-                
-                {/* Dealership Info */}
-                {listing.seller?.dealerProfile && (
-                    <div className="mb-6 space-y-2 text-sm text-gray-300">
-                        {listing.seller.dealerProfile.description && (
-                            <p className="line-clamp-3 text-xs">{listing.seller.dealerProfile.description}</p>
-                        )}
-                        <div className="flex flex-col gap-1 pt-2">
-                            {listing.seller.dealerProfile.phone && (
-                                <a href={`tel:${listing.seller.dealerProfile.phone}`} className="flex items-center gap-2 hover:text-white transition-colors">
-                                    <Phone size={14} className="text-gray-500" /> {listing.seller.dealerProfile.phone}
-                                </a>
-                            )}
-                            {listing.seller.dealerProfile.website && (
-                                <a href={listing.seller.dealerProfile.website} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-white transition-colors">
-                                    <Globe size={14} className="text-gray-500" /> Visit Website
-                                </a>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {/* Policies */}
-                <div className="flex items-center gap-1.5 mb-2">
-                    <span className="relative group/policy inline-flex items-center cursor-help">
-                        <Info size={12} className="text-gray-500 group-hover/policy:text-blue-400 transition-colors" />
-                        <span className="absolute bottom-full -left-2 mb-2 w-56 rounded-lg bg-slate-800 border border-white/10 px-3 py-2.5 text-xs text-gray-300 leading-relaxed shadow-xl opacity-0 invisible group-hover/policy:opacity-100 group-hover/policy:visible transition-all duration-200 z-50 pointer-events-none">
-                            <span className="font-bold text-white block mb-1">Policies:</span>
-                            Payment will not be made on our platform.
-                            <span className="absolute top-full left-3 -mt-px border-4 border-transparent border-t-slate-800" />
-                        </span>
-                    </span>
-                    <span className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Policies</span>
-                </div>
-
-                {/* Price Box */}
-                <div className="mb-4">
-                    <div className="text-4xl font-black text-white tracking-tight mb-2">{formatPrice(listing.price)}</div>
-                    <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-3 py-1 rounded-full mb-3 border border-red-500/20 bg-red-500/10 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.1)]">
-                        Offers Welcome
-                    </span>
-                    <p className="text-[11px] text-gray-400 mt-1 pb-5 border-b border-white/10">Price includes VAT. Financing available from 5.9% APR.</p>
-                </div>
-
-                {/* Review/Rating */}
-                {listing.sellerId && (
-                    <div className="bg-slate-900/60 border border-white/10 rounded-lg flex items-center gap-2 px-3 py-2 mb-6 w-fit">
-                        <Star size={12} className="fill-gray-500 text-gray-500" />
-                        <span className="text-xs font-bold text-gray-400">0.0</span>
-                        <span className="text-xs text-gray-500">No reviews</span>
-                    </div>
-                )}
-
-                {/* Offer Status */}
-                {(offerViewerRole === 'buyer' ? myOffer : latestOffer) && (
+        <div className="flex flex-col gap-6">
+            {/* Price & Actions Card */}
+            <div className="bg-slate-800 rounded-xl border border-white/10 overflow-hidden shadow-2xl relative">
+                <div className="h-1 bg-gradient-to-r from-primary to-primary/80 w-full absolute top-0" />
+                <div className="p-6">
+                    {/* Price Box */}
                     <div className="mb-4">
-                        <OfferStatusChip
-                            offer={(offerViewerRole === 'buyer' ? myOffer : latestOffer)!}
-                            viewerRole={offerViewerRole}
-                        />
+                        <div className="text-4xl font-black text-white tracking-tight mb-2">{formatPrice(listing.price)}</div>
+                        <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-3 py-1 rounded-full mb-3 border border-red-500/20 bg-red-500/10 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.1)]">
+                            Offers Welcome
+                        </span>
+                        <p className="text-[11px] text-gray-400 mt-1 pb-5 border-b border-white/10">Price includes VAT. Financing available from 5.9% APR.</p>
                     </div>
-                )}
 
-                {/* Action Buttons */}
-                <div className="space-y-3">
-                    {listing.status !== 'ACTIVE' ? (
-                        <Button className="w-full py-6 text-lg bg-slate-700 text-gray-300 font-black uppercase rounded-xl cursor-not-allowed" disabled>
-                            {listing.status === 'DRAFT' ? 'Preview Only (Draft)' : listing.status}
-                        </Button>
-                    ) : listing.sellerId === user?.id ? (
-                        <div className="text-center text-gray-500 text-sm py-2">This is your listing.</div>
-                    ) : (
-                        <>
-                            <Button
-                                className="w-full py-6 text-[15px] font-black uppercase bg-primary hover:bg-red-600 shadow-neon text-white rounded-xl"
-                                onClick={() => {
-                                    if (!user) setShowLoginModal(true)
-                                    else setShowOfferModal(true)
-                                }}
-                                disabled={offerViewerRole === 'buyer' && (myOffer?.status === 'PENDING' || myOffer?.status === 'ACCEPTED')}
-                            >
-                                {offerViewerRole === 'buyer' && myOffer?.status === 'PENDING'
-                                    ? '⏳ Offer Pending...'
-                                    : offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'
-                                        ? '✓ Offer Accepted'
-                                        : 'Make an Offer'}
-                            </Button>
-                            
-                            <Button
-                                variant="outline"
-                                className="w-full py-6 text-[15px] font-black uppercase bg-transparent hover:bg-slate-700 border-white/10 text-white rounded-xl gap-2"
-                            >
-                                <MessageCircle size={18} /> ENQUIRE
-                            </Button>
-                        </>
+                    {/* Offer Status */}
+                    {(offerViewerRole === 'buyer' ? myOffer : latestOffer) && (
+                        <div className="mb-4">
+                            <OfferStatusChip
+                                offer={(offerViewerRole === 'buyer' ? myOffer : latestOffer)!}
+                                viewerRole={offerViewerRole}
+                            />
+                        </div>
                     )}
+
+                    {/* Action Buttons */}
+                    <div className="space-y-3">
+                        {listing.status !== 'ACTIVE' ? (
+                            <Button className="w-full py-6 text-lg bg-slate-700 text-gray-300 font-black uppercase rounded-xl cursor-not-allowed" disabled>
+                                {listing.status === 'DRAFT' ? 'Preview Only (Draft)' : listing.status}
+                            </Button>
+                        ) : listing.sellerId === user?.id ? (
+                            <div className="text-center text-gray-500 text-sm py-2">This is your listing.</div>
+                        ) : (
+                            <>
+                                <Button
+                                    className="w-full py-6 text-[15px] font-black uppercase bg-primary hover:bg-red-600 shadow-neon text-white rounded-xl"
+                                    onClick={() => {
+                                        if (!user) setShowLoginModal(true)
+                                        else setShowOfferModal(true)
+                                    }}
+                                    disabled={offerViewerRole === 'buyer' && (myOffer?.status === 'PENDING' || myOffer?.status === 'ACCEPTED')}
+                                >
+                                    {offerViewerRole === 'buyer' && myOffer?.status === 'PENDING'
+                                        ? '⏳ Offer Pending...'
+                                        : offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'
+                                            ? '✓ Offer Accepted'
+                                            : 'Make an Offer'}
+                                </Button>
+                                
+                                <Button
+                                    variant="outline"
+                                    className="w-full py-6 text-[15px] font-black uppercase bg-transparent hover:bg-slate-700 border-white/10 text-white rounded-xl gap-2"
+                                >
+                                    <MessageCircle size={18} /> ENQUIRE NOW
+                                </Button>
+                            </>
+                        )}
+                    </div>
                 </div>
-
             </div>
 
-            {/* Footer */}
-            <div className="bg-slate-900/50 p-4 border-t border-white/5 flex items-center justify-center gap-2 text-gray-400 text-[11px]">
-                <MapPin size={12} /> {listing.location || 'Location not specified'}
-            </div>
+            {/* Seller Profile Card */}
+            {listing.seller && (
+                <div className="bg-slate-800/80 rounded-xl border border-white/10 overflow-hidden shadow-xl">
+                    <div className="p-6">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="font-bold text-white text-lg">Seller Profile</h3>
+                            {/* Review/Rating */}
+                            {listing.sellerId && (
+                                <div className="flex items-center gap-1.5 bg-slate-900/60 border border-white/10 rounded-lg px-2.5 py-1.5">
+                                    <Star size={12} className="fill-gray-500 text-gray-500" />
+                                    <span className="text-xs font-bold text-white">0.0</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Seller Info Block */}
+                        <div className="flex items-center gap-4 mb-5">
+                            {listing.seller.dealerProfile?.logo ? (
+                                <Image src={listing.seller.dealerProfile.logo} alt="Dealer Logo" width={56} height={56} className="w-14 h-14 rounded-full object-cover shrink-0 bg-white shadow-md" />
+                            ) : listing.seller.profileImage ? (
+                                <Image src={listing.seller.profileImage} alt="Seller Image" width={56} height={56} className="w-14 h-14 rounded-full object-cover shrink-0 shadow-md" />
+                            ) : (
+                                <div className="w-14 h-14 bg-gradient-to-br from-slate-700 to-slate-600 rounded-full flex items-center justify-center text-white font-black text-xl shadow-md shrink-0">
+                                    {(listing.seller.dealerProfile?.companyName || listing.seller.firstName || "CM").substring(0, 2).toUpperCase()}
+                                </div>
+                            )}
+                            <div>
+                                <h4 className="font-bold text-white text-base leading-tight mb-1">
+                                    {listing.seller.dealerProfile?.companyName || `${listing.seller.firstName || ''} ${listing.seller.lastName || ''}`.trim() || 'Private Seller'}
+                                </h4>
+                                <div className="flex items-center gap-1.5">
+                                    {listing.seller.dealerProfile ? (
+                                        <>
+                                            <BadgeCheck size={14} className="text-blue-500" />
+                                            <span className="text-xs text-blue-400 font-medium tracking-wide">Verified Dealer</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle size={14} className="text-emerald-500" />
+                                            <span className="text-xs text-emerald-400 font-medium tracking-wide">Verified Seller</span>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Dealership Info */}
+                        {listing.seller.dealerProfile && (
+                            <div className="space-y-4 text-sm text-gray-300 border-t border-white/5 pt-4">
+                                {listing.seller.dealerProfile.description && (
+                                    <p className="line-clamp-4 text-sm leading-relaxed">{listing.seller.dealerProfile.description}</p>
+                                )}
+                                <div className="flex flex-col gap-2.5">
+                                    {listing.seller.dealerProfile.phone && (
+                                        <a href={`tel:${listing.seller.dealerProfile.phone}`} className="flex items-center gap-3 hover:text-white transition-colors bg-slate-900/40 p-2.5 rounded-lg border border-white/5 group">
+                                            <div className="bg-slate-800 p-1.5 rounded-md group-hover:bg-primary/20 transition-colors">
+                                                <Phone size={14} className="text-gray-400 group-hover:text-primary transition-colors" />
+                                            </div>
+                                            <span className="font-medium">{listing.seller.dealerProfile.phone}</span>
+                                        </a>
+                                    )}
+                                    {listing.seller.dealerProfile.website && (
+                                        <a href={listing.seller.dealerProfile.website} target="_blank" rel="noreferrer" className="flex items-center gap-3 hover:text-white transition-colors bg-slate-900/40 p-2.5 rounded-lg border border-white/5 group">
+                                            <div className="bg-slate-800 p-1.5 rounded-md group-hover:bg-primary/20 transition-colors">
+                                                <Globe size={14} className="text-gray-400 group-hover:text-primary transition-colors" />
+                                            </div>
+                                            <span className="font-medium">Visit Website</span>
+                                        </a>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Policies */}
+                        <div className="mt-5 pt-4 border-t border-white/5">
+                            <div className="flex items-center gap-1.5">
+                                <span className="relative group/policy inline-flex items-center cursor-help">
+                                    <Info size={14} className="text-gray-500 group-hover/policy:text-blue-400 transition-colors" />
+                                    <span className="absolute bottom-full -left-2 mb-2 w-56 rounded-lg bg-slate-800 border border-white/10 px-3 py-2.5 text-xs text-gray-300 leading-relaxed shadow-xl opacity-0 invisible group-hover/policy:opacity-100 group-hover/policy:visible transition-all duration-200 z-50 pointer-events-none">
+                                        <span className="font-bold text-white block mb-1">Policies:</span>
+                                        Payment will not be made on our platform.
+                                        <span className="absolute top-full left-3 -mt-px border-4 border-transparent border-t-slate-800" />
+                                    </span>
+                                </span>
+                                <span className="text-xs text-gray-400 uppercase font-semibold tracking-wider">Policies</span>
+                            </div>
+                        </div>
+
+                    </div>
+                    
+                    {/* Location Footer */}
+                    <div className="bg-slate-900/50 p-4 border-t border-white/5 flex items-center justify-center gap-2 text-gray-400 text-xs font-medium">
+                        <MapPin size={14} className="text-primary" /> {listing.location || 'Location not specified'}
+                    </div>
+                </div>
+            )}
         </div>
     )
 
@@ -632,11 +629,11 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                         </div>
                         <div className="flex gap-3">
                             <Button
-                                variant={isCompared ? "default" : "outline"}
-                                className={`rounded-full ${isCompared ? 'bg-primary border-primary text-white' : 'border-gray-600 text-gray-400 hover:text-white hover:border-white'}`}
+                                variant="outline"
+                                className="rounded-full border-gray-600 text-gray-400 hover:text-white hover:border-white"
                                 onClick={handleCompare}
                             >
-                                <Scale size={18} className="mr-2" /> {isCompared ? "Compared" : "Compare"}
+                                <Scale size={18} className="mr-2" /> Compare
                             </Button>
                             <Button variant="outline" size="icon" className="rounded-full border-gray-600 text-gray-400 hover:text-white hover:border-white" onClick={handleShare}>
                                 <Share2 size={18} />
@@ -688,6 +685,27 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                             <SidebarContent />
                         </div>
 
+                        {/* Description */}
+                        {listing.description && (
+                            <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-8 mb-8">
+                                <h3 className="text-xl font-bold text-white mb-4 border-l-4 border-primary pl-4">Description</h3>
+                                <div className={`text-gray-300 leading-relaxed whitespace-pre-wrap relative ${!isDescExpanded ? 'line-clamp-4 overflow-hidden' : ''}`}>
+                                    {listing.description}
+                                    {!isDescExpanded && (
+                                        <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-slate-800/90 to-transparent pointer-events-none"></div>
+                                    )}
+                                </div>
+                                {(listing.description.length > 300 || listing.description.split('\n').length > 4) && (
+                                    <button
+                                        onClick={() => setIsDescExpanded(!isDescExpanded)}
+                                        className="text-primary font-bold text-sm mt-4 hover:underline focus:outline-none"
+                                    >
+                                        {isDescExpanded ? "View Less" : "View More"}
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
                         {/* Key Information */}
                         <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-8">
                             <h3 className="text-xl font-bold text-white mb-6 border-l-4 border-primary pl-4">Key Information</h3>
@@ -718,14 +736,6 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                 ))}
                             </div>
                         </div>
-
-                        {/* Description */}
-                        {listing.description && (
-                            <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-8">
-                                <h3 className="text-xl font-bold text-white mb-4 border-l-4 border-primary pl-4">Description</h3>
-                                <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">{listing.description}</p>
-                            </div>
-                        )}
 
                         {/* Features */}
                         {listing.features && Array.isArray(listing.features) && listing.features.length > 0 && (

@@ -163,34 +163,43 @@ function HpiBaitSection({ isUnlocked, onUnlock }: { isUnlocked: boolean, onUnloc
 
     return (
         <div className="mt-8">
-            <div className="rounded-xl border border-white/10 bg-slate-900/50 p-5 flex flex-col sm:flex-row items-center justify-between gap-6">
-                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 flex-1">
-                    <Shield className="text-blue-400 shrink-0" size={36} />
-                    <div className="text-center sm:text-left">
-                        <h3 className="text-white font-bold text-lg mb-1">HPI Vehicle Check</h3>
-                        <p className="text-sm text-gray-400 mb-4">We've found an official HPI record for this vehicle. Unlocking the full report gives you a <strong className="text-white">Premium Verification Badge</strong>.</p>
-                        
-                        <div className="relative w-full max-w-sm mx-auto sm:mx-0 rounded-lg overflow-hidden border border-white/10 shadow-xl mb-4 group cursor-pointer" onClick={onUnlock}>
-                            <div className="aspect-[4/3] w-full relative">
-                                <Image
-                                    src="/assets/images/Hpi Template.jpg"
-                                    alt="HPI Report Preview"
-                                    fill
-                                    className="object-cover opacity-60 group-hover:opacity-80 group-hover:scale-105 transition-all duration-500"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent pointer-events-none" />
-                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                    <div className="bg-black/60 backdrop-blur-sm p-3 rounded-full text-white shadow-neon">
-                                        <Lock size={24} />
-                                    </div>
-                                </div>
-                            </div>
+            <div className="rounded-xl border border-white/10 bg-slate-900/50 overflow-hidden flex flex-col md:flex-row shadow-2xl">
+                {/* Left side: Image with blur */}
+                <div className="relative w-full md:w-2/5 aspect-[4/3] md:aspect-auto cursor-pointer group" onClick={onUnlock}>
+                    <Image
+                        src="/assets/images/Hpi Template.jpg"
+                        alt="HPI Report Preview"
+                        fill
+                        className="object-cover blur-[6px] opacity-70 group-hover:blur-sm group-hover:opacity-90 transition-all duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-slate-900/30 group-hover:bg-slate-900/10 transition-colors" />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-2">
+                        <div className="bg-white/10 backdrop-blur-md p-4 rounded-full text-white shadow-neon border border-white/20">
+                            <Lock size={28} />
                         </div>
+                        <span className="text-white font-bold tracking-wider text-sm drop-shadow-md">CLICK TO UNLOCK</span>
+                    </div>
+                </div>
 
-                        <Button type="button" onClick={onUnlock} className="bg-white hover:bg-gray-200 text-black font-bold px-8 py-6 text-base shadow-neon shrink-0 w-full sm:w-auto">
-                            Unlock HPI Report
+                {/* Right side: Content */}
+                <div className="p-6 md:p-8 flex-1 flex flex-col justify-center text-center md:text-left">
+                    <div className="flex items-center justify-center md:justify-start gap-3 mb-3">
+                        <Shield className="text-blue-400 shrink-0" size={32} />
+                        <h3 className="text-white font-bold text-xl">Official HPI Vehicle Check</h3>
+                    </div>
+                    
+                    <p className="text-gray-300 mb-6 leading-relaxed">
+                        We've found an official HPI record for this vehicle. Unlocking the full report gives you a <strong className="text-white">Premium Verification Badge</strong> on your listing.
+                    </p>
+                    
+                    <div className="flex flex-col items-center md:items-start gap-3 mt-auto">
+                        <Button type="button" onClick={onUnlock} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold px-8 py-6 text-base shadow-neon shrink-0 w-full sm:w-auto border-0">
+                            Unlock Full HPI Report
                         </Button>
-                        <p className="text-[10px] text-gray-500/80 mt-3 italic">*It is proven to help cars sell up to 2x faster!</p>
+                        <p className="text-xs text-gray-400 italic flex items-center gap-1.5">
+                            <BadgeCheck size={14} className="text-emerald-400" />
+                            *Proven to help cars sell up to 2x faster!
+                        </p>
                     </div>
                 </div>
             </div>

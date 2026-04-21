@@ -1,13 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, Suspense } from "react"
+import { useSearchParams } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
 import { Search, X, Plus, CheckCircle, Loader2, Trophy, Fuel, Gauge, Cog, Palette, DoorOpen, Users, Zap, Award, ArrowRight, Car } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
-import { getListings, type Listing, formatPrice } from "@/lib/listingApi"
+import { getListings, getListingBySlug, type Listing, formatPrice } from "@/lib/listingApi"
 import { motion, AnimatePresence } from "framer-motion"
 
 /* ────────────────────────────────────────────────────────────────────────── */
@@ -58,8 +59,27 @@ function getGlanceBadges(cars: (Listing | null)[]): Map<number, string[]> {
     return badges
 }
 
-export default function ComparePage() {
+function CompareContent() {
+    const searchParams = useSearchParams()
+    const slug = searchParams.get('slug')
+
     const [cars, setCars] = useState<(Listing | null)[]>([null, null, null])
+    
+    // On load, fetch the slug if provided and put it in the first slot
+    useEffect(() => {
+        if (slug) {
+            getListingBySlug(slug).then(listing => {
+                if (listing) {
+                    setCars(prev => {
+                        const newCars = [...prev]
+                        newCars[0] = listing
+                        return newCars
+                    })
+                }
+            }).catch(console.error)
+        }
+    }, [slug])
+
     const [isSelectorOpen, setIsSelectorOpen] = useState(false)
     const [activeSlot, setActiveSlot] = useState<number | null>(null)
     const [searchQuery, setSearchQuery] = useState("")
@@ -504,5 +524,13 @@ export default function ComparePage() {
                 )}
             </AnimatePresence>
         </div>
+    )
+}
+
+export default function ComparePage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-slate-900 flex items-center justify-center"><Loader2 className="animate-spin text-primary w-10 h-10" /></div>}>
+            <CompareContent />
+        </Suspense>
     )
 }
