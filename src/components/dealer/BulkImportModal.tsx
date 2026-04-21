@@ -16,6 +16,7 @@ interface CsvRow {
     vrm: string
     price: string
     mileage: string
+    images: string[]
 }
 
 type ImportStatus = "idle" | "parsing" | "importing" | "complete"
@@ -70,6 +71,7 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
             const vrmIdx = headers.findIndex(h => h.includes('vrm') || h.includes('reg'))
             const priceIdx = headers.findIndex(h => h.includes('price'))
             const mileageIdx = headers.findIndex(h => h.includes('mil'))
+            const imageIdx = headers.findIndex(h => h.includes('image') || h.includes('url'))
 
             if (vrmIdx === -1) {
                 alert("Could not find a 'vrm' or 'registration' column in the CSV.")
@@ -82,10 +84,13 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
                 const cols = lines[i].split(',')
                 const vrm = cols[vrmIdx]?.replace(/\s/g, '').toUpperCase()
                 if (vrm) {
+                    const imagesStr = imageIdx !== -1 && cols[imageIdx] ? cols[imageIdx].trim() : ""
+                    const images = imagesStr ? imagesStr.split('|').map(u => u.trim()).filter(u => u) : []
                     rows.push({
                         vrm,
                         price: priceIdx !== -1 && cols[priceIdx] ? cols[priceIdx].trim() : "0",
-                        mileage: mileageIdx !== -1 && cols[mileageIdx] ? cols[mileageIdx].trim() : "0"
+                        mileage: mileageIdx !== -1 && cols[mileageIdx] ? cols[mileageIdx].trim() : "0",
+                        images
                     })
                 }
             }
@@ -139,7 +144,7 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
                     status: "DRAFT", // Automatically drops into Draft queue for photo uploads later!
                     badgeTier: "FREE",
                     vehicleType: "CAR", // default assumptions
-                    images: [],
+                    images: row.images,
                     
                     // DVLA Spec Map
                     make: dvlaData.make || undefined,
@@ -176,7 +181,7 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
     }
 
     const downloadCsvTemplate = () => {
-        const csvContent = "data:text/csv;charset=utf-8,vrm,price,mileage\nAB12CDE,10500,45000\nXY34ZKL,22000,12000"
+        const csvContent = "data:text/csv;charset=utf-8,vrm,price,mileage,image_urls\nAB12CDE,10500,45000,https://example.com/car1-front.jpg|https://example.com/car1-rear.jpg\nXY34ZKL,22000,12000,"
         const encodedUri = encodeURI(csvContent)
         const link = document.createElement("a")
         link.setAttribute("href", encodedUri)
@@ -242,7 +247,7 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
                                     )}
                                 </div>
                                 <h3 className="text-lg font-bold text-white mb-1">Click to Upload CSV Document</h3>
-                                <p className="text-sm text-gray-500 mb-6 max-w-sm">Spreadsheets must contain columns for VRM, price, and mileage.</p>
+                                <p className="text-sm text-gray-500 mb-6 max-w-sm">Spreadsheets must contain columns for VRM, price, and mileage. You can also include 'image_urls' separated by a pipe (|).</p>
                                 
                                 <Button 
                                     variant="outline" 

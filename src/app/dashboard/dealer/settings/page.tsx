@@ -10,6 +10,7 @@ import {
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
+import { uploadImage } from "@/lib/supabase"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 
@@ -26,7 +27,9 @@ export default function DealerSettingsPage() {
         phone: "",
         website: "",
         description: "",
+        logo: "",
     })
+    const [uploadingLogo, setUploadingLogo] = React.useState(false)
 
     React.useEffect(() => {
         if (!authLoading && user) {
@@ -49,6 +52,7 @@ export default function DealerSettingsPage() {
                     phone: d.phone ?? "",
                     website: d.website ?? "",
                     description: d.description ?? "",
+                    logo: d.logo ?? "",
                 }))
             }
         } catch {
@@ -71,6 +75,7 @@ export default function DealerSettingsPage() {
                     phone: form.phone,
                     website: form.website,
                     description: form.description,
+                    logo: form.logo,
                 }),
             })
         } catch (err) {
@@ -83,6 +88,27 @@ export default function DealerSettingsPage() {
     const userName = profile?.firstName
         ? `${profile.firstName} ${profile.lastName || ""}`
         : (user?.email?.split('@')[0] || "Dealer")
+
+    const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        if (file.size > 2 * 1024 * 1024) {
+            alert("File size must be less than 2MB")
+            return
+        }
+
+        setUploadingLogo(true)
+        try {
+            const url = await uploadImage(file, 'listings')
+            setForm(f => ({ ...f, logo: url }))
+        } catch (err: any) {
+            console.error("Failed to upload logo:", err)
+            alert("Failed to upload logo. Please try again.")
+        } finally {
+            setUploadingLogo(false)
+        }
+    }
 
     const tabs = [
         { key: "profile", label: "Dealership Profile", icon: Building2 },
@@ -129,9 +155,18 @@ export default function DealerSettingsPage() {
                                 <div className="bg-white/5 border border-white/5 rounded-2xl p-8 space-y-6">
                                     {/* Logo Upload */}
                                     <div className="flex items-center gap-6 pb-6 border-b border-white/5">
-                                        <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center border-2 border-dashed border-white/10 cursor-pointer hover:border-primary/50 transition-colors">
-                                            <Building2 size={28} className="text-gray-600" />
-                                        </div>
+                                        <label className="relative block">
+                                            <input type="file" className="hidden" accept="image/png, image/jpeg, image/webp" onChange={handleLogoUpload} disabled={uploadingLogo} />
+                                            <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center border-2 border-dashed border-white/10 cursor-pointer hover:border-primary/50 transition-colors overflow-hidden group">
+                                                {uploadingLogo ? (
+                                                    <Loader2 size={24} className="text-primary animate-spin" />
+                                                ) : form.logo ? (
+                                                    <img src={form.logo} alt="Logo" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <Building2 size={28} className="text-gray-600 group-hover:text-primary transition-colors" />
+                                                )}
+                                            </div>
+                                        </label>
                                         <div>
                                             <p className="font-bold text-white">Dealership Logo</p>
                                             <p className="text-xs text-gray-500 mt-0.5">Click to upload • PNG, JPG up to 2MB</p>
