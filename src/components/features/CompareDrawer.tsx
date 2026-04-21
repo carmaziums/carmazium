@@ -60,18 +60,18 @@ export function CompareDrawer() {
                                 ) : (
                                     <div className="max-w-4xl mx-auto">
                                         {/* Header Row: Images & Titles */}
-                                        <div className="grid grid-cols-2 gap-8 mb-8">
+                                        <div className={compareList.length === 3 ? "grid grid-cols-3 gap-4 mb-8" : "grid grid-cols-2 gap-8 mb-8"}>
                                             {compareList.map((car, i) => (
                                                 <div key={car.id} className="relative">
                                                     {/* VS Badge */}
                                                     {i === 0 && compareList.length > 1 && (
-                                                        <div className="absolute -right-12 top-1/2 -translate-y-1/2 z-10 bg-slate-900 border border-white/10 rounded-full w-10 h-10 flex items-center justify-center text-xs font-bold font-mono text-primary shadow-xl">
+                                                        <div className="absolute -right-6 top-1/2 -translate-y-1/2 z-10 bg-slate-900 border border-white/10 rounded-full w-8 h-8 flex items-center justify-center text-[10px] font-bold font-mono text-primary shadow-xl">
                                                             VS
                                                         </div>
                                                     )}
 
                                                     <div className="relative aspect-video rounded-xl overflow-hidden mb-4 border border-white/10">
-                                                        <Image src={car.image} alt={car.title} fill className="object-cover" />
+                                                        <Image src={car.images?.[0] || "/assets/images/placeholder-car.png"} alt={car.title} fill className="object-cover" />
                                                         <button
                                                             onClick={() => removeFromCompare(car.id)}
                                                             className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-red-500/80 transition-colors"
@@ -79,15 +79,15 @@ export function CompareDrawer() {
                                                             <Trash2 size={14} />
                                                         </button>
                                                     </div>
-                                                    <h3 className="font-bold text-lg leading-tight mb-2 min-h-[3rem]">{car.title}</h3>
-                                                    <div className="text-primary font-bold text-xl">{car.price}</div>
+                                                    <h3 className="font-bold text-sm leading-tight mb-2 min-h-[2.5rem]">{car.title}</h3>
+                                                    <div className="text-primary font-bold">{typeof car.price === 'number' ? `£${car.price.toLocaleString('en-GB')}` : car.price}</div>
                                                 </div>
                                             ))}
 
                                             {/* Empty Slot Placeholder */}
-                                            {compareList.length === 1 && (
-                                                <div className="border-2 border-dashed border-white/10 rounded-xl flex flex-col items-center justify-center text-center text-gray-500 min-h-[200px] opacity-50 hover:opacity-100 transition-opacity">
-                                                    <p className="text-sm mb-4">Add another car</p>
+                                            {compareList.length < 3 && (
+                                                <div className="border-2 border-dashed border-white/10 rounded-xl flex flex-col items-center justify-center text-center text-gray-500 min-h-[150px] opacity-50 hover:opacity-100 transition-opacity">
+                                                    <p className="text-xs mb-2">Add another car</p>
                                                     <Link href="/search">
                                                         <Button variant="ghost" size="sm" onClick={toggleCompareDrawer} className="text-primary hover:text-white">
                                                             Browse <ArrowRight size={14} className="ml-1" />
@@ -101,38 +101,35 @@ export function CompareDrawer() {
                                         <div className="space-y-1">
                                             {[
                                                 { label: "Year", key: "year" },
-                                                { label: "Mileage", key: "mileage" },
-                                                { label: "Engine", key: "engine" },
+                                                { label: "Mileage", key: "mileage", format: (v: any) => v ? `${v.toLocaleString()} mi` : "-" },
+                                                { label: "Engine", key: "bhp", format: (v: any) => v ? `${v} bhp` : "-" },
                                                 { label: "Transmission", key: "transmission" },
                                                 { label: "Doors", key: "doors" },
                                                 { label: "Seats", key: "seats" },
                                             ].map((row, idx) => (
-                                                <div key={idx} className="grid grid-cols-3 items-center py-4 border-b border-white/5 hover:bg-white/5 transition-colors rounded-lg px-2">
-                                                    {/* Center Label */}
-                                                    <div className="col-span-3 flex justify-between md:grid md:grid-cols-3 md:items-center">
-                                                        <div className="text-left md:text-center md:col-start-2 md:row-start-1 text-gray-400 text-sm font-medium uppercase tracking-wider order-2 md:order-1">
-                                                            {row.label}
-                                                        </div>
-
-                                                        {/* Car 1 Value */}
-                                                        <div className="text-left font-semibold md:col-start-1 md:row-start-1 order-1 md:order-2">
-                                                            {compareList[0]?.specs[row.key as keyof typeof compareList[0]['specs']] || "-"}
-                                                        </div>
-
-                                                        {/* Car 2 Value */}
-                                                        <div className="text-right font-semibold md:col-start-3 md:row-start-1 order-3">
-                                                            {compareList[1]?.specs[row.key as keyof typeof compareList[0]['specs']] || (compareList.length < 2 ? <span className="text-gray-600">-</span> : "-")}
-                                                        </div>
+                                                <div key={idx} className="flex flex-col md:flex-row py-3 border-b border-white/5 hover:bg-white/5 transition-colors px-2">
+                                                    <div className="w-full md:w-1/4 text-gray-400 text-xs font-medium uppercase tracking-wider mb-2 md:mb-0 md:flex md:items-center">
+                                                        {row.label}
+                                                    </div>
+                                                    <div className={`w-full md:w-3/4 grid ${compareList.length === 3 ? "grid-cols-3 gap-4" : "grid-cols-2 gap-8"}`}>
+                                                        {compareList.map(car => {
+                                                            const val = car[row.key as keyof typeof car];
+                                                            return (
+                                                                <div key={car.id} className="text-sm font-semibold">
+                                                                    {row.format ? row.format(val) : (val || "-")}
+                                                                </div>
+                                                            )
+                                                        })}
                                                     </div>
                                                 </div>
                                             ))}
                                         </div>
 
                                         {/* Action Buttons */}
-                                        <div className="grid grid-cols-2 gap-8 mt-8">
+                                        <div className={`grid ${compareList.length === 3 ? "grid-cols-3 gap-4" : "grid-cols-2 gap-8"} mt-8`}>
                                             {compareList.map(car => (
                                                 <Link key={car.id} href={`/vehicle/${car.id}`} className="block">
-                                                    <Button className="w-full" onClick={toggleCompareDrawer}>View Details</Button>
+                                                    <Button className="w-full text-xs py-2" onClick={toggleCompareDrawer}>Details</Button>
                                                 </Link>
                                             ))}
                                         </div>

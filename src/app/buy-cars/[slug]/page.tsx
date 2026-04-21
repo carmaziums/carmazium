@@ -8,7 +8,6 @@ import { AccordionItem } from "@/components/ui/Accordion"
 import dynamic from "next/dynamic"
 const FinanceCalculator = dynamic(() => import("@/components/features/FinanceCalculator").then(mod => mod.FinanceCalculator), { ssr: false })
 import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale, Loader2, MessageCircle, Tag, X, Clock, ThumbsUp, XCircle, AlertTriangle, BadgeCheck, Star, Sparkles, Info } from "lucide-react"
-import { useCompare } from "@/context/CompareContext"
 import { getListingBySlug, makeOffer, getMyOfferForListing, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, type Listing, type LatestOffer, formatPrice } from "@/lib/listingApi"
 import { createChatRoom } from "@/lib/chatApi"
 import { useAuth } from "@/context/AuthContext"
@@ -191,6 +190,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
     const [activeImage, setActiveImage] = React.useState(0)
+    const [isDescExpanded, setIsDescExpanded] = React.useState(false)
     const [enquiring, setEnquiring] = React.useState(false)
     const [showOfferModal, setShowOfferModal] = React.useState(false)
     const [latestOffer, setLatestOffer] = React.useState<LatestOffer | null>(null)   // most recent offer on listing (any buyer) — public display
@@ -200,8 +200,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
     const [watchlistLoading, setWatchlistLoading] = React.useState(false)
     const [shareToast, setShareToast] = React.useState(false)
 
-    const { addToCompare, removeFromCompare, isInCompare } = useCompare()
-    const isCompared = listing ? isInCompare(listing.id) : false
+    // Removed useCompare since we pass context via query params
 
     React.useEffect(() => {
         async function fetchListing() {
@@ -297,24 +296,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
 
     const handleCompare = () => {
         if (!listing) return
-        if (isCompared) {
-            removeFromCompare(listing.id)
-        } else {
-            addToCompare({
-                id: listing.id,
-                title: listing.title,
-                price: vehicle.price,
-                image: vehicle.images[0],
-                specs: {
-                    year: vehicle.specs.year,
-                    mileage: vehicle.specs.mileage,
-                    engine: vehicle.specs.engine,
-                    transmission: vehicle.specs.transmission,
-                    doors: vehicle.specs.doors,
-                    seats: vehicle.specs.seats
-                }
-            })
-        }
+        router.push(`/compare?slug=${listing.slug}`)
     }
 
     const handleEnquire = async () => {
@@ -505,11 +487,11 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                         </div>
                         <div className="flex gap-4">
                             <Button
-                                variant={isCompared ? "default" : "outline"}
-                                className={`rounded-full ${isCompared ? 'bg-primary border-primary text-white' : 'border-gray-600 text-gray-400 hover:text-white hover:border-white'}`}
+                                variant="outline"
+                                className="rounded-full border-gray-600 text-gray-400 hover:text-white hover:border-white"
                                 onClick={handleCompare}
                             >
-                                <Scale size={20} className="mr-2" /> {isCompared ? "Compared" : "Compare"}
+                                <Scale size={20} className="mr-2" /> Compare
                             </Button>
                             <Button variant="outline" size="icon" className="rounded-full border-gray-600 text-gray-400 hover:text-white hover:border-white" onClick={handleShare}>
                                 <Share2 size={20} />
@@ -558,7 +540,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                         </div>
 
                         {/* Mobile Buy Car Box — shown below gallery on small screens */}
-                        <div className="block lg:hidden">
+                        <div className="block lg:hidden space-y-6">
                             <div className="bg-slate-800 rounded-xl border border-white/10 overflow-hidden shadow-2xl relative">
                                 <div className="h-1 bg-primary w-full absolute top-0" />
                                 <div className="p-6">
@@ -583,12 +565,6 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                                         </div>
                                         <p className="text-xs text-gray-400 mt-3">Price includes VAT. Financing available from 5.9% APR.</p>
                                     </div>
-
-                                    {listing.sellerId && (
-                                        <div className="mb-4 flex items-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10">
-                                            <SellerBadge score={0} sellerUserId={listing.sellerId} size="md" showLabel />
-                                        </div>
-                                    )}
 
                                     {(offerViewerRole === 'buyer' ? myOffer : latestOffer) && (
                                         <div className="mb-4">
@@ -625,7 +601,34 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                                     <span>{listing.location || 'Location not specified'}</span>
                                 </div>
                             </div>
+                            {listing.sellerId && (
+                                <div className="bg-slate-800/50 backdrop-blur-md rounded-xl border border-white/10 p-6">
+                                    <h4 className="text-white font-bold mb-4">About the Seller</h4>
+                                    <SellerBadge score={0} sellerUserId={listing.sellerId} size="lg" showLabel />
+                                </div>
+                            )}
                         </div>
+
+                        {/* Vehicle Description */}
+                        {listing.description && (
+                            <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-8">
+                                <h3 className="text-xl font-bold text-white mb-6 border-l-4 border-primary pl-4">Vehicle Description</h3>
+                                <div className={`text-gray-300 leading-relaxed whitespace-pre-wrap relative ${!isDescExpanded ? 'line-clamp-4 overflow-hidden' : ''}`}>
+                                    {listing.description}
+                                    {!isDescExpanded && (
+                                        <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-slate-800/90 to-transparent"></div>
+                                    )}
+                                </div>
+                                {(listing.description.length > 300 || listing.description.split('\n').length > 4) && (
+                                    <button
+                                        onClick={() => setIsDescExpanded(!isDescExpanded)}
+                                        className="text-primary font-bold text-sm mt-4 hover:underline focus:outline-none"
+                                    >
+                                        {isDescExpanded ? "View Less" : "View More"}
+                                    </button>
+                                )}
+                            </div>
+                        )}
 
                         {/* Features */}
                         <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-8">
@@ -716,7 +719,8 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
 
                     {/* Right Column: Sticky Sidebar — desktop only */}
                     <div className="lg:col-span-1 hidden lg:block">
-                        <div className="sticky top-28 bg-slate-800 rounded-xl border border-white/10 overflow-hidden shadow-2xl relative">
+                        <div className="sticky top-28 space-y-6">
+                            <div className="bg-slate-800 rounded-xl border border-white/10 overflow-hidden shadow-2xl relative">
                             <div className="h-1 bg-primary w-full absolute top-0" />
                             <div className="p-6">
                                 <div className="flex items-center gap-4 mb-6">
@@ -748,13 +752,6 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                                     </div>
                                     <p className="text-xs text-gray-400 mt-3">Price includes VAT. Financing available from 5.9% APR.</p>
                                 </div>
-
-                                {/* Seller Badge */}
-                                {listing.sellerId && (
-                                    <div className="mb-4 flex items-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10">
-                                        <SellerBadge score={0} sellerUserId={listing.sellerId} size="md" showLabel />
-                                    </div>
-                                )}
 
                                 {/* Offer Status */}
                                 {/* Buyer sees their own offer chip; seller/public see the listing's latest offer chip */}
@@ -794,6 +791,14 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                                 <span>{listing.location || 'Location not specified'}</span>
                             </div>
                         </div>
+
+                        {listing.sellerId && (
+                            <div className="bg-slate-800/50 backdrop-blur-md rounded-xl border border-white/10 p-6 mt-6">
+                                <h4 className="text-white font-bold mb-4">About the Seller</h4>
+                                <SellerBadge score={0} sellerUserId={listing.sellerId} size="lg" showLabel />
+                            </div>
+                        )}
+                    </div>
                     </div>
                 </div>
             </div>
