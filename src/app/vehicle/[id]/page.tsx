@@ -281,9 +281,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
     const isCompared = listing ? isInCompare(listing.id) : false
     const handleCompare = () => {
         if (!listing) return
-        if (isCompared) {
-            removeFromCompare(listing.id)
-        } else {
+        if (!isCompared) {
             addToCompare({
                 id: listing.id,
                 title: listing.title,
@@ -299,6 +297,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                 }
             })
         }
+        router.push('/compare')
     }
 
     const handleOfferSuccess = (offer: LatestOffer) => {
@@ -597,7 +596,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                 className={`rounded-full ${isCompared ? 'bg-primary border-primary text-white' : 'border-gray-600 text-gray-400 hover:text-white hover:border-white'}`}
                                 onClick={handleCompare}
                             >
-                                <Scale size={18} className="mr-2" /> {isCompared ? "Compared" : "Compare"}
+                                <Scale size={18} className="mr-2" /> {isCompared ? "View Compare" : "Compare"}
                             </Button>
                             <Button variant="outline" size="icon" className="rounded-full border-gray-600 text-gray-400 hover:text-white hover:border-white" onClick={handleShare}>
                                 <Share2 size={18} />
@@ -856,7 +855,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                 </div>
                                 <div className="h-56 relative opacity-40 pointer-events-none grayscale-[0.2]">
                                     <Image
-                                        src="/assets/images/hpi_report_mockup.png"
+                                        src="/assets/images/Hpi Template.jpg"
                                         alt="HPI Report Mockup"
                                         fill
                                         className="object-cover object-top"

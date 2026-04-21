@@ -12,6 +12,7 @@ export interface DvlaLookupResult {
     year?: number;
     engineSize?: number;
     fuelType?: string;
+    transmission?: string;
     euroStandard?: string;
     co2Emissions?: number;
     dateOfLastV5CIssued?: string;

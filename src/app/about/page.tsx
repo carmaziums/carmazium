@@ -3,7 +3,6 @@
 import Image from "next/image"
 import { Users, Globe, Award, TrendingUp, Handshake, Target, Rocket } from "lucide-react"
 import { motion, useScroll, useTransform } from "framer-motion"
-import { AnimatedCounter } from "@/components/ui/AnimatedCounter"
 import { AccordionItem } from "@/components/ui/Accordion"
 import { TestimonialsSection } from "@/components/features/TestimonialsSection"
 import { Button } from "@/components/ui/Button"
@@ -109,11 +108,11 @@ export default function AboutPage() {
                             {/* Live Stats Overlay */}
                             <div className="absolute bottom-6 left-4 right-4 grid grid-cols-2 gap-2 sm:gap-8 text-white text-center sm:text-left">
                                 <div>
-                                    <div className="text-2xl sm:text-4xl font-bold font-mono text-primary truncate"><AnimatedCounter value={50000} suffix="+" /></div>
+                                    <div className="text-2xl sm:text-4xl font-bold font-mono text-primary truncate">50,000+</div>
                                     <div className="text-xs sm:text-sm opacity-80 uppercase tracking-widest mt-1">Users</div>
                                 </div>
                                 <div>
-                                    <div className="text-2xl sm:text-4xl font-bold font-mono text-primary truncate"><AnimatedCounter value={200} prefix="£" suffix="M+" /></div>
+                                    <div className="text-2xl sm:text-4xl font-bold font-mono text-primary truncate">£200M+</div>
                                     <div className="text-xs sm:text-sm opacity-80 uppercase tracking-widest mt-1">Traded</div>
                                 </div>
                             </div>

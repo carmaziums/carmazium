@@ -9,6 +9,53 @@ export default function ProfilePage() {
     const { profile, refreshProfile, loading: authLoading } = useAuth()
     const [loading, setLoading] = React.useState(false)
     const [success, setSuccess] = React.useState<string | null>(null)
+    const [dealerLoading, setDealerLoading] = React.useState(false)
+    const [dealerForm, setDealerForm] = React.useState({
+        companyName: profile?.dealerProfile?.companyName || '',
+        vatNumber: profile?.dealerProfile?.vatNumber || '',
+        businessAddress: profile?.dealerProfile?.businessAddress || '',
+        phone: profile?.dealerProfile?.phone || '',
+        website: profile?.dealerProfile?.website || '',
+        description: profile?.dealerProfile?.description || '',
+    })
+
+    React.useEffect(() => {
+        if (profile?.dealerProfile) {
+            setDealerForm({
+                companyName: profile.dealerProfile.companyName || '',
+                vatNumber: profile.dealerProfile.vatNumber || '',
+                businessAddress: profile.dealerProfile.businessAddress || '',
+                phone: profile.dealerProfile.phone || '',
+                website: profile.dealerProfile.website || '',
+                description: profile.dealerProfile.description || '',
+            })
+        }
+    }, [profile])
+
+    const handleUpdateDealerProfile = async () => {
+        setDealerLoading(true)
+        setSuccess(null)
+        try {
+            const { data: { session } } = await (window as any).supabase.auth.getSession()
+            const response = await fetch(`${API_URL}/users/dealer-profile`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token}`
+                },
+                body: JSON.stringify(dealerForm)
+            })
+
+            if (response.ok) {
+                setSuccess('Dealer profile updated successfully!')
+                await refreshProfile()
+            }
+        } catch (error) {
+            console.error('Update failed:', error)
+        } finally {
+            setDealerLoading(false)
+        }
+    }
 
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev';
 
@@ -64,6 +111,79 @@ export default function ProfilePage() {
                     </div>
                 </div>
             </div>
+
+            
+            {profile?.role === 'DEALER' && (
+                <section className="mb-12">
+                    <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                        <Shield className="text-primary" /> Dealer Profile Settings
+                    </h3>
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold uppercase text-gray-400">Company Name *</label>
+                                <input
+                                    type="text"
+                                    value={dealerForm.companyName}
+                                    onChange={(e) => setDealerForm({...dealerForm, companyName: e.target.value})}
+                                    className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold uppercase text-gray-400">VAT Number *</label>
+                                <input
+                                    type="text"
+                                    value={dealerForm.vatNumber}
+                                    onChange={(e) => setDealerForm({...dealerForm, vatNumber: e.target.value})}
+                                    className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold uppercase text-gray-400">Phone</label>
+                                <input
+                                    type="text"
+                                    value={dealerForm.phone}
+                                    onChange={(e) => setDealerForm({...dealerForm, phone: e.target.value})}
+                                    className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold uppercase text-gray-400">Website</label>
+                                <input
+                                    type="url"
+                                    value={dealerForm.website}
+                                    onChange={(e) => setDealerForm({...dealerForm, website: e.target.value})}
+                                    className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                                />
+                            </div>
+                            <div className="space-y-2 md:col-span-2">
+                                <label className="text-sm font-bold uppercase text-gray-400">Business Address</label>
+                                <input
+                                    type="text"
+                                    value={dealerForm.businessAddress}
+                                    onChange={(e) => setDealerForm({...dealerForm, businessAddress: e.target.value})}
+                                    className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                                />
+                            </div>
+                            <div className="space-y-2 md:col-span-2">
+                                <label className="text-sm font-bold uppercase text-gray-400">Dealership Description</label>
+                                <textarea
+                                    value={dealerForm.description}
+                                    onChange={(e) => setDealerForm({...dealerForm, description: e.target.value})}
+                                    rows={4}
+                                    className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none"
+                                />
+                            </div>
+                        </div>
+                        <div className="mt-6">
+                            <Button onClick={handleUpdateDealerProfile} disabled={dealerLoading}>
+                                {dealerLoading ? <Loader2 className="animate-spin mr-2" size={16} /> : null}
+                                Save Dealer Profile
+                            </Button>
+                        </div>
+                    </div>
+                </section>
+            )}
 
             <section>
                 <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
