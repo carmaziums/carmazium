@@ -11,7 +11,7 @@ const FinanceCalculator = dynamic(() => import("@/components/features/FinanceCal
 import {
     ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon,
     MapPin, Share2, Heart, Scale, Loader2, AlertTriangle, X, Tag,
-    Clock, XCircle, MessageCircle, ThumbsUp, Lock, FileSearch, BadgeCheck, Star, Sparkles, Zap, CreditCard, Info,
+    Clock, XCircle, MessageCircle, ThumbsUp, Lock, FileSearch, BadgeCheck, Star, Sparkles, Zap, CreditCard, Info, Phone, Globe,
 } from "lucide-react"
 import { useCompare } from "@/context/CompareContext"
 import { useAuth } from "@/context/AuthContext"
