@@ -32,7 +32,7 @@ export function EnquireModal({ listingId, dealerProfileId, isOpen, onClose }: En
         try {
             await apiClient('/dealers/leads', {
                 method: 'POST',
-                data: {
+                body: JSON.stringify({
                     dealerProfileId,
                     listingId,
                     buyerName: formData.buyerName,
@@ -40,7 +40,7 @@ export function EnquireModal({ listingId, dealerProfileId, isOpen, onClose }: En
                     buyerPhone: formData.buyerPhone,
                     notes: formData.notes,
                     source: "listing_enquiry"
-                }
+                })
             })
             setStatus("success")
             setTimeout(() => {
