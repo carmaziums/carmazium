@@ -177,3 +177,182 @@
 {"context":"RouterExplorer","level":"info","message":"Mapped {/dealers/staff/:id, DELETE} route","timestamp":"2026-04-21T15:13:35.327Z"}
 {"context":"RoutesResolver","level":"info","message":"PricingController {/pricing}:","timestamp":"2026-04-21T15:13:35.327Z"}
 {"context":"RouterExplorer","level":"info","message":"Mapped {/pricing/estimate, POST} route","timestamp":"2026-04-21T15:13:35.329Z"}
+{"context":"NestFactory","level":"info","message":"Starting Nest application...","timestamp":"2026-04-21T15:49:42.208Z"}
+{"context":"InstanceLoader","level":"info","message":"PrismaModule dependencies initialized","timestamp":"2026-04-21T15:49:42.269Z"}
+{"context":"InstanceLoader","level":"info","message":"EmailModule dependencies initialized","timestamp":"2026-04-21T15:49:42.270Z"}
+{"context":"InstanceLoader","level":"info","message":"ConfigHostModule dependencies initialized","timestamp":"2026-04-21T15:49:42.287Z"}
+{"context":"InstanceLoader","level":"info","message":"ThrottlerModule dependencies initialized","timestamp":"2026-04-21T15:49:42.288Z"}
+{"context":"InstanceLoader","level":"info","message":"HttpModule dependencies initialized","timestamp":"2026-04-21T15:49:42.291Z"}
+{"context":"InstanceLoader","level":"info","message":"DiscoveryModule dependencies initialized","timestamp":"2026-04-21T15:49:42.295Z"}
+{"context":"InstanceLoader","level":"info","message":"AuctionsModule dependencies initialized","timestamp":"2026-04-21T15:49:42.296Z"}
+{"context":"DvlaService","level":"info","message":"DVLA endpoint: https://driver-vehicle-licensing.api.gov.uk/vehicle-enquiry/v1/vehicles","timestamp":"2026-04-21T15:49:42.303Z"}
+{"context":"ImageCleanupService","level":"warn","message":"Supabase credentials missing. Cleanup task will not run effectively.","timestamp":"2026-04-21T15:49:42.307Z"}
+{"context":"InstanceLoader","level":"info","message":"AppModule dependencies initialized","timestamp":"2026-04-21T15:49:42.309Z"}
+{"context":"InstanceLoader","level":"info","message":"ConfigModule dependencies initialized","timestamp":"2026-04-21T15:49:42.310Z"}
+{"context":"InstanceLoader","level":"info","message":"ConfigModule dependencies initialized","timestamp":"2026-04-21T15:49:42.311Z"}
+{"context":"InstanceLoader","level":"info","message":"ScraperModule dependencies initialized","timestamp":"2026-04-21T15:49:42.312Z"}
+{"context":"InstanceLoader","level":"info","message":"ScheduleModule dependencies initialized","timestamp":"2026-04-21T15:49:42.313Z"}
+{"context":"InstanceLoader","level":"info","message":"ScheduleModule dependencies initialized","timestamp":"2026-04-21T15:49:42.315Z"}
+{"context":"InstanceLoader","level":"info","message":"TerminusModule dependencies initialized","timestamp":"2026-04-21T15:49:42.316Z"}
+{"context":"InstanceLoader","level":"info","message":"AnalyticsModule dependencies initialized","timestamp":"2026-04-21T15:49:42.320Z"}
+{"context":"InstanceLoader","level":"info","message":"TasksModule dependencies initialized","timestamp":"2026-04-21T15:49:42.323Z"}
+{"context":"InstanceLoader","level":"info","message":"HealthModule dependencies initialized","timestamp":"2026-04-21T15:49:42.325Z"}
+{"context":"InstanceLoader","level":"info","message":"DvlaModule dependencies initialized","timestamp":"2026-04-21T15:49:42.328Z"}
+{"context":"InstanceLoader","level":"info","message":"AiModule dependencies initialized","timestamp":"2026-04-21T15:49:42.329Z"}
+{"context":"InstanceLoader","level":"info","message":"PricingModule dependencies initialized","timestamp":"2026-04-21T15:49:42.330Z"}
+{"context":"InstanceLoader","level":"info","message":"SellersModule dependencies initialized","timestamp":"2026-04-21T15:49:42.332Z"}
+{"context":"InstanceLoader","level":"info","message":"FinanceModule dependencies initialized","timestamp":"2026-04-21T15:49:42.334Z"}
+{"context":"InstanceLoader","level":"info","message":"InsuranceModule dependencies initialized","timestamp":"2026-04-21T15:49:42.335Z"}
+{"context":"InstanceLoader","level":"info","message":"AdminModule dependencies initialized","timestamp":"2026-04-21T15:49:42.336Z"}
+{"context":"InstanceLoader","level":"info","message":"DashboardModule dependencies initialized","timestamp":"2026-04-21T15:49:42.337Z"}
+{"context":"InstanceLoader","level":"info","message":"BidsModule dependencies initialized","timestamp":"2026-04-21T15:49:42.337Z"}
+{"context":"InstanceLoader","level":"info","message":"WatchlistModule dependencies initialized","timestamp":"2026-04-21T15:49:42.338Z"}
+{"context":"InstanceLoader","level":"info","message":"ServiceRequestsModule dependencies initialized","timestamp":"2026-04-21T15:49:42.339Z"}
+{"context":"InstanceLoader","level":"info","message":"TransactionsModule dependencies initialized","timestamp":"2026-04-21T15:49:42.340Z"}
+{"context":"InstanceLoader","level":"info","message":"DealersModule dependencies initialized","timestamp":"2026-04-21T15:49:42.341Z"}
+{"context":"InstanceLoader","level":"info","message":"UsersModule dependencies initialized","timestamp":"2026-04-21T15:49:42.342Z"}
+{"context":"InstanceLoader","level":"info","message":"AuthModule dependencies initialized","timestamp":"2026-04-21T15:49:42.343Z"}
+{"context":"InstanceLoader","level":"info","message":"NotificationsModule dependencies initialized","timestamp":"2026-04-21T15:49:42.346Z"}
+{"context":"InstanceLoader","level":"info","message":"ListingsModule dependencies initialized","timestamp":"2026-04-21T15:49:42.348Z"}
+{"context":"InstanceLoader","level":"info","message":"FeaturedBoostModule dependencies initialized","timestamp":"2026-04-21T15:49:42.349Z"}
+{"context":"InstanceLoader","level":"info","message":"PaymentsModule dependencies initialized","timestamp":"2026-04-21T15:49:42.352Z"}
+{"context":"InstanceLoader","level":"info","message":"OffersModule dependencies initialized","timestamp":"2026-04-21T15:49:42.353Z"}
+{"context":"InstanceLoader","level":"info","message":"ChatModule dependencies initialized","timestamp":"2026-04-21T15:49:42.355Z"}
+{"context":"RedisIoAdapter","level":"warn","message":"REDIS_URL not found, falling back to default IoAdapter","timestamp":"2026-04-21T15:49:42.363Z"}
+{"context":"NotificationsGateway","level":"info","message":"Notifications WebSocket Gateway initialized","timestamp":"2026-04-21T15:49:42.510Z"}
+{"context":"ChatGateway","level":"info","message":"Chat WebSocket Gateway initialized","timestamp":"2026-04-21T15:49:42.515Z"}
+{"context":"WebSocketsController","level":"info","message":"ChatGateway subscribed to the \"message:send\" message","timestamp":"2026-04-21T15:49:42.516Z"}
+{"context":"WebSocketsController","level":"info","message":"ChatGateway subscribed to the \"room:join\" message","timestamp":"2026-04-21T15:49:42.517Z"}
+{"context":"WebSocketsController","level":"info","message":"ChatGateway subscribed to the \"message:read\" message","timestamp":"2026-04-21T15:49:42.518Z"}
+{"context":"WebSocketsController","level":"info","message":"ChatGateway subscribed to the \"typing:start\" message","timestamp":"2026-04-21T15:49:42.519Z"}
+{"context":"WebSocketsController","level":"info","message":"ChatGateway subscribed to the \"typing:stop\" message","timestamp":"2026-04-21T15:49:42.520Z"}
+{"context":"RoutesResolver","level":"info","message":"AppController {/}:","timestamp":"2026-04-21T15:49:42.530Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/, GET} route","timestamp":"2026-04-21T15:49:42.534Z"}
+{"context":"RoutesResolver","level":"info","message":"HealthController {/health}:","timestamp":"2026-04-21T15:49:42.535Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/health, GET} route","timestamp":"2026-04-21T15:49:42.537Z"}
+{"context":"RoutesResolver","level":"info","message":"ListingsController {/listings}:","timestamp":"2026-04-21T15:49:42.538Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/listings, POST} route","timestamp":"2026-04-21T15:49:42.540Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/listings, GET} route","timestamp":"2026-04-21T15:49:42.544Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/listings/featured, GET} route","timestamp":"2026-04-21T15:49:42.545Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/listings/my, GET} route","timestamp":"2026-04-21T15:49:42.546Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/listings/stats, GET} route","timestamp":"2026-04-21T15:49:42.548Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/listings/performance, GET} route","timestamp":"2026-04-21T15:49:42.549Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/listings/:slug, GET} route","timestamp":"2026-04-21T15:49:42.552Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/listings/:id, PATCH} route","timestamp":"2026-04-21T15:49:42.553Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/listings/:id/status, PATCH} route","timestamp":"2026-04-21T15:49:42.555Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/listings/:id, DELETE} route","timestamp":"2026-04-21T15:49:42.557Z"}
+{"context":"RoutesResolver","level":"info","message":"AuthController {/auth}:","timestamp":"2026-04-21T15:49:42.558Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/auth/register, POST} route","timestamp":"2026-04-21T15:49:42.561Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/auth/login, POST} route","timestamp":"2026-04-21T15:49:42.563Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/auth/logout, POST} route","timestamp":"2026-04-21T15:49:42.565Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/auth/me, GET} route","timestamp":"2026-04-21T15:49:42.566Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/auth/supabase-session, POST} route","timestamp":"2026-04-21T15:49:42.567Z"}
+{"context":"RoutesResolver","level":"info","message":"SellersController {/sellers}:","timestamp":"2026-04-21T15:49:42.568Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/sellers/:userId, GET} route","timestamp":"2026-04-21T15:49:42.571Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/sellers/:userId/listings, GET} route","timestamp":"2026-04-21T15:49:42.572Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/sellers/:sellerProfileId/reviews, GET} route","timestamp":"2026-04-21T15:49:42.574Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/sellers/reviews, POST} route","timestamp":"2026-04-21T15:49:42.575Z"}
+{"context":"RoutesResolver","level":"info","message":"AuctionsController {/auctions}:","timestamp":"2026-04-21T15:49:42.575Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/auctions/status, GET} route","timestamp":"2026-04-21T15:49:42.577Z"}
+{"context":"RoutesResolver","level":"info","message":"FinanceController {/finance}:","timestamp":"2026-04-21T15:49:42.577Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/finance/apply, POST} route","timestamp":"2026-04-21T15:49:42.578Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/finance/my, GET} route","timestamp":"2026-04-21T15:49:42.580Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/finance/partner, GET} route","timestamp":"2026-04-21T15:49:42.581Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/finance/:id/status, PATCH} route","timestamp":"2026-04-21T15:49:42.584Z"}
+{"context":"RoutesResolver","level":"info","message":"InsuranceController {/insurance}:","timestamp":"2026-04-21T15:49:42.586Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/insurance/quote, POST} route","timestamp":"2026-04-21T15:49:42.589Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/insurance/my, GET} route","timestamp":"2026-04-21T15:49:42.592Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/insurance/partner, GET} route","timestamp":"2026-04-21T15:49:42.593Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/insurance/:id/status, PATCH} route","timestamp":"2026-04-21T15:49:42.594Z"}
+{"context":"RoutesResolver","level":"info","message":"AdminController {/admin}:","timestamp":"2026-04-21T15:49:42.595Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/admin/users, GET} route","timestamp":"2026-04-21T15:49:42.596Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/admin/users/:id/role, PATCH} route","timestamp":"2026-04-21T15:49:42.599Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/admin/users/:id/verify, PATCH} route","timestamp":"2026-04-21T15:49:42.601Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/admin/listings, GET} route","timestamp":"2026-04-21T15:49:42.605Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/admin/listings/:id, DELETE} route","timestamp":"2026-04-21T15:49:42.607Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/admin/stats, GET} route","timestamp":"2026-04-21T15:49:42.608Z"}
+{"context":"RoutesResolver","level":"info","message":"NotificationsController {/notifications}:","timestamp":"2026-04-21T15:49:42.609Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/notifications, GET} route","timestamp":"2026-04-21T15:49:42.610Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/notifications/unread-count, GET} route","timestamp":"2026-04-21T15:49:42.611Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/notifications/read-all, PATCH} route","timestamp":"2026-04-21T15:49:42.612Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/notifications/:id/read, PATCH} route","timestamp":"2026-04-21T15:49:42.613Z"}
+{"context":"RoutesResolver","level":"info","message":"PaymentsController {/payments}:","timestamp":"2026-04-21T15:49:42.615Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/payments/checkout, POST} route","timestamp":"2026-04-21T15:49:42.616Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/payments/session-status/:sessionId, GET} route","timestamp":"2026-04-21T15:49:42.619Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/payments/history, GET} route","timestamp":"2026-04-21T15:49:42.620Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/payments/webhook, POST} route","timestamp":"2026-04-21T15:49:42.622Z"}
+{"context":"RoutesResolver","level":"info","message":"DashboardController {/dashboard}:","timestamp":"2026-04-21T15:49:42.624Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/dashboard/buyer, GET} route","timestamp":"2026-04-21T15:49:42.625Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/dashboard/seller, GET} route","timestamp":"2026-04-21T15:49:42.630Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/dashboard/dealer, GET} route","timestamp":"2026-04-21T15:49:42.632Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/dashboard/contractor, GET} route","timestamp":"2026-04-21T15:49:42.634Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/dashboard/finance, GET} route","timestamp":"2026-04-21T15:49:42.635Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/dashboard/insurance, GET} route","timestamp":"2026-04-21T15:49:42.636Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/dashboard/admin, GET} route","timestamp":"2026-04-21T15:49:42.638Z"}
+{"context":"RoutesResolver","level":"info","message":"UsersController {/users}:","timestamp":"2026-04-21T15:49:42.639Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/users/me, GET} route","timestamp":"2026-04-21T15:49:42.640Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/users/me, PATCH} route","timestamp":"2026-04-21T15:49:42.642Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/users/elevate, POST} route","timestamp":"2026-04-21T15:49:42.645Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/users/dealer-profile, PATCH} route","timestamp":"2026-04-21T15:49:42.646Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/users/sync, POST} route","timestamp":"2026-04-21T15:49:42.648Z"}
+{"context":"RoutesResolver","level":"info","message":"BidsController {/bids}:","timestamp":"2026-04-21T15:49:42.649Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/bids, POST} route","timestamp":"2026-04-21T15:49:42.650Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/bids/my, GET} route","timestamp":"2026-04-21T15:49:42.651Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/bids/stats, GET} route","timestamp":"2026-04-21T15:49:42.652Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/bids/listing/:listingId, GET} route","timestamp":"2026-04-21T15:49:42.655Z"}
+{"context":"RoutesResolver","level":"info","message":"WatchlistController {/watchlist}:","timestamp":"2026-04-21T15:49:42.656Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/watchlist, GET} route","timestamp":"2026-04-21T15:49:42.658Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/watchlist/:listingId, POST} route","timestamp":"2026-04-21T15:49:42.659Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/watchlist/:listingId, DELETE} route","timestamp":"2026-04-21T15:49:42.661Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/watchlist/check/:listingId, GET} route","timestamp":"2026-04-21T15:49:42.662Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/watchlist/count, GET} route","timestamp":"2026-04-21T15:49:42.664Z"}
+{"context":"RoutesResolver","level":"info","message":"ServiceRequestsController {/service-requests}:","timestamp":"2026-04-21T15:49:42.666Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/service-requests, POST} route","timestamp":"2026-04-21T15:49:42.667Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/service-requests/my, GET} route","timestamp":"2026-04-21T15:49:42.668Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/service-requests/contractor, GET} route","timestamp":"2026-04-21T15:49:42.669Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/service-requests/contractor/stats, GET} route","timestamp":"2026-04-21T15:49:42.671Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/service-requests/:id/status, PATCH} route","timestamp":"2026-04-21T15:49:42.672Z"}
+{"context":"RoutesResolver","level":"info","message":"ChatController {/chat}:","timestamp":"2026-04-21T15:49:42.673Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/chat/rooms, GET} route","timestamp":"2026-04-21T15:49:42.675Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/chat/rooms, POST} route","timestamp":"2026-04-21T15:49:42.677Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/chat/rooms/:id, GET} route","timestamp":"2026-04-21T15:49:42.679Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/chat/rooms/:id/messages, GET} route","timestamp":"2026-04-21T15:49:42.681Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/chat/rooms/:id/messages, POST} route","timestamp":"2026-04-21T15:49:42.682Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/chat/rooms/:id/read, PATCH} route","timestamp":"2026-04-21T15:49:42.683Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/chat/unread, GET} route","timestamp":"2026-04-21T15:49:42.685Z"}
+{"context":"RoutesResolver","level":"info","message":"FeaturedBoostController {/featured-boost}:","timestamp":"2026-04-21T15:49:42.686Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/featured-boost/:listingId, POST} route","timestamp":"2026-04-21T15:49:42.687Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/featured-boost/webhook, POST} route","timestamp":"2026-04-21T15:49:42.689Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/featured-boost/my, GET} route","timestamp":"2026-04-21T15:49:42.690Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/featured-boost/status/:listingId, GET} route","timestamp":"2026-04-21T15:49:42.692Z"}
+{"context":"RoutesResolver","level":"info","message":"TransactionsController {/transactions}:","timestamp":"2026-04-21T15:49:42.693Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/transactions/my, GET} route","timestamp":"2026-04-21T15:49:42.694Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/transactions/stats, GET} route","timestamp":"2026-04-21T15:49:42.695Z"}
+{"context":"RoutesResolver","level":"info","message":"DvlaController {/dvla}:","timestamp":"2026-04-21T15:49:42.696Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/dvla/lookup, POST} route","timestamp":"2026-04-21T15:49:42.698Z"}
+{"context":"RoutesResolver","level":"info","message":"AnalyticsController {/analytics}:","timestamp":"2026-04-21T15:49:42.699Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/analytics/event, POST} route","timestamp":"2026-04-21T15:49:42.700Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/analytics/email, POST} route","timestamp":"2026-04-21T15:49:42.701Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/analytics/summary, GET} route","timestamp":"2026-04-21T15:49:42.702Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/analytics/events, GET} route","timestamp":"2026-04-21T15:49:42.703Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/analytics/emails, GET} route","timestamp":"2026-04-21T15:49:42.705Z"}
+{"context":"RoutesResolver","level":"info","message":"OffersController {/offers}:","timestamp":"2026-04-21T15:49:42.706Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/offers, POST} route","timestamp":"2026-04-21T15:49:42.707Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/offers/my, GET} route","timestamp":"2026-04-21T15:49:42.709Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/offers/my/:listingId, GET} route","timestamp":"2026-04-21T15:49:42.710Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/offers/listing/:listingId, GET} route","timestamp":"2026-04-21T15:49:42.711Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/offers/:id/respond, PATCH} route","timestamp":"2026-04-21T15:49:42.714Z"}
+{"context":"RoutesResolver","level":"info","message":"AiController {/ai}:","timestamp":"2026-04-21T15:49:42.715Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/ai/search, POST} route","timestamp":"2026-04-21T15:49:42.716Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/ai/chat, POST} route","timestamp":"2026-04-21T15:49:42.718Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/ai/generate-description, POST} route","timestamp":"2026-04-21T15:49:42.719Z"}
+{"context":"RoutesResolver","level":"info","message":"DealersController {/dealers}:","timestamp":"2026-04-21T15:49:42.720Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/dealers/stats, GET} route","timestamp":"2026-04-21T15:49:42.722Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/dealers/leads, GET} route","timestamp":"2026-04-21T15:49:42.724Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/dealers/leads, POST} route","timestamp":"2026-04-21T15:49:42.725Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/dealers/leads/:id, PATCH} route","timestamp":"2026-04-21T15:49:42.726Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/dealers/staff, GET} route","timestamp":"2026-04-21T15:49:42.727Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/dealers/staff, POST} route","timestamp":"2026-04-21T15:49:42.729Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/dealers/staff/:id, DELETE} route","timestamp":"2026-04-21T15:49:42.733Z"}
+{"context":"RoutesResolver","level":"info","message":"PricingController {/pricing}:","timestamp":"2026-04-21T15:49:42.734Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/pricing/estimate, POST} route","timestamp":"2026-04-21T15:49:42.735Z"}
