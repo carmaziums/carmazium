@@ -83,7 +83,12 @@ export async function createListing(data: CreateListingRequest): Promise<CreateL
 export interface DvlaLookupResult {
     vrm: string
     make?: string
+    model?: string
+    transmission?: string
+    motHistory?: any[]
     colour?: string
+    primaryColour?: string
+    color?: string
     year?: number
     engineSize?: number
     co2Emissions?: number

@@ -232,7 +232,7 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
           <div>
             <Link href="/sell">
               <Button variant="outline" shape="pill" className="px-12 py-6 text-base border-primary/50 text-white hover:bg-primary hover:text-white uppercase tracking-wider font-semibold hover:tracking-widest transition-all duration-300">
-                Sell My Car
+                List your car for €1
               </Button>
             </Link>
           </div>

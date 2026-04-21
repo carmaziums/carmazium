@@ -114,10 +114,10 @@ const INITIAL_FORM: FormData = {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function SelectField({
-    label, value, onChange, options, required = false,
+    label, value, onChange, options, required = false, hasError = false
 }: {
     label: string; value: string; onChange: (v: string) => void
-    options: { value: string; label: string }[]; required?: boolean
+    options: { value: string; label: string }[]; required?: boolean; hasError?: boolean
 }) {
     return (
         <div className="space-y-2">
@@ -125,7 +125,7 @@ function SelectField({
             <select
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                className="w-full h-10 rounded-md border border-white/10 bg-slate-900/50 px-3 text-base md:text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                className={`w-full h-10 rounded-md border border-white/10 bg-slate-900/50 px-3 text-base md:text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary ${hasError ? "border-red-500 focus:border-red-500 ring-1 ring-red-500" : ""}`}
             >
                 <option value="">Select {label.toLowerCase()}</option>
                 {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -187,6 +187,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const router = useRouter()
 
     const [currentStep, setCurrentStep] = React.useState(1)
+    const [attemptedNext, setAttemptedNext] = React.useState(false)
     const [formData, setFormData] = React.useState<FormData>(INITIAL_FORM)
     const [sellingMethod, setSellingMethod] = React.useState<"list" | null>(null)
     const [showLoginModal, setShowLoginModal] = React.useState(false)
@@ -197,6 +198,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const [dvlaSuccess, setDvlaSuccess] = React.useState(false)
     const [geoLoading, setGeoLoading] = React.useState(false)
     const [isGeneratingDesc, setIsGeneratingDesc] = React.useState(false)
+    const [customFeature, setCustomFeature] = React.useState("")
 
     // HPI Payment State
     const [showHpiModal, setShowHpiModal] = React.useState(false)
@@ -280,10 +282,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     }
 
     const handleNext = () => {
+        setAttemptedNext(true)
         if (!validateStep()) {
-            alert("Please fill in all required fields before proceeding.")
             return
         }
+        setAttemptedNext(false)
         setCurrentStep(prev => Math.min(prev + 1, 4))
     }
     const handleBack = () => setCurrentStep(prev => Math.max(prev - 1, 1))
@@ -381,6 +384,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     // ─── Shared ──────────────────────────────────────────────────────────────────
 
     const inputCls = "bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary text-base md:text-sm"
+
+    const getErrorCls = (field: keyof FormData) => attemptedNext && !formData[field] ? "border-red-500 focus:border-red-500 ring-1 ring-red-500" : ""
 
     // ─── Login Modal ─────────────────────────────────────────────────────────────
 
@@ -599,7 +604,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <div className="flex flex-col sm:flex-row gap-3">
                                     <Input placeholder="e.g. AB12 CDE" value={formData.vrm}
                                         onChange={(e) => { set("vrm", e.target.value.toUpperCase()); setDvlaSuccess(false); setDvlaError(null) }}
-                                        className={`${inputCls} uppercase font-mono tracking-widest text-lg h-14 bg-black border-primary/20 focus:border-primary flex-1`} />
+                                        className={`${inputCls} uppercase font-mono tracking-widest text-lg h-14 bg-black border-primary/20 flex-1 ${getErrorCls("vrm")}`} />
                                     <Button type="button" disabled={!formData.vrm || dvlaLoading}
                                         className="bg-primary hover:bg-primary/90 text-white font-bold px-8 h-14 uppercase tracking-widest gap-2 shadow-neon transition-transform active:scale-95 w-full sm:w-auto"
                                         onClick={async () => {
@@ -622,6 +627,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 if (r.colour) set("color", r.colour)
                                                 if (r.year) set("year", String(r.year))
                                                 if (r.engineSize) set("engineSize", String(r.engineSize))
+                                                if (r.transmission) set("transmission", r.transmission.toUpperCase() === "MANUAL" ? "MANUAL" : r.transmission.toUpperCase().includes("AUTO") ? "AUTOMATIC" : "CVT")
                                                 if (r.fuelType) set("fuelType", r.fuelType)
                                                 if (r.euroStandard) set("euroStandard", r.euroStandard as EuroStandardValue)
                                                 if (r.co2Emissions) set("co2Emissions", String(r.co2Emissions))
@@ -660,19 +666,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <p className="text-xs text-gray-600">UK number plate — click Look Up to auto-fill vehicle details.</p>
                                 {dvlaSuccess && <p className="text-xs text-emerald-400 flex items-center gap-1"><BadgeCheck size={12} /> Vehicle data loaded — review and edit below.</p>}
                                 {dvlaError && <p className="text-xs text-red-400">{dvlaError}</p>}
-                                
-                                {/* Imported Checkbox moved below VRM look up */}
-                                <div className="pt-2">
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.isImported}
-                                            onChange={(e) => set("isImported", e.target.checked)}
-                                            className="accent-primary h-4 w-4 shrink-0 rounded border-white/20 bg-slate-800"
-                                        />
-                                        <span className="text-sm text-gray-300">This vehicle has been imported</span>
-                                    </label>
-                                </div>
                             </div>
 
                             {/* Registration & Compliance Details */}
@@ -686,11 +679,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 </p>
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                                    {/* First Registered */}
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-gray-400">First Registered</label>
-                                        <Input type="date" min="1972-01-01" max={new Date().toISOString().split('T')[0]} value={formData.monthOfFirstRegistration} onChange={(e) => set("monthOfFirstRegistration", e.target.value)} className={inputCls} />
-                                    </div>
+                                    {/* First Registered removed */}
                                     {/* Last V5C Issued */}
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold uppercase text-gray-400">Last V5C Issued</label>
@@ -726,23 +715,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         <label className="text-sm font-bold uppercase text-gray-400">Wheelplan</label>
                                         <Input placeholder="e.g. 2 AXLE RIGID BODY" value={formData.wheelplan} onChange={(e) => set("wheelplan", e.target.value)} className={inputCls} />
                                     </div>
-                                    {/* Marked For Export */}
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-gray-400 flex items-center gap-1.5">Marked for Export</label>
-                                        <div className="relative">
-                                            <select
-                                                required
-                                                value={formData.markedForExport === null ? "" : (formData.markedForExport ? "yes" : "no")}
-                                                onChange={(e) => set("markedForExport", e.target.value === "yes" ? true : e.target.value === "no" ? false : null)}
-                                                className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-3.5 text-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500/50 transition-all appearance-none"
-                                            >
-                                                <option value="" disabled>Select</option>
-                                                <option value="yes">Yes</option>
-                                                <option value="no">No</option>
-                                            </select>
-                                            <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                                        </div>
-                                    </div>
+                                    {/* Marked For Export removed */}
                                 </div>
                                 {/* MOT History - Read Only List */}
                                 {formData.motHistory && formData.motHistory.length > 0 && (
@@ -896,7 +869,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 </div>
 
                                 {/* Fuel */}
-                                <SelectField label="Fuel Type" required value={formData.fuelType} onChange={(v) => set("fuelType", v)}
+                                <SelectField hasError={attemptedNext && !formData.fuelType} label="Fuel Type" required value={formData.fuelType} onChange={(v) => set("fuelType", v)}
                                     options={[
                                         { value: "PETROL", label: "Petrol" },
                                         { value: "DIESEL", label: "Diesel" },
@@ -909,7 +882,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 />
 
                                 {/* Transmission */}
-                                <SelectField label="Transmission" required value={formData.transmission} onChange={(v) => set("transmission", v)}
+                                <SelectField hasError={attemptedNext && !formData.transmission} label="Transmission" required value={formData.transmission} onChange={(v) => set("transmission", v)}
                                     options={[
                                         { value: "MANUAL", label: "Manual" },
                                         { value: "AUTOMATIC", label: "Automatic" },
@@ -1356,6 +1329,49 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     {formData.bodyType && <SummaryField label="Body" value={formData.bodyType} />}
                                     {formData.location && <SummaryField label="Location" value={formData.location} />}
                                 </div>
+                                <div className="mt-4 flex gap-3">
+                                    <Input 
+                                        placeholder="Add a custom feature..." 
+                                        value={customFeature} 
+                                        onChange={(e) => setCustomFeature(e.target.value)} 
+                                        className={inputCls} 
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                                e.preventDefault();
+                                                if (customFeature.trim() && !formData.features.includes(customFeature.trim())) {
+                                                    set("features", [...formData.features, customFeature.trim()]);
+                                                    setCustomFeature("");
+                                                }
+                                            }
+                                        }}
+                                    />
+                                    <Button 
+                                        type="button" 
+                                        variant="outline" 
+                                        className="border-white/10 hover:bg-white/5"
+                                        onClick={() => {
+                                            if (customFeature.trim() && !formData.features.includes(customFeature.trim())) {
+                                                set("features", [...formData.features, customFeature.trim()]);
+                                                setCustomFeature("");
+                                            }
+                                        }}
+                                    >
+                                        Add
+                                    </Button>
+                                </div>
+                                {/* Display custom features that aren't in PRESET_FEATURES */}
+                                {formData.features.filter(f => !PRESET_FEATURES.includes(f)).length > 0 && (
+                                    <div className="mt-4 flex flex-wrap gap-2">
+                                        {formData.features.filter(f => !PRESET_FEATURES.includes(f)).map((f) => (
+                                            <span key={f} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20">
+                                                {f}
+                                                <button type="button" onClick={() => set("features", formData.features.filter(x => x !== f))} className="hover:text-red-400">
+                                                    <X size={12} />
+                                                </button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
                             </SummarySection>
 
                             {/* Media */}
