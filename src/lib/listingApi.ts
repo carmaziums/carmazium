@@ -169,6 +169,7 @@ export interface Listing {
         lastName: string | null
         profileImage: string | null
         dealerProfile?: {
+            id: string
             companyName: string
             logo: string | null
             description: string | null
