@@ -16,6 +16,7 @@ import {
 import { useAuth } from "@/context/AuthContext"
 import { SellerBadge } from "@/components/ui/SellerBadge"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
+import { EnquireModal } from "@/components/listing/EnquireModal"
 import { getListingBySlug, makeOffer, getMyOfferForListing, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, formatPrice, type Listing, type LatestOffer } from "@/lib/listingApi"
 import { useRouter } from "next/navigation"
 
@@ -226,6 +227,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
     const [isDescExpanded, setIsDescExpanded] = React.useState(false)
     const [showOfferModal, setShowOfferModal] = React.useState(false)
     const [showLoginModal, setShowLoginModal] = React.useState(false)
+    const [showEnquireModal, setShowEnquireModal] = React.useState(false)
     const [latestOffer, setLatestOffer] = React.useState<LatestOffer | null>(null)   // most recent offer on listing (any buyer) — public display
     const [myOffer, setMyOffer] = React.useState<LatestOffer | null>(null)            // this user's own offer — drives button state
     const [offerSuccess, setOfferSuccess] = React.useState(false)
@@ -421,6 +423,14 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                 
                                 <Button
                                     variant="outline"
+                                    onClick={() => {
+                                        if (listing.seller?.dealerProfile) {
+                                            setShowEnquireModal(true)
+                                        } else {
+                                            // Fallback for private sellers (e.g. Chat)
+                                            alert("Direct messaging for private sellers is coming soon!")
+                                        }
+                                    }}
                                     className="w-full py-6 text-[15px] font-black uppercase bg-transparent hover:bg-slate-700 border-white/10 text-white rounded-xl gap-2"
                                 >
                                     <MessageCircle size={18} /> ENQUIRE NOW
@@ -537,6 +547,16 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
             <div className="fixed inset-0 bg-gradient-to-br from-[#0f172a] to-[#1e293b] -z-10" />
 
             <LoginModal />
+
+            {/* Enquire Modal */}
+            {showEnquireModal && listing?.seller?.dealerProfile && (
+                <EnquireModal
+                    listingId={listing.id}
+                    dealerProfileId={listing.seller.dealerProfile.id}
+                    isOpen={showEnquireModal}
+                    onClose={() => setShowEnquireModal(false)}
+                />
+            )}
 
             {/* Offer Modal */}
             {showOfferModal && (

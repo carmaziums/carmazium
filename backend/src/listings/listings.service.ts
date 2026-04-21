@@ -98,6 +98,40 @@ export class ListingsService {
     }
 
     /**
+     * Re-hosts external images to Supabase Storage
+     */
+    private async rehostImage(url: string): Promise<string> {
+        if (!url || url.includes('supabase.co')) return url;
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
+            const buffer = await response.arrayBuffer();
+            
+            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+            const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+            
+            if (!supabaseUrl || !supabaseKey) return url;
+
+            const { createClient } = require('@supabase/supabase-js');
+            const supabase = createClient(supabaseUrl, supabaseKey);
+
+            const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
+            
+            const { error } = await supabase.storage
+                .from('listings')
+                .upload(fileName, buffer, { contentType: response.headers.get('content-type') || 'image/jpeg' });
+            
+            if (error) throw error;
+            
+            return `${supabaseUrl}/storage/v1/object/public/listings/${fileName}`;
+        } catch (err) {
+            console.error('Failed to re-host image:', err);
+            return url; // Fallback to original URL
+        }
+    }
+
+    /**
      * Create a new listing
      * Auto-generates slug and saves Supabase image URLs
      */
@@ -117,13 +151,19 @@ export class ListingsService {
             throw new BadRequestException('Imported vehicles cannot be listed on CarMazium.');
         }
 
+        // Re-host any external images
+        let finalImages: string[] = [];
+        if (createListingDto.images && createListingDto.images.length > 0) {
+            finalImages = await Promise.all(createListingDto.images.map(img => this.rehostImage(img)));
+        }
+
         const listing = await this.prisma.listing.create({
             data: {
                 title: createListingDto.title,
                 price: createListingDto.price,
                 priceMin: createListingDto.priceMin ?? null,
                 priceMax: createListingDto.priceMax ?? null,
-                images: createListingDto.images,
+                images: finalImages,
                 type: listingType,
                 status: listingStatus,
                 description: createListingDto.description ?? null,
