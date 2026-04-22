@@ -14,6 +14,7 @@ import { apiClient } from "@/lib/apiClient"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 import { BulkImportModal } from "@/components/dealer/BulkImportModal"
+import { CheckCircle2 } from "lucide-react"
 
 const STATUS_COLORS: Record<string, string> = {
     ACTIVE: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
@@ -49,6 +50,17 @@ export default function DealerInventoryPage() {
             setListings([])
         } finally {
             setLoading(false)
+        }
+    }
+
+    async function publishListing(id: string) {
+        try {
+            await apiClient.patch(`/listings/${id}/status`, { status: 'ACTIVE' });
+            // Refresh listings
+            fetchListings(searchQuery);
+        } catch (err) {
+            console.error('Failed to publish listing:', err);
+            alert('Failed to publish listing. Please try again.');
         }
     }
 
@@ -209,6 +221,17 @@ export default function DealerInventoryPage() {
                                                 </td>
                                                 <td className="px-8 py-6 text-right">
                                                     <div className="flex items-center justify-end gap-2 opactiy-0 group-hover:opacity-100 transition-opacity">
+                                                        {listing.status === 'DRAFT' && (
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="sm" 
+                                                                title="Publish Listing"
+                                                                onClick={() => publishListing(listing.id)}
+                                                                className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20"
+                                                            >
+                                                                <CheckCircle2 size={16} />
+                                                            </Button>
+                                                        )}
                                                         <Link href={`/dashboard/dealer/inventory/${listing.id}`}>
                                                             <Button variant="ghost" size="sm" className="bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/5">
                                                                 <BarChart3 size={16} />
