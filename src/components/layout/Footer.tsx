@@ -1,6 +1,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/Button"
+import { Mail, Phone, MapPin } from "lucide-react"
 
 export function Footer() {
     return (
@@ -36,6 +37,7 @@ export function Footer() {
                             <li><Link href="/search" className="hover:text-primary transition-colors">Buy Cars</Link></li>
                             <li><Link href="/sell" className="hover:text-primary transition-colors">Sell Cars</Link></li>
                             <li><Link href="/about" className="hover:text-primary transition-colors">About</Link></li>
+                            <li><Link href="/terms" className="hover:text-primary transition-colors">Terms & Conditions</Link></li>
                         </ul>
                     </div>
 
@@ -43,9 +45,15 @@ export function Footer() {
                     <div className="space-y-4">
                         <h3 className="text-xl font-bold font-heading uppercase tracking-wide">Contact Us</h3>
                         <ul className="space-y-2 text-gray-400">
-                            <li className="hover:text-primary cursor-pointer transition-colors">New York, USA</li>
-                            <li className="hover:text-primary cursor-pointer transition-colors">+1 234 567 890</li>
-                            <li className="hover:text-primary cursor-pointer transition-colors">info@carmazium.com</li>
+                            <li className="hover:text-primary cursor-pointer transition-colors flex items-center gap-3">
+                                <Mail size={18} className="text-primary shrink-0" /> support@carmazium.co.uk
+                            </li>
+                            <li className="hover:text-primary cursor-pointer transition-colors flex items-center gap-3">
+                                <Phone size={18} className="text-primary shrink-0" /> 0800 123 4567
+                            </li>
+                            <li className="hover:text-primary cursor-pointer transition-colors flex items-center gap-3">
+                                <MapPin size={18} className="text-primary shrink-0" /> London, UK
+                            </li>
                         </ul>
                     </div>
 

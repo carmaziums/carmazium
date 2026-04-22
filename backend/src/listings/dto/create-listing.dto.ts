@@ -170,6 +170,7 @@ export class CreateListingDto {
     @IsArray()
     @IsString({ each: true })
     @IsUrl({}, { each: true, message: 'Each image must be a valid URL' })
+    @IsOptional()
     images: string[];
 
     @ApiProperty({ description: 'Type of listing', enum: ListingType, example: ListingType.CLASSIFIED })

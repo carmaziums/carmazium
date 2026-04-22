@@ -44,6 +44,31 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
 
     if (!isOpen) return null
 
+    // RFC-4180 compliant CSV line parser — handles quoted fields with embedded commas
+    const parseCsvLine = (line: string): string[] => {
+        const result: string[] = []
+        let current = ''
+        let inQuotes = false
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i]
+            if (char === '"') {
+                if (inQuotes && line[i + 1] === '"') {
+                    current += '"'
+                    i++ // skip escaped quote
+                } else {
+                    inQuotes = !inQuotes
+                }
+            } else if (char === ',' && !inQuotes) {
+                result.push(current.trim())
+                current = ''
+            } else {
+                current += char
+            }
+        }
+        result.push(current.trim())
+        return result
+    }
+
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file) return
@@ -67,7 +92,7 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
             }
 
             // Expecting headers: vrm, price, mileage
-            const headers = lines[0].toLowerCase().split(',')
+            const headers = parseCsvLine(lines[0].toLowerCase())
             const vrmIdx = headers.findIndex(h => h.includes('vrm') || h.includes('reg'))
             const priceIdx = headers.findIndex(h => h.includes('price'))
             const mileageIdx = headers.findIndex(h => h.includes('mil'))
@@ -81,7 +106,7 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
 
             const rows: CsvRow[] = []
             for (let i = 1; i < lines.length; i++) {
-                const cols = lines[i].split(',')
+                const cols = parseCsvLine(lines[i])
                 const vrm = cols[vrmIdx]?.replace(/\s/g, '').toUpperCase()
                 if (vrm) {
                     const imagesStr = imageIdx !== -1 && cols[imageIdx] ? cols[imageIdx].trim() : ""
@@ -128,15 +153,14 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
                     ulez = true
                 }
 
-                const priceNum = parseFloat(row.price) || 0
-                const mileageNum = parseInt(row.mileage) || 0
+                // Strip thousands-separator commas before parsing (e.g. "8,995" → 8995)
+                const priceNum = parseFloat(row.price.replace(/,/g, '')) || 0
+                const mileageNum = parseInt(row.mileage.replace(/,/g, ''), 10) || 0
 
                 // 3. Assemble dynamic payload mapping the automated spec points
                 const payload: CreateListingRequest = {
                     title: `${dvlaData.make} ${dvlaData.model} ${dvlaData.year || ''}`.trim(),
                     price: priceNum,
-                    priceMin: priceNum,
-                    priceMax: priceNum,
                     mileage: mileageNum,
                     year: dvlaData.year || new Date().getFullYear(),
                     vrm: row.vrm,
@@ -144,7 +168,7 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
                     status: "DRAFT", // Automatically drops into Draft queue for photo uploads later!
                     badgeTier: "FREE",
                     vehicleType: "CAR", // default assumptions
-                    images: row.images,
+                    images: row.images.length > 0 ? row.images : [],
                     
                     // DVLA Spec Map
                     make: dvlaData.make || undefined,

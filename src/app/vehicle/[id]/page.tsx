@@ -384,6 +384,9 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                             Offers Welcome
                         </span>
                         <p className="text-[11px] text-gray-400 mt-1 pb-5 border-b border-white/10">Price includes VAT. Financing available from 5.9% APR.</p>
+                        <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+                            <Clock size={12} /> Listed on {new Date(listing.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </p>
                     </div>
 
                     {/* Offer Status */}
@@ -445,19 +448,10 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
             {listing.seller && (
                 <div className="bg-slate-800/80 rounded-xl border border-white/10 overflow-hidden shadow-xl">
                     <div className="p-6">
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="font-bold text-white text-lg">Seller Profile</h3>
-                            {/* Review/Rating */}
-                            {listing.sellerId && (
-                                <div className="flex items-center gap-1.5 bg-slate-900/60 border border-white/10 rounded-lg px-2.5 py-1.5">
-                                    <Star size={12} className="fill-gray-500 text-gray-500" />
-                                    <span className="text-xs font-bold text-white">0.0</span>
-                                </div>
-                            )}
-                        </div>
+                        <h3 className="font-bold text-white text-lg mb-4">Seller Profile</h3>
 
                         {/* Seller Info Block */}
-                        <div className="flex items-center gap-4 mb-5">
+                        <Link href={`/seller/${listing.sellerId}`} className="flex items-center gap-4 mb-5 hover:bg-white/5 p-2 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-white/10 -ml-2 group">
                             {listing.seller.dealerProfile?.logo ? (
                                 <Image src={listing.seller.dealerProfile.logo} alt="Dealer Logo" width={56} height={56} className="w-14 h-14 rounded-full object-cover shrink-0 bg-white shadow-md" />
                             ) : listing.seller.profileImage ? (
@@ -467,25 +461,28 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                     {(listing.seller.dealerProfile?.companyName || listing.seller.firstName || "CM").substring(0, 2).toUpperCase()}
                                 </div>
                             )}
-                            <div>
-                                <h4 className="font-bold text-white text-base leading-tight mb-1">
+                            <div className="flex-1">
+                                <h4 className="font-bold text-white text-base leading-tight mb-1 group-hover:text-primary transition-colors">
                                     {listing.seller.dealerProfile?.companyName || `${listing.seller.firstName || ''} ${listing.seller.lastName || ''}`.trim() || 'Private Seller'}
                                 </h4>
-                                <div className="flex items-center gap-1.5">
-                                    {listing.seller.dealerProfile ? (
-                                        <>
-                                            <BadgeCheck size={14} className="text-blue-500" />
-                                            <span className="text-xs text-blue-400 font-medium tracking-wide">Verified Dealer</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <CheckCircle size={14} className="text-emerald-500" />
-                                            <span className="text-xs text-emerald-400 font-medium tracking-wide">Verified Seller</span>
-                                        </>
-                                    )}
+                                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                    <div className="flex items-center gap-1.5">
+                                        {listing.seller.dealerProfile ? (
+                                            <>
+                                                <BadgeCheck size={14} className="text-blue-500" />
+                                                <span className="text-xs text-blue-400 font-medium tracking-wide">Verified Dealer</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <CheckCircle size={14} className="text-emerald-500" />
+                                                <span className="text-xs text-emerald-400 font-medium tracking-wide">Verified Seller</span>
+                                            </>
+                                        )}
+                                    </div>
+                                    {listing.sellerId && <SellerBadge score={0} sellerUserId={listing.sellerId} size="sm" showLabel />}
                                 </div>
                             </div>
-                        </div>
+                        </Link>
                         
                         {/* Dealership Info */}
                         {listing.seller.dealerProfile && (
@@ -965,11 +962,14 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                         </span>
                                     </div>
                                     <p className="text-xs text-gray-400 mt-3">Price includes VAT. Financing available from 5.9% APR.</p>
+                                    <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+                                        <Clock size={12} /> Listed on {new Date(listing.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                    </p>
                                 </div>
 
                                 {/* Seller Info Block */}
                                 {listing.seller && (
-                                    <div className="flex items-center gap-3 mb-6">
+                                    <Link href={`/seller/${listing.sellerId}`} className="flex items-center gap-3 mb-6 hover:bg-white/5 p-2 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-white/10 -ml-2 group">
                                         {listing.seller.dealerProfile?.logo ? (
                                             <Image src={listing.seller.dealerProfile.logo} alt="Dealer Logo" width={48} height={48} className="w-12 h-12 rounded-full object-cover shrink-0 bg-white" />
                                         ) : listing.seller.profileImage ? (
@@ -979,25 +979,28 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                                 {(listing.seller.dealerProfile?.companyName || listing.seller.firstName || "CM").substring(0, 2).toUpperCase()}
                                             </div>
                                         )}
-                                        <div>
-                                            <h3 className="font-bold text-white text-[15px] leading-tight">
+                                        <div className="flex-1">
+                                            <h3 className="font-bold text-white text-[15px] leading-tight group-hover:text-primary transition-colors">
                                                 {listing.seller.dealerProfile?.companyName || `${listing.seller.firstName || ''} ${listing.seller.lastName || ''}`.trim() || 'Private Seller'}
                                             </h3>
-                                            <div className="flex items-center gap-1 mt-0.5">
-                                                {listing.seller.dealerProfile ? (
-                                                    <>
-                                                        <CheckCircle size={10} className="text-blue-500" />
-                                                        <span className="text-[10px] text-blue-500 font-medium">Verified Dealer</span>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <CheckCircle size={10} className="text-emerald-500" />
-                                                        <span className="text-[10px] text-emerald-500 font-medium">Verified Seller</span>
-                                                    </>
-                                                )}
+                                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                                <div className="flex items-center gap-1">
+                                                    {listing.seller.dealerProfile ? (
+                                                        <>
+                                                            <CheckCircle size={10} className="text-blue-500" />
+                                                            <span className="text-[10px] text-blue-500 font-medium">Verified Dealer</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <CheckCircle size={10} className="text-emerald-500" />
+                                                            <span className="text-[10px] text-emerald-500 font-medium">Verified Seller</span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                                {listing.sellerId && <SellerBadge score={0} sellerUserId={listing.sellerId} size="sm" showLabel />}
                                             </div>
                                         </div>
-                                    </div>
+                                    </Link>
                                 )}
                                 
                                 {/* Dealership Info */}
