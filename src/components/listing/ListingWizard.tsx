@@ -1287,8 +1287,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             }`}
                                     >
                                         {formData.badgeTier === 'FREE' && <span className="absolute top-2 right-2 text-[10px] bg-primary text-black font-bold px-2 py-0.5 rounded-full">Selected</span>}
-                                        <p className="text-white font-bold text-sm mb-1">Free</p>
-                                        <p className="text-2xl font-black text-white mb-3">£0</p>
+                                        <p className="text-white font-bold text-sm mb-1">Basic</p>
+                                        <p className="text-2xl font-black text-white mb-3">£1</p>
                                         <ul className="space-y-1.5 text-xs text-gray-400">
                                             <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Standard listing</li>
                                             <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Offer range system</li>
@@ -1309,7 +1309,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         <p className="text-blue-400 font-bold text-sm mb-1 flex items-center gap-1"><Shield size={14} /> Standard</p>
                                         <p className="text-2xl font-black text-white mb-3">£10</p>
                                         <ul className="space-y-1.5 text-xs text-gray-400">
-                                            <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Everything in Free</li>
+                                            <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Everything in Basic</li>
                                             <li className="flex items-center gap-1.5"><BadgeCheck size={12} className="text-blue-400" /> VIN Report badge</li>
                                             <li className="flex items-center gap-1.5"><BadgeCheck size={12} className="text-blue-400" /> Verified Seller badge</li>
                                             <li className="flex items-center gap-1.5 text-gray-600"><X size={12} /> No featured boost</li>
@@ -1437,7 +1437,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     )}
                                     <div className="flex items-center gap-2 mt-1">
                                         {formData.badgeTier === 'FREE' && (
-                                            <span className="text-xs bg-white/10 text-gray-400 px-2 py-0.5 rounded-md">Free Listing</span>
+                                            <span className="text-xs bg-white/10 text-gray-400 px-2 py-0.5 rounded-md">Basic — £1</span>
                                         )}
                                         {formData.badgeTier === 'STANDARD' && (
                                             <>

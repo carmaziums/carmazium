@@ -310,9 +310,9 @@ Respond ONLY in JSON:
                 response_format: { type: 'json_object' }
             });
 
-            const content = completion.choices[0]?.message?.content?.trim();
-            if (content) {
-                return JSON.parse(content);
+            const rawContent = completion.choices[0]?.message?.content;
+            if (typeof rawContent === 'string' && rawContent.trim().length > 0) {
+                return JSON.parse(rawContent.trim());
             }
         } catch (err) {
             this.logger.error('Failed to get AI refinement', err);
@@ -328,8 +328,8 @@ Respond ONLY in JSON:
     }
 
     private async calculateFallback(dto: EstimatePriceDto, count: number) {
-        // Zero-Shot Native AI Fallback
-        if (this.configService.get('OPENAI_API_KEY')) {
+        // Zero-Shot Native AI Fallback (Disabled per user request)
+        if (false && this.configService.get('OPENAI_API_KEY')) {
             const currentYear = new Date().getFullYear();
             const expectedMileage = Math.max(0, currentYear - dto.year) * 8000;
             const mileageDelta = (dto.mileage ?? 0) - expectedMileage;
@@ -366,9 +366,9 @@ Return ONLY valid JSON. No markdown, no explanation outside the JSON fields:
                     response_format: { type: 'json_object' }
                 });
                 
-                const content = completion.choices[0]?.message?.content?.trim();
-                if (content) {
-                    const aiFallback = JSON.parse(content);
+                const rawContent = completion.choices[0]?.message?.content;
+                if (typeof rawContent === 'string' && rawContent.trim().length > 0) {
+                    const aiFallback = JSON.parse(rawContent.trim());
                     
                     // Apply exact same damage multipliers to AI zero-shot output
                     const damageCount = dto.damageImageCount || 0;
