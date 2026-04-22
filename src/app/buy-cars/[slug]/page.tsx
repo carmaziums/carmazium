@@ -891,12 +891,6 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                             </div>
                         </div>
 
-                        {listing.sellerId && (
-                            <div className="bg-slate-800/50 backdrop-blur-md rounded-xl border border-white/10 p-6 mt-6">
-                                <h4 className="text-white font-bold mb-4">About the Seller</h4>
-                                <SellerBadge score={0} sellerUserId={listing.sellerId} size="lg" showLabel />
-                            </div>
-                        )}
                     </div>
                     </div>
                 </div>
