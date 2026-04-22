@@ -55,7 +55,10 @@ export default function DealerInventoryPage() {
 
     async function publishListing(id: string) {
         try {
-            await apiClient.patch(`/listings/${id}/status`, { status: 'ACTIVE' });
+            await apiClient(`/listings/${id}/status`, { 
+                method: 'PATCH',
+                body: JSON.stringify({ status: 'ACTIVE' })
+            });
             // Refresh listings
             fetchListings(searchQuery);
         } catch (err) {
