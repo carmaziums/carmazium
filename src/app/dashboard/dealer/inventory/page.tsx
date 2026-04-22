@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import {
     Car, Search, Filter, PlusCircle, MoreVertical,
-    Loader2, Upload, TrendingUp, BarChart3, ShieldCheck
+    Loader2, Upload, TrendingUp, BarChart3, ShieldCheck, Trash2
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
@@ -30,6 +30,14 @@ export default function DealerInventoryPage() {
     const [searchQuery, setSearchQuery] = React.useState("")
     const [statusFilter, setStatusFilter] = React.useState("ALL")
     const [isBulkImportOpen, setIsBulkImportOpen] = React.useState(false)
+    const [activeDropdown, setActiveDropdown] = React.useState<string | null>(null)
+
+    // Close dropdown when clicking outside
+    React.useEffect(() => {
+        const handleClickOutside = () => setActiveDropdown(null)
+        document.addEventListener('click', handleClickOutside)
+        return () => document.removeEventListener('click', handleClickOutside)
+    }, [])
 
     React.useEffect(() => {
         if (!authLoading && user) {
@@ -64,6 +72,17 @@ export default function DealerInventoryPage() {
         } catch (err) {
             console.error('Failed to publish listing:', err);
             alert('Failed to publish listing. Please try again.');
+        }
+    }
+
+    async function deleteListing(id: string) {
+        if (!window.confirm("Are you sure you want to delete this listing?")) return;
+        try {
+            await apiClient(`/listings/${id}`, { method: 'DELETE' });
+            fetchListings(searchQuery);
+        } catch (err) {
+            console.error('Failed to delete listing:', err);
+            alert('Failed to delete listing. Please try again.');
         }
     }
 
@@ -240,9 +259,33 @@ export default function DealerInventoryPage() {
                                                                 <BarChart3 size={16} />
                                                             </Button>
                                                         </Link>
-                                                        <Button variant="ghost" size="sm" className="bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/5">
-                                                            <MoreVertical size={16} />
-                                                        </Button>
+                                                        <div className="relative inline-block text-left" onClick={(e) => e.stopPropagation()}>
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="sm" 
+                                                                className="bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/5"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setActiveDropdown(activeDropdown === listing.id ? null : listing.id);
+                                                                }}
+                                                            >
+                                                                <MoreVertical size={16} />
+                                                            </Button>
+                                                            {activeDropdown === listing.id && (
+                                                                <div className="absolute right-0 top-full mt-2 w-36 bg-slate-800 border border-white/10 rounded-lg shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
+                                                                    <button 
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            deleteListing(listing.id);
+                                                                            setActiveDropdown(null);
+                                                                        }}
+                                                                        className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2 font-medium transition-colors"
+                                                                    >
+                                                                        <Trash2 size={14} /> Delete
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </td>
                                             </tr>
