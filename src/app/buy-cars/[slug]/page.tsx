@@ -574,7 +574,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                                                             </>
                                                         )}
                                                     </div>
-                                                    <SellerBadge score={0} sellerUserId={listing.sellerId} size="sm" showLabel />
+                                                    {listing.sellerId && <SellerBadge score={0} sellerUserId={listing.sellerId} size="sm" showLabel />}
                                                 </div>
                                             </div>
                                         </Link>
@@ -800,7 +800,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                                                         </>
                                                     )}
                                                 </div>
-                                                <SellerBadge score={0} sellerUserId={listing.sellerId} size="sm" showLabel />
+                                                {listing.sellerId && <SellerBadge score={0} sellerUserId={listing.sellerId} size="sm" showLabel />}
                                             </div>
                                         </div>
                                     </Link>
