@@ -240,16 +240,17 @@ export function CarCard({
                 )}
 
                 <div className="mt-auto">
-                    <Link href={href} className="block w-full">
-                        <Button
-                            className={`w-full shadow-lg text-white ${badgeTier === 'PREMIUM' ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 border-none' : ''}`}
-                            variant="default"
-                            size="sm"
-                            shape="default"
-                        >
+                    <Button
+                        asChild
+                        className={`w-full shadow-lg text-white ${badgeTier === 'PREMIUM' ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 border-none' : ''}`}
+                        variant="default"
+                        size="sm"
+                        shape="default"
+                    >
+                        <Link href={href} className="block w-full text-center">
                             View Details
-                        </Button>
-                    </Link>
+                        </Link>
+                    </Button>
                 </div>
             </div>
         </motion.div>
