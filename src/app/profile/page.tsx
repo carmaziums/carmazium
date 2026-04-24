@@ -4,6 +4,7 @@ import * as React from "react"
 import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/Button"
 import { Shield, Car, Wrench, CreditCard, Loader2, CheckCircle2, User } from "lucide-react"
+import { supabase } from "@/lib/supabase"
 
 export default function ProfilePage() {
     const { profile, refreshProfile, loading: authLoading } = useAuth()
@@ -36,7 +37,7 @@ export default function ProfilePage() {
         setDealerLoading(true)
         setSuccess(null)
         try {
-            const { data: { session } } = await (window as any).supabase.auth.getSession()
+            const { data: { session } } = await supabase.auth.getSession()
             const response = await fetch(`${API_URL}/users/dealer-profile`, {
                 method: 'PATCH',
                 headers: {
@@ -63,7 +64,7 @@ export default function ProfilePage() {
         setLoading(true)
         setSuccess(null)
         try {
-            const { data: { session } } = await (window as any).supabase.auth.getSession()
+            const { data: { session } } = await supabase.auth.getSession()
             const response = await fetch(`${API_URL}/users/elevate`, {
                 method: 'POST',
                 headers: {
