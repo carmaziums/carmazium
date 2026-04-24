@@ -18,6 +18,7 @@ import { SellerBadge } from "@/components/ui/SellerBadge"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 import { EnquireModal } from "@/components/listing/EnquireModal"
 import { getListingBySlug, makeOffer, getMyOfferForListing, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, formatPrice, type Listing, type LatestOffer } from "@/lib/listingApi"
+import { createChatRoom } from "@/lib/chatApi"
 import { useRouter } from "next/navigation"
 
 // ─── Offer Status Chip ───────────────────────────────────────────────────────
@@ -241,8 +242,37 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
     const [isWatchlisted, setIsWatchlisted] = React.useState(false)
     const [watchlistLoading, setWatchlistLoading] = React.useState(false)
     const [shareToast, setShareToast] = React.useState(false)
+    const [enquiring, setEnquiring] = React.useState(false)
 
     const router = useRouter()
+
+    const handleEnquire = async () => {
+        if (!user) {
+            router.push('/auth/login?redirect=' + encodeURIComponent(`/vehicle/${listing?.id}`))
+            return
+        }
+
+        if (listing?.sellerId && user.id === listing.sellerId) {
+            alert("This is your own listing.")
+            return
+        }
+
+        if (!listing?.sellerId) {
+            alert("Unable to contact the seller for this listing.")
+            return
+        }
+
+        try {
+            setEnquiring(true)
+            const room = await createChatRoom(listing.sellerId, listing.id)
+            router.push(`/dashboard/buyer/messages?room=${room.id}`)
+        } catch (err: any) {
+            console.error('Failed to create chat room:', err)
+            alert(err.message || 'Failed to start enquiry. Please try again.')
+        } finally {
+            setEnquiring(false)
+        }
+    }
 
     // Fetch listing by slug/id
     React.useEffect(() => {
@@ -443,17 +473,11 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                 
                                 <Button
                                     variant="outline"
-                                    onClick={() => {
-                                        if (listing.seller?.dealerProfile) {
-                                            setShowEnquireModal(true)
-                                        } else {
-                                            // Fallback for private sellers (e.g. Chat)
-                                            alert("Direct messaging for private sellers is coming soon!")
-                                        }
-                                    }}
+                                    onClick={handleEnquire}
+                                    disabled={enquiring}
                                     className="w-full py-6 text-[15px] font-black uppercase bg-transparent hover:bg-slate-700 border-white/10 text-white rounded-xl gap-2"
                                 >
-                                    <MessageCircle size={18} /> ENQUIRE NOW
+                                    {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2" />Starting Chat...</> : <><MessageCircle size={18} /> ENQUIRE NOW</>}
                                 </Button>
                             </>
                         )}
@@ -1093,16 +1117,11 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                             </Button>
                                             <Button
                                                 variant="outline"
-                                                onClick={() => {
-                                                    if (listing.seller?.dealerProfile) {
-                                                        setShowEnquireModal(true)
-                                                    } else {
-                                                        alert("Direct messaging for private sellers is coming soon!")
-                                                    }
-                                                }}
+                                                onClick={handleEnquire}
+                                                disabled={enquiring}
                                                 className="w-full py-6 text-lg border-white/20 text-white hover:bg-white/10 gap-2"
                                             >
-                                                <MessageCircle size={18} /> Enquire Now
+                                                {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2 inline" /> Starting Chat...</> : <><MessageCircle size={18} /> Enquire Now</>}
                                             </Button>
                                         </>
                                     )}
