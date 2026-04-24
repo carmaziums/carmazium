@@ -84,12 +84,43 @@ async function getSellerProfile(userId: string): Promise<SellerData | null> {
 
 async function getSellerListings(userId: string): Promise<{ data: Listing[]; total: number }> {
     try {
+        // Fetch up to 6 listings for the grid display
         const res = await fetch(`${API_BASE}/sellers/${userId}/listings?limit=6`, { next: { revalidate: 60 } })
         if (!res.ok) return { data: [], total: 0 }
         const json = await res.json()
-        return { data: json.data ?? [], total: json.total ?? 0 }
+        // API may return pagination.total or just total at root level
+        const total =
+            json.pagination?.total ??
+            json.total ??
+            (Array.isArray(json.data) ? json.data.length : 0)
+        return { data: json.data ?? [], total }
     } catch {
         return { data: [], total: 0 }
+    }
+}
+
+/** Fetch the true total count of ALL active listings for this seller */
+async function getSellerActiveCount(userId: string): Promise<number> {
+    try {
+        // limit=1 is enough — we only care about pagination.total
+        const res = await fetch(`${API_BASE}/sellers/${userId}/listings?limit=1&status=ACTIVE`, { next: { revalidate: 60 } })
+        if (!res.ok) return 0
+        const json = await res.json()
+        return json.pagination?.total ?? json.total ?? 0
+    } catch {
+        return 0
+    }
+}
+
+/** Fetch the count of SOLD listings for this seller */
+async function getSellerSoldCount(userId: string): Promise<number> {
+    try {
+        const res = await fetch(`${API_BASE}/sellers/${userId}/listings?limit=1&status=SOLD`, { next: { revalidate: 60 } })
+        if (!res.ok) return 0
+        const json = await res.json()
+        return json.pagination?.total ?? json.total ?? 0
+    } catch {
+        return 0
     }
 }
 
@@ -158,18 +189,24 @@ function timeAgo(dateStr: string) {
 
 export default async function SellerProfilePage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
-    const [sellerData, listingsResult, reviewsResult] = await Promise.all([
+    const [sellerData, listingsResult, reviewsResult, activeListingCount, soldCount] = await Promise.all([
         getSellerProfile(id),
         getSellerListings(id),
         getSellerProfile(id).then((s) =>
             s ? getSellerReviews(s.profile.id) : { data: [], total: 0 }
         ),
+        getSellerActiveCount(id),
+        getSellerSoldCount(id),
     ])
 
     if (!sellerData) notFound()
 
     const { profile, user, reviewCount, averageRating } = sellerData
-    const { data: listings, total: totalListings } = listingsResult
+    // Use the live active count from the listings endpoint, fallback to DB field
+    const { data: listings, total: listingsPageTotal } = listingsResult
+    const totalListings = activeListingCount || listingsPageTotal || profile.totalListings
+    // Use live sold count, fallback to DB field
+    const totalSales = soldCount || profile.totalSales
     const { data: reviews, total: totalReviews } = reviewsResult
 
     const tier = getTier(profile.reliabilityScore)
@@ -246,7 +283,7 @@ export default async function SellerProfilePage({ params }: { params: Promise<{ 
                             <h2 className="mb-5 text-xs font-bold uppercase tracking-widest text-gray-500">Seller Stats</h2>
                             <ul className="space-y-4">
                                 <StatRow icon={<Car size={15} className="text-primary" />} label="Active Listings" value={totalListings} />
-                                <StatRow icon={<TrendingUp size={15} className="text-emerald-400" />} label="Total Sales" value={profile.totalSales} />
+                                <StatRow icon={<TrendingUp size={15} className="text-emerald-400" />} label="Total Sales" value={totalSales} />
                                 <StatRow
                                     icon={<MessageCircle size={15} className="text-blue-400" />}
                                     label="Response Rate"

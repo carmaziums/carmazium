@@ -99,13 +99,14 @@ function OfferModal({
     onSuccess: (offer: LatestOffer) => void,
 }) {
     const askingPrice = Number(listing.price)
+    const minAllowedOffer = Math.floor(askingPrice * 0.7)
 
     const [offerAmount, setOfferAmount] = React.useState(Math.round(askingPrice * 0.9))
     const [message, setMessage] = React.useState("")
     const [loading, setLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
 
-    const isInvalid = offerAmount <= 0
+    const isInvalid = offerAmount < minAllowedOffer
 
     const handleSubmit = async () => {
         if (isInvalid) return
@@ -169,10 +170,16 @@ function OfferModal({
                                 type="number"
                                 value={offerAmount}
                                 step={100}
+                                min={minAllowedOffer}
                                 onChange={(e) => setOfferAmount(Number(e.target.value))}
                                 className="bg-slate-900/50 border-white/10 text-white pl-8 focus:border-primary"
                             />
                         </div>
+                        {offerAmount < minAllowedOffer && (
+                            <p className="text-red-400 text-xs mt-2">
+                                Offer must be at least £{minAllowedOffer.toLocaleString('en-GB')} (70% of asking price).
+                            </p>
+                        )}
                     </div>
                 </div>
 

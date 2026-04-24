@@ -40,21 +40,16 @@ export class OffersService {
             throw new ForbiddenException('You cannot make an offer on your own listing.');
         }
 
-        // Validate offer amount against price range
-        const min = listing.priceMin !== null ? Number(listing.priceMin) : null;
-        const max = listing.priceMax !== null ? Number(listing.priceMax) : null;
+        // Remove strict priceMin/priceMax validation to prevent leaking seller's hidden bounds
+        // Instead, the only restriction is that the offer must be at least 70% of the asking price
+        const askingPrice = Number(listing.price);
+        const minAllowedOffer = Math.floor(askingPrice * 0.7);
 
         const buyerMax = dto.amountMax ?? dto.amount;
-        const buyerMin = dto.amountMin ?? dto.amount;
-
-        if (min !== null && buyerMax < min) {
+        
+        if (buyerMax < minAllowedOffer) {
             throw new BadRequestException(
-                `Offer must be at least £${min.toLocaleString('en-GB')} (the seller's minimum).`,
-            );
-        }
-        if (max !== null && buyerMin > max) {
-            throw new BadRequestException(
-                `Offer cannot exceed £${max.toLocaleString('en-GB')} (the seller's maximum).`,
+                `Offer must be at least £${minAllowedOffer.toLocaleString('en-GB')} (70% of the asking price).`,
             );
         }
 

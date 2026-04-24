@@ -37,11 +37,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const response = await apiClient<{ success: boolean; data: UserProfile }>('/users/me');
             setProfile(response.data);
         } catch (error: any) {
+            // AUTH_REDIRECT: apiClient is already redirecting to login — swallow silently
+            if (error.message === 'AUTH_REDIRECT') {
+                setProfile(null);
+                return;
+            }
             console.error('Error fetching profile:', error);
-            setProfile(null); // Explicitly set to null on failure
+            setProfile(null);
 
-            // If it's not a 401 (which is handled by apiClient), 
-            // the user might not be synced with the backend yet
             if (error.message && !error.message.includes('Unauthorized')) {
                 console.warn('Profile fetch failed - user may need to sync with backend');
             }
@@ -59,7 +62,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     body: JSON.stringify({ token }),
                 });
             } catch (err: any) {
-                console.warn('Session bridge failed:', err?.message);
+                // AUTH_REDIRECT: swallow silently — redirect is already in progress
+                if (err?.message !== 'AUTH_REDIRECT') {
+                    console.warn('Session bridge failed:', err?.message);
+                }
                 // Profile fetch via Bearer token may still work — continue
             }
             await fetchProfile();
