@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/Button"
-import { Shield, Car, Wrench, CreditCard, Loader2, CheckCircle2 } from "lucide-react"
+import { Shield, Car, Wrench, CreditCard, Loader2, CheckCircle2, User } from "lucide-react"
 
 export default function ProfilePage() {
     const { profile, refreshProfile, loading: authLoading } = useAuth()
@@ -87,9 +87,9 @@ export default function ProfilePage() {
     if (authLoading) return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="animate-spin text-primary" /></div>
 
     const availableRoles = [
+        { id: 'BUYER', icon: User, label: 'Buyer', sub: 'For purchasing and browsing cars' },
+        { id: 'SELLER', icon: Car, label: 'Seller', sub: 'For private individuals selling cars' },
         { id: 'DEALER', icon: Shield, label: 'Dealer', sub: 'For car dealerships and businesses' },
-        { id: 'CONTRACTOR', icon: Wrench, label: 'Contractor', sub: 'For inspectors and drivers' },
-        { id: 'FINANCE_PARTNER', icon: CreditCard, label: 'Finance Partner', sub: 'For lending institutions' },
     ].filter(r => r.id !== profile?.role)
 
     return (
