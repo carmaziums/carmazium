@@ -603,7 +603,10 @@ export class ListingsService {
                 where,
                 skip,
                 take: limit,
-                orderBy: { createdAt: 'desc' },
+                orderBy: [
+                    { offers: { _count: 'desc' } },
+                    { createdAt: 'desc' }
+                ],
             }),
             this.prisma.listing.count({ where }),
         ]);
