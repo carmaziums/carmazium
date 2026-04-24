@@ -41,6 +41,7 @@ interface CarCardProps {
     sellerScore?: number
     isFeatured?: boolean
     badgeTier?: string | null
+    status?: string | null
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -48,7 +49,7 @@ interface CarCardProps {
 export function CarCard({
     title, price, priceMin, priceMax, image, href = "#",
     year, mileage, fuelType, bodyType,
-    sellerId, sellerScore, isFeatured = false, badgeTier
+    sellerId, sellerScore, isFeatured = false, badgeTier, status
 }: CarCardProps) {
     const ref = useRef<HTMLDivElement>(null)
 
@@ -143,10 +144,27 @@ export function CarCard({
                             alt={title}
                             fill
                             sizes="(max-width: 768px) 90vw, (max-width: 1200px) 45vw, 300px"
-                            className="object-contain drop-shadow-2xl transition-transform duration-500 group-hover:scale-105 group-hover:-rotate-1"
+                            className={`object-contain drop-shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:-rotate-1 ${status === 'SOLD' ? 'opacity-30 grayscale' : ''}`}
                         />
                     </Link>
                 </motion.div>
+
+                {/* SOLD Stamp Overlay */}
+                {status === 'SOLD' && (
+                    <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+                        <div className="relative">
+                            <span
+                                className="block text-4xl font-black uppercase tracking-widest text-red-500 drop-shadow-[0_0_12px_rgba(239,68,68,0.8)] rotate-[-20deg] select-none"
+                                style={{
+                                    textShadow: '0 0 20px rgba(239,68,68,0.6)',
+                                    WebkitTextStroke: '2px rgba(239,68,68,0.4)',
+                                }}
+                            >
+                                SOLD
+                            </span>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <div

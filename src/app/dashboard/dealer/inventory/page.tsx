@@ -194,13 +194,20 @@ export default function DealerInventoryPage() {
                                                     <div className="flex items-center gap-5">
                                                         <div className="w-20 h-14 bg-black/40 rounded-xl overflow-hidden border border-white/10 flex-shrink-0 group-hover:scale-105 transition-transform duration-500 shadow-2xl relative">
                                                             {listing.images?.[0] ? (
-                                                                <img src={listing.images[0]} alt="" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                                                                <img src={listing.images[0]} alt="" className={`w-full h-full object-cover transition-opacity ${listing.status === 'SOLD' ? 'opacity-40' : 'opacity-80 group-hover:opacity-100'}`} />
                                                             ) : (
                                                                 <div className="w-full h-full flex items-center justify-center text-gray-700">
                                                                     <Car size={20} />
                                                                 </div>
                                                             )}
                                                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                            {listing.status === 'SOLD' && (
+                                                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                                    <span className="bg-red-600/90 text-white text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rotate-[-20deg] shadow-lg border border-red-400/40">
+                                                                        SOLD
+                                                                    </span>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                         <div>
                                                             <p className="font-black text-white text-base tracking-tight group-hover:text-primary transition-colors">{listing.title}</p>
