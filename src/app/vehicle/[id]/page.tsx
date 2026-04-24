@@ -1092,13 +1092,17 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                                         : 'Make an Offer'}
                                             </Button>
                                             <Button
-                                                asChild
                                                 variant="outline"
-                                                className="w-full py-6 text-lg border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/50 gap-2"
+                                                onClick={() => {
+                                                    if (listing.seller?.dealerProfile) {
+                                                        setShowEnquireModal(true)
+                                                    } else {
+                                                        alert("Direct messaging for private sellers is coming soon!")
+                                                    }
+                                                }}
+                                                className="w-full py-6 text-lg border-white/20 text-white hover:bg-white/10 gap-2"
                                             >
-                                                <Link href={`/checkout?listing_id=${listing.slug}&mode=deposit`}>
-                                                    <CreditCard size={18} /> Secure Purchase
-                                                </Link>
+                                                <MessageCircle size={18} /> Enquire Now
                                             </Button>
                                         </>
                                     )}
