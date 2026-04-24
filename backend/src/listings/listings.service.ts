@@ -240,7 +240,7 @@ export class ListingsService {
             sortBy, search,
             page = 1, limit = 20,
         } = filterDto;
-        const where: any = { deletedAt: null, status: 'ACTIVE' };
+        const where: any = { deletedAt: null, status: { in: ['ACTIVE', 'SOLD'] } };
 
         // ─── Price range ────────────────────────────────────────────────────
         if (minPrice !== undefined || maxPrice !== undefined) {
@@ -306,14 +306,15 @@ export class ListingsService {
         }
 
         // ─── Sort ────────────────────────────────────────────────────────────
-        // Featured listings always appear first (regardless of sort), then the selected sort.
-        let orderBy: any[] = [{ isFeatured: 'desc' }, { createdAt: 'desc' }];
-        if (sortBy === 'price_asc') orderBy = [{ isFeatured: 'desc' }, { price: 'asc' }];
-        else if (sortBy === 'price_desc') orderBy = [{ isFeatured: 'desc' }, { price: 'desc' }];
-        else if (sortBy === 'mileage_asc') orderBy = [{ isFeatured: 'desc' }, { mileage: 'asc' }];
-        else if (sortBy === 'mileage_desc') orderBy = [{ isFeatured: 'desc' }, { mileage: 'desc' }];
-        else if (sortBy === 'year_desc') orderBy = [{ isFeatured: 'desc' }, { year: 'desc' }];
-        else if (sortBy === 'year_asc') orderBy = [{ isFeatured: 'desc' }, { year: 'asc' }];
+        // Active listings always appear before SOLD ones (status: 'asc' puts ACTIVE before SOLD).
+        // Featured listings appear first, then the selected sort.
+        let orderBy: any[] = [{ status: 'asc' }, { isFeatured: 'desc' }, { createdAt: 'desc' }];
+        if (sortBy === 'price_asc') orderBy = [{ status: 'asc' }, { isFeatured: 'desc' }, { price: 'asc' }];
+        else if (sortBy === 'price_desc') orderBy = [{ status: 'asc' }, { isFeatured: 'desc' }, { price: 'desc' }];
+        else if (sortBy === 'mileage_asc') orderBy = [{ status: 'asc' }, { isFeatured: 'desc' }, { mileage: 'asc' }];
+        else if (sortBy === 'mileage_desc') orderBy = [{ status: 'asc' }, { isFeatured: 'desc' }, { mileage: 'desc' }];
+        else if (sortBy === 'year_desc') orderBy = [{ status: 'asc' }, { isFeatured: 'desc' }, { year: 'desc' }];
+        else if (sortBy === 'year_asc') orderBy = [{ status: 'asc' }, { isFeatured: 'desc' }, { year: 'asc' }];
 
         const skip = (page - 1) * limit;
 
