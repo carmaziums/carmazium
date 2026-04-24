@@ -387,6 +387,16 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                         <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
                             <Clock size={12} /> Listed on {new Date(listing.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </p>
+                        {/* Last offer made — visible to public & seller viewers */}
+                        {latestOffer && offerViewerRole !== 'buyer' && (
+                            <p className="text-xs text-amber-400/80 mt-1.5 flex items-center gap-1">
+                                <Tag size={12} />
+                                Last offer: <strong className="text-amber-300">£{Number(latestOffer.amount).toLocaleString('en-GB')}</strong>
+                                <span className="text-gray-500 ml-1">
+                                    · {new Date(latestOffer.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                </span>
+                            </p>
+                        )}
                     </div>
 
                     {/* Offer Status */}
@@ -678,11 +688,25 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                     src={images[activeImage]}
                                     alt={listing.title}
                                     fill
-                                    className="object-cover"
+                                    className={`object-cover transition-all duration-300 ${listing.status === 'SOLD' ? 'opacity-50 grayscale' : ''}`}
                                 />
                                 <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-sm text-white px-3 py-1 rounded-md text-sm font-medium flex items-center gap-2">
                                     <Camera size={16} /> {activeImage + 1}/{images.length}
                                 </div>
+                                {/* SOLD watermark on the main gallery */}
+                                {listing.status === 'SOLD' && (
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                        <span
+                                            className="text-[80px] md:text-[110px] font-black uppercase tracking-widest text-red-500/80 select-none rotate-[-15deg] drop-shadow-2xl"
+                                            style={{
+                                                textShadow: '0 0 40px rgba(239,68,68,0.5)',
+                                                WebkitTextStroke: '3px rgba(239,68,68,0.3)',
+                                            }}
+                                        >
+                                            SOLD
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                             <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
                                 {images.map((img, idx) => (

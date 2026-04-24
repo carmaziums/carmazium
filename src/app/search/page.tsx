@@ -820,6 +820,7 @@ function SearchPageContent() {
                                         bodyType={listing.bodyType ?? undefined}
                                         isFeatured={true}
                                         badgeTier={listing.badgeTier}
+                                        status={listing.status}
                                     />
                                 ))}
                             </div>
@@ -846,6 +847,7 @@ function SearchPageContent() {
                                     bodyType={listing.bodyType ?? undefined}
                                     isFeatured={listing.isFeatured}
                                     badgeTier={listing.badgeTier}
+                                    status={listing.status}
                                 />
                             ))}
                         </div>
