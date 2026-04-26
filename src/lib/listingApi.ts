@@ -265,7 +265,7 @@ export async function getListings(filters?: ListingFilters): Promise<ListingsRes
 export async function getListingBySlug(slug: string): Promise<Listing> {
     const data = await apiClient<{ data: Listing }>(`/listings/${slug}`, {
         method: 'GET',
-        next: { revalidate: 60 },
+        cache: 'no-store',
     })
     return data.data
 }
