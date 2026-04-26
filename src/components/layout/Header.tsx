@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
+import { getPendingOffersCount } from "@/lib/listingApi"
 
 
 const navLinks: { name: string; href: string; prefetch?: boolean }[] = [
@@ -28,6 +29,19 @@ export function Header() {
     const router = useRouter()
     const { user, profile, loading, signOut } = useAuth()
     const { unreadCount } = useChat()
+    const [pendingOffersCount, setPendingOffersCount] = React.useState(0)
+
+    // Fetch pending offer count so it appears in the header badge alongside messages
+    React.useEffect(() => {
+        if (user) {
+            getPendingOffersCount().then(setPendingOffersCount).catch(() => {})
+        } else {
+            setPendingOffersCount(0)
+        }
+    }, [user])
+
+    // Total = unread messages + pending offers
+    const totalNotifications = unreadCount + pendingOffersCount
 
 
 
@@ -113,18 +127,18 @@ export function Header() {
                             >
                                 <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold relative">
                                     {profile?.firstName?.[0] || user.email?.[0].toUpperCase()}
-                                    {unreadCount > 0 && (
-                                        <div className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full border border-slate-900 shadow-sm flex items-center justify-center lg:hidden">
-                                            {unreadCount > 99 ? '!' : unreadCount}
+                                    {totalNotifications > 0 && (
+                                        <div className="absolute -top-1 -right-1 bg-primary text-white text-[10px] font-black w-4 h-4 rounded-full border border-slate-900 shadow-sm flex items-center justify-center lg:hidden">
+                                            {totalNotifications > 99 ? '99+' : totalNotifications}
                                         </div>
                                     )}
                                 </div>
                                 <span className="hidden lg:block font-semibold text-sm">
                                     {profile?.firstName || 'Account'}
                                 </span>
-                                {unreadCount > 0 && (
-                                    <span className="hidden lg:flex items-center justify-center bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm whitespace-nowrap">
-                                        +{unreadCount} new message{unreadCount !== 1 ? 's' : ''}
+                                {totalNotifications > 0 && (
+                                    <span className="hidden lg:flex items-center justify-center bg-primary text-white text-xs font-black px-2.5 py-0.5 rounded-full shadow-sm whitespace-nowrap tracking-tight">
+                                        +{totalNotifications}
                                     </span>
                                 )}
                                 <ChevronDown size={14} className={cn("opacity-60 group-hover:opacity-100 transition-transform", isUserMenuOpen && "rotate-180")} />

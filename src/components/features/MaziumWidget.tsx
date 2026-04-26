@@ -55,10 +55,12 @@ export function MaziumWidget() {
         },
     ])
     const [input, setInput] = React.useState("")
-    const [showGreeting, setShowGreeting] = React.useState(true)
+    // showGreeting: null = not yet determined (SSR-safe), true = visible, false = hidden
+    const [showGreeting, setShowGreeting] = React.useState<boolean | null>(null)
     const [isThinking, setIsThinking] = React.useState(false)
     const [quickReplies, setQuickReplies] = React.useState<QuickReply[]>([])
     const messagesEndRef = React.useRef<HTMLDivElement>(null)
+    const greetingIntervalRef = React.useRef<NodeJS.Timeout | null>(null)
 
     // Set daily dynamic quick replies on mount
     React.useEffect(() => {
@@ -78,12 +80,21 @@ export function MaziumWidget() {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
     }, [messages, isThinking])
 
-    // Toggle greeting bubble every 20s (show for 20s, hide for 20s)
+    // On mount: respect permanent dismissal stored in localStorage
     React.useEffect(() => {
-        const interval = setInterval(() => {
-            setShowGreeting((prev) => !prev)
+        const dismissed = localStorage.getItem('mazium_greeting_dismissed') === 'true'
+        if (dismissed) {
+            setShowGreeting(false)
+            return
+        }
+        // Show greeting initially, then toggle every 20s (show 20s, hide 20s)
+        setShowGreeting(true)
+        greetingIntervalRef.current = setInterval(() => {
+            setShowGreeting(prev => !prev)
         }, 20000)
-        return () => clearInterval(interval)
+        return () => {
+            if (greetingIntervalRef.current) clearInterval(greetingIntervalRef.current)
+        }
     }, [])
 
     const handleToggle = () => {
@@ -346,7 +357,7 @@ export function MaziumWidget() {
 
             {/* Greeting Pop-up */}
             <AnimatePresence>
-                {!isOpen && showGreeting && (
+                {!isOpen && showGreeting === true && (
                     <motion.div
                         initial={{ opacity: 0, y: 10, scale: 0.9 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -377,6 +388,9 @@ export function MaziumWidget() {
                         <button
                             onClick={(e) => {
                                 e.stopPropagation()
+                                // Permanently dismiss — never show again
+                                localStorage.setItem('mazium_greeting_dismissed', 'true')
+                                if (greetingIntervalRef.current) clearInterval(greetingIntervalRef.current)
                                 setShowGreeting(false)
                             }}
                             className="ml-2 p-1 hover:bg-primary/10 rounded-full transition-colors"
