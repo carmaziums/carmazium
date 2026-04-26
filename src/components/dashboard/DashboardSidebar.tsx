@@ -30,6 +30,7 @@ import {
 import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
 import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
+import { getPendingOffersCount } from "@/lib/listingApi"
 
 interface SidebarProps {
     role: "buyer" | "seller" | "provider" | "finance" | "insurance" | "dealer" | "admin"
@@ -44,6 +45,14 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
     const { unreadCount } = useChat()
     const router = useRouter()
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
+    const [pendingOffersCount, setPendingOffersCount] = React.useState(0)
+
+    // Fetch pending offers count for sellers so the Offers tab badge is always visible
+    React.useEffect(() => {
+        if (role === 'seller' && user) {
+            getPendingOffersCount().then(setPendingOffersCount).catch(() => {})
+        }
+    }, [role, user])
 
     const handleSignOut = async (e: React.MouseEvent) => {
         e.preventDefault()
@@ -75,7 +84,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
         seller: [
             { href: "/dashboard/seller", label: "Overview", icon: LayoutDashboard },
             { href: "/dashboard/seller/listings", label: "Listings", icon: Car },
-            { href: "/dashboard/seller/offers", label: "Offers", icon: Tag },
+            { href: "/dashboard/seller/offers", label: "Offers", icon: Tag, badge: pendingOffersCount },
             { href: "/dashboard/seller/performance", label: "Stats", icon: BarChart3 },
             { href: "/dashboard/seller/messages", label: "Messages", icon: MessageSquare, badge: unreadCount },
             { href: "/dashboard/seller/earnings", label: "Earnings", icon: DollarSign },
@@ -139,9 +148,19 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                                 <div className="relative">
                                     <Icon size={20} />
                                     {link.badge && link.badge > 0 && (
-                                        <span className="absolute -top-2 -right-2 bg-primary text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                                            {link.badge > 9 ? '9+' : link.badge}
-                                        </span>
+                                        link.href.includes('/offers') ? (
+                                            // Pulsating dot for offers
+                                            <span className="absolute -top-2 -right-2">
+                                                <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-primary opacity-60" />
+                                                <span className="relative inline-flex items-center justify-center rounded-full bg-primary text-white text-[8px] font-black w-4 h-4">
+                                                    {link.badge > 9 ? '9+' : link.badge}
+                                                </span>
+                                            </span>
+                                        ) : (
+                                            <span className="absolute -top-2 -right-2 bg-primary text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                                                {link.badge > 9 ? '9+' : link.badge}
+                                            </span>
+                                        )
                                     )}
                                 </div>
                                 <span className={`text-[10px] mt-1 font-medium ${isActive ? 'text-primary' : ''}`}>
@@ -262,15 +281,25 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                                         : "text-gray-400 hover:bg-white/5 hover:text-white"
                                         }`}
                                 >
-                                    <div className="flex items-center gap-3">
+                                 <div className="flex items-center gap-3 relative">
                                         <Icon size={18} />
                                         {link.label}
                                     </div>
                                     {link.badge && link.badge > 0 && (
-                                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isActive ? 'bg-white/20' : 'bg-primary/20 text-primary'
-                                            }`}>
-                                            {link.badge}
-                                        </span>
+                                        link.href.includes('/offers') ? (
+                                            // Pulsating dot for offers tab
+                                            <span className="relative flex items-center justify-center">
+                                                <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-primary opacity-60" />
+                                                <span className="relative inline-flex items-center justify-center rounded-full bg-primary text-white text-[9px] font-black min-w-[18px] h-[18px] px-1">
+                                                    {link.badge > 9 ? '9+' : link.badge}
+                                                </span>
+                                            </span>
+                                        ) : (
+                                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isActive ? 'bg-white/20' : 'bg-primary/20 text-primary'
+                                                }`}>
+                                                {link.badge}
+                                            </span>
+                                        )
                                     )}
                                 </Link>
                             )

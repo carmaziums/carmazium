@@ -109,4 +109,18 @@ export class OffersController {
         const offer = await this.offersService.respondToOffer(id, user.id, dto.status);
         return new StandardResponse(offer);
     }
+
+    /**
+     * Seller: Get total pending offers count across all their listings
+     * Used to drive the badge/dot on the Offers sidebar tab
+     */
+    @Get('pending-count')
+    @ApiOperation({ summary: 'Get pending offers count', description: 'Returns the total number of PENDING offers across all listings owned by the seller.' })
+    @ApiResponse({ status: 200, description: 'Pending offers count' })
+    async getPendingOffersCount(
+        @CurrentUser() user: any,
+    ): Promise<StandardResponse<{ count: number }>> {
+        const count = await this.offersService.getPendingOffersCount(user.id);
+        return new StandardResponse({ count });
+    }
 }
