@@ -826,3 +826,19 @@ export async function respondToOffer(
     })
     return data.data
 }
+
+/**
+ * Seller: Get total count of pending offers across all their listings.
+ * Used to drive the pulsating badge on the Offers sidebar tab.
+ */
+export async function getPendingOffersCount(): Promise<number> {
+    try {
+        const data = await apiClient<{ data: { count: number } }>('/offers/pending-count', {
+            method: 'GET',
+            cache: 'no-store',
+        })
+        return data.data?.count ?? 0
+    } catch {
+        return 0
+    }
+}

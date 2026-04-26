@@ -124,13 +124,31 @@ export default function SellerOffersPage() {
     const [expanded, setExpanded] = React.useState<Set<string>>(new Set())
     const [toast, setToast] = React.useState<string | null>(null)
 
-    // Load all seller's listings
+    // Load all seller's listings, then eagerly fetch all offers
     React.useEffect(() => {
         const load = async () => {
             try {
                 setLoadingListings(true)
                 const res = await getMyListings({ limit: 50 })
-                setListings(res.data)
+                const loadedListings = res.data
+                setListings(loadedListings)
+
+                // Eagerly expand all and fetch offers so pending counts are visible immediately
+                const allIds = new Set(loadedListings.map(l => l.id))
+                setExpanded(allIds)
+                const offerResults = await Promise.allSettled(
+                    loadedListings.map(async (listing) => {
+                        const data = await getOffersForListing(listing.id)
+                        return { id: listing.id, data }
+                    })
+                )
+                const offersMap: Record<string, Offer[]> = {}
+                offerResults.forEach(result => {
+                    if (result.status === 'fulfilled') {
+                        offersMap[result.value.id] = result.value.data
+                    }
+                })
+                setOffers(offersMap)
             } catch (err: any) {
                 setError(err.message || "Failed to load listings")
             } finally {
@@ -174,8 +192,12 @@ export default function SellerOffersPage() {
             // Refresh offers for this listing
             const updated = await getOffersForListing(listingId)
             setOffers(prev => ({ ...prev, [listingId]: updated }))
-            setToast(status === 'ACCEPTED' ? '✓ Offer accepted! Buyer has been notified.' : 'Offer declined.')
-            setTimeout(() => setToast(null), 4000)
+            if (status === 'ACCEPTED') {
+                setToast('✓ Offer accepted! The listing stays active — mark it as Sold from your Listings page when the deal is complete.')
+            } else {
+                setToast('Offer declined.')
+            }
+            setTimeout(() => setToast(null), 6000)
         } catch (err: any) {
             setToast(`Error: ${err.message}`)
             setTimeout(() => setToast(null), 4000)

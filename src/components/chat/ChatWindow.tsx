@@ -27,6 +27,8 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     const messagesContainerRef = React.useRef<HTMLDivElement>(null)
     const typingTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
     const isInitialLoad = React.useRef(true)
+    // Track the optimistic temp message ID so we can replace it when the server confirms
+    const optimisticTempId = React.useRef<string | null>(null)
 
     /** Returns true if the user is within 150px of the bottom of the chat */
     const isNearBottom = () => {
@@ -71,13 +73,25 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
         // If the user has scrolled up to read older messages, don't interrupt them
     }, [messages])
 
-    // Subscribe to new messages (with deduplication)
+    // Subscribe to new messages (with deduplication and optimistic replacement)
     React.useEffect(() => {
         const unsubscribe = onNewMessage((message) => {
             if (message.chatRoomId === room.id) {
                 setMessages(prev => {
                     // Deduplicate: skip if message with same ID already exists
                     if (prev.some(m => m.id === message.id)) return prev
+                    // If this is the server-confirmed version of our optimistic message,
+                    // replace the temp entry instead of appending a duplicate
+                    const tempId = optimisticTempId.current
+                    if (tempId && message.senderId !== room.otherUser.id) {
+                        const idx = prev.findIndex(m => m.id === tempId)
+                        if (idx !== -1) {
+                            optimisticTempId.current = null
+                            const next = [...prev]
+                            next[idx] = message
+                            return next
+                        }
+                    }
                     return [...prev, message]
                 })
                 // Mark as read immediately
@@ -106,12 +120,11 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
 
         try {
             if (isConnected) {
-                // Use WebSocket for real-time
-                sendMessage(room.id, content)
-                
-                // Optimistically add message to UI since backend WS does not echo to sender
+                // Optimistically add message to UI before sending
+                const tempId = `temp-${Date.now()}`
+                optimisticTempId.current = tempId
                 const tempMsg: ChatMessage = {
-                    id: `temp-${Date.now()}`,
+                    id: tempId,
                     chatRoomId: room.id,
                     senderId: 'optimistic',
                     content,
@@ -121,6 +134,9 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                     sender: { id: 'optimistic', firstName: 'Me', lastName: '', profileImage: null }
                 }
                 setMessages(prev => [...prev, tempMsg])
+                // Use WebSocket for real-time — server will echo back via message:new
+                // which the subscription handler above will use to replace the temp entry
+                sendMessage(room.id, content)
             } else {
                 // Fallback to HTTP
                 const message = await sendChatMessage(room.id, content)
@@ -128,7 +144,13 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
             }
         } catch (error) {
             console.error("Failed to send message:", error)
-            setNewMessage(content)  // Restore message on error
+            // Remove the optimistic message and restore input on error
+            const tempId = optimisticTempId.current
+            if (tempId) {
+                setMessages(prev => prev.filter(m => m.id !== tempId))
+                optimisticTempId.current = null
+            }
+            setNewMessage(content)
         } finally {
             setSending(false)
         }
@@ -199,11 +221,19 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                         </p>
                     )}
                 </div>
-                {!isConnected && (
-                    <span className="text-xs text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded">
-                        Offline
+                {/* Connection status indicator */}
+                <div className="flex items-center gap-1.5">
+                    <div className={`w-2 h-2 rounded-full transition-colors ${
+                        isConnected
+                            ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]'
+                            : 'bg-yellow-500'
+                    }`} />
+                    <span className={`text-xs ${
+                        isConnected ? 'text-emerald-400' : 'text-yellow-500'
+                    }`}>
+                        {isConnected ? 'Online' : 'Offline'}
                     </span>
-                )}
+                </div>
             </div>
 
             {/* Messages */}

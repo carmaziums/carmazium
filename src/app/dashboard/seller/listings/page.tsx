@@ -56,11 +56,12 @@ export default function MyListingsPage() {
     }
 
     const handleMarkSold = async (id: string) => {
-        if (!confirm('Mark this listing as Sold?')) return
+        if (!confirm('Mark this listing as Sold? The listing will be closed and no longer appear to buyers.')) return
         try {
             setUpdatingStatus(id)
             await updateListingStatus(id, 'SOLD')
-            setListings(prev => prev.filter(l => l.id !== id))
+            // Update the listing status in-place so it stays visible in the table as SOLD
+            setListings(prev => prev.map(l => l.id === id ? { ...l, status: 'SOLD' as const } : l))
         } catch (err: any) {
             alert('Failed to update status: ' + err.message)
         } finally {

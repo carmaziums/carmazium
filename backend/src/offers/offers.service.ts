@@ -199,12 +199,9 @@ export class OffersService {
                 },
                 data: { status: 'REJECTED' },
             });
-
-            // Mark the listing as SOLD — deal is closed
-            await this.prisma.listing.update({
-                where: { id: offer.listingId },
-                data: { status: 'SOLD' },
-            });
+            // NOTE: The listing intentionally stays ACTIVE after an offer is accepted.
+            // The seller must manually mark it as SOLD from their inventory.
+            // This allows relisting if the buyer doesn't follow through.
         }
 
         // Notify the buyer
@@ -223,13 +220,13 @@ export class OffersService {
         // Push real-time notification to the buyer
         this.notificationsGateway.sendNotification(offer.buyerId, buyerNotification);
 
-        // If accepted, also notify the seller that the deal is closed
+        // If accepted, also notify the seller that an offer was accepted (listing stays active)
         if (prismaStatus === 'ACCEPTED' && offer.listing.sellerId) {
             const sellerNotification = await this.notificationsService.create({
                 userId: offer.listing.sellerId,
                 type: 'DEAL_CLOSED',
-                title: '✅ Deal Closed',
-                message: `You accepted an offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${offer.listing.title}". The listing has been marked as sold.`,
+                title: '✅ Offer Accepted',
+                message: `You accepted an offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${offer.listing.title}". The listing remains active — mark it as Sold from your inventory when the deal is complete.`,
                 data: { listingId: offer.listingId, offerId: offer.id },
             });
             this.notificationsGateway.sendNotification(offer.listing.sellerId, sellerNotification);
@@ -257,5 +254,28 @@ export class OffersService {
      */
     async getMyOfferForListing(listingId: string, buyerId: string): Promise<Offer | null> {
         return this.getLatestOfferForBuyer(listingId, buyerId);
+    }
+
+    // ─── Seller: Count total pending offers across all their listings ─────────
+
+    /**
+     * Returns the total number of PENDING offers across all listings owned by the seller.
+     * Used to show a badge/dot on the Offers tab in the seller dashboard sidebar.
+     */
+    async getPendingOffersCount(sellerId: string): Promise<number> {
+        // First find all listing IDs owned by this seller
+        const listings = await this.prisma.listing.findMany({
+            where: { sellerId, deletedAt: null },
+            select: { id: true },
+        });
+        const listingIds = listings.map(l => l.id);
+        if (listingIds.length === 0) return 0;
+
+        return this.prisma.offer.count({
+            where: {
+                listingId: { in: listingIds },
+                status: 'PENDING',
+            },
+        });
     }
 }
