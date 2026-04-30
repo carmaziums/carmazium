@@ -6,7 +6,7 @@ import Image from "next/image"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { getMyListings, deleteListing, boostListing, updateListingStatus, formatPrice, type Listing } from "@/lib/listingApi"
 import { useAuth } from "@/context/AuthContext"
-import { PlusCircle, Loader2, Trash2, Eye, Zap, X, AlertCircle, CheckCircle2, MoreVertical } from "lucide-react"
+import { PlusCircle, Loader2, Trash2, Eye, Zap, X, AlertCircle, CheckCircle2, MoreVertical, Pencil } from "lucide-react"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 
 export default function MyListingsPage() {
@@ -248,7 +248,10 @@ export default function MyListingsPage() {
 
                                                                 {/* Dropdown menu */}
                                                                 <div className="absolute right-0 top-full mt-1 w-36 bg-slate-800 border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20 flex flex-col py-1">
-                                                                    <Link href={`/vehicle/${listing.slug}`} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
+                                                                    <Link href={`/dashboard/seller/add-listing?editId=${listing.id}&editSlug=${listing.slug}`} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
+                                                                        <Pencil size={14} /> Edit
+                                                                    </Link>
+                                                                    <Link href={`/buy-cars/${listing.slug}`} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
                                                                         <Eye size={14} /> View
                                                                     </Link>
                                                                     {listing.status !== 'SOLD' && (

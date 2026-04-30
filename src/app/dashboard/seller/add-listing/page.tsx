@@ -3,6 +3,7 @@
 import * as React from "react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { ListingWizard } from "@/components/listing/ListingWizard"
+import { Loader2 } from "lucide-react"
 
 export default function DashboardAddListingPage() {
     return (
@@ -13,7 +14,13 @@ export default function DashboardAddListingPage() {
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8 pb-12">
                 <DashboardSidebar role="seller" />
                 <main className="flex-1 bg-slate-900/40 rounded-2xl border border-white/5 overflow-hidden">
-                    <ListingWizard isDashboard={true} />
+                    <React.Suspense fallback={
+                        <div className="p-10 flex items-center justify-center">
+                            <Loader2 className="animate-spin text-primary" size={32} />
+                        </div>
+                    }>
+                        <ListingWizard isDashboard={true} />
+                    </React.Suspense>
                 </main>
             </div>
         </div>

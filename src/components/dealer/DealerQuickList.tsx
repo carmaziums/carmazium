@@ -123,16 +123,17 @@ export function DealerQuickList() {
         try {
             const result = await aiGenerateDescription({
                 make: dvlaData.make,
-                model: dvlaData.model,
-                year: dvlaData.year,
+                model: model || dvlaData.model,
+                year: dvlaData.year ? String(dvlaData.year) : undefined,
                 fuelType: dvlaData.fuelType,
-                colour: dvlaData.colour,
-                engineSize: dvlaData.engineSize,
+                color: dvlaData.colour || dvlaData.primaryColour || dvlaData.color,
+                engineSize: dvlaData.engineSize ? String(dvlaData.engineSize) : undefined,
                 mileage,
                 condition,
             })
             setDescription(result.text)
-        } catch {
+        } catch (error) {
+            console.error("AI Generation failed:", error)
             // Silently fail — dealer can write manually
         } finally {
             setIsGeneratingDesc(false)
