@@ -2,6 +2,8 @@
 
 import * as React from "react"
 import { getMyOffers, type Offer } from "@/lib/listingApi"
+import { createChatRoom } from "@/lib/chatApi"
+import { useRouter } from "next/navigation"
 import { Loader2, AlertTriangle, Tag, Clock, CheckCircle, XCircle, Eye } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -57,6 +59,8 @@ export default function BuyerOffersPage() {
     const [offers, setOffers] = React.useState<Offer[]>([])
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
+    const [startingChat, setStartingChat] = React.useState<string | null>(null)
+    const router = useRouter()
 
     React.useEffect(() => {
         const load = async () => {
@@ -75,6 +79,23 @@ export default function BuyerOffersPage() {
             load()
         }
     }, [user, authLoading])
+
+    const handleMessageSeller = async (sellerId: string | undefined, listingId: string) => {
+        if (!sellerId) {
+            alert("Seller information is currently unavailable.");
+            return;
+        }
+        setStartingChat(listingId);
+        try {
+            const room = await createChatRoom(sellerId, listingId);
+            router.push(`/dashboard/buyer/messages?room=${room.id}`);
+        } catch (err: any) {
+            console.error("Failed to start chat:", err);
+            alert(err.message || "Failed to start chat.");
+        } finally {
+            setStartingChat(null);
+        }
+    }
 
     if (authLoading) {
         return (
@@ -207,9 +228,14 @@ export default function BuyerOffersPage() {
                                                                     Edit
                                                                 </Link>
                                                             )}
-                                                            <Link href={`/dashboard/buyer/messages`} className="inline-flex items-center justify-center h-10 px-3 text-sm font-bold text-blue-400 hover:text-white hover:bg-white/10 rounded-xl transition-all hover:scale-105" title="Message Seller">
-                                                                Message
-                                                            </Link>
+                                                            <button 
+                                                                onClick={() => handleMessageSeller(offer.listing.sellerId, offer.listing.id)}
+                                                                disabled={startingChat === offer.listing.id}
+                                                                className="inline-flex items-center justify-center h-10 px-3 text-sm font-bold text-blue-400 hover:text-white hover:bg-white/10 rounded-xl transition-all hover:scale-105 disabled:opacity-50" 
+                                                                title="Message Seller"
+                                                            >
+                                                                {startingChat === offer.listing.id ? <Loader2 size={16} className="animate-spin" /> : "Message"}
+                                                            </button>
                                                             <Link href={`/vehicle/${slug}`} className="inline-flex items-center justify-center w-10 h-10 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]" title="View Listing">
                                                                 <Eye size={18} />
                                                             </Link>

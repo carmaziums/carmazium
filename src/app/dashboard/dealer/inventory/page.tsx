@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import {
     Car, Search, Filter, PlusCircle, MoreVertical,
-    Loader2, Upload, TrendingUp, ShieldCheck, Trash2, Eye
+    Loader2, Upload, TrendingUp, ShieldCheck, Trash2, Eye, RefreshCcw
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
@@ -78,6 +78,20 @@ export default function DealerInventoryPage() {
         } catch (err) {
             console.error('Failed to delete listing:', err);
             alert('Failed to delete listing. Please try again.');
+        }
+    }
+
+    async function handleMarkSold(id: string) {
+        if (!window.confirm("Mark this vehicle as Sold? It will remain in your inventory but be hidden from search.")) return;
+        try {
+            await apiClient(`/listings/${id}/status`, { 
+                method: 'PATCH',
+                body: JSON.stringify({ status: 'SOLD' })
+            });
+            fetchListings(searchQuery);
+        } catch (err) {
+            console.error('Failed to mark sold:', err);
+            alert('Failed to update listing status.');
         }
     }
 
@@ -276,11 +290,23 @@ export default function DealerInventoryPage() {
                                                                         onClick={(e) => {
                                                                             e.preventDefault();
                                                                             e.stopPropagation();
-                                                                            // handle mark sold if needed, or redirect
+                                                                            handleMarkSold(listing.id);
                                                                         }} 
                                                                         className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-emerald-500/10 hover:text-emerald-400 transition-colors w-full text-left"
                                                                     >
                                                                         <CheckCircle2 size={14} /> Mark Sold
+                                                                    </button>
+                                                                )}
+                                                                {listing.status === 'SOLD' && (
+                                                                    <button 
+                                                                        onClick={(e) => {
+                                                                            e.preventDefault();
+                                                                            e.stopPropagation();
+                                                                            publishListing(listing.id);
+                                                                        }} 
+                                                                        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-blue-500/10 hover:text-blue-400 transition-colors w-full text-left"
+                                                                    >
+                                                                        <RefreshCcw size={14} /> Relist
                                                                     </button>
                                                                 )}
                                                                 <button 
