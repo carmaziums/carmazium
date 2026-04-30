@@ -28,6 +28,7 @@ export function DealerQuickList() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const editId = searchParams.get('editId')
+    const editSlug = searchParams.get('editSlug')
 
     // ─── State ────────────────────────────────────────────────────────────────
     const [vrm, setVrm] = React.useState("")
@@ -54,7 +55,7 @@ export function DealerQuickList() {
     React.useEffect(() => {
         if (!editId) return
         setEditLoading(true)
-        apiClient<{ data: any }>(`/listings/${editId}`)
+        apiClient<{ data: any }>(`/listings/${editSlug || editId}`)
             .then(res => {
                 const l = res.data
                 setVrm(l.vrm || '')

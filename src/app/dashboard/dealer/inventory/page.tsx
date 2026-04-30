@@ -282,7 +282,7 @@ export default function DealerInventoryPage() {
                                                             
                                                             {/* Dropdown menu */}
                                                             <div className="absolute right-0 top-full mt-1 w-36 bg-slate-800 border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20 flex flex-col py-1">
-                                                                <Link href={`/dashboard/dealer/add-listing?editId=${listing.id}`} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
+                                                                <Link href={`/dashboard/dealer/add-listing?editId=${listing.id}&editSlug=${listing.slug}`} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
                                                                     <Pencil size={14} /> Edit
                                                                 </Link>
                                                                 <Link href={`/buy-cars/${listing.slug}`} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
