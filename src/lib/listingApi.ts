@@ -749,6 +749,7 @@ export interface Offer extends LatestOffer {
         make: string | null
         model: string | null
         year: number | null
+        sellerId: string
     }
 }
 

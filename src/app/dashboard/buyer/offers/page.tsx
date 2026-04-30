@@ -229,12 +229,12 @@ export default function BuyerOffersPage() {
                                                                 </Link>
                                                             )}
                                                             <button 
-                                                                onClick={() => handleMessageSeller(offer.listing.sellerId, offer.listing.id)}
-                                                                disabled={startingChat === offer.listing.id}
+                                                                onClick={() => handleMessageSeller(offer.listing?.sellerId, offer.listing?.id || "")}
+                                                                disabled={startingChat === offer.listing?.id}
                                                                 className="inline-flex items-center justify-center h-10 px-3 text-sm font-bold text-blue-400 hover:text-white hover:bg-white/10 rounded-xl transition-all hover:scale-105 disabled:opacity-50" 
                                                                 title="Message Seller"
                                                             >
-                                                                {startingChat === offer.listing.id ? <Loader2 size={16} className="animate-spin" /> : "Message"}
+                                                                {startingChat === offer.listing?.id ? <Loader2 size={16} className="animate-spin" /> : "Message"}
                                                             </button>
                                                             <Link href={`/vehicle/${slug}`} className="inline-flex items-center justify-center w-10 h-10 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]" title="View Listing">
                                                                 <Eye size={18} />

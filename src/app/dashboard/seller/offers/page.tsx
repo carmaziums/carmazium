@@ -44,7 +44,10 @@ function formatGBP(val: string | number) {
 function OfferRow({
     offer,
     onRespond,
+    onMessage,
+    startingChat,
     responding,
+}: {
     offer: Offer
     onRespond: (id: string, status: 'ACCEPTED' | 'REJECTED') => void
     onMessage: (buyerId: string) => void
