@@ -8,11 +8,14 @@ import dynamic from "next/dynamic"
 const ChatWindow = dynamic(() => import("@/components/chat/ChatWindow").then(mod => mod.ChatWindow), { ssr: false })
 import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
+import { useSearchParams } from "next/navigation"
 import type { ChatRoom } from "@/lib/chatApi"
 
-export default function SellerMessagesPage() {
+function MessagesContent() {
     const { user, profile, loading } = useAuth()
-    const { refreshRooms } = useChat()
+    const { rooms, refreshRooms } = useChat()
+    const searchParams = useSearchParams()
+    const targetRoomId = searchParams.get("room")
     const [selectedRoom, setSelectedRoom] = React.useState<ChatRoom | null>(null)
 
     // Refresh on mount so new buyer-initiated rooms appear without needing a manual reload
@@ -21,6 +24,14 @@ export default function SellerMessagesPage() {
         refreshRooms()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user])
+
+    // Once rooms are loaded, auto-select the room specified via ?room= query param
+    React.useEffect(() => {
+        if (!targetRoomId || rooms.length === 0) return
+        if (selectedRoom?.id === targetRoomId) return
+        const match = rooms.find(r => r.id === targetRoomId)
+        if (match) setSelectedRoom(match)
+    }, [rooms, targetRoomId, selectedRoom])
 
     if (loading) {
         return (
@@ -73,5 +84,17 @@ export default function SellerMessagesPage() {
                 </main>
             </div>
         </div>
+    )
+}
+
+export default function SellerMessagesPage() {
+    return (
+        <React.Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+            </div>
+        }>
+            <MessagesContent />
+        </React.Suspense>
     )
 }
