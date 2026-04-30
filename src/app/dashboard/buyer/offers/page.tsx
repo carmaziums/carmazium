@@ -224,7 +224,7 @@ export default function BuyerOffersPage() {
                                                     <td className="px-6 py-5 text-right">
                                                         <div className="flex items-center justify-end gap-2">
                                                             {offer.status === 'PENDING' && (
-                                                                <Link href={`/vehicle/${slug}`} className="inline-flex items-center justify-center h-10 px-3 text-sm font-bold text-gray-300 hover:text-white hover:bg-white/10 rounded-xl transition-all hover:scale-105" title="Edit Offer">
+                                                                <Link href={`/buy-cars/${slug}?editOffer=true`} className="inline-flex items-center justify-center h-10 px-3 text-sm font-bold text-gray-300 hover:text-white hover:bg-white/10 rounded-xl transition-all hover:scale-105" title="Edit Offer">
                                                                     Edit
                                                                 </Link>
                                                             )}

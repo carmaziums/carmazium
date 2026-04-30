@@ -11,7 +11,7 @@ import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon
 import { getListingBySlug, makeOffer, getMyOfferForListing, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, type Listing, type LatestOffer, formatPrice } from "@/lib/listingApi"
 import { createChatRoom } from "@/lib/chatApi"
 import { useAuth } from "@/context/AuthContext"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { VehicleJsonLd } from "@/components/seo/JsonLd"
 import { Input } from "@/components/ui/Input"
 import { SellerBadge } from "@/components/ui/SellerBadge"
@@ -102,12 +102,13 @@ function OfferModal({
     const askingPrice = Number(listing.price)
     const minAllowedOffer = Math.floor(askingPrice * 0.7)
 
-    const [offerAmount, setOfferAmount] = React.useState(Math.round(askingPrice * 0.9))
+    const [offerAmountStr, setOfferAmountStr] = React.useState(String(Math.round(askingPrice * 0.9)))
+    const offerAmount = Number(offerAmountStr)
     const [message, setMessage] = React.useState("")
     const [loading, setLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
 
-    const isInvalid = offerAmount < minAllowedOffer
+    const isInvalid = !offerAmountStr || offerAmount < minAllowedOffer
 
     const handleSubmit = async () => {
         if (isInvalid) return
@@ -149,12 +150,13 @@ function OfferModal({
                     <div>
                         <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">£</span>
-                            <Input type="number" value={offerAmount} step={100}
+                            <Input type="number" value={offerAmountStr} step={100}
                                 min={minAllowedOffer}
-                                onChange={(e) => setOfferAmount(Number(e.target.value))}
+                                onChange={(e) => setOfferAmountStr(e.target.value)}
+                                placeholder="0"
                                 className="bg-slate-900/50 border-white/10 text-white pl-8 focus:border-primary" />
                         </div>
-                        {offerAmount < minAllowedOffer && (
+                        {offerAmountStr && offerAmount < minAllowedOffer && (
                             <p className="text-red-400 text-xs mt-2">
                                 Offer must be at least £{minAllowedOffer.toLocaleString('en-GB')} (70% of asking price).
                             </p>
@@ -192,6 +194,8 @@ function OfferModal({
 export default function VehicleDetailsPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = React.use(params)
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const isEditMode = searchParams.get('editOffer') === 'true'
     const { user } = useAuth()
     const [listing, setListing] = React.useState<Listing | null>(null)
     const [loading, setLoading] = React.useState(true)
@@ -200,12 +204,17 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
     const [isDescExpanded, setIsDescExpanded] = React.useState(false)
     const [enquiring, setEnquiring] = React.useState(false)
     const [showOfferModal, setShowOfferModal] = React.useState(false)
-    const [latestOffer, setLatestOffer] = React.useState<LatestOffer | null>(null)   // most recent offer on listing (any buyer) — public display
-    const [myOffer, setMyOffer] = React.useState<LatestOffer | null>(null)            // this user's own offer — drives button state
+    const [latestOffer, setLatestOffer] = React.useState<LatestOffer | null>(null)
+    const [myOffer, setMyOffer] = React.useState<LatestOffer | null>(null)
     const [offerSuccess, setOfferSuccess] = React.useState(false)
     const [isWatchlisted, setIsWatchlisted] = React.useState(false)
     const [watchlistLoading, setWatchlistLoading] = React.useState(false)
     const [shareToast, setShareToast] = React.useState(false)
+
+    // Auto-open offer modal if navigated with ?editOffer=true
+    React.useEffect(() => {
+        if (isEditMode) setShowOfferModal(true)
+    }, [isEditMode])
 
     // Removed useCompare since we pass context via query params
 
@@ -640,13 +649,15 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                                                 <Button
                                                     className="w-full py-6 text-lg shadow-neon"
                                                     onClick={() => setShowOfferModal(true)}
-                                                    disabled={offerViewerRole === 'buyer' && (myOffer?.status === 'PENDING' || myOffer?.status === 'ACCEPTED')}
+                                                    disabled={offerViewerRole === 'buyer' && (myOffer?.status === 'PENDING' || myOffer?.status === 'ACCEPTED') && !isEditMode}
                                                 >
-                                                    {offerViewerRole === 'buyer' && myOffer?.status === 'PENDING'
+                                                    {offerViewerRole === 'buyer' && myOffer?.status === 'PENDING' && !isEditMode
                                                         ? '⏳ Offer Pending...'
                                                         : offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'
                                                             ? '✓ Offer Accepted'
-                                                            : 'Make an Offer'}
+                                                            : offerViewerRole === 'buyer' && myOffer?.status === 'PENDING' && isEditMode
+                                                                ? 'Edit My Offer'
+                                                                : 'Make an Offer'}
                                                 </Button>
                                                 <Button variant="outline" className="w-full py-6 text-lg border-white/20 text-white hover:bg-white/10" onClick={handleEnquire} disabled={enquiring}>
                                                     {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2" />Starting Chat...</> : <><MessageCircle className="w-5 h-5 mr-2" />Enquire</>}
