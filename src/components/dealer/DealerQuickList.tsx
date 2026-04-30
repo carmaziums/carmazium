@@ -15,16 +15,19 @@ import {
     createListing, type CreateListingRequest,
     type BodyTypeValue, type EuroStandardValue, type VehicleTypeValue,
 } from "@/lib/listingApi"
+import { apiClient } from "@/lib/apiClient"
 import { dvlaLookup } from "@/lib/dvlaApi"
 import { aiGenerateDescription } from "@/lib/aiApi"
 import { useAuth } from "@/context/AuthContext"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function DealerQuickList() {
     const { user } = useAuth()
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const editId = searchParams.get('editId')
 
     // ─── State ────────────────────────────────────────────────────────────────
     const [vrm, setVrm] = React.useState("")
@@ -32,6 +35,7 @@ export function DealerQuickList() {
     const [dvlaError, setDvlaError] = React.useState<string | null>(null)
     const [dvlaData, setDvlaData] = React.useState<any>(null)
 
+    const [model, setModel] = React.useState("")
     const [price, setPrice] = React.useState("")
     const [mileage, setMileage] = React.useState("")
     const [location, setLocation] = React.useState("")
@@ -39,11 +43,52 @@ export function DealerQuickList() {
     const [description, setDescription] = React.useState("")
     const [images, setImages] = React.useState<string[]>([])
     const [condition, setCondition] = React.useState("")
+    const [editLoading, setEditLoading] = React.useState(false)
 
     const [isGeneratingDesc, setIsGeneratingDesc] = React.useState(false)
     const [isSubmitting, setIsSubmitting] = React.useState(false)
     const [submitError, setSubmitError] = React.useState<string | null>(null)
     const [publishAs, setPublishAs] = React.useState<"ACTIVE" | "DRAFT">("ACTIVE")
+
+    // ─── Load existing listing when editing ───────────────────────────────────
+    React.useEffect(() => {
+        if (!editId) return
+        setEditLoading(true)
+        apiClient<{ data: any }>(`/listings/${editId}`)
+            .then(res => {
+                const l = res.data
+                setVrm(l.vrm || '')
+                setModel(l.model || '')
+                setPrice(l.price ? String(l.price) : '')
+                setMileage(l.mileage ? String(l.mileage) : '')
+                setLocation(l.location || '')
+                setDescription(l.description || '')
+                setImages(l.images || [])
+                setCondition(l.condition || '')
+                setPublishAs(l.status === 'ACTIVE' ? 'ACTIVE' : 'DRAFT')
+                // Reconstruct dvlaData from listing fields so sections appear
+                setDvlaData({
+                    make: l.make,
+                    model: l.model,
+                    year: l.year,
+                    colour: l.color,
+                    fuelType: l.fuelType,
+                    engineSize: l.engineSize,
+                    motStatus: l.motStatus,
+                    taxStatus: l.taxStatus,
+                    euroStandard: l.euroStandard,
+                    co2Emissions: l.co2Emissions,
+                    motExpiryDate: l.motExpiryDate,
+                    taxDueDate: l.taxDueDate,
+                    monthOfFirstRegistration: l.monthOfFirstRegistration,
+                    wheelplan: l.wheelplan,
+                    typeApproval: l.typeApproval,
+                    markedForExport: l.markedForExport,
+                })
+            })
+            .catch(err => setDvlaError('Failed to load listing: ' + err.message))
+            .finally(() => setEditLoading(false))
+    }, [editId])
 
     // ─── DVLA Lookup ──────────────────────────────────────────────────────────
     const handleLookup = async () => {
@@ -55,6 +100,8 @@ export function DealerQuickList() {
         try {
             const r = await dvlaLookup(vrm.trim())
             setDvlaData(r)
+            // Pre-fill model if DVLA/MOT returned one
+            if (r.model) setModel(r.model)
 
             // Auto-fill mileage from latest MOT odometer if available
             if (r.motHistory?.length) {
@@ -123,6 +170,7 @@ export function DealerQuickList() {
 
         try {
             const priceNum = parseFloat(price)
+            const resolvedModel = model || dvlaData.model || ''
 
             // Infer ULEZ from DVLA data
             let ulez = false
@@ -132,8 +180,9 @@ export function DealerQuickList() {
                 ulez = true
             }
 
+            const titleParts = [dvlaData.make, resolvedModel, dvlaData.year].filter(Boolean)
             const payload: CreateListingRequest = {
-                title: `${dvlaData.make || ""} ${dvlaData.model || ""} ${dvlaData.year || ""}`.trim(),
+                title: titleParts.join(' ') || vrm,
                 price: priceNum,
                 priceMin: priceNum,
                 priceMax: priceNum,
@@ -146,7 +195,7 @@ export function DealerQuickList() {
                 badgeTier: "FREE",
                 vehicleType: "CAR" as VehicleTypeValue,
                 make: dvlaData.make || undefined,
-                model: dvlaData.model || undefined,
+                model: resolvedModel || undefined,
                 description: description || undefined,
                 fuelType: dvlaData.fuelType as any || undefined,
                 color: dvlaData.colour || undefined,
@@ -167,17 +216,30 @@ export function DealerQuickList() {
                 isImported: false,
             }
 
-            const response = await createListing(payload)
-            // Redirect to inventory after successful creation
+            if (editId) {
+                // PATCH existing listing
+                await apiClient(`/listings/${editId}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify(payload),
+                })
+            } else {
+                await createListing(payload)
+            }
             router.push("/dashboard/dealer/inventory")
         } catch (error: any) {
-            setSubmitError(error.message || "Failed to create listing.")
+            setSubmitError(error.message || "Failed to save listing.")
         } finally {
             setIsSubmitting(false)
         }
     }
 
     // ─── Render ───────────────────────────────────────────────────────────────
+    if (editLoading) return (
+        <div className="p-10 flex items-center justify-center">
+            <Loader2 className="animate-spin text-primary" size={32} />
+        </div>
+    )
+
     return (
         <div className="p-6 md:p-10 space-y-8">
             {/* Header */}
@@ -187,8 +249,12 @@ export function DealerQuickList() {
                         <Zap size={22} className="text-primary" />
                     </div>
                     <div>
-                        <h1 className="text-2xl md:text-3xl font-black font-heading text-white tracking-tight">Quick List</h1>
-                        <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">VRM → Auto-fill → Photos → Publish</p>
+                        <h1 className="text-2xl md:text-3xl font-black font-heading text-white tracking-tight">
+                            {editId ? 'Edit Listing' : 'Quick List'}
+                        </h1>
+                        <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">
+                            {editId ? 'Update vehicle details and save changes' : 'VRM → Auto-fill → Photos → Publish'}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -228,7 +294,7 @@ export function DealerQuickList() {
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-6 gap-y-3 text-sm">
                             {[
                                 { label: "Make", value: dvlaData.make },
-                                { label: "Model", value: dvlaData.model },
+                                { label: "Model", value: model || dvlaData.model },
                                 { label: "Year", value: dvlaData.year },
                                 { label: "Colour", value: dvlaData.colour || dvlaData.primaryColour },
                                 { label: "Fuel", value: dvlaData.fuelType },
@@ -242,6 +308,31 @@ export function DealerQuickList() {
                                 </div>
                             ))}
                         </div>
+                        {/* Manual model input when DVLA didn't return one */}
+                        {!dvlaData.model && (
+                            <div className="mt-4 pt-4 border-t border-white/5">
+                                <label className="text-xs font-bold uppercase tracking-widest text-amber-400 block mb-1.5 flex items-center gap-1">
+                                    <AlertTriangle size={12} /> Model not returned by DVLA — enter manually
+                                </label>
+                                <Input
+                                    placeholder="e.g. Octavia, Golf, 3 Series"
+                                    value={model}
+                                    onChange={e => setModel(e.target.value)}
+                                    className="bg-black border-amber-500/30 text-white h-10 focus:border-amber-400 max-w-xs placeholder:text-gray-600"
+                                />
+                            </div>
+                        )}
+                        {/* Allow editing model even when DVLA returned one */}
+                        {dvlaData.model && (
+                            <div className="mt-4 pt-4 border-t border-white/5">
+                                <label className="text-xs font-bold uppercase tracking-widest text-gray-500 block mb-1.5">Model (editable)</label>
+                                <Input
+                                    value={model}
+                                    onChange={e => setModel(e.target.value)}
+                                    className="bg-black border-white/10 text-white h-10 focus:border-primary max-w-xs placeholder:text-gray-600"
+                                />
+                            </div>
+                        )}
                     </div>
                 )}
             </section>
@@ -417,9 +508,9 @@ export function DealerQuickList() {
                             className="h-14 px-10 text-lg font-bold shadow-neon gap-2 disabled:opacity-40 w-full sm:w-auto"
                         >
                             {isSubmitting ? (
-                                <><Loader2 size={20} className="animate-spin" /> Creating...</>
+                                <><Loader2 size={20} className="animate-spin" /> {editId ? 'Saving...' : 'Creating...'}</>
                             ) : (
-                                <>{publishAs === "ACTIVE" ? "Publish Listing" : "Save as Draft"} <ArrowRight size={20} /></>
+                                <>{editId ? 'Save Changes' : publishAs === "ACTIVE" ? "Publish Listing" : "Save as Draft"} <ArrowRight size={20} /></>
                             )}
                         </Button>
                     </div>
