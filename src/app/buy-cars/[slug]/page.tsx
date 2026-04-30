@@ -884,10 +884,10 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                                             <Button
                                                 className="w-full py-6 text-lg shadow-neon"
                                                 onClick={() => setShowOfferModal(true)}
-                                                disabled={offerViewerRole === 'buyer' && (myOffer?.status === 'PENDING' || myOffer?.status === 'ACCEPTED')}
+                                                disabled={offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'}
                                             >
                                                 {offerViewerRole === 'buyer' && myOffer?.status === 'PENDING'
-                                                    ? '⏳ Offer Pending...'
+                                                    ? 'Edit My Offer'
                                                     : offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'
                                                         ? '✓ Offer Accepted'
                                                         : 'Make an Offer'}
