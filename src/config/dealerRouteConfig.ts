@@ -17,6 +17,7 @@ export interface DealerRoute {
     title: string
     subHeader: string
     icon: LucideIcon
+    hidden?: boolean
 }
 
 export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
@@ -62,7 +63,14 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         subHeader: "Direct bespoke communication",
         icon: MessageSquare 
     },
-
+    { 
+        href: "/dashboard/dealer/analytics", 
+        label: "Analytics", 
+        title: "Analytics",
+        subHeader: "Strategic market performance & predictive insights",
+        icon: BarChart3,
+        hidden: true
+    },
     { 
         href: "/dashboard/dealer/team", 
         label: "Team", 

@@ -108,7 +108,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             { href: "/dashboard/insurance/messages", label: "Messages", icon: MessageSquare, badge: unreadCount },
             { href: "/dashboard/insurance/settings", label: "Settings", icon: Settings },
         ],
-        dealer: DEALER_ROUTE_CONFIG.map(route => ({
+        dealer: DEALER_ROUTE_CONFIG.filter(r => !r.hidden).map(route => ({
             href: route.href,
             label: route.label,
             icon: route.icon,
