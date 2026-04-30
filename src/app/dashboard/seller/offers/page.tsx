@@ -7,6 +7,8 @@ import {
     Clock, ChevronRight, Car, MessageSquare,
 } from "lucide-react"
 import { getOffersForListing, getMyListings, respondToOffer, type Offer, type Listing } from "@/lib/listingApi"
+import { createChatRoom } from "@/lib/chatApi"
+import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
@@ -43,9 +45,10 @@ function OfferRow({
     offer,
     onRespond,
     responding,
-}: {
     offer: Offer
     onRespond: (id: string, status: 'ACCEPTED' | 'REJECTED') => void
+    onMessage: (buyerId: string) => void
+    startingChat: string | null
     responding: string | null
 }) {
     const buyer = offer.buyer
@@ -87,15 +90,15 @@ function OfferRow({
             {/* Accept / Reject (only for pending) */}
             {isPending && (
                 <div className="flex gap-2 shrink-0">
-                    <Link href="/dashboard/seller/messages">
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-blue-500/40 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500 gap-1"
-                        >
-                            <MessageSquare size={13} /> Message
-                        </Button>
-                    </Link>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-blue-500/40 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500 gap-1"
+                        onClick={() => onMessage(offer.buyerId)}
+                        disabled={startingChat === offer.buyerId}
+                    >
+                        {startingChat === offer.buyerId ? <Loader2 size={13} className="animate-spin" /> : <MessageSquare size={13} />} Message
+                    </Button>
                     <Button
                         size="sm"
                         variant="outline"
@@ -121,15 +124,15 @@ function OfferRow({
             {/* Relist (only for accepted) */}
             {offer.status === 'ACCEPTED' && (
                 <div className="flex gap-2 shrink-0">
-                    <Link href="/dashboard/seller/messages">
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-blue-500/40 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500 gap-1"
-                        >
-                            <MessageSquare size={13} /> Message
-                        </Button>
-                    </Link>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-blue-500/40 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500 gap-1"
+                        onClick={() => onMessage(offer.buyerId)}
+                        disabled={startingChat === offer.buyerId}
+                    >
+                        {startingChat === offer.buyerId ? <Loader2 size={13} className="animate-spin" /> : <MessageSquare size={13} />} Message
+                    </Button>
                     <Button
                         size="sm"
                         variant="outline"
@@ -159,8 +162,10 @@ export default function SellerOffersPage() {
     const [loadingOffers, setLoadingOffers] = React.useState<Record<string, boolean>>({})
     const [error, setError] = React.useState<string | null>(null)
     const [responding, setResponding] = React.useState<string | null>(null)
+    const [startingChat, setStartingChat] = React.useState<string | null>(null)
     const [expanded, setExpanded] = React.useState<Set<string>>(new Set())
     const [toast, setToast] = React.useState<string | null>(null)
+    const router = useRouter()
 
     // Load all seller's listings, then eagerly fetch all offers
     React.useEffect(() => {
@@ -241,6 +246,20 @@ export default function SellerOffersPage() {
             setTimeout(() => setToast(null), 4000)
         } finally {
             setResponding(null)
+        }
+    }
+
+    const handleMessageBuyer = async (buyerId: string, listingId: string) => {
+        setStartingChat(buyerId);
+        try {
+            const room = await createChatRoom(buyerId, listingId);
+            router.push(`/dashboard/seller/messages?room=${room.id}`);
+        } catch (err: any) {
+            console.error("Failed to start chat:", err);
+            setToast(`Error: ${err.message || "Failed to start chat"}`);
+            setTimeout(() => setToast(null), 4000);
+        } finally {
+            setStartingChat(null);
         }
     }
 
@@ -342,6 +361,8 @@ export default function SellerOffersPage() {
                                                                 key={offer.id}
                                                                 offer={offer}
                                                                 onRespond={(id, status) => handleRespond(id, listing.id, status)}
+                                                                onMessage={(buyerId) => handleMessageBuyer(buyerId, listing.id)}
+                                                                startingChat={startingChat}
                                                                 responding={responding}
                                                             />
                                                         ))}

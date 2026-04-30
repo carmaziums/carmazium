@@ -144,6 +144,7 @@ export class OffersService {
                         make: true,
                         model: true,
                         year: true,
+                        sellerId: true,
                     },
                 },
             },
