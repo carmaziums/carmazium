@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import {
     Car, Search, Filter, PlusCircle, MoreVertical,
-    Loader2, Upload, TrendingUp, BarChart3, ShieldCheck, Trash2
+    Loader2, Upload, TrendingUp, ShieldCheck, Trash2, Eye
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
@@ -32,12 +32,7 @@ export default function DealerInventoryPage() {
     const [isBulkImportOpen, setIsBulkImportOpen] = React.useState(false)
     const [activeDropdown, setActiveDropdown] = React.useState<string | null>(null)
 
-    // Close dropdown when clicking outside
-    React.useEffect(() => {
-        const handleClickOutside = () => setActiveDropdown(null)
-        document.addEventListener('click', handleClickOutside)
-        return () => document.removeEventListener('click', handleClickOutside)
-    }, [])
+
 
     React.useEffect(() => {
         if (!authLoading && user) {
@@ -261,37 +256,44 @@ export default function DealerInventoryPage() {
                                                                 <CheckCircle2 size={16} />
                                                             </Button>
                                                         )}
-                                                        <Link href={`/dashboard/dealer/inventory/${listing.id}`}>
-                                                            <Button variant="ghost" size="sm" className="bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/5">
-                                                                <BarChart3 size={16} />
-                                                            </Button>
-                                                        </Link>
-                                                        <div className="relative inline-block text-left" onClick={(e) => e.stopPropagation()}>
+
+                                                        <div className="relative group">
                                                             <Button 
                                                                 variant="ghost" 
                                                                 size="sm" 
                                                                 className="bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/5"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setActiveDropdown(activeDropdown === listing.id ? null : listing.id);
-                                                                }}
                                                             >
                                                                 <MoreVertical size={16} />
                                                             </Button>
-                                                            {activeDropdown === listing.id && (
-                                                                <div className="absolute right-0 top-full mt-2 w-36 bg-slate-800 border border-white/10 rounded-lg shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
+                                                            
+                                                            {/* Dropdown menu */}
+                                                            <div className="absolute right-0 top-full mt-1 w-36 bg-slate-800 border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20 flex flex-col py-1">
+                                                                <Link href={`/vehicle/${listing.slug}`} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
+                                                                    <Eye size={14} /> View
+                                                                </Link>
+                                                                {listing.status !== 'SOLD' && (
                                                                     <button 
                                                                         onClick={(e) => {
+                                                                            e.preventDefault();
                                                                             e.stopPropagation();
-                                                                            deleteListing(listing.id);
-                                                                            setActiveDropdown(null);
-                                                                        }}
-                                                                        className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2 font-medium transition-colors"
+                                                                            // handle mark sold if needed, or redirect
+                                                                        }} 
+                                                                        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-emerald-500/10 hover:text-emerald-400 transition-colors w-full text-left"
                                                                     >
-                                                                        <Trash2 size={14} /> Delete
+                                                                        <CheckCircle2 size={14} /> Mark Sold
                                                                     </button>
-                                                                </div>
-                                                            )}
+                                                                )}
+                                                                <button 
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        e.stopPropagation();
+                                                                        deleteListing(listing.id);
+                                                                    }}
+                                                                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-red-500/10 hover:text-red-400 transition-colors w-full text-left"
+                                                                >
+                                                                    <Trash2 size={14} /> Delete
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </td>
