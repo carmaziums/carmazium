@@ -649,15 +649,13 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                                                 <Button
                                                     className="w-full py-6 text-lg shadow-neon"
                                                     onClick={() => setShowOfferModal(true)}
-                                                    disabled={offerViewerRole === 'buyer' && (myOffer?.status === 'PENDING' || myOffer?.status === 'ACCEPTED') && !isEditMode}
+                                                    disabled={offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'}
                                                 >
-                                                    {offerViewerRole === 'buyer' && myOffer?.status === 'PENDING' && !isEditMode
-                                                        ? '⏳ Offer Pending...'
+                                                    {offerViewerRole === 'buyer' && myOffer?.status === 'PENDING'
+                                                        ? 'Edit My Offer'
                                                         : offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'
                                                             ? '✓ Offer Accepted'
-                                                            : offerViewerRole === 'buyer' && myOffer?.status === 'PENDING' && isEditMode
-                                                                ? 'Edit My Offer'
-                                                                : 'Make an Offer'}
+                                                            : 'Make an Offer'}
                                                 </Button>
                                                 <Button variant="outline" className="w-full py-6 text-lg border-white/20 text-white hover:bg-white/10" onClick={handleEnquire} disabled={enquiring}>
                                                     {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2" />Starting Chat...</> : <><MessageCircle className="w-5 h-5 mr-2" />Enquire</>}
