@@ -23,7 +23,8 @@ import { aiGenerateDescription } from "@/lib/aiApi"
 import { estimateListingPrice, type EstimatePriceResponse } from "@/lib/pricingApi"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { useAuth } from "@/context/AuthContext"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
+import { apiClient } from "@/lib/apiClient"
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -236,6 +237,65 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const [valuation, setValuation] = React.useState<EstimatePriceResponse | null>(null)
     const [isValuating, setIsValuating] = React.useState(false)
 
+    // Edit mode — detect from URL params
+    const searchParams = useSearchParams()
+    const editId = searchParams.get('editId')
+    const editSlug = searchParams.get('editSlug')
+    const [editLoading, setEditLoading] = React.useState(false)
+
+    // Pre-fill form when editing an existing listing
+    React.useEffect(() => {
+        if (!editId) return
+        setEditLoading(true)
+        apiClient<{ data: any }>(`/listings/${editSlug || editId}`)
+            .then(res => {
+                const l = res.data
+                setFormData(prev => ({
+                    ...prev,
+                    vrm: l.vrm || '',
+                    make: l.make || '',
+                    model: l.model || '',
+                    year: l.year ? String(l.year) : '',
+                    mileage: l.mileage ? String(l.mileage) : '',
+                    fuelType: l.fuelType || '',
+                    transmission: l.transmission || '',
+                    color: l.color || '',
+                    bodyType: l.bodyType || '',
+                    doors: l.doors ? String(l.doors) : '',
+                    seats: l.seats ? String(l.seats) : '',
+                    engineSize: l.engineSize ? String(l.engineSize) : '',
+                    bhp: l.bhp ? String(l.bhp) : '',
+                    features: l.features || [],
+                    description: l.description || '',
+                    title: l.title || '',
+                    condition: l.condition || '',
+                    location: l.location || '',
+                    motStatus: l.motStatus || '',
+                    taxStatus: l.taxStatus || '',
+                    motExpiryDate: l.motExpiryDate || '',
+                    taxDueDate: l.taxDueDate || '',
+                    monthOfFirstRegistration: l.monthOfFirstRegistration || '',
+                    euroStandard: l.euroStandard || '',
+                    co2Emissions: l.co2Emissions ? String(l.co2Emissions) : '',
+                    ulezCompliant: l.ulezCompliant ?? null,
+                    markedForExport: l.markedForExport ?? null,
+                    wheelplan: l.wheelplan || '',
+                    typeApproval: l.typeApproval || '',
+                    images: l.images || [],
+                    priceMin: l.price ? String(l.price) : '',
+                    priceMax: l.price ? String(l.price) : '',
+                    status: l.status === 'ACTIVE' ? 'ACTIVE' : 'DRAFT',
+                    badgeTier: l.badgeTier || 'FREE',
+                }))
+                // Jump straight to step 1 (already pre-filled)
+                setSellingMethod('list')
+                setCurrentStep(1)
+            })
+            .catch(err => console.error('Failed to load listing for edit:', err))
+            .finally(() => setEditLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [editId])
+
     React.useEffect(() => {
         if (!formData.make || !formData.model || !formData.year || !formData.mileage) {
             setValuation(null)
@@ -387,11 +447,20 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 condition: formData.condition as any || undefined,
             }
 
-            const response = await createListing(payload)
-            setFormData(INITIAL_FORM)
-            setCurrentStep(1)
-            setSellingMethod(null)
-            router.push(`/buy-cars/${response.data.slug}`)
+            if (editId) {
+                // Update existing listing
+                await apiClient(`/listings/${editId}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify(payload),
+                })
+                router.push('/dashboard/seller/listings')
+            } else {
+                const response = await createListing(payload)
+                setFormData(INITIAL_FORM)
+                setCurrentStep(1)
+                setSellingMethod(null)
+                router.push(`/buy-cars/${response.data.slug}`)
+            }
         } catch (error: any) {
             console.error("Submission error:", error)
             if (error.message?.includes("Unauthorized") || error.message?.includes("401")) {
