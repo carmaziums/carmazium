@@ -62,13 +62,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         subHeader: "Direct bespoke communication",
         icon: MessageSquare 
     },
-    { 
-        href: "/dashboard/dealer/analytics", 
-        label: "Analytics", 
-        title: "Analytics",
-        subHeader: "Strategic market performance & predictive insights",
-        icon: BarChart3 
-    },
+
     { 
         href: "/dashboard/dealer/team", 
         label: "Team", 

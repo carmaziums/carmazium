@@ -201,9 +201,19 @@ export default function BuyerOffersPage() {
 
                                                     {/* Actions */}
                                                     <td className="px-6 py-5 text-right">
-                                                        <Link href={`/vehicle/${slug}`} className="inline-flex items-center justify-center w-10 h-10 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]" title="View Listing">
-                                                            <Eye size={18} />
-                                                        </Link>
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            {offer.status === 'PENDING' && (
+                                                                <Link href={`/vehicle/${slug}`} className="inline-flex items-center justify-center h-10 px-3 text-sm font-bold text-gray-300 hover:text-white hover:bg-white/10 rounded-xl transition-all hover:scale-105" title="Edit Offer">
+                                                                    Edit
+                                                                </Link>
+                                                            )}
+                                                            <Link href={`/dashboard/buyer/messages`} className="inline-flex items-center justify-center h-10 px-3 text-sm font-bold text-blue-400 hover:text-white hover:bg-white/10 rounded-xl transition-all hover:scale-105" title="Message Seller">
+                                                                Message
+                                                            </Link>
+                                                            <Link href={`/vehicle/${slug}`} className="inline-flex items-center justify-center w-10 h-10 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]" title="View Listing">
+                                                                <Eye size={18} />
+                                                            </Link>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             )

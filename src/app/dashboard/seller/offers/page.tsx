@@ -87,6 +87,15 @@ function OfferRow({
             {/* Accept / Reject (only for pending) */}
             {isPending && (
                 <div className="flex gap-2 shrink-0">
+                    <Link href="/dashboard/seller/messages">
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-blue-500/40 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500 gap-1"
+                        >
+                            <MessageSquare size={13} /> Message
+                        </Button>
+                    </Link>
                     <Button
                         size="sm"
                         variant="outline"
@@ -105,6 +114,35 @@ function OfferRow({
                     >
                         {isResponding ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle size={13} />}
                         Accept
+                    </Button>
+                </div>
+            )}
+            
+            {/* Relist (only for accepted) */}
+            {offer.status === 'ACCEPTED' && (
+                <div className="flex gap-2 shrink-0">
+                    <Link href="/dashboard/seller/messages">
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-blue-500/40 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500 gap-1"
+                        >
+                            <MessageSquare size={13} /> Message
+                        </Button>
+                    </Link>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-red-500/40 text-red-400 hover:bg-red-500/10 hover:border-red-500 gap-1"
+                        disabled={isResponding}
+                        onClick={() => {
+                            if (confirm("Are you sure you want to cancel this offer and relist?")) {
+                                onRespond(offer.id, 'REJECTED');
+                            }
+                        }}
+                    >
+                        {isResponding ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />}
+                        Cancel & Relist
                     </Button>
                 </div>
             )}

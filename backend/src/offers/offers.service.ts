@@ -178,7 +178,7 @@ export class OffersService {
             throw new ForbiddenException('You do not own the listing for this offer.');
         }
 
-        if (offer.status !== 'PENDING') {
+        if (offer.status !== 'PENDING' && !(offer.status === 'ACCEPTED' && status === OfferResponseStatus.REJECTED)) {
             throw new BadRequestException(`This offer is already ${offer.status.toLowerCase()}.`);
         }
 
