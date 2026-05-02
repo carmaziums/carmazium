@@ -83,7 +83,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
         ],
         seller: [
             { href: "/dashboard/seller", label: "Overview", icon: LayoutDashboard },
-            { href: "/dashboard/seller/listings", label: "Listings", icon: Car },
+            { href: "/dashboard/seller/listings", label: "Inventory", icon: Car },
             { href: "/dashboard/seller/offers", label: "Offers", icon: Tag, badge: pendingOffersCount },
             { href: "/dashboard/seller/performance", label: "Stats", icon: BarChart3 },
             { href: "/dashboard/seller/messages", label: "Messages", icon: MessageSquare, badge: unreadCount },

@@ -1,13 +1,14 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/context/AuthContext"
 import { Loader2 } from "lucide-react"
 
 export default function DashboardPage() {
-    const { user, profile, loading } = useAuth()
+    const { user, profile, loading, refreshProfile } = useAuth()
     const router = useRouter()
+    const hasRefreshed = useRef(false)
 
     useEffect(() => {
         if (loading) return
@@ -17,14 +18,25 @@ export default function DashboardPage() {
             return
         }
 
-        // Determine role from profile (backend) OR Supabase user_metadata (fallback)
+        // Ensure we have a fresh profile before routing — this busts stale role
+        // cache that can linger after a DEALER → SELLER account switch.
+        if (!hasRefreshed.current) {
+            hasRefreshed.current = true
+            refreshProfile().then(() => {
+                // After refresh, the effect will re-run with the updated profile
+            })
+            return
+        }
+
         const role = (
             profile?.role ||
             (user as any)?.user_metadata?.role ||
             'BUYER'
         ).toUpperCase()
 
-        if (role === 'BUYER' || role === 'SELLER') {
+        if (role === 'BUYER') {
+            router.push('/dashboard/buyer')
+        } else if (role === 'SELLER') {
             router.push('/dashboard/seller')
         } else if (role === 'DEALER') {
             router.push('/dashboard/dealer')
@@ -35,9 +47,10 @@ export default function DashboardPage() {
         } else if (role === 'INSURANCE_PARTNER') {
             router.push('/dashboard/insurance')
         } else {
+            // Fallback — unknown role goes to seller dashboard
             router.push('/dashboard/seller')
         }
-    }, [user, profile, loading, router])
+    }, [user, profile, loading, router, refreshProfile])
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white">
