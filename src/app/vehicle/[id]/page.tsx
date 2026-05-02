@@ -88,9 +88,31 @@ function OfferStatusChip({ offer, viewerRole }: { offer: LatestOffer; viewerRole
     )
 }
 
-// ─── Offer Modal ─────────────────────────────────────────────────────────────
+// ─── eBay-Style Proxy Bidding System ─────────────────────────────────────────
 
-function OfferModal({
+/**
+ * Calculate the minimum bid increment based on the current bid level.
+ * Follows eBay-style tier-based increments.
+ */
+function getBidIncrement(currentBid: number): number {
+    if (currentBid < 1000) return 50
+    if (currentBid < 5000) return 100
+    if (currentBid < 15000) return 250
+    if (currentBid < 50000) return 500
+    if (currentBid < 100000) return 1000
+    return 2500
+}
+
+/** Simulated bid history for demo — in production this comes from the API */
+interface BidEntry {
+    id: string
+    bidder: string
+    amount: number
+    isProxy: boolean
+    timestamp: string
+}
+
+function BidModal({
     listing,
     onClose,
     onSuccess,
@@ -100,24 +122,74 @@ function OfferModal({
     onSuccess: (offer: LatestOffer) => void,
 }) {
     const askingPrice = Number(listing.price)
-    const minAllowedOffer = Math.floor(askingPrice * 0.7)
+    const sellerMin = Number(listing.priceMin) || Math.floor(askingPrice * 0.7)
+    const sellerMax = Number(listing.priceMax) || askingPrice
 
-    const [offerAmount, setOfferAmount] = React.useState(Math.round(askingPrice * 0.9))
+    // Simulated current auction state (in production these come from the bidding API)
+    const [currentBid, setCurrentBid] = React.useState(() => Math.floor(askingPrice * 0.85))
+    const [bidCount, setBidCount] = React.useState(7)
+    const [bidHistory, setBidHistory] = React.useState<BidEntry[]>(() => {
+        const base = Math.floor(askingPrice * 0.7)
+        const entries: BidEntry[] = []
+        let running = base
+        for (let i = 0; i < 7; i++) {
+            running += getBidIncrement(running)
+            entries.push({
+                id: `bid-${i}`,
+                bidder: i % 2 === 0 ? 'Bidder ***42' : 'Bidder ***87',
+                amount: running,
+                isProxy: i === 3 || i === 5,
+                timestamp: new Date(Date.now() - (7 - i) * 3600000).toISOString(),
+            })
+        }
+        return entries
+    })
+
+    const increment = getBidIncrement(currentBid)
+    const minimumNextBid = currentBid + increment
+
+    const [bidAmount, setBidAmount] = React.useState(minimumNextBid)
+    const [maxBid, setMaxBid] = React.useState<string>('')
+    const [showProxySection, setShowProxySection] = React.useState(false)
     const [message, setMessage] = React.useState("")
     const [loading, setLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
+    const [showHistory, setShowHistory] = React.useState(false)
 
-    const isInvalid = offerAmount < minAllowedOffer
+    const isUnderMin = bidAmount < minimumNextBid
+    const isOverMax = sellerMax > 0 && bidAmount > sellerMax
+    const proxyAmount = maxBid ? Number(maxBid) : 0
+    const isProxyInvalid = showProxySection && proxyAmount > 0 && proxyAmount < bidAmount
 
     const handleSubmit = async () => {
-        if (isInvalid) return
+        if (isUnderMin || isOverMax || isProxyInvalid) return
         setLoading(true)
         setError(null)
         try {
-            const offer = await makeOffer(listing.id, offerAmount, message || undefined)
+            // The proxy max bid is sent as amountMax — the backend handles automatic incremental bidding
+            const offer = await makeOffer(
+                listing.id,
+                bidAmount,
+                message || undefined,
+                undefined,
+                showProxySection && proxyAmount > bidAmount ? proxyAmount : undefined
+            )
+
+            // Simulate the bid being placed — update local state
+            const newEntry: BidEntry = {
+                id: `bid-${Date.now()}`,
+                bidder: 'You',
+                amount: bidAmount,
+                isProxy: showProxySection && proxyAmount > bidAmount,
+                timestamp: new Date().toISOString(),
+            }
+            setBidHistory(prev => [...prev, newEntry])
+            setCurrentBid(bidAmount)
+            setBidCount(prev => prev + 1)
+
             onSuccess(offer as unknown as LatestOffer)
         } catch (err: any) {
-            setError(err.message || "Failed to submit offer. Please try again.")
+            setError(err.message || "Failed to place bid. Please try again.")
         } finally {
             setLoading(false)
         }
@@ -129,93 +201,205 @@ function OfferModal({
             onClick={onClose}
         >
             <div
-                className="glass-card p-6 sm:p-8 max-w-md w-full relative my-auto h-fit"
+                className="glass-card p-0 max-w-lg w-full relative my-auto h-fit overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* Glow accent */}
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary to-red-800 rounded-t-2xl" />
+                {/* Header accent */}
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-red-600 to-amber-500 rounded-t-2xl" />
 
-                <button
-                    onClick={onClose}
-                    className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
-                >
-                    <X size={20} />
-                </button>
-
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
-                        <Tag size={18} />
-                    </div>
-                    <div>
-                        <h2 className="text-xl font-bold font-heading text-white">Make an Offer</h2>
-                        <p className="text-xs text-gray-400">{listing.title}</p>
-                    </div>
-                </div>
-
-                {/* Asking Price Reference */}
-                <div className="mb-6 p-3 rounded-xl bg-white/5 border border-white/10">
-                    <div className="flex justify-between text-xs text-gray-400">
-                        <span>Seller&apos;s Asking Price</span>
-                        <span className="text-white font-semibold">£{askingPrice.toLocaleString('en-GB')}</span>
-                    </div>
-                </div>
-
-                {/* Buyer Offer Input */}
-                <div className="mb-4">
-                    <label className="text-sm font-bold uppercase text-gray-400 mb-2 block">Your Offer</label>
-                    <p className="text-xs text-gray-500 mb-3">Set the amount you&apos;re willing to pay.</p>
-                    <div>
-                        <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">£</span>
-                            <Input
-                                type="number"
-                                value={offerAmount}
-                                step={100}
-                                min={minAllowedOffer}
-                                onChange={(e) => setOfferAmount(Number(e.target.value))}
-                                className="bg-slate-900/50 border-white/10 text-white pl-8 focus:border-primary"
-                            />
+                {/* Header */}
+                <div className="p-6 pb-4 border-b border-white/5">
+                    <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"><X size={20} /></button>
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
+                            <Tag size={18} />
                         </div>
-                        {offerAmount < minAllowedOffer && (
-                            <p className="text-red-400 text-xs mt-2">
-                                Offer must be at least £{minAllowedOffer.toLocaleString('en-GB')} (70% of asking price).
+                        <div>
+                            <h2 className="text-xl font-bold font-heading text-white">Place a Bid</h2>
+                            <p className="text-xs text-gray-400">{listing.title}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Current Auction State */}
+                <div className="px-6 py-5 bg-slate-900/50 border-b border-white/5">
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                        <div>
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-gray-500 mb-1">Asking Price</p>
+                            <p className="text-sm font-bold text-gray-300 tabular-nums">£{askingPrice.toLocaleString('en-GB')}</p>
+                        </div>
+                        <div>
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-emerald-400 mb-1">Current Bid</p>
+                            <p className="text-2xl font-black text-white tabular-nums">£{currentBid.toLocaleString('en-GB')}</p>
+                        </div>
+                        <div>
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-gray-500 mb-1">Bids</p>
+                            <p className="text-sm font-bold text-gray-300 tabular-nums">{bidCount}</p>
+                        </div>
+                    </div>
+                    {/* Increment notice */}
+                    <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-gray-500">
+                        <Info size={10} />
+                        <span>Minimum increment: <strong className="text-white">£{increment.toLocaleString('en-GB')}</strong></span>
+                    </div>
+                </div>
+
+                {/* Bid Input Section */}
+                <div className="p-6 space-y-5">
+                    {/* Your Bid */}
+                    <div>
+                        <label className="text-sm font-bold uppercase text-gray-400 mb-2 block">Your Bid</label>
+                        <p className="text-xs text-gray-500 mb-3">Enter at least <strong className="text-white">£{minimumNextBid.toLocaleString('en-GB')}</strong> (current bid + £{increment.toLocaleString('en-GB')} increment).</p>
+                        <div className="flex gap-2">
+                            <div className="relative flex-1">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg font-bold">£</span>
+                                <Input
+                                    type="number"
+                                    value={bidAmount}
+                                    step={increment}
+                                    min={minimumNextBid}
+                                    onChange={(e) => setBidAmount(Number(e.target.value))}
+                                    className="bg-slate-900/50 border-white/10 text-white pl-8 text-lg h-14 focus:border-primary font-bold tabular-nums"
+                                />
+                            </div>
+                            {/* Quick increment buttons */}
+                            <div className="flex flex-col gap-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setBidAmount(prev => prev + increment)}
+                                    className="h-6 px-3 bg-white/5 hover:bg-primary/20 border border-white/10 hover:border-primary/30 rounded-md text-[10px] font-bold text-gray-400 hover:text-primary transition-all"
+                                >+£{increment >= 1000 ? `${increment / 1000}k` : increment}</button>
+                                <button
+                                    type="button"
+                                    onClick={() => setBidAmount(prev => Math.max(minimumNextBid, prev - increment))}
+                                    className="h-6 px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-[10px] font-bold text-gray-400 hover:text-white transition-all"
+                                >-£{increment >= 1000 ? `${increment / 1000}k` : increment}</button>
+                            </div>
+                        </div>
+                        {isUnderMin && (
+                            <p className="text-red-400 text-xs mt-2 flex items-center gap-1">
+                                <AlertTriangle size={12} /> Bid must be at least £{minimumNextBid.toLocaleString('en-GB')}.
                             </p>
                         )}
                     </div>
-                </div>
 
-                {/* Message */}
-                <div className="mb-6">
-                    <label className="text-sm font-bold uppercase text-gray-400 mb-2 block">
-                        Message to Seller <span className="text-gray-600 font-normal normal-case">(optional)</span>
-                    </label>
-                    <textarea
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        placeholder="e.g. I can collect this weekend and have cash ready."
-                        rows={3}
-                        maxLength={500}
-                        className="w-full bg-slate-900/50 border border-white/10 text-white placeholder:text-gray-600 rounded-md p-3 text-sm resize-none focus:outline-none focus:border-primary"
-                    />
-                </div>
-
-                {error && (
-                    <div className="mb-4 flex items-center gap-2 text-red-400 text-sm p-3 bg-red-500/10 rounded-lg border border-red-500/20">
-                        <AlertTriangle size={14} /> {error}
+                    {/* Proxy Bid Toggle */}
+                    <div className="rounded-xl border border-white/10 overflow-hidden">
+                        <button
+                            type="button"
+                            onClick={() => setShowProxySection(!showProxySection)}
+                            className="w-full flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-blue-500/10 rounded-lg flex items-center justify-center border border-blue-500/20">
+                                    <Zap size={14} className="text-blue-400" />
+                                </div>
+                                <div className="text-left">
+                                    <p className="text-sm font-bold text-white">Set Proxy Bid (Max Bid)</p>
+                                    <p className="text-[10px] text-gray-500">We&apos;ll automatically bid on your behalf up to your max</p>
+                                </div>
+                            </div>
+                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${showProxySection ? 'bg-blue-500 border-blue-500' : 'border-gray-600'}`}>
+                                {showProxySection && <CheckCircle size={12} className="text-white" />}
+                            </div>
+                        </button>
+                        {showProxySection && (
+                            <div className="px-4 pb-4 border-t border-white/5">
+                                <div className="bg-blue-500/5 border border-blue-500/10 rounded-lg p-3 mt-3 mb-3">
+                                    <p className="text-[10px] text-blue-300 leading-relaxed">
+                                        <strong>How proxy bidding works:</strong> Enter the maximum you&apos;re willing to pay. The system will bid the minimum needed to keep you as the highest bidder, up to your max. Other bidders only see the current bid, not your max.
+                                    </p>
+                                </div>
+                                <label className="text-xs font-bold uppercase text-gray-400 mb-2 block">Your Maximum (Hidden)</label>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-400 font-bold">£</span>
+                                    <Input
+                                        type="number"
+                                        value={maxBid}
+                                        step={increment}
+                                        placeholder={`e.g. ${(bidAmount + increment * 5).toLocaleString('en-GB')}`}
+                                        onChange={(e) => setMaxBid(e.target.value)}
+                                        className="bg-slate-900/50 border-blue-500/20 text-white pl-8 h-12 focus:border-blue-400 font-bold tabular-nums"
+                                    />
+                                </div>
+                                {isProxyInvalid && (
+                                    <p className="text-red-400 text-xs mt-2 flex items-center gap-1">
+                                        <AlertTriangle size={12} /> Max bid must be higher than your current bid of £{bidAmount.toLocaleString('en-GB')}.
+                                    </p>
+                                )}
+                            </div>
+                        )}
                     </div>
-                )}
 
-                <div className="flex gap-3">
-                    <Button variant="outline" className="flex-1 border-white/10 text-gray-400 hover:text-white" onClick={onClose}>
-                        Cancel
-                    </Button>
-                    <Button
-                        className="flex-1 shadow-neon"
-                        disabled={loading || isInvalid}
-                        onClick={handleSubmit}
+                    {/* Message */}
+                    <div>
+                        <label className="text-sm font-bold uppercase text-gray-400 mb-2 block">
+                            Message <span className="text-gray-600 font-normal normal-case">(optional)</span>
+                        </label>
+                        <textarea
+                            value={message}
+                            onChange={(e) => setMessage(e.target.value)}
+                            placeholder="e.g. I can collect this weekend."
+                            rows={2}
+                            maxLength={500}
+                            className="w-full bg-slate-900/50 border border-white/10 text-white placeholder:text-gray-600 rounded-md p-3 text-sm resize-none focus:outline-none focus:border-primary"
+                        />
+                    </div>
+
+                    {error && (
+                        <div className="flex items-center gap-2 text-red-400 text-sm p-3 bg-red-500/10 rounded-lg border border-red-500/20">
+                            <AlertTriangle size={14} /> {error}
+                        </div>
+                    )}
+
+                    {/* Submit */}
+                    <div className="flex gap-3">
+                        <Button variant="outline" className="flex-1 border-white/10 text-gray-400 hover:text-white" onClick={onClose}>
+                            Cancel
+                        </Button>
+                        <Button
+                            className="flex-1 shadow-neon"
+                            disabled={loading || isUnderMin || isOverMax || isProxyInvalid}
+                            onClick={handleSubmit}
+                        >
+                            {loading
+                                ? <><Loader2 size={16} className="animate-spin mr-2" /> Placing Bid...</>
+                                : <>Place Bid — £{bidAmount.toLocaleString('en-GB')}</>
+                            }
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Bid History */}
+                <div className="border-t border-white/5">
+                    <button
+                        type="button"
+                        onClick={() => setShowHistory(!showHistory)}
+                        className="w-full px-6 py-3 flex items-center justify-between text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-white hover:bg-white/[0.02] transition-colors"
                     >
-                        {loading ? <><Loader2 size={16} className="animate-spin mr-2" /> Submitting...</> : `Submit Offer`}
-                    </Button>
+                        <span>Bid History ({bidHistory.length})</span>
+                        <span className={`transition-transform ${showHistory ? 'rotate-180' : ''}`}>▾</span>
+                    </button>
+                    {showHistory && (
+                        <div className="px-6 pb-4 max-h-48 overflow-y-auto space-y-1.5">
+                            {[...bidHistory].reverse().map((entry, i) => (
+                                <div key={entry.id} className={`flex items-center justify-between py-2 px-3 rounded-lg text-xs ${i === 0 ? 'bg-emerald-500/5 border border-emerald-500/10' : 'bg-white/[0.02]'}`}>
+                                    <div className="flex items-center gap-2">
+                                        <span className={`font-bold ${i === 0 ? 'text-emerald-400' : 'text-gray-400'}`}>{entry.bidder}</span>
+                                        {entry.isProxy && (
+                                            <span className="text-[9px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20 font-bold">AUTO</span>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className={`font-black tabular-nums ${i === 0 ? 'text-white' : 'text-gray-300'}`}>£{entry.amount.toLocaleString('en-GB')}</span>
+                                        <span className="text-gray-600 text-[10px]">
+                                            {new Date(entry.timestamp).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -465,10 +649,10 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                     disabled={offerViewerRole === 'buyer' && (myOffer?.status === 'PENDING' || myOffer?.status === 'ACCEPTED')}
                                 >
                                     {offerViewerRole === 'buyer' && myOffer?.status === 'PENDING'
-                                        ? '⏳ Offer Pending...'
+                                        ? '⏳ Bid Placed'
                                         : offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'
-                                            ? '✓ Offer Accepted'
-                                            : 'Make an Offer'}
+                                            ? '✓ Bid Won'
+                                            : 'Place a Bid'}
                                 </Button>
                                 
                                 <Button
@@ -596,9 +780,9 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                 />
             )}
 
-            {/* Offer Modal */}
+            {/* Bid Modal */}
             {showOfferModal && (
-                <OfferModal
+                <BidModal
                     listing={listing}
                     onClose={() => setShowOfferModal(false)}
                     onSuccess={handleOfferSuccess}
@@ -609,7 +793,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
             {offerSuccess && (
                 <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 px-5 py-3 rounded-xl shadow-2xl animate-in slide-in-from-bottom-4">
                     <CheckCircle size={18} />
-                    <span className="text-sm font-semibold">Offer submitted! The seller will respond soon.</span>
+                    <span className="text-sm font-semibold">Bid placed successfully! You're in the lead.</span>
                     <button onClick={() => setOfferSuccess(false)} className="ml-2 text-emerald-400 hover:text-white">
                         <X size={14} />
                     </button>
