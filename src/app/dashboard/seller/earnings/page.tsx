@@ -3,13 +3,14 @@
 import * as React from "react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
-import { getEarningsStats, getMyTransactions, formatPrice, type Transaction, type EarningsStats } from "@/lib/listingApi"
+import { getEarningsStats, getMyTransactions, getSellerStats, getMyListings, formatPrice, type Transaction, type EarningsStats } from "@/lib/listingApi"
 import { Loader2, DollarSign, Clock, TrendingUp, AlertCircle } from "lucide-react"
 
 export default function SellerEarningsPage() {
     const { user, profile, loading: authLoading } = useAuth()
     const [earnings, setEarnings] = React.useState<EarningsStats | null>(null)
-    const [transactions, setTransactions] = React.useState<Transaction[]>([])
+    const [stats, setStats] = React.useState<any>(null)
+    const [transactions, setTransactions] = React.useState<any[]>([])
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
 
@@ -19,12 +20,31 @@ export default function SellerEarningsPage() {
             try {
                 setLoading(true)
                 setError(null)
-                const [earningsData, txData] = await Promise.all([
+                const [earningsData, txData, statsData, listingsData] = await Promise.all([
                     getEarningsStats(),
                     getMyTransactions(1, 10),
+                    getSellerStats(),
+                    getMyListings({ limit: 100 }), // Fetch more to find sold items
                 ])
                 setEarnings(earningsData)
-                setTransactions(txData.data || [])
+                setStats(statsData)
+                
+                // Combine actual transactions with SOLD listings mapped as transactions
+                const soldListingsAsTxs = (listingsData.data || [])
+                    .filter(l => l.status === 'SOLD')
+                    .map(l => ({
+                        id: `sold-${l.id}`,
+                        listing: l,
+                        amount: l.price,
+                        type: 'VEHICLE_SALE',
+                        status: 'COMPLETED',
+                        createdAt: l.updatedAt || l.createdAt
+                    }))
+                
+                const allTxs = [...(txData.data || []), ...soldListingsAsTxs].sort((a, b) => 
+                    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                )
+                setTransactions(allTxs)
             } catch (err) {
                 console.error("Failed to fetch earnings:", err)
                 setError("Could not load earnings data")
@@ -48,7 +68,7 @@ export default function SellerEarningsPage() {
     const statCards = [
         { label: "Available for Payout", value: formatPrice(earnings?.available || 0), icon: DollarSign, color: "text-emerald-400" },
         { label: "Pending Clearance", value: formatPrice(earnings?.pendingClearance || 0), icon: Clock, color: "text-amber-400" },
-        { label: "Total Earnings (YTD)", value: formatPrice(earnings?.totalYTD || 0), icon: TrendingUp, color: "text-blue-400" },
+        { label: "Total Earnings (YTD)", value: formatPrice(stats?.totalRevenue || earnings?.totalYTD || 0), icon: TrendingUp, color: "text-blue-400" },
     ]
 
     return (

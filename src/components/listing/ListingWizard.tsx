@@ -20,7 +20,6 @@ import {
 import { uploadImage } from "@/lib/supabase"
 import { dvlaLookup } from "@/lib/dvlaApi"
 import { aiGenerateDescription } from "@/lib/aiApi"
-import { estimateListingPrice, type EstimatePriceResponse } from "@/lib/pricingApi"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -234,9 +233,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const [damageImageCount, setDamageImageCount] = React.useState(0)
     const [hasAttemptedNext, setHasAttemptedNext] = React.useState(false)
 
-    // Estimated value — derived from API
-    const [valuation, setValuation] = React.useState<EstimatePriceResponse | null>(null)
-    const [isValuating, setIsValuating] = React.useState(false)
 
     // Edit mode — detect from URL params
     const searchParams = useSearchParams()
@@ -298,39 +294,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [editId])
 
-    React.useEffect(() => {
-        if (!formData.make || !formData.model || !formData.year || !formData.mileage) {
-            setValuation(null)
-            return
-        }
-
-        let isMounted = true
-        setIsValuating(true)
-        
-        estimateListingPrice({
-            make: formData.make,
-            model: formData.model,
-            year: parseInt(formData.year) || 0,
-            mileage: parseInt(formData.mileage) || 0,
-            fuelType: formData.fuelType,
-            transmission: formData.transmission,
-            condition: formData.condition,
-            location: formData.location,
-            damageImageCount: damageImageCount
-        }).then((res) => {
-            if (isMounted) {
-                setValuation(res)
-                setIsValuating(false)
-            }
-        }).catch((err) => {
-            console.error("Valuation failed:", err)
-            if (isMounted) {
-                setIsValuating(false)
-            }
-        })
-
-        return () => { isMounted = false }
-    }, [formData.make, formData.model, formData.year, formData.mileage, formData.fuelType, formData.condition, formData.transmission, formData.location, damageImageCount])
 
     const isAuthenticated = !!user
     const isEmailVerified = !!user?.email_confirmed_at
@@ -1236,90 +1199,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
                             <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Pricing</h2>
 
-                            {/* Estimated Valuation Card */}
-                            {isValuating ? (
-                                <div className="dealer-glass-card rounded-2xl border-purple-500/30 bg-gradient-to-br from-[#0A0A0C] to-slate-900 p-8 space-y-5 relative overflow-hidden flex flex-col items-center justify-center min-h-[300px]">
-                                     <Loader2 className="animate-spin text-purple-400 mb-4" size={40} />
-                                     <p className="text-purple-300 font-bold animate-pulse">Analyzing Live Market Data...</p>
-                                     <p className="text-gray-500 text-xs">Scanning AutoTrader, Motors.co.uk, and Gumtree</p>
-                                </div>
-                            ) : valuation ? (
-                                <div className="dealer-glass-card rounded-2xl border-purple-500/30 bg-gradient-to-br from-[#0A0A0C] to-slate-900 p-8 space-y-5 relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/10 blur-3xl pointer-events-none" />
-                                    <div className="flex items-center gap-3 relative z-10">
-                                        <div className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20">
-                                            <Sparkles className="text-purple-400 shrink-0" size={20} />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-white font-black font-heading uppercase tracking-widest text-sm">AI Market Valuation</h3>
-                                            <p className="text-[10px] text-purple-400 font-bold uppercase tracking-widest">Driven by {valuation.comparables} recent market comparables</p>
-                                        </div>
-                                    </div>
 
-                                    {/* Price range */}
-                                    <div className="relative z-10 pt-2 pb-1">
-                                        <div className="inline-block relative">
-                                            <p className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-200 to-gray-500 tracking-tight drop-shadow-xl metallic-foil">
-                                                {formatPrice(valuation.low)}
-                                                <span className="text-gray-500 text-3xl mx-3 font-light">–</span>
-                                                {formatPrice(valuation.high)}
-                                            </p>
-                                        </div>
-                                        <div className="flex items-center justify-between mt-3">
-                                            <p className="text-gray-400 text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                                                <Activity size={12} className="text-emerald-400" /> Auto-Optimized Midpoint: <strong className="text-white">{formatPrice(valuation.mid)}</strong>
-                                            </p>
-                                            <div className="flex items-center gap-1.5 bg-slate-900/50 px-3 py-1.5 rounded-full border border-white/5">
-                                                <div className={`w-2 h-2 rounded-full ${valuation.confidence >= 0.7 ? 'bg-emerald-500' : valuation.confidence >= 0.4 ? 'bg-amber-400' : 'bg-red-500'}`} />
-                                                <p className="text-[10px] text-gray-300 font-bold uppercase">
-                                                    {valuation.confidence >= 0.7 ? 'High' : valuation.confidence >= 0.4 ? 'Medium' : 'Low'} Confidence
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Reasoning */}
-                                    <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                                        <p className="text-sm text-gray-300 italic leading-relaxed">
-                                            &quot;{valuation.reasoning}&quot;
-                                        </p>
-                                    </div>
-
-                                    {/* Damage Penalty Indicator */}
-                                    {valuation.damageDeduction && valuation.damageDeduction > 0 && (
-                                        <div className="flex items-center gap-3 bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
-                                            <div className="p-2 bg-amber-500/20 rounded-lg">
-                                                <Camera className="text-amber-400 shrink-0" size={18} />
-                                            </div>
-                                            <div className="flex-1">
-                                                <p className="text-xs font-bold uppercase text-amber-300 tracking-wider">Damage Photo Adjustment</p>
-                                                <p className="text-[11px] text-amber-200/70 mt-0.5">
-                                                    {damageImageCount} damage photo{damageImageCount !== 1 ? 's' : ''} detected — <strong className="text-amber-300">-{valuation.damageDeduction}%</strong> applied to the estimate.
-                                                    <span className="text-gray-500 ml-1">Every 2 damage photos deducts 1%.</span>
-                                                </p>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <div className="flex flex-col sm:flex-row gap-4 items-center mt-4">
-                                        <Button
-                                            type="button"
-                                            className="bg-purple-600 hover:bg-purple-500 text-white font-bold h-12 w-full sm:w-auto px-6 uppercase tracking-widest text-xs shadow-[0_0_20px_rgba(168,85,247,0.3)] transition-all"
-                                            onClick={() => {
-                                                set("priceMin", valuation.low.toString())
-                                                set("priceAsking", valuation.mid.toString())
-                                                set("priceMax", valuation.high.toString())
-                                            }}
-                                        >
-                                            <Zap size={14} className="mr-2" /> Apply Intelligent Pricing
-                                        </Button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="rounded-xl bg-white/5 border border-white/10 p-5 text-center text-gray-500 text-sm">
-                                    Complete vehicle details (make, year, mileage) to see an estimated valuation.
-                                </div>
-                            )}
 
                             {/* Price Evaluation Explainer */}
                             <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
@@ -1587,9 +1467,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             <p className="text-white font-bold text-lg tabular-nums">{formData.priceMax ? formatPrice(formData.priceMax) : '—'}</p>
                                         </div>
                                     </div>
-                                    {valuation && (
-                                        <p className="text-gray-500 text-xs">Estimated market value: {formatPrice(valuation.low)} – {formatPrice(valuation.high)}</p>
-                                    )}
+
                                     <div className="flex items-center gap-2 mt-1">
                                         {formData.badgeTier === 'FREE' && (
                                             <span className="text-xs bg-white/10 text-gray-400 px-2 py-0.5 rounded-md">Basic — £1</span>

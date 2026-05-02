@@ -165,6 +165,7 @@ export interface Listing {
     // Added seller relation details
     seller?: {
         id: string
+        role?: string
         firstName: string | null
         lastName: string | null
         profileImage: string | null
