@@ -329,6 +329,7 @@ export class ListingsService {
                     seller: {
                         select: {
                             id: true,
+                            role: true,
                             firstName: true,
                             lastName: true,
                             sellerProfile: {
@@ -364,6 +365,7 @@ export class ListingsService {
                 seller: {
                     select: {
                         id: true,
+                        role: true,
                         firstName: true,
                         lastName: true,
                         sellerProfile: {

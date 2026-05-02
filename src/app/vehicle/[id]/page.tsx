@@ -677,22 +677,22 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
 
                         {/* Seller Info Block */}
                         <Link href={`/seller/${listing.sellerId}`} className="flex items-center gap-4 mb-5 hover:bg-white/5 p-2 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-white/10 -ml-2 group">
-                            {listing.seller.dealerProfile?.logo ? (
+                            {listing.seller.role === 'DEALER' && listing.seller.dealerProfile?.logo ? (
                                 <Image src={listing.seller.dealerProfile.logo} alt="Dealer Logo" width={56} height={56} className="w-14 h-14 rounded-full object-cover shrink-0 bg-white shadow-md" />
                             ) : listing.seller.profileImage ? (
                                 <Image src={listing.seller.profileImage} alt="Seller Image" width={56} height={56} className="w-14 h-14 rounded-full object-cover shrink-0 shadow-md" />
                             ) : (
                                 <div className="w-14 h-14 bg-gradient-to-br from-slate-700 to-slate-600 rounded-full flex items-center justify-center text-white font-black text-xl shadow-md shrink-0">
-                                    {(listing.seller.dealerProfile?.companyName || listing.seller.firstName || "CM").substring(0, 2).toUpperCase()}
+                                    {((listing.seller.role === 'DEALER' ? listing.seller.dealerProfile?.companyName : null) || listing.seller.firstName || "CM").substring(0, 2).toUpperCase()}
                                 </div>
                             )}
                             <div className="flex-1">
                                 <h4 className="font-bold text-white text-base leading-tight mb-1 group-hover:text-primary transition-colors">
-                                    {listing.seller.dealerProfile?.companyName || `${listing.seller.firstName || ''} ${listing.seller.lastName || ''}`.trim() || 'Private Seller'}
+                                    {(listing.seller.role === 'DEALER' ? listing.seller.dealerProfile?.companyName : null) || `${listing.seller.firstName || ''} ${listing.seller.lastName || ''}`.trim() || 'Private Seller'}
                                 </h4>
                                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                                     <div className="flex items-center gap-1.5">
-                                        {listing.seller.dealerProfile ? (
+                                        {listing.seller.role === 'DEALER' && listing.seller.dealerProfile ? (
                                             <>
                                                 <BadgeCheck size={14} className="text-blue-500" />
                                                 <span className="text-xs text-blue-400 font-medium tracking-wide">Verified Dealer</span>
@@ -710,7 +710,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                         </Link>
                         
                         {/* Dealership Info */}
-                        {listing.seller.dealerProfile && (
+                        {listing.seller.role === 'DEALER' && listing.seller.dealerProfile && (
                             <div className="space-y-4 text-sm text-gray-300 border-t border-white/5 pt-4">
                                 {listing.seller.dealerProfile.description && (
                                     <p className="line-clamp-4 text-sm leading-relaxed">{listing.seller.dealerProfile.description}</p>
@@ -771,7 +771,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
             <LoginModal />
 
             {/* Enquire Modal */}
-            {showEnquireModal && listing?.seller?.dealerProfile && (
+            {showEnquireModal && listing?.seller?.role === 'DEALER' && listing?.seller?.dealerProfile && (
                 <EnquireModal
                     listingId={listing.id}
                     dealerProfileId={listing.seller.dealerProfile.id}
@@ -1209,22 +1209,22 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                 {/* Seller Info Block */}
                                 {listing.seller && (
                                     <Link href={`/seller/${listing.sellerId}`} className="flex items-center gap-3 mb-6 hover:bg-white/5 p-2 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-white/10 -ml-2 group">
-                                        {listing.seller.dealerProfile?.logo ? (
+                                        {listing.seller.role === 'DEALER' && listing.seller.dealerProfile?.logo ? (
                                             <Image src={listing.seller.dealerProfile.logo} alt="Dealer Logo" width={48} height={48} className="w-12 h-12 rounded-full object-cover shrink-0 bg-white" />
                                         ) : listing.seller.profileImage ? (
                                             <Image src={listing.seller.profileImage} alt="Seller Image" width={48} height={48} className="w-12 h-12 rounded-full object-cover shrink-0" />
                                         ) : (
                                             <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-primary font-black text-lg shadow-sm shrink-0">
-                                                {(listing.seller.dealerProfile?.companyName || listing.seller.firstName || "CM").substring(0, 2).toUpperCase()}
+                                                {((listing.seller.role === 'DEALER' ? listing.seller.dealerProfile?.companyName : null) || listing.seller.firstName || "CM").substring(0, 2).toUpperCase()}
                                             </div>
                                         )}
                                         <div className="flex-1">
                                             <h3 className="font-bold text-white text-[15px] leading-tight group-hover:text-primary transition-colors">
-                                                {listing.seller.dealerProfile?.companyName || `${listing.seller.firstName || ''} ${listing.seller.lastName || ''}`.trim() || 'Private Seller'}
+                                                {(listing.seller.role === 'DEALER' ? listing.seller.dealerProfile?.companyName : null) || `${listing.seller.firstName || ''} ${listing.seller.lastName || ''}`.trim() || 'Private Seller'}
                                             </h3>
                                             <div className="flex items-center gap-2 mt-1 flex-wrap">
                                                 <div className="flex items-center gap-1">
-                                                    {listing.seller.dealerProfile ? (
+                                                    {listing.seller.role === 'DEALER' && listing.seller.dealerProfile ? (
                                                         <>
                                                             <CheckCircle size={10} className="text-blue-500" />
                                                             <span className="text-[10px] text-blue-500 font-medium">Verified Dealer</span>
@@ -1243,7 +1243,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                 )}
                                 
                                 {/* Dealership Info */}
-                                {listing.seller?.dealerProfile && (
+                                {listing.seller?.role === 'DEALER' && listing.seller?.dealerProfile && (
                                     <div className="mb-6 space-y-2 text-sm text-gray-300">
                                         {listing.seller.dealerProfile.description && (
                                             <p className="line-clamp-3 text-xs">{listing.seller.dealerProfile.description}</p>
