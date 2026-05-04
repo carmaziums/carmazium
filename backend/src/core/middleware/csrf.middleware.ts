@@ -23,7 +23,10 @@ export class CsrfMiddleware implements NestMiddleware {
             '/auth/supabase-session',
             '/ai/search',
             '/ai/chat',
+            '/ai/generate-description',
+            '/damage/analyze',
             '/pricing/estimate',
+            '/dealer-quick-list/analyze',
         ];
         const fullPath = req.originalUrl?.split('?')[0] ?? req.path;
 
