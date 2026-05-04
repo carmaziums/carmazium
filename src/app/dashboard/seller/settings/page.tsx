@@ -23,10 +23,10 @@ export default function SellerSettingsPage() {
             setFirstName(profile.firstName || "")
             setLastName(profile.lastName || "")
             setEmail(profile.email || user?.email || "")
-            setProfileImage(profile.profileImage || user?.profileImage || "")
+            setProfileImage(profile.profileImage || "")
         } else if (user) {
             setEmail(user.email || "")
-            setProfileImage(user.profileImage || "")
+            setProfileImage("")
         }
     }, [profile, user])
 
