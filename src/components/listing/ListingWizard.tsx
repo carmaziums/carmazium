@@ -546,8 +546,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                      </div>
                      
                      <div className="space-y-4 mb-6">
-                          {/* Fake Card Input */}
-                          <div className="space-y-1.5 bg-slate-900/50 p-4 rounded-xl border border-white/5 opacity-50 pointer-events-none">
+                          {/* Card Input */}
+                          <div className="space-y-1.5 bg-slate-900/50 p-4 rounded-xl border border-white/5">
                               <label className="text-xs font-bold text-gray-500 uppercase">Card Details</label>
                               <div className="h-10 bg-black/20 rounded border border-white/10 flex items-center px-3">
                                   <Lock size={14} className="text-gray-500 mr-2" />
