@@ -52,6 +52,22 @@ export default function SellerEarningsPage() {
         )
     }
 
+    return (
+        <div className="min-h-screen pt-20 pb-12 bg-slate-900">
+            <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
+                <DashboardSidebar role="seller" />
+                <main className="flex-1 space-y-8">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
+                        <div>
+                            <h1 className="text-3xl font-bold font-heading text-white">Earnings</h1>
+                            <p className="text-gray-400">Track your sales performance and revenue.</p>
+                        </div>
+                        {error && (
+                            <div className="flex items-center gap-2 text-red-400 bg-red-400/10 px-4 py-2 rounded-lg border border-red-400/20 text-sm">
+                                <AlertCircle size={16} /> {error}
+                            </div>
+                        )}
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                         <MetricCard 
                             label="Total Earnings (YTD)" 
