@@ -515,6 +515,7 @@ model Listing {
   chatRooms           ChatRoom[]
   watchlistItems      WatchlistItem[]
   leads               Lead[]
+  damageRecords       DamageRecord[]
 
   @@index([sellerId])
   @@index([vehicleId])
@@ -895,4 +896,20 @@ model Session {
   expire DateTime @db.Timestamp(6)
 
   @@map("sessions")
+}
+
+model DamageRecord {
+  id        String   @id @default(uuid())
+  listingId String
+  part      String   // e.g., "Front Bumper", "Driver Door"
+  type      String   // e.g., "Scratch", "Scuff", "Dent"
+  size      String   // e.g., "0-5cm", "6-15cm", "15cm+"
+  coords    Json     // { x: number, y: number, view: 'FRONT'|'SIDE'|'REAR'|'TOP' }
+  imageUrl  String?  // Reference to the source photo
+  createdAt DateTime @default(now())
+
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@map("damage_records")
 }
