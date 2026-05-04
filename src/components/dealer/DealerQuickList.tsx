@@ -19,6 +19,7 @@ import { apiClient } from "@/lib/apiClient"
 import { dvlaLookup } from "@/lib/dvlaApi"
 import { aiGenerateDescription } from "@/lib/aiApi"
 import { useAuth } from "@/context/AuthContext"
+import { DamageAnalysisTool } from "@/components/listing/DamageAnalysisTool"
 import { useRouter, useSearchParams } from "next/navigation"
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -435,6 +436,17 @@ export function DealerQuickList() {
                         maxImages={30}
                         existingImages={images}
                     />
+
+                    {/* AI Damage Assessment (Optional for Quick List) */}
+                    <div className="pt-6 border-t border-white/5">
+                        <DamageAnalysisTool 
+                            images={images} 
+                            onComplete={(detections) => {
+                                console.log("Quick List Detections:", detections)
+                                alert(`${detections.length} damage records detected. These will be saved with the listing.`)
+                            }} 
+                        />
+                    </div>
                 </section>
             )}
 
