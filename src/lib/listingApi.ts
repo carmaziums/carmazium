@@ -829,6 +829,13 @@ export async function respondToOffer(
     return data.data
 }
 
+export async function withdrawOffer(offerId: string): Promise<Offer> {
+    const data = await apiClient<{ data: Offer }>(`/offers/${offerId}/withdraw`, {
+        method: 'PATCH',
+    })
+    return data.data
+}
+
 /**
  * Seller: Get total count of pending offers across all their listings.
  * Used to drive the pulsating badge on the Offers sidebar tab.

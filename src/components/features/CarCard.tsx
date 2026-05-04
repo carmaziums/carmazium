@@ -190,7 +190,7 @@ export function CarCard({
                     <p className="text-white text-2xl font-bold font-mono bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
                         {price}
                     </p>
-                    {priceMin && priceMax && (
+                    {priceMin && priceMax && status !== 'SOLD' && (
                         <span className="inline-block mt-1 text-[10px] font-bold uppercase tracking-wide bg-primary/10 text-primary border border-primary/30 px-2 py-0.5 rounded-full">
                             Offers Welcome
                         </span>
@@ -242,13 +242,13 @@ export function CarCard({
                 <div className="mt-auto">
                     <Button
                         asChild
-                        className={`w-full shadow-lg text-white ${badgeTier === 'PREMIUM' ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 border-none' : ''}`}
+                        className={`w-full shadow-lg text-white ${status === 'SOLD' ? 'bg-slate-700 hover:bg-slate-600 border-none opacity-80' : badgeTier === 'PREMIUM' ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 border-none' : ''}`}
                         variant="default"
                         size="sm"
                         shape="default"
                     >
                         <Link href={href} className="block w-full text-center">
-                            View Details
+                            {status === 'SOLD' ? 'View Sold Vehicle' : 'View Details'}
                         </Link>
                     </Button>
                 </div>

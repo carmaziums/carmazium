@@ -1,10 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { getMyOffers, type Offer } from "@/lib/listingApi"
+import { getMyOffers, withdrawOffer, type Offer } from "@/lib/listingApi"
 import { createChatRoom } from "@/lib/chatApi"
 import { useRouter } from "next/navigation"
-import { Loader2, AlertTriangle, Tag, Clock, CheckCircle, XCircle, Eye } from "lucide-react"
+import { Loader2, AlertTriangle, Tag, Clock, CheckCircle, XCircle, Eye, Trash2 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
@@ -60,6 +60,7 @@ export default function BuyerOffersPage() {
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
     const [startingChat, setStartingChat] = React.useState<string | null>(null)
+    const [withdrawing, setWithdrawing] = React.useState<string | null>(null)
     const router = useRouter()
 
     React.useEffect(() => {
@@ -94,6 +95,20 @@ export default function BuyerOffersPage() {
             alert(err.message || "Failed to start chat.");
         } finally {
             setStartingChat(null);
+        }
+    }
+
+    const handleWithdraw = async (offerId: string) => {
+        if (!confirm("Are you sure you want to withdraw this offer? This action cannot be undone.")) return;
+        setWithdrawing(offerId);
+        try {
+            await withdrawOffer(offerId);
+            setOffers(prev => prev.map(o => o.id === offerId ? { ...o, status: 'WITHDRAWN' } : o));
+        } catch (err: any) {
+            console.error("Failed to withdraw offer:", err);
+            alert(err.message || "Failed to withdraw offer.");
+        } finally {
+            setWithdrawing(null);
         }
     }
 
@@ -224,9 +239,19 @@ export default function BuyerOffersPage() {
                                                     <td className="px-6 py-5 text-right">
                                                         <div className="flex items-center justify-end gap-2">
                                                             {offer.status === 'PENDING' && (
-                                                                <Link href={`/buy-cars/${slug}?editOffer=true`} className="inline-flex items-center justify-center h-10 px-3 text-sm font-bold text-gray-300 hover:text-white hover:bg-white/10 rounded-xl transition-all hover:scale-105" title="Edit Offer">
-                                                                    Edit
-                                                                </Link>
+                                                                <div className="flex items-center gap-2">
+                                                                    <Link href={`/buy-cars/${slug}?editOffer=true`} className="inline-flex items-center justify-center h-10 px-3 text-sm font-bold text-gray-300 hover:text-white hover:bg-white/10 rounded-xl transition-all hover:scale-105" title="Edit Offer">
+                                                                        Edit
+                                                                    </Link>
+                                                                    <button 
+                                                                        onClick={() => handleWithdraw(offer.id)}
+                                                                        disabled={withdrawing === offer.id}
+                                                                        className="inline-flex items-center justify-center h-10 px-3 text-sm font-bold text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl transition-all hover:scale-105 disabled:opacity-50"
+                                                                        title="Cancel Offer"
+                                                                    >
+                                                                        {withdrawing === offer.id ? <Loader2 size={16} className="animate-spin" /> : "Cancel"}
+                                                                    </button>
+                                                                </div>
                                                             )}
                                                             <button 
                                                                 onClick={() => handleMessageSeller(offer.listing?.sellerId, offer.listing?.id || "")}

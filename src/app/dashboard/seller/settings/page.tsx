@@ -4,23 +4,29 @@ import * as React from "react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { updateProfile } from "@/lib/listingApi"
-import { Loader2, Check, AlertCircle } from "lucide-react"
+import { uploadImage } from "@/lib/supabase"
+import { Loader2, Check, AlertCircle, Camera } from "lucide-react"
 
 export default function SellerSettingsPage() {
     const { user, profile, loading: authLoading } = useAuth()
     const [firstName, setFirstName] = React.useState("")
     const [lastName, setLastName] = React.useState("")
     const [email, setEmail] = React.useState("")
+    const [profileImage, setProfileImage] = React.useState("")
     const [saving, setSaving] = React.useState(false)
+    const [uploadingImage, setUploadingImage] = React.useState(false)
     const [saveStatus, setSaveStatus] = React.useState<"idle" | "success" | "error">("idle")
+    const fileInputRef = React.useRef<HTMLInputElement>(null)
 
     React.useEffect(() => {
         if (profile) {
             setFirstName(profile.firstName || "")
             setLastName(profile.lastName || "")
             setEmail(profile.email || user?.email || "")
+            setProfileImage(profile.profileImage || user?.profileImage || "")
         } else if (user) {
             setEmail(user.email || "")
+            setProfileImage(user.profileImage || "")
         }
     }, [profile, user])
 
@@ -35,7 +41,7 @@ export default function SellerSettingsPage() {
         try {
             setSaving(true)
             setSaveStatus("idle")
-            await updateProfile({ firstName, lastName })
+            await updateProfile({ firstName, lastName, profileImage })
             setSaveStatus("success")
             setTimeout(() => setSaveStatus("idle"), 3000)
         } catch (err) {
@@ -43,6 +49,24 @@ export default function SellerSettingsPage() {
             setSaveStatus("error")
         } finally {
             setSaving(false)
+        }
+    }
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || e.target.files.length === 0) return
+        const file = e.target.files[0]
+        try {
+            setUploadingImage(true)
+            const publicUrl = await uploadImage(file, 'carmazium-images')
+            setProfileImage(publicUrl)
+            // Auto-save immediately after upload
+            await updateProfile({ profileImage: publicUrl })
+        } catch (err) {
+            console.error("Failed to upload image:", err)
+            alert("Failed to upload image. Please try again.")
+        } finally {
+            setUploadingImage(false)
+            if (fileInputRef.current) fileInputRef.current.value = ""
         }
     }
 
@@ -66,10 +90,32 @@ export default function SellerSettingsPage() {
                     <div className="glass-card p-8">
                         <div className="flex flex-col md:flex-row gap-8">
                             <div className="md:w-1/3">
-                                <div className="w-24 h-24 rounded-full bg-slate-800 mx-auto md:mx-0 flex items-center justify-center text-3xl font-bold text-gray-500 mb-4 border-2 border-dashed border-gray-600 relative overflow-hidden group cursor-pointer hover:border-primary transition-colors">
-                                    {initials}
-                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs text-white">Change</div>
+                                <div 
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="w-32 h-32 rounded-full bg-slate-800 mx-auto md:mx-0 flex items-center justify-center text-4xl font-bold text-gray-500 mb-4 border-2 border-dashed border-gray-600 relative overflow-hidden group cursor-pointer hover:border-primary transition-colors"
+                                >
+                                    {uploadingImage ? (
+                                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                    ) : profileImage ? (
+                                        <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
+                                    ) : (
+                                        initials
+                                    )}
+                                    {!uploadingImage && (
+                                        <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs text-white">
+                                            <Camera size={20} className="mb-1" />
+                                            <span>Upload</span>
+                                        </div>
+                                    )}
                                 </div>
+                                <input 
+                                    type="file" 
+                                    ref={fileInputRef} 
+                                    className="hidden" 
+                                    accept="image/*"
+                                    onChange={handleImageUpload} 
+                                />
+                                <p className="text-center md:text-left text-xs text-gray-500 mt-2">Recommended: 256x256px JPG or PNG</p>
                             </div>
                             <div className="md:w-2/3 space-y-6">
                                 <section>

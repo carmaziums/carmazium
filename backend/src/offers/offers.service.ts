@@ -279,4 +279,52 @@ export class OffersService {
             },
         });
     }
+
+    // ─── Buyer: Withdraw an offer ───────────────────────────────────────────
+
+    /**
+     * Withdraw an offer. Only the buyer who submitted it may withdraw.
+     * The offer must be in PENDING status.
+     */
+    async withdrawOffer(offerId: string, buyerId: string): Promise<Offer> {
+        const offer = await this.prisma.offer.findUnique({
+            where: { id: offerId },
+            include: {
+                listing: {
+                    select: { id: true, title: true, sellerId: true },
+                },
+            },
+        });
+
+        if (!offer) {
+            throw new NotFoundException('Offer not found.');
+        }
+
+        if (offer.buyerId !== buyerId) {
+            throw new ForbiddenException('You did not submit this offer.');
+        }
+
+        if (offer.status !== 'PENDING') {
+            throw new BadRequestException(`You cannot withdraw an offer that is already ${offer.status.toLowerCase()}.`);
+        }
+
+        const updated = await this.prisma.offer.update({
+            where: { id: offerId },
+            data: { status: 'WITHDRAWN' },
+        });
+
+        // Notify the seller that the offer was withdrawn
+        if (offer.listing.sellerId) {
+            const sellerNotification = await this.notificationsService.create({
+                userId: offer.listing.sellerId,
+                type: 'OFFER_REJECTED', // Using REJECTED type for withdrawn notifications
+                title: 'Offer Withdrawn',
+                message: `An offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${offer.listing.title}" was withdrawn by the buyer.`,
+                data: { listingId: offer.listingId, offerId: offer.id },
+            });
+            this.notificationsGateway.sendNotification(offer.listing.sellerId, sellerNotification);
+        }
+
+        return updated;
+    }
 }

@@ -123,4 +123,21 @@ export class OffersController {
         const count = await this.offersService.getPendingOffersCount(user.id);
         return new StandardResponse({ count });
     }
+
+    /**
+     * Buyer: Withdraw a pending offer
+     */
+    @Patch(':id/withdraw')
+    @ApiOperation({ summary: 'Withdraw an offer', description: 'Withdraw a pending offer. Buyer only.' })
+    @ApiParam({ name: 'id', description: 'UUID of the offer' })
+    @ApiResponse({ status: 200, description: 'Offer status updated to WITHDRAWN' })
+    @ApiResponse({ status: 400, description: 'Offer not pending' })
+    @ApiResponse({ status: 403, description: 'Not the offer owner' })
+    async withdrawOffer(
+        @Param('id') id: string,
+        @CurrentUser() user: any,
+    ): Promise<StandardResponse<any>> {
+        const offer = await this.offersService.withdrawOffer(id, user.id);
+        return new StandardResponse(offer);
+    }
 }

@@ -12,6 +12,7 @@ import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { formatPrice, type Listing } from "@/lib/listingApi"
 import { aiSearch, type AiSearchResult } from "@/lib/aiApi"
+import { CarCard } from "@/components/features/CarCard"
 
 /* ── Dynamic imports for below-fold heavy components ────────────────────────
  * Code-split these into separate chunks so they don't block initial load.
@@ -276,38 +277,20 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, delay: i * 0.08 }}
-                className="relative group"
               >
-                <Link href={`/vehicle/${listing.slug}`}>
-                  <div
-                    className="rounded-2xl overflow-hidden border border-amber-400/20 hover:border-amber-400/50 transition-all duration-300"
-                    style={{ boxShadow: '0 0 0 0 rgba(251,191,36,0)', transition: 'box-shadow 0.3s' }}
-                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.boxShadow = '0 0 24px rgba(251,191,36,0.18)'}
-                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 0 rgba(251,191,36,0)'}
-                  >
-                    <div className="relative h-44 bg-slate-800 overflow-hidden">
-                      <FeaturedBadge />
-                      {listing.images?.[0] ? (
-                        <Image
-                          src={listing.images[0]}
-                          alt={listing.title}
-                          fill
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                          className="object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Star size={40} className="text-amber-400/20" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-4 bg-slate-800/80">
-                      <p className="font-bold text-white text-sm line-clamp-1">{listing.title}</p>
-                      <p className="text-gray-400 text-xs mt-0.5">{listing.year} • {listing.mileage?.toLocaleString()} mi</p>
-                      <p className="text-amber-400 font-bold text-lg mt-2">{formatPrice(listing.price)}</p>
-                    </div>
-                  </div>
-                </Link>
+                <CarCard
+                  title={listing.title}
+                  price={formatPrice(listing.price)}
+                  image={listing.images?.[0] || "/assets/images/featured-sports.png"}
+                  href={`/vehicle/${listing.slug}`}
+                  year={listing.year ?? undefined}
+                  mileage={listing.mileage ?? undefined}
+                  fuelType={listing.fuelType ?? undefined}
+                  bodyType={listing.bodyType ?? undefined}
+                  isFeatured={true}
+                  badgeTier={listing.badgeTier}
+                  status={listing.status}
+                />
               </motion.div>
             ))}
           </div>
