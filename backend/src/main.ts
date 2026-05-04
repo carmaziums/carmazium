@@ -2,10 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const session = require('express-session');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pgConnect = require('connect-pg-simple');
+import session from 'express-session';
+import pgConnect from 'connect-pg-simple';
 import { AppModule } from './app.module';
 import { AuthService } from './auth/auth.service';
 import { AllExceptionsFilter } from './core/filters/all-exceptions.filter';

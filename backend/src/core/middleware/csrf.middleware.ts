@@ -25,12 +25,18 @@ export class CsrfMiddleware implements NestMiddleware {
             '/ai/chat',
             '/ai/generate-description',
             '/damage/analyze',
+            '/payments/hpi-checkout',
+            '/payments/listing-checkout',
+            '/payments/checkout',
             '/pricing/estimate',
-            '/dealer-quick-list/analyze',
         ];
         const fullPath = req.originalUrl?.split('?')[0] ?? req.path;
 
-        if (excludedPaths.some(path => req.path.startsWith(path) || fullPath.endsWith(path.replace(/^\//, '')))) {
+        if (excludedPaths.some(path => 
+            req.path.startsWith(path) || 
+            fullPath.endsWith(path) ||
+            fullPath.includes(path)
+        )) {
             // console.log(`[CsrfMiddleware] Skipping CSRF for excluded path: ${req.path}`);
             return next();
         }
