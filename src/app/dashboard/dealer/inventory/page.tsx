@@ -288,6 +288,22 @@ export default function DealerInventoryPage() {
                                                                 <Link href={`/buy-cars/${listing.slug}`} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
                                                                     <Eye size={14} /> View
                                                                 </Link>
+                                                                {listing.status === 'ACTIVE' && (
+                                                                    <button 
+                                                                        onClick={async (e) => {
+                                                                            e.preventDefault();
+                                                                            try {
+                                                                                const res = await apiClient<{ data: { url: string } }>(`/featured-boost/${listing.id}`, { method: 'POST' });
+                                                                                if (res.data.url) window.location.href = res.data.url;
+                                                                            } catch (err) {
+                                                                                alert("Failed to start boost payment.");
+                                                                            }
+                                                                        }} 
+                                                                        className="flex items-center gap-2 px-3 py-2 text-sm text-amber-400 hover:bg-amber-500/10 transition-colors w-full text-left"
+                                                                    >
+                                                                        <TrendingUp size={14} /> Boost to Featured
+                                                                    </button>
+                                                                )}
                                                                 {listing.status !== 'SOLD' && (
                                                                     <button 
                                                                         onClick={(e) => {

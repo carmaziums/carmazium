@@ -134,7 +134,7 @@ export default function MyListingsPage() {
                             </div>
                             <div>
                                 <h3 className="font-black text-white text-lg tracking-tight mb-0.5">Sell up to 3x faster with Featured</h3>
-                                <p className="text-gray-300 text-sm">Pin your inventory to the top of search &amp; homepage. <strong className="text-amber-400">Free during beta!</strong></p>
+                                <p className="text-gray-300 text-sm">Pin your inventory to the top of search & homepage. <strong className="text-amber-400">Boost for just £25.00</strong></p>
                             </div>
                         </div>
                         <span className="relative z-10 text-sm font-bold px-4 py-2 rounded-full bg-amber-400/10 text-amber-400 border border-amber-400/20 shrink-0 shadow-[0_0_10px_rgba(251,191,36,0.1)] text-center w-full sm:w-auto">
@@ -328,9 +328,9 @@ export default function MyListingsPage() {
                         <div className="flex items-center justify-between p-4 bg-amber-400/5 border border-amber-400/20 rounded-xl mb-6">
                             <div>
                                 <span className="text-white font-medium">Cost</span>
-                                <p className="text-xs text-gray-500 mt-0.5">Payment coming soon — free during beta</p>
+                                <p className="text-xs text-gray-500 mt-0.5">Secure payment via Stripe</p>
                             </div>
-                            <span className="text-2xl font-bold text-emerald-400">Free</span>
+                            <span className="text-2xl font-bold text-amber-400">£25.00</span>
                         </div>
 
                         <div className="flex gap-3">
