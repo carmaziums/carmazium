@@ -866,10 +866,30 @@ export async function createHpiCheckoutSession(vrm: string): Promise<{ url: stri
 /**
  * Payments: Create Listing Checkout Session
  */
-export async function createListingCheckoutSession(listingId: string, badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM'): Promise<{ url: string }> {
+export async function createListingCheckoutSession(listingId: string, badgeTier: string): Promise<{ url: string }> {
     const data = await apiClient<{ data: { url: string } }>('/payments/listing-checkout', {
         method: 'POST',
         body: JSON.stringify({ listingId, badgeTier }),
+    })
+    return data.data
+}
+
+/**
+ * Damage Analysis: Save detected damage records
+ */
+export async function saveDamageRecords(listingId: string, detections: any[]): Promise<{ success: boolean }> {
+    return apiClient<{ success: boolean }>(`/damage/${listingId}/save`, {
+        method: 'POST',
+        body: JSON.stringify({ detections }),
+    })
+}
+
+/**
+ * Damage Analysis: Get damage records for a listing
+ */
+export async function getDamageRecords(listingId: string): Promise<any[]> {
+    const data = await apiClient<{ data: any[] }>(`/damage/${listingId}`, {
+        method: 'GET',
     })
     return data.data
 }
