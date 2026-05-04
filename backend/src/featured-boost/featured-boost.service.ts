@@ -100,7 +100,7 @@ export class FeaturedBoostService {
         });
 
         const expiresAt = addDays(new Date(), BOOST_DURATION_DAYS);
-        const baseUrl = this.config.get<string>('NEXT_PUBLIC_BASE_URL') || 'http://localhost:3001';
+        const baseUrl = this.config.get<string>('FRONTEND_URL') || 'http://localhost:3000';
 
         // Create a pending boost record first (activated by webhook)
         const boost = await this.prisma.featuredBoost.create({

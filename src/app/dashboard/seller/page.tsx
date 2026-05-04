@@ -4,8 +4,9 @@ import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/Button"
-import { PlusCircle, Eye, TrendingUp, Car, Loader2 } from "lucide-react"
+import { PlusCircle, Loader2, Eye, TrendingUp, Car, DollarSign } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
+import { MetricCard } from "@/components/dashboard/MetricCard"
 import { useAuth } from "@/context/AuthContext"
 import { getSellerStats, getMyListings, formatPrice, type SellerStats, type Listing } from "@/lib/listingApi"
 
@@ -63,43 +64,43 @@ export default function SellerDashboard() {
 
                 <main className="flex-1 space-y-8 min-w-0">
                     {/* Stats Row */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="glass-card p-6 border border-white/5 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-primary/20 rounded-lg"><Car size={18} className="text-primary" /></div>
-                            </div>
-                            <p className="text-gray-400 text-xs mb-1 uppercase tracking-widest font-bold">Active Listings</p>
-                            <h3 className="text-3xl font-black font-heading text-white">
-                                {loading ? "..." : stats?.activeListings || 0}
-                            </h3>
-                        </div>
-                        <div className="glass-card p-6 border border-white/5 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-blue-500/20 rounded-lg"><Eye size={18} className="text-blue-400" /></div>
-                            </div>
-                            <p className="text-gray-400 text-xs mb-1 uppercase tracking-widest font-bold">Total Views</p>
-                            <h3 className="text-3xl font-black font-heading text-white">
-                                {loading ? "..." : stats?.totalViews?.toLocaleString() || 0}
-                            </h3>
-                        </div>
-                        <div className="glass-card p-6 border border-white/5 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-emerald-500/20 rounded-lg"><TrendingUp size={18} className="text-emerald-400" /></div>
-                            </div>
-                            <p className="text-gray-400 text-xs mb-1 uppercase tracking-widest font-bold">Sold</p>
-                            <h3 className="text-3xl font-black font-heading text-emerald-400">
-                                {loading ? "..." : stats?.soldListings || 0}
-                            </h3>
-                        </div>
-                        <div className="glass-card p-6 border border-white/5 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-yellow-500/20 rounded-lg"><span className="text-yellow-400 font-bold">£</span></div>
-                            </div>
-                            <p className="text-gray-400 text-xs mb-1 uppercase tracking-widest font-bold">Revenue</p>
-                            <h3 className="text-2xl font-black font-heading text-white">
-                                {loading ? "..." : formatPrice(stats?.totalRevenue || 0)}
-                            </h3>
-                        </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <MetricCard 
+                            label="Active Listings" 
+                            value={stats?.activeListings || 0} 
+                            icon={Car} 
+                            color="text-primary" 
+                            bg="bg-primary/10" 
+                            border="border-primary/20" 
+                            loading={loading} 
+                        />
+                        <MetricCard 
+                            label="Total Views" 
+                            value={stats?.totalViews?.toLocaleString() || 0} 
+                            icon={Eye} 
+                            color="text-blue-400" 
+                            bg="bg-blue-500/10" 
+                            border="border-blue-500/20" 
+                            loading={loading} 
+                        />
+                        <MetricCard 
+                            label="Sold" 
+                            value={stats?.soldListings || 0} 
+                            icon={TrendingUp} 
+                            color="text-emerald-400" 
+                            bg="bg-emerald-500/10" 
+                            border="border-emerald-500/20" 
+                            loading={loading} 
+                        />
+                        <MetricCard 
+                            label="Revenue" 
+                            value={formatPrice(stats?.totalRevenue || 0)} 
+                            icon={DollarSign} 
+                            color="text-yellow-400" 
+                            bg="bg-yellow-500/10" 
+                            border="border-yellow-500/20" 
+                            loading={loading} 
+                        />
                     </div>
 
                     {/* Active Listings Table */}

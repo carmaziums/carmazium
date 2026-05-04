@@ -96,6 +96,9 @@ enum TransactionType {
   FULL_PAYMENT
   COMMISSION
   REFUND
+  HPI_REPORT
+  LISTING_FEE
+  BOOST
 
   @@map("transaction_type")
 }
@@ -883,4 +886,13 @@ model PriceEstimateCache {
   @@index([make, model, year])
   @@index([expiresAt])
   @@map("price_estimate_cache")
+}
+
+// Session store for connect-pg-simple (managed by express-session)
+model Session {
+  sid    String   @id @db.VarChar
+  sess   Json     @db.Json
+  expire DateTime @db.Timestamp(6)
+
+  @@map("sessions")
 }

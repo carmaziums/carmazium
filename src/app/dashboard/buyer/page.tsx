@@ -6,6 +6,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui/Button"
 import { Gavel, Heart, DollarSign, TrendingUp, Loader2, Trophy } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
+import { MetricCard } from "@/components/dashboard/MetricCard"
 import { useAuth } from "@/context/AuthContext"
 import { getBuyerStats, getMyBids, getWatchlist, formatPrice, type BuyerStats, type Bid, type WatchlistItem } from "@/lib/listingApi"
 
@@ -59,43 +60,43 @@ export default function BuyerDashboard() {
 
                 <main className="flex-1 space-y-8">
                     {/* Stats Row */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div className="glass-card p-6 group hover:translate-y-[-2px] transition-transform">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-primary/20 rounded-lg"><Gavel size={18} className="text-primary" /></div>
-                            </div>
-                            <p className="text-gray-400 text-xs mb-1 uppercase tracking-widest font-bold">Active Bids</p>
-                            <h3 className="text-3xl font-black font-heading text-white">
-                                {loading ? "..." : stats?.activeBids || 0}
-                            </h3>
-                        </div>
-                        <div className="glass-card p-6 group hover:translate-y-[-2px] transition-transform">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-pink-500/20 rounded-lg"><Heart size={18} className="text-pink-400" /></div>
-                            </div>
-                            <p className="text-gray-400 text-xs mb-1 uppercase tracking-widest font-bold">Watchlist</p>
-                            <h3 className="text-3xl font-black font-heading text-white">
-                                {loading ? "..." : stats?.watchlistCount || 0}
-                            </h3>
-                        </div>
-                        <div className="glass-card p-6 group hover:translate-y-[-2px] transition-transform">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-emerald-500/20 rounded-lg"><Trophy size={18} className="text-emerald-400" /></div>
-                            </div>
-                            <p className="text-gray-400 text-xs mb-1 uppercase tracking-widest font-bold">Won</p>
-                            <h3 className="text-3xl font-black font-heading text-emerald-400">
-                                {loading ? "..." : stats?.wonAuctions || 0}
-                            </h3>
-                        </div>
-                        <div className="glass-card p-6 group hover:translate-y-[-2px] transition-transform">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-yellow-500/20 rounded-lg"><DollarSign size={18} className="text-yellow-400" /></div>
-                            </div>
-                            <p className="text-gray-400 text-xs mb-1 uppercase tracking-widest font-bold">Total Spent</p>
-                            <h3 className="text-2xl font-black font-heading text-white">
-                                {loading ? "..." : formatPrice(stats?.totalSpent || 0)}
-                            </h3>
-                        </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <MetricCard 
+                            label="Active Bids" 
+                            value={stats?.activeBids || 0} 
+                            icon={Gavel} 
+                            color="text-primary" 
+                            bg="bg-primary/10" 
+                            border="border-primary/20" 
+                            loading={loading} 
+                        />
+                        <MetricCard 
+                            label="Watchlist" 
+                            value={stats?.watchlistCount || 0} 
+                            icon={Heart} 
+                            color="text-pink-400" 
+                            bg="bg-pink-500/10" 
+                            border="border-pink-500/20" 
+                            loading={loading} 
+                        />
+                        <MetricCard 
+                            label="Won" 
+                            value={stats?.wonAuctions || 0} 
+                            icon={Trophy} 
+                            color="text-emerald-400" 
+                            bg="bg-emerald-500/10" 
+                            border="border-emerald-500/20" 
+                            loading={loading} 
+                        />
+                        <MetricCard 
+                            label="Total Spent" 
+                            value={formatPrice(stats?.totalSpent || 0)} 
+                            icon={DollarSign} 
+                            color="text-yellow-400" 
+                            bg="bg-yellow-500/10" 
+                            border="border-yellow-500/20" 
+                            loading={loading} 
+                        />
                     </div>
 
                     {/* Recent Bids */}

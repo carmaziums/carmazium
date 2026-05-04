@@ -16,6 +16,7 @@ import {
     createListing, formatPrice,
     type CreateListingRequest, type BodyTypeValue,
     type EuroStandardValue, type VehicleTypeValue,
+    createHpiCheckoutSession, createListingCheckoutSession
 } from "@/lib/listingApi"
 import { uploadImage } from "@/lib/supabase"
 import { dvlaLookup } from "@/lib/dvlaApi"
@@ -294,6 +295,39 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [editId])
 
+    // Handle Stripe return for HPI
+    React.useEffect(() => {
+        const hpiSuccess = searchParams.get('hpi_success') === 'true'
+        const urlVrm = searchParams.get('vrm')
+        
+        if (hpiSuccess) {
+            setIsHpiUnlocked(true)
+            // Restore form data from localStorage if available
+            const saved = localStorage.getItem('carmazium_listing_draft')
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved)
+                    setFormData(parsed)
+                    setSellingMethod('list')
+                    setCurrentStep(2) // Return to media step where HPI is
+                } catch (e) {
+                    console.error("Failed to parse saved draft", e)
+                }
+            }
+            if (urlVrm && !formData.vrm) {
+                setFormData(prev => ({ ...prev, vrm: urlVrm }))
+            }
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchParams])
+
+    // Persist form data to localStorage
+    React.useEffect(() => {
+        if (sellingMethod === 'list' && formData.vrm) {
+            localStorage.setItem('carmazium_listing_draft', JSON.stringify(formData))
+        }
+    }, [formData, sellingMethod])
+
 
     const isAuthenticated = !!user
     const isEmailVerified = !!user?.email_confirmed_at
@@ -420,14 +454,31 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
             if (editId) {
                 // Update existing listing
-                await apiClient(`/listings/${editId}`, {
+                const response = await apiClient<{ data: any }>(`/listings/${editId}`, {
                     method: 'PATCH',
                     body: JSON.stringify(payload),
                 })
+                
+                if (payload.badgeTier !== 'FREE' && payload.status === 'ACTIVE') {
+                    // Redirect to payment if upgraded and trying to activate
+                    const checkout = await createListingCheckoutSession(editId, payload.badgeTier)
+                    window.location.href = checkout.url
+                    return
+                }
+
                 router.push('/dashboard/seller/listings')
             } else {
                 const response = await createListing(payload)
+                
+                if (payload.badgeTier !== 'FREE' && payload.status === 'ACTIVE') {
+                    // Redirect to payment
+                    const checkout = await createListingCheckoutSession(response.data.id, payload.badgeTier)
+                    window.location.href = checkout.url
+                    return
+                }
+
                 setFormData(INITIAL_FORM)
+                localStorage.removeItem('carmazium_listing_draft')
                 setCurrentStep(1)
                 setSellingMethod(null)
                 router.push(`/buy-cars/${response.data.slug}`)
@@ -515,20 +566,27 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                      
                      <Button 
                          disabled={isProcessingPayment}
-                         onClick={() => {
+                         onClick={async () => {
+                             if (!formData.vrm) {
+                                 alert("Please enter a VRM first.")
+                                 return
+                             }
                              setIsProcessingPayment(true)
-                             setTimeout(() => {
+                             try {
+                                 const checkout = await createHpiCheckoutSession(formData.vrm)
+                                 window.location.href = checkout.url
+                             } catch (err: any) {
+                                 console.error("HPI Checkout error:", err)
+                                 alert(err.message || "Failed to start checkout. Please try again.")
                                  setIsProcessingPayment(false)
-                                 setIsHpiUnlocked(true)
-                                 setShowHpiModal(false)
-                             }, 1500)
+                             }
                          }}
                          className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-6 text-lg relative overflow-hidden group shadow-neon border-none"
                      >
                          {isProcessingPayment ? (
-                             <><Loader2 className="animate-spin mr-2" size={18} /> Processing...</>
+                             <><Loader2 className="animate-spin mr-2" size={18} /> Redirecting to Stripe...</>
                          ) : (
-                             <>Simulate Payment <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" size={18}/></>
+                             <>Pay Securely with Stripe <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" size={18}/></>
                          )}
                      </Button>
                 </div>

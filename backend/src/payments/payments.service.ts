@@ -9,6 +9,15 @@ export class PaymentsService {
         private readonly config: ConfigService,
     ) {}
 
+    // Prices in GBP
+    private readonly HPI_REPORT_PRICE = 9.99;
+    private readonly LISTING_FEES = {
+        BASIC: 1.00,
+        STANDARD: 10.00,
+        PREMIUM: 25.00,
+    };
+    private readonly BOOST_PRICE = 25.00;
+
     /**
      * Lazily create a Stripe SDK instance.
      */
@@ -99,8 +108,112 @@ export class PaymentsService {
     }
 
     /**
-     * Get the status of a Stripe Checkout Session.
+     * Create a Stripe Checkout Session for an HPI Report.
      */
+    async createHpiSession(vrm: string, userId: string) {
+        const stripe = await this.getStripe();
+        const baseUrl = this.config.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+
+        // Create a pending transaction record
+        const transaction = await this.prisma.transaction.create({
+            data: {
+                userId,
+                listingId: '', // Temporarily empty if listing not created yet
+                amount: this.HPI_REPORT_PRICE,
+                type: 'HPI_REPORT' as any,
+                status: 'PENDING',
+                description: `Comprehensive HPI Report for ${vrm}`,
+            },
+        });
+
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            mode: 'payment',
+            line_items: [
+                {
+                    price_data: {
+                        currency: 'gbp',
+                        product_data: {
+                            name: 'Comprehensive HPI Report',
+                            description: `Full history check for vehicle ${vrm}`,
+                        },
+                        unit_amount: Math.round(this.HPI_REPORT_PRICE * 100),
+                    },
+                    quantity: 1,
+                },
+            ],
+            metadata: {
+                transactionId: transaction.id,
+                userId,
+                vrm,
+                type: 'HPI_REPORT',
+            },
+            success_url: `${baseUrl}/sell?hpi_success=true&vrm=${vrm}&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${baseUrl}/sell?hpi_cancel=true`,
+        });
+
+        await this.prisma.transaction.update({
+            where: { id: transaction.id },
+            data: { stripePaymentId: session.id },
+        });
+
+        return { url: session.url };
+    }
+
+    /**
+     * Create a Stripe Checkout Session for a Listing Badge Fee.
+     */
+    async createListingSession(badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM', userId: string, listingId: string) {
+        const stripe = await this.getStripe();
+        const baseUrl = this.config.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+        const amount = this.LISTING_FEES[badgeTier];
+
+        // Create a pending transaction record
+        const transaction = await this.prisma.transaction.create({
+            data: {
+                userId,
+                listingId,
+                amount,
+                type: 'LISTING_FEE' as any,
+                status: 'PENDING',
+                description: `${badgeTier} Listing Fee`,
+            },
+        });
+
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            mode: 'payment',
+            line_items: [
+                {
+                    price_data: {
+                        currency: 'gbp',
+                        product_data: {
+                            name: `CarMazium ${badgeTier} Listing`,
+                            description: `Professional listing fee for your vehicle`,
+                        },
+                        unit_amount: Math.round(amount * 100),
+                    },
+                    quantity: 1,
+                },
+            ],
+            metadata: {
+                transactionId: transaction.id,
+                userId,
+                listingId,
+                badgeTier,
+                type: 'LISTING_FEE',
+            },
+            success_url: `${baseUrl}/dashboard/seller/listings?success=true`,
+            cancel_url: `${baseUrl}/dashboard/seller/listings?cancel=true`,
+        });
+
+        await this.prisma.transaction.update({
+            where: { id: transaction.id },
+            data: { stripePaymentId: session.id },
+        });
+
+        return { url: session.url };
+    }
     async getSessionStatus(sessionId: string) {
         const stripe = await this.getStripe();
         const session = await stripe.checkout.sessions.retrieve(sessionId);
@@ -153,21 +266,59 @@ export class PaymentsService {
         switch (event.type) {
             case 'checkout.session.completed': {
                 const session = event.data.object;
-                const { transactionId, listingId, type } = session.metadata;
+                const { transactionId, listingId, type, boostId } = session.metadata;
 
-                await this.prisma.transaction.update({
-                    where: { id: transactionId },
-                    data: {
-                        status: 'COMPLETED',
-                        stripePaymentId: session.payment_intent ?? session.id,
-                    },
-                });
+                // 1. Handle Featured Boost (from FeaturedBoostService)
+                if (boostId) {
+                    await this.prisma.$transaction([
+                        this.prisma.featuredBoost.update({
+                            where: { id: boostId },
+                            data: {
+                                isActive: true,
+                                stripePaymentId: session.payment_intent ?? session.id,
+                            },
+                        }),
+                        this.prisma.listing.update({
+                            where: { id: listingId },
+                            data: {
+                                isFeatured: true,
+                                featuredUntil: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000),
+                            },
+                        }),
+                    ]);
+                }
 
-                // If full payment, mark listing as SOLD
+                // 2. Handle Transaction Record
+                if (transactionId) {
+                    await this.prisma.transaction.update({
+                        where: { id: transactionId },
+                        data: {
+                            status: 'COMPLETED',
+                            stripePaymentId: session.payment_intent ?? session.id,
+                        },
+                    });
+                }
+
+                // 3. Handle Specific Types
                 if (type === 'FULL_PAYMENT') {
                     await this.prisma.listing.update({
                         where: { id: listingId },
                         data: { status: 'SOLD' },
+                    });
+                }
+
+                if (type === 'LISTING_FEE') {
+                    const badgeTier = session.metadata.badgeTier;
+                    const isPremium = badgeTier === 'PREMIUM';
+                    
+                    await this.prisma.listing.update({
+                        where: { id: listingId },
+                        data: { 
+                            status: 'ACTIVE',
+                            badgeTier,
+                            isFeatured: isPremium,
+                            featuredUntil: isPremium ? new Date(Date.now() + 28 * 24 * 60 * 60 * 1000) : null
+                        },
                     });
                 }
                 break;

@@ -598,74 +598,90 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
             <div className="bg-slate-800 rounded-xl border border-white/10 overflow-hidden shadow-2xl relative">
                 <div className="h-1 bg-gradient-to-r from-primary to-primary/80 w-full absolute top-0" />
                 <div className="p-6">
-                    {/* Price Box */}
-                    <div className="mb-4">
-                        <div className="text-4xl font-black text-white tracking-tight mb-2">{formatPrice(listing.price)}</div>
-                        <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-3 py-1 rounded-full mb-3 border border-red-500/20 bg-red-500/10 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.1)]">
-                            Offers Welcome
-                        </span>
-                        <p className="text-[11px] text-gray-400 mt-1 pb-5 border-b border-white/10">Price includes VAT. Financing available from 5.9% APR.</p>
-                        <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
-                            <Clock size={12} /> Listed on {new Date(listing.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </p>
-                        {/* Last offer made — visible to public & seller viewers */}
-                        {latestOffer && offerViewerRole !== 'buyer' && (
-                            <p className="text-xs text-amber-400/80 mt-1.5 flex items-center gap-1">
-                                <Tag size={12} />
-                                Last offer: <strong className="text-amber-300">£{Number(latestOffer.amount).toLocaleString('en-GB')}</strong>
-                                <span className="text-gray-500 ml-1">
-                                    · {new Date(latestOffer.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                </span>
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Offer Status */}
-                    {(offerViewerRole === 'buyer' ? myOffer : latestOffer) && (
-                        <div className="mb-4">
-                            <OfferStatusChip
-                                offer={(offerViewerRole === 'buyer' ? myOffer : latestOffer)!}
-                                viewerRole={offerViewerRole}
-                            />
+                    {/* SOLD status banner */}
+                    {listing.status === 'SOLD' ? (
+                        <div className="mb-6 p-6 rounded-xl border-2 border-red-500/30 bg-red-500/10 text-center relative overflow-hidden group">
+                            <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent opacity-50" />
+                            <div className="relative z-10">
+                                <span className="block text-4xl font-black text-red-500 tracking-tighter mb-1 drop-shadow-sm">SOLD</span>
+                                <p className="text-gray-400 text-xs font-medium uppercase tracking-widest">This vehicle is no longer available</p>
+                            </div>
+                            <div className="absolute -right-4 -bottom-4 opacity-10 rotate-12 group-hover:rotate-0 transition-transform duration-700">
+                                <CarIcon size={100} className="text-red-500" />
+                            </div>
                         </div>
-                    )}
+                    ) : (
+                        <>
+                            {/* Price Box */}
+                            <div className="mb-4">
+                                <div className="text-4xl font-black text-white tracking-tight mb-2">{formatPrice(listing.price)}</div>
+                                <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-3 py-1 rounded-full mb-3 border border-red-500/20 bg-red-500/10 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.1)]">
+                                    Offers Welcome
+                                </span>
+                                <p className="text-[11px] text-gray-400 mt-1 pb-5 border-b border-white/10">Price includes VAT. Financing available from 5.9% APR.</p>
+                                <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+                                    <Clock size={12} /> Listed on {new Date(listing.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                </p>
+                                {/* Last offer made — visible to public & seller viewers */}
+                                {latestOffer && offerViewerRole !== 'buyer' && (
+                                    <p className="text-xs text-amber-400/80 mt-1.5 flex items-center gap-1">
+                                        <Tag size={12} />
+                                        Last offer: <strong className="text-amber-300">£{Number(latestOffer.amount).toLocaleString('en-GB')}</strong>
+                                        <span className="text-gray-500 ml-1">
+                                            · {new Date(latestOffer.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                        </span>
+                                    </p>
+                                )}
+                            </div>
 
-                    {/* Action Buttons */}
-                    <div className="space-y-3">
-                        {listing.status !== 'ACTIVE' ? (
-                            <Button className="w-full py-6 text-lg bg-slate-700 text-gray-300 font-black uppercase rounded-xl cursor-not-allowed" disabled>
-                                {listing.status === 'DRAFT' ? 'Preview Only (Draft)' : listing.status}
-                            </Button>
-                        ) : listing.sellerId === user?.id ? (
-                            <div className="text-center text-gray-500 text-sm py-2">This is your listing.</div>
-                        ) : (
-                            <>
-                                <Button
-                                    className="w-full py-6 text-[15px] font-black uppercase bg-primary hover:bg-red-600 shadow-neon text-white rounded-xl"
-                                    onClick={() => {
-                                        if (!user) setShowLoginModal(true)
-                                        else setShowOfferModal(true)
-                                    }}
-                                    disabled={offerViewerRole === 'buyer' && (myOffer?.status === 'PENDING' || myOffer?.status === 'ACCEPTED')}
-                                >
-                                    {offerViewerRole === 'buyer' && myOffer?.status === 'PENDING'
-                                        ? '⏳ Bid Placed'
-                                        : offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'
-                                            ? '✓ Bid Won'
-                                            : 'Place a Bid'}
-                                </Button>
-                                
-                                <Button
-                                    variant="outline"
-                                    onClick={handleEnquire}
-                                    disabled={enquiring}
-                                    className="w-full py-6 text-[15px] font-black uppercase bg-transparent hover:bg-slate-700 border-white/10 text-white rounded-xl gap-2"
-                                >
-                                    {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2" />Starting Chat...</> : <><MessageCircle size={18} /> ENQUIRE NOW</>}
-                                </Button>
-                            </>
-                        )}
-                    </div>
+                            {/* Offer Status */}
+                            {(offerViewerRole === 'buyer' ? myOffer : latestOffer) && (
+                                <div className="mb-4">
+                                    <OfferStatusChip
+                                        offer={(offerViewerRole === 'buyer' ? myOffer : latestOffer)!}
+                                        viewerRole={offerViewerRole}
+                                    />
+                                </div>
+                            )}
+
+                            {/* Action Buttons */}
+                            <div className="space-y-3">
+                                {listing.status !== 'ACTIVE' ? (
+                                    <Button className="w-full py-6 text-lg bg-slate-700 text-gray-300 font-black uppercase rounded-xl cursor-not-allowed" disabled>
+                                        {listing.status === 'DRAFT' ? 'Preview Only (Draft)' : listing.status}
+                                    </Button>
+                                ) : listing.sellerId === user?.id ? (
+                                    <div className="text-center text-gray-500 text-sm py-2">This is your listing.</div>
+                                ) : (
+                                    <>
+                                        <Button
+                                            className="w-full py-6 text-[15px] font-black uppercase bg-primary hover:bg-red-600 shadow-neon text-white rounded-xl"
+                                            onClick={() => {
+                                                if (!user) setShowLoginModal(true)
+                                                else setShowOfferModal(true)
+                                            }}
+                                            disabled={offerViewerRole === 'buyer' && (myOffer?.status === 'PENDING' || myOffer?.status === 'ACCEPTED')}
+                                        >
+                                            {offerViewerRole === 'buyer' && myOffer?.status === 'PENDING'
+                                                ? '⏳ Bid Placed'
+                                                : offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'
+                                                    ? '✓ Bid Won'
+                                                    : 'Place a Bid'}
+                                        </Button>
+                                        
+                                        <Button
+                                            variant="outline"
+                                            onClick={handleEnquire}
+                                            disabled={enquiring}
+                                            className="w-full py-6 text-[15px] font-black uppercase bg-transparent hover:bg-slate-700 border-white/10 text-white rounded-xl gap-2"
+                                        >
+                                            {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2" />Starting Chat...</> : <><MessageCircle size={18} /> ENQUIRE NOW</>}
+                                        </Button>
+                                    </>
+                                )}
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
 

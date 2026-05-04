@@ -4,6 +4,7 @@ import * as React from "react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { getSellerPerformance, formatPrice, type PerformanceStats } from "@/lib/listingApi"
+import { MetricCard } from "@/components/dashboard/MetricCard"
 import { Loader2, TrendingUp, Eye, BarChart3, Target, AlertCircle } from "lucide-react"
 
 export default function SellerPerformancePage() {
@@ -41,10 +42,10 @@ export default function SellerPerformancePage() {
     }
 
     const metricCards = [
-        { label: "Total Revenue", value: formatPrice(performance?.totalRevenue || 0), icon: TrendingUp, color: "text-emerald-400" },
-        { label: "Profile Views", value: (performance?.totalViews || 0).toLocaleString(), icon: Eye, color: "text-blue-400" },
-        { label: "Total Listings", value: (performance?.totalListings || 0).toString(), icon: BarChart3, color: "text-purple-400" },
-        { label: "Conversion Rate", value: `${performance?.conversionRate || 0}%`, icon: Target, color: "text-amber-400" },
+        { label: "Total Revenue", value: formatPrice(performance?.totalRevenue || 0), icon: TrendingUp, color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+        { label: "Profile Views", value: (performance?.totalViews || 0).toLocaleString(), icon: Eye, color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
+        { label: "Total Listings", value: (performance?.totalListings || 0).toString(), icon: BarChart3, color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/20" },
+        { label: "Conversion Rate", value: `${performance?.conversionRate || 0}%`, icon: Target, color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
     ]
 
     const maxViews = Math.max(...(performance?.recentListingViews?.map(l => l.views) || [1]), 1)
@@ -62,15 +63,18 @@ export default function SellerPerformancePage() {
                         </div>
                     )}
 
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         {metricCards.map(card => (
-                            <div key={card.label} className="glass-card p-5 aspect-square flex flex-col items-center justify-center text-center">
-                                <div className="flex items-center gap-3 mb-2">
-                                    <card.icon size={20} className={card.color} />
-                                    <span className="text-xs sm:text-sm text-gray-400">{card.label}</span>
-                                </div>
-                                <p className="text-xl sm:text-2xl font-bold text-white">{card.value}</p>
-                            </div>
+                            <MetricCard 
+                                key={card.label}
+                                label={card.label}
+                                value={card.value}
+                                icon={card.icon}
+                                color={card.color}
+                                bg={card.bg}
+                                border={card.border}
+                                loading={loading}
+                            />
                         ))}
                     </div>
 

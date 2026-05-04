@@ -45,6 +45,31 @@ export class PaymentsController {
         return new StandardResponse(result);
     }
 
+    @Post('hpi-checkout')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Create a Stripe Checkout Session for HPI Report' })
+    async createHpiCheckout(
+        @Body('vrm') vrm: string,
+        @CurrentUser() user: any,
+    ) {
+        const result = await this.paymentsService.createHpiSession(vrm, user.id);
+        return new StandardResponse(result);
+    }
+
+    @Post('listing-checkout')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Create a Stripe Checkout Session for Listing Fee' })
+    async createListingCheckout(
+        @Body('badgeTier') badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM',
+        @Body('listingId') listingId: string,
+        @CurrentUser() user: any,
+    ) {
+        const result = await this.paymentsService.createListingSession(badgeTier, user.id, listingId);
+        return new StandardResponse(result);
+    }
+
     @Get('session-status/:sessionId')
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()
