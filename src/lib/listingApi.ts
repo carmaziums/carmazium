@@ -851,3 +851,25 @@ export async function getPendingOffersCount(): Promise<number> {
         return 0
     }
 }
+
+/**
+ * Payments: Create HPI Checkout Session
+ */
+export async function createHpiCheckoutSession(vrm: string): Promise<{ url: string }> {
+    const data = await apiClient<{ data: { url: string } }>('/payments/hpi-checkout', {
+        method: 'POST',
+        body: JSON.stringify({ vrm }),
+    })
+    return data.data
+}
+
+/**
+ * Payments: Create Listing Checkout Session
+ */
+export async function createListingCheckoutSession(listingId: string, badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM'): Promise<{ url: string }> {
+    const data = await apiClient<{ data: { url: string } }>('/payments/listing-checkout', {
+        method: 'POST',
+        body: JSON.stringify({ listingId, badgeTier }),
+    })
+    return data.data
+}
