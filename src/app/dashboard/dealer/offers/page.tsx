@@ -16,6 +16,8 @@ export default function DealerOffersPage() {
     const [offers, setOffers] = React.useState<any[]>([])
     const [loading, setLoading] = React.useState(true)
     const [actionLoading, setActionLoading] = React.useState<Record<string, boolean>>({})
+    const [counteringOfferId, setCounteringOfferId] = React.useState<string | null>(null)
+    const [counterAmount, setCounterAmount] = React.useState<number | null>(null)
 
     React.useEffect(() => {
         if (!authLoading && user) {
@@ -143,6 +145,7 @@ export default function DealerOffersPage() {
                                         {offers.map((offer: any) => {
                                             const isActioning = !!actionLoading[offer.id]
                                             const isPending = offer.status === 'PENDING'
+                                            const isCountering = counteringOfferId === offer.id
                                             
                                             return (
                                                 <tr key={offer.id} className="group hover:bg-white/[0.02] transition-colors">
@@ -158,21 +161,39 @@ export default function DealerOffersPage() {
                                                     </td>
                                                     <td className="px-6 py-6 text-right">
                                                         <span className="text-xl font-black text-white tabular-nums">£{offer.amount?.toLocaleString()}</span>
+                                                        {offer.counterAmount && (
+                                                            <div className="text-[10px] text-blue-400 font-black uppercase tracking-widest mt-1">
+                                                                My Counter: £{offer.counterAmount.toLocaleString()}
+                                                            </div>
+                                                        )}
                                                     </td>
                                                     <td className="px-6 py-6 text-center">
                                                         <span className={`inline-flex px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest uppercase border ${
                                                             offer.status === "PENDING" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
                                                             offer.status === "ACCEPTED" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
                                                             offer.status === "REJECTED" ? "bg-red-500/10 text-red-400 border-red-500/20" :
-                                                            "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                                                            offer.status === "COUNTERED" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
+                                                            "bg-slate-500/10 text-gray-400 border-white/10"
                                                         }`}>
                                                             {offer.status}
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-6 text-right">
                                                         <div className="flex items-center justify-end gap-2">
-                                                            {isPending ? (
+                                                            {isPending && !isCountering && (
                                                                 <>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        disabled={isActioning}
+                                                                        onClick={() => {
+                                                                            setCounteringOfferId(offer.id)
+                                                                            setCounterAmount(offer.amount)
+                                                                        }}
+                                                                        className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 font-black text-[9px] uppercase tracking-widest h-9 px-4 border border-blue-500/20 rounded-xl transition-all"
+                                                                    >
+                                                                        COUNTER
+                                                                    </Button>
                                                                     <Button
                                                                         variant="ghost"
                                                                         size="sm"
@@ -180,7 +201,7 @@ export default function DealerOffersPage() {
                                                                         onClick={() => handleRespond(offer.id, 'ACCEPTED')}
                                                                         className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-black text-[9px] uppercase tracking-widest h-9 px-4 border border-emerald-500/20 rounded-xl transition-all"
                                                                     >
-                                                                        {isActioning ? <Loader2 size={14} className="animate-spin" /> : 'Accept'}
+                                                                        {isActioning ? <Loader2 size={14} className="animate-spin" /> : 'ACCEPT'}
                                                                     </Button>
                                                                     <Button
                                                                         variant="ghost"
@@ -189,10 +210,46 @@ export default function DealerOffersPage() {
                                                                         onClick={() => handleRespond(offer.id, 'REJECTED')}
                                                                         className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-black text-[9px] uppercase tracking-widest h-9 px-4 border border-red-500/20 rounded-xl transition-all"
                                                                     >
-                                                                        {isActioning ? <Loader2 size={14} className="animate-spin" /> : 'Reject'}
+                                                                        {isActioning ? <Loader2 size={14} className="animate-spin" /> : 'REJECT'}
                                                                     </Button>
                                                                 </>
-                                                            ) : (
+                                                            )}
+                                                            {isPending && isCountering && (
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="relative">
+                                                                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-[10px] font-black">£</span>
+                                                                        <input
+                                                                            type="number"
+                                                                            className="bg-black/40 border border-white/10 text-white rounded-lg pl-6 pr-2 py-1.5 w-24 text-xs font-black focus:outline-none focus:border-blue-500 transition-colors"
+                                                                            value={counterAmount || ''}
+                                                                            onChange={e => setCounterAmount(Number(e.target.value))}
+                                                                            autoFocus
+                                                                        />
+                                                                    </div>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        disabled={isActioning || !counterAmount}
+                                                                        onClick={() => {
+                                                                            handleRespond(offer.id, 'COUNTERED', counterAmount)
+                                                                            setCounteringOfferId(null)
+                                                                        }}
+                                                                        className="bg-blue-600 text-white font-black text-[9px] uppercase tracking-widest h-9 px-3 rounded-xl hover:bg-blue-500 transition-all"
+                                                                    >
+                                                                        Send
+                                                                    </Button>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        disabled={isActioning}
+                                                                        onClick={() => setCounteringOfferId(null)}
+                                                                        className="text-gray-500 hover:text-white"
+                                                                    >
+                                                                        <XCircle size={16} />
+                                                                    </Button>
+                                                                </div>
+                                                            )}
+                                                            {!isPending && (
                                                                 <span className="text-[10px] text-gray-600 uppercase tracking-widest font-black italic">
                                                                     Decision Finalized
                                                                 </span>
