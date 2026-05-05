@@ -36,16 +36,24 @@ export default function DealerOffersPage() {
     }
 
     async function handleRespond(offerId: string, status: 'ACCEPTED' | 'REJECTED' | 'COUNTERED', counterAmount?: number) {
+        // Optimistic update: Update the UI immediately
+        const previousOffers = [...offers]
+        setOffers(current => current.map(offer => 
+            offer.id === offerId ? { ...offer, status } : offer
+        ))
+        
         setActionLoading(prev => ({ ...prev, [offerId]: true }))
         try {
             await apiClient(`/offers/${offerId}/respond`, {
                 method: 'PATCH',
                 body: JSON.stringify({ status, counterAmount }),
             })
-            // Refresh list
+            // Fetch fresh data in the background to ensure consistency
             fetchOffers()
         } catch (err) {
             console.error('Failed to respond to offer:', err)
+            // Rollback on error
+            setOffers(previousOffers)
         } finally {
             setActionLoading(prev => ({ ...prev, [offerId]: false }))
         }
