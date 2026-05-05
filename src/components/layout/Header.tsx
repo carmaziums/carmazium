@@ -16,6 +16,7 @@ import { NotificationBell } from "@/components/layout/NotificationBell"
 const navLinks: { name: string; href: string; prefetch?: boolean }[] = [
     { name: "Home", href: "/" },
     { name: "Buy Cars", href: "/search" },
+    { name: "Compare", href: "/compare" },
     { name: "Sell Cars", href: "/sell", prefetch: false },
     { name: "Pricing", href: "/pricing" },
     { name: "About", href: "/about" },
