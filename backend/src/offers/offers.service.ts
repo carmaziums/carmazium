@@ -85,6 +85,7 @@ export class OffersService {
                 type: 'OFFER_RECEIVED',
                 title: 'New Offer Received',
                 message: `You received an offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${listing.title}".`,
+                link: '/dashboard/seller/offers',
                 data: { listingId: listing.id, offerId: offer.id },
             });
             // Push real-time notification via WebSocket
@@ -248,6 +249,7 @@ export class OffersService {
             type: notifType,
             title: notifTitle,
             message: notifMessage,
+            link: prismaStatus === 'COUNTERED' ? `/vehicle/${offer.listingId}` : '/dashboard/buyer/offers',
             data: { listingId: offer.listingId, offerId: offer.id },
         });
         // Push real-time notification to the buyer
@@ -260,6 +262,7 @@ export class OffersService {
                 type: 'DEAL_CLOSED',
                 title: '✅ Offer Accepted',
                 message: `You accepted an offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${offer.listing.title}". The listing remains active — mark it as Sold from your inventory when the deal is complete.`,
+                link: '/dashboard/seller/offers',
                 data: { listingId: offer.listingId, offerId: offer.id },
             });
             this.notificationsGateway.sendNotification(offer.listing.sellerId, sellerNotification);

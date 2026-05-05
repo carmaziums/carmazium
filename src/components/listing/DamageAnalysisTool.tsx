@@ -2,6 +2,7 @@ import * as React from "react"
 import { Sparkles, Loader2, AlertCircle, CheckCircle2, ChevronRight, Search, Camera } from "lucide-react"
 import { CarDamageMap, type DamagePoint } from "./CarDamageMap"
 import Image from "next/image"
+import { apiClient } from "@/lib/apiClient"
 
 interface DamageAnalysisToolProps {
   images: string[];
@@ -21,17 +22,16 @@ export function DamageAnalysisTool({ images, onComplete }: DamageAnalysisToolPro
     
     setAnalyzing(true)
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/damage/analyze`, {
+      const res = await apiClient<{ success: boolean; data: DamagePoint[] }>('/damage/analyze', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageUrls: damageImages })
       })
-      const json = await res.json()
-      if (json.success) {
-        setResults(json.data)
-        if (json.data.length > 0) {
-          setActivePoint(json.data[0])
-          setCurrentView(json.data[0].coords.view)
+      
+      if (res.success) {
+        setResults(res.data)
+        if (res.data.length > 0) {
+          setActivePoint(res.data[0])
+          setCurrentView(res.data[0].coords.view)
         }
       }
     } catch (err) {
