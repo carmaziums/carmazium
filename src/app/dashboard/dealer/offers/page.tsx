@@ -26,7 +26,7 @@ export default function DealerOffersPage() {
     async function fetchOffers() {
         setLoading(true)
         try {
-            const res = await apiClient<{ data: any[] }>('/offers/my')
+            const res = await apiClient<{ data: any[] }>('/offers/received')
             setOffers(res?.data ?? [])
         } catch {
             setOffers([])

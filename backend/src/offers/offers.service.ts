@@ -426,4 +426,42 @@ export class OffersService {
 
         return updated;
     }
+    /**
+     * Seller/Dealer: Get all offers received across all their listings
+     */
+    async getReceivedOffers(sellerId: string): Promise<Offer[]> {
+        // First find all listing IDs owned by this seller
+        const listings = await this.prisma.listing.findMany({
+            where: { sellerId, deletedAt: null },
+            select: { id: true },
+        });
+        const listingIds = listings.map(l => l.id);
+        if (listingIds.length === 0) return [];
+
+        return this.prisma.offer.findMany({
+            where: {
+                listingId: { in: listingIds },
+            },
+            orderBy: { createdAt: 'desc' },
+            include: {
+                listing: {
+                    select: {
+                        id: true,
+                        title: true,
+                        slug: true,
+                        vrm: true,
+                        price: true,
+                    },
+                },
+                buyer: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                    },
+                },
+            },
+        }) as Promise<Offer[]>;
+    }
 }
