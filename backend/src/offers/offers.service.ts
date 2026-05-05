@@ -80,16 +80,21 @@ export class OffersService {
 
         // Notify the seller
         if (listing.sellerId) {
-            const notification = await this.notificationsService.create({
-                userId: listing.sellerId,
-                type: 'OFFER_RECEIVED',
-                title: 'New Offer Received',
-                message: `You received an offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${listing.title}".`,
-                link: '/dashboard/seller/offers',
-                data: { listingId: listing.id, offerId: offer.id },
-            });
-            // Push real-time notification via WebSocket
-            this.notificationsGateway.sendNotification(listing.sellerId, notification);
+            try {
+                const notification = await this.notificationsService.create({
+                    userId: listing.sellerId,
+                    type: 'OFFER_RECEIVED',
+                    title: 'New Offer Received',
+                    message: `You received an offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${listing.title}".`,
+                    link: '/dashboard/seller/offers',
+                    data: { listingId: listing.id, offerId: offer.id },
+                });
+                // Push real-time notification via WebSocket
+                this.notificationsGateway.sendNotification(listing.sellerId, notification);
+            } catch (error) {
+                console.error('Failed to send offer notification:', error);
+                // We don't rethrow here because the offer was successfully created
+            }
         }
 
         return offer;
@@ -261,28 +266,36 @@ export class OffersService {
             notifType = 'OFFER_RECEIVED';
         }
 
-        const buyerNotification = await this.notificationsService.create({
-            userId: offer.buyerId,
-            type: notifType,
-            title: notifTitle,
-            message: notifMessage,
-            link: prismaStatus === 'COUNTERED' ? `/vehicle/${offer.listingId}` : '/dashboard/buyer/offers',
-            data: { listingId: offer.listingId, offerId: offer.id },
-        });
-        // Push real-time notification to the buyer
-        this.notificationsGateway.sendNotification(offer.buyerId, buyerNotification);
+        try {
+            const buyerNotification = await this.notificationsService.create({
+                userId: offer.buyerId,
+                type: notifType,
+                title: notifTitle,
+                message: notifMessage,
+                link: prismaStatus === 'COUNTERED' ? `/vehicle/${offer.listingId}` : '/dashboard/buyer/offers',
+                data: { listingId: offer.listingId, offerId: offer.id },
+            });
+            // Push real-time notification to the buyer
+            this.notificationsGateway.sendNotification(offer.buyerId, buyerNotification);
+        } catch (error) {
+            console.error('Failed to notify buyer after offer response:', error);
+        }
 
         // If accepted, also notify the seller that an offer was accepted (listing stays active)
         if (prismaStatus === 'ACCEPTED' && offer.listing.sellerId) {
-            const sellerNotification = await this.notificationsService.create({
-                userId: offer.listing.sellerId,
-                type: 'DEAL_CLOSED',
-                title: '✅ Offer Accepted',
-                message: `You accepted an offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${offer.listing.title}". The listing remains active — mark it as Sold from your inventory when the deal is complete.`,
-                link: '/dashboard/seller/offers',
-                data: { listingId: offer.listingId, offerId: offer.id },
-            });
-            this.notificationsGateway.sendNotification(offer.listing.sellerId, sellerNotification);
+            try {
+                const sellerNotification = await this.notificationsService.create({
+                    userId: offer.listing.sellerId,
+                    type: 'DEAL_CLOSED',
+                    title: '✅ Offer Accepted',
+                    message: `You accepted an offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${offer.listing.title}". The listing remains active — mark it as Sold from your inventory when the deal is complete.`,
+                    link: '/dashboard/seller/offers',
+                    data: { listingId: offer.listingId, offerId: offer.id },
+                });
+                this.notificationsGateway.sendNotification(offer.listing.sellerId, sellerNotification);
+            } catch (error) {
+                console.error('Failed to notify seller after offer acceptance:', error);
+            }
         }
 
         return updated;

@@ -77,7 +77,6 @@ interface FormData {
     // Step 3 — Pricing (3-tier seller evaluation)
     priceMin: string      // Lower bound — minimum the seller will accept
     priceAsking: string   // Asking price — displayed publicly on the listing
-    priceMax: string      // Maximum — ceiling / buy-it-now threshold
     badgeTier: 'FREE' | 'STANDARD' | 'PREMIUM'
     status: "DRAFT" | "ACTIVE"
 }
@@ -111,7 +110,7 @@ const INITIAL_FORM: FormData = {
     primaryColour: "",
     dateOfLastV5CIssued: "",
     images: [],
-    priceMin: "", priceAsking: "", priceMax: "", badgeTier: 'FREE', status: "DRAFT",
+    priceMin: "", priceAsking: "", badgeTier: 'FREE', status: "DRAFT",
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -283,7 +282,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     images: l.images || [],
                     priceMin: l.priceMin ? String(l.priceMin) : '',
                     priceAsking: l.price ? String(l.price) : '',
-                    priceMax: l.priceMax ? String(l.priceMax) : '',
                     status: l.status === 'ACTIVE' ? 'ACTIVE' : 'DRAFT',
                     badgeTier: l.badgeTier || 'FREE',
                 }))
@@ -360,12 +358,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             case 3: {
                 const pMin = parseFloat(formData.priceMin)
                 const pAsk = parseFloat(formData.priceAsking)
-                const pMax = parseFloat(formData.priceMax)
                 if (!formData.priceAsking || isNaN(pAsk) || pAsk <= 0) return false
                 // If lower is set, it must be <= asking
                 if (formData.priceMin && !isNaN(pMin) && pMin > pAsk) return false
-                // If max is set, it must be >= asking
-                if (formData.priceMax && !isNaN(pMax) && pMax < pAsk) return false
                 return true
             }
             default: return true
@@ -407,7 +402,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         try {
             const priceAsking = parseFloat(formData.priceAsking)
             const priceMin = formData.priceMin ? parseFloat(formData.priceMin) : priceAsking
-            const priceMax = formData.priceMax ? parseFloat(formData.priceMax) : priceAsking
+            const priceMax = priceAsking // Default to asking price
             const displayPrice = priceAsking
 
             const payload: CreateListingRequest = {
@@ -1284,14 +1279,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
 
 
-                            {/* Price Evaluation Explainer */}
                             <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
                                 <p className="text-xs text-primary font-semibold mb-1">💰 Set Your Price Range</p>
-                                <p className="text-xs text-gray-400">Define three price points for your vehicle. The <strong className="text-white">Asking Price</strong> is displayed publicly. The <strong className="text-white">Lower</strong> and <strong className="text-white">Maximum</strong> define your acceptable bidding range.</p>
+                                <p className="text-xs text-gray-400">Define your price points for your vehicle. The <strong className="text-white">Asking Price</strong> is displayed publicly. The <strong className="text-white">Lower (Min)</strong> defines your acceptable bidding floor.</p>
                             </div>
 
-                            {/* 3 Price Inputs */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Lower (Minimum) */}
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-gray-400 flex items-center gap-1">
@@ -1321,36 +1314,15 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </div>
                                     <p className="text-[10px] text-primary/60 font-semibold">Displayed on listing — required</p>
                                 </div>
-
-                                {/* Maximum */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-gray-400 flex items-center gap-1">
-                                        Maximum
-                                        <InfoTooltip text="The highest value you believe the car is worth. Used as a buy-it-now ceiling in the bidding system." />
-                                    </label>
-                                    <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">£</span>
-                                        <Input type="number" placeholder="e.g. 22000" value={formData.priceMax}
-                                            onChange={(e) => set("priceMax", e.target.value)}
-                                            className={`${inputCls} pl-8 text-lg h-14 ${formData.priceMax && formData.priceAsking && parseFloat(formData.priceMax) < parseFloat(formData.priceAsking) ? 'border-red-500' : ''}`} />
-                                    </div>
-                                    <p className="text-[10px] text-gray-600">Ceiling — not visible to buyers</p>
-                                </div>
                             </div>
 
-                            {/* Validation Errors */}
                             {formData.priceMin && formData.priceAsking && parseFloat(formData.priceMin) > parseFloat(formData.priceAsking) && (
                                 <p className="text-xs text-red-400 flex items-center gap-1"><AlertTriangle size={12} /> Lower price cannot be higher than the asking price.</p>
                             )}
-                            {formData.priceMax && formData.priceAsking && parseFloat(formData.priceMax) < parseFloat(formData.priceAsking) && (
-                                <p className="text-xs text-red-400 flex items-center gap-1"><AlertTriangle size={12} /> Maximum price cannot be lower than the asking price.</p>
-                            )}
 
-                            {/* Price Range Visual */}
                             {formData.priceAsking && (() => {
                                 const pMin = parseFloat(formData.priceMin) || 0
                                 const pAsk = parseFloat(formData.priceAsking) || 0
-                                const pMax = parseFloat(formData.priceMax) || 0
                                 if (pAsk <= 0) return null
                                 return (
                                     <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
@@ -1360,19 +1332,17 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         </div>
                                         {/* Visual bar */}
                                         <div className="relative h-3 bg-slate-800 rounded-full overflow-hidden">
-                                            {pMin > 0 && pMax > 0 && pMax > pMin && (
-                                                <div className="absolute inset-y-0 bg-gradient-to-r from-amber-500/40 via-primary/60 to-emerald-500/40 rounded-full" style={{ left: '5%', right: '5%' }} />
+                                            {pMin > 0 && pAsk > pMin && (
+                                                <div className="absolute inset-y-0 bg-gradient-to-r from-amber-500/40 to-primary/60 rounded-full" style={{ left: '5%', right: '5%' }} />
                                             )}
                                         </div>
                                         <div className="flex items-center justify-between mt-2">
                                             <span className="text-xs text-amber-400 font-bold tabular-nums">{pMin > 0 ? formatPrice(pMin) : '—'}</span>
                                             <span className="text-sm text-primary font-black tabular-nums">{formatPrice(pAsk)}</span>
-                                            <span className="text-xs text-emerald-400 font-bold tabular-nums">{pMax > 0 ? formatPrice(pMax) : '—'}</span>
                                         </div>
                                         <div className="flex items-center justify-between mt-0.5">
                                             <span className="text-[9px] text-gray-600 uppercase">Lower</span>
                                             <span className="text-[9px] text-primary/60 uppercase font-bold">Asking</span>
-                                            <span className="text-[9px] text-gray-600 uppercase">Maximum</span>
                                         </div>
                                     </div>
                                 )
@@ -1533,21 +1503,16 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 {formData.description && <p className="text-sm text-gray-400 mt-2">{formData.description}</p>}
                             </SummarySection>
 
-                            {/* Pricing */}
                             <SummarySection title="Pricing" onEdit={() => goToStep(3)}>
                                 <div className="flex flex-col gap-3">
-                                    <div className="grid grid-cols-3 gap-3">
+                                    <div className="grid grid-cols-2 gap-3">
                                         <div>
                                             <p className="text-[10px] text-gray-500 uppercase mb-0.5">Lower</p>
                                             <p className="text-white font-bold text-lg tabular-nums">{formData.priceMin ? formatPrice(formData.priceMin) : '—'}</p>
                                         </div>
-                                        <div className="text-center">
+                                        <div className="text-right">
                                             <p className="text-[10px] text-primary uppercase font-bold mb-0.5">Asking Price</p>
                                             <p className="text-white font-black text-2xl tabular-nums">{formatPrice(formData.priceAsking)}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-[10px] text-gray-500 uppercase mb-0.5">Maximum</p>
-                                            <p className="text-white font-bold text-lg tabular-nums">{formData.priceMax ? formatPrice(formData.priceMax) : '—'}</p>
                                         </div>
                                     </div>
 
