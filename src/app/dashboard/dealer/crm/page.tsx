@@ -259,16 +259,26 @@ export default function DealerCRMPage() {
     }
 
     async function updateLeadStatus(leadId: string, status: string) {
+        // Optimistic update: Update the UI immediately
+        const previousLeads = [...leads]
+        setLeads(current => current.map(lead => 
+            lead.id === leadId ? { ...lead, status } : lead
+        ))
+        
         setUpdatingLeadId(leadId)
         try {
             const res = await apiClient<{ data: any }>(`/dealers/leads/${leadId}`, {
                 method: "PATCH",
                 body: JSON.stringify({ status }),
             })
+            // Sync with actual server data (in case there are other changes like updatedAt)
             const updatedLead = res?.data
             setLeads(prev => prev.map(lead => (lead.id === leadId ? { ...lead, ...updatedLead } : lead)))
         } catch (err) {
             console.error("Failed to update lead status:", err)
+            // Rollback on error
+            setLeads(previousLeads)
+            showToast("Failed to update lead status")
         } finally {
             setUpdatingLeadId(null)
         }
