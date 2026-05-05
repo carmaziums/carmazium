@@ -17,7 +17,7 @@ export default function DealerOffersPage() {
     const [loading, setLoading] = React.useState(true)
     const [actionLoading, setActionLoading] = React.useState<Record<string, boolean>>({})
     const [counteringOfferId, setCounteringOfferId] = React.useState<string | null>(null)
-    const [counterAmount, setCounterAmount] = React.useState<number | null>(null)
+    const [counterAmount, setCounterAmount] = React.useState<number | undefined>(undefined)
 
     React.useEffect(() => {
         if (!authLoading && user) {
@@ -233,6 +233,7 @@ export default function DealerOffersPage() {
                                                                         onClick={() => {
                                                                             handleRespond(offer.id, 'COUNTERED', counterAmount)
                                                                             setCounteringOfferId(null)
+                                                                            setCounterAmount(undefined)
                                                                         }}
                                                                         className="bg-blue-600 text-white font-black text-[9px] uppercase tracking-widest h-9 px-3 rounded-xl hover:bg-blue-500 transition-all"
                                                                     >
@@ -242,7 +243,10 @@ export default function DealerOffersPage() {
                                                                         variant="ghost"
                                                                         size="sm"
                                                                         disabled={isActioning}
-                                                                        onClick={() => setCounteringOfferId(null)}
+                                                                        onClick={() => {
+                                                                            setCounteringOfferId(null)
+                                                                            setCounterAmount(undefined)
+                                                                        }}
                                                                         className="text-gray-500 hover:text-white"
                                                                     >
                                                                         <XCircle size={16} />
