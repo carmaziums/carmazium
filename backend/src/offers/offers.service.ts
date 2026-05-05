@@ -229,22 +229,16 @@ export class OffersService {
             },
         });
 
-        // If accepted, reject all other pending offers for the same listing AND mark listing as SOLD
+        // If accepted, reject all other pending offers for the same listing
         if (prismaStatus === 'ACCEPTED') {
-            await Promise.all([
-                this.prisma.offer.updateMany({
-                    where: {
-                        listingId: offer.listingId,
-                        id: { not: offerId },
-                        status: 'PENDING',
-                    },
-                    data: { status: 'REJECTED' },
-                }),
-                this.prisma.listing.update({
-                    where: { id: offer.listingId },
-                    data: { status: 'SOLD' },
-                })
-            ]);
+            await this.prisma.offer.updateMany({
+                where: {
+                    listingId: offer.listingId,
+                    id: { not: offerId },
+                    status: 'PENDING',
+                },
+                data: { status: 'REJECTED' },
+            });
         }
 
         // Notify the buyer
@@ -441,19 +435,13 @@ export class OffersService {
             data: { status: prismaStatus },
         });
 
-        // If accepted, mark listing as SOLD
-        if (prismaStatus === 'ACCEPTED') {
-            await this.prisma.listing.update({
-                where: { id: offer.listingId },
-                data: { status: 'SOLD' },
-            });
-        }
+
 
         // Notify the seller
         if (offer.listing.sellerId) {
             const notifTitle = prismaStatus === 'ACCEPTED' ? '💰 Counter Offer Accepted!' : 'Counter Offer Declined';
             const notifMessage = prismaStatus === 'ACCEPTED'
-                ? `The buyer accepted your counter offer of £${Number(offer.counterAmount).toLocaleString('en-GB')} for "${offer.listing.title}"!`
+                ? `The buyer accepted your counter offer of £${Number(offer.counterAmount).toLocaleString('en-GB')} for "${offer.listing.title}"! Contact them to finalize, then mark the listing as Sold from your dashboard.`
                 : `The buyer declined your counter offer for "${offer.listing.title}".`;
 
             const sellerNotification = await this.notificationsService.create({

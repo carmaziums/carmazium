@@ -123,7 +123,7 @@ export default function BuyerOffersPage() {
     }
 
     const handleAcceptCounter = async (offerId: string) => {
-        if (!confirm("Accept the seller's counter offer? This will close the deal!")) return;
+        if (!confirm("Accept the seller's counter offer? You can then chat with the seller to finalize the purchase.")) return;
         setAccepting(offerId);
         try {
             await respondToCounterOffer(offerId, 'ACCEPTED');
