@@ -134,15 +134,15 @@ export default function DealerOffersPage() {
         }
     }
 
-    async function handleRespond(offerId: string, status: 'ACCEPTED' | 'REJECTED') {
+    async function handleRespond(offerId: string, status: 'ACCEPTED' | 'REJECTED' | 'COUNTERED', counterAmount?: number) {
         setActionLoading(prev => ({ ...prev, [offerId]: true }))
         try {
             await apiClient(`/offers/${offerId}/respond`, {
                 method: 'PATCH',
-                body: JSON.stringify({ status }),
+                body: JSON.stringify({ status, counterAmount }),
             })
-            // Optimistic update — reflect new status immediately without a full refetch
-            setOffers(prev => prev.map(o => o.id === offerId ? { ...o, status } : o))
+            // Optimistic update
+            setOffers(prev => prev.map(o => o.id === offerId ? { ...o, status, counterAmount: counterAmount || o.counterAmount, isCountering: false } : o))
         } catch (err) {
             console.error('Failed to respond to offer:', err)
         } finally {
@@ -323,31 +323,75 @@ export default function DealerOffersPage() {
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-5 text-right">
-                                                        <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <div className="flex items-center justify-end gap-2">
                                                             {isPending ? (
-                                                                <>
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="sm"
-                                                                        disabled={isActioning}
-                                                                        onClick={() => handleRespond(offer.id, 'ACCEPTED')}
-                                                                        className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-black text-[10px] uppercase tracking-widest h-8 px-4 border border-emerald-500/20 rounded-lg disabled:opacity-40"
-                                                                    >
-                                                                        {isActioning ? <Loader2 size={12} className="animate-spin" /> : 'Accept'}
-                                                                    </Button>
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="sm"
-                                                                        disabled={isActioning}
-                                                                        onClick={() => handleRespond(offer.id, 'REJECTED')}
-                                                                        className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-black text-[10px] uppercase tracking-widest h-8 px-4 border border-red-500/20 rounded-lg disabled:opacity-40"
-                                                                    >
-                                                                        {isActioning ? <Loader2 size={12} className="animate-spin" /> : 'Reject'}
-                                                                    </Button>
-                                                                </>
+                                                                <div className="flex items-center gap-2">
+                                                                    {offer.isCountering ? (
+                                                                        <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-2">
+                                                                            <div className="relative">
+                                                                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-[10px]">£</span>
+                                                                                <input
+                                                                                    type="number"
+                                                                                    autoFocus
+                                                                                    className="bg-slate-900 border border-white/10 text-white rounded-lg pl-5 pr-2 py-1.5 w-24 text-[11px] font-bold focus:outline-none focus:border-primary/50 transition-colors"
+                                                                                    placeholder="Amount"
+                                                                                    value={offer.counterValue || ''}
+                                                                                    onChange={e => {
+                                                                                        const val = Number(e.target.value)
+                                                                                        setOffers(prev => prev.map(o => o.id === offer.id ? { ...o, counterValue: val } : o))
+                                                                                    }}
+                                                                                />
+                                                                            </div>
+                                                                            <Button
+                                                                                size="sm"
+                                                                                disabled={isActioning || !offer.counterValue}
+                                                                                onClick={() => handleRespond(offer.id, 'COUNTERED', offer.counterValue)}
+                                                                                className="bg-primary hover:bg-red-600 text-white font-black text-[9px] uppercase tracking-widest h-8 px-3 rounded-lg shadow-neon"
+                                                                            >
+                                                                                {isActioning ? <Loader2 size={12} className="animate-spin" /> : 'Send'}
+                                                                            </Button>
+                                                                            <button 
+                                                                                onClick={() => setOffers(prev => prev.map(o => o.id === offer.id ? { ...o, isCountering: false } : o))}
+                                                                                className="text-gray-500 hover:text-white p-1"
+                                                                            >
+                                                                                <XCircle size={14} />
+                                                                            </button>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <>
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="sm"
+                                                                                disabled={isActioning}
+                                                                                onClick={() => setOffers(prev => prev.map(o => o.id === offer.id ? { ...o, isCountering: true } : o))}
+                                                                                className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 font-black text-[10px] uppercase tracking-widest h-8 px-4 border border-blue-500/20 rounded-lg"
+                                                                            >
+                                                                                Counter
+                                                                            </Button>
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="sm"
+                                                                                disabled={isActioning}
+                                                                                onClick={() => handleRespond(offer.id, 'ACCEPTED')}
+                                                                                className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-black text-[10px] uppercase tracking-widest h-8 px-4 border border-emerald-500/20 rounded-lg disabled:opacity-40"
+                                                                            >
+                                                                                {isActioning ? <Loader2 size={12} className="animate-spin" /> : 'Accept'}
+                                                                            </Button>
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="sm"
+                                                                                disabled={isActioning}
+                                                                                onClick={() => handleRespond(offer.id, 'REJECTED')}
+                                                                                className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-black text-[10px] uppercase tracking-widest h-8 px-4 border border-red-500/20 rounded-lg disabled:opacity-40"
+                                                                            >
+                                                                                {isActioning ? <Loader2 size={12} className="animate-spin" /> : 'Reject'}
+                                                                            </Button>
+                                                                        </>
+                                                                    )}
+                                                                </div>
                                                             ) : (
                                                                 <span className="text-[10px] text-gray-600 uppercase tracking-widest font-bold">
-                                                                    {offer.status === 'ACCEPTED' ? '✓ Closed' : offer.status === 'REJECTED' ? '✗ Declined' : '—'}
+                                                                    {offer.status === 'ACCEPTED' ? '✓ Closed' : offer.status === 'REJECTED' ? '✗ Declined' : offer.status === 'COUNTERED' ? '🔄 Countered' : '—'}
                                                                 </span>
                                                             )}
                                                         </div>
