@@ -612,7 +612,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                 <div className="h-1 bg-gradient-to-r from-primary to-primary/80 w-full absolute top-0" />
                 <div className="p-6">
                     {/* SOLD status banner */}
-                    {listing.status === 'SOLD' ? (
+                    {String(listing.status) === 'SOLD' ? (
                         <div className="mb-6 p-6 rounded-xl border-2 border-red-500/30 bg-red-500/10 text-center relative overflow-hidden group">
                             <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent opacity-50" />
                             <div className="relative z-10">
@@ -659,7 +659,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
 
                             {/* Action Buttons */}
                             <div className="space-y-3">
-                                {listing.status === 'SOLD' ? (
+                                {String(listing.status) === 'SOLD' ? (
                                     <div className="bg-slate-800/80 border-2 border-red-500/30 rounded-2xl p-6 text-center">
                                         <XCircle size={48} className="text-red-500 mx-auto mb-3 opacity-80" />
                                         <h3 className="text-xl font-black text-white uppercase tracking-tight mb-1">Vehicle Sold</h3>
@@ -973,13 +973,13 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                     src={images[activeImage]}
                                     alt={listing.title}
                                     fill
-                                    className={`object-cover transition-all duration-300 ${listing.status === 'SOLD' ? 'opacity-50 grayscale' : ''}`}
+                                    className={`object-cover transition-all duration-300 ${String(listing.status) === 'SOLD' ? 'opacity-50 grayscale' : ''}`}
                                 />
                                 <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-sm text-white px-3 py-1 rounded-md text-sm font-medium flex items-center gap-2">
                                     <Camera size={16} /> {activeImage + 1}/{images.length}
                                 </div>
                                 {/* SOLD watermark on the main gallery */}
-                                {listing.status === 'SOLD' && (
+                                {String(listing.status) === 'SOLD' && (
                                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                                         <span
                                             className="text-[80px] md:text-[110px] font-black uppercase tracking-widest text-red-500/80 select-none rotate-[-15deg] drop-shadow-2xl"
