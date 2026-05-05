@@ -368,7 +368,22 @@ export default function DealerCRMPage() {
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="bg-[#0A0A0C]/40 rounded-b-2xl min-h-[500px] p-3 space-y-3 border-x border-b border-white/5 relative">
+                                    <div 
+                                        className="bg-[#0A0A0C]/40 rounded-b-2xl min-h-[500px] p-3 space-y-3 border-x border-b border-white/5 relative transition-colors duration-200"
+                                        onDragOver={(e) => {
+                                            e.preventDefault()
+                                            e.currentTarget.classList.add('bg-white/[0.05]')
+                                        }}
+                                        onDragLeave={(e) => {
+                                            e.currentTarget.classList.remove('bg-white/[0.05]')
+                                        }}
+                                        onDrop={(e) => {
+                                            e.preventDefault()
+                                            e.currentTarget.classList.remove('bg-white/[0.05]')
+                                            const leadId = e.dataTransfer.getData("leadId")
+                                            if (leadId) updateLeadStatus(leadId, col.key)
+                                        }}
+                                    >
                                         <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none rounded-b-2xl" />
 
                                         {leadsByStatus(col.key).length === 0 ? (
@@ -380,7 +395,19 @@ export default function DealerCRMPage() {
                                             </div>
                                         ) : (
                                             leadsByStatus(col.key).map((lead: any) => (
-                                                <div key={lead.id} className="dealer-glass-card p-5 group hover:ring-1 hover:ring-primary/40 transition-all border-white/5 bg-slate-900/40">
+                                                <div 
+                                                    key={lead.id} 
+                                                    draggable
+                                                    onDragStart={(e) => {
+                                                        e.dataTransfer.setData("leadId", lead.id)
+                                                        e.dataTransfer.effectAllowed = "move"
+                                                        e.currentTarget.classList.add('opacity-50')
+                                                    }}
+                                                    onDragEnd={(e) => {
+                                                        e.currentTarget.classList.remove('opacity-50')
+                                                    }}
+                                                    className="dealer-glass-card p-5 group hover:ring-1 hover:ring-primary/40 transition-all border-white/5 bg-slate-900/40 cursor-grab active:cursor-grabbing"
+                                                >
                                                     {/* Header */}
                                                     <div className="flex items-start justify-between mb-4">
                                                         <div className="flex items-center gap-3">
@@ -462,7 +489,6 @@ export default function DealerCRMPage() {
                                                     </div>
                                                 </div>
                                             ))
-                                        )}
                                     </div>
                                 </div>
                             ))}
