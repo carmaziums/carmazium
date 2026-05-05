@@ -23,6 +23,7 @@ const ROLE_CONFIG: Record<string, { label: string; icon: any; color: string; bg:
 export default function DealerTeamPage() {
     const { user, profile, loading: authLoading } = useAuth()
     const [staff, setStaff] = React.useState<any[]>([])
+    const [pendingInvites, setPendingInvites] = React.useState<any[]>([])
     const [loading, setLoading] = React.useState(true)
     const [showInvite, setShowInvite] = React.useState(false)
     const [inviteEmail, setInviteEmail] = React.useState("")
@@ -38,11 +39,13 @@ export default function DealerTeamPage() {
     async function fetchStaff() {
         setLoading(true)
         try {
-            const res = await apiClient<{ data: any[] }>('/dealers/staff')
-            setStaff(res?.data ?? [])
+            const res = await apiClient<{ data: { active: any[], pending: any[] } }>('/dealers/staff')
+            setStaff(res?.data?.active ?? [])
+            setPendingInvites(res?.data?.pending ?? [])
         } catch (err) {
             console.error('Failed to load staff:', err)
             setStaff([])
+            setPendingInvites([])
         } finally {
             setLoading(false)
         }
@@ -148,7 +151,7 @@ export default function DealerTeamPage() {
                         <div className="flex items-center justify-center py-16">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
-                    ) : !staff.length ? (
+                    ) : !staff.length && !pendingInvites.length ? (
                         <div className="bg-white/5 border border-white/5 rounded-2xl p-16 text-center">
                             <Users className="h-14 w-14 text-gray-700 mx-auto mb-4" />
                             <p className="text-gray-500 font-bold text-lg">No team members yet</p>
@@ -160,51 +163,85 @@ export default function DealerTeamPage() {
                             </Button>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {staff.map((member: any) => {
-                                const roleConfig = ROLE_CONFIG[member.role] || ROLE_CONFIG.SALES_AGENT
-                                return (
-                                    <div key={member.id} className="dealer-glass-card p-6 group relative overflow-hidden bg-slate-900/40 border-white/5 hover:translate-y-[-4px] transition-all">
-                                        <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg">
-                                                <UserX size={14} />
-                                            </Button>
-                                        </div>
-                                        
-                                        <div className="flex flex-col items-center text-center mb-6">
-                                            <div className="relative mb-4">
-                                                <div className="w-20 h-20 bg-black/60 rounded-3xl flex items-center justify-center border border-white/10 group-hover:border-primary/40 transition-colors shadow-2xl relative z-10 overflow-hidden">
-                                                    <span className="text-2xl font-black text-white opacity-40">
-                                                        {member.user?.firstName?.[0]}{member.user?.lastName?.[0]}
-                                                    </span>
-                                                    <div className="absolute inset-0 bg-gradient-to-t from-primary/10 to-transparent" />
+                        <div className="space-y-8">
+                            {/* Active Staff */}
+                            {staff.length > 0 && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {staff.map((member: any) => {
+                                        const roleConfig = ROLE_CONFIG[member.role] || ROLE_CONFIG.SALES_AGENT
+                                        return (
+                                            <div key={member.id} className="dealer-glass-card p-6 group relative overflow-hidden bg-slate-900/40 border-white/5 hover:translate-y-[-4px] transition-all">
+                                                <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg">
+                                                        <UserX size={14} />
+                                                    </Button>
                                                 </div>
-                                                <div className="absolute -bottom-2 -right-2 p-1.5 bg-[#0A0A0C] border border-white/10 rounded-xl shadow-2xl z-20">
-                                                    <ShieldCheck size={14} className="text-emerald-400" />
+                                                
+                                                <div className="flex flex-col items-center text-center mb-6">
+                                                    <div className="relative mb-4">
+                                                        <div className="w-20 h-20 bg-black/60 rounded-3xl flex items-center justify-center border border-white/10 group-hover:border-primary/40 transition-colors shadow-2xl relative z-10 overflow-hidden">
+                                                            <span className="text-2xl font-black text-white opacity-40">
+                                                                {member.user?.firstName?.[0]}{member.user?.lastName?.[0]}
+                                                            </span>
+                                                            <div className="absolute inset-0 bg-gradient-to-t from-primary/10 to-transparent" />
+                                                        </div>
+                                                        <div className="absolute -bottom-2 -right-2 p-1.5 bg-[#0A0A0C] border border-white/10 rounded-xl shadow-2xl z-20">
+                                                            <ShieldCheck size={14} className="text-emerald-400" />
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <p className="font-black text-white text-lg tracking-tighter group-hover:text-primary transition-colors">{member.user?.firstName} {member.user?.lastName}</p>
+                                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-1">{member.user?.email}</p>
                                                 </div>
-                                            </div>
-                                            
-                                            <p className="font-black text-white text-lg tracking-tighter group-hover:text-primary transition-colors">{member.user?.firstName} {member.user?.lastName}</p>
-                                            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-1">{member.user?.email}</p>
-                                        </div>
 
-                                        <div className="space-y-3 pt-4 border-t border-white/5">
-                                            <div className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/5 ${roleConfig.bg} ${roleConfig.color}`}>
-                                                <roleConfig.icon size={14} />
-                                                {roleConfig.label}
-                                            </div>
-                                            <div className="flex items-center justify-between text-[8px] font-black uppercase tracking-widest text-gray-600 px-1">
-                                                <span>Performance Index</span>
-                                                <div className="flex gap-0.5">
-                                                    {[1,2,3,4,5].map(i => <Star key={i} size={8} className={i <= 4 ? "text-amber-500/40" : "text-gray-800"} fill="currentColor" />)}
+                                                <div className="space-y-3 pt-4 border-t border-white/5">
+                                                    <div className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/5 ${roleConfig.bg} ${roleConfig.color}`}>
+                                                        <roleConfig.icon size={14} />
+                                                        {roleConfig.label}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+
+                            {/* Pending Invites */}
+                            {pendingInvites.length > 0 && (
+                                <div className="space-y-4">
+                                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-gray-500 flex items-center gap-2 px-1">
+                                        <Mail size={12} /> Pending Invitations
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {pendingInvites.map((invite: any) => {
+                                            const roleConfig = ROLE_CONFIG[invite.role] || ROLE_CONFIG.SALES_AGENT
+                                            return (
+                                                <div key={invite.id} className="dealer-glass-card p-5 bg-slate-900/20 border-dashed border-white/10 flex items-center justify-between group">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center border border-white/5">
+                                                            <Mail size={16} className="text-gray-600" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs font-black text-white truncate max-w-[140px]">{invite.email}</p>
+                                                            <p className="text-[9px] font-bold text-gray-600 uppercase tracking-widest">{roleConfig.label}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg text-[8px] font-black text-amber-500 uppercase tracking-widest animate-pulse">
+                                                        Awaiting
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
                                     </div>
-                                )
-                            })}
+                                </div>
+                            )}
                         </div>
-                    )}
+                    ) }
+                </main>
+            </div>
+        </div>
+    )
+})}
                 </main>
             </div>
         </div>

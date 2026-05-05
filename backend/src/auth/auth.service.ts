@@ -29,6 +29,34 @@ export class AuthService {
     private readonly logger = new Logger(AuthService.name);
     private supabase: SupabaseClient;
 
+    private async processPendingInvitations(user: any) {
+        try {
+            const invites = await this.prisma.dealerInvite.findMany({
+                where: { email: user.email.toLowerCase().trim() }
+            });
+
+            if (invites.length > 0) {
+                await Promise.all(invites.map(invite => 
+                    this.prisma.dealerStaff.create({
+                        data: {
+                            userId: user.id,
+                            dealerProfileId: invite.dealerProfileId,
+                            role: invite.role,
+                        }
+                    })
+                ));
+
+                await this.prisma.dealerInvite.deleteMany({
+                    where: { email: user.email.toLowerCase().trim() }
+                });
+
+                this.logger.log(`Auto-processed ${invites.length} dealership invitations for ${user.email}`);
+            }
+        } catch (err: any) {
+            this.logger.error(`Failed to process invitations for ${user.email}: ${err.message}`);
+        }
+    }
+
     constructor(private readonly prisma: PrismaService) {
         const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
         const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -43,10 +71,6 @@ export class AuthService {
         );
     }
 
-    /**
-     * Register a new user account.
-     * Hashes the password with bcrypt and creates the user record.
-     */
     async register(dto: RegisterDto) {
         // Check for existing user
         const existing = await this.prisma.user.findUnique({
@@ -71,6 +95,9 @@ export class AuthService {
                 role: dto.role || UserRole.BUYER,
             },
         });
+
+        // Process any pending dealership invitations
+        await this.processPendingInvitations(user);
 
         // Return user without password hash
         const { passwordHash: _, ...safeUser } = user;
@@ -261,6 +288,9 @@ export class AuthService {
                         'prisma.user.upsert'
                     );
                     this.logger.log(`Auto-synced new user from Supabase: ${email} (${data.user.id})`);
+                    
+                    // Process any pending dealership invitations
+                    await this.processPendingInvitations(localUser);
                 } catch (syncErr: any) {
                     this.logger.error(
                         `Auto-sync failed for ${email}: ${syncErr?.message || syncErr}`,

@@ -133,36 +133,70 @@ export class DealersService {
 
     async getStaff(userId: string) {
         const profile = await this.getDealerProfile(userId);
-        return this.prisma.dealerStaff.findMany({
-            where: { dealerProfileId: profile.id, isActive: true },
-            include: {
-                user: { select: { id: true, firstName: true, lastName: true, email: true, profileImage: true } },
-            },
-            orderBy: { createdAt: 'asc' },
-        });
+        
+        const [activeStaff, pendingInvites] = await Promise.all([
+            this.prisma.dealerStaff.findMany({
+                where: { dealerProfileId: profile.id, isActive: true },
+                include: {
+                    user: { select: { id: true, firstName: true, lastName: true, email: true, profileImage: true } },
+                },
+                orderBy: { createdAt: 'asc' },
+            }),
+            this.prisma.dealerInvite.findMany({
+                where: { dealerProfileId: profile.id },
+                orderBy: { createdAt: 'desc' },
+            }),
+        ]);
+
+        return {
+            active: activeStaff,
+            pending: pendingInvites.map(i => ({
+                id: i.id,
+                email: i.email,
+                role: i.role,
+                status: 'PENDING',
+                createdAt: i.createdAt,
+            })),
+        };
     }
 
     async inviteStaff(userId: string, dto: InviteStaffDto) {
         const profile = await this.getDealerProfile(userId);
+        const email = dto.email.toLowerCase().trim();
 
-        // Find the user to add by email
-        const targetUser = await this.prisma.user.findUnique({ where: { email: dto.email } });
-        if (!targetUser) throw new NotFoundException(`No user found with email ${dto.email}`);
+        // 1. If user exists, add them directly
+        const targetUser = await this.prisma.user.findUnique({ where: { email } });
+        if (targetUser) {
+            const existing = await this.prisma.dealerStaff.findUnique({
+                where: { userId_dealerProfileId: { userId: targetUser.id, dealerProfileId: profile.id } },
+            });
+            if (existing) throw new BadRequestException('User is already a staff member of this dealership');
 
-        // Check not already staff
-        const existing = await this.prisma.dealerStaff.findUnique({
-            where: { userId_dealerProfileId: { userId: targetUser.id, dealerProfileId: profile.id } },
+            return this.prisma.dealerStaff.create({
+                data: {
+                    userId: targetUser.id,
+                    dealerProfileId: profile.id,
+                    role: dto.role as any,
+                },
+                include: {
+                    user: { select: { id: true, firstName: true, lastName: true, email: true } },
+                },
+            });
+        }
+
+        // 2. If user doesn't exist, create a pending invitation
+        const existingInvite = await this.prisma.dealerInvite.findUnique({
+            where: { email_dealerProfileId: { email, dealerProfileId: profile.id } },
         });
-        if (existing) throw new BadRequestException('User is already a staff member of this dealership');
+        if (existingInvite) throw new BadRequestException('An invitation has already been sent to this email');
 
-        return this.prisma.dealerStaff.create({
+        return this.prisma.dealerInvite.create({
             data: {
-                userId: targetUser.id,
+                email,
                 dealerProfileId: profile.id,
                 role: dto.role as any,
-            },
-            include: {
-                user: { select: { id: true, firstName: true, lastName: true, email: true } },
+                token: Math.random().toString(36).substring(2, 15), // Placeholder token
+                expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
             },
         });
     }
