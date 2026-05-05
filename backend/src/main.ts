@@ -3,7 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import session from 'express-session';
-import pgConnect from 'connect-pg-simple';
+import pgConnect = require('connect-pg-simple');
 import { AppModule } from './app.module';
 import { AuthService } from './auth/auth.service';
 import { AllExceptionsFilter } from './core/filters/all-exceptions.filter';
@@ -67,6 +67,12 @@ async function bootstrap() {
   // ---------------------------------------------------------------------------
   const PgSession = pgConnect(session);
   const isProduction = process.env.NODE_ENV === 'production';
+  
+  if (!process.env.DATABASE_URL) {
+    console.error('❌ DATABASE_URL is not set — session store will fail to initialize');
+    process.exit(1);
+  }
+
   if (isProduction && !process.env.SESSION_SECRET) {
     console.warn('SESSION_SECRET is not set in production — session cookies may be insecure');
   }

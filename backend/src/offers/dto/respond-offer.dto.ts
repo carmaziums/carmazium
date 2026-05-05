@@ -4,6 +4,7 @@ import { IsEnum } from 'class-validator';
 export enum OfferResponseStatus {
     ACCEPTED = 'ACCEPTED',
     REJECTED = 'REJECTED',
+    COUNTERED = 'COUNTERED',
 }
 
 export class RespondOfferDto {
@@ -14,4 +15,11 @@ export class RespondOfferDto {
     })
     @IsEnum(OfferResponseStatus)
     status: OfferResponseStatus;
+
+    @ApiProperty({
+        description: 'The counter offer amount if status is COUNTERED',
+        required: false,
+        example: 15000,
+    })
+    counterAmount?: number;
 }

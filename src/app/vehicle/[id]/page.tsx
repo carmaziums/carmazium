@@ -51,6 +51,12 @@ function OfferStatusChip({ offer, viewerRole }: { offer: LatestOffer; viewerRole
                 <span>Your previous offer of <strong>{amountDisplay}</strong> was withdrawn. You can make a new offer.</span>
             </div>
         )
+        if (offer.status === 'COUNTERED') return (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-300 text-sm">
+                <Clock size={14} className="shrink-0" />
+                <span>The seller countered your offer. Please review it in your dashboard.</span>
+            </div>
+        )
     }
 
     if (viewerRole === 'seller') {
@@ -72,13 +78,20 @@ function OfferStatusChip({ offer, viewerRole }: { offer: LatestOffer; viewerRole
                 <span>An offer of <strong>{amountDisplay}</strong> was declined.</span>
             </div>
         )
+        if (offer.status === 'COUNTERED') return (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-300 text-sm">
+                <Clock size={14} className="shrink-0" />
+                <span>You countered an offer on this listing. Awaiting buyer's response.</span>
+            </div>
+        )
     }
 
     const statusLabel =
         offer.status === 'PENDING' ? 'pending review' :
             offer.status === 'ACCEPTED' ? 'accepted' :
                 offer.status === 'REJECTED' ? 'declined' :
-                    offer.status === 'WITHDRAWN' ? 'withdrawn' : ''
+                    offer.status === 'COUNTERED' ? 'countered' :
+                        offer.status === 'WITHDRAWN' ? 'withdrawn' : ''
 
     return (
         <div className="flex items-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 text-sm">
@@ -660,13 +673,21 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                                 if (!user) setShowLoginModal(true)
                                                 else setShowOfferModal(true)
                                             }}
-                                            disabled={offerViewerRole === 'buyer' && (myOffer?.status === 'PENDING' || myOffer?.status === 'ACCEPTED')}
+                                            disabled={
+                                                offerViewerRole === 'buyer' && (
+                                                    myOffer?.status === 'PENDING' ||
+                                                    myOffer?.status === 'ACCEPTED' ||
+                                                    myOffer?.status === 'COUNTERED'
+                                                )
+                                            }
                                         >
                                             {offerViewerRole === 'buyer' && myOffer?.status === 'PENDING'
                                                 ? '⏳ Bid Placed'
                                                 : offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'
                                                     ? '✓ Bid Won'
-                                                    : 'Place a Bid'}
+                                                    : offerViewerRole === 'buyer' && myOffer?.status === 'COUNTERED'
+                                                        ? '🔄 Counter Received'
+                                                        : 'Place a Bid'}
                                         </Button>
                                         
                                         <Button

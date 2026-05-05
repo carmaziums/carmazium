@@ -4,7 +4,7 @@ import * as React from "react"
 import { Button } from "@/components/ui/Button"
 import {
     Loader2, AlertTriangle, Tag, CheckCircle, XCircle,
-    Clock, ChevronRight, Car, MessageSquare,
+    Clock, ChevronRight, Car, MessageSquare, RefreshCw, X
 } from "lucide-react"
 import { getOffersForListing, getMyListings, respondToOffer, type Offer, type Listing } from "@/lib/listingApi"
 import { createChatRoom } from "@/lib/chatApi"
@@ -21,12 +21,14 @@ function StatusBadge({ status }: { status: Offer['status'] }) {
         ACCEPTED: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
         REJECTED: 'bg-red-500/15 text-red-300 border-red-500/30',
         WITHDRAWN: 'bg-gray-500/15 text-gray-400 border-gray-500/30',
+        COUNTERED: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
     }
     const icons: Record<string, React.ReactNode> = {
         PENDING: <Clock size={11} />,
         ACCEPTED: <CheckCircle size={11} />,
         REJECTED: <XCircle size={11} />,
         WITHDRAWN: <XCircle size={11} />,
+        COUNTERED: <RefreshCw size={11} />,
     }
     return (
         <span className={`inline-flex items-center gap-1 border text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full ${styles[status] ?? ''}`}>
@@ -49,7 +51,7 @@ function OfferRow({
     responding,
 }: {
     offer: Offer
-    onRespond: (id: string, status: 'ACCEPTED' | 'REJECTED') => void
+    onRespond: (id: string, status: 'ACCEPTED' | 'REJECTED' | 'COUNTERED', amount?: number) => void
     onMessage: (buyerId: string) => void
     startingChat: string | null
     responding: string | null
@@ -57,6 +59,8 @@ function OfferRow({
     const buyer = offer.buyer
     const isPending = offer.status === 'PENDING'
     const isResponding = responding === offer.id
+    const [isCountering, setIsCountering] = React.useState(false)
+    const [counterAmount, setCounterAmount] = React.useState<number>(0)
 
     return (
         <div className="glass-card p-4 md:p-5 flex flex-col md:flex-row items-start md:items-center gap-4">
@@ -91,16 +95,16 @@ function OfferRow({
             </div>
 
             {/* Accept / Reject (only for pending) */}
-            {isPending && (
+            {isPending && !isCountering && (
                 <div className="flex gap-2 shrink-0">
                     <Button
                         size="sm"
                         variant="outline"
                         className="border-blue-500/40 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500 gap-1"
-                        onClick={() => onMessage(offer.buyerId)}
-                        disabled={startingChat === offer.buyerId}
+                        onClick={() => setIsCountering(true)}
+                        disabled={isResponding}
                     >
-                        {startingChat === offer.buyerId ? <Loader2 size={13} className="animate-spin" /> : <MessageSquare size={13} />} Message
+                        <RefreshCw size={13} /> Counter
                     </Button>
                     <Button
                         size="sm"
@@ -109,7 +113,7 @@ function OfferRow({
                         disabled={isResponding}
                         onClick={() => onRespond(offer.id, 'REJECTED')}
                     >
-                        {isResponding ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />}
+                        {isResponding && !isCountering ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />}
                         Decline
                     </Button>
                     <Button
@@ -118,8 +122,40 @@ function OfferRow({
                         disabled={isResponding}
                         onClick={() => onRespond(offer.id, 'ACCEPTED')}
                     >
-                        {isResponding ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle size={13} />}
+                        {isResponding && !isCountering ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle size={13} />}
                         Accept
+                    </Button>
+                </div>
+            )}
+
+            {isPending && isCountering && (
+                <div className="flex items-center gap-2 shrink-0">
+                    <div className="relative">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">£</span>
+                        <input
+                            type="number"
+                            className="bg-slate-900 border border-white/20 text-white rounded-md pl-6 pr-3 py-1.5 w-24 text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                            placeholder="Amount"
+                            value={counterAmount || ''}
+                            onChange={e => setCounterAmount(Number(e.target.value))}
+                        />
+                    </div>
+                    <Button
+                        size="sm"
+                        className="bg-blue-600 hover:bg-blue-500 gap-1"
+                        disabled={isResponding || !counterAmount || counterAmount <= 0}
+                        onClick={() => onRespond(offer.id, 'COUNTERED', counterAmount)}
+                    >
+                        {isResponding ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle size={13} />} Send
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-white/20 text-gray-400 hover:text-white"
+                        disabled={isResponding}
+                        onClick={() => setIsCountering(false)}
+                    >
+                        <X size={13} />
                     </Button>
                 </div>
             )}
@@ -231,15 +267,17 @@ export default function SellerOffersPage() {
         })
     }
 
-    const handleRespond = async (offerId: string, listingId: string, status: 'ACCEPTED' | 'REJECTED') => {
+    const handleRespond = async (offerId: string, listingId: string, status: 'ACCEPTED' | 'REJECTED' | 'COUNTERED', counterAmount?: number) => {
         setResponding(offerId)
         try {
-            await respondToOffer(offerId, status)
+            await respondToOffer(offerId, status, counterAmount)
             // Refresh offers for this listing
             const updated = await getOffersForListing(listingId)
             setOffers(prev => ({ ...prev, [listingId]: updated }))
             if (status === 'ACCEPTED') {
                 setToast('✓ Offer accepted! The listing stays active — mark it as Sold from your Listings page when the deal is complete.')
+            } else if (status === 'COUNTERED') {
+                setToast('✓ Counter offer sent!')
             } else {
                 setToast('Offer declined.')
             }
@@ -363,7 +401,7 @@ export default function SellerOffersPage() {
                                                             <OfferRow
                                                                 key={offer.id}
                                                                 offer={offer}
-                                                                onRespond={(id, status) => handleRespond(id, listing.id, status)}
+                                                                onRespond={(id, status, amount) => handleRespond(id, listing.id, status, amount)}
                                                                 onMessage={(buyerId) => handleMessageBuyer(buyerId, listing.id)}
                                                                 startingChat={startingChat}
                                                                 responding={responding}
