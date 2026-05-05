@@ -838,6 +838,14 @@ export async function withdrawOffer(offerId: string): Promise<Offer> {
     return data.data
 }
 
+export async function respondToCounterOffer(offerId: string, status: 'ACCEPTED' | 'REJECTED'): Promise<Offer> {
+    const data = await apiClient<{ data: Offer }>(`/offers/${offerId}/respond-counter`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+    })
+    return data.data
+}
+
 /**
  * Seller: Get total count of pending offers across all their listings.
  * Used to drive the pulsating badge on the Offers sidebar tab.

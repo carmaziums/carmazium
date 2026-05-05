@@ -5,7 +5,7 @@ export interface AppNotification {
     userId: string
     type: string
     title: string
-    body: string
+    message: string
     isRead: boolean
     link: string | null
     createdAt: string
