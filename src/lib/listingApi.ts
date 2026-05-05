@@ -722,9 +722,10 @@ export interface LatestOffer {
     amount: string | number
     amountMin: string | number | null
     amountMax: string | number | null
-    status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'WITHDRAWN'
+    status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'WITHDRAWN' | 'COUNTERED'
     message: string | null
     buyerId: string
+    counterAmount: string | number | null
     createdAt: string
 }
 
@@ -820,11 +821,12 @@ export async function getOffersForListing(listingId: string): Promise<Offer[]> {
  */
 export async function respondToOffer(
     offerId: string,
-    status: 'ACCEPTED' | 'REJECTED',
+    status: 'ACCEPTED' | 'REJECTED' | 'COUNTERED',
+    counterAmount?: number,
 ): Promise<Offer> {
     const data = await apiClient<{ data: Offer }>(`/offers/${offerId}/respond`, {
         method: 'PATCH',
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, counterAmount }),
     })
     return data.data
 }

@@ -28,11 +28,19 @@ export class OffersService {
      */
     async makeOffer(buyerId: string, dto: CreateOfferDto): Promise<Offer> {
         const listing = await this.prisma.listing.findFirst({
-            where: { id: dto.listingId, deletedAt: null, status: 'ACTIVE' },
+            where: { id: dto.listingId, deletedAt: null },
         });
 
         if (!listing) {
-            throw new NotFoundException('Listing not found or is no longer active.');
+            throw new NotFoundException('Listing not found.');
+        }
+
+        if (listing.status === 'SOLD') {
+            throw new BadRequestException('This listing has already been sold. You cannot make an offer.');
+        }
+
+        if (listing.status !== 'ACTIVE') {
+            throw new BadRequestException('This listing is not currently active.');
         }
 
         // Prevent the seller from making an offer on their own listing
@@ -161,6 +169,7 @@ export class OffersService {
         offerId: string,
         sellerId: string,
         status: OfferResponseStatus,
+        counterAmount?: number,
     ): Promise<Offer> {
         const offer = await this.prisma.offer.findUnique({
             where: { id: offerId },
@@ -183,11 +192,18 @@ export class OffersService {
             throw new BadRequestException(`This offer is already ${offer.status.toLowerCase()}.`);
         }
 
-        const prismaStatus: OfferStatus = status === OfferResponseStatus.ACCEPTED ? 'ACCEPTED' : 'REJECTED';
+        if (status === OfferResponseStatus.COUNTERED && !counterAmount) {
+            throw new BadRequestException('A counter amount is required when countering an offer.');
+        }
+
+        const prismaStatus: OfferStatus = status as unknown as OfferStatus;
 
         const updated = await this.prisma.offer.update({
             where: { id: offerId },
-            data: { status: prismaStatus },
+            data: { 
+                status: prismaStatus,
+                counterAmount: status === OfferResponseStatus.COUNTERED ? counterAmount : null,
+            },
         });
 
         // If accepted, reject all other pending offers for the same listing
@@ -206,15 +222,28 @@ export class OffersService {
         }
 
         // Notify the buyer
-        const notifMessage =
-            prismaStatus === 'ACCEPTED'
-                ? `Your offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${offer.listing.title}" was accepted! Contact the seller to proceed.`
-                : `Your offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${offer.listing.title}" was declined.`;
+        let notifMessage = '';
+        let notifTitle = '';
+        let notifType = '';
+
+        if (prismaStatus === 'ACCEPTED') {
+            notifTitle = '🎉 Offer Accepted!';
+            notifMessage = `Your offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${offer.listing.title}" was accepted! Contact the seller to proceed.`;
+            notifType = 'OFFER_ACCEPTED';
+        } else if (prismaStatus === 'REJECTED') {
+            notifTitle = 'Offer Declined';
+            notifMessage = `Your offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${offer.listing.title}" was declined.`;
+            notifType = 'OFFER_REJECTED';
+        } else if (prismaStatus === 'COUNTERED') {
+            notifTitle = '🔄 Counter Offer Received';
+            notifMessage = `The seller countered your offer on "${offer.listing.title}" with £${Number(counterAmount).toLocaleString('en-GB')}.`;
+            notifType = 'OFFER_RECEIVED';
+        }
 
         const buyerNotification = await this.notificationsService.create({
             userId: offer.buyerId,
-            type: prismaStatus === 'ACCEPTED' ? 'OFFER_ACCEPTED' : 'OFFER_REJECTED',
-            title: prismaStatus === 'ACCEPTED' ? '🎉 Offer Accepted!' : 'Offer Declined',
+            type: notifType,
+            title: notifTitle,
             message: notifMessage,
             data: { listingId: offer.listingId, offerId: offer.id },
         });

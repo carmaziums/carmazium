@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { getMyOffers, withdrawOffer, type Offer } from "@/lib/listingApi"
+import { getMyOffers, withdrawOffer, respondToOffer, type Offer } from "@/lib/listingApi"
 import { createChatRoom } from "@/lib/chatApi"
 import { useRouter } from "next/navigation"
 import { Loader2, AlertTriangle, Tag, Clock, CheckCircle, XCircle, Eye, Trash2 } from "lucide-react"
@@ -18,12 +18,14 @@ function StatusBadge({ status }: { status: Offer['status'] }) {
         ACCEPTED: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
         REJECTED: 'bg-red-500/15 text-red-300 border-red-500/30',
         WITHDRAWN: 'bg-gray-500/15 text-gray-400 border-gray-500/30',
+        COUNTERED: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
     }
     const icons: Record<string, React.ReactNode> = {
         PENDING: <Clock size={11} />,
         ACCEPTED: <CheckCircle size={11} />,
         REJECTED: <XCircle size={11} />,
         WITHDRAWN: <XCircle size={11} />,
+        COUNTERED: <Clock size={11} />,
     }
     return (
         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${styles[status] ?? ''}`}>
@@ -32,8 +34,9 @@ function StatusBadge({ status }: { status: Offer['status'] }) {
     )
 }
 
-function StatusMessage({ status, amount }: { status: Offer['status'], amount: string | number }) {
+function StatusMessage({ status, amount, counterAmount }: { status: Offer['status'], amount: string | number, counterAmount?: string | number | null }) {
     const formatted = `£${Number(amount).toLocaleString('en-GB')}`
+    const counterFormatted = counterAmount ? `£${Number(counterAmount).toLocaleString('en-GB')}` : null
     if (status === 'PENDING') return (
         <p className="text-xs text-amber-300 mt-1.5">
             ⏳ Awaiting seller response for your offer of {formatted}
@@ -49,6 +52,11 @@ function StatusMessage({ status, amount }: { status: Offer['status'], amount: st
             Your offer of {formatted} was declined. You may visit the listing to make a new offer.
         </p>
     )
+    if (status === 'COUNTERED' && counterFormatted) return (
+        <p className="text-xs text-blue-300 mt-1.5">
+            🔄 The seller countered with <strong>{counterFormatted}</strong>. Accept or make a new offer.
+        </p>
+    )
     return null
 }
 
@@ -61,6 +69,7 @@ export default function BuyerOffersPage() {
     const [error, setError] = React.useState<string | null>(null)
     const [startingChat, setStartingChat] = React.useState<string | null>(null)
     const [withdrawing, setWithdrawing] = React.useState<string | null>(null)
+    const [accepting, setAccepting] = React.useState<string | null>(null)
     const router = useRouter()
 
     React.useEffect(() => {
@@ -109,6 +118,20 @@ export default function BuyerOffersPage() {
             alert(err.message || "Failed to withdraw offer.");
         } finally {
             setWithdrawing(null);
+        }
+    }
+
+    const handleAcceptCounter = async (offerId: string) => {
+        if (!confirm("Accept the seller's counter offer?")) return;
+        setAccepting(offerId);
+        try {
+            await respondToOffer(offerId, 'ACCEPTED');
+            setOffers(prev => prev.map(o => o.id === offerId ? { ...o, status: 'ACCEPTED' } : o));
+        } catch (err: any) {
+            console.error("Failed to accept counter offer:", err);
+            alert(err.message || "Failed to accept counter offer.");
+        } finally {
+            setAccepting(null);
         }
     }
 
@@ -213,13 +236,18 @@ export default function BuyerOffersPage() {
                                                         <StatusBadge status={offer.status} />
                                                     </td>
 
-                                                    {/* Offer Amount */}
+                                                     {/* Offer Amount */}
                                                     <td className="px-6 py-5">
                                                         <div className="font-mono text-lg font-bold text-white mb-1">
                                                             £{Number(offer.amount).toLocaleString('en-GB')}
                                                         </div>
+                                                        {offer.counterAmount && (
+                                                            <div className="text-xs text-blue-400 font-bold mt-0.5">
+                                                                COUNTER: £{Number(offer.counterAmount).toLocaleString('en-GB')}
+                                                            </div>
+                                                        )}
                                                         {listing?.price && (
-                                                            <div className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">
+                                                            <div className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold mt-0.5">
                                                                 ASKING: £{Number(listing.price).toLocaleString('en-GB')}
                                                             </div>
                                                         )}
@@ -238,16 +266,23 @@ export default function BuyerOffersPage() {
                                                     {/* Actions */}
                                                     <td className="px-6 py-5 text-right">
                                                         <div className="flex items-center justify-end gap-2">
+                                                            {offer.status === 'COUNTERED' && (
+                                                                <button
+                                                                    onClick={() => handleAcceptCounter(offer.id)}
+                                                                    disabled={accepting === offer.id}
+                                                                    className="inline-flex items-center justify-center h-10 px-3 text-sm font-bold text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-xl transition-all hover:scale-105 disabled:opacity-50"
+                                                                    title="Accept Counter Offer"
+                                                                >
+                                                                    {accepting === offer.id ? <Loader2 size={16} className="animate-spin" /> : "Accept"}
+                                                                </button>
+                                                            )}
                                                             {offer.status === 'PENDING' && (
                                                                 <div className="flex items-center gap-2">
-                                                                    <Link href={`/buy-cars/${slug}?editOffer=true`} className="inline-flex items-center justify-center h-10 px-3 text-sm font-bold text-gray-300 hover:text-white hover:bg-white/10 rounded-xl transition-all hover:scale-105" title="Edit Offer">
-                                                                        Edit
-                                                                    </Link>
-                                                                    <button 
-                                                                        onClick={() => handleWithdraw(offer.id)}
+                                                                    <button
                                                                         disabled={withdrawing === offer.id}
                                                                         className="inline-flex items-center justify-center h-10 px-3 text-sm font-bold text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl transition-all hover:scale-105 disabled:opacity-50"
                                                                         title="Cancel Offer"
+                                                                        onClick={() => handleWithdraw(offer.id)}
                                                                     >
                                                                         {withdrawing === offer.id ? <Loader2 size={16} className="animate-spin" /> : "Cancel"}
                                                                     </button>
