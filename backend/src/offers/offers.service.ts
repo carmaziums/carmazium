@@ -185,8 +185,25 @@ export class OffersService {
             throw new NotFoundException('Offer not found.');
         }
 
-        if (offer.listing.sellerId !== sellerId) {
-            throw new ForbiddenException('You do not own the listing for this offer.');
+        // Authorization check: User must be listing owner OR staff of the dealership owner
+        const listingOwnerId = offer.listing.sellerId;
+        let isAuthorized = listingOwnerId === sellerId;
+
+        if (!isAuthorized && listingOwnerId) {
+            // Check if listing owner is a dealer and responder is their staff
+            const ownerDealerProfile = await this.prisma.dealerProfile.findUnique({
+                where: { userId: listingOwnerId }
+            });
+            if (ownerDealerProfile) {
+                const staffMember = await this.prisma.dealerStaff.findFirst({
+                    where: { userId: sellerId, dealerProfileId: ownerDealerProfile.id, isActive: true }
+                });
+                if (staffMember) isAuthorized = true;
+            }
+        }
+
+        if (!isAuthorized) {
+            throw new ForbiddenException('You do not have permission to respond to this offer.');
         }
 
         if (offer.status !== 'PENDING' && !(offer.status === 'ACCEPTED' && status === OfferResponseStatus.REJECTED)) {
@@ -298,10 +315,22 @@ export class OffersService {
      * Returns the total number of PENDING offers across all listings owned by the seller.
      * Used to show a badge/dot on the Offers tab in the seller dashboard sidebar.
      */
-    async getPendingOffersCount(sellerId: string): Promise<number> {
-        // First find all listing IDs owned by this seller
+    /**
+     * Returns the total number of PENDING offers across all listings owned by the seller/dealer.
+     */
+    async getPendingOffersCount(userId: string): Promise<number> {
+        // Handle staff/owner logic to find the dealership
+        let targetOwnerId = userId;
+        const staffRecord = await this.prisma.dealerStaff.findFirst({
+            where: { userId, isActive: true },
+            select: { dealerProfile: { select: { userId: true } } }
+        });
+        if (staffRecord) {
+            targetOwnerId = staffRecord.dealerProfile.userId;
+        }
+
         const listings = await this.prisma.listing.findMany({
-            where: { sellerId, deletedAt: null },
+            where: { sellerId: targetOwnerId, deletedAt: null },
             select: { id: true },
         });
         const listingIds = listings.map(l => l.id);
@@ -429,10 +458,19 @@ export class OffersService {
     /**
      * Seller/Dealer: Get all offers received across all their listings
      */
-    async getReceivedOffers(sellerId: string): Promise<Offer[]> {
-        // First find all listing IDs owned by this seller
+    async getReceivedOffers(userId: string): Promise<Offer[]> {
+        // Handle staff/owner logic to find the dealership
+        let targetOwnerId = userId;
+        const staffRecord = await this.prisma.dealerStaff.findFirst({
+            where: { userId, isActive: true },
+            select: { dealerProfile: { select: { userId: true } } }
+        });
+        if (staffRecord) {
+            targetOwnerId = staffRecord.dealerProfile.userId;
+        }
+
         const listings = await this.prisma.listing.findMany({
-            where: { sellerId, deletedAt: null },
+            where: { sellerId: targetOwnerId, deletedAt: null },
             select: { id: true },
         });
         const listingIds = listings.map(l => l.id);
