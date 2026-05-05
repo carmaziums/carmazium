@@ -163,7 +163,7 @@ export function NotificationBell() {
                                         <p className={`text-xs font-bold mb-0.5 ${!n.isRead ? 'text-white' : 'text-gray-300'}`}>
                                             {n.title}
                                         </p>
-                                        <p className="text-[11px] text-gray-500 leading-relaxed line-clamp-2">{n.message}</p>
+                                        <p className="text-[11px] text-gray-500 leading-relaxed line-clamp-2">{n.body ?? n.message}</p>
                                         <p className="text-[10px] text-gray-600 mt-1">{timeAgo(n.createdAt)}</p>
                                     </div>
                                     {!n.isRead && (

@@ -35,4 +35,9 @@ export class CreateLeadDto {
     @IsOptional()
     @IsString()
     notes?: string;
+
+    @ApiPropertyOptional({ enum: ['NEW', 'CONTACTED', 'QUALIFIED', 'NEGOTIATING', 'WON', 'LOST'] })
+    @IsOptional()
+    @IsString()
+    status?: string;
 }
