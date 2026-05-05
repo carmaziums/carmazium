@@ -17,7 +17,7 @@ import { useAuth } from "@/context/AuthContext"
 import { SellerBadge } from "@/components/ui/SellerBadge"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 import { EnquireModal } from "@/components/listing/EnquireModal"
-import { getListingBySlug, makeOffer, getMyOfferForListing, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, formatPrice, type Listing, type LatestOffer } from "@/lib/listingApi"
+import { getListingBySlug, makeOffer, getMyOfferForListing, respondToCounterOffer, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, formatPrice, type Listing, type LatestOffer } from "@/lib/listingApi"
 import { createChatRoom } from "@/lib/chatApi"
 import { useRouter } from "next/navigation"
 
@@ -659,7 +659,13 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
 
                             {/* Action Buttons */}
                             <div className="space-y-3">
-                                {listing.status !== 'ACTIVE' ? (
+                                {listing.status === 'SOLD' ? (
+                                    <div className="bg-slate-800/80 border-2 border-red-500/30 rounded-2xl p-6 text-center">
+                                        <XCircle size={48} className="text-red-500 mx-auto mb-3 opacity-80" />
+                                        <h3 className="text-xl font-black text-white uppercase tracking-tight mb-1">Vehicle Sold</h3>
+                                        <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">This listing is closed</p>
+                                    </div>
+                                ) : listing.status !== 'ACTIVE' ? (
                                     <Button className="w-full py-6 text-lg bg-slate-700 text-gray-300 font-black uppercase rounded-xl cursor-not-allowed" disabled>
                                         {listing.status === 'DRAFT' ? 'Preview Only (Draft)' : listing.status}
                                     </Button>
@@ -667,28 +673,55 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                     <div className="text-center text-gray-500 text-sm py-2">This is your listing.</div>
                                 ) : (
                                     <>
-                                        <Button
-                                            className="w-full py-6 text-[15px] font-black uppercase bg-primary hover:bg-red-600 shadow-neon text-white rounded-xl"
-                                            onClick={() => {
-                                                if (!user) setShowLoginModal(true)
-                                                else setShowOfferModal(true)
-                                            }}
-                                            disabled={
-                                                offerViewerRole === 'buyer' && (
-                                                    myOffer?.status === 'PENDING' ||
-                                                    myOffer?.status === 'ACCEPTED' ||
-                                                    myOffer?.status === 'COUNTERED'
-                                                )
-                                            }
-                                        >
-                                            {offerViewerRole === 'buyer' && myOffer?.status === 'PENDING'
-                                                ? '⏳ Bid Placed'
-                                                : offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'
-                                                    ? '✓ Bid Won'
-                                                    : offerViewerRole === 'buyer' && myOffer?.status === 'COUNTERED'
-                                                        ? '🔄 Counter Received'
+                                        {offerViewerRole === 'buyer' && myOffer?.status === 'COUNTERED' ? (
+                                            <div className="flex flex-col gap-2">
+                                                <Button
+                                                    className="w-full py-6 text-[15px] font-black uppercase bg-emerald-600 hover:bg-emerald-700 shadow-[0_0_20px_rgba(16,185,129,0.3)] text-white rounded-xl"
+                                                    onClick={() => {
+                                                        if (confirm(`Accept counter offer of £${Number(myOffer.counterAmount).toLocaleString()}?`)) {
+                                                            respondToCounterOffer(myOffer.id, 'ACCEPTED')
+                                                                .then(() => window.location.reload())
+                                                                .catch(err => alert(err.message))
+                                                        }
+                                                    }}
+                                                >
+                                                    Accept Counter Offer (£{Number(myOffer.counterAmount).toLocaleString()})
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full py-4 text-xs font-black uppercase border-white/10 text-gray-400 hover:text-white rounded-xl"
+                                                    onClick={() => {
+                                                        if (confirm('Decline this counter offer?')) {
+                                                            respondToCounterOffer(myOffer.id, 'REJECTED')
+                                                                .then(() => window.location.reload())
+                                                                .catch(err => alert(err.message))
+                                                        }
+                                                    }}
+                                                >
+                                                    Decline Counter
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <Button
+                                                className="w-full py-6 text-[15px] font-black uppercase bg-primary hover:bg-red-600 shadow-neon text-white rounded-xl"
+                                                onClick={() => {
+                                                    if (!user) setShowLoginModal(true)
+                                                    else setShowOfferModal(true)
+                                                }}
+                                                disabled={
+                                                    offerViewerRole === 'buyer' && (
+                                                        myOffer?.status === 'PENDING' ||
+                                                        myOffer?.status === 'ACCEPTED'
+                                                    )
+                                                }
+                                            >
+                                                {offerViewerRole === 'buyer' && myOffer?.status === 'PENDING'
+                                                    ? '⏳ Bid Placed'
+                                                    : offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'
+                                                        ? '✓ Bid Won'
                                                         : 'Place a Bid'}
-                                        </Button>
+                                            </Button>
+                                        )}
                                         
                                         <Button
                                             variant="outline"

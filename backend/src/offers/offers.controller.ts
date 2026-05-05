@@ -140,4 +140,19 @@ export class OffersController {
         const offer = await this.offersService.withdrawOffer(id, user.id);
         return new StandardResponse(offer);
     }
+
+    /**
+     * Buyer: Accept or reject a counter-offer from the seller
+     */
+    @Patch(':id/respond-counter')
+    @ApiOperation({ summary: 'Respond to a counter-offer', description: 'Accept or reject a counter-offer. Buyer only.' })
+    @ApiParam({ name: 'id', description: 'UUID of the offer' })
+    async respondToCounterOffer(
+        @Param('id') id: string,
+        @Body() dto: RespondOfferDto,
+        @CurrentUser() user: any,
+    ): Promise<StandardResponse<any>> {
+        const offer = await this.offersService.respondToCounterOffer(id, user.id, dto.status);
+        return new StandardResponse(offer);
+    }
 }

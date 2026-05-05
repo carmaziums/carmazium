@@ -206,19 +206,22 @@ export class OffersService {
             },
         });
 
-        // If accepted, reject all other pending offers for the same listing
+        // If accepted, reject all other pending offers for the same listing AND mark listing as SOLD
         if (prismaStatus === 'ACCEPTED') {
-            await this.prisma.offer.updateMany({
-                where: {
-                    listingId: offer.listingId,
-                    id: { not: offerId },
-                    status: 'PENDING',
-                },
-                data: { status: 'REJECTED' },
-            });
-            // NOTE: The listing intentionally stays ACTIVE after an offer is accepted.
-            // The seller must manually mark it as SOLD from their inventory.
-            // This allows relisting if the buyer doesn't follow through.
+            await Promise.all([
+                this.prisma.offer.updateMany({
+                    where: {
+                        listingId: offer.listingId,
+                        id: { not: offerId },
+                        status: 'PENDING',
+                    },
+                    data: { status: 'REJECTED' },
+                }),
+                this.prisma.listing.update({
+                    where: { id: offer.listingId },
+                    data: { status: 'SOLD' },
+                })
+            ]);
         }
 
         // Notify the buyer
@@ -349,6 +352,70 @@ export class OffersService {
                 type: 'OFFER_REJECTED', // Using REJECTED type for withdrawn notifications
                 title: 'Offer Withdrawn',
                 message: `An offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${offer.listing.title}" was withdrawn by the buyer.`,
+                data: { listingId: offer.listingId, offerId: offer.id },
+            });
+            this.notificationsGateway.sendNotification(offer.listing.sellerId, sellerNotification);
+        }
+
+        return updated;
+    }
+
+    /**
+     * Buyer: Respond to a counter-offer from the seller
+     */
+    async respondToCounterOffer(
+        offerId: string,
+        buyerId: string,
+        status: OfferResponseStatus,
+    ): Promise<Offer> {
+        const offer = await this.prisma.offer.findUnique({
+            where: { id: offerId },
+            include: {
+                listing: {
+                    select: { id: true, title: true, sellerId: true },
+                },
+            },
+        });
+
+        if (!offer) {
+            throw new NotFoundException('Offer not found.');
+        }
+
+        if (offer.buyerId !== buyerId) {
+            throw new ForbiddenException('You do not own this offer.');
+        }
+
+        if (offer.status !== 'COUNTERED') {
+            throw new BadRequestException('This offer has not been countered or is already closed.');
+        }
+
+        const prismaStatus: OfferStatus = status as unknown as OfferStatus;
+
+        const updated = await this.prisma.offer.update({
+            where: { id: offerId },
+            data: { status: prismaStatus },
+        });
+
+        // If accepted, mark listing as SOLD
+        if (prismaStatus === 'ACCEPTED') {
+            await this.prisma.listing.update({
+                where: { id: offer.listingId },
+                data: { status: 'SOLD' },
+            });
+        }
+
+        // Notify the seller
+        if (offer.listing.sellerId) {
+            const notifTitle = prismaStatus === 'ACCEPTED' ? '💰 Counter Offer Accepted!' : 'Counter Offer Declined';
+            const notifMessage = prismaStatus === 'ACCEPTED'
+                ? `The buyer accepted your counter offer of £${Number(offer.counterAmount).toLocaleString('en-GB')} for "${offer.listing.title}"!`
+                : `The buyer declined your counter offer for "${offer.listing.title}".`;
+
+            const sellerNotification = await this.notificationsService.create({
+                userId: offer.listing.sellerId,
+                type: prismaStatus === 'ACCEPTED' ? 'OFFER_ACCEPTED' : 'OFFER_REJECTED',
+                title: notifTitle,
+                message: notifMessage,
                 data: { listingId: offer.listingId, offerId: offer.id },
             });
             this.notificationsGateway.sendNotification(offer.listing.sellerId, sellerNotification);

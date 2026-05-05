@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { getMyOffers, withdrawOffer, respondToOffer, type Offer } from "@/lib/listingApi"
+import { getMyOffers, withdrawOffer, respondToCounterOffer, type Offer } from "@/lib/listingApi"
 import { createChatRoom } from "@/lib/chatApi"
 import { useRouter } from "next/navigation"
 import { Loader2, AlertTriangle, Tag, Clock, CheckCircle, XCircle, Eye, Trash2 } from "lucide-react"
@@ -70,6 +70,7 @@ export default function BuyerOffersPage() {
     const [startingChat, setStartingChat] = React.useState<string | null>(null)
     const [withdrawing, setWithdrawing] = React.useState<string | null>(null)
     const [accepting, setAccepting] = React.useState<string | null>(null)
+    const [declining, setDeclining] = React.useState<string | null>(null)
     const router = useRouter()
 
     React.useEffect(() => {
@@ -122,16 +123,30 @@ export default function BuyerOffersPage() {
     }
 
     const handleAcceptCounter = async (offerId: string) => {
-        if (!confirm("Accept the seller's counter offer?")) return;
+        if (!confirm("Accept the seller's counter offer? This will close the deal!")) return;
         setAccepting(offerId);
         try {
-            await respondToOffer(offerId, 'ACCEPTED');
+            await respondToCounterOffer(offerId, 'ACCEPTED');
             setOffers(prev => prev.map(o => o.id === offerId ? { ...o, status: 'ACCEPTED' } : o));
         } catch (err: any) {
             console.error("Failed to accept counter offer:", err);
             alert(err.message || "Failed to accept counter offer.");
         } finally {
             setAccepting(null);
+        }
+    }
+
+    const handleDeclineCounter = async (offerId: string) => {
+        if (!confirm("Are you sure you want to decline this counter offer?")) return;
+        setDeclining(offerId);
+        try {
+            await respondToCounterOffer(offerId, 'REJECTED');
+            setOffers(prev => prev.map(o => o.id === offerId ? { ...o, status: 'REJECTED' } : o));
+        } catch (err: any) {
+            console.error("Failed to decline counter offer:", err);
+            alert(err.message || "Failed to decline counter offer.");
+        } finally {
+            setDeclining(null);
         }
     }
 
@@ -267,14 +282,24 @@ export default function BuyerOffersPage() {
                                                     <td className="px-6 py-5 text-right">
                                                         <div className="flex items-center justify-end gap-2">
                                                             {offer.status === 'COUNTERED' && (
-                                                                <button
-                                                                    onClick={() => handleAcceptCounter(offer.id)}
-                                                                    disabled={accepting === offer.id}
-                                                                    className="inline-flex items-center justify-center h-10 px-3 text-sm font-bold text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-xl transition-all hover:scale-105 disabled:opacity-50"
-                                                                    title="Accept Counter Offer"
-                                                                >
-                                                                    {accepting === offer.id ? <Loader2 size={16} className="animate-spin" /> : "Accept"}
-                                                                </button>
+                                                                <div className="flex items-center gap-1">
+                                                                    <button
+                                                                        onClick={() => handleAcceptCounter(offer.id)}
+                                                                        disabled={accepting === offer.id || declining === offer.id}
+                                                                        className="inline-flex items-center justify-center h-10 px-3 text-sm font-bold text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-xl transition-all hover:scale-105 disabled:opacity-50"
+                                                                        title="Accept Counter Offer"
+                                                                    >
+                                                                        {accepting === offer.id ? <Loader2 size={16} className="animate-spin" /> : "Accept"}
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleDeclineCounter(offer.id)}
+                                                                        disabled={accepting === offer.id || declining === offer.id}
+                                                                        className="inline-flex items-center justify-center h-10 px-3 text-sm font-bold text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl transition-all hover:scale-105 disabled:opacity-50"
+                                                                        title="Decline Counter"
+                                                                    >
+                                                                        {declining === offer.id ? <Loader2 size={16} className="animate-spin" /> : "Decline"}
+                                                                    </button>
+                                                                </div>
                                                             )}
                                                             {offer.status === 'PENDING' && (
                                                                 <div className="flex items-center gap-2">
