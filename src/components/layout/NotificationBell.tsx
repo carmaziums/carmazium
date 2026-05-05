@@ -1,0 +1,191 @@
+"use client"
+
+import * as React from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import {
+    Bell, Tag, CheckCircle, XCircle, RefreshCw,
+    MessageSquare, BadgeCheck, CreditCard, MinusCircle,
+    Loader2, Check,
+} from "lucide-react"
+import {
+    getNotifications, markAllNotificationsRead, markNotificationRead,
+    type AppNotification,
+} from "@/lib/notificationsApi"
+import { useAuth } from "@/context/AuthContext"
+import { useChat } from "@/context/ChatContext"
+import { getPendingOffersCount } from "@/lib/listingApi"
+
+// ─── Icon map ─────────────────────────────────────────────────────────────────
+
+const ICON_MAP: Record<string, React.ReactNode> = {
+    OFFER_RECEIVED:  <Tag size={14} className="text-amber-400" />,
+    OFFER_ACCEPTED:  <CheckCircle size={14} className="text-emerald-400" />,
+    OFFER_REJECTED:  <XCircle size={14} className="text-red-400" />,
+    OFFER_COUNTERED: <RefreshCw size={14} className="text-blue-400" />,
+    OFFER_WITHDRAWN: <MinusCircle size={14} className="text-gray-400" />,
+    NEW_MESSAGE:     <MessageSquare size={14} className="text-blue-400" />,
+    LISTING_SOLD:    <BadgeCheck size={14} className="text-emerald-400" />,
+    FINANCE_UPDATE:  <CreditCard size={14} className="text-purple-400" />,
+}
+
+function getIcon(type: string) {
+    return ICON_MAP[type] ?? <Bell size={14} className="text-gray-400" />
+}
+
+function timeAgo(dateStr: string) {
+    const diff = Date.now() - new Date(dateStr).getTime()
+    const m = Math.floor(diff / 60000)
+    if (m < 1) return "just now"
+    if (m < 60) return `${m}m ago`
+    const h = Math.floor(m / 60)
+    if (h < 24) return `${h}h ago`
+    return `${Math.floor(h / 24)}d ago`
+}
+
+// ─── Component ─────────────────────────────────────────────────────────────────
+
+export function NotificationBell() {
+    const { user } = useAuth()
+    const { unreadCount: chatUnread } = useChat()
+    const router = useRouter()
+
+    const [open, setOpen] = React.useState(false)
+    const [notifications, setNotifications] = React.useState<AppNotification[]>([])
+    const [loading, setLoading] = React.useState(false)
+    const [pendingOffers, setPendingOffers] = React.useState(0)
+    const ref = React.useRef<HTMLDivElement>(null)
+
+    // Poll unread count every 30s
+    React.useEffect(() => {
+        if (!user) { setPendingOffers(0); return }
+        const fetch = () => getPendingOffersCount().then(setPendingOffers).catch(() => {})
+        fetch()
+        const id = setInterval(fetch, 30000)
+        return () => clearInterval(id)
+    }, [user])
+
+    // Click-outside close
+    React.useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+        }
+        document.addEventListener("mousedown", handler)
+        return () => document.removeEventListener("mousedown", handler)
+    }, [])
+
+    // Load notifications when panel opens
+    React.useEffect(() => {
+        if (!open || !user) return
+        setLoading(true)
+        getNotifications(12).then(setNotifications).finally(() => setLoading(false))
+    }, [open, user])
+
+    const totalUnread = chatUnread + pendingOffers
+    const unreadNotifs = notifications.filter(n => !n.isRead).length
+
+    async function handleMarkAll() {
+        await markAllNotificationsRead()
+        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
+    }
+
+    async function handleClickNotif(n: AppNotification) {
+        if (!n.isRead) {
+            markNotificationRead(n.id).catch(() => {})
+            setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, isRead: true } : x))
+        }
+        setOpen(false)
+        if (n.link) router.push(n.link)
+    }
+
+    if (!user) return null
+
+    return (
+        <div className="relative" ref={ref}>
+            <button
+                onClick={() => setOpen(o => !o)}
+                className="relative flex items-center justify-center w-10 h-10 rounded-xl border border-white/10 bg-slate-800/60 hover:bg-slate-700/80 transition-all"
+                aria-label="Notifications"
+            >
+                <Bell size={18} className="text-gray-300" />
+                {totalUnread > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-primary text-white text-[9px] font-black rounded-full flex items-center justify-center border border-slate-900 shadow-sm animate-pulse">
+                        {totalUnread > 99 ? '99+' : totalUnread}
+                    </span>
+                )}
+            </button>
+
+            {open && (
+                <div className="absolute top-full right-0 mt-2 w-80 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+                        <div className="flex items-center gap-2">
+                            <Bell size={14} className="text-primary" />
+                            <span className="font-bold text-white text-sm">Notifications</span>
+                            {unreadNotifs > 0 && (
+                                <span className="bg-primary/20 text-primary text-[10px] font-black px-2 py-0.5 rounded-full">
+                                    {unreadNotifs} new
+                                </span>
+                            )}
+                        </div>
+                        {unreadNotifs > 0 && (
+                            <button
+                                onClick={handleMarkAll}
+                                className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-white transition-colors font-bold uppercase tracking-widest"
+                            >
+                                <Check size={10} /> Mark all read
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Body */}
+                    <div className="max-h-[360px] overflow-y-auto">
+                        {loading ? (
+                            <div className="flex items-center justify-center py-12">
+                                <Loader2 size={20} className="animate-spin text-primary" />
+                            </div>
+                        ) : notifications.length === 0 ? (
+                            <div className="text-center py-12">
+                                <Bell size={28} className="text-gray-700 mx-auto mb-3" />
+                                <p className="text-gray-500 text-xs font-semibold">No notifications yet</p>
+                            </div>
+                        ) : (
+                            notifications.map(n => (
+                                <button
+                                    key={n.id}
+                                    onClick={() => handleClickNotif(n)}
+                                    className={`w-full text-left flex items-start gap-3 px-4 py-3 hover:bg-white/5 transition-colors border-b border-white/5 last:border-0 ${!n.isRead ? 'bg-primary/5' : ''}`}
+                                >
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${!n.isRead ? 'bg-primary/10' : 'bg-white/5'}`}>
+                                        {getIcon(n.type)}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className={`text-xs font-bold mb-0.5 ${!n.isRead ? 'text-white' : 'text-gray-300'}`}>
+                                            {n.title}
+                                        </p>
+                                        <p className="text-[11px] text-gray-500 leading-relaxed line-clamp-2">{n.body}</p>
+                                        <p className="text-[10px] text-gray-600 mt-1">{timeAgo(n.createdAt)}</p>
+                                    </div>
+                                    {!n.isRead && (
+                                        <div className="w-2 h-2 rounded-full bg-primary shrink-0 mt-2" />
+                                    )}
+                                </button>
+                            ))
+                        )}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="px-4 py-3 border-t border-white/10 bg-slate-800/30">
+                        <Link
+                            href="/dashboard"
+                            onClick={() => setOpen(false)}
+                            className="text-[11px] text-gray-500 hover:text-white transition-colors font-bold uppercase tracking-widest flex items-center justify-center gap-1"
+                        >
+                            View Dashboard →
+                        </Link>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
