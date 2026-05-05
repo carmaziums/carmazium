@@ -155,4 +155,17 @@ export class OffersController {
         const offer = await this.offersService.respondToCounterOffer(id, user.id, dto.status);
         return new StandardResponse(offer);
     }
+
+    /**
+     * Seller/Dealer: Get all offers received across all their listings
+     */
+    @Get('received')
+    @ApiOperation({ summary: 'Get received offers', description: 'Returns all offers received by the authenticated seller/dealer across all their listings.' })
+    @ApiResponse({ status: 200, description: 'List of received offers with buyer and listing details' })
+    async getReceivedOffers(
+        @CurrentUser() user: any,
+    ): Promise<StandardResponse<any[]>> {
+        const offers = await this.offersService.getReceivedOffers(user.id);
+        return new StandardResponse(offers);
+    }
 }
