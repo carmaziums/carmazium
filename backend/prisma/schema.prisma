@@ -320,9 +320,25 @@ model DealerProfile {
   user  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   staff DealerStaff[]
   leads Lead[]
+  invites DealerInvite[]
 
   @@index([userId])
   @@map("dealer_profiles")
+}
+
+model DealerInvite {
+  id              String     @id @default(uuid())
+  email           String
+  dealerProfileId String
+  role            DealerRole @default(SALES_AGENT)
+  token           String     @unique
+  expiresAt       DateTime
+  createdAt       DateTime   @default(now())
+
+  dealerProfile DealerProfile @relation(fields: [dealerProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([email, dealerProfileId])
+  @@map("dealer_invites")
 }
 
 /// Staff members belonging to a dealership, with RBAC roles
