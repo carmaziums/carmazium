@@ -21,6 +21,8 @@ export default function DealerFinancePage() {
     const { user, profile, loading: authLoading } = useAuth()
     const [applications, setApplications] = React.useState<any[]>([])
     const [loading, setLoading] = React.useState(true)
+    const [updatingId, setUpdatingId] = React.useState<string | null>(null)
+    const [toast, setToast] = React.useState<string | null>(null)
 
     React.useEffect(() => {
         if (!authLoading && user) {
@@ -40,12 +42,36 @@ export default function DealerFinancePage() {
         }
     }
 
+    async function updateStatus(id: string, status: string) {
+        setUpdatingId(id)
+        try {
+            const res = await apiClient<{ data: any }>(`/finance/${id}/status`, {
+                method: 'PATCH',
+                body: JSON.stringify({ status }),
+            })
+            const updated = res?.data
+            setApplications(prev => prev.map(a => a.id === id ? { ...a, ...updated } : a))
+            setToast(`✓ Application marked as ${status.toLowerCase()}`)
+            setTimeout(() => setToast(null), 3500)
+        } catch (err: any) {
+            setToast(err.message || 'Failed to update status')
+            setTimeout(() => setToast(null), 3500)
+        } finally {
+            setUpdatingId(null)
+        }
+    }
+
     const userName = profile?.firstName
         ? `${profile.firstName} ${profile.lastName || ""}`
         : (user?.email?.split('@')[0] || "Dealer")
 
     return (
         <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
+            {toast && (
+                <div className="fixed bottom-6 right-6 z-50 bg-slate-800 border border-white/10 text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-medium animate-in slide-in-from-bottom-4">
+                    {toast}
+                </div>
+            )}
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
@@ -98,6 +124,7 @@ export default function DealerFinancePage() {
                                         <th className="px-6 py-5 text-center">Contract Term</th>
                                         <th className="px-6 py-5 text-right">P&I Monthly</th>
                                         <th className="px-8 py-5 text-center">Risk Status</th>
+                                        <th className="px-6 py-5 text-center">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-white/[0.03]">
@@ -142,6 +169,41 @@ export default function DealerFinancePage() {
                                                     <span className={`inline-flex px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest uppercase border ${STATUS_BADGES[app.status] || STATUS_BADGES.PENDING}`}>
                                                         {app.status}
                                                     </span>
+                                                </td>
+                                                {/* Action Buttons */}
+                                                <td className="px-6 py-6">
+                                                    <div className="flex items-center gap-2 justify-center">
+                                                        {updatingId === app.id ? (
+                                                            <Loader2 size={16} className="animate-spin text-primary" />
+                                                        ) : (
+                                                            <>
+                                                                {app.status !== 'APPROVED' && app.status !== 'FUNDED' && (
+                                                                    <button
+                                                                        onClick={() => updateStatus(app.id, 'APPROVED')}
+                                                                        className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
+                                                                    >
+                                                                        Approve
+                                                                    </button>
+                                                                )}
+                                                                {app.status === 'PENDING' && (
+                                                                    <button
+                                                                        onClick={() => updateStatus(app.id, 'REVIEWING')}
+                                                                        className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors"
+                                                                    >
+                                                                        Review
+                                                                    </button>
+                                                                )}
+                                                                {app.status !== 'REJECTED' && app.status !== 'FUNDED' && (
+                                                                    <button
+                                                                        onClick={() => updateStatus(app.id, 'REJECTED')}
+                                                                        className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+                                                                    >
+                                                                        Reject
+                                                                    </button>
+                                                                )}
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))
