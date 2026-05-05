@@ -10,12 +10,25 @@ export class DealersService {
 
     // ─── Profile helpers ────────────────────────────────────────────
 
-    /** Get the DealerProfile for a user, or throw */
+    /** Get the DealerProfile for a user (owner or staff), or throw */
     async getDealerProfile(userId: string) {
-        const profile = await this.prisma.dealerProfile.findUnique({
+        // 1. Check if user is the primary owner
+        let profile = await this.prisma.dealerProfile.findUnique({
             where: { userId },
             include: { staff: { include: { user: { select: { id: true, firstName: true, lastName: true, email: true, profileImage: true } } } } },
         });
+
+        // 2. If not owner, check if they are a staff member
+        if (!profile) {
+            const staffRecord = await this.prisma.dealerStaff.findFirst({
+                where: { userId, isActive: true },
+                include: { dealerProfile: { include: { staff: { include: { user: { select: { id: true, firstName: true, lastName: true, email: true, profileImage: true } } } } } } },
+            });
+            if (staffRecord) {
+                profile = staffRecord.dealerProfile as any;
+            }
+        }
+
         if (!profile) throw new NotFoundException('Dealer profile not found');
         return profile;
     }
