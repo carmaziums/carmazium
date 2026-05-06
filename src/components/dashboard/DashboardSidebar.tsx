@@ -76,7 +76,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
         { href: "/dashboard/user?tab=overview", label: "Overview", icon: LayoutDashboard },
         { href: "/dashboard/user?tab=inventory", label: "Inventory", icon: Car },
         { href: "/dashboard/user?tab=offers", label: "Offers", icon: Tag, badge: pendingOffersCount },
-        { href: "/dashboard/user?tab=bids", label: "My Bids & Offers", icon: Gavel },
+        { href: "/dashboard/user?tab=bids", label: "My Offers", icon: Gavel },
         { href: "/dashboard/user?tab=watchlist", label: "Watchlist", icon: Heart },
         { href: "/dashboard/user?tab=stats", label: "Stats", icon: BarChart3 },
         { href: "/dashboard/user?tab=messages", label: "Messages", icon: MessageSquare, badge: unreadCount },
