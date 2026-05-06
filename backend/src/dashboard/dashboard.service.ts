@@ -28,6 +28,16 @@ export class DashboardService {
     }
 
     async getUnifiedDashboard(userId: string) {
+        // Handle staff/owner logic to show dealership stats to staff
+        let targetOwnerId = userId;
+        const staffRecord = await this.prisma.dealerStaff.findFirst({
+            where: { userId, isActive: true },
+            select: { dealerProfile: { select: { userId: true } } }
+        });
+        if (staffRecord) {
+            targetOwnerId = staffRecord.dealerProfile.userId;
+        }
+
         const [
             activeBids,
             watchlistCount,
@@ -39,22 +49,25 @@ export class DashboardService {
             unreadMessages,
             incomingOffers
         ] = await Promise.all([
-            // Buyer stats
+            // Buyer stats (Always specific to the logged-in user)
             this.prisma.offer.count({ where: { buyerId: userId, status: 'PENDING' } }),
             this.prisma.watchlistItem.count({ where: { userId } }),
-            // Seller stats
-            this.prisma.listing.count({ where: { sellerId: userId, deletedAt: null } }),
-            this.prisma.listing.count({ where: { sellerId: userId, status: 'ACTIVE', deletedAt: null } }),
-            this.prisma.listing.count({ where: { sellerId: userId, status: 'SOLD', deletedAt: null } }),
+            
+            // Seller/Dealer stats (Aggregated for the dealership if staff)
+            this.prisma.listing.count({ where: { sellerId: targetOwnerId, deletedAt: null } }),
+            this.prisma.listing.count({ where: { sellerId: targetOwnerId, status: 'ACTIVE', deletedAt: null } }),
+            this.prisma.listing.count({ where: { sellerId: targetOwnerId, status: 'SOLD', deletedAt: null } }),
             this.prisma.listing.aggregate({
-                where: { sellerId: userId, deletedAt: null },
+                where: { sellerId: targetOwnerId, deletedAt: null },
                 _sum: { viewCount: true }
             }),
-            // Revenue (from the new sales table)
+            
+            // Revenue tracking (Aggregated for the dealership if staff)
             this.prisma.sale.aggregate({
-                where: { sellerId: userId },
+                where: { sellerId: targetOwnerId },
                 _sum: { soldPrice: true }
             }),
+            
             // Messaging & Notifications
             this.prisma.message.count({ 
                 where: { 
@@ -65,10 +78,11 @@ export class DashboardService {
                     isRead: false
                 }
             }),
-            // Incoming offers for seller
+            
+            // Incoming offers for seller/dealer
             this.prisma.offer.count({
                 where: {
-                    listing: { sellerId: userId },
+                    listing: { sellerId: targetOwnerId },
                     status: 'PENDING'
                 }
             })
