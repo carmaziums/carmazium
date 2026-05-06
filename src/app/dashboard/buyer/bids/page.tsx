@@ -41,7 +41,7 @@ export default function MyBidsPage() {
                 <DashboardSidebar role="buyer" />
                 <main className="flex-1 space-y-6">
                     <div className="flex justify-between items-center mb-6">
-                        <h1 className="text-3xl font-bold font-heading text-white">My Bids</h1>
+                        <h1 className="text-3xl font-bold font-heading text-white">My Offers</h1>
                     </div>
 
                     <div className="glass-card overflow-hidden">
@@ -50,7 +50,7 @@ export default function MyBidsPage() {
                                 <thead className="bg-slate-800/50 text-gray-400 text-xs uppercase font-bold">
                                     <tr>
                                         <th className="px-6 py-4">Vehicle</th>
-                                        <th className="px-6 py-4">Your Bid</th>
+                                        <th className="px-6 py-4">Your Offer</th>
                                         <th className="px-6 py-4">Status</th>
                                         <th className="px-6 py-4">Date</th>
                                         <th className="px-6 py-4 text-right">Action</th>
@@ -66,7 +66,7 @@ export default function MyBidsPage() {
                                     ) : bids.length === 0 ? (
                                         <tr>
                                             <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
-                                                No bids yet. {/* <Link href="/cars" className="text-primary hover:underline">Browse auctions</Link> */}
+                                                No offers yet.
                                             </td>
                                         </tr>
                                     ) : (
