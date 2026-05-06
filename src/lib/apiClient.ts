@@ -8,6 +8,13 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly
  */
 function redirectToLogin() {
     if (typeof window === 'undefined') return;
+    
+    // Prevent redirect loops if we are already on an auth page
+    const path = window.location.pathname;
+    if (path.includes('/auth/login') || path.includes('/auth/register') || path.includes('/auth/reset-password')) {
+        return;
+    }
+
     const redirect = encodeURIComponent(window.location.pathname + window.location.search);
     window.location.href = `/auth/login?redirect=${redirect}`;
 }
