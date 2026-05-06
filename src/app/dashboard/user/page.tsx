@@ -165,6 +165,7 @@ function UnifiedUserDashboardContent() {
                         {activeTab === "inventory" && <InventoryTab onRefreshStats={fetchStats} />}
                         {activeTab === "offers" && <OffersTab onRefreshStats={fetchStats} />}
                         {activeTab === "bids" && <OutgoingOffersTab onRefreshStats={fetchStats} />}
+                        {activeTab === "watchlist" && <WatchlistTab />}
                         {activeTab === "stats" && <StatsTab />}
                         {activeTab === "messages" && <MessagesTab rooms={rooms} refreshRooms={refreshRooms} />}
                         {activeTab === "earnings" && <EarningsTab />}
@@ -194,7 +195,7 @@ function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | n
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <MetricCard 
                     label="Active Inventory" 
-                    value={data?.seller.activeListings || 0} 
+                    value={data?.seller?.activeListings || 0} 
                     icon={Car} 
                     color="text-primary" 
                     bg="bg-primary/10" 
@@ -203,7 +204,7 @@ function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | n
                 />
                 <MetricCard 
                     label="Total Revenue" 
-                    value={formatPrice(data?.seller.totalRevenue || 0)} 
+                    value={formatPrice(data?.seller?.totalRevenue || 0)} 
                     icon={DollarSign} 
                     color="text-emerald-400" 
                     bg="bg-emerald-500/10" 
@@ -212,7 +213,7 @@ function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | n
                 />
                 <MetricCard 
                     label="Watchlist" 
-                    value={data?.buyer.watchlistCount || 0} 
+                    value={data?.buyer?.watchlistCount || 0} 
                     icon={Heart} 
                     color="text-pink-400" 
                     bg="bg-pink-500/10" 
@@ -221,7 +222,7 @@ function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | n
                 />
                 <MetricCard 
                     label="Total Views" 
-                    value={data?.seller.totalViews || 0} 
+                    value={data?.seller?.totalViews || 0} 
                     icon={Eye} 
                     color="text-yellow-400" 
                     bg="bg-yellow-500/10" 
@@ -244,7 +245,7 @@ function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | n
                                 </div>
                                 <div>
                                     <p className="font-bold text-sm">Incoming Offers</p>
-                                    <p className="text-xs text-gray-500">You have {data?.seller.incomingOffers || 0} pending offers to review.</p>
+                                    <p className="text-xs text-gray-500">You have {data?.seller?.incomingOffers || 0} pending offers to review.</p>
                                 </div>
                             </div>
                             <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10" onClick={() => setTab('offers')}>View All</Button>
@@ -256,7 +257,7 @@ function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | n
                                 </div>
                                 <div>
                                     <p className="font-bold text-sm">Earnings Status</p>
-                                    <p className="text-xs text-gray-500">Your total realized revenue is {formatPrice(data?.seller.totalRevenue || 0)}.</p>
+                                    <p className="text-xs text-gray-500">Your total realized revenue is {formatPrice(data?.seller?.totalRevenue || 0)}.</p>
                                 </div>
                             </div>
                             <Button variant="ghost" size="sm" className="text-emerald-400 hover:bg-emerald-500/10" onClick={() => setTab('earnings')}>History</Button>
@@ -288,13 +289,43 @@ function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | n
                                 </div>
                                 <div>
                                     <p className="font-bold text-sm">Watchlist</p>
-                                    <p className="text-xs text-gray-500">You are tracking {data?.buyer.watchlistCount || 0} vehicles.</p>
+                                    <p className="text-xs text-gray-500">You are tracking {data?.buyer?.watchlistCount || 0} vehicles.</p>
                                 </div>
                             </div>
                             <Button variant="ghost" size="sm" className="text-yellow-400 hover:bg-yellow-500/10">Browse</Button>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WATCHLIST TAB
+// ─────────────────────────────────────────────────────────────────────────────
+
+function WatchlistTab() {
+    return (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-black font-heading uppercase tracking-tight">My Watchlist</h2>
+            </div>
+            
+            <div className="glass-card p-20 text-center border-white/10 bg-white/5 rounded-2xl border-dashed">
+                <div className="w-20 h-20 bg-pink-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-pink-500/20">
+                    <Heart size={40} className="text-pink-400/50" />
+                </div>
+                <h3 className="text-xl font-black text-white uppercase mb-2">Your Watchlist is Empty</h3>
+                <p className="text-gray-400 text-sm max-w-md mx-auto mb-8">
+                    Save the vehicles you're interested in by clicking the heart icon on any listing. 
+                    We'll notify you if the price drops or if it's about to be sold.
+                </p>
+                <Link href="/buy">
+                    <Button className="shadow-neon px-8 h-12 font-black uppercase tracking-widest">
+                        Browse Listings
+                    </Button>
+                </Link>
             </div>
         </div>
     )

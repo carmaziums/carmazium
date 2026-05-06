@@ -30,12 +30,16 @@ export class DashboardService {
     async getUnifiedDashboard(userId: string) {
         // Handle staff/owner logic to show dealership stats to staff
         let targetOwnerId = userId;
-        const staffRecord = await this.prisma.dealerStaff.findFirst({
-            where: { userId, isActive: true },
-            select: { dealerProfile: { select: { userId: true } } }
-        });
-        if (staffRecord) {
-            targetOwnerId = staffRecord.dealerProfile.userId;
+        try {
+            const staffRecord = await this.prisma.dealerStaff.findFirst({
+                where: { userId, isActive: true },
+                select: { dealerProfile: { select: { userId: true } } }
+            });
+            if (staffRecord) {
+                targetOwnerId = staffRecord.dealerProfile.userId;
+            }
+        } catch (err) {
+            console.error('Staff lookup failed, falling back to user ID:', err.message);
         }
 
         const [
