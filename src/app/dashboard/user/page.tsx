@@ -543,6 +543,7 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const [loading, setLoading] = React.useState(true)
     const [expanded, setExpanded] = React.useState<Set<string>>(new Set())
     const [responding, setResponding] = React.useState<string | null>(null)
+    const [countering, setCountering] = React.useState<{id: string, amount: string} | null>(null)
     const router = useRouter()
 
     const fetchOffers = async () => {
@@ -657,6 +658,7 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                         {offer.status === 'PENDING' ? (
                                                             <>
                                                                 <Button size="sm" variant="outline" className="h-9 border-red-500/30 text-red-400" onClick={() => handleRespond(offer.id, listing.id, 'REJECTED')} disabled={!!responding}>Decline</Button>
+                                                                <Button size="sm" variant="outline" className="h-9 border-blue-500/30 text-blue-400" onClick={() => setCountering({ id: offer.id, amount: '' })} disabled={!!responding}>Counter</Button>
                                                                 <Button size="sm" className="h-9 bg-emerald-600 hover:bg-emerald-500" onClick={() => handleRespond(offer.id, listing.id, 'ACCEPTED')} disabled={!!responding}>Accept</Button>
                                                             </>
                                                         ) : (
@@ -666,6 +668,32 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                             </div>
                                                         )}
                                                     </div>
+                                                    {countering?.id === offer.id && (
+                                                        <div className="w-full mt-4 flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-blue-500/30 animate-in zoom-in-95 duration-200">
+                                                            <div className="relative flex-1">
+                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">£</span>
+                                                                <Input 
+                                                                    placeholder="Enter counter amount..." 
+                                                                    className="pl-8 bg-transparent border-white/10 h-10"
+                                                                    value={countering.amount}
+                                                                    onChange={(e) => setCountering({ ...countering, amount: e.target.value })}
+                                                                    type="number"
+                                                                />
+                                                            </div>
+                                                            <Button 
+                                                                size="sm" 
+                                                                className="h-10 bg-blue-600 hover:bg-blue-500"
+                                                                onClick={() => {
+                                                                    handleRespond(offer.id, listing.id, 'COUNTERED', parseFloat(countering.amount))
+                                                                    setCountering(null)
+                                                                }}
+                                                                disabled={!countering.amount || !!responding}
+                                                            >
+                                                                Send Counter
+                                                            </Button>
+                                                            <Button size="sm" variant="ghost" className="h-10 text-gray-400" onClick={() => setCountering(null)}>Cancel</Button>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ))
                                         )}
