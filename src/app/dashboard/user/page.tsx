@@ -71,12 +71,23 @@ import {
     type SaleRecord,
     type Listing,
     type Offer,
-    type Bid,
     type PerformanceStats
 } from "@/lib/listingApi"
 import { createChatRoom, type ChatRoom } from "@/lib/chatApi"
 
 export default function UnifiedUserDashboard() {
+    return (
+        <React.Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            </div>
+        }>
+            <UnifiedUserDashboardContent />
+        </React.Suspense>
+    )
+}
+
+function UnifiedUserDashboardContent() {
     const { user, profile, loading: authLoading } = useAuth()
     const { rooms, refreshRooms } = useChat()
     const searchParams = useSearchParams()
@@ -124,8 +135,8 @@ export default function UnifiedUserDashboard() {
     const tabs = [
         { id: "overview", label: "Overview", icon: LayoutDashboard },
         { id: "inventory", label: "Inventory", icon: Car },
-        { id: "offers", label: "Offers", icon: Tag, badge: dashboardData?.seller.incomingOffers },
-        { id: "bids", label: "Bids & Offers", icon: Gavel, badge: dashboardData?.buyer.activeBids },
+        { id: "offers", label: "Incoming", icon: Tag, badge: dashboardData?.seller.incomingOffers },
+        { id: "bids", label: "My Offers", icon: Gavel },
         { id: "stats", label: "Performance", icon: BarChart3 },
         { id: "messages", label: "Messages", icon: MessageSquare, badge: dashboardData?.unreadMessages },
         { id: "earnings", label: "Earnings", icon: DollarSign },
@@ -199,12 +210,12 @@ function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | n
                     loading={loading} 
                 />
                 <MetricCard 
-                    label="Active Bids" 
-                    value={data?.buyer.activeBids || 0} 
-                    icon={Gavel} 
-                    color="text-blue-400" 
-                    bg="bg-blue-500/10" 
-                    border="border-blue-500/20" 
+                    label="Watchlist" 
+                    value={data?.buyer.watchlistCount || 0} 
+                    icon={Heart} 
+                    color="text-pink-400" 
+                    bg="bg-pink-500/10" 
+                    border="border-pink-500/20" 
                     loading={loading} 
                 />
                 <MetricCard 
@@ -264,7 +275,7 @@ function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | n
                                 </div>
                                 <div>
                                     <p className="font-bold text-sm">My Sent Offers</p>
-                                    <p className="text-xs text-gray-500">Track the {data?.buyer.activeBids || 0} offers you've made on vehicles.</p>
+                                    <p className="text-xs text-gray-500">Track the offers you've made on vehicles.</p>
                                 </div>
                             </div>
                             <Button variant="ghost" size="sm" className="text-blue-400 hover:bg-blue-500/10" onClick={() => setTab('bids')}>Manage</Button>
@@ -272,7 +283,7 @@ function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | n
                         <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5 group hover:border-yellow-500/30 transition-all">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-yellow-500/10 rounded-full flex items-center justify-center text-yellow-400 border border-yellow-500/20">
-                                    <Eye size={18} />
+                                    <Heart size={18} />
                                 </div>
                                 <div>
                                     <p className="font-bold text-sm">Watchlist</p>
@@ -281,6 +292,8 @@ function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | n
                             </div>
                             <Button variant="ghost" size="sm" className="text-yellow-400 hover:bg-yellow-500/10">Browse</Button>
                         </div>
+                    </div>
+                </div>
                     </div>
                 </div>
             </div>
@@ -643,7 +656,6 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
 
 function BidsTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const [offers, setOffers] = React.useState<Offer[]>([])
-    const [bids, setBids] = React.useState<Bid[]>([])
     const [loading, setLoading] = React.useState(true)
     const [actioning, setActioning] = React.useState<string | null>(null)
     const router = useRouter()
@@ -651,9 +663,8 @@ function BidsTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const fetchData = async () => {
         try {
             setLoading(true)
-            const [o, b] = await Promise.all([getMyOffers(), getMyBids()])
+            const o = await getMyOffers()
             setOffers(o)
-            setBids(b.data || [])
         } catch (err) {
             console.error('Failed to fetch outgoing activity:', err)
         } finally {
@@ -741,56 +752,6 @@ function BidsTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                 </div>
             </div>
 
-            {/* Active Bids Section (Auctions) */}
-            <div className="space-y-4">
-                <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
-                    <Gavel size={14} /> Auction Bids
-                </h3>
-                <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="bg-slate-800/50 text-[10px] text-gray-500 uppercase font-black tracking-widest">
-                                <tr>
-                                    <th className="px-6 py-4">Vehicle</th>
-                                    <th className="px-6 py-4">Highest Bid</th>
-                                    <th className="px-6 py-4">Status</th>
-                                    <th className="px-6 py-4 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/5">
-                                {loading ? (
-                                    <tr><td colSpan={4} className="px-6 py-10 text-center"><Loader2 className="animate-spin mx-auto text-primary" /></td></tr>
-                                ) : bids.length === 0 ? (
-                                    <tr><td colSpan={4} className="px-6 py-10 text-center text-gray-600 italic">No active bids.</td></tr>
-                                ) : (
-                                    bids.map(bid => (
-                                        <tr key={bid.id} className="hover:bg-white/[0.02]">
-                                            <td className="px-6 py-4">
-                                                <Link href={`/cars/${bid.listing?.slug}`} className="flex items-center gap-3 group">
-                                                    <div className="relative w-10 h-8 rounded border border-white/10 overflow-hidden shrink-0">
-                                                        <Image src={bid.listing?.images?.[0] || ""} alt="" fill className="object-cover" />
-                                                    </div>
-                                                    <span className="font-bold text-sm uppercase group-hover:text-primary transition-colors">{bid.listing?.title}</span>
-                                                </Link>
-                                            </td>
-                                            <td className="px-6 py-4 font-black font-mono text-white">{formatPrice(bid.amount)}</td>
-                                            <td className="px-6 py-4">
-                                                <span className={`text-[10px] font-black uppercase tracking-widest ${bid.isWinning ? 'text-emerald-400' : 'text-amber-400'}`}>
-                                                    {bid.isWinning ? 'WINNING' : 'OUTBID'}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <Link href={`/cars/${bid.listing?.slug}`}>
-                                                    <Button size="sm" variant="ghost" className="h-8 text-primary text-[10px] font-black">VIEW</Button>
-                                                </Link>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
             </div>
         </div>
     )
