@@ -37,17 +37,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const response = await apiClient<{ success: boolean; data: UserProfile }>('/users/me');
             setProfile(response.data);
         } catch (error: any) {
-            // AUTH_REDIRECT: apiClient is already redirecting to login — swallow silently
+            // AUTH_REDIRECT: apiClient is already redirecting to login
             if (error.message === 'AUTH_REDIRECT') {
-                setProfile(null);
+                // If we have a user but no profile yet, don't clear profile
+                // to prevent the "Auth Bounce" loop during initial bridge
+                if (!user) setProfile(null);
                 return;
             }
             console.error('Error fetching profile:', error);
             setProfile(null);
-
-            if (error.message && !error.message.includes('Unauthorized')) {
-                console.warn('Profile fetch failed - user may need to sync with backend');
-            }
         } finally {
             setLoading(false);
         }
