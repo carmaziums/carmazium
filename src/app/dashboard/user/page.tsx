@@ -294,8 +294,6 @@ function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | n
                         </div>
                     </div>
                 </div>
-                    </div>
-                </div>
             </div>
         </div>
     )
