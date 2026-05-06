@@ -23,6 +23,7 @@ import { ListingsService } from './listings.service';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
+import { RecordSaleDto } from './dto/record-sale.dto';
 import { ListingFilterDto } from './dto/listing-filter.dto';
 import { StandardResponse, PaginatedResponse } from './dto/response.dto';
 import { Listing } from '@prisma/client';
@@ -275,6 +276,47 @@ export class ListingsController {
     ): Promise<StandardResponse<Listing>> {
         const listing = await this.listingsService.updateStatus(id, user.id, updateStatusDto.status);
         return new StandardResponse(listing);
+    }
+
+    /**
+     * Mark listing as sold with final details
+     * Requires authentication and ownership
+     */
+    @Patch(':id/sold')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({
+        summary: 'Mark listing as sold',
+        description: 'Records final sale price and buyer ID, then marks listing as SOLD.',
+    })
+    @ApiParam({ name: 'id', description: 'UUID of the listing' })
+    @ApiResponse({ status: 200, description: 'Sale recorded and listing marked as SOLD' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    async recordSale(
+        @Param('id') id: string,
+        @Body() recordSaleDto: RecordSaleDto,
+        @CurrentUser() user: any,
+    ): Promise<StandardResponse<Listing>> {
+        const listing = await this.listingsService.recordSale(id, user.id, recordSaleDto);
+        return new StandardResponse(listing);
+    }
+
+    /**
+     * Get earnings history for the authenticated seller/dealer
+     */
+    @Get('earnings')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({
+        summary: 'Get earnings history',
+        description: 'Returns sales history, total revenue, and total sales count for the user.',
+    })
+    @ApiResponse({ status: 200, description: 'Earnings data retrieved successfully' })
+    async getEarnings(
+        @CurrentUser() user: any,
+    ): Promise<StandardResponse<any>> {
+        const earnings = await this.listingsService.getEarnings(user.id);
+        return new StandardResponse(earnings);
     }
 
     /**

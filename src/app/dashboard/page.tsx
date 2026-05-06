@@ -34,10 +34,8 @@ export default function DashboardPage() {
             'BUYER'
         ).toUpperCase()
 
-        if (role === 'BUYER') {
-            router.push('/dashboard/buyer')
-        } else if (role === 'SELLER') {
-            router.push('/dashboard/seller')
+        if (role === 'BUYER' || role === 'SELLER') {
+            router.push('/dashboard/user')
         } else if (role === 'DEALER') {
             router.push('/dashboard/dealer')
         } else if (role === 'CONTRACTOR') {

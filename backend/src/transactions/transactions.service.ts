@@ -43,19 +43,39 @@ export class TransactionsService {
      * Groups transactions by status to determine available, pending, and total
      */
     async getEarningsStats(userId: string) {
-        const baseWhere = { userId, deletedAt: null };
+        // Aggregate transactions for listings where the current user is the seller.
+        // Payments are processed off-platform; we rely on transaction records
+        // linked to listings to compute seller earnings. This ensures the seller
+        // sees amounts related to their listings rather than transactions
+        // created by the payer/buyer.
+        const whereCompleted = {
+            deletedAt: null,
+            status: 'COMPLETED',
+            listing: { sellerId: userId },
+        };
+
+        const wherePending = {
+            deletedAt: null,
+            status: 'PENDING',
+            listing: { sellerId: userId },
+        };
+
+        const whereAll = {
+            deletedAt: null,
+            listing: { sellerId: userId },
+        };
 
         const [completed, pending, allTime] = await Promise.all([
             this.prisma.transaction.aggregate({
-                where: { ...baseWhere, status: 'COMPLETED' },
+                where: whereCompleted,
                 _sum: { amount: true },
             }),
             this.prisma.transaction.aggregate({
-                where: { ...baseWhere, status: 'PENDING' },
+                where: wherePending,
                 _sum: { amount: true },
             }),
             this.prisma.transaction.aggregate({
-                where: baseWhere,
+                where: whereAll,
                 _sum: { amount: true },
             }),
         ]);

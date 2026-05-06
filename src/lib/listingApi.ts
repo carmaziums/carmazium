@@ -442,6 +442,33 @@ export async function getBuyerStats(): Promise<BuyerStats> {
     return data.data
 }
 
+export interface UnifiedDashboardData {
+    buyer: {
+        activeBids: number
+        watchlistCount: number
+    }
+    seller: {
+        totalListings: number
+        activeListings: number
+        soldListings: number
+        totalViews: number
+        totalRevenue: number
+        incomingOffers: number
+    }
+    unreadMessages: number
+}
+
+/**
+ * Get unified dashboard data (authenticated)
+ */
+export async function getUnifiedDashboard(): Promise<UnifiedDashboardData> {
+    const data = await apiClient<{ data: UnifiedDashboardData }>('/dashboard/unified', {
+        method: 'GET',
+        cache: 'no-store',
+    })
+    return data.data
+}
+
 /**
  * Place a bid on a listing (authenticated)
  */
@@ -620,6 +647,16 @@ export async function updateProfile(data: UpdateProfileRequest): Promise<any> {
     return apiClient('/users/me', {
         method: 'PATCH',
         body: JSON.stringify(data),
+    })
+}
+
+/**
+ * Reset user password (authenticated)
+ */
+export async function resetPassword(oldPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+    return apiClient<{ success: boolean; message: string }>('/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({ oldPassword, newPassword }),
     })
 }
 
@@ -803,6 +840,55 @@ export async function getMyOfferForListing(listingId: string): Promise<LatestOff
     } catch {
         return null
     }
+}
+
+/**
+ * Seller: Record a final sale for a listing
+ */
+export async function recordSale(listingId: string, data: { soldPrice: number; buyerId?: string }): Promise<Listing> {
+    const res = await apiClient<{ data: Listing }>(`/listings/${listingId}/sold`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+    })
+    return res.data
+}
+
+/**
+ * Seller/Dealer: Get earnings history
+ */
+export interface SaleRecord {
+    id: string
+    listingId: string
+    sellerId: string
+    buyerId: string | null
+    listedPrice: string | number
+    soldPrice: string | number
+    createdAt: string
+    listing: {
+        title: string
+        images: string[]
+        vrm: string | null
+        price: string | number
+    }
+    buyer?: {
+        firstName: string | null
+        lastName: string | null
+        email: string
+    }
+}
+
+export interface EarningsResponse {
+    sales: SaleRecord[]
+    totalRevenue: number
+    totalSales: number
+}
+
+export async function getEarnings(): Promise<EarningsResponse> {
+    const data = await apiClient<{ data: EarningsResponse }>('/listings/earnings', {
+        method: 'GET',
+        cache: 'no-store',
+    })
+    return data.data
 }
 
 /**

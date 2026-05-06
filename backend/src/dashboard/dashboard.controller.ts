@@ -13,6 +13,13 @@ import { StandardResponse } from '../listings/dto/response.dto';
 export class DashboardController {
     constructor(private readonly dashboardService: DashboardService) { }
 
+    @Get('unified')
+    @ApiOperation({ summary: 'Get unified user dashboard data (Buyer + Seller)' })
+    async getUnifiedDashboard(@CurrentUser() user: User) {
+        const data = await this.dashboardService.getUnifiedDashboard(user.id);
+        return new StandardResponse(data);
+    }
+
     @Get('buyer')
     @ApiOperation({ summary: 'Get buyer dashboard data' })
     async getBuyerDashboard(@CurrentUser() user: User) {

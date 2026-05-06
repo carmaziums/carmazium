@@ -15,6 +15,7 @@ import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { SessionAuthGuard } from './guards/session-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 
@@ -155,5 +156,21 @@ export class AuthController {
             message: 'Backend session created',
             data: user,
         };
+    }
+
+    /**
+     * Reset password for authenticated user.
+     */
+    @Post('reset-password')
+    @UseGuards(SessionAuthGuard)
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Reset authenticated user password' })
+    @ApiResponse({ status: 200, description: 'Password reset successfully' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    async resetPassword(
+        @CurrentUser() user: any,
+        @Body() resetPasswordDto: ResetPasswordDto,
+    ) {
+        return await this.authService.resetPassword(user.id, resetPasswordDto);
     }
 }

@@ -1,0 +1,1090 @@
+"use client"
+import * as React from "react"
+import { useSearchParams, useRouter } from "next/navigation"
+import { 
+    LayoutDashboard, 
+    Car, 
+    Tag, 
+    Gavel, 
+    BarChart3, 
+    MessageSquare, 
+    DollarSign, 
+    Settings,
+    Loader2,
+    PlusCircle,
+    TrendingUp,
+    Eye,
+    ChevronRight,
+    Lock,
+    ShieldCheck,
+    Mail,
+    Phone,
+    User as UserIcon,
+    ArrowUpRight,
+    ArrowDownRight,
+    Calendar,
+    Download,
+    Zap,
+    Trash2,
+    Pencil,
+    MoreVertical,
+    CheckCircle2,
+    AlertCircle,
+    X,
+    Clock,
+    XCircle,
+    Target,
+    AlertTriangle,
+    RefreshCw
+} from "lucide-react"
+import { useAuth } from "@/context/AuthContext"
+import { useChat } from "@/context/ChatContext"
+import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
+import { Button } from "@/components/ui/Button"
+import { Input } from "@/components/ui/Input"
+import { MetricCard } from "@/components/dashboard/MetricCard"
+import { FeaturedBadge } from "@/components/features/FeaturedBadge"
+import { RecordSaleModal } from "@/components/dashboard/RecordSaleModal"
+import { ChatRoomList } from "@/components/chat/ChatRoomList"
+import dynamic from "next/dynamic"
+const ChatWindow = dynamic(() => import("@/components/chat/ChatWindow").then(mod => mod.ChatWindow), { ssr: false })
+
+import Link from "next/link"
+import Image from "next/image"
+import { 
+    getUnifiedDashboard, 
+    getEarnings,
+    resetPassword,
+    getMyListings,
+    deleteListing,
+    boostListing,
+    getOffersForListing,
+    getMyOffers,
+    getMyBids,
+    respondToOffer,
+    withdrawOffer,
+    respondToCounterOffer,
+    getSellerPerformance,
+    formatPrice, 
+    type UnifiedDashboardData, 
+    type EarningsResponse,
+    type SaleRecord,
+    type Listing,
+    type Offer,
+    type Bid,
+    type PerformanceStats
+} from "@/lib/listingApi"
+import { createChatRoom, type ChatRoom } from "@/lib/chatApi"
+
+export default function UnifiedUserDashboard() {
+    const { user, profile, loading: authLoading } = useAuth()
+    const { rooms, refreshRooms } = useChat()
+    const searchParams = useSearchParams()
+    const router = useRouter()
+    const activeTab = searchParams.get("tab") || "overview"
+    
+    const [dashboardData, setDashboardData] = React.useState<UnifiedDashboardData | null>(null)
+    const [loading, setLoading] = React.useState(true)
+
+    const setTab = (tab: string) => {
+        const params = new URLSearchParams(searchParams.toString())
+        params.set("tab", tab)
+        router.push(`?${params.toString()}`)
+    }
+
+    const fetchStats = async () => {
+        if (!user) return
+        try {
+            const unified = await getUnifiedDashboard()
+            setDashboardData(unified)
+        } catch (err) {
+            console.error('Failed to fetch dashboard stats:', err)
+        }
+    }
+
+    React.useEffect(() => {
+        if (!authLoading && user) {
+            setLoading(true)
+            fetchStats().finally(() => setLoading(false))
+            refreshRooms()
+        }
+    }, [user, authLoading])
+
+    if (authLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            </div>
+        )
+    }
+
+    const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "User")
+    const userRole = profile?.role || "User"
+
+    const tabs = [
+        { id: "overview", label: "Overview", icon: LayoutDashboard },
+        { id: "inventory", label: "Inventory", icon: Car },
+        { id: "offers", label: "Offers", icon: Tag, badge: dashboardData?.seller.incomingOffers },
+        { id: "bids", label: "Bids & Offers", icon: Gavel, badge: dashboardData?.buyer.activeBids },
+        { id: "stats", label: "Performance", icon: BarChart3 },
+        { id: "messages", label: "Messages", icon: MessageSquare, badge: dashboardData?.unreadMessages },
+        { id: "earnings", label: "Earnings", icon: DollarSign },
+        { id: "settings", label: "Settings", icon: Settings },
+    ]
+
+    return (
+        <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
+            <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
+                {/* Unified Sidebar */}
+                <DashboardSidebar role="seller" userName={userName} userType={`${userRole} Account`}>
+                    <Link href="/sell">
+                        <Button className="w-full flex items-center gap-2 shadow-neon h-12" shape="default">
+                            <PlusCircle size={18} /> Create New Listing
+                        </Button>
+                    </Link>
+                </DashboardSidebar>
+
+                <main className="flex-1 space-y-8 min-w-0">
+
+
+                    {/* Tab Content */}
+                    <div className="min-h-[60vh]">
+                        {activeTab === "overview" && <OverviewTab data={dashboardData} loading={loading} setTab={setTab} />}
+                        {activeTab === "inventory" && <InventoryTab onRefreshStats={fetchStats} />}
+                        {activeTab === "offers" && <OffersTab onRefreshStats={fetchStats} />}
+                        {activeTab === "bids" && <BidsTab onRefreshStats={fetchStats} />}
+                        {activeTab === "stats" && <StatsTab />}
+                        {activeTab === "messages" && <MessagesTab rooms={rooms} refreshRooms={refreshRooms} />}
+                        {activeTab === "earnings" && <EarningsTab />}
+                        {activeTab === "settings" && <SettingsTab profile={profile} />}
+                    </div>
+                </main>
+            </div>
+        </div>
+    )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OVERVIEW TAB
+// ─────────────────────────────────────────────────────────────────────────────
+
+function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | null, loading: boolean, setTab: (t: string) => void }) {
+    return (
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 className="text-2xl font-black font-heading uppercase tracking-tight">Unified Overview</h2>
+                    <p className="text-gray-400 text-sm font-medium">Your combined activity as a buyer and seller.</p>
+                </div>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <MetricCard 
+                    label="Active Inventory" 
+                    value={data?.seller.activeListings || 0} 
+                    icon={Car} 
+                    color="text-primary" 
+                    bg="bg-primary/10" 
+                    border="border-primary/20" 
+                    loading={loading} 
+                />
+                <MetricCard 
+                    label="Total Revenue" 
+                    value={formatPrice(data?.seller.totalRevenue || 0)} 
+                    icon={DollarSign} 
+                    color="text-emerald-400" 
+                    bg="bg-emerald-500/10" 
+                    border="border-emerald-500/20" 
+                    loading={loading} 
+                />
+                <MetricCard 
+                    label="Active Bids" 
+                    value={data?.buyer.activeBids || 0} 
+                    icon={Gavel} 
+                    color="text-blue-400" 
+                    bg="bg-blue-500/10" 
+                    border="border-blue-500/20" 
+                    loading={loading} 
+                />
+                <MetricCard 
+                    label="Total Views" 
+                    value={data?.seller.totalViews || 0} 
+                    icon={Eye} 
+                    color="text-yellow-400" 
+                    bg="bg-yellow-500/10" 
+                    border="border-yellow-500/20" 
+                    loading={loading} 
+                />
+            </div>
+
+            {/* Recent Activity / Next Steps */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="glass-card p-6 border-white/10 bg-white/5 rounded-2xl">
+                    <h3 className="text-lg font-black font-heading uppercase tracking-tight flex items-center gap-2 mb-6">
+                        <TrendingUp className="text-primary" size={20} /> Seller Insights
+                    </h3>
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5 group hover:border-primary/30 transition-all">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary border border-primary/20">
+                                    <Tag size={18} />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-sm">Incoming Offers</p>
+                                    <p className="text-xs text-gray-500">You have {data?.seller.incomingOffers || 0} pending offers to review.</p>
+                                </div>
+                            </div>
+                            <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10" onClick={() => setTab('offers')}>View All</Button>
+                        </div>
+                        <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5 group hover:border-emerald-500/30 transition-all">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-400 border border-emerald-500/20">
+                                    <DollarSign size={18} />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-sm">Earnings Status</p>
+                                    <p className="text-xs text-gray-500">Your total realized revenue is {formatPrice(data?.seller.totalRevenue || 0)}.</p>
+                                </div>
+                            </div>
+                            <Button variant="ghost" size="sm" className="text-emerald-400 hover:bg-emerald-500/10" onClick={() => setTab('earnings')}>History</Button>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="glass-card p-6 border-white/10 bg-white/5 rounded-2xl">
+                    <h3 className="text-lg font-black font-heading uppercase tracking-tight flex items-center gap-2 mb-6">
+                        <Gavel className="text-blue-400" size={20} /> Buyer Insights
+                    </h3>
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5 group hover:border-blue-500/30 transition-all">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-400 border border-blue-500/20">
+                                    <Tag size={18} />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-sm">My Sent Offers</p>
+                                    <p className="text-xs text-gray-500">Track the {data?.buyer.activeBids || 0} offers you've made on vehicles.</p>
+                                </div>
+                            </div>
+                            <Button variant="ghost" size="sm" className="text-blue-400 hover:bg-blue-500/10" onClick={() => setTab('bids')}>Manage</Button>
+                        </div>
+                        <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5 group hover:border-yellow-500/30 transition-all">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-yellow-500/10 rounded-full flex items-center justify-center text-yellow-400 border border-yellow-500/20">
+                                    <Eye size={18} />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-sm">Watchlist</p>
+                                    <p className="text-xs text-gray-500">You are tracking {data?.buyer.watchlistCount || 0} vehicles.</p>
+                                </div>
+                            </div>
+                            <Button variant="ghost" size="sm" className="text-yellow-400 hover:bg-yellow-500/10">Browse</Button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INVENTORY TAB
+// ─────────────────────────────────────────────────────────────────────────────
+
+function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
+    const [listings, setListings] = React.useState<Listing[]>([])
+    const [loading, setLoading] = React.useState(true)
+    const [page, setPage] = React.useState(1)
+    const [totalPages, setTotalPages] = React.useState(1)
+    const [deleting, setDeleting] = React.useState<string | null>(null)
+    const [boosting, setBoosting] = React.useState<string | null>(null)
+    const [saleListing, setSaleListing] = React.useState<Listing | null>(null)
+
+    const fetchListings = React.useCallback(async () => {
+        try {
+            setLoading(true)
+            const data = await getMyListings({ page, limit: 10 })
+            setListings(data.data || [])
+            setTotalPages(data.pagination?.totalPages || 1)
+        } catch (err) {
+            console.error('Failed to fetch listings:', err)
+        } finally {
+            setLoading(false)
+        }
+    }, [page])
+
+    React.useEffect(() => {
+        fetchListings()
+    }, [fetchListings])
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this listing?')) return
+        try {
+            setDeleting(id)
+            await deleteListing(id)
+            setListings(prev => prev.filter(l => l.id !== id))
+            onRefreshStats()
+        } catch (err: any) {
+            alert('Failed to delete: ' + err.message)
+        } finally {
+            setDeleting(null)
+        }
+    }
+
+    const handleBoost = async (id: string) => {
+        try {
+            setBoosting(id)
+            const result = await boostListing(id)
+            if (result.url) {
+                window.location.href = result.url
+            } else {
+                fetchListings()
+            }
+        } catch (err: any) {
+            alert('Boost failed: ' + err.message)
+        } finally {
+            setBoosting(null)
+        }
+    }
+
+    return (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-black font-heading uppercase tracking-tight">My Inventory</h2>
+                <Link href="/sell">
+                    <Button className="flex items-center gap-2 h-10 shadow-neon-small" size="sm">
+                        <PlusCircle size={18} /> New Listing
+                    </Button>
+                </Link>
+            </div>
+
+            <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead className="bg-slate-800/50 text-gray-400 text-[10px] uppercase font-black tracking-widest border-b border-white/5">
+                            <tr>
+                                <th className="px-6 py-4">Vehicle</th>
+                                <th className="px-6 py-4">Status</th>
+                                <th className="px-6 py-4">Price</th>
+                                <th className="px-6 py-4">Stats</th>
+                                <th className="px-6 py-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                            {loading ? (
+                                <tr>
+                                    <td colSpan={5} className="px-6 py-20 text-center">
+                                        <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
+                                    </td>
+                                </tr>
+                            ) : listings.length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} className="px-6 py-20 text-center text-gray-500 italic">
+                                        No listings found. Start selling today!
+                                    </td>
+                                </tr>
+                            ) : (
+                                listings.map((listing) => (
+                                    <tr key={listing.id} className="hover:bg-white/[0.03] transition-all">
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="relative w-12 h-9 rounded overflow-hidden border border-white/10 shrink-0">
+                                                    {listing.images?.[0] ? (
+                                                        <Image src={listing.images[0]} alt="" fill className="object-cover" />
+                                                    ) : (
+                                                        <div className="w-full h-full bg-slate-800 flex items-center justify-center"><Car size={14} className="text-gray-600" /></div>
+                                                    )}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-bold text-sm truncate uppercase">{listing.title}</p>
+                                                        {listing.isFeatured && <Zap size={12} className="text-amber-400 fill-amber-400" />}
+                                                    </div>
+                                                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{listing.year} • {listing.mileage?.toLocaleString()} miles</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+                                                listing.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 
+                                                listing.status === 'SOLD' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                                'bg-slate-700/50 text-gray-400 border-white/5'
+                                            }`}>
+                                                {listing.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 font-black text-sm">{formatPrice(listing.price)}</td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3 text-xs text-gray-400">
+                                                <span className="flex items-center gap-1"><Eye size={12} /> {listing.viewCount || 0}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex justify-end gap-2">
+                                                {listing.status === 'ACTIVE' && !listing.isFeatured && listing.viewCount > 20 && (
+                                                    <Button 
+                                                        size="sm" 
+                                                        className="h-8 px-3 text-[10px] bg-gradient-to-r from-amber-400 to-orange-500 text-black font-black"
+                                                        onClick={() => handleBoost(listing.id)}
+                                                        disabled={boosting === listing.id}
+                                                    >
+                                                        {boosting === listing.id ? <Loader2 size={12} className="animate-spin" /> : 'BOOST'}
+                                                    </Button>
+                                                )}
+                                                <div className="relative group">
+                                                    <button className="p-2 text-gray-400 hover:text-white transition-colors">
+                                                        <MoreVertical size={16} />
+                                                    </button>
+                                                    <div className="absolute right-0 top-full mt-1 w-40 bg-slate-800 border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 py-2">
+                                                        <Link href={`/dashboard/seller/add-listing?editId=${listing.id}`} className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-white/5">
+                                                            <Pencil size={14} /> Edit
+                                                        </Link>
+                                                        {listing.status !== 'SOLD' && (
+                                                            <button 
+                                                                onClick={() => setSaleListing(listing)}
+                                                                className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-emerald-500/10 text-emerald-400 w-full text-left"
+                                                            >
+                                                                <CheckCircle2 size={14} /> Mark Sold
+                                                            </button>
+                                                        )}
+                                                        <button 
+                                                            onClick={() => handleDelete(listing.id)}
+                                                            className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-red-500/10 text-red-400 w-full text-left"
+                                                            disabled={deleting === listing.id}
+                                                        >
+                                                            <Trash2 size={14} /> Delete
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+                {totalPages > 1 && (
+                    <div className="p-4 border-t border-white/5 flex items-center justify-between">
+                        <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Page {page} of {totalPages}</p>
+                        <div className="flex gap-2">
+                            <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}>Prev</Button>
+                            <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page === totalPages}>Next</Button>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {saleListing && (
+                <RecordSaleModal 
+                    listing={saleListing} 
+                    onClose={() => setSaleListing(null)} 
+                    onSuccess={() => {
+                        fetchListings()
+                        onRefreshStats()
+                    }} 
+                />
+            )}
+        </div>
+    )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OFFERS TAB (Incoming)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
+    const [listings, setListings] = React.useState<Listing[]>([])
+    const [offersMap, setOffersMap] = React.useState<Record<string, Offer[]>>({})
+    const [loading, setLoading] = React.useState(true)
+    const [expanded, setExpanded] = React.useState<Set<string>>(new Set())
+    const [responding, setResponding] = React.useState<string | null>(null)
+    const router = useRouter()
+
+    const fetchOffers = async () => {
+        try {
+            setLoading(true)
+            const res = await getMyListings({ limit: 50 })
+            const activeListings = res.data
+            setListings(activeListings)
+            
+            const results = await Promise.allSettled(
+                activeListings.map(async (l) => {
+                    const data = await getOffersForListing(l.id)
+                    return { id: l.id, data }
+                })
+            )
+            
+            const map: Record<string, Offer[]> = {}
+            results.forEach(r => {
+                if (r.status === 'fulfilled') map[r.value.id] = r.value.data
+            })
+            setOffersMap(map)
+        } catch (err) {
+            console.error('Failed to fetch offers:', err)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    React.useEffect(() => {
+        fetchOffers()
+    }, [])
+
+    const toggleExpand = (id: string) => {
+        setExpanded(prev => {
+            const next = new Set(prev)
+            if (next.has(id)) next.delete(id)
+            else next.add(id)
+            return next
+        })
+    }
+
+    const handleRespond = async (offerId: string, listingId: string, status: 'ACCEPTED' | 'REJECTED' | 'COUNTERED', amount?: number) => {
+        try {
+            setResponding(offerId)
+            await respondToOffer(offerId, status, amount)
+            const updated = await getOffersForListing(listingId)
+            setOffersMap(prev => ({ ...prev, [listingId]: updated }))
+            onRefreshStats()
+        } catch (err: any) {
+            alert('Failed: ' + err.message)
+        } finally {
+            setResponding(null)
+        }
+    }
+
+    const handleMessage = async (buyerId: string, listingId: string) => {
+        try {
+            const room = await createChatRoom(buyerId, listingId)
+            router.push(`?tab=messages&room=${room.id}`)
+        } catch (err: any) {
+            alert('Chat failed: ' + err.message)
+        }
+    }
+
+    return (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h2 className="text-2xl font-black font-heading uppercase tracking-tight">Incoming Offers</h2>
+            
+            {loading ? (
+                <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary w-10 h-10" /></div>
+            ) : listings.length === 0 ? (
+                <div className="text-center py-20 text-gray-500 italic">No listings to receive offers for.</div>
+            ) : (
+                <div className="space-y-4">
+                    {listings.map(listing => {
+                        const listingOffers = offersMap[listing.id] || []
+                        const pending = listingOffers.filter(o => o.status === 'PENDING').length
+                        const isExpanded = expanded.has(listing.id)
+                        
+                        return (
+                            <div key={listing.id} className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl">
+                                <button 
+                                    onClick={() => toggleExpand(listing.id)}
+                                    className="w-full flex items-center gap-4 p-5 hover:bg-white/5 transition-all text-left"
+                                >
+                                    <div className="relative w-16 h-12 rounded-lg overflow-hidden shrink-0 border border-white/10">
+                                        <Image src={listing.images?.[0] || ""} alt="" fill className="object-cover" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-bold text-white truncate uppercase">{listing.title}</p>
+                                        <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">{listingOffers.length} TOTAL OFFERS</p>
+                                    </div>
+                                    {pending > 0 && <span className="bg-primary text-white text-[10px] font-black px-3 py-1 rounded-full">{pending} PENDING</span>}
+                                    <ChevronRight className={`text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`} size={20} />
+                                </button>
+
+                                {isExpanded && (
+                                    <div className="p-4 bg-black/20 space-y-3 border-t border-white/5">
+                                        {listingOffers.length === 0 ? (
+                                            <p className="text-center py-6 text-xs text-gray-600 italic">No offers on this vehicle yet.</p>
+                                        ) : (
+                                            listingOffers.map(offer => (
+                                                <div key={offer.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5 gap-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary font-black">{offer.buyer?.firstName?.[0] || '?'}</div>
+                                                        <div>
+                                                            <p className="font-bold text-sm text-white uppercase">{offer.buyer?.firstName} {offer.buyer?.lastName}</p>
+                                                            <p className="text-lg font-black text-primary font-mono">{formatPrice(offer.amount)}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        {offer.status === 'PENDING' ? (
+                                                            <>
+                                                                <Button size="sm" variant="outline" className="h-9 border-red-500/30 text-red-400" onClick={() => handleRespond(offer.id, listing.id, 'REJECTED')} disabled={!!responding}>Decline</Button>
+                                                                <Button size="sm" className="h-9 bg-emerald-600 hover:bg-emerald-500" onClick={() => handleRespond(offer.id, listing.id, 'ACCEPTED')} disabled={!!responding}>Accept</Button>
+                                                            </>
+                                                        ) : (
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">{offer.status}</span>
+                                                                {offer.status === 'ACCEPTED' && <Button size="sm" variant="ghost" className="h-8 text-blue-400" onClick={() => handleMessage(offer.buyerId, listing.id)}>Message</Button>}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )
+                    })}
+                </div>
+            )}
+        </div>
+    )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BIDS TAB (Outgoing)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function BidsTab({ onRefreshStats }: { onRefreshStats: () => void }) {
+    const [offers, setOffers] = React.useState<Offer[]>([])
+    const [bids, setBids] = React.useState<Bid[]>([])
+    const [loading, setLoading] = React.useState(true)
+    const [actioning, setActioning] = React.useState<string | null>(null)
+    const router = useRouter()
+
+    const fetchData = async () => {
+        try {
+            setLoading(true)
+            const [o, b] = await Promise.all([getMyOffers(), getMyBids()])
+            setOffers(o)
+            setBids(b.data || [])
+        } catch (err) {
+            console.error('Failed to fetch outgoing activity:', err)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    React.useEffect(() => {
+        fetchData()
+    }, [])
+
+    const handleWithdraw = async (id: string) => {
+        if (!confirm('Withdraw this offer?')) return
+        try {
+            setActioning(id)
+            await withdrawOffer(id)
+            fetchData()
+            onRefreshStats()
+        } catch (err: any) {
+            alert(err.message)
+        } finally {
+            setActioning(null)
+        }
+    }
+
+    return (
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h2 className="text-2xl font-black font-heading uppercase tracking-tight">My Bids & Offers</h2>
+            
+            {/* Active Offers Section */}
+            <div className="space-y-4">
+                <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                    <Tag size={14} /> Outgoing Offers
+                </h3>
+                <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead className="bg-slate-800/50 text-[10px] text-gray-500 uppercase font-black tracking-widest">
+                                <tr>
+                                    <th className="px-6 py-4">Vehicle</th>
+                                    <th className="px-6 py-4">My Offer</th>
+                                    <th className="px-6 py-4">Status</th>
+                                    <th className="px-6 py-4 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                                {loading ? (
+                                    <tr><td colSpan={4} className="px-6 py-10 text-center"><Loader2 className="animate-spin mx-auto text-primary" /></td></tr>
+                                ) : offers.length === 0 ? (
+                                    <tr><td colSpan={4} className="px-6 py-10 text-center text-gray-600 italic">No outgoing offers.</td></tr>
+                                ) : (
+                                    offers.map(offer => (
+                                        <tr key={offer.id} className="hover:bg-white/[0.02]">
+                                            <td className="px-6 py-4">
+                                                <Link href={`/vehicle/${offer.listing?.slug}`} className="flex items-center gap-3 group">
+                                                    <div className="relative w-10 h-8 rounded border border-white/10 overflow-hidden shrink-0">
+                                                        <Image src={offer.listing?.images?.[0] || ""} alt="" fill className="object-cover" />
+                                                    </div>
+                                                    <span className="font-bold text-sm uppercase group-hover:text-primary transition-colors">{offer.listing?.title}</span>
+                                                </Link>
+                                            </td>
+                                            <td className="px-6 py-4 font-black font-mono text-white">{formatPrice(offer.amount)}</td>
+                                            <td className="px-6 py-4">
+                                                <span className={`text-[10px] font-black uppercase tracking-widest ${
+                                                    offer.status === 'ACCEPTED' ? 'text-emerald-400' : 
+                                                    offer.status === 'PENDING' ? 'text-amber-400' : 'text-gray-500'
+                                                }`}>
+                                                    {offer.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                {offer.status === 'PENDING' && (
+                                                    <Button size="sm" variant="ghost" className="h-8 text-red-400 text-[10px] font-black" onClick={() => handleWithdraw(offer.id)} disabled={actioning === offer.id}>WITHDRAW</Button>
+                                                )}
+                                                {offer.status === 'ACCEPTED' && (
+                                                    <Button size="sm" variant="ghost" className="h-8 text-blue-400 text-[10px] font-black" onClick={() => router.push(`?tab=messages&room=auto&listingId=${offer.listing?.id}`)}>MESSAGE</Button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {/* Active Bids Section (Auctions) */}
+            <div className="space-y-4">
+                <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                    <Gavel size={14} /> Auction Bids
+                </h3>
+                <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead className="bg-slate-800/50 text-[10px] text-gray-500 uppercase font-black tracking-widest">
+                                <tr>
+                                    <th className="px-6 py-4">Vehicle</th>
+                                    <th className="px-6 py-4">Highest Bid</th>
+                                    <th className="px-6 py-4">Status</th>
+                                    <th className="px-6 py-4 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                                {loading ? (
+                                    <tr><td colSpan={4} className="px-6 py-10 text-center"><Loader2 className="animate-spin mx-auto text-primary" /></td></tr>
+                                ) : bids.length === 0 ? (
+                                    <tr><td colSpan={4} className="px-6 py-10 text-center text-gray-600 italic">No active bids.</td></tr>
+                                ) : (
+                                    bids.map(bid => (
+                                        <tr key={bid.id} className="hover:bg-white/[0.02]">
+                                            <td className="px-6 py-4">
+                                                <Link href={`/cars/${bid.listing?.slug}`} className="flex items-center gap-3 group">
+                                                    <div className="relative w-10 h-8 rounded border border-white/10 overflow-hidden shrink-0">
+                                                        <Image src={bid.listing?.images?.[0] || ""} alt="" fill className="object-cover" />
+                                                    </div>
+                                                    <span className="font-bold text-sm uppercase group-hover:text-primary transition-colors">{bid.listing?.title}</span>
+                                                </Link>
+                                            </td>
+                                            <td className="px-6 py-4 font-black font-mono text-white">{formatPrice(bid.amount)}</td>
+                                            <td className="px-6 py-4">
+                                                <span className={`text-[10px] font-black uppercase tracking-widest ${bid.isWinning ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                                    {bid.isWinning ? 'WINNING' : 'OUTBID'}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <Link href={`/cars/${bid.listing?.slug}`}>
+                                                    <Button size="sm" variant="ghost" className="h-8 text-primary text-[10px] font-black">VIEW</Button>
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STATS TAB (Performance)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function StatsTab() {
+    const [performance, setPerformance] = React.useState<PerformanceStats | null>(null)
+    const [loading, setLoading] = React.useState(true)
+
+    React.useEffect(() => {
+        getSellerPerformance().then(setPerformance).finally(() => setLoading(false))
+    }, [])
+
+    const maxViews = Math.max(...(performance?.recentListingViews?.map(l => l.views) || [1]), 1)
+
+    return (
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h2 className="text-2xl font-black font-heading uppercase tracking-tight">Performance Analytics</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <MetricCard label="Conversion Rate" value={`${performance?.conversionRate || 0}%`} icon={Target} color="text-amber-400" bg="bg-amber-500/10" border="border-amber-500/20" loading={loading} />
+                <MetricCard label="Active Listings" value={performance?.totalListings || 0} icon={Car} color="text-primary" bg="bg-primary/10" border="border-primary/20" loading={loading} />
+                <MetricCard label="Avg Response Time" value="4.2h" icon={Clock} color="text-blue-400" bg="bg-blue-500/10" border="border-blue-500/20" loading={loading} />
+                <MetricCard label="Seller Rating" value="4.9/5" icon={ShieldCheck} color="text-emerald-400" bg="bg-emerald-500/10" border="border-emerald-500/20" loading={loading} />
+            </div>
+
+            <div className="glass-card p-8 border border-white/5 bg-white/5 rounded-2xl">
+                <h3 className="text-lg font-black font-heading uppercase tracking-tight mb-8">Top Performing Vehicles</h3>
+                {!performance?.recentListingViews?.length ? (
+                    <div className="text-center py-10 text-gray-600 italic">No listing data available.</div>
+                ) : (
+                    <div className="space-y-6">
+                        {performance.recentListingViews.map(l => (
+                            <div key={l.id} className="space-y-2">
+                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                                    <span className="text-gray-400">{l.title}</span>
+                                    <span className="text-white">{l.views} VIEWS</span>
+                                </div>
+                                <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                                    <div 
+                                        className="h-full bg-primary rounded-full shadow-neon transition-all duration-1000" 
+                                        style={{ width: `${(l.views / maxViews) * 100}%` }}
+                                    />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MESSAGES TAB
+// ─────────────────────────────────────────────────────────────────────────────
+
+function MessagesTab({ rooms, refreshRooms }: { rooms: ChatRoom[], refreshRooms: () => void }) {
+    const [selectedRoom, setSelectedRoom] = React.useState<ChatRoom | null>(null)
+    const searchParams = useSearchParams()
+    const targetRoomId = searchParams.get("room")
+
+    React.useEffect(() => {
+        if (!targetRoomId || rooms.length === 0) return
+        const match = rooms.find(r => r.id === targetRoomId)
+        if (match) setSelectedRoom(match)
+    }, [rooms, targetRoomId])
+
+    return (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-[calc(100vh-280px)]">
+            <div className="glass-card overflow-hidden h-full border border-white/5 bg-white/5 rounded-2xl flex">
+                {/* Room List */}
+                <div className={`w-full lg:w-80 border-r border-white/10 ${selectedRoom ? 'hidden lg:block' : 'block'}`}>
+                    <div className="p-4 border-b border-white/5 flex items-center justify-between">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Conversations</p>
+                        <button onClick={refreshRooms} className="text-gray-500 hover:text-white transition-colors"><RefreshCw size={14} /></button>
+                    </div>
+                    <ChatRoomList onSelectRoom={setSelectedRoom} selectedRoomId={selectedRoom?.id} />
+                </div>
+
+                {/* Chat Window */}
+                <div className={`flex-1 ${!selectedRoom ? 'hidden lg:flex flex-col items-center justify-center' : 'flex'}`}>
+                    {selectedRoom ? (
+                        <ChatWindow room={selectedRoom} onBack={() => setSelectedRoom(null)} />
+                    ) : (
+                        <>
+                            <MessageSquare className="w-16 h-16 text-gray-800 mb-4" />
+                            <p className="text-sm font-bold text-gray-600 uppercase tracking-widest">Select a message to start chatting</p>
+                        </>
+                    )}
+                </div>
+            </div>
+        </div>
+    )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EARNINGS TAB
+// ─────────────────────────────────────────────────────────────────────────────
+
+function EarningsTab() {
+    const [data, setData] = React.useState<EarningsResponse | null>(null)
+    const [loading, setLoading] = React.useState(true)
+
+    React.useEffect(() => {
+        getEarnings().then(setData).finally(() => setLoading(false))
+    }, [])
+
+    return (
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 className="text-2xl font-black font-heading uppercase tracking-tight">Earnings History</h2>
+                    <p className="text-gray-400 text-sm font-medium">Detailed tracking of your sold assets and revenue.</p>
+                </div>
+                <Button className="flex items-center gap-2 h-10 shadow-neon-small" variant="outline" size="sm">
+                    <Download size={18} /> Export Ledger
+                </Button>
+            </div>
+
+            <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead className="bg-slate-800/80 text-gray-400 text-[10px] uppercase font-black tracking-widest border-b border-white/5">
+                            <tr>
+                                <th className="px-6 py-5">Vehicle</th>
+                                <th className="px-6 py-5">Buyer</th>
+                                <th className="px-6 py-5 text-right">Sold Price</th>
+                                <th className="px-6 py-5 text-center">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                            {loading ? (
+                                <tr><td colSpan={4} className="px-6 py-20 text-center"><Loader2 className="animate-spin mx-auto text-primary" /></td></tr>
+                            ) : !data || data.sales.length === 0 ? (
+                                <tr>
+                                    <td colSpan={4} className="px-6 py-20 text-center text-gray-500 italic">
+                                        No sales records found.
+                                    </td>
+                                </tr>
+                            ) : (
+                                data.sales.map((sale) => (
+                                    <tr key={sale.id} className="hover:bg-white/[0.03] transition-all">
+                                        <td className="px-6 py-5">
+                                            <div className="flex items-center gap-3">
+                                                <div className="relative w-10 h-10 rounded-lg overflow-hidden border border-white/10 shrink-0">
+                                                    {sale.listing.images?.[0] ? (
+                                                        <Image src={sale.listing.images[0]} alt="" fill className="object-cover" />
+                                                    ) : (
+                                                        <div className="w-full h-full bg-slate-800 flex items-center justify-center"><Car size={14} className="text-gray-600" /></div>
+                                                    )}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="font-bold text-sm text-white truncate uppercase">{sale.listing.title}</p>
+                                                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{sale.listing.vrm || "N/A"}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-5">
+                                            <p className="text-sm font-bold text-gray-200 uppercase">
+                                                {sale.buyer ? `${sale.buyer.firstName} ${sale.buyer.lastName || ""}` : "Direct Buyer"}
+                                            </p>
+                                        </td>
+                                        <td className="px-6 py-5 text-right font-black text-emerald-400 text-sm">
+                                            {formatPrice(sale.soldPrice)}
+                                        </td>
+                                        <td className="px-6 py-5 text-center text-xs text-gray-500 font-bold">
+                                            {new Date(sale.createdAt).toLocaleDateString('en-GB')}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SETTINGS TAB
+// ─────────────────────────────────────────────────────────────────────────────
+
+function SettingsTab({ profile }: { profile: any }) {
+    const [oldPassword, setOldPassword] = React.useState("")
+    const [newPassword, setNewPassword] = React.useState("")
+    const [confirmPassword, setConfirmPassword] = React.useState("")
+    const [status, setStatus] = React.useState<{ type: 'idle' | 'loading' | 'success' | 'error', message?: string }>({ type: 'idle' })
+
+    const handleResetPassword = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (newPassword !== confirmPassword) {
+            setStatus({ type: 'error', message: "New passwords don't match" })
+            return
+        }
+
+        try {
+            setStatus({ type: 'loading' })
+            await resetPassword(oldPassword, newPassword)
+            setStatus({ type: 'success', message: 'Password updated successfully!' })
+            setOldPassword("")
+            setNewPassword("")
+            setConfirmPassword("")
+        } catch (err: any) {
+            setStatus({ type: 'error', message: err.message || 'Failed to update password' })
+        }
+    }
+
+    return (
+        <div className="max-w-2xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="glass-card p-8 border border-white/5 bg-white/5 rounded-2xl">
+                <h3 className="text-xl font-black font-heading uppercase tracking-tight flex items-center gap-2 mb-6">
+                    <UserIcon className="text-primary" size={24} /> Profile Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-1">
+                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                            <Mail size={12} /> Email Address
+                        </p>
+                        <p className="text-sm font-black text-white">{profile?.email}</p>
+                    </div>
+                    <div className="space-y-1">
+                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                            <Phone size={12} /> Phone Number
+                        </p>
+                        <p className="text-sm font-black text-white">{profile?.phone || "Not set"}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="glass-card p-8 border border-white/5 bg-white/5 rounded-2xl shadow-neon-small">
+                <h3 className="text-xl font-black font-heading uppercase tracking-tight flex items-center gap-2 mb-6">
+                    <Lock className="text-primary" size={24} /> Security & Password
+                </h3>
+                <form onSubmit={handleResetPassword} className="space-y-6">
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Current Password</label>
+                        <Input 
+                            type="password" 
+                            placeholder="••••••••" 
+                            value={oldPassword}
+                            onChange={(e) => setOldPassword(e.target.value)}
+                            required
+                            className="bg-white/5 border-white/10 focus:border-primary text-white h-12" 
+                        />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">New Password</label>
+                            <Input 
+                                type="password" 
+                                placeholder="Min. 8 characters" 
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                required
+                                className="bg-white/5 border-white/10 focus:border-primary text-white h-12" 
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Confirm New Password</label>
+                            <Input 
+                                type="password" 
+                                placeholder="••••••••" 
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                required
+                                className="bg-white/5 border-white/10 focus:border-primary text-white h-12" 
+                            />
+                        </div>
+                    </div>
+
+                    {status.message && (
+                        <div className={`p-4 rounded-xl text-sm font-bold flex items-center gap-2 animate-in slide-in-from-top-2 ${
+                            status.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                        }`}>
+                            {status.type === 'success' ? <ShieldCheck size={18} /> : <AlertCircle size={18} />}
+                            {status.message}
+                        </div>
+                    )}
+
+                    <Button 
+                        type="submit" 
+                        className="w-full md:w-auto px-10 h-12 shadow-neon font-black uppercase tracking-widest text-xs" 
+                        disabled={status.type === 'loading'}
+                    >
+                        {status.type === 'loading' ? <Loader2 size={18} className="animate-spin" /> : 'Update Password'}
+                    </Button>
+                </form>
+            </div>
+        </div>
+    )
+}
