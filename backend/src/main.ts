@@ -83,12 +83,6 @@ async function bootstrap() {
         conString: process.env.DATABASE_URL,
         tableName: 'sessions',
         createTableIfMissing: true,
-        // Add pool settings to handle latency between Fly.io and Supabase
-        pool: {
-          max: 10,
-          idleTimeoutMillis: 30000,
-          connectionTimeoutMillis: 5000,
-        }
       }),
       name: 'sid',
       secret: process.env.SESSION_SECRET || 'dev-secret-change-in-production',
