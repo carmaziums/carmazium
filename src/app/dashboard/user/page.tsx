@@ -654,7 +654,7 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
 // BIDS TAB (Outgoing)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function BidsTab({ onRefreshStats }: { onRefreshStats: () => void }) {
+function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const [offers, setOffers] = React.useState<Offer[]>([])
     const [loading, setLoading] = React.useState(true)
     const [actioning, setActioning] = React.useState<string | null>(null)
@@ -692,7 +692,7 @@ function BidsTab({ onRefreshStats }: { onRefreshStats: () => void }) {
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h2 className="text-2xl font-black font-heading uppercase tracking-tight">My Bids & Offers</h2>
+            <h2 className="text-2xl font-black font-heading uppercase tracking-tight">My Offers</h2>
             
             {/* Active Offers Section */}
             <div className="space-y-4">

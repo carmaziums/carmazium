@@ -1281,7 +1281,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                             <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
                                 <p className="text-xs text-primary font-semibold mb-1">💰 Set Your Price Range</p>
-                                <p className="text-xs text-gray-400">Define your price points for your vehicle. The <strong className="text-white">Asking Price</strong> is displayed publicly. The <strong className="text-white">Lower (Min)</strong> defines your acceptable bidding floor.</p>
+                                <p className="text-xs text-gray-400">Define your price points for your vehicle. The <strong className="text-white">Asking Price</strong> is displayed publicly. The <strong className="text-white">Lower (Min)</strong> defines your acceptable offer floor.</p>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

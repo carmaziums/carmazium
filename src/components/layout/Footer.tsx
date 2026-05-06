@@ -22,7 +22,7 @@ export function Footer() {
                             />
                         </Link>
                         <p className="text-gray-400 text-sm leading-relaxed">
-                            Carmazium is a next-generation car marketplace built for buying, selling, and auctioning vehicles securely. We connect buyers and sellers through verified listings and intelligent pricing.
+                            Carmazium is a next-generation car marketplace built for buying and selling vehicles securely. We connect buyers and sellers through verified listings and intelligent pricing.
                         </p>
                         <div className="flex gap-4">
                             {/* Social placeholders */}
@@ -60,7 +60,7 @@ export function Footer() {
                     {/* Newsletter Column */}
                     <div className="space-y-4">
                         <h3 className="text-xl font-bold font-heading uppercase tracking-wide">Newsletter</h3>
-                        <p className="text-gray-400 text-sm">Subscribe to receive car deals, auction alerts, and market insights.</p>
+                        <p className="text-gray-400 text-sm">Subscribe to receive car deals, listing alerts, and market insights.</p>
                         <form className="flex flex-col gap-2">
                             <input
                                 type="email"
