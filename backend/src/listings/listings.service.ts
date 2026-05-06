@@ -551,6 +551,62 @@ export class ListingsService {
     }
 
     /**
+     * Record a final sale for a listing
+     * Marks listing as SOLD and creates a Sale record for earnings tracking
+     */
+    async recordSale(
+        id: string,
+        userId: string,
+        dto: { soldPrice: number; buyerId?: string },
+    ): Promise<Listing> {
+        const listing = await this.findById(id);
+
+        // Authorization: Only the seller or authorized dealer staff can mark as sold
+        if (listing.sellerId && listing.sellerId !== userId) {
+            // Check dealer staff permissions
+            const staffMember = await this.prisma.dealerStaff.findFirst({
+                where: { 
+                    userId, 
+                    dealerProfile: { userId: listing.sellerId },
+                    isActive: true 
+                }
+            });
+            if (!staffMember) {
+                throw new ForbiddenException('You do not have permission to mark this listing as sold');
+            }
+        }
+
+        if (listing.status === 'SOLD') {
+            throw new BadRequestException('This listing is already marked as sold');
+        }
+
+        // Use a transaction to update status and create sale record
+        return await this.prisma.$transaction(async (tx) => {
+            const updated = await tx.listing.update({
+                where: { id },
+                data: { status: 'SOLD' },
+            });
+
+            // Record the sale in the sales table for earnings tracking
+            await tx.sale.create({
+                data: {
+                    listingId: id,
+                    sellerId: listing.sellerId,
+                    buyerId: dto.buyerId || null,
+                    soldPrice: dto.soldPrice,
+                },
+            });
+
+            // Increment seller sales count
+            if (listing.sellerId) {
+                await this.sellersService.incrementSales(listing.sellerId);
+            }
+
+            return updated;
+        });
+    }
+
+    /**
      * Soft delete a listing
      * Sets deletedAt to current timestamp
      * Includes ownership check
@@ -699,6 +755,54 @@ export class ListingsService {
                 views: l.viewCount,
                 date: l.createdAt,
             })),
+        };
+    }
+
+    /**
+     * Get earnings history for a seller or dealer
+     */
+    async getEarnings(userId: string) {
+        // Handle staff/owner logic
+        let targetOwnerId = userId;
+        const staffRecord = await this.prisma.dealerStaff.findFirst({
+            where: { userId, isActive: true },
+            select: { dealerProfile: { select: { userId: true } } }
+        });
+        if (staffRecord) {
+            targetOwnerId = staffRecord.dealerProfile.userId;
+        }
+
+        // Fetch sales from the sales table
+        const sales = await this.prisma.sale.findMany({
+            where: { sellerId: targetOwnerId },
+            include: {
+                listing: {
+                    select: {
+                        title: true,
+                        images: true,
+                        vrm: true,
+                        price: true,
+                    }
+                },
+                buyer: {
+                    select: {
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        // Calculate totals
+        const totalRevenue = sales.reduce((acc: number, sale: any) => acc + Number(sale.soldPrice), 0);
+        const totalSales = sales.length;
+
+        return {
+            sales,
+            totalRevenue,
+            totalSales,
         };
     }
 }

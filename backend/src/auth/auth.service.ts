@@ -155,6 +155,43 @@ export class AuthService {
         return safeUser;
     }
 
+    /**
+     * Reset/Change user password
+     */
+    async resetPassword(userId: string, dto: any) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+        });
+
+        if (!user) {
+            throw new UnauthorizedException('User not found');
+        }
+
+        // If user is authenticated via Supabase external auth, they should reset password via Supabase
+        if (user.passwordHash === 'SUPABASE_EXTERNAL_AUTH') {
+            throw new ConflictException('Please reset your password via your external authentication provider');
+        }
+
+        // Verify old password
+        const oldPasswordValid = await bcrypt.compare(dto.oldPassword, user.passwordHash || '');
+        if (!oldPasswordValid) {
+            throw new UnauthorizedException('Current password is incorrect');
+        }
+
+        // Hash new password
+        const newPasswordHash = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);
+
+        // Update user
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: {
+                passwordHash: newPasswordHash,
+            },
+        });
+
+        return { success: true, message: 'Password reset successfully' };
+    }
+
 
     /**
      * Retrieve a user by ID for session hydration.

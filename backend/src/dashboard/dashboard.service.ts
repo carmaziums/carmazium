@@ -16,7 +16,7 @@ export class DashboardService {
                 orderBy: { createdAt: 'desc' },
                 include: { listing: true },
             }),
-            (this.prisma as any).notification.count({ where: { userId, isRead: false } }),
+            this.prisma.notification.count({ where: { userId, isRead: false } }),
         ]);
 
         return {
@@ -24,6 +24,70 @@ export class DashboardService {
             watchlistCount: watchlist,
             recentTransactions: transactions,
             unreadNotifications: notifications,
+        };
+    }
+
+    async getUnifiedDashboard(userId: string) {
+        const [
+            activeBids,
+            watchlistCount,
+            totalListings,
+            activeListings,
+            soldListings,
+            totalViews,
+            totalRevenue,
+            unreadMessages,
+            incomingOffers
+        ] = await Promise.all([
+            // Buyer stats
+            this.prisma.offer.count({ where: { buyerId: userId, status: 'PENDING' } }),
+            this.prisma.watchlistItem.count({ where: { userId } }),
+            // Seller stats
+            this.prisma.listing.count({ where: { sellerId: userId, deletedAt: null } }),
+            this.prisma.listing.count({ where: { sellerId: userId, status: 'ACTIVE', deletedAt: null } }),
+            this.prisma.listing.count({ where: { sellerId: userId, status: 'SOLD', deletedAt: null } }),
+            this.prisma.listing.aggregate({
+                where: { sellerId: userId, deletedAt: null },
+                _sum: { viewCount: true }
+            }),
+            // Revenue (from the new sales table)
+            this.prisma.sale.aggregate({
+                where: { sellerId: userId },
+                _sum: { soldPrice: true }
+            }),
+            // Messaging & Notifications
+            this.prisma.message.count({ 
+                where: { 
+                    chatRoom: { 
+                        OR: [{ initiatorId: userId }, { participantId: userId }] 
+                    },
+                    senderId: { not: userId },
+                    isRead: false
+                }
+            }),
+            // Incoming offers for seller
+            this.prisma.offer.count({
+                where: {
+                    listing: { sellerId: userId },
+                    status: 'PENDING'
+                }
+            })
+        ]);
+
+        return {
+            buyer: {
+                activeBids,
+                watchlistCount,
+            },
+            seller: {
+                totalListings,
+                activeListings,
+                soldListings,
+                totalViews: totalViews._sum.viewCount || 0,
+                totalRevenue: Number(totalRevenue._sum.soldPrice || 0),
+                incomingOffers
+            },
+            unreadMessages
         };
     }
 

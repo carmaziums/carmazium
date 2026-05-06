@@ -243,6 +243,8 @@ model User {
   featuredBoosts          FeaturedBoost[]
   offers                  Offer[]
   assignedLeads           Lead[]               @relation("AssignedAgent")
+  salesAsSeller           Sale[]               @relation("SellerSales")
+  purchasesAsBuyer        Sale[]               @relation("BuyerPurchases")
 
   @@map("users")
 }
@@ -533,6 +535,7 @@ model Listing {
   watchlistItems      WatchlistItem[]
   leads               Lead[]
   damageRecords       DamageRecord[]
+  sale                Sale?
 
   @@index([sellerId])
   @@index([vehicleId])
@@ -928,7 +931,30 @@ model DamageRecord {
   createdAt DateTime @default(now())
 
   listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
-
+  
   @@index([listingId])
   @@map("damage_records")
 }
+
+// ============================================================================
+// SALES RECORDS (Revenue Tracking)
+// ============================================================================
+
+model Sale {
+  id        String   @id @default(uuid())
+  listingId String   @unique
+  sellerId  String
+  buyerId   String?
+  soldPrice Decimal  @db.Decimal(12, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  listing   Listing  @relation(fields: [listingId], references: [id])
+  seller    User     @relation("SellerSales", fields: [sellerId], references: [id])
+  buyer     User?    @relation("BuyerPurchases", fields: [buyerId], references: [id])
+
+  @@index([sellerId])
+  @@index([buyerId])
+  @@map("sales")
+}
+

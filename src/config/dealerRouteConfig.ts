@@ -79,6 +79,13 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         icon: Users 
     },
     { 
+        href: "/dashboard/dealer/earnings", 
+        label: "Earnings", 
+        title: "Revenue & Earnings",
+        subHeader: "Strategic revenue tracking and platform sales history",
+        icon: DollarSign 
+    },
+    { 
         href: "/dashboard/dealer/settings", 
         label: "Settings", 
         title: "Settings",

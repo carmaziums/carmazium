@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
     LayoutDashboard,
     Car,
@@ -44,6 +44,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
     const { profile, user, signOut } = useAuth()
     const { unreadCount } = useChat()
     const router = useRouter()
+    const searchParams = useSearchParams()
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
     const [pendingOffersCount, setPendingOffersCount] = React.useState(0)
 
@@ -71,25 +72,21 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
 
     type LinkObj = { href: string; label: string; icon: React.ElementType; badge?: number }
 
+    const unifiedLinks = [
+        { href: "/dashboard/user?tab=overview", label: "Overview", icon: LayoutDashboard },
+        { href: "/dashboard/user?tab=inventory", label: "Inventory", icon: Car },
+        { href: "/dashboard/user?tab=offers", label: "Offers", icon: Tag, badge: pendingOffersCount },
+        { href: "/dashboard/user?tab=bids", label: "My Bids & Offers", icon: Gavel },
+        { href: "/dashboard/user?tab=watchlist", label: "Watchlist", icon: Heart },
+        { href: "/dashboard/user?tab=stats", label: "Stats", icon: BarChart3 },
+        { href: "/dashboard/user?tab=messages", label: "Messages", icon: MessageSquare, badge: unreadCount },
+        { href: "/dashboard/user?tab=earnings", label: "Earnings", icon: DollarSign },
+        { href: "/dashboard/user?tab=settings", label: "Settings", icon: Settings },
+    ]
+
     const links: Record<string, LinkObj[]> = {
-        buyer: [
-            { href: "/dashboard/buyer", label: "Dashboard", icon: LayoutDashboard },
-            { href: "/dashboard/buyer/bids", label: "My Bids", icon: Gavel },
-            { href: "/dashboard/buyer/offers", label: "My Offers", icon: Tag },
-            { href: "/dashboard/buyer/watchlist", label: "Watchlist", icon: Heart },
-            { href: "/dashboard/buyer/messages", label: "Messages", icon: MessageSquare, badge: unreadCount },
-            { href: "/dashboard/buyer/history", label: "History", icon: Clock },
-            { href: "/dashboard/buyer/settings", label: "Settings", icon: Settings },
-        ],
-        seller: [
-            { href: "/dashboard/seller", label: "Overview", icon: LayoutDashboard },
-            { href: "/dashboard/seller/listings", label: "Inventory", icon: Car },
-            { href: "/dashboard/seller/offers", label: "Offers", icon: Tag, badge: pendingOffersCount },
-            { href: "/dashboard/seller/performance", label: "Stats", icon: BarChart3 },
-            { href: "/dashboard/seller/messages", label: "Messages", icon: MessageSquare, badge: unreadCount },
-            { href: "/dashboard/seller/earnings", label: "Earnings", icon: DollarSign },
-            { href: "/dashboard/seller/settings", label: "Settings", icon: Settings },
-        ],
+        buyer: unifiedLinks,
+        seller: unifiedLinks,
         provider: [
             { href: "/dashboard/service", label: "Overview", icon: LayoutDashboard },
             { href: "/dashboard/service/jobs", label: "Jobs", icon: Briefcase },
@@ -134,7 +131,9 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-lg border-t border-white/10 safe-area-pb">
                 <div className="flex justify-around items-center py-2 px-1">
                     {mobileLinks.map((link) => {
-                        const isActive = pathname === link.href
+                        const isActive = pathname === "/dashboard/user" 
+                            ? (searchParams.get("tab") === (new URL(link.href, window.location.origin).searchParams.get("tab")))
+                            : pathname === link.href
                         const Icon = link.icon
                         return (
                             <Link
@@ -148,7 +147,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                                 <div className="relative">
                                     <Icon size={20} />
                                     {link.badge && link.badge > 0 && (
-                                        link.href.includes('/offers') ? (
+                                        link.href.includes('tab=offers') ? (
                                             // Pulsating dot for offers
                                             <span className="absolute -top-2 -right-2">
                                                 <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-primary opacity-60" />
@@ -270,7 +269,9 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                     {/* Navigation */}
                     <nav className="space-y-1">
                         {currentLinks.map((link) => {
-                            const isActive = pathname === link.href
+                            const isActive = pathname === "/dashboard/user" 
+                                ? (searchParams.get("tab") === (new URL(link.href, window.location.origin).searchParams.get("tab")))
+                                : pathname === link.href
                             const Icon = link.icon
                             return (
                                 <Link
@@ -286,7 +287,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                                         {link.label}
                                     </div>
                                     {link.badge && link.badge > 0 && (
-                                        link.href.includes('/offers') ? (
+                                        link.href.includes('tab=offers') ? (
                                             // Pulsating dot for offers tab
                                             <span className="relative flex items-center justify-center">
                                                 <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-primary opacity-60" />
