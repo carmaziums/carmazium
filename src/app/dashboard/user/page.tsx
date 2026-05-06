@@ -35,7 +35,8 @@ import {
     XCircle,
     Target,
     AlertTriangle,
-    RefreshCw
+    RefreshCw,
+    Heart
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
@@ -163,7 +164,7 @@ function UnifiedUserDashboardContent() {
                         {activeTab === "overview" && <OverviewTab data={dashboardData} loading={loading} setTab={setTab} />}
                         {activeTab === "inventory" && <InventoryTab onRefreshStats={fetchStats} />}
                         {activeTab === "offers" && <OffersTab onRefreshStats={fetchStats} />}
-                        {activeTab === "bids" && <BidsTab onRefreshStats={fetchStats} />}
+                        {activeTab === "bids" && <OutgoingOffersTab onRefreshStats={fetchStats} />}
                         {activeTab === "stats" && <StatsTab />}
                         {activeTab === "messages" && <MessagesTab rooms={rooms} refreshRooms={refreshRooms} />}
                         {activeTab === "earnings" && <EarningsTab />}
@@ -748,8 +749,6 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                         </table>
                     </div>
                 </div>
-            </div>
-
             </div>
         </div>
     )
