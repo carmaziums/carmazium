@@ -13,16 +13,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const BCRYPT_ROUNDS = 12;
 
-/** Wraps a promise with a timeout. Rejects with TimeoutError after ms. */
-function withTimeout<T>(promise: Promise<T>, ms: number, label = 'operation'): Promise<T> {
-    return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error(`Timeout: ${label} exceeded ${ms}ms`)), ms);
-        promise.then(
-            (val) => { clearTimeout(timer); resolve(val); },
-            (err) => { clearTimeout(timer); reject(err); }
-        );
-    });
-}
+
 
 @Injectable()
 export class AuthService {
@@ -226,12 +217,8 @@ export class AuthService {
             return null;
         }
         try {
-            // Apply explicit timeout to prevent hanging on network issues (e.g. Fly.io → Supabase)
-            const { data, error } = await withTimeout(
-                this.supabase.auth.getUser(token),
-                10000,
-                'supabase.auth.getUser'
-            );
+            this.logger.log(`Verifying Supabase token...`);
+            const { data, error } = await this.supabase.auth.getUser(token);
 
             if (error || !data.user) {
                 this.logger.warn(
