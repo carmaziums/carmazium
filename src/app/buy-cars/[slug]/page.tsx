@@ -191,7 +191,7 @@ function OfferModal({
     )
 }
 
-export default function VehicleDetailsPage({ params }: { params: Promise<{ slug: string }> }) {
+function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = React.use(params)
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -954,5 +954,17 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                 </div>
             </div>
         </div >
+    )
+}
+
+export default function VehicleDetailsPage({ params }: { params: Promise<{ slug: string }> }) {
+    return (
+        <React.Suspense fallback={
+            <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+                <Loader2 className="w-10 h-10 text-primary animate-spin" />
+            </div>
+        }>
+            <VehicleDetailsContent params={params} />
+        </React.Suspense>
     )
 }
