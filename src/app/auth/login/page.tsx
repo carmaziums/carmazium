@@ -3,16 +3,16 @@
 import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { ArrowLeft, Loader2, Eye, EyeOff, Building2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/context/AuthContext"
-import { apiClient } from "@/lib/apiClient"
 
 export default function LoginPage() {
     const router = useRouter()
+    const searchParams = useSearchParams()
     const { user, loading: authLoading } = useAuth()
     const [formData, setFormData] = React.useState({
         email: "",
@@ -23,12 +23,24 @@ export default function LoginPage() {
     const [error, setError] = React.useState<string | null>(null)
     const [showPassword, setShowPassword] = React.useState(false)
 
-    // Redirect authenticated users to dashboard
+    const targetAfterLogin = searchParams?.get("redirect") || "/dashboard"
+
+    const getSafeErrorMessage = (err: unknown, fallback: string) => {
+        if (err instanceof Error && err.message?.trim()) return err.message
+        if (typeof err === "string" && err.trim()) return err
+        if (err && typeof err === "object") {
+            const maybeMessage = (err as any).message || (err as any).error || (err as any).details
+            if (typeof maybeMessage === "string" && maybeMessage.trim()) return maybeMessage
+        }
+        return fallback
+    }
+
+    // Redirect authenticated users to the intended destination
     React.useEffect(() => {
         if (!authLoading && user) {
-            router.push('/dashboard')
+            router.replace(targetAfterLogin)
         }
-    }, [user, authLoading, router])
+    }, [user, authLoading, router, targetAfterLogin])
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -58,27 +70,10 @@ export default function LoginPage() {
                 return
             }
 
-            // Bridge: create backend session so dashboard and API work (cookie + profile)
-            if (data.session?.access_token) {
-                try {
-                    await apiClient('/auth/supabase-session', {
-                        method: 'POST',
-                        body: JSON.stringify({ token: data.session.access_token }),
-                    })
-                } catch (bridgeErr: any) {
-                    setError(
-                        bridgeErr?.message?.includes('user not found')
-                            ? 'Your account is not set up on the server. Please sign up again or contact support.'
-                            : 'Could not connect to the server. Please try again in a moment.'
-                    )
-                    setLoading(false)
-                    return
-                }
-            }
-
-            router.push('/dashboard')
-        } catch (err: any) {
-            setError(err.message || 'Invalid email or password')
+            // Do not block UX on backend bridge here; AuthContext handles bridge/profile sync.
+            router.replace(targetAfterLogin)
+        } catch (err: unknown) {
+            setError(getSafeErrorMessage(err, 'Invalid email or password'))
         } finally {
             setLoading(false)
         }
@@ -193,7 +188,7 @@ export default function LoginPage() {
                                 })
                                 if (oauthError) throw oauthError
                             } catch (err: any) {
-                                setError(err.message || 'Google sign-in failed')
+                                setError(getSafeErrorMessage(err, 'Google sign-in failed'))
                                 setGoogleLoading(false)
                             }
                         }}
