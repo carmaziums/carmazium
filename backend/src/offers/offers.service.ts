@@ -61,6 +61,34 @@ export class OffersService {
             );
         }
 
+        // Incremental bidding: enforce that the new bid is strictly higher than the highest active offer
+        // from any OTHER buyer. Active = PENDING / COUNTERED / ACCEPTED.
+        // We exclude WITHDRAWN and REJECTED, and we exclude the current buyer's own prior offers
+        // (those are auto-superseded just below).
+        const highestOtherOffer = await this.prisma.offer.findFirst({
+            where: {
+                listingId: dto.listingId,
+                buyerId: { not: buyerId },
+                status: { in: ['PENDING', 'COUNTERED', 'ACCEPTED'] },
+            },
+            orderBy: [
+                { counterAmount: 'desc' },
+                { amount: 'desc' },
+            ],
+        });
+
+        if (highestOtherOffer) {
+            const competingAmount = Math.max(
+                Number(highestOtherOffer.amount),
+                Number(highestOtherOffer.counterAmount ?? 0),
+            );
+            if (dto.amount <= competingAmount) {
+                throw new BadRequestException(
+                    `Your bid must be higher than the current highest bid of £${competingAmount.toLocaleString('en-GB')}.`,
+                );
+            }
+        }
+
         // Cancel any existing PENDING offer from this buyer on this listing
         await this.prisma.offer.updateMany({
             where: { listingId: dto.listingId, buyerId, status: 'PENDING' },

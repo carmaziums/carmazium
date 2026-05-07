@@ -3,6 +3,7 @@ import {
     Car,
     Kanban,
     Tag,
+    Gavel,
     DollarSign,
     MessageSquare,
     BarChart3,
@@ -48,6 +49,13 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Offers",
         subHeader: "Direct high-value vehicle acquisition review",
         icon: Tag 
+    },
+    {
+        href: "/dashboard/dealer/my-offers",
+        label: "My Offers",
+        title: "My Offers",
+        subHeader: "Outgoing bids placed on other dealers' inventory",
+        icon: Gavel
     },
     { 
         href: "/dashboard/dealer/finance", 

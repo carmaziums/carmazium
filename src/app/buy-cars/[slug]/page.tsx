@@ -455,6 +455,12 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                             <p className="text-gray-300 text-lg">{vehicle.subtitle}</p>
                             {/* Badges Row */}
                             <div className="flex flex-wrap items-center gap-2 mt-3">
+                                {/* SOLD pill — shown prominently when listing is closed */}
+                                {String(listing.status) === 'SOLD' && (
+                                    <span className="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-widest bg-red-500/15 text-red-400 border border-red-500/40 px-3 py-1.5 rounded-full">
+                                        <XCircle size={12} /> Sold
+                                    </span>
+                                )}
                                 {/* Featured Badge */}
                                 {listing.isFeatured && (
                                     <FeaturedBadge compact />
@@ -536,11 +542,25 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                                     alt={vehicle.title}
                                     fill
                                     sizes="(max-width: 1024px) 100vw, 66vw"
-                                    className="object-cover"
+                                    className={`object-cover transition-all duration-300 ${String(listing.status) === 'SOLD' ? 'opacity-50 grayscale' : ''}`}
                                 />
                                 <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-sm text-white px-3 py-1 rounded-md text-sm font-medium flex items-center gap-2">
                                     <Camera size={16} /> {activeImage + 1}/{vehicle.images.length}
                                 </div>
+                                {/* SOLD watermark */}
+                                {String(listing.status) === 'SOLD' && (
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                        <span
+                                            className="text-[80px] md:text-[110px] font-black uppercase tracking-widest text-red-500/80 select-none rotate-[-15deg] drop-shadow-2xl"
+                                            style={{
+                                                textShadow: '0 0 40px rgba(239,68,68,0.5)',
+                                                WebkitTextStroke: '3px rgba(239,68,68,0.3)',
+                                            }}
+                                        >
+                                            SOLD
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                             <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
                                 {vehicle.images.map((img, idx) => (
@@ -644,7 +664,13 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                                     )}
 
                                     <div className="space-y-3">
-                                        {listing.sellerId !== user?.id && (
+                                        {String(listing.status) === 'SOLD' ? (
+                                            <div className="bg-slate-800/80 border-2 border-red-500/30 rounded-2xl p-6 text-center">
+                                                <XCircle size={48} className="text-red-500 mx-auto mb-3 opacity-80" />
+                                                <h3 className="text-xl font-black text-white uppercase tracking-tight mb-1">Vehicle Sold</h3>
+                                                <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">This listing is closed</p>
+                                            </div>
+                                        ) : listing.sellerId !== user?.id && (
                                             <>
                                                 <Button
                                                     className="w-full py-6 text-lg shadow-neon"
@@ -843,61 +869,77 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ slug:
                                     </div>
                                 )}
 
-                                <div className="mb-6">
-                                    {/* Policies tooltip */}
-                                    <div className="flex items-center gap-1.5 mb-3">
-                                        <span className="relative group/policy inline-flex items-center cursor-help">
-                                            <Info size={14} className="text-gray-500 group-hover/policy:text-blue-400 transition-colors" />
-                                            <span className="absolute bottom-full -left-2 mb-2 w-56 rounded-lg bg-slate-800 border border-white/10 px-3 py-2.5 text-xs text-gray-300 leading-relaxed shadow-xl opacity-0 invisible group-hover/policy:opacity-100 group-hover/policy:visible transition-all duration-200 z-50 pointer-events-none">
-                                                <span className="font-bold text-white block mb-1">Policies:</span>
-                                                Payment will not be made on our platform.
-                                                <span className="absolute top-full left-3 -mt-px border-4 border-transparent border-t-slate-800" />
-                                            </span>
-                                        </span>
-                                        <span className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Policies</span>
-                                    </div>
-                                    <div>
-                                        <div className="text-4xl font-bold text-white mb-2">{formatPrice(listing.price)}</div>
-                                        <span className="inline-block text-[10px] font-bold uppercase tracking-wide bg-primary/10 text-primary border border-primary/30 px-2.5 py-1 rounded-full mb-4">
-                                            Offers Welcome
-                                        </span>
-                                    </div>
-                                    <p className="text-xs text-gray-400 mt-3">Price includes VAT. Financing available from 5.9% APR.</p>
-                                    <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
-                                        <Clock size={12} /> Listed on {new Date(listing.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                    </p>
-                                </div>
+                                {String(listing.status) === 'SOLD' ? (
+                                    <>
+                                        <div className="mb-6 p-6 rounded-xl border-2 border-red-500/30 bg-red-500/10 text-center relative overflow-hidden">
+                                            <span className="block text-4xl font-black text-red-500 tracking-tighter mb-1">SOLD</span>
+                                            <p className="text-gray-400 text-xs font-medium uppercase tracking-widest">This vehicle is no longer available</p>
+                                        </div>
+                                        <div className="bg-slate-800/80 border-2 border-red-500/30 rounded-2xl p-6 text-center">
+                                            <XCircle size={48} className="text-red-500 mx-auto mb-3 opacity-80" />
+                                            <h3 className="text-xl font-black text-white uppercase tracking-tight mb-1">Vehicle Sold</h3>
+                                            <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">This listing is closed</p>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="mb-6">
+                                            {/* Policies tooltip */}
+                                            <div className="flex items-center gap-1.5 mb-3">
+                                                <span className="relative group/policy inline-flex items-center cursor-help">
+                                                    <Info size={14} className="text-gray-500 group-hover/policy:text-blue-400 transition-colors" />
+                                                    <span className="absolute bottom-full -left-2 mb-2 w-56 rounded-lg bg-slate-800 border border-white/10 px-3 py-2.5 text-xs text-gray-300 leading-relaxed shadow-xl opacity-0 invisible group-hover/policy:opacity-100 group-hover/policy:visible transition-all duration-200 z-50 pointer-events-none">
+                                                        <span className="font-bold text-white block mb-1">Policies:</span>
+                                                        Payment will not be made on our platform.
+                                                        <span className="absolute top-full left-3 -mt-px border-4 border-transparent border-t-slate-800" />
+                                                    </span>
+                                                </span>
+                                                <span className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Policies</span>
+                                            </div>
+                                            <div>
+                                                <div className="text-4xl font-bold text-white mb-2">{formatPrice(listing.price)}</div>
+                                                <span className="inline-block text-[10px] font-bold uppercase tracking-wide bg-primary/10 text-primary border border-primary/30 px-2.5 py-1 rounded-full mb-4">
+                                                    Offers Welcome
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-gray-400 mt-3">Price includes VAT. Financing available from 5.9% APR.</p>
+                                            <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+                                                <Clock size={12} /> Listed on {new Date(listing.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                            </p>
+                                        </div>
 
-                                {/* Offer Status */}
-                                {/* Buyer sees their own offer chip; seller/public see the listing's latest offer chip */}
-                                {(offerViewerRole === 'buyer' ? myOffer : latestOffer) && (
-                                    <div className="mb-4">
-                                        <OfferStatusChip
-                                            offer={(offerViewerRole === 'buyer' ? myOffer : latestOffer)!}
-                                            viewerRole={offerViewerRole}
-                                        />
-                                    </div>
+                                        {/* Offer Status */}
+                                        {/* Buyer sees their own offer chip; seller/public see the listing's latest offer chip */}
+                                        {(offerViewerRole === 'buyer' ? myOffer : latestOffer) && (
+                                            <div className="mb-4">
+                                                <OfferStatusChip
+                                                    offer={(offerViewerRole === 'buyer' ? myOffer : latestOffer)!}
+                                                    viewerRole={offerViewerRole}
+                                                />
+                                            </div>
+                                        )}
+                                        <div className="space-y-3">
+                                            {listing.sellerId !== user?.id && (
+                                                <>
+                                                    <Button
+                                                        className="w-full py-6 text-lg shadow-neon"
+                                                        onClick={() => setShowOfferModal(true)}
+                                                        disabled={offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'}
+                                                    >
+                                                        {offerViewerRole === 'buyer' && myOffer?.status === 'PENDING'
+                                                            ? 'Edit My Offer'
+                                                            : offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'
+                                                                ? '✓ Offer Accepted'
+                                                                : 'Make an Offer'}
+                                                    </Button>
+                                                    <Button variant="outline" className="w-full py-6 text-lg border-white/20 text-white hover:bg-white/10" onClick={handleEnquire} disabled={enquiring}>
+                                                        {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2" />Starting Chat...</> : <><MessageCircle className="w-5 h-5 mr-2" />Enquire</>}
+                                                    </Button>
+                                                </>
+                                            )}
+                                        </div>
+                                    </>
                                 )}
-                                <div className="space-y-3">
-                                    {listing.sellerId !== user?.id && (
-                                        <>
-                                            <Button
-                                                className="w-full py-6 text-lg shadow-neon"
-                                                onClick={() => setShowOfferModal(true)}
-                                                disabled={offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'}
-                                            >
-                                                {offerViewerRole === 'buyer' && myOffer?.status === 'PENDING'
-                                                    ? 'Edit My Offer'
-                                                    : offerViewerRole === 'buyer' && myOffer?.status === 'ACCEPTED'
-                                                        ? '✓ Offer Accepted'
-                                                        : 'Make an Offer'}
-                                            </Button>
-                                            <Button variant="outline" className="w-full py-6 text-lg border-white/20 text-white hover:bg-white/10" onClick={handleEnquire} disabled={enquiring}>
-                                                {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2" />Starting Chat...</> : <><MessageCircle className="w-5 h-5 mr-2" />Enquire</>}
-                                            </Button>
-                                        </>
-                                    )}
-                                </div>
                             </div>
 
                             {/* Location Display */}

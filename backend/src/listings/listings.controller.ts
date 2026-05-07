@@ -190,6 +190,27 @@ export class ListingsController {
     }
 
     /**
+     * Get earnings history for the authenticated seller/dealer
+     *
+     * IMPORTANT: This route MUST be declared before `@Get(':slug')` so the static
+     * "earnings" path isn't captured by the dynamic slug parameter.
+     */
+    @Get('earnings')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({
+        summary: 'Get earnings history',
+        description: 'Returns sales history, total revenue, and total sales count for the user.',
+    })
+    @ApiResponse({ status: 200, description: 'Earnings data retrieved successfully' })
+    async getEarnings(
+        @CurrentUser() user: any,
+    ): Promise<StandardResponse<any>> {
+        const earnings = await this.listingsService.getEarnings(user.id);
+        return new StandardResponse(earnings);
+    }
+
+    /**
      * Get a single listing by slug
      * Public endpoint
      * IMPORTANT: This route uses :slug parameter and must come AFTER the /listings route
@@ -299,24 +320,6 @@ export class ListingsController {
     ): Promise<StandardResponse<Listing>> {
         const listing = await this.listingsService.recordSale(id, user.id, recordSaleDto);
         return new StandardResponse(listing);
-    }
-
-    /**
-     * Get earnings history for the authenticated seller/dealer
-     */
-    @Get('earnings')
-    @UseGuards(SessionAuthGuard)
-    @ApiCookieAuth()
-    @ApiOperation({
-        summary: 'Get earnings history',
-        description: 'Returns sales history, total revenue, and total sales count for the user.',
-    })
-    @ApiResponse({ status: 200, description: 'Earnings data retrieved successfully' })
-    async getEarnings(
-        @CurrentUser() user: any,
-    ): Promise<StandardResponse<any>> {
-        const earnings = await this.listingsService.getEarnings(user.id);
-        return new StandardResponse(earnings);
     }
 
     /**

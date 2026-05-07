@@ -549,7 +549,7 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const fetchOffers = async () => {
         try {
             setLoading(true)
-            const res = await getMyListings({ limit: 50 })
+            const res = await getMyListings({ limit: 50, includeSold: true })
             const activeListings = res.data
             setListings(activeListings)
             
@@ -920,6 +920,10 @@ function EarningsTab() {
         getEarnings().then(setData).finally(() => setLoading(false))
     }, [])
 
+    const totalRevenue = Number(data?.totalRevenue || 0)
+    const totalSales = Number(data?.totalSales || 0)
+    const avgSale = totalSales > 0 ? totalRevenue / totalSales : 0
+
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -930,6 +934,37 @@ function EarningsTab() {
                 <Button className="flex items-center gap-2 h-10 shadow-neon-small" variant="outline" size="sm">
                     <Download size={18} /> Export Ledger
                 </Button>
+            </div>
+
+            {/* KPI summary — Total Earnings stays in sync with /listings/earnings */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="glass-card p-5 border border-white/5 bg-white/5 rounded-2xl">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-2">Total Earnings</p>
+                    <p className="text-3xl font-black text-white tabular-nums">
+                        {loading ? "—" : formatPrice(totalRevenue)}
+                    </p>
+                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-2">
+                        Sourced from finalized sales
+                    </p>
+                </div>
+                <div className="glass-card p-5 border border-white/5 bg-white/5 rounded-2xl">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-2">Vehicles Sold</p>
+                    <p className="text-3xl font-black text-white tabular-nums">
+                        {loading ? "—" : totalSales}
+                    </p>
+                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-2">
+                        Lifetime
+                    </p>
+                </div>
+                <div className="glass-card p-5 border border-white/5 bg-white/5 rounded-2xl">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-400 mb-2">Avg. Sale Price</p>
+                    <p className="text-3xl font-black text-white tabular-nums">
+                        {loading ? "—" : formatPrice(avgSale)}
+                    </p>
+                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-2">
+                        Mean across all sales
+                    </p>
+                </div>
             </div>
 
             <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl">

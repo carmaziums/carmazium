@@ -211,7 +211,7 @@ export default function SellerOffersPage() {
         const load = async () => {
             try {
                 setLoadingListings(true)
-                const res = await getMyListings({ limit: 50 })
+                const res = await getMyListings({ limit: 50, includeSold: true })
                 const loadedListings = res.data
                 setListings(loadedListings)
 

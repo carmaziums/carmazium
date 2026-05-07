@@ -202,7 +202,14 @@ function BidModal({
 
             onSuccess(offer as unknown as LatestOffer)
         } catch (err: any) {
-            setError(err.message || "Failed to place bid. Please try again.")
+            // Surface the backend's incremental-bidding error verbatim so the user sees
+            // the actual current highest bid amount and required increment.
+            const backendMessage = err?.message || err?.error || ""
+            setError(
+                backendMessage.toLowerCase().includes("higher")
+                    ? backendMessage
+                    : (backendMessage || "Failed to place bid. Please try again.")
+            )
         } finally {
             setLoading(false)
         }
