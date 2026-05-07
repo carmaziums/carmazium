@@ -520,6 +520,11 @@ export class ListingsService {
     /**
      * Update listing status
      * Allows specific transitions (Draft -> Active -> Sold/Withdrawn)
+     *
+     * NOTE: When transitioning to SOLD via this endpoint we ALSO record a Sale row
+     * (using listing.price as the sold price) so the earnings/dashboard metrics stay
+     * consistent. Sellers wanting to record a different sold price + buyer should
+     * use the dedicated `recordSale` endpoint, which is idempotent against this one.
      */
     async updateStatus(
         id: string,
@@ -529,13 +534,49 @@ export class ListingsService {
         const listing = await this.findById(id);
 
         if (listing.sellerId && listing.sellerId !== userId) {
-            throw new ForbiddenException('You do not have permission to update this listing');
+            // Allow active dealer staff of the listing's owner to update status as well
+            const staffMember = listing.sellerId
+                ? await this.prisma.dealerStaff.findFirst({
+                    where: {
+                        userId,
+                        dealerProfile: { userId: listing.sellerId },
+                        isActive: true,
+                    },
+                })
+                : null;
+            if (!staffMember) {
+                throw new ForbiddenException('You do not have permission to update this listing');
+            }
         }
 
-        const updated = await this.prisma.listing.update({
-            where: { id },
-            data: { status },
-        });
+        // For SOLD transitions we wrap the listing update + Sale insert in a transaction
+        // so total earnings can never drift from the listings.status state.
+        const isNewSold = status === 'SOLD' && listing.status !== 'SOLD';
+        const updated = isNewSold
+            ? await this.prisma.$transaction(async (tx) => {
+                const next = await tx.listing.update({
+                    where: { id },
+                    data: { status },
+                });
+                // Only insert a Sale row if one doesn't already exist for this listing
+                // (defensive against double-clicks / race with `recordSale`).
+                const existing = await tx.sale.findFirst({ where: { listingId: id } });
+                if (!existing) {
+                    await tx.sale.create({
+                        data: {
+                            listingId: id,
+                            sellerId: listing.sellerId,
+                            buyerId: null,
+                            soldPrice: listing.price,
+                        },
+                    });
+                }
+                return next;
+            })
+            : await this.prisma.listing.update({
+                where: { id },
+                data: { status },
+            });
 
         // Phase 2: Increment listing count if status changed TO Active from something else
         if (status === 'ACTIVE' && updated.sellerId && listing.status !== 'ACTIVE') {
@@ -543,7 +584,7 @@ export class ListingsService {
         }
 
         // Phase 2: Increment sales count if marked as SOLD
-        if (status === 'SOLD' && updated.sellerId && listing.status !== 'SOLD') {
+        if (isNewSold && updated.sellerId) {
             await this.sellersService.incrementSales(updated.sellerId);
         }
 
@@ -633,6 +674,11 @@ export class ListingsService {
 
     /**
      * Find all listings belonging to a specific seller
+     *
+     * By default this excludes SOLD listings so the seller's "Inventory" view stays clean.
+     * Pages that need to render offers tied to already-sold listings (e.g. the Offers
+     * dashboard, where an accepted offer must remain visible after the sale closes)
+     * should pass `includeSold = true`.
      */
     async findMyListings(sellerId: string, filterDto?: ListingFilterDto): Promise<{ data: Listing[]; total: number }> {
         const page = filterDto?.page || 1;
@@ -642,8 +688,10 @@ export class ListingsService {
         const where: any = {
             sellerId,
             deletedAt: null,
-            status: { not: 'SOLD' },
         };
+        if (!filterDto?.includeSold) {
+            where.status = { not: 'SOLD' };
+        }
 
         // Apply optional filters
         if (filterDto?.minPrice !== undefined || filterDto?.maxPrice !== undefined) {
@@ -673,9 +721,33 @@ export class ListingsService {
     }
 
     /**
-     * Get seller dashboard statistics
+     * Resolve the effective dealership owner ID for a given user.
+     * If the user is active dealer staff, returns the dealership owner's userId
+     * so all aggregations (revenue, listings) reflect the dealership as a unit.
      */
-    async getSellerStats(sellerId: string): Promise<{
+    private async resolveOwnerId(userId: string): Promise<string> {
+        try {
+            const staffRecord = await this.prisma.dealerStaff.findFirst({
+                where: { userId, isActive: true },
+                select: { dealerProfile: { select: { userId: true } } },
+            });
+            if (staffRecord?.dealerProfile?.userId) {
+                return staffRecord.dealerProfile.userId;
+            }
+        } catch {
+            // Fall through and return the original userId on any lookup failure
+        }
+        return userId;
+    }
+
+    /**
+     * Get seller dashboard statistics
+     *
+     * Total revenue is sourced from `Sale.soldPrice` (the canonical earnings table),
+     * not from `Listing.price`, so the metric stays consistent with the unified
+     * dashboard and the earnings page.
+     */
+    async getSellerStats(userId: string): Promise<{
         totalListings: number;
         activeListings: number;
         soldListings: number;
@@ -683,48 +755,50 @@ export class ListingsService {
         totalViews: number;
         totalRevenue: number;
     }> {
+        const sellerId = await this.resolveOwnerId(userId);
         const baseWhere = { sellerId, deletedAt: null };
 
-        const [totalListings, activeListings, soldListings, draftListings, viewsAndRevenue] = await Promise.all([
+        const [totalListings, activeListings, soldListings, draftListings, viewsAggregate, salesAggregate] = await Promise.all([
             this.prisma.listing.count({ where: baseWhere }),
             this.prisma.listing.count({ where: { ...baseWhere, status: 'ACTIVE' } }),
             this.prisma.listing.count({ where: { ...baseWhere, status: 'SOLD' } }),
             this.prisma.listing.count({ where: { ...baseWhere, status: 'DRAFT' } }),
             this.prisma.listing.aggregate({
                 where: baseWhere,
-                _sum: { viewCount: true, price: true },
+                _sum: { viewCount: true },
+            }),
+            this.prisma.sale.aggregate({
+                where: { sellerId },
+                _sum: { soldPrice: true },
             }),
         ]);
-
-        // Calculate total revenue from sold listings
-        const soldRevenue = await this.prisma.listing.aggregate({
-            where: { ...baseWhere, status: 'SOLD' },
-            _sum: { price: true },
-        });
 
         return {
             totalListings,
             activeListings,
             soldListings,
             draftListings,
-            totalViews: viewsAndRevenue._sum.viewCount || 0,
-            totalRevenue: Number(soldRevenue._sum.price || 0),
+            totalViews: viewsAggregate._sum.viewCount || 0,
+            totalRevenue: Number(salesAggregate._sum.soldPrice || 0),
         };
     }
 
     /**
      * Get seller performance analytics
      * Returns metrics + per-listing view data for charts
+     *
+     * Revenue is sourced from the `Sale` table for consistency with other dashboards.
      */
-    async getSellerPerformance(sellerId: string) {
+    async getSellerPerformance(userId: string) {
+        const sellerId = await this.resolveOwnerId(userId);
         const baseWhere = { sellerId, deletedAt: null };
 
-        const [totalListings, soldCount, viewsAggregate, recentListings] = await Promise.all([
+        const [totalListings, soldCount, viewsAggregate, recentListings, salesAggregate] = await Promise.all([
             this.prisma.listing.count({ where: baseWhere }),
             this.prisma.listing.count({ where: { ...baseWhere, status: 'SOLD' } }),
             this.prisma.listing.aggregate({
                 where: baseWhere,
-                _sum: { viewCount: true, price: true },
+                _sum: { viewCount: true },
             }),
             this.prisma.listing.findMany({
                 where: baseWhere,
@@ -732,12 +806,11 @@ export class ListingsService {
                 orderBy: { createdAt: 'desc' },
                 take: 12,
             }),
+            this.prisma.sale.aggregate({
+                where: { sellerId },
+                _sum: { soldPrice: true },
+            }),
         ]);
-
-        const soldRevenue = await this.prisma.listing.aggregate({
-            where: { ...baseWhere, status: 'SOLD' },
-            _sum: { price: true },
-        });
 
         const totalViews = viewsAggregate._sum.viewCount || 0;
         const conversionRate = totalViews > 0
@@ -745,7 +818,7 @@ export class ListingsService {
             : '0.0';
 
         return {
-            totalRevenue: Number(soldRevenue._sum.price || 0),
+            totalRevenue: Number(salesAggregate._sum.soldPrice || 0),
             totalViews,
             totalListings,
             conversionRate: parseFloat(conversionRate),

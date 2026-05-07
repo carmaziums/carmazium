@@ -179,4 +179,13 @@ export class ListingFilterDto {
     @IsOptional()
     @Min(1)
     limit?: number = 20;
+
+    @ApiPropertyOptional({
+        description: 'Include SOLD listings in the result set (used by /listings/my for offer dashboards)',
+        example: false,
+    })
+    @Transform(({ value }) => value === 'true' ? true : value === 'false' ? false : value)
+    @IsBoolean()
+    @IsOptional()
+    includeSold?: boolean;
 }

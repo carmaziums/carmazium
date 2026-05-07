@@ -298,12 +298,16 @@ export interface SellerStats {
 
 /**
  * Fetch current user's listings (authenticated)
+ *
+ * Pass `includeSold: true` to include SOLD listings — required for offer dashboards
+ * that must display accepted offers after the sale has been recorded.
  */
-export async function getMyListings(filters?: ListingFilters): Promise<ListingsResponse> {
+export async function getMyListings(filters?: ListingFilters & { includeSold?: boolean }): Promise<ListingsResponse> {
     const params = new URLSearchParams()
     if (filters) {
         if (filters.page) params.append('page', filters.page.toString())
         if (filters.limit) params.append('limit', filters.limit.toString())
+        if (filters.includeSold) params.append('includeSold', 'true')
     }
 
     const endpoint = `/listings/my${params.toString() ? `?${params.toString()}` : ''}`

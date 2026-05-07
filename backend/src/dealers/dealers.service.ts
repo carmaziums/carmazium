@@ -38,10 +38,15 @@ export class DealersService {
     async getStats(userId: string) {
         const profile = await this.getDealerProfile(userId);
 
-        const [activeListings, totalViews, soldListings, activeLeads, totalLeads, recentLeads] = await Promise.all([
-            this.prisma.listing.count({ where: { sellerId: userId, status: 'ACTIVE', deletedAt: null } }),
-            this.prisma.listing.aggregate({ where: { sellerId: userId, deletedAt: null }, _sum: { viewCount: true } }),
-            this.prisma.listing.count({ where: { sellerId: userId, status: 'SOLD', deletedAt: null } }),
+        // The dealership owner's userId is the canonical sellerId for all listings/sales
+        // belonging to this dealership. Staff members must aggregate against the owner's
+        // ID, not their own, otherwise dealer revenue would always read as zero for staff.
+        const ownerUserId = (profile as any).userId ?? userId;
+
+        const [activeListings, totalViews, soldListings, activeLeads, totalLeads, recentLeads, totalRevenue] = await Promise.all([
+            this.prisma.listing.count({ where: { sellerId: ownerUserId, status: 'ACTIVE', deletedAt: null } }),
+            this.prisma.listing.aggregate({ where: { sellerId: ownerUserId, deletedAt: null }, _sum: { viewCount: true } }),
+            this.prisma.listing.count({ where: { sellerId: ownerUserId, status: 'SOLD', deletedAt: null } }),
             this.prisma.lead.count({ where: { dealerProfileId: profile.id, status: { notIn: ['WON', 'LOST'] } } }),
             this.prisma.lead.count({ where: { dealerProfileId: profile.id } }),
             this.prisma.lead.findMany({
@@ -53,12 +58,13 @@ export class DealersService {
                     assignedTo: { select: { firstName: true, lastName: true } },
                 },
             }),
+            // Total dealership revenue sourced from Sale.soldPrice — same source-of-truth
+            // used by /listings/earnings and /dashboard/unified, so the three KPIs match.
+            this.prisma.sale.aggregate({
+                where: { sellerId: ownerUserId },
+                _sum: { soldPrice: true },
+            }),
         ]);
-
-        const totalRevenue = await this.prisma.transaction.aggregate({
-            where: { userId, status: 'COMPLETED' },
-            _sum: { amount: true },
-        });
 
         return {
             companyName: profile.companyName,
@@ -68,7 +74,7 @@ export class DealersService {
             soldListings,
             activeLeads,
             totalLeads,
-            totalRevenue: totalRevenue._sum.amount || 0,
+            totalRevenue: Number(totalRevenue._sum.soldPrice || 0),
             recentLeads,
             staffCount: profile.staff.length,
         };
