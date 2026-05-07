@@ -10,7 +10,7 @@ import { ArrowLeft, Loader2, Eye, EyeOff, Building2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/context/AuthContext"
 
-export default function LoginPage() {
+function LoginContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const { user, loading: authLoading } = useAuth()
@@ -221,5 +221,17 @@ export default function LoginPage() {
                 </div>
             </div>
         </div>
+    )
+}
+
+export default function LoginPage() {
+    return (
+        <React.Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        }>
+            <LoginContent />
+        </React.Suspense>
     )
 }
