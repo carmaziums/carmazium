@@ -25,20 +25,35 @@ function redirectToLogin() {
  */
 function isAuthError(status: number, message: string): boolean {
     if (status === 401) return true;
-    if (status === 403) {
-        const lower = message.toLowerCase();
-        // Backend CSRF guard fires when the Bearer token is absent
-        if (
-            lower.includes('csrf') ||
-            lower.includes('x-csrf-token') ||
-            lower.includes('token') ||
-            lower.includes('unauthorized') ||
-            lower.includes('forbidden')
-        ) {
-            return true;
-        }
+    if (status !== 403) return false;
+
+    const lower = message.toLowerCase();
+    // Only redirect on explicit authentication/session failures.
+    // Do not treat all 403 responses as "logged out" because many
+    // role/permission checks intentionally return 403.
+    return (
+        lower.includes('csrf') ||
+        lower.includes('x-csrf-token') ||
+        lower.includes('not authenticated') ||
+        lower.includes('session invalid') ||
+        lower.includes('please log in')
+    );
+}
+
+function normalizeErrorMessage(body: any, status: number, statusText: string): string {
+    if (typeof body === 'string' && body.trim()) return body;
+
+    if (body && typeof body === 'object') {
+        const possible = [
+            body.message,
+            body.error,
+            body.details,
+            body.reason,
+        ].find((value) => typeof value === 'string' && value.trim().length > 0);
+        if (possible) return possible as string;
     }
-    return false;
+
+    return statusText || `HTTP ${status}`;
 }
 
 export async function apiClient<T>(
@@ -62,15 +77,16 @@ export async function apiClient<T>(
     const response = await fetch(`${API_URL}${endpoint}`, config);
 
     if (!response.ok) {
-        // Parse the error body once so we can inspect the message
-        const error = await response.json().catch(() => ({ message: `HTTP ${response.status}` }));
-        const message: string = error.message || error.error || `HTTP ${response.status}`;
+        const rawBody = await response.text().catch(() => '');
+        let parsedBody: any = rawBody;
+        try {
+            parsedBody = rawBody ? JSON.parse(rawBody) : null;
+        } catch {
+            // Keep raw text body when it is not valid JSON
+        }
+        const message = normalizeErrorMessage(parsedBody, response.status, response.statusText);
 
         if (isAuthError(response.status, message)) {
-            // Clear any potentially stale token
-            if (typeof window !== 'undefined') {
-                localStorage.removeItem('authToken');
-            }
             // Redirect to login and preserve the return URL
             redirectToLogin();
             // Throw a sentinel — callers can catch this but should not show it as a UI error
