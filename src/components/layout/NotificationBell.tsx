@@ -81,7 +81,7 @@ export function NotificationBell() {
         getNotifications(12).then(setNotifications).finally(() => setLoading(false))
     }, [open, user])
 
-    const totalUnread = chatUnread + pendingOffers
+    const totalUnread = notifications.filter(n => !n.isRead).length + chatUnread
     const unreadNotifs = notifications.filter(n => !n.isRead).length
 
     async function handleMarkAll() {
@@ -95,7 +95,31 @@ export function NotificationBell() {
             setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, isRead: true } : x))
         }
         setOpen(false)
-        if (n.link) router.push(n.link)
+
+        // Resolve link: data.link > entityType+entityId > type-based fallback
+        const dataObj = (typeof n.data === 'object' && n.data) ? n.data as Record<string, any> : {}
+        const link = dataObj.link || n.link
+        if (link) {
+            router.push(link)
+            return
+        }
+        // Deep-link via entityType + entityId
+        const eType = (n as any).entityType as string | undefined
+        const eId = (n as any).entityId as string | undefined
+        if (eType === 'OFFER' && eId) {
+            router.push('/dashboard/user?tab=offers')
+            return
+        }
+        if (eType === 'LISTING' && eId) {
+            router.push('/dashboard/user?tab=inventory')
+            return
+        }
+        // Fallback by notification type
+        if (n.type.startsWith('OFFER_')) {
+            router.push('/dashboard/user?tab=offers')
+        } else {
+            router.push('/dashboard')
+        }
     }
 
     if (!user) return null

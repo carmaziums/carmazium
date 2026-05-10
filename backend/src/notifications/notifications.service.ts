@@ -7,8 +7,14 @@ export class NotificationsService {
     constructor(private readonly prisma: PrismaService) { }
 
     async create(dto: CreateNotificationDto) {
+        // 'link' is not a Prisma column — merge it into the JSON 'data' field
+        const { link, ...prismaFields } = dto;
+        const mergedData = { ...(dto.data || {}), ...(link ? { link } : {}) };
         return this.prisma.notification.create({
-            data: dto,
+            data: {
+                ...prismaFields,
+                data: Object.keys(mergedData).length > 0 ? mergedData : undefined,
+            },
         });
     }
 

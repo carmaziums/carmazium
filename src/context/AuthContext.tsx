@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { apiClient } from '@/lib/apiClient'
 import { User } from '@supabase/supabase-js'
@@ -31,6 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null)
     const [profile, setProfile] = useState<UserProfile | null>(null)
     const [loading, setLoading] = useState(true)
+    const bridgedTokenRef = useRef<string | null>(null)
 
     const fetchProfile = async () => {
         try {
@@ -54,6 +55,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         // Establish backend session then fetch profile (avoid 401s on protected routes)
         const bridgeThenProfile = async (token: string) => {
+            // Skip if we've already bridged this exact token (prevents reload on
+            // email verification return where SIGNED_IN fires again)
+            if (bridgedTokenRef.current === token) {
+                // Just refresh the profile silently without resetting loading
+                await fetchProfile();
+                return;
+            }
+            bridgedTokenRef.current = token;
+
             try {
                 await apiClient('/auth/supabase-session', {
                     method: 'POST',
@@ -102,6 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 localStorage.setItem('authToken', token);
             } else if (event === 'SIGNED_OUT') {
                 localStorage.removeItem('authToken');
+                bridgedTokenRef.current = null;
                 setProfile(null);
                 setLoading(false);
                 return;

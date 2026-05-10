@@ -108,7 +108,7 @@ export default function SignupPage() {
     }
 
     const roles = [
-        { id: 'BUYER', icon: Car, label: 'Member - Buy & Sell Vehicles', sub: 'KYC verified trading' },
+        { id: 'BUYER', icon: Car, label: 'User - Buy & Sell Vehicles', sub: 'Individual trading account' },
         { id: 'DEALER', icon: Building2, label: 'Dealer - Dealership Account', sub: 'Manage inventory, leads & team' },
         { id: 'FINANCE_PARTNER', icon: CreditCard, label: 'Finance Provider', sub: 'Vehicle financing services' }
     ]

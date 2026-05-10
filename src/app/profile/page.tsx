@@ -87,11 +87,21 @@ export default function ProfilePage() {
 
     if (authLoading) return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="animate-spin text-primary" /></div>
 
-    const availableRoles = [
-        { id: 'BUYER', icon: User, label: 'Buyer', sub: 'For purchasing and browsing cars' },
-        { id: 'SELLER', icon: Car, label: 'Seller', sub: 'For private individuals selling cars' },
+    // Unified roles — BUYER and SELLER are merged into a single "User" role
+    const currentRole = profile?.role || ''
+    const isUserRole = currentRole === 'BUYER' || currentRole === 'SELLER'
+    const isDealerRole = currentRole === 'DEALER'
+
+    const allRoles = [
+        { id: 'BUYER', icon: User, label: 'User', sub: 'Buy and sell vehicles as an individual' },
         { id: 'DEALER', icon: Shield, label: 'Dealer', sub: 'For car dealerships and businesses' },
-    ].filter(r => r.id !== profile?.role)
+    ]
+    // Show roles that the user is NOT currently on
+    const availableRoles = allRoles.filter(r => {
+        if (r.id === 'BUYER') return !isUserRole   // hide "User" if already BUYER or SELLER
+        if (r.id === 'DEALER') return !isDealerRole // hide "Dealer" if already DEALER
+        return true
+    })
 
     return (
         <div className="max-w-4xl mx-auto py-12 px-4">
@@ -107,7 +117,7 @@ export default function ProfilePage() {
                         <p className="text-gray-400">{profile?.email}</p>
                         <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider">
                             <Shield size={12} />
-                            {profile?.role}
+                            {profile?.role === 'BUYER' || profile?.role === 'SELLER' ? 'User' : profile?.role === 'DEALER' ? 'Dealer' : profile?.role}
                         </div>
                     </div>
                 </div>
