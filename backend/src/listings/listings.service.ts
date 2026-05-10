@@ -845,20 +845,43 @@ export class ListingsService {
             targetOwnerId = staffRecord.dealerProfile.userId;
         }
 
-        // Fetch sales from the sales table
         const sales = await this.prisma.sale.findMany({
             where: { sellerId: targetOwnerId },
             include: {
                 listing: {
                     select: {
+                        id: true,
                         title: true,
                         images: true,
                         vrm: true,
                         price: true,
+                        status: true,
+                        offers: {
+                            orderBy: { createdAt: 'desc' },
+                            select: {
+                                id: true,
+                                amount: true,
+                                initialAmount: true,
+                                counterAmount: true,
+                                sellerCounterAmount: true,
+                                buyerCounterAmount: true,
+                                finalAmount: true,
+                                status: true,
+                                createdAt: true,
+                                buyer: {
+                                    select: {
+                                        id: true,
+                                        firstName: true,
+                                        lastName: true,
+                                    }
+                                }
+                            }
+                        }
                     }
                 },
                 buyer: {
                     select: {
+                        id: true,
                         firstName: true,
                         lastName: true,
                         email: true,

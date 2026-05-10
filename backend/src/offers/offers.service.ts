@@ -99,7 +99,9 @@ export class OffersService {
             data: {
                 listingId: dto.listingId,
                 buyerId,
+                sellerId: listing.sellerId,
                 amount: dto.amount,
+                initialAmount: dto.amount,
                 amountMin: dto.amountMin ?? dto.amount,
                 amountMax: dto.amountMax ?? dto.amount,
                 message: dto.message ?? null,
@@ -115,6 +117,9 @@ export class OffersService {
                     title: 'New Offer Received',
                     message: `You received an offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${listing.title}".`,
                     link: '/dashboard/seller/offers',
+                    entityType: 'OFFER',
+                    entityId: offer.id,
+                    actionType: 'CREATED',
                     data: { listingId: listing.id, offerId: offer.id },
                 });
                 // Push real-time notification via WebSocket
@@ -253,6 +258,8 @@ export class OffersService {
             where: { id: offerId },
             data: { 
                 status: prismaStatus,
+                sellerCounterAmount: status === OfferResponseStatus.COUNTERED ? counterAmount : undefined,
+                finalAmount: prismaStatus === 'ACCEPTED' ? offer.amount : undefined,
                 counterAmount: status === OfferResponseStatus.COUNTERED ? counterAmount : null,
             },
         });
@@ -266,6 +273,11 @@ export class OffersService {
                     status: 'PENDING',
                 },
                 data: { status: 'REJECTED' },
+            });
+            // Update listing status to OFFER_ACCEPTED
+            await this.prisma.listing.update({
+                where: { id: offer.listingId },
+                data: { status: 'OFFER_ACCEPTED' }
             });
         }
 
@@ -295,6 +307,9 @@ export class OffersService {
                 title: notifTitle,
                 message: notifMessage,
                 link: prismaStatus === 'COUNTERED' ? `/vehicle/${offer.listingId}` : '/dashboard/buyer/offers',
+                entityType: 'OFFER',
+                entityId: offer.id,
+                actionType: prismaStatus,
                 data: { listingId: offer.listingId, offerId: offer.id },
             });
             // Push real-time notification to the buyer
@@ -312,6 +327,9 @@ export class OffersService {
                     title: '✅ Offer Accepted',
                     message: `You accepted an offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${offer.listing.title}". The listing remains active — mark it as Sold from your inventory when the deal is complete.`,
                     link: '/dashboard/seller/offers',
+                    entityType: 'OFFER',
+                    entityId: offer.id,
+                    actionType: 'ACCEPTED',
                     data: { listingId: offer.listingId, offerId: offer.id },
                 });
                 this.notificationsGateway.sendNotification(offer.listing.sellerId, sellerNotification);
@@ -419,6 +437,9 @@ export class OffersService {
                 type: 'OFFER_REJECTED', // Using REJECTED type for withdrawn notifications
                 title: 'Offer Withdrawn',
                 message: `An offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${offer.listing.title}" was withdrawn by the buyer.`,
+                entityType: 'OFFER',
+                entityId: offer.id,
+                actionType: 'WITHDRAWN',
                 data: { listingId: offer.listingId, offerId: offer.id },
             });
             this.notificationsGateway.sendNotification(offer.listing.sellerId, sellerNotification);
@@ -460,8 +481,26 @@ export class OffersService {
 
         const updated = await this.prisma.offer.update({
             where: { id: offerId },
-            data: { status: prismaStatus },
+            data: { 
+                status: prismaStatus,
+                finalAmount: prismaStatus === 'ACCEPTED' ? offer.counterAmount : undefined
+            },
         });
+
+        if (prismaStatus === 'ACCEPTED') {
+            await this.prisma.offer.updateMany({
+                where: {
+                    listingId: offer.listingId,
+                    id: { not: offerId },
+                    status: 'PENDING',
+                },
+                data: { status: 'REJECTED' },
+            });
+            await this.prisma.listing.update({
+                where: { id: offer.listingId },
+                data: { status: 'OFFER_ACCEPTED' }
+            });
+        }
 
 
 
@@ -477,6 +516,9 @@ export class OffersService {
                 type: prismaStatus === 'ACCEPTED' ? 'OFFER_ACCEPTED' : 'OFFER_REJECTED',
                 title: notifTitle,
                 message: notifMessage,
+                entityType: 'OFFER',
+                entityId: offer.id,
+                actionType: prismaStatus,
                 data: { listingId: offer.listingId, offerId: offer.id },
             });
             this.notificationsGateway.sendNotification(offer.listing.sellerId, sellerNotification);
