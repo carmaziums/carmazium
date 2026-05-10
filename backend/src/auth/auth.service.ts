@@ -236,8 +236,7 @@ export class AuthService {
             const emailNorm = email.toLowerCase().trim();
 
             // Look up the local user by Supabase ID first (most reliable), then email
-            let localUser = await withTimeout(
-                this.prisma.user.findFirst({
+            let localUser = await this.prisma.user.findFirst({
                     where: {
                         OR: [
                             { id: data.user.id },
@@ -250,10 +249,7 @@ export class AuthService {
                         financePartnerProfile: true,
                         insurancePartnerProfile: true,
                     },
-                }),
-                8000,
-                'prisma.user.findFirst'
-            );
+                });
 
             const isEmailConfirmed = !!data.user.email_confirmed_at;
 
@@ -283,8 +279,7 @@ export class AuthService {
                         meta?.role && Object.values(UserRole).includes(meta.role as UserRole)
                             ? (meta.role as UserRole)
                             : UserRole.BUYER;
-                    localUser = await withTimeout(
-                        this.prisma.user.upsert({
+                    localUser = await this.prisma.user.upsert({
                             where: { email: emailNorm },
                             update: {
                                 id: data.user.id,
@@ -307,10 +302,7 @@ export class AuthService {
                                 financePartnerProfile: true,
                                 insurancePartnerProfile: true,
                             },
-                        }),
-                        8000,
-                        'prisma.user.upsert'
-                    );
+                        });
                     this.logger.log(`Auto-synced new user from Supabase: ${email} (${data.user.id})`);
                     
                     // Process any pending dealership invitations
