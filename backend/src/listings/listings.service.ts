@@ -378,12 +378,14 @@ export class ListingsService {
     }
 
     /**
-     * Find a single listing by slug (SEO-friendly)
+     * Find a single listing by slug (SEO-friendly) or ID
      */
-    async findBySlug(slug: string): Promise<Listing> {
+    async findBySlug(slugOrId: string): Promise<Listing> {
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(slugOrId);
+        
         const listing = await this.prisma.listing.findFirst({
             where: {
-                slug,
+                ...(isUuid ? { id: slugOrId } : { slug: slugOrId }),
                 deletedAt: null,
             },
             include: {
@@ -426,14 +428,14 @@ export class ListingsService {
         });
 
         if (!listing) {
-            throw new NotFoundException(`Listing with slug "${slug}" not found`);
+            throw new NotFoundException(`Listing with slug/id "${slugOrId}" not found`);
         }
 
         // Fire-and-forget strictly incrementing the viewCount logic
         this.prisma.listing.update({
             where: { id: listing.id },
             data: { viewCount: { increment: 1 } },
-        }).catch(err => console.error(`Failed to increment views for ${slug}:`, err));
+        }).catch(err => console.error(`Failed to increment views for ${slugOrId}:`, err));
 
         return listing;
     }
@@ -565,7 +567,7 @@ export class ListingsService {
                     await tx.sale.create({
                         data: {
                             listingId: id,
-                            sellerId: listing.sellerId,
+                            sellerId: listing.sellerId || userId,
                             buyerId: null,
                             soldPrice: listing.price,
                         },
@@ -632,7 +634,7 @@ export class ListingsService {
             await tx.sale.create({
                 data: {
                     listingId: id,
-                    sellerId: listing.sellerId,
+                    sellerId: listing.sellerId || userId,
                     buyerId: dto.buyerId || null,
                     soldPrice: dto.soldPrice,
                 },

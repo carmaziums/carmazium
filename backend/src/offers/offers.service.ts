@@ -214,7 +214,7 @@ export class OffersService {
             where: { id: offerId },
             include: {
                 listing: {
-                    select: { id: true, title: true, sellerId: true },
+                    select: { id: true, title: true, sellerId: true, slug: true },
                 },
             },
         });
@@ -306,7 +306,7 @@ export class OffersService {
                 type: notifType,
                 title: notifTitle,
                 message: notifMessage,
-                link: prismaStatus === 'COUNTERED' ? `/vehicle/${offer.listingId}` : '/dashboard/buyer/offers',
+                link: prismaStatus === 'COUNTERED' ? `/vehicle/${offer.listing.slug}` : '/dashboard/buyer/offers',
                 entityType: 'OFFER',
                 entityId: offer.id,
                 actionType: prismaStatus,
