@@ -8,7 +8,11 @@ export interface AppNotification {
     message: string
     body?: string
     isRead: boolean
-    link: string | null
+    link?: string | null
+    data?: Record<string, any> | null
+    entityType?: string | null
+    entityId?: string | null
+    actionType?: string | null
     createdAt: string
 }
 
