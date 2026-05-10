@@ -3,6 +3,9 @@ primary_region = 'lhr'
 
 [build]
 
+[deploy]
+  release_command = "npx -y prisma db push --accept-data-loss"
+
 [http_service]
   internal_port = 8080
   force_https = true
@@ -12,7 +15,6 @@ primary_region = 'lhr'
   processes = ['app']
 
 [[vm]]
-  memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1
-  memory_mb = 256
+  memory_mb = 1024

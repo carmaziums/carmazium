@@ -1,10 +1,10 @@
 "use client"
 
 import * as React from "react"
+import { apiClient } from "@/lib/apiClient"
 import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/Button"
 import { Shield, Car, Wrench, CreditCard, Loader2, CheckCircle2, User } from "lucide-react"
-import { supabase } from "@/lib/supabase"
 
 export default function ProfilePage() {
     const { profile, refreshProfile, loading: authLoading } = useAuth()
@@ -37,48 +37,32 @@ export default function ProfilePage() {
         setDealerLoading(true)
         setSuccess(null)
         try {
-            const { data: { session } } = await supabase.auth.getSession()
-            const response = await fetch(`${API_URL}/users/dealer-profile`, {
+            await apiClient('/users/dealer-profile', {
                 method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session?.access_token}`
-                },
                 body: JSON.stringify(dealerForm)
             })
 
-            if (response.ok) {
-                setSuccess('Dealer profile updated successfully!')
-                await refreshProfile()
-            }
-        } catch (error) {
+            setSuccess('Dealer profile updated successfully!')
+            await refreshProfile()
+        } catch (error: any) {
             console.error('Update failed:', error)
         } finally {
             setDealerLoading(false)
         }
     }
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev';
-
     const handleRoleElevation = async (newRole: string) => {
         setLoading(true)
         setSuccess(null)
         try {
-            const { data: { session } } = await supabase.auth.getSession()
-            const response = await fetch(`${API_URL}/users/elevate`, {
+            await apiClient('/users/elevate', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session?.access_token}`
-                },
                 body: JSON.stringify({ newRole })
             })
 
-            if (response.ok) {
-                setSuccess(`Successfully requested elevation to ${newRole}!`)
-                await refreshProfile()
-            }
-        } catch (error) {
+            setSuccess(`Successfully requested elevation to ${newRole}!`)
+            await refreshProfile()
+        } catch (error: any) {
             console.error('Elevation failed:', error)
         } finally {
             setLoading(false)
