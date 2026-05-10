@@ -20,4 +20,20 @@ export class CreateNotificationDto {
     @IsOptional()
     @IsObject()
     data?: any;
+
+    @IsOptional()
+    @IsString()
+    entityType?: string;
+
+    @IsOptional()
+    @IsString()
+    entityId?: string;
+
+    @IsOptional()
+    @IsString()
+    actionType?: string;
+
+    @IsOptional()
+    @IsString()
+    link?: string;
 }
