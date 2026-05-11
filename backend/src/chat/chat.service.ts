@@ -218,6 +218,7 @@ export class ChatService {
                 type: 'MESSAGE_RECEIVED',
                 title: 'New Message',
                 message: dto.content.substring(0, 50) + (dto.content.length > 50 ? '...' : ''),
+                link: `/dashboard/user?tab=messages&room=${roomId}`,
                 data: { roomId, messageId: message.id },
             });
 

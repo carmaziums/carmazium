@@ -116,7 +116,7 @@ export class OffersService {
                     type: 'OFFER_RECEIVED',
                     title: 'New Offer Received',
                     message: `You received an offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${listing.title}".`,
-                    link: '/dashboard/seller/offers',
+                    link: '/dashboard/user?tab=offers',
                     entityType: 'OFFER',
                     entityId: offer.id,
                     actionType: 'CREATED',
@@ -297,7 +297,7 @@ export class OffersService {
         } else if (prismaStatus === 'COUNTERED') {
             notifTitle = '🔄 Counter Offer Received';
             notifMessage = `The seller countered your offer on "${offer.listing.title}" with £${Number(counterAmount).toLocaleString('en-GB')}.`;
-            notifType = 'OFFER_RECEIVED';
+            notifType = 'OFFER_COUNTERED';
         }
 
         try {
@@ -306,7 +306,7 @@ export class OffersService {
                 type: notifType,
                 title: notifTitle,
                 message: notifMessage,
-                link: prismaStatus === 'COUNTERED' ? `/vehicle/${offer.listing.slug}` : '/dashboard/buyer/offers',
+                link: '/dashboard/user?tab=bids',
                 entityType: 'OFFER',
                 entityId: offer.id,
                 actionType: prismaStatus,
@@ -326,7 +326,7 @@ export class OffersService {
                     type: 'DEAL_CLOSED',
                     title: '✅ Offer Accepted',
                     message: `You accepted an offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${offer.listing.title}". The listing remains active — mark it as Sold from your inventory when the deal is complete.`,
-                    link: '/dashboard/seller/offers',
+                    link: '/dashboard/user?tab=offers',
                     entityType: 'OFFER',
                     entityId: offer.id,
                     actionType: 'ACCEPTED',
@@ -437,6 +437,7 @@ export class OffersService {
                 type: 'OFFER_REJECTED', // Using REJECTED type for withdrawn notifications
                 title: 'Offer Withdrawn',
                 message: `An offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${offer.listing.title}" was withdrawn by the buyer.`,
+                link: '/dashboard/user?tab=offers',
                 entityType: 'OFFER',
                 entityId: offer.id,
                 actionType: 'WITHDRAWN',
@@ -516,6 +517,7 @@ export class OffersService {
                 type: prismaStatus === 'ACCEPTED' ? 'OFFER_ACCEPTED' : 'OFFER_REJECTED',
                 title: notifTitle,
                 message: notifMessage,
+                link: '/dashboard/user?tab=offers',
                 entityType: 'OFFER',
                 entityId: offer.id,
                 actionType: prismaStatus,

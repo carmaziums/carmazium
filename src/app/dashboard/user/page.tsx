@@ -550,6 +550,7 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const [responding, setResponding] = React.useState<string | null>(null)
     const [countering, setCountering] = React.useState<{id: string, amount: string} | null>(null)
     const router = useRouter()
+    const { refreshRooms } = useChat()
 
     const fetchOffers = async () => {
         try {
@@ -607,7 +608,8 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const handleMessage = async (buyerId: string, listingId: string) => {
         try {
             const room = await createChatRoom(buyerId, listingId)
-            router.push(`?tab=messages&room=${room.id}`)
+            await refreshRooms()
+            router.push(`/dashboard/user?tab=messages&room=${room.id}`)
         } catch (err: any) {
             alert('Chat failed: ' + err.message)
         }
@@ -736,6 +738,7 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const [declining, setDeclining] = React.useState<string | null>(null)
     const [startingChat, setStartingChat] = React.useState<string | null>(null)
     const router = useRouter()
+    const { refreshRooms } = useChat()
 
     const fetchData = async () => {
         try {
@@ -803,7 +806,8 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
         try {
             setStartingChat(listingId)
             const room = await createChatRoom(sellerId, listingId)
-            router.push(`?tab=messages&room=${room.id}`)
+            await refreshRooms()
+            router.push(`/dashboard/user?tab=messages&room=${room.id}`)
             onRefreshStats()
         } catch (err: any) {
             alert(err.message || 'Failed to open messages.')
@@ -900,7 +904,15 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                         <Button size="sm" variant="ghost" className="h-8 text-red-400 text-[10px] font-black" onClick={() => handleWithdraw(offer.id)} disabled={actioning === offer.id}>WITHDRAW</Button>
                                                     )}
                                                     {offer.status === 'ACCEPTED' && (
-                                                        <Button size="sm" variant="ghost" className="h-8 text-blue-400 text-[10px] font-black" onClick={() => router.push(`?tab=messages&room=auto&listingId=${offer.listing?.id}`)}>MESSAGE</Button>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            className="h-8 text-blue-400 text-[10px] font-black"
+                                                            onClick={() => handleMessageSeller(offer.listing?.sellerId, offer.listing?.id)}
+                                                            disabled={startingChat === offer.listing?.id}
+                                                        >
+                                                            {startingChat === offer.listing?.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'MESSAGE'}
+                                                        </Button>
                                                     )}
                                                 </div>
                                             </td>
@@ -979,7 +991,12 @@ function MessagesTab({ rooms, refreshRooms }: { rooms: ChatRoom[], refreshRooms:
     const targetRoomId = searchParams.get("room")
 
     React.useEffect(() => {
-        if (!targetRoomId || rooms.length === 0) return
+        if (!targetRoomId) return
+        void refreshRooms()
+    }, [targetRoomId, refreshRooms])
+
+    React.useEffect(() => {
+        if (!targetRoomId) return
         const match = rooms.find(r => r.id === targetRoomId)
         if (match) setSelectedRoom(match)
     }, [rooms, targetRoomId])

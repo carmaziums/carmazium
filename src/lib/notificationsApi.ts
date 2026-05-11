@@ -55,6 +55,8 @@ export function notificationIcon(type: string): string {
         OFFER_COUNTERED:  'RefreshCw',
         OFFER_WITHDRAWN:  'MinusCircle',
         NEW_MESSAGE:      'MessageSquare',
+        MESSAGE_RECEIVED: 'MessageSquare',
+        DEAL_CLOSED:      'CheckCircle',
         LISTING_SOLD:     'BadgeCheck',
         FINANCE_UPDATE:   'CreditCard',
         SYSTEM:           'Bell',
