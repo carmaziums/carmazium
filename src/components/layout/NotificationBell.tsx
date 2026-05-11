@@ -25,12 +25,28 @@ const ICON_MAP: Record<string, React.ReactNode> = {
     OFFER_COUNTERED: <RefreshCw size={14} className="text-blue-400" />,
     OFFER_WITHDRAWN: <MinusCircle size={14} className="text-gray-400" />,
     NEW_MESSAGE:     <MessageSquare size={14} className="text-blue-400" />,
+    MESSAGE_RECEIVED: <MessageSquare size={14} className="text-blue-400" />,
+    DEAL_CLOSED:     <CheckCircle size={14} className="text-emerald-400" />,
     LISTING_SOLD:    <BadgeCheck size={14} className="text-emerald-400" />,
     FINANCE_UPDATE:  <CreditCard size={14} className="text-purple-400" />,
 }
 
 function getIcon(type: string) {
     return ICON_MAP[type] ?? <Bell size={14} className="text-gray-400" />
+}
+
+/** Map legacy dashboard URLs to unified `/dashboard/user` tab deep-links */
+function normalizeNotificationHref(href: string): string {
+    if (!href.startsWith("/")) return href
+    if (href.startsWith("/dashboard/user")) return href
+    if (href.startsWith("/dashboard/buyer/offers")) return "/dashboard/user?tab=bids"
+    if (href.startsWith("/dashboard/seller/offers")) return "/dashboard/user?tab=offers"
+    if (href.startsWith("/dashboard/buyer/messages")) {
+        const m = href.match(/[?&]room=([^&]+)/)
+        return m ? `/dashboard/user?tab=messages&room=${decodeURIComponent(m[1])}` : "/dashboard/user?tab=messages"
+    }
+    if (href === "/dashboard" || href === "/dashboard/") return "/dashboard/user?tab=overview"
+    return href
 }
 
 function timeAgo(dateStr: string) {
@@ -96,30 +112,54 @@ export function NotificationBell() {
         }
         setOpen(false)
 
-        // Resolve link: data.link > entityType+entityId > type-based fallback
-        const dataObj = (typeof n.data === 'object' && n.data) ? n.data as Record<string, any> : {}
-        const link = dataObj.link || n.link
-        if (link) {
-            router.push(link)
+        const dataObj = (typeof n.data === "object" && n.data) ? n.data as Record<string, unknown> : {}
+        const fromDataLink = typeof dataObj.link === "string" ? dataObj.link : null
+        const fromTopLink = typeof n.link === "string" ? n.link : null
+        let href = fromDataLink || fromTopLink
+
+        if (!href && typeof dataObj.roomId === "string") {
+            href = `/dashboard/user?tab=messages&room=${dataObj.roomId}`
+        }
+
+        if (href) {
+            router.push(normalizeNotificationHref(href))
             return
         }
-        // Deep-link via entityType + entityId
-        const eType = (n as any).entityType as string | undefined
-        const eId = (n as any).entityId as string | undefined
-        if (eType === 'OFFER' && eId) {
-            router.push('/dashboard/user?tab=offers')
+
+        const eType = n.entityType ?? undefined
+        const eId = n.entityId ?? undefined
+
+        if (eType === "LISTING" && eId) {
+            router.push("/dashboard/user?tab=inventory")
             return
         }
-        if (eType === 'LISTING' && eId) {
-            router.push('/dashboard/user?tab=inventory')
+
+        if (eType === "OFFER" && eId) {
+            // Without a stored link, only OFFER_COUNTERED is buyer-specific; other offer types may be seller-side.
+            if (n.type === "OFFER_COUNTERED") {
+                router.push("/dashboard/user?tab=bids")
+                return
+            }
+            router.push("/dashboard/user?tab=offers")
             return
         }
-        // Fallback by notification type
-        if (n.type.startsWith('OFFER_')) {
-            router.push('/dashboard/user?tab=offers')
-        } else {
-            router.push('/dashboard')
+
+        if (n.type === "DEAL_CLOSED") {
+            router.push("/dashboard/user?tab=offers")
+            return
         }
+
+        if (n.type === "MESSAGE_RECEIVED" || n.type === "NEW_MESSAGE") {
+            router.push("/dashboard/user?tab=messages")
+            return
+        }
+
+        if (n.type.startsWith("OFFER_")) {
+            router.push("/dashboard/user?tab=offers")
+            return
+        }
+
+        router.push("/dashboard/user?tab=overview")
     }
 
     if (!user) return null
@@ -201,7 +241,7 @@ export function NotificationBell() {
                     {/* Footer */}
                     <div className="px-4 py-3 border-t border-white/10 bg-slate-800/30">
                         <Link
-                            href="/dashboard"
+                            href="/dashboard/user?tab=overview"
                             onClick={() => setOpen(false)}
                             className="text-[11px] text-gray-500 hover:text-white transition-colors font-bold uppercase tracking-widest flex items-center justify-center gap-1"
                         >
