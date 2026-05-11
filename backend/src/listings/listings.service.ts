@@ -373,6 +373,9 @@ export class ListingsService {
                         },
                     },
                 },
+                hpiReport: {
+                    select: { isClear: true }
+                },
             },
         }) as Promise<Listing[]>;
     }
@@ -423,6 +426,9 @@ export class ListingsService {
                         buyerId: true,
                         createdAt: true,
                     },
+                },
+                hpiReport: {
+                    select: { isClear: true, purchasedAt: true }
                 },
             }
         });
@@ -715,6 +721,9 @@ export class ListingsService {
                     { offers: { _count: 'desc' } },
                     { createdAt: 'desc' }
                 ],
+                include: {
+                    hpiReport: true,
+                },
             }),
             this.prisma.listing.count({ where }),
         ]);

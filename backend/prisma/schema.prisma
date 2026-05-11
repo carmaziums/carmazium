@@ -538,12 +538,32 @@ model Listing {
   leads               Lead[]
   damageRecords       DamageRecord[]
   sale                Sale?
+  hpiReport           HpiReport?
 
   @@index([sellerId])
   @@index([vehicleId])
   @@index([status])
   @@index([slug])
   @@map("listings")
+}
+
+// ============================================================================
+// HPI REPORTS
+// ============================================================================
+
+model HpiReport {
+  id              String   @id @default(uuid())
+  listingId       String   @unique
+  vrm             String
+  data            Json     // Storing the full raw JSON from OneAutoAPI
+  isClear         Boolean  // Quick flag if the vehicle is "HPI Clear"
+  purchasedAt     DateTime @default(now())
+  transactionId   String?  // Reference to payment transaction
+  
+  listing         Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@map("hpi_reports")
 }
 
 // ============================================================================

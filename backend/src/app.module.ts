@@ -34,6 +34,8 @@ import { PricingModule } from './pricing/pricing.module';
 import { ScraperModule } from './scraper/scraper.module';
 import { EmailModule } from './email/email.module';
 import { DamageAnalysisModule } from './damage/damage.module';
+import { HpiModule } from './hpi/hpi.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -73,6 +75,7 @@ import { DamageAnalysisModule } from './damage/damage.module';
     ScraperModule,
     EmailModule,
     DamageAnalysisModule,
+    HpiModule,
   ],
   controllers: [AppController],
   providers: [AppService],
