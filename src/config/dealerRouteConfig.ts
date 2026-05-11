@@ -76,8 +76,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         label: "Analytics", 
         title: "Analytics",
         subHeader: "Strategic market performance & predictive insights",
-        icon: BarChart3,
-        hidden: true
+        icon: BarChart3
     },
     { 
         href: "/dashboard/dealer/team", 
