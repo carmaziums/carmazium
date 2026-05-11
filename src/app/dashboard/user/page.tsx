@@ -165,7 +165,7 @@ function UnifiedUserDashboardContent() {
 
 
                     {/* Tab Content */}
-                    <div className="min-h-[60vh]">
+                    <div className="min-h-[60vh] w-full min-w-0">
                         {activeTab === "overview" && <OverviewTab data={dashboardData} loading={loading} setTab={setTab} />}
                         {activeTab === "inventory" && <InventoryTab onRefreshStats={fetchStats} />}
                         {activeTab === "offers" && <OffersTab onRefreshStats={fetchStats} />}
@@ -985,27 +985,52 @@ function MessagesTab({ rooms, refreshRooms }: { rooms: ChatRoom[], refreshRooms:
     }, [rooms, targetRoomId])
 
     return (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-[calc(100vh-280px)]">
-            <div className="glass-card overflow-hidden h-full border border-white/5 bg-white/5 rounded-2xl flex">
-                {/* Room List */}
-                <div className={`w-full lg:w-80 border-r border-white/10 ${selectedRoom ? 'hidden lg:block' : 'block'}`}>
-                    <div className="p-4 border-b border-white/5 flex items-center justify-between">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Conversations</p>
-                        <button onClick={refreshRooms} className="text-gray-500 hover:text-white transition-colors"><RefreshCw size={14} /></button>
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 w-full min-w-0">
+            <div className="glass-card overflow-hidden w-full min-w-0 min-h-0 h-[min(900px,calc(100vh-200px))] min-h-[440px] flex flex-col border border-white/5 bg-white/5 rounded-2xl">
+                <div className="shrink-0 px-5 py-4 md:px-6 md:py-5 border-b border-white/10 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <MessageSquare className="text-primary shrink-0" size={22} />
+                        <div className="min-w-0">
+                            <h2 className="text-lg md:text-xl font-bold font-heading text-white tracking-tight">Messages</h2>
+                            <p className="text-[11px] text-gray-500 font-medium truncate">Conversations with buyers and sellers</p>
+                        </div>
                     </div>
-                    <ChatRoomList onSelectRoom={setSelectedRoom} selectedRoomId={selectedRoom?.id} />
+                    <button
+                        type="button"
+                        onClick={refreshRooms}
+                        className="shrink-0 p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+                        title="Refresh conversations"
+                    >
+                        <RefreshCw size={18} />
+                    </button>
                 </div>
 
-                {/* Chat Window */}
-                <div className={`flex-1 ${!selectedRoom ? 'hidden lg:flex flex-col items-center justify-center' : 'flex'}`}>
-                    {selectedRoom ? (
-                        <ChatWindow room={selectedRoom} onBack={() => setSelectedRoom(null)} />
-                    ) : (
-                        <>
-                            <MessageSquare className="w-16 h-16 text-gray-800 mb-4" />
-                            <p className="text-sm font-bold text-gray-600 uppercase tracking-widest">Select a message to start chatting</p>
-                        </>
-                    )}
+                <div className="flex flex-1 flex-row min-h-0 min-w-0">
+                    {/* Room list — fixed width on desktop, full width on mobile when visible */}
+                    <div
+                        className={`flex shrink-0 flex-col min-h-0 min-w-0 w-full max-w-full border-r border-white/10 bg-slate-900/20 lg:w-80 lg:max-w-[20rem] lg:shrink-0 ${
+                            selectedRoom ? "hidden lg:flex" : "flex"
+                        }`}
+                    >
+                        <ChatRoomList onSelectRoom={setSelectedRoom} selectedRoomId={selectedRoom?.id} />
+                    </div>
+
+                    {/* Chat pane — grows to fill remaining main column */}
+                    <div
+                        className={`flex min-h-0 min-w-0 flex-1 flex-col bg-slate-900/30 ${
+                            !selectedRoom ? "hidden w-full lg:flex lg:items-center lg:justify-center" : "flex w-full"
+                        }`}
+                    >
+                        {selectedRoom ? (
+                            <ChatWindow room={selectedRoom} onBack={() => setSelectedRoom(null)} />
+                        ) : (
+                            <div className="flex max-w-md flex-col items-center justify-center px-6 text-center">
+                                <MessageSquare className="mb-4 h-16 w-16 text-gray-600 opacity-40" />
+                                <p className="text-base font-semibold text-gray-400">Select a conversation</p>
+                                <p className="mt-1 text-sm text-gray-500">Choose a thread from the list to read and reply</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
