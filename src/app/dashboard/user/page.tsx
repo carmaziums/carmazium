@@ -148,7 +148,12 @@ function UnifiedUserDashboardContent() {
         <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 {/* Unified Sidebar */}
-                <DashboardSidebar role="seller" userName={userName} userType={`${userRole} Account`}>
+                <DashboardSidebar
+                    role="seller"
+                    userName={userName}
+                    userType={`${userRole} Account`}
+                    myOffersCounterBadge={dashboardData?.buyer.counteredOffersPending}
+                >
                     <Link href="/sell">
                         <Button className="w-full flex items-center gap-2 shadow-neon h-12" shape="default">
                             <PlusCircle size={18} /> Create New Listing
@@ -712,10 +717,24 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
 // BIDS TAB (Outgoing)
 // ─────────────────────────────────────────────────────────────────────────────
 
+function outgoingOfferStatusClass(status: Offer['status']) {
+    switch (status) {
+        case 'ACCEPTED': return 'text-emerald-400'
+        case 'PENDING': return 'text-amber-400'
+        case 'COUNTERED': return 'text-blue-400'
+        case 'REJECTED': return 'text-red-400'
+        case 'WITHDRAWN': return 'text-gray-500'
+        default: return 'text-gray-500'
+    }
+}
+
 function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const [offers, setOffers] = React.useState<Offer[]>([])
     const [loading, setLoading] = React.useState(true)
     const [actioning, setActioning] = React.useState<string | null>(null)
+    const [accepting, setAccepting] = React.useState<string | null>(null)
+    const [declining, setDeclining] = React.useState<string | null>(null)
+    const [startingChat, setStartingChat] = React.useState<string | null>(null)
     const router = useRouter()
 
     const fetchData = async () => {
@@ -739,12 +758,57 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
         try {
             setActioning(id)
             await withdrawOffer(id)
-            fetchData()
+            await fetchData()
             onRefreshStats()
         } catch (err: any) {
             alert(err.message)
         } finally {
             setActioning(null)
+        }
+    }
+
+    const handleAcceptCounter = async (offerId: string) => {
+        if (!confirm("Accept the seller's counter offer? You can then message the seller to finalize the purchase.")) return
+        try {
+            setAccepting(offerId)
+            await respondToCounterOffer(offerId, 'ACCEPTED')
+            await fetchData()
+            onRefreshStats()
+        } catch (err: any) {
+            alert(err.message || 'Failed to accept counter offer.')
+        } finally {
+            setAccepting(null)
+        }
+    }
+
+    const handleDeclineCounter = async (offerId: string) => {
+        if (!confirm('Decline this counter offer?')) return
+        try {
+            setDeclining(offerId)
+            await respondToCounterOffer(offerId, 'REJECTED')
+            await fetchData()
+            onRefreshStats()
+        } catch (err: any) {
+            alert(err.message || 'Failed to decline counter offer.')
+        } finally {
+            setDeclining(null)
+        }
+    }
+
+    const handleMessageSeller = async (sellerId: string | undefined, listingId: string | undefined) => {
+        if (!sellerId || !listingId) {
+            alert('Seller or listing information is unavailable.')
+            return
+        }
+        try {
+            setStartingChat(listingId)
+            const room = await createChatRoom(sellerId, listingId)
+            router.push(`?tab=messages&room=${room.id}`)
+            onRefreshStats()
+        } catch (err: any) {
+            alert(err.message || 'Failed to open messages.')
+        } finally {
+            setStartingChat(null)
         }
     }
 
@@ -774,35 +838,75 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                 ) : offers.length === 0 ? (
                                     <tr><td colSpan={4} className="px-6 py-10 text-center text-gray-600 italic">No outgoing offers.</td></tr>
                                 ) : (
-                                    offers.map(offer => (
+                                    offers.map(offer => {
+                                        const thumb = offer.listing?.images?.[0] || '/assets/images/featured-sports.png'
+                                        return (
                                         <tr key={offer.id} className="hover:bg-white/[0.02]">
                                             <td className="px-6 py-4">
                                                 <Link href={`/vehicle/${offer.listing?.slug}`} className="flex items-center gap-3 group">
                                                     <div className="relative w-10 h-8 rounded border border-white/10 overflow-hidden shrink-0">
-                                                        <Image src={offer.listing?.images?.[0] || ""} alt="" fill className="object-cover" />
+                                                        <Image src={thumb} alt="" fill className="object-cover" />
                                                     </div>
                                                     <span className="font-bold text-sm uppercase group-hover:text-primary transition-colors">{offer.listing?.title}</span>
                                                 </Link>
                                             </td>
-                                            <td className="px-6 py-4 font-black font-mono text-white">{formatPrice(offer.amount)}</td>
                                             <td className="px-6 py-4">
-                                                <span className={`text-[10px] font-black uppercase tracking-widest ${
-                                                    offer.status === 'ACCEPTED' ? 'text-emerald-400' : 
-                                                    offer.status === 'PENDING' ? 'text-amber-400' : 'text-gray-500'
-                                                }`}>
+                                                <div className="font-black font-mono text-white">{formatPrice(offer.amount)}</div>
+                                                {offer.status === 'COUNTERED' && offer.counterAmount != null && (
+                                                    <div className="text-[10px] font-black uppercase tracking-widest text-blue-400 mt-1">
+                                                        Seller counter: {formatPrice(offer.counterAmount)}
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`text-[10px] font-black uppercase tracking-widest ${outgoingOfferStatusClass(offer.status)}`}>
                                                     {offer.status}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                {offer.status === 'PENDING' && (
-                                                    <Button size="sm" variant="ghost" className="h-8 text-red-400 text-[10px] font-black" onClick={() => handleWithdraw(offer.id)} disabled={actioning === offer.id}>WITHDRAW</Button>
-                                                )}
-                                                {offer.status === 'ACCEPTED' && (
-                                                    <Button size="sm" variant="ghost" className="h-8 text-blue-400 text-[10px] font-black" onClick={() => router.push(`?tab=messages&room=auto&listingId=${offer.listing?.id}`)}>MESSAGE</Button>
-                                                )}
+                                                <div className="flex flex-wrap items-center justify-end gap-2">
+                                                    {offer.status === 'COUNTERED' && (
+                                                        <>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                className="h-8 text-emerald-400 text-[10px] font-black"
+                                                                onClick={() => handleAcceptCounter(offer.id)}
+                                                                disabled={accepting === offer.id || declining === offer.id}
+                                                            >
+                                                                {accepting === offer.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'ACCEPT COUNTER'}
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                className="h-8 text-red-400 text-[10px] font-black"
+                                                                onClick={() => handleDeclineCounter(offer.id)}
+                                                                disabled={accepting === offer.id || declining === offer.id}
+                                                            >
+                                                                {declining === offer.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'DECLINE'}
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                className="h-8 text-blue-400 text-[10px] font-black"
+                                                                onClick={() => handleMessageSeller(offer.listing?.sellerId, offer.listing?.id)}
+                                                                disabled={startingChat === offer.listing?.id}
+                                                            >
+                                                                {startingChat === offer.listing?.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'MESSAGE'}
+                                                            </Button>
+                                                        </>
+                                                    )}
+                                                    {offer.status === 'PENDING' && (
+                                                        <Button size="sm" variant="ghost" className="h-8 text-red-400 text-[10px] font-black" onClick={() => handleWithdraw(offer.id)} disabled={actioning === offer.id}>WITHDRAW</Button>
+                                                    )}
+                                                    {offer.status === 'ACCEPTED' && (
+                                                        <Button size="sm" variant="ghost" className="h-8 text-blue-400 text-[10px] font-black" onClick={() => router.push(`?tab=messages&room=auto&listingId=${offer.listing?.id}`)}>MESSAGE</Button>
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
-                                    ))
+                                        )
+                                    })
                                 )}
                             </tbody>
                         </table>

@@ -37,9 +37,11 @@ interface SidebarProps {
     userName?: string
     userType?: string
     children?: React.ReactNode
+    /** Unified dashboard (/dashboard/user): badge on My Offers for seller counter-offers awaiting buyer action */
+    myOffersCounterBadge?: number
 }
 
-export function DashboardSidebar({ role, userName: initialUserName, userType: initialUserType, children }: SidebarProps) {
+export function DashboardSidebar({ role, userName: initialUserName, userType: initialUserType, children, myOffersCounterBadge }: SidebarProps) {
     const pathname = usePathname()
     const { profile, user, signOut } = useAuth()
     const { unreadCount } = useChat()
@@ -119,7 +121,15 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
         ]
     }
 
-    const currentLinks = links[role as keyof typeof links] || []
+    const currentLinks = React.useMemo(() => {
+        const base = links[role as keyof typeof links] || []
+        if (!myOffersCounterBadge || myOffersCounterBadge < 1) return base
+        return base.map((link) =>
+            link.href.includes("tab=bids")
+                ? { ...link, badge: myOffersCounterBadge }
+                : link,
+        )
+    }, [role, myOffersCounterBadge])
     // Get first 5 items for mobile bottom nav
     const mobileLinks = currentLinks.slice(0, 5)
 
