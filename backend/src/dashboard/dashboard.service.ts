@@ -45,6 +45,7 @@ export class DashboardService {
         const [
             activeBids,
             watchlistCount,
+            buyerCounteredOffers,
             totalListings,
             activeListings,
             soldListings,
@@ -56,6 +57,8 @@ export class DashboardService {
             // Buyer stats (Always specific to the logged-in user)
             this.prisma.offer.count({ where: { buyerId: userId, status: 'PENDING' } }),
             this.prisma.watchlistItem.count({ where: { userId } }),
+            // Buyer: seller countered — needs accept/decline in My Offers
+            this.prisma.offer.count({ where: { buyerId: userId, status: 'COUNTERED' } }),
             
             // Seller/Dealer stats (Aggregated for the dealership if staff)
             this.prisma.listing.count({ where: { sellerId: targetOwnerId, deletedAt: null } }),
@@ -96,6 +99,7 @@ export class DashboardService {
             buyer: {
                 activeBids,
                 watchlistCount,
+                counteredOffersPending: buyerCounteredOffers,
             },
             seller: {
                 totalListings,

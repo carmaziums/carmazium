@@ -450,6 +450,8 @@ export interface UnifiedDashboardData {
     buyer: {
         activeBids: number
         watchlistCount: number
+        /** Offers where the seller countered and the buyer must respond (unified dashboard API) */
+        counteredOffersPending?: number
     }
     seller: {
         totalListings: number
