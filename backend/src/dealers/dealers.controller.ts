@@ -46,6 +46,24 @@ export class DealersController {
         return new StandardResponse(stats);
     }
 
+    // ─── Analytics ───────────────────────────────────────────────────
+
+    @Get('analytics')
+    @ApiOperation({ summary: 'Get dealer analytics data with charts and trends' })
+    @ApiQuery({ name: 'range', required: false, description: 'Date range preset', example: '30d', enum: ['7d', '30d', '90d', 'custom'] })
+    @ApiQuery({ name: 'from', required: false, description: 'Custom range start (YYYY-MM-DD)', example: '2026-01-01' })
+    @ApiQuery({ name: 'to', required: false, description: 'Custom range end (YYYY-MM-DD)', example: '2026-05-12' })
+    @ApiResponse({ status: 200, description: 'Analytics data with KPIs, trends, funnels, and charts' })
+    async getAnalytics(
+        @CurrentUser() user: any,
+        @Query('range') range?: string,
+        @Query('from') from?: string,
+        @Query('to') to?: string,
+    ): Promise<StandardResponse<any>> {
+        const data = await this.dealersService.getAnalytics(user.id, range || '30d', from, to);
+        return new StandardResponse(data);
+    }
+
     // ─── Leads (CRM) ───────────────────────────────────────────────
 
     @Get('leads')

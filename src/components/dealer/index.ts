@@ -4,8 +4,13 @@ export { BidVolumeChart } from "./BidVolumeChart"
 export { CancellationChart } from "./CancellationChart"
 export { VehicleCard } from "./VehicleCard"
 export { PipelineRow, ModalOverlay } from "./PipelineRow"
+export { RevenueAreaChart } from "./RevenueAreaChart"
+export { LeadFunnelChart } from "./LeadFunnelChart"
+export { OfferDonutChart } from "./OfferDonutChart"
+export { InventoryAgingChart } from "./InventoryAgingChart"
 
 export type { DateRangePreset } from "./DateRangeFilter"
 export type { KPIMetric } from "./KPIGrid"
 export type { VehicleCardData } from "./VehicleCard"
 export type { PurchaseItem, PurchaseStatus } from "./PipelineRow"
+
