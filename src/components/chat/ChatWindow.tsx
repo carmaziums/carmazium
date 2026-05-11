@@ -196,7 +196,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     }, [messages])
 
     return (
-        <div className="flex flex-col h-full bg-slate-900/50 rounded-xl border border-white/10">
+        <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col bg-slate-900/50 rounded-xl border border-white/10">
             {/* Header */}
             <div className="flex items-center gap-3 p-4 border-b border-white/10">
                 {onBack && (
