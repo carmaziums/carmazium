@@ -92,6 +92,47 @@ export default function DealerAnalyticsPage() {
         }
     }
 
+    function handleExportReport() {
+        if (!analytics) return;
+
+        const kpis = [
+            ["Metric", "Value", "Trend vs Prev Period (%)"],
+            ["Total Revenue", analytics.kpis.totalRevenue, analytics.kpis.totalRevenueTrend],
+            ["Units Sold", analytics.kpis.totalUnitsSold, analytics.kpis.totalUnitsSoldTrend],
+            ["Avg Days to Sell", analytics.kpis.avgDaysToSell, analytics.kpis.avgDaysToSellTrend],
+            ["Offer Win Rate (%)", analytics.kpis.offerConversionRate, analytics.kpis.offerConversionRateTrend],
+            ["Lead Conversion (%)", analytics.kpis.leadConversionRate, analytics.kpis.leadConversionRateTrend],
+            ["Avg Views/Listing", analytics.kpis.avgViewsPerListing, analytics.kpis.avgViewsPerListingTrend]
+        ];
+
+        const topVehiclesHeader = ["\nTop Performing Vehicles"];
+        const topVehiclesColumns = ["Title", "Price", "Views", "Offers", "Status", "Days Listed"];
+        const topVehiclesRows = analytics.topVehicles.map(v => [
+            `"${v.title.replace(/"/g, '""')}"`,
+            v.price,
+            v.views,
+            v.offerCount,
+            v.status,
+            v.daysListed
+        ]);
+
+        const csvRows = [
+            ...kpis.map(row => row.join(",")),
+            topVehiclesHeader.join(","),
+            topVehiclesColumns.join(","),
+            ...topVehiclesRows.map(row => row.join(","))
+        ];
+
+        const csvContent = "data:text/csv;charset=utf-8," + csvRows.join("\n");
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `dealer_analytics_report_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
     const userName = profile?.firstName
         ? `${profile.firstName} ${profile.lastName || ""}`
         : (user?.email?.split('@')[0] || "Dealer")
@@ -181,7 +222,7 @@ export default function DealerAnalyticsPage() {
                             title="Performance Analytics"
                             subHeader="Real-time dealership performance metrics & strategic insights"
                         />
-                        <Button className="flex items-center gap-2 shadow-neon h-11 shrink-0" variant="outline" size="sm">
+                        <Button onClick={handleExportReport} disabled={!analytics} className="flex items-center gap-2 shadow-neon h-11 shrink-0" variant="outline" size="sm">
                             <Download size={16} /> Export Report
                         </Button>
                     </div>
