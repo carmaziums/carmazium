@@ -8,6 +8,7 @@ import {
     Req,
     UseGuards,
     RawBody,
+    BadRequestException,
 } from '@nestjs/common';
 import {
     ApiTags,
@@ -51,9 +52,13 @@ export class PaymentsController {
     @ApiOperation({ summary: 'Create a Stripe Checkout Session for HPI Report' })
     async createHpiCheckout(
         @Body('vrm') vrm: string,
+        @Body('listingId') listingId: string,
         @CurrentUser() user: any,
     ) {
-        const result = await this.paymentsService.createHpiSession(vrm, user.id);
+        if (!listingId) {
+            throw new BadRequestException('listingId is required for HPI checkout');
+        }
+        const result = await this.paymentsService.createHpiSession(vrm, user.id, listingId);
         return new StandardResponse(result);
     }
 

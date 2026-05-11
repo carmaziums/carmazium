@@ -1,12 +1,14 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { HpiService } from '../hpi/hpi.service';
 
 @Injectable()
 export class PaymentsService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly config: ConfigService,
+        private readonly hpiService: HpiService,
     ) {}
 
     // Prices in GBP
@@ -110,7 +112,7 @@ export class PaymentsService {
     /**
      * Create a Stripe Checkout Session for an HPI Report.
      */
-    async createHpiSession(vrm: string, userId: string) {
+    async createHpiSession(vrm: string, userId: string, listingId: string) {
         const stripe = await this.getStripe();
         const baseUrl = this.config.get<string>('FRONTEND_URL') || 'http://localhost:3000';
 
@@ -118,7 +120,7 @@ export class PaymentsService {
         const transaction = await this.prisma.transaction.create({
             data: {
                 userId,
-                listingId: '', // Temporarily empty if listing not created yet
+                listingId,
                 amount: this.HPI_REPORT_PRICE,
                 type: 'HPI_REPORT' as any,
                 status: 'PENDING',
@@ -146,6 +148,7 @@ export class PaymentsService {
                 transactionId: transaction.id,
                 userId,
                 vrm,
+                listingId,
                 type: 'HPI_REPORT',
             },
             success_url: `${baseUrl}/sell?hpi_success=true&vrm=${vrm}&session_id={CHECKOUT_SESSION_ID}`,
@@ -319,6 +322,14 @@ export class PaymentsService {
                             isFeatured: isPremium,
                             featuredUntil: isPremium ? new Date(Date.now() + 28 * 24 * 60 * 60 * 1000) : null
                         },
+                    });
+                }
+
+                if (type === 'HPI_REPORT') {
+                    const { vrm } = session.metadata;
+                    // Fire and forget to prevent blocking the webhook response
+                    this.hpiService.generateAndSaveReport(listingId, vrm, transactionId).catch(err => {
+                        console.error('Failed to generate HPI report after payment:', err);
                     });
                 }
                 break;
