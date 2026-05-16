@@ -3,16 +3,18 @@
 import Image from "next/image"
 import Link from "next/link"
 import dynamic from "next/dynamic"
-import { Search, ArrowRight, ShieldCheck, UserCheck, FileText, CheckCircle, Handshake, Shield, Lightbulb, Star, Sparkles, Loader2 } from "lucide-react"
+import { Search, ArrowRight, ShieldCheck, UserCheck, FileText, CheckCircle, Handshake, Shield, Lightbulb, Star, Sparkles, Loader2, Gavel, Flame, Users, Clock } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { BrowseByCategory } from "@/components/features/BrowseByCategory"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion"
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { formatPrice, type Listing } from "@/lib/listingApi"
 import { aiSearch, type AiSearchResult } from "@/lib/aiApi"
 import { CarCard } from "@/components/features/CarCard"
+import { getActiveAuctions, type Auction, getCurrentBid, getBidCount } from "@/lib/auctionApi"
+import { CountdownTimer } from "@/components/features/CountdownTimer"
 
 /* ── Dynamic imports for below-fold heavy components ────────────────────────
  * Code-split these into separate chunks so they don't block initial load.
@@ -65,6 +67,11 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
     const qs = new URLSearchParams(params).toString()
     router.push(`/search?${qs}`)
   }
+
+  const [liveAuctions, setLiveAuctions] = useState<Auction[]>([])
+  useEffect(() => {
+    getActiveAuctions().then(data => setLiveAuctions(data.slice(0, 4))).catch(() => {})
+  }, [])
 
   return (
     <div className="w-full max-w-[100vw] overflow-x-hidden flex flex-col">
@@ -299,6 +306,80 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
 
 
 
+
+      {/* Live Auctions Section */}
+      {liveAuctions.length > 0 && (
+        <section className="container mx-auto px-5 mb-16">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                <span className="text-red-500 text-xs font-bold uppercase tracking-widest">Live Now</span>
+              </div>
+              <h2 className="text-3xl font-bold font-heading flex items-center gap-3">
+                <Gavel className="text-red-500" size={28} strokeWidth={1.5} />
+                Live Auctions
+              </h2>
+              <p className="text-gray-400 text-sm mt-1">Real-time bidding — place your bid before the gavel drops</p>
+            </div>
+            <Link href="/auctions" className="text-sm text-red-500 hover:text-red-400 flex items-center gap-1 font-medium">
+              View All <ArrowRight size={14} />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {liveAuctions.map((auction, i) => {
+              const currentBid = getCurrentBid(auction)
+              const bidCount = getBidCount(auction)
+              const image = auction.listing.images?.[0] ?? "/assets/images/hero-bg.png"
+              const vehicle = `${auction.listing.year ?? ""} ${auction.listing.make ?? ""} ${auction.listing.model ?? ""}`.trim()
+              return (
+                <motion.div
+                  key={auction.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: i * 0.07 }}
+                >
+                  <Link href={`/auctions/live/${auction.id}`} className="group block bg-slate-900/80 rounded-2xl overflow-hidden border border-white/5 hover:border-red-500/30 transition-all duration-300 hover:shadow-[0_8px_30px_rgba(220,38,38,0.12)]">
+                    <div className="relative h-44 overflow-hidden">
+                      <Image src={image} alt={auction.listing.title} fill sizes="(max-width: 640px) 100vw, 25vw" className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/20 to-transparent" />
+                      <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 bg-red-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-[0_0_10px_rgba(220,38,38,0.5)]">
+                        <Flame size={9} /> LIVE
+                      </div>
+                      <div className="absolute top-2.5 right-2.5 flex items-center gap-1 bg-black/50 backdrop-blur text-white text-[10px] font-bold px-2 py-1 rounded-full">
+                        <Users size={9} /> {bidCount}
+                      </div>
+                    </div>
+                    <div className="p-3.5 space-y-2.5">
+                      <div>
+                        <p className="text-slate-500 text-[10px] uppercase tracking-widest font-bold">{vehicle}</p>
+                        <h3 className="text-white font-bold text-sm leading-tight line-clamp-1 mt-0.5">{auction.listing.title}</h3>
+                      </div>
+                      <div className="flex items-center justify-between bg-slate-800/60 rounded-xl px-3 py-2">
+                        <div>
+                          <p className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">{bidCount > 0 ? "Current Bid" : "Starting"}</p>
+                          <p className="text-white font-mono font-bold text-base leading-none">£{currentBid.toLocaleString()}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[9px] text-slate-500 uppercase font-bold tracking-wider mb-0.5">Ends In</p>
+                          <div className="text-red-400 text-xs font-mono font-bold">
+                            <CountdownTimer targetDate={new Date(auction.endTime)} minimal />
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-red-500 text-xs font-bold flex items-center gap-1 group-hover:gap-2 transition-all">
+                        Bid Now <ArrowRight size={11} />
+                      </p>
+                    </div>
+                  </Link>
+                </motion.div>
+              )
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Testimonials Section (dynamically imported) */}
       <TestimonialsSection />

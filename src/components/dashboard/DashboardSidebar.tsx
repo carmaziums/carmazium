@@ -147,9 +147,10 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-lg border-t border-white/10 safe-area-pb">
                 <div className="flex justify-around items-center py-2 px-1">
                     {mobileLinks.map((link) => {
-                        const isActive = pathname === "/dashboard/user" 
-                            ? (searchParams.get("tab") === (new URL(link.href, window.location.origin).searchParams.get("tab")))
-                            : pathname === link.href
+                        const linkPath = link.href.split('?')[0]
+                        const isActive = pathname === "/dashboard/user" && linkPath === "/dashboard/user"
+                            ? (searchParams.get("tab") === new URL(link.href, window.location.origin).searchParams.get("tab"))
+                            : pathname === linkPath
                         const Icon = link.icon
                         return (
                             <Link
@@ -285,9 +286,10 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                     {/* Navigation */}
                     <nav className="space-y-1">
                         {currentLinks.map((link) => {
-                            const isActive = pathname === "/dashboard/user" 
-                                ? (searchParams.get("tab") === (new URL(link.href, window.location.origin).searchParams.get("tab")))
-                                : pathname === link.href
+                            const linkPath = link.href.split('?')[0]
+                            const isActive = pathname === "/dashboard/user" && linkPath === "/dashboard/user"
+                                ? (searchParams.get("tab") === new URL(link.href, window.location.origin).searchParams.get("tab"))
+                                : pathname === linkPath
                             const Icon = link.icon
                             return (
                                 <Link

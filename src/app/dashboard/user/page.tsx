@@ -341,6 +341,7 @@ function WatchlistTab() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
+    const { profile } = useAuth()
     const [listings, setListings] = React.useState<Listing[]>([])
     const [loading, setLoading] = React.useState(true)
     const [page, setPage] = React.useState(1)
@@ -348,6 +349,8 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const [deleting, setDeleting] = React.useState<string | null>(null)
     const [boosting, setBoosting] = React.useState<string | null>(null)
     const [saleListing, setSaleListing] = React.useState<Listing | null>(null)
+
+    const auctionDashPath = profile?.role === 'DEALER' ? '/dashboard/dealer/auctions' : '/dashboard/seller/auctions'
 
     const fetchListings = React.useCallback(async () => {
         try {
@@ -488,6 +491,11 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                         <Link href={`/dashboard/seller/add-listing?editId=${listing.id}`} className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-white/5">
                                                             <Pencil size={14} /> Edit
                                                         </Link>
+                                                        {listing.type === 'AUCTION' && listing.status === 'ACTIVE' && (
+                                                            <Link href={`${auctionDashPath}?listingId=${listing.id}`} className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-orange-500/10 text-orange-400 w-full">
+                                                                <Gavel size={14} /> Schedule Auction
+                                                            </Link>
+                                                        )}
                                                         {listing.status !== 'SOLD' && (
                                                             <button 
                                                                 onClick={() => setSaleListing(listing)}

@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/Textarea"
 import {
     Search, Loader2, BadgeCheck, Camera, Upload, X,
     CheckCircle, ArrowRight, Sparkles, Car, MapPin,
-    LocateFixed, PoundSterling, AlertTriangle, Zap
+    LocateFixed, PoundSterling, AlertTriangle, Zap, Gavel, List
 } from "lucide-react"
 import Image from "next/image"
 import { ImageUpload } from "@/components/listing/ImageUpload"
@@ -51,6 +51,7 @@ export function DealerQuickList() {
     const [isSubmitting, setIsSubmitting] = React.useState(false)
     const [submitError, setSubmitError] = React.useState<string | null>(null)
     const [publishAs, setPublishAs] = React.useState<"ACTIVE" | "DRAFT">("ACTIVE")
+    const [listingType, setListingType] = React.useState<"CLASSIFIED" | "AUCTION">("CLASSIFIED")
 
     // ─── Load existing listing when editing ───────────────────────────────────
     React.useEffect(() => {
@@ -193,7 +194,7 @@ export function DealerQuickList() {
                 year: dvlaData.year || new Date().getFullYear(),
                 vrm: vrm.toUpperCase(),
                 images,
-                listingType: "CLASSIFIED",
+                listingType,
                 status: publishAs,
                 badgeTier: "FREE",
                 vehicleType: "CAR" as VehicleTypeValue,
@@ -261,6 +262,37 @@ export function DealerQuickList() {
                     </div>
                 </div>
             </div>
+
+            {/* ── Listing Type Selector ─────────────────────────────────────── */}
+            {!editId && (
+                <section className="space-y-3">
+                    <h2 className="text-sm font-black uppercase tracking-widest text-gray-400">Listing Type</h2>
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            type="button"
+                            onClick={() => setListingType("CLASSIFIED")}
+                            className={`flex items-center gap-3 p-4 rounded-xl border transition-all text-left ${listingType === "CLASSIFIED" ? "border-primary/60 bg-primary/10 text-white" : "border-white/10 bg-slate-900/40 text-gray-400 hover:border-white/20"}`}
+                        >
+                            <List size={18} className={listingType === "CLASSIFIED" ? "text-primary" : ""} />
+                            <div>
+                                <p className="font-bold text-sm">Retail Listing</p>
+                                <p className="text-[11px] opacity-60 mt-0.5">Fixed price, buyer offers</p>
+                            </div>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setListingType("AUCTION")}
+                            className={`flex items-center gap-3 p-4 rounded-xl border transition-all text-left ${listingType === "AUCTION" ? "border-orange-500/60 bg-orange-500/10 text-white" : "border-white/10 bg-slate-900/40 text-gray-400 hover:border-white/20"}`}
+                        >
+                            <Gavel size={18} className={listingType === "AUCTION" ? "text-orange-400" : ""} />
+                            <div>
+                                <p className="font-bold text-sm">Auction</p>
+                                <p className="text-[11px] opacity-60 mt-0.5">Live bidding, 5h duration</p>
+                            </div>
+                        </button>
+                    </div>
+                </section>
+            )}
 
             {/* ── SECTION 1: VRM Lookup ────────────────────────────────────── */}
             <section className="space-y-4">
