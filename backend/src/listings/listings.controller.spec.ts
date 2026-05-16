@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ListingsController } from './listings.controller';
 import { ListingsService } from './listings.service';
+import { AuthService } from '../auth/auth.service';
 
 describe('ListingsController', () => {
     let controller: ListingsController;
@@ -15,6 +16,10 @@ describe('ListingsController', () => {
                         getEarnings: jest.fn().mockResolvedValue({ sales: [], totalRevenue: 0, totalSales: 0 }),
                         findBySlug: jest.fn(),
                     },
+                },
+                {
+                    provide: AuthService,
+                    useValue: { validateSession: jest.fn() },
                 },
             ],
         }).compile();
