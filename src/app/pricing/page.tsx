@@ -3,7 +3,7 @@ import Link from "next/link"
 import {
     CheckCircle, XCircle, Zap, Shield, Star, Camera,
     Tag, BarChart3, BadgeCheck, ArrowRight, HelpCircle,
-    Sparkles, MessageSquare, ChevronDown,
+    Sparkles, MessageSquare, ChevronDown, Gavel, Clock, Users,
 } from "lucide-react"
 import { PRICING } from "@/lib/pricingConfig"
 
@@ -31,7 +31,7 @@ const TIER_FEATURES: TierFeature[] = [
     { label: "Priority search placement",     basic: false,    standard: false,   premium: true },
     { label: "HPI Verified badge",            basic: "Add-on", standard: "Add-on", premium: "Included" },
     { label: "Featured boost eligibility",    basic: false,    standard: true,    premium: true },
-    { label: "Listing duration",              basic: "30 days", standard: "60 days", premium: "90 days" },
+    { label: "Listing duration",              basic: "30 days", standard: "30 days", premium: "90 days" },
 ]
 
 const FAQS = [
@@ -104,7 +104,32 @@ export default function PricingPage() {
 
             {/* ── Listing Tiers ────────────────────────────────────────── */}
             <section className="container mx-auto px-6 mb-24">
-                <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+
+                    {/* Auction — Free */}
+                    <div className="relative bg-gradient-to-b from-orange-500/10 to-slate-800/50 border border-orange-500/30 rounded-2xl p-8 flex flex-col shadow-[0_0_30px_rgba(249,115,22,0.1)]">
+                        <div className="mb-6">
+                            <div className="flex items-center gap-2 mb-2">
+                                <Gavel size={14} className="text-orange-400" />
+                                <p className="text-xs font-bold uppercase tracking-widest text-orange-400">Auction</p>
+                            </div>
+                            <div className="flex items-end gap-2 mb-1">
+                                <span className="text-5xl font-black text-white">Free</span>
+                            </div>
+                            <p className="text-gray-500 text-sm">6-hour live open auction</p>
+                        </div>
+                        <ul className="space-y-3 mb-8 flex-1">
+                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Live bidding marketplace</li>
+                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Open to all buyers</li>
+                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> 6-hour auction duration</li>
+                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Anti-snipe protection</li>
+                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Real-time bid feed</li>
+                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Post-auction seller chat</li>
+                        </ul>
+                        <Link href="/sell" className="block w-full py-3 rounded-xl border border-orange-500/40 bg-orange-500/10 text-center text-sm font-bold text-orange-300 hover:bg-orange-500/20 transition-all">
+                            Start Auction
+                        </Link>
+                    </div>
 
                     {/* Basic */}
                     <div className="relative bg-slate-800/50 border border-white/10 rounded-2xl p-8 flex flex-col">
@@ -137,14 +162,14 @@ export default function PricingPage() {
                                 <span className="text-5xl font-black text-white">£{PRICING.listing.standard.price}</span>
                                 <span className="text-gray-500 text-sm mb-1.5">one-off</span>
                             </div>
-                            <p className="text-gray-500 text-sm">60-day listing, more reach</p>
+                            <p className="text-gray-500 text-sm">30-day listing, more reach</p>
                         </div>
                         <ul className="space-y-3 mb-8 flex-1">
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Everything in Basic</li>
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Up to 15 photos</li>
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Performance analytics</li>
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Featured boost eligible</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> 60-day listing duration</li>
+                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> 30-day listing duration</li>
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><XCircle size={15} className="text-gray-700 shrink-0" /> Priority search placement</li>
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><XCircle size={15} className="text-gray-700 shrink-0" /> Free HPI included</li>
                         </ul>

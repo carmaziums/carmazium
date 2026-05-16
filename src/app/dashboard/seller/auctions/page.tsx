@@ -149,7 +149,7 @@ function SellerAuctionsPage() {
                 minIncrement: Number(formMinIncrement) || 100,
             }
             await createAuction(dto)
-            const endDisplay = addHours(new Date(formStartTime).toISOString(), 5)
+            const endDisplay = addHours(new Date(formStartTime).toISOString(), 6)
             setSuccessMsg(`Auction scheduled! It will run until ${endDisplay}.`)
             setShowForm(false)
             setFormListingId(""); setFormStartTime(""); setFormReservePrice("")
@@ -288,10 +288,10 @@ function SellerAuctionsPage() {
                                             </label>
                                             <div className="flex items-center gap-2 h-11 px-3 bg-slate-800/50 border border-white/5 rounded-lg text-gray-400 text-sm">
                                                 <Clock size={14} className="text-primary shrink-0" />
-                                                <span>5 hours (platform fixed)</span>
+                                                <span>6 hours · Open bidding</span>
                                                 {formStartTime && (
                                                     <span className="ml-auto text-xs text-gray-600 shrink-0">
-                                                        ends {addHours(new Date(formStartTime).toISOString(), 5)}
+                                                        ends {addHours(new Date(formStartTime).toISOString(), 6)}
                                                     </span>
                                                 )}
                                             </div>

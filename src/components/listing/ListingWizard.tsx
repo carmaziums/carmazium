@@ -23,7 +23,8 @@ import { dvlaLookup } from "@/lib/dvlaApi"
 import { aiGenerateDescription } from "@/lib/aiApi"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { useAuth } from "@/context/AuthContext"
-import { DamageAnalysisTool } from "./DamageAnalysisTool"
+import { VehicleDamageMapper, type DamageRecord } from "./VehicleDamageMapper"
+import { RoadPriceBox } from "./RoadPriceBox"
 import { useRouter, useSearchParams } from "next/navigation"
 import { apiClient } from "@/lib/apiClient"
 
@@ -233,6 +234,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const [isHpiUnlocked, setIsHpiUnlocked] = React.useState(false)
     const [isProcessingPayment, setIsProcessingPayment] = React.useState(false)
     const [damageImageCount, setDamageImageCount] = React.useState(0)
+    const [damageRecords, setDamageRecords] = React.useState<DamageRecord[]>([])
     const [hasAttemptedNext, setHasAttemptedNext] = React.useState(false)
 
 
@@ -447,6 +449,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 vehicleType: formData.vehicleType as VehicleTypeValue,
                 isImported: formData.isImported,
                 condition: formData.condition as any || undefined,
+                damageRecords: damageRecords.length > 0 ? damageRecords : undefined,
             }
 
             if (editId) {
@@ -1013,25 +1016,20 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 />
                             </div>
 
-                            {/* AI Damage Assessment Section */}
+                            {/* Damage Mapping Section */}
                             <div className="pt-8 border-t border-white/5">
                                 <div className="flex items-center gap-3 mb-6">
-                                    <div className="p-2 bg-primary/10 rounded-lg">
-                                        <Sparkles className="text-primary w-5 h-5" />
+                                    <div className="p-2 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                                        <AlertTriangle className="text-amber-400 w-5 h-5" />
                                     </div>
                                     <div>
-                                        <h3 className="text-lg font-bold text-white">AI Damage Assessment</h3>
-                                        <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">Dealer Exclusive Feature</p>
+                                        <h3 className="text-lg font-bold text-white">Damage Map</h3>
+                                        <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">Select damaged areas on your vehicle</p>
                                     </div>
                                 </div>
-                                <DamageAnalysisTool 
-                                    images={formData.images} 
-                                    onComplete={(detections) => {
-                                        // Store detections in state to be saved with the listing
-                                        // For now, we'll just log them as they are saved via the API in a real flow
-                                        console.log("Detections applied:", detections)
-                                        alert(`${detections.length} damage records have been linked to this listing.`)
-                                    }} 
+                                <VehicleDamageMapper
+                                    existingRecords={damageRecords}
+                                    onComplete={(records) => setDamageRecords(records)}
                                 />
                             </div>
                         </div>
@@ -1360,6 +1358,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <p className="text-xs text-red-400 flex items-center gap-1"><AlertTriangle size={12} /> Lower price cannot be higher than the asking price.</p>
                             )}
 
+                            {/* Road Price */}
+                            <RoadPriceBox
+                                make={formData.make}
+                                model={formData.model}
+                                year={formData.year}
+                                mileage={formData.mileage}
+                            />
+
                             {formData.priceAsking && (() => {
                                 const pMin = parseFloat(formData.priceMin) || 0
                                 const pAsk = parseFloat(formData.priceAsking) || 0
@@ -1395,16 +1401,35 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 </h3>
                                 <p className="text-xs text-gray-500 mb-4">Boost buyer confidence with trust badges on your listing. Badges increase buyer engagement and sell rates.</p>
 
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                    {/* Auction */}
+                                    <button type="button"
+                                        onClick={() => { set('badgeTier', 'FREE'); set('listingType', 'AUCTION') }}
+                                        className={`relative rounded-xl border p-4 text-left transition-all ${formData.listingType === 'AUCTION'
+                                            ? 'border-orange-500 bg-orange-500/10 ring-1 ring-orange-500/50'
+                                            : 'border-white/10 bg-white/[0.02] hover:border-white/20'
+                                            }`}
+                                    >
+                                        {formData.listingType === 'AUCTION' && <span className="absolute top-2 right-2 text-[10px] bg-orange-500 text-white font-bold px-2 py-0.5 rounded-full">Selected</span>}
+                                        <p className="text-orange-400 font-bold text-sm mb-1 flex items-center gap-1"><Gavel size={14} /> Auction</p>
+                                        <p className="text-2xl font-black text-white mb-3">Free</p>
+                                        <ul className="space-y-1.5 text-xs text-gray-400">
+                                            <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Open bidding</li>
+                                            <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> 6-hour auction</li>
+                                            <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Anyone can bid</li>
+                                            <li className="flex items-center gap-1.5 text-gray-600"><X size={12} /> No trust badges</li>
+                                        </ul>
+                                    </button>
+
                                     {/* Free */}
                                     <button type="button"
-                                        onClick={() => set('badgeTier', 'FREE')}
-                                        className={`relative rounded-xl border p-4 text-left transition-all ${formData.badgeTier === 'FREE'
+                                        onClick={() => { set('badgeTier', 'FREE'); set('listingType', 'CLASSIFIED') }}
+                                        className={`relative rounded-xl border p-4 text-left transition-all ${formData.badgeTier === 'FREE' && formData.listingType !== 'AUCTION'
                                             ? 'border-primary bg-primary/10 ring-1 ring-primary/50'
                                             : 'border-white/10 bg-white/[0.02] hover:border-white/20'
                                             }`}
                                     >
-                                        {formData.badgeTier === 'FREE' && <span className="absolute top-2 right-2 text-[10px] bg-primary text-black font-bold px-2 py-0.5 rounded-full">Selected</span>}
+                                        {formData.badgeTier === 'FREE' && formData.listingType !== 'AUCTION' && <span className="absolute top-2 right-2 text-[10px] bg-primary text-black font-bold px-2 py-0.5 rounded-full">Selected</span>}
                                         <p className="text-white font-bold text-sm mb-1">Basic</p>
                                         <p className="text-2xl font-black text-white mb-3">£1</p>
                                         <ul className="space-y-1.5 text-xs text-gray-400">

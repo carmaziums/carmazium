@@ -187,13 +187,8 @@ export default function DealerInventoryPage() {
                                         <tr>
                                             <td colSpan={6} className="px-6 py-16 text-center">
                                                 <Car className="h-12 w-12 text-gray-700 mx-auto mb-3" />
-                                                <p className="text-gray-500 font-bold">No vehicles in stock</p>
-                                                <p className="text-gray-600 text-sm mt-1">Add your first vehicle to start selling</p>
-                                                <Link href="/dashboard/dealer/add-listing">
-                                                    <Button className="mt-4 gap-2" shape="default">
-                                                        <PlusCircle size={16} /> Add Vehicle
-                                                    </Button>
-                                                </Link>
+                                                <p className="text-gray-500 font-bold">No vehicles found</p>
+                                                <p className="text-gray-600 text-sm mt-1">Try adjusting your filters or add a new vehicle using the button above</p>
                                             </td>
                                         </tr>
                                     ) : (
