@@ -86,9 +86,15 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
         { href: "/dashboard/user?tab=settings", label: "Settings", icon: Settings },
     ]
 
+    const sellerLinks: LinkObj[] = [
+        ...unifiedLinks.slice(0, 2),
+        { href: "/dashboard/seller/auctions", label: "Auctions", icon: Gavel },
+        ...unifiedLinks.slice(2),
+    ]
+
     const links: Record<string, LinkObj[]> = {
         buyer: unifiedLinks,
-        seller: unifiedLinks,
+        seller: sellerLinks,
         provider: [
             { href: "/dashboard/service", label: "Overview", icon: LayoutDashboard },
             { href: "/dashboard/service/jobs", label: "Jobs", icon: Briefcase },

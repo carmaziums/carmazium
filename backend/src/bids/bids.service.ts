@@ -1,17 +1,27 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+    Injectable,
+    NotFoundException,
+    BadRequestException,
+    forwardRef,
+    Inject,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuctionsService } from '../auctions/auctions.service';
+import { AuctionGateway } from '../auctions/auction.gateway';
 import { CreateBidDto } from './dto/create-bid.dto';
 import { Bid } from '@prisma/client';
 
 @Injectable()
 export class BidsService {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        @Inject(forwardRef(() => AuctionsService))
+        private readonly auctionsService: AuctionsService,
+        @Inject(forwardRef(() => AuctionGateway))
+        private readonly auctionGateway: AuctionGateway,
+    ) { }
 
-    /**
-     * Place a bid on a listing
-     */
     async create(bidderId: string, createBidDto: CreateBidDto): Promise<Bid> {
-        // Verify listing exists and is an auction
         const listing = await this.prisma.listing.findUnique({
             where: { id: createBidDto.listingId },
             include: { auction: true },
@@ -25,24 +35,43 @@ export class BidsService {
             throw new BadRequestException('This listing is not an auction');
         }
 
-        // Check bid is higher than current highest
+        const auction = listing.auction;
+        if (!auction) {
+            throw new BadRequestException('No auction has been created for this listing');
+        }
+
+        if (auction.status !== 'ACTIVE') {
+            throw new BadRequestException('This auction is not currently active');
+        }
+
+        // Prevent seller from bidding on their own auction
+        if (listing.sellerId === bidderId) {
+            throw new BadRequestException('You cannot bid on your own auction');
+        }
+
+        const minIncrement = Number(auction.minIncrement);
+        const startingBid = Number(auction.startingBid);
+
         const highestBid = await this.prisma.bid.findFirst({
             where: { listingId: createBidDto.listingId, deletedAt: null },
             orderBy: { amount: 'desc' },
         });
 
-        const minBid = listing.auction?.startingBid || listing.price;
-        const minIncrement = listing.auction?.minIncrement || 100;
-
-        if (highestBid && createBidDto.amount <= Number(highestBid.amount)) {
-            throw new BadRequestException(`Bid must be higher than current highest bid of £${highestBid.amount}`);
+        if (highestBid) {
+            const minAllowed = Number(highestBid.amount) + minIncrement;
+            if (createBidDto.amount < minAllowed) {
+                throw new BadRequestException(
+                    `Bid must be at least £${minAllowed.toLocaleString()} (current: £${Number(highestBid.amount).toLocaleString()} + £${minIncrement.toLocaleString()} increment)`,
+                );
+            }
+        } else {
+            if (createBidDto.amount < startingBid) {
+                throw new BadRequestException(
+                    `Bid must be at least the starting bid of £${startingBid.toLocaleString()}`,
+                );
+            }
         }
 
-        if (!highestBid && createBidDto.amount < Number(minBid)) {
-            throw new BadRequestException(`Bid must be at least the starting bid of £${minBid}`);
-        }
-
-        // Create the bid
         const bid = await this.prisma.bid.create({
             data: {
                 listingId: createBidDto.listingId,
@@ -51,12 +80,31 @@ export class BidsService {
             },
         });
 
+        // Anti-snipe: extend auction if bid placed in the final window
+        const updatedAuction = await this.auctionsService.maybeExtend(auction.id, bid.timestamp);
+
+        // Fetch bidder initials for broadcast (anonymized display)
+        const bidder = await this.prisma.user.findUnique({
+            where: { id: bidderId },
+            select: { firstName: true, lastName: true },
+        });
+        const initials = `${bidder?.firstName?.[0] ?? '?'}${bidder?.lastName?.[0] ?? ''}`.toUpperCase();
+
+        // Broadcast to all viewers of this auction via WebSocket
+        this.auctionGateway.broadcastBid(auction.id, {
+            bidId: bid.id,
+            auctionId: auction.id,
+            listingId: bid.listingId,
+            amount: Number(bid.amount),
+            bidderInitials: initials,
+            bidderId,
+            timestamp: bid.timestamp.toISOString(),
+            newEndTime: updatedAuction?.endTime?.toISOString(),
+        });
+
         return bid;
     }
 
-    /**
-     * Get all bids for the current user
-     */
     async findMyBids(bidderId: string, page = 1, limit = 20): Promise<{ data: any[]; total: number }> {
         const skip = (page - 1) * limit;
 
@@ -75,6 +123,15 @@ export class BidsService {
                             make: true,
                             model: true,
                             year: true,
+                            auction: {
+                                select: {
+                                    id: true,
+                                    status: true,
+                                    endTime: true,
+                                    winnerId: true,
+                                    winningBidAmount: true,
+                                },
+                            },
                         },
                     },
                 },
@@ -85,7 +142,6 @@ export class BidsService {
             this.prisma.bid.count({ where: { bidderId, deletedAt: null } }),
         ]);
 
-        // Add bid status (winning/outbid)
         const enrichedBids = await Promise.all(
             bids.map(async (bid) => {
                 const highestBid = await this.prisma.bid.findFirst({
@@ -102,9 +158,6 @@ export class BidsService {
         return { data: enrichedBids, total };
     }
 
-    /**
-     * Get all bids for a specific listing
-     */
     async findByListing(listingId: string): Promise<Bid[]> {
         return this.prisma.bid.findMany({
             where: { listingId, deletedAt: null },
@@ -117,9 +170,6 @@ export class BidsService {
         });
     }
 
-    /**
-     * Get buyer dashboard stats
-     */
     async getBuyerStats(userId: string): Promise<{
         activeBids: number;
         wonAuctions: number;
@@ -130,30 +180,16 @@ export class BidsService {
             this.prisma.bid.count({
                 where: { bidderId: userId, deletedAt: null },
             }),
-            // Won auctions = listings where user has highest bid and status is SOLD
-            this.prisma.$queryRaw<{ count: bigint }[]>`
-                SELECT COUNT(DISTINCT l.id) as count
-                FROM listings l
-                JOIN bids b ON b."listingId" = l.id
-                WHERE l.status = 'SOLD'
-                AND b."bidderId" = ${userId}::uuid
-                AND b.amount = (
-                    SELECT MAX(b2.amount) FROM bids b2 WHERE b2."listingId" = l.id
-                )
-            `,
+            this.prisma.auction.count({
+                where: { winnerId: userId, status: 'ENDED' },
+            }),
         ]);
-
-        // For now, watchlist count is 0 (we'll implement watchlist separately)
-        const watchlistCount = 0;
-
-        // Total spent from won auctions
-        const totalSpent = 0; // Will be calculated from transactions later
 
         return {
             activeBids,
-            wonAuctions: Number(wonAuctions[0]?.count || 0),
-            watchlistCount,
-            totalSpent,
+            wonAuctions,
+            watchlistCount: 0,
+            totalSpent: 0,
         };
     }
 }

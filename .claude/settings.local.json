@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir \"d:\\\\carmazium\\\\backend\\\\src\\\\auctions\")",
+      "Bash(dir \"d:\\\\carmazium\\\\backend\\\\src\\\\bids\")",
+      "Bash(npx prisma *)"
+    ]
+  }
+}
