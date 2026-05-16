@@ -52,6 +52,16 @@ export interface CreateListingRequest {
     badgeTier?: 'FREE' | 'STANDARD' | 'PREMIUM'
     vehicleType?: VehicleTypeValue
     isImported?: boolean
+    damageRecords?: Array<{
+        id: string
+        zone: string
+        description: string
+        photoUrl?: string
+        bodyType: string
+        view: string
+        x: number
+        y: number
+    }>
 }
 
 export interface CreateListingResponse {

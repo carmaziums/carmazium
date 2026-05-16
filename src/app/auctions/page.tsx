@@ -34,6 +34,17 @@ import {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+function formatTimeSince(iso: string): string {
+    const diff = Date.now() - new Date(iso).getTime()
+    const mins = Math.floor(diff / 60_000)
+    const hours = Math.floor(diff / 3_600_000)
+    const days = Math.floor(diff / 86_400_000)
+    if (days > 0) return `${days}d ago`
+    if (hours > 0) return `${hours}h ago`
+    if (mins > 0) return `${mins}m ago`
+    return "just now"
+}
+
 function formatStartsIn(startTime: string): string {
     const diff = new Date(startTime).getTime() - Date.now()
     if (diff <= 0) return "Starting…"
@@ -109,7 +120,15 @@ function AuctionCard({ auction }: { auction: Auction }) {
                 {/* Content */}
                 <div className="p-4 space-y-3">
                     <div>
-                        <p className="text-slate-500 text-[11px] uppercase tracking-widest font-bold">{vehicle}</p>
+                        <div className="flex items-center justify-between">
+                            <p className="text-slate-500 text-[11px] uppercase tracking-widest font-bold">{vehicle}</p>
+                            {(auction.listing as any).createdAt && (
+                                <span className="text-[10px] text-slate-600 flex items-center gap-1">
+                                    <Clock size={9} />
+                                    Listed {formatTimeSince((auction.listing as any).createdAt)}
+                                </span>
+                            )}
+                        </div>
                         <h3 className="text-white font-bold text-base leading-tight mt-0.5 line-clamp-1">{auction.listing.title}</h3>
                     </div>
 
@@ -266,7 +285,7 @@ export default function AuctionsPage() {
                             {[
                                 { icon: Flame, value: liveAuctions.length, label: "Live" },
                                 { icon: Calendar, value: scheduledAuctions.length, label: "Upcoming" },
-                                { icon: TrendingUp, value: "5hr", label: "Duration" },
+                                { icon: TrendingUp, value: "6hr", label: "Duration" },
                             ].map(({ icon: Icon, value, label }) => (
                                 <div key={label} className="flex items-center gap-2">
                                     <Icon size={14} className="text-red-500" />
@@ -416,7 +435,7 @@ export default function AuctionsPage() {
                             color: "emerald",
                             title: "Competitive Pricing",
                             desc: "Live bidding creates natural price discovery. Sellers get fair market value; buyers compete transparently.",
-                            stat: "5 hours",
+                            stat: "6 hours",
                             statLabel: "per auction",
                         },
                         {
@@ -504,7 +523,7 @@ export default function AuctionsPage() {
                             <Star size={11} /> For Sellers, Dealers & Private Owners
                         </div>
                         <h2 className="text-3xl md:text-4xl font-bold text-white font-heading mb-4">Ready to Put Your Car<br />Under the Gavel?</h2>
-                        <p className="text-slate-400 max-w-lg mx-auto mb-8">Any verified user can list a vehicle for auction. Set your reserve, schedule your start time, and let the market decide. 5-hour sprint. Real buyers. Real bids.</p>
+                        <p className="text-slate-400 max-w-lg mx-auto mb-8">Any verified user can list a vehicle for auction. Set your reserve, schedule your start time, and let the market decide. 6-hour sprint. Real buyers. Real bids.</p>
                         <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
                             {["Free to list", "Set your own reserve", "Anti-snipe protection", "Auto-chat with winner"].map(f => (
                                 <span key={f} className="flex items-center gap-1.5 text-sm text-slate-300 bg-slate-800/60 border border-white/8 px-3 py-1.5 rounded-full">

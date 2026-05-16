@@ -58,7 +58,8 @@ function getSellerName(auction: Auction): string {
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
-export default function LiveAuctionPage({ params }: { params: { id: string } }) {
+export default function LiveAuctionPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+    const params = React.use(paramsPromise)
     const { user } = useAuth()
 
     // ── Data ────────────────────────────────────────────────────────────────

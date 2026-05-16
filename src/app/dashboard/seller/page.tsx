@@ -65,14 +65,15 @@ export default function SellerDashboard() {
                 <main className="flex-1 space-y-8 min-w-0">
                     {/* Stats Row */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <MetricCard 
-                            label="Active Listings" 
-                            value={stats?.activeListings || 0} 
-                            icon={Car} 
-                            color="text-primary" 
-                            bg="bg-primary/10" 
-                            border="border-primary/20" 
-                            loading={loading} 
+                        <MetricCard
+                            label="Active Listings"
+                            value={stats?.activeListings || 0}
+                            icon={Car}
+                            color="text-primary"
+                            bg="bg-primary/10"
+                            border="border-primary/20"
+                            loading={loading}
+                            href="/dashboard/seller/listings?status=ACTIVE"
                         />
                         <MetricCard 
                             label="Total Views" 
@@ -83,14 +84,15 @@ export default function SellerDashboard() {
                             border="border-blue-500/20" 
                             loading={loading} 
                         />
-                        <MetricCard 
-                            label="Sold" 
-                            value={stats?.soldListings || 0} 
-                            icon={TrendingUp} 
-                            color="text-emerald-400" 
-                            bg="bg-emerald-500/10" 
-                            border="border-emerald-500/20" 
-                            loading={loading} 
+                        <MetricCard
+                            label="Sold"
+                            value={stats?.soldListings || 0}
+                            icon={TrendingUp}
+                            color="text-emerald-400"
+                            bg="bg-emerald-500/10"
+                            border="border-emerald-500/20"
+                            loading={loading}
+                            href="/dashboard/seller/listings?status=SOLD"
                         />
                         <MetricCard 
                             label="Revenue" 

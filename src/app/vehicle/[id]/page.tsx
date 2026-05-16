@@ -11,7 +11,7 @@ const FinanceCalculator = dynamic(() => import("@/components/features/FinanceCal
 import {
     ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon,
     MapPin, Share2, Heart, Scale, Loader2, AlertTriangle, X, Tag,
-    Clock, XCircle, MessageCircle, ThumbsUp, Lock, FileSearch, BadgeCheck, Star, Sparkles, Zap, CreditCard, Info, Phone, Globe,
+    Clock, XCircle, MessageCircle, ThumbsUp, Lock, FileSearch, BadgeCheck, Star, Sparkles, Zap, CreditCard, Info, Phone, Globe, Wrench,
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { SellerBadge } from "@/components/ui/SellerBadge"
@@ -1105,6 +1105,37 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                         </AccordionItem>
                                     )}
 
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Damage Records */}
+                        {Array.isArray((listing as any).damageRecords) && (listing as any).damageRecords.length > 0 && (
+                            <div className="bg-slate-800/50 backdrop-blur-md border border-amber-500/20 rounded-xl p-8 mb-8">
+                                <h3 className="text-xl font-bold text-white mb-2 border-l-4 border-amber-500 pl-4 flex items-center gap-2">
+                                    <Wrench size={18} className="text-amber-400" />
+                                    Seller-Reported Damage
+                                </h3>
+                                <p className="text-xs text-gray-500 mb-6 ml-6">The seller has marked the following areas of the vehicle as having known damage.</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {((listing as any).damageRecords as any[]).map((record: any, i: number) => (
+                                        <div key={record.id ?? i} className="flex gap-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/15">
+                                            {record.photoUrl && (
+                                                <div className="w-20 h-16 rounded-lg overflow-hidden shrink-0 border border-white/10">
+                                                    <img src={record.photoUrl} alt={record.zone} className="w-full h-full object-cover" />
+                                                </div>
+                                            )}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">
+                                                        {record.zone?.replace(/_/g, ' ') ?? 'Unknown Area'}
+                                                    </span>
+                                                    <span className="text-[10px] text-gray-600">{record.bodyType} · {record.view}</span>
+                                                </div>
+                                                <p className="text-sm text-gray-300 leading-snug line-clamp-3">{record.description || 'No description provided.'}</p>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         )}

@@ -195,15 +195,16 @@ export default function DealerDashboard() {
 
                     {/* ── KPI Stats Row ── */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <MetricCard 
-                            label="Active Stock" 
-                            value={stats?.activeListings || 0} 
-                            icon={Car} 
-                            color="text-primary" 
-                            bg="bg-primary/10" 
-                            border="border-primary/20" 
-                            statusLabel="Live" 
-                            loading={loading} 
+                        <MetricCard
+                            label="Active Stock"
+                            value={stats?.activeListings || 0}
+                            icon={Car}
+                            color="text-primary"
+                            bg="bg-primary/10"
+                            border="border-primary/20"
+                            statusLabel="Live"
+                            loading={loading}
+                            href="/dashboard/dealer/inventory?status=ACTIVE"
                         />
                         <MetricCard 
                             label="Total Views" 
@@ -223,15 +224,16 @@ export default function DealerDashboard() {
                             border="border-amber-500/20" 
                             loading={loading} 
                         />
-                        <MetricCard 
-                            label="Vehicles Sold" 
-                            value={stats?.soldListings || 0} 
-                            icon={TrendingUp} 
-                            color="text-emerald-400" 
-                            bg="bg-emerald-500/10" 
-                            border="border-emerald-500/20" 
-                            statusLabel="MTD" 
-                            loading={loading} 
+                        <MetricCard
+                            label="Vehicles Sold"
+                            value={stats?.soldListings || 0}
+                            icon={TrendingUp}
+                            color="text-emerald-400"
+                            bg="bg-emerald-500/10"
+                            border="border-emerald-500/20"
+                            statusLabel="MTD"
+                            loading={loading}
+                            href="/dashboard/dealer/inventory?status=SOLD"
                         />
                     </div>
 
