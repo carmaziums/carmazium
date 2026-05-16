@@ -79,7 +79,7 @@ export class SellersService {
      * Password hash is never included.
      */
     async getPublicProfile(userId: string): Promise<SellerProfileResponse> {
-        const sellerProfile = await this.prisma.sellerProfile.findUnique({
+        let sellerProfile = await this.prisma.sellerProfile.findUnique({
             where: { userId },
             include: {
                 user: {

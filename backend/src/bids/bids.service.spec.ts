@@ -2,11 +2,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { BidsService } from './bids.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuctionsService } from '../auctions/auctions.service';
+import { AuctionGateway } from '../auctions/auction.gateway';
 
-/**
- * Direct auction-bid validation. Mirrors the offer-side incremental rules but
- * for the auction `bids` table.
- */
 describe('BidsService — incremental bidding', () => {
     let service: BidsService;
     let prisma: any;
@@ -16,7 +14,13 @@ describe('BidsService — incremental bidding', () => {
         type: 'AUCTION',
         deletedAt: null,
         price: 10000,
-        auction: { startingBid: 5000, minIncrement: 100 },
+        sellerId: 'seller-1',
+        auction: {
+            id: 'auction-1',
+            status: 'ACTIVE',
+            startingBid: 5000,
+            minIncrement: 100,
+        },
     };
 
     beforeEach(async () => {
@@ -28,6 +32,7 @@ describe('BidsService — incremental bidding', () => {
                 count: jest.fn(),
                 create: jest.fn(),
             },
+            user: { findUnique: jest.fn().mockResolvedValue({ firstName: 'Test', lastName: 'User' }) },
             $queryRaw: jest.fn(),
         };
 
@@ -35,6 +40,14 @@ describe('BidsService — incremental bidding', () => {
             providers: [
                 BidsService,
                 { provide: PrismaService, useValue: prisma },
+                {
+                    provide: AuctionsService,
+                    useValue: { maybeExtend: jest.fn().mockResolvedValue(null) },
+                },
+                {
+                    provide: AuctionGateway,
+                    useValue: { broadcastBid: jest.fn() },
+                },
             ],
         }).compile();
 
@@ -56,13 +69,19 @@ describe('BidsService — incremental bidding', () => {
 
         await expect(
             service.create('bidder-B', { listingId: 'listing-1', amount: 5500 } as any),
-        ).rejects.toMatchObject({ message: expect.stringMatching(/higher than current highest bid/i) });
+        ).rejects.toMatchObject({ message: expect.stringMatching(/bid must be at least/i) });
     });
 
     it('accepts a bid strictly higher than the current highest bid', async () => {
         prisma.listing.findUnique.mockResolvedValue(auctionListing);
         prisma.bid.findFirst.mockResolvedValue({ id: 'bid-A', amount: 6000 });
-        prisma.bid.create.mockResolvedValue({ id: 'bid-B', amount: 6100 });
+        prisma.bid.create.mockResolvedValue({
+            id: 'bid-B',
+            amount: 6100,
+            timestamp: new Date(),
+            listingId: 'listing-1',
+            bidderId: 'bidder-B',
+        });
 
         const result = await service.create('bidder-B', {
             listingId: 'listing-1',
