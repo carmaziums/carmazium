@@ -404,6 +404,13 @@ export interface Bid {
         make: string | null
         model: string | null
         year: number | null
+        auction?: {
+            id: string
+            status: 'SCHEDULED' | 'ACTIVE' | 'ENDED' | 'CANCELLED'
+            endTime: string
+            winnerId: string | null
+            winningBidAmount: string | number | null
+        } | null
     }
 }
 

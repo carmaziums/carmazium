@@ -3,372 +3,671 @@
 import * as React from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { io, Socket } from "socket.io-client"
+import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
-import { ArrowLeft, MessageSquare, Heart, Share2, Timer, Gavel, User, AlertCircle, CheckCircle, Flame, ShieldCheck, FileText, Info, Send, ChevronDown, ChevronUp } from "lucide-react"
+import {
+    ArrowLeft,
+    MessageSquare,
+    Share2,
+    Timer,
+    Gavel,
+    Users,
+    AlertCircle,
+    CheckCircle,
+    Flame,
+    ShieldCheck,
+    Info,
+    Send,
+    Zap,
+    Trophy,
+    Clock,
+    WifiOff,
+} from "lucide-react"
 import { CountdownTimer } from "@/components/features/CountdownTimer"
+import { useAuth } from "@/context/AuthContext"
+import { getAuction, type Auction, type BidBroadcastPayload, type AuctionEndPayload } from "@/lib/auctionApi"
+import { placeBid } from "@/lib/listingApi"
+import { getWebSocketUrl } from "@/lib/chatApi"
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface BidHistoryEntry {
+    initials: string
+    amount: number
+    time: string
+    isNew?: boolean
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function getSellerInitials(auction: Auction): string {
+    const seller = auction.listing.seller
+    if (!seller) return "??"
+    if (seller.dealerProfile?.companyName) return seller.dealerProfile.companyName.slice(0, 2).toUpperCase()
+    return `${seller.firstName?.[0] ?? "?"}${seller.lastName?.[0] ?? ""}`.toUpperCase()
+}
+
+function getSellerName(auction: Auction): string {
+    const seller = auction.listing.seller
+    if (!seller) return "Private Seller"
+    if (seller.dealerProfile?.companyName) return seller.dealerProfile.companyName
+    return `${seller.firstName ?? ""} ${seller.lastName ?? ""}`.trim() || "Private Seller"
+}
+
+// ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function LiveAuctionPage({ params }: { params: { id: string } }) {
-    // Game State
-    const [currentBid, setCurrentBid] = React.useState(135000)
+    const { user } = useAuth()
+
+    // ── Data ────────────────────────────────────────────────────────────────
+    const [auction, setAuction] = React.useState<Auction | null>(null)
+    const [loading, setLoading] = React.useState(true)
+    const [loadError, setLoadError] = React.useState<string | null>(null)
+
+    // ── Bid state ───────────────────────────────────────────────────────────
+    const [currentBid, setCurrentBid] = React.useState(0)
     const [bidAmount, setBidAmount] = React.useState("")
-    const [activeTab, setActiveTab] = React.useState<"details" | "history" | "seller">("details")
-    const [watchers, setWatchers] = React.useState(142)
+    const [bidHistory, setBidHistory] = React.useState<BidHistoryEntry[]>([])
     const [isWinning, setIsWinning] = React.useState(false)
+    const [bidError, setBidError] = React.useState<string | null>(null)
+    const [bidLoading, setBidLoading] = React.useState(false)
 
-    // Simulation Refs
-    const bidInterval = React.useRef<NodeJS.Timeout | null>(null)
-    const chatInterval = React.useRef<NodeJS.Timeout | null>(null)
-    const chatContainerRef = React.useRef<HTMLDivElement>(null)
+    // ── Auction end state ────────────────────────────────────────────────────
+    const [endedPayload, setEndedPayload] = React.useState<AuctionEndPayload | null>(null)
 
-    // Mock Data - Chat
-    const [messages, setMessages] = React.useState([
-        { user: "System", text: "Auction started at £120,000", type: "system" },
-        { user: "911Fan_UK", text: "That Manthey kit looks incredible.", type: "chat" },
-        { user: "TrackDayHero", text: "Is the ceramic brake upgrade included?", type: "chat" },
-        { user: "Admin", text: "Yes, PCCB are standard on this spec.", type: "admin" },
-        { user: "Collector88", text: "New Bid: £132,000", type: "bid" },
-    ])
+    // ── UI state ─────────────────────────────────────────────────────────────
+    const [watchers, setWatchers] = React.useState(0)
+    const [activeTab, setActiveTab] = React.useState<"details" | "history" | "seller">("details")
+    const [connected, setConnected] = React.useState(false)
+    const [antiSnipeActive, setAntiSnipeActive] = React.useState(false)
+    const [antiSnipeToast, setAntiSnipeToast] = React.useState(false)
+    const [endTime, setEndTime] = React.useState<Date | null>(null)
 
-    // Mock Data - Bids History
-    const [bidHistory, setBidHistory] = React.useState([
-        { user: "Collector88", amount: 132000, time: "10:42:15" },
-        { user: "SpeedFreak", amount: 130000, time: "10:41:50" },
-        { user: "InvestorX", amount: 128500, time: "10:40:22" },
-        { user: "AutoMotive", amount: 125000, time: "10:38:10" },
-    ])
+    const chatRef = React.useRef<HTMLDivElement>(null)
+    const socketRef = React.useRef<Socket | null>(null)
 
-    // Effect: Scroll chat to bottom
+    // ── Load auction data ─────────────────────────────────────────────────────
     React.useEffect(() => {
-        if (chatContainerRef.current) {
-            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
-        }
-    }, [messages])
+        getAuction(params.id)
+            .then(data => {
+                setAuction(data)
+                setEndTime(new Date(data.endTime))
 
-    // Effect: Simulate Random Events
+                const bids = data.listing.bids ?? []
+                const startingBid = Number(data.startingBid)
+                const top = bids[0] ? Number(bids[0].amount) : startingBid
+                setCurrentBid(top)
+                setIsWinning(!!user && bids[0]?.bidderId === user.id)
+                setBidHistory(
+                    bids.map(b => ({
+                        initials: `${b.bidder?.firstName?.[0] ?? "?"}${b.bidder?.lastName?.[0] ?? ""}`.toUpperCase(),
+                        amount: Number(b.amount),
+                        time: new Date(b.timestamp).toLocaleTimeString("en-GB"),
+                    }))
+                )
+
+                const antiSnipeWindow = 3 * 60 * 1000
+                setAntiSnipeActive(new Date(data.endTime).getTime() - Date.now() <= antiSnipeWindow * (10 / 3))
+            })
+            .catch(() => setLoadError("Failed to load auction. Please refresh."))
+            .finally(() => setLoading(false))
+    }, [params.id, user])
+
+    // ── WebSocket ─────────────────────────────────────────────────────────────
     React.useEffect(() => {
-        // Random Watcher Fluctuation
-        const watcherInt = setInterval(() => {
-            setWatchers(prev => prev + (Math.random() > 0.5 ? 1 : -1) * Math.floor(Math.random() * 3))
-        }, 3000)
+        if (!auction) return
 
-        // Random Chat Messages
-        const randomChats = [
-            "What a spec!", "Reserve met?", "Viewing available tomorrow?", "Those wheels...", "Bid strong everyone!", "Does it have front lift?", "Shipping to US available?"
-        ]
-        const randomUsers = ["PorscheGuy", "DriftKing", "InvestCars", "LondonSupercars", "V8_Lover", "ElectricDreams"]
+        const socket = io(`${getWebSocketUrl()}/auctions`, {
+            withCredentials: true,
+            transports: ["websocket"],
+        })
+        socketRef.current = socket
 
-        chatInterval.current = setInterval(() => {
-            if (Math.random() > 0.7) {
-                const text = randomChats[Math.floor(Math.random() * randomChats.length)]
-                const user = randomUsers[Math.floor(Math.random() * randomUsers.length)]
-                addMessage(user, text, "chat")
+        socket.on("connect", () => {
+            setConnected(true)
+            socket.emit("auction:join", { auctionId: auction.id })
+        })
+
+        socket.on("disconnect", () => setConnected(false))
+
+        socket.on("auction:viewers", ({ count }: { count: number }) => {
+            setWatchers(count)
+        })
+
+        socket.on("bid:new", (payload: BidBroadcastPayload) => {
+            setCurrentBid(payload.amount)
+            setIsWinning(!!user && payload.bidderId === user.id)
+            setBidHistory(prev => [
+                { initials: payload.bidderInitials, amount: payload.amount, time: new Date(payload.timestamp).toLocaleTimeString("en-GB"), isNew: true },
+                ...prev.map(b => ({ ...b, isNew: false })),
+            ])
+            if (payload.newEndTime) {
+                const newEnd = new Date(payload.newEndTime)
+                setEndTime(newEnd)
+                setAuction(prev => prev ? { ...prev, endTime: payload.newEndTime! } : prev)
+                setAntiSnipeActive(true)
+                setAntiSnipeToast(true)
+                setTimeout(() => setAntiSnipeToast(false), 5000)
             }
-        }, 4000)
+            setBidError(null)
+        })
 
-        // Random Bids (Opponents)
-        bidInterval.current = setInterval(() => {
-            if (Math.random() > 0.85 && !isWinning) { // Only bid if user isn't winning immediately
-                setCurrentBid(prev => {
-                    const newBid = prev + 1000
-                    addMessage(randomUsers[Math.floor(Math.random() * randomUsers.length)], `New Bid: £${newBid.toLocaleString()}`, "bid")
-                    setBidHistory(prevHist => [{ user: randomUsers[Math.floor(Math.random() * randomUsers.length)], amount: newBid, time: new Date().toLocaleTimeString('en-GB') }, ...prevHist])
-                    setIsWinning(false) // User lost lead
-                    return newBid
-                })
-            }
-        }, 8000)
+        socket.on("auction:ended", (payload: AuctionEndPayload) => {
+            setEndedPayload(payload)
+            setAuction(prev => prev
+                ? { ...prev, status: "ENDED", winnerId: payload.winnerId, winningBidAmount: payload.winningBidAmount }
+                : prev
+            )
+        })
 
-        return () => {
-            clearInterval(watcherInt)
-            if (chatInterval.current) clearInterval(chatInterval.current)
-            if (bidInterval.current) clearInterval(bidInterval.current)
+        socket.on("auction:started", () => {
+            setAuction(prev => prev ? { ...prev, status: "ACTIVE" } : prev)
+        })
+
+        return () => { socket.disconnect() }
+    }, [auction?.id, user])
+
+    // ── Anti-snipe countdown watch ────────────────────────────────────────────
+    React.useEffect(() => {
+        if (!endTime || auction?.status !== "ACTIVE") return
+        const interval = setInterval(() => {
+            const left = endTime.getTime() - Date.now()
+            setAntiSnipeActive(left > 0 && left <= 3 * 60 * 1000)
+        }, 10_000)
+        return () => clearInterval(interval)
+    }, [endTime, auction?.status])
+
+    // ── Scroll chat to bottom ─────────────────────────────────────────────────
+    React.useEffect(() => {
+        if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight
+    }, [bidHistory])
+
+    // ── Bid handler ───────────────────────────────────────────────────────────
+    const handleBid = React.useCallback(async (amount: number) => {
+        if (!auction || !user) return
+        if (amount <= currentBid) {
+            setBidError(`Bid must be higher than the current bid of £${currentBid.toLocaleString()}`)
+            return
         }
-    }, [isWinning])
+        setBidLoading(true)
+        setBidError(null)
+        try {
+            await placeBid(auction.listingId, amount)
+            setBidAmount("")
+        } catch (err: any) {
+            setBidError(err.message ?? "Failed to place bid. Please try again.")
+        } finally {
+            setBidLoading(false)
+        }
+    }, [auction, user, currentBid])
 
-    const addMessage = (user: string, text: string, type: string) => {
-        setMessages(prev => [...prev, { user, text, type }])
+    const minIncrement = auction ? Number(auction.minIncrement) : 100
+    const quickBids = [minIncrement, minIncrement * 2, minIncrement * 5, minIncrement * 10]
+
+    // ── Loading ───────────────────────────────────────────────────────────────
+    if (loading) {
+        return (
+            <div className="bg-slate-950 min-h-screen flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4 text-slate-500">
+                    <div className="w-10 h-10 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-sm">Loading auction…</p>
+                </div>
+            </div>
+        )
     }
 
-    const handleBid = (amount: number) => {
-        if (amount <= currentBid) return
-        setCurrentBid(amount)
-        addMessage("You", `New Bid: £${amount.toLocaleString()}`, "bid")
-        setBidHistory(prev => [{ user: "You", amount: amount, time: new Date().toLocaleTimeString('en-GB') }, ...prev])
-        setIsWinning(true)
-        setBidAmount("")
+    if (loadError || !auction) {
+        return (
+            <div className="bg-slate-950 min-h-screen flex flex-col items-center justify-center gap-4">
+                <p className="text-red-400">{loadError ?? "Auction not found."}</p>
+                <Link href="/auctions" className="text-red-500 underline text-sm">Back to Auctions</Link>
+            </div>
+        )
     }
+
+    const isLive = auction.status === "ACTIVE"
+    const isEnded = auction.status === "ENDED"
+    const userWon = isEnded && endedPayload?.winnerId === user?.id
+    const reserveMet = !!(auction.listing.bids?.[0] && Number(auction.listing.bids[0].amount) >= Number(auction.reservePrice))
+
+    const vehicle = `${auction.listing.year ?? ""} ${auction.listing.make ?? ""} ${auction.listing.model ?? ""}`.trim()
+    const image = auction.listing.images?.[0] ?? "/assets/images/hero-bg.png"
 
     return (
         <div className="bg-slate-950 min-h-screen flex flex-col">
-            {/* Top Bar - Now Sticky */}
-            <header className="sticky top-20 bg-slate-900/90 backdrop-blur-md border-b border-white/5 px-4 h-16 flex justify-between items-center z-30 shadow-md">
+
+            {/* ── Anti-Snipe Toast ───────────────────────────────────────────── */}
+            <AnimatePresence>
+                {antiSnipeToast && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -50 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -50 }}
+                        className="fixed top-24 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-orange-500 text-white text-sm font-bold px-5 py-3 rounded-full shadow-xl shadow-orange-900/40"
+                    >
+                        <Zap size={15} />
+                        Anti-Snipe — Auction extended by 3 minutes!
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* ── Sticky Header ─────────────────────────────────────────────── */}
+            <header className="sticky top-[64px] bg-slate-900/90 backdrop-blur-md border-b border-white/5 px-4 h-16 flex justify-between items-center z-30">
                 <div className="flex items-center gap-3">
-                    <Link href="/auctions" className="text-slate-400 hover:text-white transition-colors p-1.5 hover:bg-white/5 rounded-full"><ArrowLeft size={18} /></Link>
+                    <Link href="/auctions" className="text-slate-400 hover:text-white transition-colors p-1.5 hover:bg-white/5 rounded-full">
+                        <ArrowLeft size={18} />
+                    </Link>
                     <div>
-                        <h1 className="text-white font-bold text-sm md:text-base uppercase tracking-wider truncate max-w-[200px] md:max-w-none">2024 Porsche 911 GT3 RS</h1>
+                        <h1 className="text-white font-bold text-sm md:text-base uppercase tracking-wider truncate max-w-[200px] md:max-w-none">
+                            {auction.listing.title}
+                        </h1>
                         <div className="flex items-center gap-2">
-                            <span className="flex items-center gap-1.5 px-1.5 py-0.5 rounded bg-red-600/20 text-red-500 text-[10px] font-bold tracking-wider">
-                                <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span> LIVE
-                            </span>
+                            {isLive && (
+                                <span className="flex items-center gap-1.5 px-1.5 py-0.5 rounded bg-red-600/20 text-red-500 text-[10px] font-bold tracking-wider">
+                                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" /> LIVE
+                                </span>
+                            )}
+                            {isEnded && (
+                                <span className="px-1.5 py-0.5 rounded bg-slate-700 text-slate-400 text-[10px] font-bold tracking-wider">
+                                    ENDED
+                                </span>
+                            )}
+                            {antiSnipeActive && isLive && (
+                                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 text-[10px] font-bold animate-pulse">
+                                    <Zap size={9} /> ANTI-SNIPE
+                                </span>
+                            )}
+                            {/* Connection indicator */}
+                            <span className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-emerald-500" : "bg-slate-600"}`} title={connected ? "Live" : "Disconnected"} />
                         </div>
                     </div>
                 </div>
-                <div className="flex items-center gap-6">
-                    <div className="text-center hidden sm:block">
-                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Ends In</p>
-                        <CountdownTimer targetDate={new Date(Date.now() + 5 * 60 * 60 * 1000)} minimal={true} />
-                    </div>
-                    <div className="h-6 w-px bg-white/10 hidden sm:block"></div>
+
+                <div className="flex items-center gap-4">
+                    {isLive && endTime && (
+                        <div className="text-center hidden sm:block">
+                            <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Ends In</p>
+                            <CountdownTimer targetDate={endTime} minimal />
+                        </div>
+                    )}
+                    <div className="h-6 w-px bg-white/10 hidden sm:block" />
                     <div className="flex items-center gap-2 bg-slate-800/50 px-3 py-1.5 rounded-full border border-white/5">
-                        <User size={12} className="text-primary" />
+                        <Users size={12} className="text-red-500" />
                         <span className="text-xs font-bold text-white">{watchers}</span>
                         <span className="text-[10px] text-slate-500 hidden sm:inline">Watching</span>
                     </div>
+                    <button className="p-1.5 text-slate-500 hover:text-white hover:bg-white/5 rounded-full transition-all">
+                        <Share2 size={16} />
+                    </button>
                 </div>
             </header>
 
-            {/* Main Content: Standard Scrolling Layout */}
-            <div className="container mx-auto px-4 py-8 flex flex-col lg:flex-row gap-8 align-start">
+            {/* ── Winner Banner ─────────────────────────────────────────────── */}
+            <AnimatePresence>
+                {isEnded && (
+                    <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        className={`border-b ${userWon ? "bg-emerald-500/10 border-emerald-500/30" : endedPayload?.reserveMet === false ? "bg-slate-800/60 border-white/5" : "bg-slate-800/60 border-white/5"}`}
+                    >
+                        <div className="container mx-auto px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                            {userWon ? (
+                                <>
+                                    <div className="flex items-center gap-3">
+                                        <Trophy size={22} className="text-emerald-400" />
+                                        <div>
+                                            <p className="text-emerald-400 font-bold">You won this auction!</p>
+                                            <p className="text-slate-400 text-sm">Winning bid: £{Number(endedPayload?.winningBidAmount).toLocaleString()}. Chat with the seller to arrange collection.</p>
+                                        </div>
+                                    </div>
+                                    <Link href="/dashboard/buyer/messages">
+                                        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                                            <MessageSquare size={15} />
+                                            Open Chat with Seller
+                                        </Button>
+                                    </Link>
+                                </>
+                            ) : endedPayload?.reserveMet === false ? (
+                                <div className="flex items-center gap-3 text-slate-400">
+                                    <Info size={18} />
+                                    <p>Auction ended — reserve price was not met. No winner was declared.</p>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-3 text-slate-400">
+                                    <Gavel size={18} />
+                                    <p>
+                                        Auction ended. Winning bid:{" "}
+                                        <span className="text-white font-bold">
+                                            £{Number(endedPayload?.winningBidAmount ?? 0).toLocaleString()}
+                                        </span>
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
-                {/* Left: Video Steam & Details */}
+            {/* ── Main Content ──────────────────────────────────────────────── */}
+            <div className="container mx-auto px-4 py-8 flex flex-col lg:flex-row gap-8">
+
+                {/* ── Left: Image + Tabs ─────────────────────────────────────── */}
                 <div className="flex-1 space-y-6 min-w-0">
 
-                    {/* Video Section - Cinematic Card */}
-                    <div className="w-full bg-slate-900 rounded-2xl overflow-hidden border border-white/10 shadow-2xl relative group">
-                        <div className="aspect-video relative w-full bg-black">
-                            <Image src="/assets/images/featured-sports.png" alt="Live Stream" fill className="object-contain" />
-
-                            {/* Gradient Overlay for Controls */}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
-                                <p className="text-xs font-bold text-white/50 tracking-widest uppercase">Live Feed • <span className="text-white">HD</span></p>
-                            </div>
+                    {/* Vehicle Image / Video */}
+                    <div className="bg-slate-900 rounded-2xl overflow-hidden border border-white/8 shadow-2xl">
+                        <div className="aspect-video relative">
+                            <Image src={image} alt={auction.listing.title} fill className="object-cover" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                            {isLive && (
+                                <div className="absolute top-4 left-4 flex items-center gap-2 bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-[0_0_15px_rgba(220,38,38,0.5)]">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                                    LIVE
+                                </div>
+                            )}
                         </div>
 
-                        {/* Status Bar */}
+                        {/* Bid status bar */}
                         <div className="bg-slate-900 border-t border-white/5 p-4 flex flex-col md:flex-row items-center justify-between gap-4">
                             <div className="flex items-center gap-4 w-full md:w-auto">
-                                <div className="bg-slate-800 p-3 rounded-lg border border-white/5 min-w-[140px] text-center">
-                                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Current Bid</p>
-                                    <p className="text-2xl font-bold text-white font-mono">£{currentBid.toLocaleString()}</p>
+                                <div className="bg-slate-800 p-3 rounded-xl border border-white/5 min-w-[160px] text-center">
+                                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">
+                                        {isEnded ? "Final Bid" : "Current Bid"}
+                                    </p>
+                                    <p className="text-2xl font-bold text-white font-mono">
+                                        £{currentBid.toLocaleString()}
+                                    </p>
                                 </div>
-                                <div>
-                                    {isWinning ? (
-                                        <div className="flex items-center gap-2 text-emerald-400 bg-emerald-500/10 px-3 py-2 rounded-lg border border-emerald-500/20">
-                                            <CheckCircle size={18} />
-                                            <div>
-                                                <p className="text-xs font-bold uppercase tracking-wide">Winning</p>
-                                                <p className="text-[10px] opacity-70">You hold the highest bid</p>
+
+                                {isLive && (
+                                    <div>
+                                        {isWinning ? (
+                                            <div className="flex items-center gap-2 text-emerald-400 bg-emerald-500/10 px-3 py-2.5 rounded-xl border border-emerald-500/20">
+                                                <CheckCircle size={18} />
+                                                <div>
+                                                    <p className="text-xs font-bold uppercase tracking-wide">Winning</p>
+                                                    <p className="text-[10px] opacity-70">You hold the highest bid</p>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center gap-2 text-red-500 bg-red-500/10 px-3 py-2 rounded-lg border border-red-500/20 animate-pulse">
-                                            <AlertCircle size={18} />
-                                            <div>
-                                                <p className="text-xs font-bold uppercase tracking-wide">Outbid</p>
-                                                <p className="text-[10px] opacity-70">Place a bid to reclaim lead</p>
+                                        ) : (
+                                            <div className="flex items-center gap-2 text-red-500 bg-red-500/10 px-3 py-2.5 rounded-xl border border-red-500/20">
+                                                <AlertCircle size={18} />
+                                                <div>
+                                                    <p className="text-xs font-bold uppercase tracking-wide">Outbid</p>
+                                                    <p className="text-[10px] opacity-70">Place a bid to reclaim the lead</p>
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {reserveMet && (
+                                <div className="flex items-center gap-2 text-xs text-emerald-400 font-bold bg-emerald-500/5 px-3 py-1.5 rounded-lg border border-emerald-500/10">
+                                    <ShieldCheck size={14} /> Reserve Met
                                 </div>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-emerald-400 font-medium bg-emerald-500/5 px-3 py-1 rounded border border-emerald-500/10">
-                                <ShieldCheck size={14} /> Reserve Price Met
-                            </div>
+                            )}
                         </div>
                     </div>
 
-                    {/* Tabbed Info Section */}
+                    {/* Anti-snipe Banner */}
+                    <AnimatePresence>
+                        {antiSnipeActive && isLive && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0 }}
+                                className="flex items-center gap-3 bg-orange-500/10 border border-orange-500/30 rounded-xl px-4 py-3 text-orange-400 text-sm font-bold"
+                            >
+                                <Zap size={16} className="animate-pulse" />
+                                Anti-Snipe Active — any bid now extends the auction by 3 minutes
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* Tabbed Info */}
                     <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
-                        {/* Tabs Header */}
-                        <div className="flex border-b border-white/5 bg-slate-900/50">
+                        <div className="flex border-b border-white/5">
                             {[
                                 { id: "details", label: "Overview", icon: Info },
-                                { id: "history", label: "History", icon: Timer },
-                                { id: "seller", label: "Seller", icon: User }
+                                { id: "history", label: `Bids (${bidHistory.length})`, icon: Timer },
+                                { id: "seller", label: "Seller", icon: Users },
                             ].map(tab => (
                                 <button
                                     key={tab.id}
-                                    onClick={() => setActiveTab(tab.id as any)}
-                                    className={`px-8 py-4 text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all relative ${activeTab === tab.id ? "text-white" : "text-slate-500 hover:text-slate-300"}`}
+                                    onClick={() => setActiveTab(tab.id as typeof activeTab)}
+                                    className={`px-6 py-4 text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all relative ${activeTab === tab.id ? "text-white" : "text-slate-500 hover:text-slate-300"}`}
                                 >
-                                    <tab.icon size={14} /> {tab.label}
-                                    {activeTab === tab.id && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary shadow-[0_-2px_8px_rgba(237,28,36,0.5)]"></div>}
+                                    <tab.icon size={13} /> {tab.label}
+                                    {activeTab === tab.id && (
+                                        <motion.div layoutId="tab-indicator" className="absolute bottom-0 left-0 w-full h-0.5 bg-red-500 shadow-[0_-2px_8px_rgba(220,38,38,0.5)]" />
+                                    )}
                                 </button>
                             ))}
                         </div>
 
-                        {/* Tab Content */}
-                        <div className="p-8">
-                            {activeTab === "details" && (
-                                <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-8">
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                        {[
-                                            { label: "Mileage", value: "1,200 mi" },
-                                            { label: "Engine", value: "4.0L Flat-6" },
-                                            { label: "Transmission", value: "PDK" },
-                                            { label: "Drivetrain", value: "RWD" },
-                                        ].map((stat, i) => (
-                                            <div key={i} className="bg-slate-900/50 p-4 rounded-xl border border-white/5 text-center group hover:border-white/10 transition-colors">
-                                                <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">{stat.label}</p>
-                                                <p className="text-lg font-bold text-white">{stat.value}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div>
-                                        <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-wider flex items-center gap-2"><CheckCircle size={14} className="text-primary" /> Key Features</h3>
-                                        <ul className="grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-8 text-slate-400 text-sm">
+                        <div className="p-6">
+                            <AnimatePresence mode="wait">
+                                {activeTab === "details" && (
+                                    <motion.div key="details" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                             {[
-                                                "Weissach Package", "Porsche Ceramic Composite Brakes (PCCB)", "Front Axle Lift System",
-                                                "Carbon Fibre Bucket Seats", "Bose Surround Sound", "LED Matrix Headlights (PDLS+)",
-                                                "Chrono Package", "Magnesium Wheels"
-                                            ].map((item, i) => (
-                                                <li key={i} className="flex items-center gap-2"><div className="w-1 h-1 bg-slate-600 rounded-full"></div> {item}</li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                    <div className="p-4 rounded-lg bg-orange-500/5 border border-orange-500/10 flex gap-3 text-orange-200/80 text-xs leading-relaxed">
-                                        <Info size={16} className="shrink-0 mt-0.5" />
-                                        <p>This vehicle is sold with a 12-month Porsche Approved Warranty. Please review the full condition report in the documents section before placing a bid.</p>
-                                    </div>
-                                </div>
-                            )}
-
-                            {activeTab === "history" && (
-                                <div className="space-y-1 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                    <div className="flex justify-between text-[10px] text-slate-500 uppercase tracking-widest px-4 pb-2 border-b border-white/5">
-                                        <span>Bidder</span>
-                                        <span>Amount</span>
-                                    </div>
-                                    {bidHistory.map((bid, i) => (
-                                        <div key={i} className={`flex justify-between items-center p-3 rounded-lg ${i === 0 ? "bg-slate-800/50 border border-white/5" : "hover:bg-white/5 border border-transparent"}`}>
-                                            <div className="flex items-center gap-3">
-                                                <span className={`text-xs font-bold ${i === 0 ? "text-white" : "text-slate-400"}`}>{bid.user}</span>
-                                                {i === 0 && <span className="text-[9px] bg-primary/20 text-primary px-1.5 py-0.5 rounded uppercase font-bold tracking-wide">Leading</span>}
-                                            </div>
-                                            <div className="text-right">
-                                                <div className="font-mono font-bold text-white text-sm">£{bid.amount.toLocaleString()}</div>
-                                                <div className="text-[10px] text-slate-600">{bid.time}</div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {activeTab === "seller" && (
-                                <div className="flex items-center gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300 bg-slate-900/50 p-6 rounded-xl border border-white/5">
-                                    <div className="w-16 h-16 bg-gradient-to-br from-slate-700 to-slate-800 rounded-full flex items-center justify-center text-white text-xl font-bold border border-white/10 shadow-lg">LM</div>
-                                    <div className="flex-1">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <h3 className="text-lg font-bold text-white">Luxury Motors London</h3>
-                                                <div className="flex items-center gap-1 text-emerald-400 text-xs font-bold mt-1">
-                                                    <ShieldCheck size={12} /> Verified Dealer
+                                                { label: "Year", value: auction.listing.year ?? "—" },
+                                                { label: "Make", value: auction.listing.make ?? "—" },
+                                                { label: "Model", value: auction.listing.model ?? "—" },
+                                                { label: "Min Increment", value: `£${Number(auction.minIncrement).toLocaleString()}` },
+                                            ].map(s => (
+                                                <div key={s.label} className="bg-slate-900/50 p-4 rounded-xl border border-white/5 text-center">
+                                                    <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">{s.label}</p>
+                                                    <p className="text-lg font-bold text-white">{s.value}</p>
                                                 </div>
-                                            </div>
-                                            <Button variant="outline" size="sm" className="border-white/10 hover:bg-white/5 text-xs h-8">View Inventory</Button>
+                                            ))}
                                         </div>
-                                        <p className="text-slate-400 text-xs leading-relaxed mt-3">
-                                            Specializing in high-performance and luxury vehicles for over 15 years.
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
+                                        <div className="p-4 rounded-xl bg-slate-800/40 border border-white/5 space-y-2 text-sm text-slate-400">
+                                            <div className="flex justify-between">
+                                                <span>Starting Bid</span>
+                                                <span className="text-white font-mono font-bold">£{Number(auction.startingBid).toLocaleString()}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span>Reserve Price</span>
+                                                <span className="text-white font-mono font-bold">£{Number(auction.reservePrice).toLocaleString()}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span>Auction End</span>
+                                                <span className="text-white font-bold">{endTime ? endTime.toLocaleString("en-GB") : "—"}</span>
+                                            </div>
+                                        </div>
+                                        <div className="p-4 rounded-lg bg-orange-500/5 border border-orange-500/10 flex gap-3 text-orange-200/70 text-xs leading-relaxed">
+                                            <Info size={15} className="shrink-0 mt-0.5" />
+                                            <p>All transactions on Carmazium are arranged directly between buyer and seller. A chat room is created automatically when the auction ends to facilitate the deal.</p>
+                                        </div>
+                                    </motion.div>
+                                )}
+
+                                {activeTab === "history" && (
+                                    <motion.div key="history" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-1">
+                                        {bidHistory.length === 0 ? (
+                                            <p className="text-slate-500 text-sm text-center py-8">No bids placed yet. Be the first!</p>
+                                        ) : (
+                                            <>
+                                                <div className="flex justify-between text-[10px] text-slate-500 uppercase tracking-widest px-3 pb-2 border-b border-white/5">
+                                                    <span>Bidder</span>
+                                                    <span>Amount</span>
+                                                </div>
+                                                {bidHistory.map((bid, i) => (
+                                                    <motion.div
+                                                        key={i}
+                                                        initial={bid.isNew ? { opacity: 0, x: -10 } : false}
+                                                        animate={{ opacity: 1, x: 0 }}
+                                                        className={`flex justify-between items-center p-3 rounded-lg ${i === 0 ? "bg-slate-800/60 border border-white/8" : "hover:bg-white/3 border border-transparent"}`}
+                                                    >
+                                                        <div className="flex items-center gap-2.5">
+                                                            <div className="w-7 h-7 rounded-full bg-slate-700 border border-white/10 flex items-center justify-center text-[10px] font-bold text-slate-300">
+                                                                {bid.initials}
+                                                            </div>
+                                                            <span className={`text-xs font-bold ${i === 0 ? "text-white" : "text-slate-400"}`}>
+                                                                {bid.initials}
+                                                            </span>
+                                                            {i === 0 && (
+                                                                <span className="text-[9px] bg-red-600/20 text-red-400 px-1.5 py-0.5 rounded font-bold uppercase">Leading</span>
+                                                            )}
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <div className="font-mono font-bold text-white text-sm">£{bid.amount.toLocaleString()}</div>
+                                                            <div className="text-[10px] text-slate-600">{bid.time}</div>
+                                                        </div>
+                                                    </motion.div>
+                                                ))}
+                                            </>
+                                        )}
+                                    </motion.div>
+                                )}
+
+                                {activeTab === "seller" && (
+                                    <motion.div key="seller" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                                        <div className="flex items-center gap-5 bg-slate-900/50 p-5 rounded-xl border border-white/5">
+                                            <div className="w-16 h-16 bg-gradient-to-br from-slate-700 to-slate-800 rounded-full flex items-center justify-center text-white text-xl font-bold border border-white/10 shrink-0">
+                                                {getSellerInitials(auction)}
+                                            </div>
+                                            <div className="flex-1">
+                                                <h3 className="text-lg font-bold text-white">{getSellerName(auction)}</h3>
+                                                <div className="flex items-center gap-1 text-emerald-400 text-xs font-bold mt-1">
+                                                    <ShieldCheck size={12} /> Verified
+                                                </div>
+                                                <p className="text-slate-400 text-xs leading-relaxed mt-2">
+                                                    If you win this auction, a direct chat will be opened between you and the seller to arrange collection and payment.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                     </div>
                 </div>
 
-                {/* Right: Bidding & Chat Sidebar - Now a Card */}
+                {/* ── Right: Bid Feed + Controls ─────────────────────────────── */}
                 <aside className="lg:w-[380px] shrink-0 space-y-4">
-                    <div className="bg-slate-900 rounded-2xl border border-white/5 shadow-2xl overflow-hidden flex flex-col h-[600px]">
-                        {/* Chat Header */}
-                        <div className="p-4 border-b border-white/5 flex justify-between items-center bg-slate-900/50">
-                            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">Live Feed</h3>
+                    <div className="bg-slate-900 rounded-2xl border border-white/8 shadow-2xl overflow-hidden flex flex-col" style={{ height: 600 }}>
+
+                        {/* Feed Header */}
+                        <div className="p-4 border-b border-white/5 flex justify-between items-center bg-slate-900/60">
+                            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                                <Flame size={13} className="text-red-500" /> Live Bid Feed
+                            </h3>
                             <div className="flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
-                                <span className="text-[10px] text-slate-500">Active</span>
+                                {connected ? (
+                                    <>
+                                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                                        <span className="text-[10px] text-slate-500">Connected</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <WifiOff size={11} className="text-slate-600" />
+                                        <span className="text-[10px] text-slate-600">Offline</span>
+                                    </>
+                                )}
                             </div>
                         </div>
 
-                        {/* Chat Feed */}
-                        <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-slate-800 hover:scrollbar-thumb-slate-700 bg-slate-950/30">
-                            {messages.map((msg, idx) => (
-                                <div key={idx} className={`text-sm animate-in fade-in slide-in-from-bottom-2 duration-300`}>
-                                    {msg.type === 'system' && (
-                                        <div className="flex justify-center my-2">
-                                            <span className="text-[9px] uppercase tracking-widest font-bold text-slate-500 bg-slate-800/50 px-2 py-0.5 rounded-full border border-white/5">{msg.text}</span>
-                                        </div>
-                                    )}
-                                    {msg.type === 'admin' && (
-                                        <div className="bg-primary/5 p-2 rounded-lg border border-primary/10 mb-1">
-                                            <span className="font-bold text-primary text-[10px] uppercase tracking-wider block mb-0.5">Moderator</span>
-                                            <span className="text-slate-300 text-xs block">{msg.text}</span>
-                                        </div>
-                                    )}
-                                    {msg.type === 'bid' && (
-                                        <div className="flex items-center gap-2 py-1 px-2 -mx-2 hover:bg-white/5 rounded transition-colors group">
-                                            <Flame size={12} className="text-orange-500 group-hover:scale-110 transition-transform" />
-                                            <span className="font-bold text-orange-400 text-xs">{msg.user}</span>
-                                            <span className="text-slate-400 text-xs">bid</span>
-                                            <span className="text-white font-mono font-bold text-xs">{msg.text.split('£')[1] ? '£' + msg.text.split('£')[1] : msg.text}</span>
-                                        </div>
-                                    )}
-                                    {msg.type === 'chat' && (
-                                        <div className="flex gap-2 items-start py-0.5 opacity-80 hover:opacity-100 transition-opacity">
-                                            <span className="font-bold text-slate-500 text-xs whitespace-nowrap pt-0.5">{msg.user}:</span>
-                                            <span className="text-slate-300 text-xs leading-snug">{msg.text}</span>
-                                        </div>
-                                    )}
+                        {/* Bid history feed */}
+                        <div
+                            ref={chatRef}
+                            className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-thin scrollbar-thumb-slate-800 bg-slate-950/40"
+                        >
+                            {bidHistory.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-full text-slate-600 text-sm gap-2">
+                                    <Gavel size={24} />
+                                    <p>Waiting for first bid…</p>
                                 </div>
-                            ))}
-                        </div>
-
-                        {/* Chat Input */}
-                        <div className="p-3 bg-slate-900 border-t border-white/5 relative z-20">
-                            <div className="relative group">
-                                <input
-                                    type="text"
-                                    placeholder="Message room..."
-                                    className="w-full bg-slate-800/50 border border-white/5 rounded-full pl-4 pr-10 py-2.5 text-xs text-white focus:outline-none focus:border-white/20 transition-colors placeholder:text-slate-600 focus:bg-slate-800"
-                                />
-                                <button className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 text-slate-500 hover:text-white hover:bg-primary rounded-full transition-all">
-                                    <Send size={14} />
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Bidding Controls */}
-                        <div className="bg-slate-800 border-t border-white/10 p-4 shadow-[0_-5px_20px_rgba(0,0,0,0.4)] z-30">
-                            <div className="grid grid-cols-4 gap-2 mb-3">
-                                {[500, 1000, 2000, 5000].map(inc => (
-                                    <button
-                                        key={inc}
-                                        onClick={() => handleBid(currentBid + inc)}
-                                        className="bg-slate-700/50 hover:bg-slate-700 border border-white/5 hover:border-white/20 rounded py-2 flex flex-col items-center justify-center transition-all active:scale-95 group"
+                            ) : (
+                                bidHistory.map((bid, i) => (
+                                    <motion.div
+                                        key={i}
+                                        initial={bid.isNew ? { opacity: 0, y: -8 } : false}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="flex items-center gap-2 py-1.5 px-2 hover:bg-white/3 rounded-lg transition-colors"
                                     >
-                                        <span className="text-[10px] text-slate-400 group-hover:text-white">+{inc / 1000}k</span>
-                                    </button>
-                                ))}
-                            </div>
+                                        <Flame size={12} className="text-orange-500 shrink-0" />
+                                        <span className="font-bold text-orange-400 text-xs">{bid.initials}</span>
+                                        <span className="text-slate-500 text-xs">bid</span>
+                                        <span className="text-white font-mono font-bold text-xs">£{bid.amount.toLocaleString()}</span>
+                                        <span className="ml-auto text-[10px] text-slate-600">{bid.time}</span>
+                                    </motion.div>
+                                ))
+                            )}
+                        </div>
 
-                            <div className="flex gap-2">
-                                <div className="relative w-24 shrink-0">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs">£</span>
-                                    <Input
-                                        type="number"
-                                        placeholder="Custom"
-                                        className="bg-slate-900 border-slate-600 text-white pl-6 h-10 font-mono font-bold text-sm focus:border-primary"
-                                        value={bidAmount}
-                                        onChange={(e) => setBidAmount(e.target.value)}
-                                    />
+                        {/* Bid Controls */}
+                        <div className="bg-slate-800 border-t border-white/10 p-4 space-y-3">
+                            {isEnded ? (
+                                <div className="text-center py-2 text-slate-500 text-sm font-bold">
+                                    Auction has ended
                                 </div>
-                                <Button
-                                    onClick={() => handleBid(Number(bidAmount) || currentBid + 500)}
-                                    className="flex-1 h-10 bg-primary hover:bg-red-600 text-white font-bold text-sm uppercase tracking-wider shadow-lg shadow-red-900/20"
-                                >
-                                    Place Bid
-                                </Button>
-                            </div>
+                            ) : !user ? (
+                                <Link href="/auth/login">
+                                    <Button className="w-full bg-red-600 hover:bg-red-700 text-white font-bold">
+                                        Sign in to Bid
+                                    </Button>
+                                </Link>
+                            ) : !isLive ? (
+                                <div className="text-center py-2 text-slate-500 text-sm font-bold">
+                                    <Clock size={14} className="inline mr-2" />
+                                    Auction not started yet
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Quick bid buttons */}
+                                    <div className="grid grid-cols-4 gap-1.5">
+                                        {quickBids.map(inc => (
+                                            <button
+                                                key={inc}
+                                                onClick={() => handleBid(currentBid + inc)}
+                                                disabled={bidLoading}
+                                                className="bg-slate-700/60 hover:bg-slate-700 border border-white/5 hover:border-white/20 rounded-lg py-2.5 flex flex-col items-center transition-all active:scale-95 disabled:opacity-50"
+                                            >
+                                                <span className="text-[10px] text-slate-300 font-bold">
+                                                    +£{inc >= 1000 ? `${inc / 1000}k` : inc}
+                                                </span>
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Custom bid */}
+                                    <div className="flex gap-2">
+                                        <div className="relative w-24 shrink-0">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs">£</span>
+                                            <Input
+                                                type="number"
+                                                placeholder="Custom"
+                                                className="bg-slate-900 border-slate-600 text-white pl-6 h-10 font-mono font-bold text-sm focus:border-red-500"
+                                                value={bidAmount}
+                                                onChange={e => setBidAmount(e.target.value)}
+                                                onKeyDown={e => {
+                                                    if (e.key === "Enter" && bidAmount) handleBid(Number(bidAmount))
+                                                }}
+                                            />
+                                        </div>
+                                        <Button
+                                            onClick={() => handleBid(Number(bidAmount) || currentBid + minIncrement)}
+                                            disabled={bidLoading}
+                                            className="flex-1 h-10 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-bold text-sm uppercase tracking-wider shadow-[0_0_15px_rgba(220,38,38,0.3)]"
+                                        >
+                                            {bidLoading ? "Placing…" : "Place Bid"}
+                                        </Button>
+                                    </div>
+
+                                    {bidError && (
+                                        <p className="text-red-400 text-xs text-center leading-snug">{bidError}</p>
+                                    )}
+
+                                    <p className="text-[10px] text-slate-600 text-center">
+                                        Min bid: £{(currentBid + minIncrement).toLocaleString()}
+                                    </p>
+                                </>
+                            )}
                         </div>
                     </div>
                 </aside>

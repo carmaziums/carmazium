@@ -92,11 +92,18 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         subHeader: "Strategic revenue tracking and platform sales history",
         icon: DollarSign 
     },
-    { 
-        href: "/dashboard/dealer/settings", 
-        label: "Settings", 
+    {
+        href: "/dashboard/dealer/settings",
+        label: "Settings",
         title: "Settings",
         subHeader: "Manage your dealership profile and preferences",
-        icon: Settings 
+        icon: Settings
+    },
+    {
+        href: "/dashboard/dealer/auctions",
+        label: "Auctions",
+        title: "Auctions",
+        subHeader: "Manage live vehicle auctions & bidding",
+        icon: Gavel
     }
 ]

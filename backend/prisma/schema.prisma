@@ -200,6 +200,15 @@ enum LeadStatus {
   @@map("lead_status")
 }
 
+enum AuctionStatus {
+  SCHEDULED
+  ACTIVE
+  ENDED
+  CANCELLED
+
+  @@map("auction_status")
+}
+
 // ============================================================================
 // USER MANAGEMENT & PROFILES
 // ============================================================================
@@ -247,6 +256,7 @@ model User {
   salesAsSeller           Sale[]               @relation("SellerSales")
   purchasesAsBuyer        Sale[]               @relation("BuyerPurchases")
   offersReceived          Offer[]              @relation("SellerOffers")
+  wonAuctions             Auction[]            @relation("AuctionWinner")
 
   @@map("users")
 }
@@ -571,19 +581,25 @@ model HpiReport {
 // ============================================================================
 
 model Auction {
-  id           String    @id @default(uuid())
-  listingId    String    @unique
-  startTime    DateTime
-  endTime      DateTime
-  reservePrice Decimal   @db.Decimal(12, 2)
-  startingBid  Decimal   @db.Decimal(12, 2)
-  minIncrement Decimal   @db.Decimal(12, 2)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  deletedAt    DateTime?
+  id               String        @id @default(uuid())
+  listingId        String        @unique
+  startTime        DateTime
+  endTime          DateTime
+  reservePrice     Decimal       @db.Decimal(12, 2)
+  startingBid      Decimal       @db.Decimal(12, 2)
+  minIncrement     Decimal       @db.Decimal(12, 2)
+  status           AuctionStatus @default(SCHEDULED)
+  winnerId         String?
+  winningBidAmount Decimal?      @db.Decimal(12, 2)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  deletedAt        DateTime?
 
   listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  winner  User?   @relation("AuctionWinner", fields: [winnerId], references: [id])
 
+  @@index([status])
+  @@index([endTime])
   @@map("auctions")
 }
 

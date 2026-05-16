@@ -1,121 +1,379 @@
-/* ============================================================================
- * AUCTIONS SERVICE — FROZEN
- * ============================================================================
- * Auctions have been temporarily disabled by client decision.
- * All service logic is preserved in AUCTION_DISABLED blocks.
- * To re-enable: uncomment all blocks and restore the original class body.
- * ============================================================================ */
-
-import { Injectable } from '@nestjs/common';
-
-/* AUCTION_DISABLED — original imports kept for easy re-enable
 import {
+    Injectable,
     NotFoundException,
     BadRequestException,
     ForbiddenException,
+    forwardRef,
+    Inject,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
+import { AuctionGateway, AuctionEndPayload } from './auction.gateway';
 import { CreateAuctionDto } from './dto/create-auction.dto';
 import { UpdateAuctionDto } from './dto/update-auction.dto';
 import { Auction } from '@prisma/client';
-*/
+
+const AUCTION_DURATION_MS = 5 * 60 * 60 * 1000; // 5 hours in milliseconds
+const ANTI_SNIPE_MINUTES = 3;
 
 @Injectable()
 export class AuctionsService {
-    /* AUCTION_DISABLED
-    constructor(private readonly prisma: PrismaService) { }
-    */
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly notificationsGateway: NotificationsGateway,
+        @Inject(forwardRef(() => AuctionGateway))
+        private readonly auctionGateway: AuctionGateway,
+    ) { }
 
-    /* AUCTION_DISABLED — create()
-     *
-     * async create(createAuctionDto: CreateAuctionDto, userId: string): Promise<Auction> {
-     *     const now = new Date();
-     *     if (new Date(createAuctionDto.endTime) <= new Date(createAuctionDto.startTime)) {
-     *         throw new BadRequestException('End time must be after start time');
-     *     }
-     *     if (new Date(createAuctionDto.endTime) <= now) {
-     *         throw new BadRequestException('End time must be in the future');
-     *     }
-     *
-     *     const listing = await this.prisma.listing.findUnique({
-     *         where: { id: createAuctionDto.listingId },
-     *     });
-     *
-     *     if (!listing) throw new NotFoundException('Listing not found');
-     *     if (listing.sellerId && listing.sellerId !== userId) throw new ForbiddenException('You do not own this listing');
-     *     if (listing.type !== 'AUCTION') throw new BadRequestException('Listing is not of type AUCTION');
-     *
-     *     const existing = await this.prisma.auction.findUnique({
-     *         where: { listingId: createAuctionDto.listingId },
-     *     });
-     *     if (existing) throw new BadRequestException('Auction already exists for this listing');
-     *
-     *     return this.prisma.auction.create({ data: { ...createAuctionDto } });
-     * }
-     */
+    async create(createAuctionDto: CreateAuctionDto, userId: string): Promise<Auction> {
+        const now = new Date();
+        const startTime = new Date(createAuctionDto.startTime);
 
-    /* AUCTION_DISABLED — findAllActive()
-     *
-     * async findAllActive(): Promise<Auction[]> {
-     *     const now = new Date();
-     *     return this.prisma.auction.findMany({
-     *         where: {
-     *             startTime: { lte: now },
-     *             endTime: { gt: now },
-     *             listing: { status: 'ACTIVE' },
-     *         },
-     *         include: {
-     *             listing: {
-     *                 select: { id: true, title: true, slug: true, images: true, make: true, model: true, year: true },
-     *             },
-     *         },
-     *         orderBy: { endTime: 'asc' },
-     *     });
-     * }
-     */
+        if (startTime <= now) {
+            throw new BadRequestException('Start time must be in the future');
+        }
 
-    /* AUCTION_DISABLED — findOne()
-     *
-     * async findOne(id: string): Promise<Auction> {
-     *     const auction = await this.prisma.auction.findUnique({
-     *         where: { id },
-     *         include: { listing: true },
-     *     });
-     *     if (!auction) throw new NotFoundException(`Auction with ID "${id}" not found`);
-     *     return auction;
-     * }
-     */
+        // Compute endTime server-side — always startTime + 5 hours
+        const endTime = new Date(startTime.getTime() + AUCTION_DURATION_MS);
 
-    /* AUCTION_DISABLED — update()
-     *
-     * async update(id: string, updateAuctionDto: UpdateAuctionDto, userId: string): Promise<Auction> {
-     *     const auction = await this.findOne(id);
-     *     const listing = await this.prisma.listing.findUnique({ where: { id: auction.listingId } });
-     *
-     *     if (listing?.sellerId !== userId) throw new ForbiddenException('You do not own this auction');
-     *
-     *     if (updateAuctionDto.startTime && updateAuctionDto.endTime) {
-     *         if (new Date(updateAuctionDto.endTime) <= new Date(updateAuctionDto.startTime)) {
-     *             throw new BadRequestException('End time must be after start time');
-     *         }
-     *     }
-     *
-     *     return this.prisma.auction.update({ where: { id }, data: updateAuctionDto });
-     * }
-     */
+        const listing = await this.prisma.listing.findUnique({
+            where: { id: createAuctionDto.listingId },
+        });
 
-    /* AUCTION_DISABLED — remove()
-     *
-     * async remove(id: string, userId: string): Promise<Auction> {
-     *     const auction = await this.findOne(id);
-     *     const listing = await this.prisma.listing.findUnique({ where: { id: auction.listingId } });
-     *
-     *     if (listing?.sellerId !== userId) throw new ForbiddenException('You do not own this auction');
-     *
-     *     return this.prisma.auction.update({
-     *         where: { id },
-     *         data: { deletedAt: new Date() },
-     *     });
-     * }
-     */
+        if (!listing || listing.deletedAt) {
+            throw new NotFoundException('Listing not found');
+        }
+
+        if (listing.sellerId !== userId) {
+            throw new ForbiddenException('You do not own this listing');
+        }
+
+        if (listing.type !== 'AUCTION') {
+            throw new BadRequestException('Listing must be of type AUCTION to create an auction');
+        }
+
+        const existing = await this.prisma.auction.findUnique({
+            where: { listingId: createAuctionDto.listingId },
+        });
+
+        if (existing && !existing.deletedAt) {
+            throw new BadRequestException('An auction already exists for this listing');
+        }
+
+        return this.prisma.auction.create({
+            data: {
+                listingId: createAuctionDto.listingId,
+                startTime,
+                endTime,
+                reservePrice: createAuctionDto.reservePrice,
+                startingBid: createAuctionDto.startingBid,
+                minIncrement: createAuctionDto.minIncrement,
+                status: 'SCHEDULED',
+            },
+        });
+    }
+
+    async findAllActive(): Promise<any[]> {
+        return this.prisma.auction.findMany({
+            where: { status: 'ACTIVE', deletedAt: null },
+            include: {
+                listing: {
+                    include: {
+                        bids: {
+                            where: { deletedAt: null },
+                            orderBy: { amount: 'desc' },
+                            take: 1,
+                            select: { amount: true },
+                        },
+                        _count: { select: { bids: true } },
+                    },
+                },
+            },
+            orderBy: { endTime: 'asc' },
+        });
+    }
+
+    async findAllScheduled(): Promise<any[]> {
+        return this.prisma.auction.findMany({
+            where: { status: 'SCHEDULED', deletedAt: null },
+            include: {
+                listing: {
+                    include: {
+                        _count: { select: { bids: true } },
+                    },
+                },
+            },
+            orderBy: { startTime: 'asc' },
+        });
+    }
+
+    async findOne(id: string): Promise<any> {
+        const auction = await this.prisma.auction.findUnique({
+            where: { id },
+            include: {
+                listing: {
+                    include: {
+                        seller: {
+                            select: {
+                                id: true,
+                                firstName: true,
+                                lastName: true,
+                                dealerProfile: { select: { companyName: true, logo: true } },
+                            },
+                        },
+                        bids: {
+                            where: { deletedAt: null },
+                            orderBy: { amount: 'desc' },
+                            include: {
+                                bidder: { select: { id: true, firstName: true, lastName: true } },
+                            },
+                        },
+                    },
+                },
+                winner: { select: { id: true, firstName: true, lastName: true } },
+            },
+        });
+
+        if (!auction || auction.deletedAt) {
+            throw new NotFoundException(`Auction not found`);
+        }
+
+        return auction;
+    }
+
+    async findMyAuctions(userId: string): Promise<any[]> {
+        return this.prisma.auction.findMany({
+            where: {
+                deletedAt: null,
+                listing: { sellerId: userId },
+            },
+            include: {
+                listing: {
+                    include: {
+                        bids: {
+                            where: { deletedAt: null },
+                            orderBy: { amount: 'desc' },
+                            take: 1,
+                            select: { amount: true },
+                        },
+                        _count: { select: { bids: true } },
+                    },
+                },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+    }
+
+    async update(id: string, updateAuctionDto: UpdateAuctionDto, userId: string): Promise<Auction> {
+        const auction = await this.findOne(id);
+
+        if (auction.listing.sellerId !== userId) {
+            throw new ForbiddenException('You do not own this auction');
+        }
+
+        if (auction.status !== 'SCHEDULED') {
+            throw new BadRequestException('Only SCHEDULED auctions can be updated');
+        }
+
+        const startTime = updateAuctionDto.startTime
+            ? new Date(updateAuctionDto.startTime)
+            : auction.startTime;
+
+        const endTime = new Date(startTime.getTime() + AUCTION_DURATION_MS);
+
+        return this.prisma.auction.update({
+            where: { id },
+            data: {
+                startTime,
+                endTime,
+                ...(updateAuctionDto.reservePrice !== undefined && { reservePrice: updateAuctionDto.reservePrice }),
+                ...(updateAuctionDto.startingBid !== undefined && { startingBid: updateAuctionDto.startingBid }),
+                ...(updateAuctionDto.minIncrement !== undefined && { minIncrement: updateAuctionDto.minIncrement }),
+            },
+        });
+    }
+
+    async cancel(id: string, userId: string): Promise<Auction> {
+        const auction = await this.findOne(id);
+
+        if (auction.listing.sellerId !== userId) {
+            throw new ForbiddenException('You do not own this auction');
+        }
+
+        if (auction.status !== 'SCHEDULED') {
+            throw new BadRequestException('Only SCHEDULED auctions can be cancelled');
+        }
+
+        return this.prisma.auction.update({
+            where: { id },
+            data: { status: 'CANCELLED' },
+        });
+    }
+
+    async remove(id: string, userId: string): Promise<Auction> {
+        const auction = await this.findOne(id);
+
+        if (auction.listing.sellerId !== userId) {
+            throw new ForbiddenException('You do not own this auction');
+        }
+
+        if (auction.status !== 'SCHEDULED') {
+            throw new BadRequestException('Only SCHEDULED auctions can be deleted');
+        }
+
+        return this.prisma.auction.update({
+            where: { id },
+            data: { deletedAt: new Date() },
+        });
+    }
+
+    // Called by BidsService after a bid is placed
+    async maybeExtend(auctionId: string, bidPlacedAt: Date): Promise<Auction | null> {
+        const auction = await this.prisma.auction.findUnique({ where: { id: auctionId } });
+        if (!auction) return null;
+
+        const antiSnipeWindow = ANTI_SNIPE_MINUTES * 60 * 1000;
+        const timeLeft = auction.endTime.getTime() - bidPlacedAt.getTime();
+
+        if (timeLeft > 0 && timeLeft <= antiSnipeWindow) {
+            return this.prisma.auction.update({
+                where: { id: auctionId },
+                data: {
+                    endTime: new Date(auction.endTime.getTime() + antiSnipeWindow),
+                },
+            });
+        }
+
+        return null;
+    }
+
+    // Called by AuctionLifecycleService when endTime has passed
+    async closeAuction(auctionId: string): Promise<void> {
+        const auction = await this.prisma.auction.findUnique({
+            where: { id: auctionId },
+            include: {
+                listing: {
+                    include: {
+                        bids: {
+                            where: { deletedAt: null },
+                            orderBy: { amount: 'desc' },
+                            take: 1,
+                            include: { bidder: { select: { id: true, firstName: true } } },
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!auction || auction.status !== 'ACTIVE') return;
+
+        const topBid = auction.listing.bids[0];
+        const reserveMet = topBid && Number(topBid.amount) >= Number(auction.reservePrice);
+
+        if (reserveMet && topBid) {
+            // Winner found
+            await this.prisma.$transaction([
+                this.prisma.auction.update({
+                    where: { id: auctionId },
+                    data: {
+                        status: 'ENDED',
+                        winnerId: topBid.bidderId,
+                        winningBidAmount: topBid.amount,
+                    },
+                }),
+                this.prisma.listing.update({
+                    where: { id: auction.listingId },
+                    data: { status: 'OFFER_ACCEPTED' },
+                }),
+            ]);
+
+            const endPayload: AuctionEndPayload = {
+                auctionId,
+                winnerId: topBid.bidderId,
+                winningBidAmount: Number(topBid.amount),
+                reserveMet: true,
+            };
+            this.auctionGateway.broadcastAuctionEnd(auctionId, endPayload);
+            await this.notifyAuctionEnd(auction, topBid.bidderId, Number(topBid.amount), true);
+        } else {
+            // No winner — reserve not met
+            await this.prisma.auction.update({
+                where: { id: auctionId },
+                data: { status: 'ENDED' },
+            });
+
+            const endPayload: AuctionEndPayload = {
+                auctionId,
+                winnerId: null,
+                winningBidAmount: null,
+                reserveMet: false,
+            };
+            this.auctionGateway.broadcastAuctionEnd(auctionId, endPayload);
+            await this.notifyAuctionEnd(auction, null, null, false);
+        }
+    }
+
+    private async notifyAuctionEnd(
+        auction: any,
+        winnerId: string | null,
+        winningAmount: number | null,
+        reserveMet: boolean,
+    ): Promise<void> {
+        const listing = auction.listing;
+        const vehicle = `${listing.year ?? ''} ${listing.make ?? ''} ${listing.model ?? ''}`.trim();
+
+        if (reserveMet && winnerId && winningAmount !== null) {
+            // Notify winner
+            this.notificationsGateway.sendNotification(winnerId, {
+                type: 'AUCTION_WON',
+                title: 'You won the auction!',
+                message: `You won the auction for ${vehicle} with a bid of £${winningAmount.toLocaleString()}. Contact the seller to arrange collection.`,
+                entityType: 'AUCTION',
+                entityId: auction.id,
+                link: `/auctions/live/${auction.id}`,
+            });
+
+            // Notify seller
+            if (listing.sellerId) {
+                this.notificationsGateway.sendNotification(listing.sellerId, {
+                    type: 'AUCTION_ENDED',
+                    title: 'Your auction has ended',
+                    message: `Your auction for ${vehicle} has ended. Winning bid: £${winningAmount.toLocaleString()}.`,
+                    entityType: 'AUCTION',
+                    entityId: auction.id,
+                    link: `/auctions/live/${auction.id}`,
+                });
+            }
+
+            // Auto-create chat room between winner and seller
+            if (listing.sellerId && listing.sellerId !== winnerId) {
+                await this.prisma.chatRoom.upsert({
+                    where: {
+                        initiatorId_participantId: {
+                            initiatorId: winnerId,
+                            participantId: listing.sellerId,
+                        },
+                    },
+                    create: {
+                        initiatorId: winnerId,
+                        participantId: listing.sellerId,
+                        listingId: auction.listingId,
+                    },
+                    update: {},
+                });
+            }
+        } else {
+            // No winner — notify seller only
+            if (listing.sellerId) {
+                this.notificationsGateway.sendNotification(listing.sellerId, {
+                    type: 'AUCTION_ENDED',
+                    title: 'Auction ended — reserve not met',
+                    message: `Your auction for ${vehicle} ended without meeting the reserve price. You can relist or adjust the reserve.`,
+                    entityType: 'AUCTION',
+                    entityId: auction.id,
+                    link: `/auctions/live/${auction.id}`,
+                });
+            }
+        }
+    }
 }

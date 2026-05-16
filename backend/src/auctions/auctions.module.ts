@@ -1,24 +1,21 @@
-/* ============================================================================
- * AUCTIONS MODULE — FROZEN
- * ============================================================================
- * The AuctionsService and controller are frozen. PrismaModule and AuthModule
- * imports are preserved in comments for when auctions are re-enabled.
- * ============================================================================ */
-
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { AuctionsService } from './auctions.service';
 import { AuctionsController } from './auctions.controller';
-
-/* AUCTION_DISABLED — restore these imports when re-enabling auctions
+import { AuctionGateway } from './auction.gateway';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AuthModule } from '../auth/auth.module';
-*/
+import { NotificationsModule } from '../notifications/notifications.module';
+import { BidsModule } from '../bids/bids.module';
 
 @Module({
-    // AUCTION_DISABLED: imports: [PrismaModule, AuthModule],
-    imports: [],
+    imports: [
+        PrismaModule,
+        AuthModule,
+        NotificationsModule,
+        forwardRef(() => BidsModule),
+    ],
     controllers: [AuctionsController],
-    providers: [AuctionsService],
-    // AUCTION_DISABLED: exports: [AuctionsService],
+    providers: [AuctionsService, AuctionGateway],
+    exports: [AuctionsService, AuctionGateway],
 })
 export class AuctionsModule { }
