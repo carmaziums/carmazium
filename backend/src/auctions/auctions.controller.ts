@@ -46,15 +46,6 @@ export class AuctionsController {
         return new StandardResponse(auctions);
     }
 
-    @Get(':id')
-    @ApiOperation({ summary: 'Get full auction details by ID' })
-    @ApiResponse({ status: 200, description: 'Auction details with bids and listing' })
-    @ApiResponse({ status: 404, description: 'Auction not found' })
-    async findOne(@Param('id') id: string) {
-        const auction = await this.auctionsService.findOne(id);
-        return new StandardResponse(auction);
-    }
-
     // ── Authenticated Routes ──────────────────────────────────────────────────
 
     @Get('my/list')
@@ -64,6 +55,15 @@ export class AuctionsController {
     async findMyAuctions(@CurrentUser() user: any) {
         const auctions = await this.auctionsService.findMyAuctions(user.id);
         return new StandardResponse(auctions);
+    }
+
+    @Get(':id')
+    @ApiOperation({ summary: 'Get full auction details by ID' })
+    @ApiResponse({ status: 200, description: 'Auction details with bids and listing' })
+    @ApiResponse({ status: 404, description: 'Auction not found' })
+    async findOne(@Param('id') id: string) {
+        const auction = await this.auctionsService.findOne(id);
+        return new StandardResponse(auction);
     }
 
     @Post()
