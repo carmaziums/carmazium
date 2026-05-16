@@ -8,7 +8,7 @@ import {
     Car, Camera, List, DollarSign, CheckCircle,
     ArrowRight, ArrowLeft, Loader2, Search,
     BadgeCheck, TrendingDown, Upload, Eye, X,
-    Shield, Star, Sparkles, Zap, MapPin, LocateFixed, Edit, Info, Handshake, CreditCard, AlertTriangle, ChevronDown, Lock, FileText, Activity
+    Shield, Star, Sparkles, Zap, MapPin, LocateFixed, Edit, Info, Handshake, CreditCard, AlertTriangle, ChevronDown, Lock, FileText, Activity, Gavel, Clock, TrendingUp
 } from "lucide-react"
 import Image from "next/image"
 import { ImageUpload } from "@/components/listing/ImageUpload"
@@ -79,6 +79,7 @@ interface FormData {
     priceAsking: string   // Asking price — displayed publicly on the listing
     badgeTier: 'FREE' | 'STANDARD' | 'PREMIUM'
     status: "DRAFT" | "ACTIVE"
+    listingType: "CLASSIFIED" | "AUCTION"
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -110,7 +111,7 @@ const INITIAL_FORM: FormData = {
     primaryColour: "",
     dateOfLastV5CIssued: "",
     images: [],
-    priceMin: "", priceAsking: "", badgeTier: 'FREE', status: "DRAFT",
+    priceMin: "", priceAsking: "", badgeTier: 'FREE', status: "DRAFT", listingType: "CLASSIFIED",
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -415,7 +416,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 vrm: formData.vrm,
                 vin: formData.vin || undefined,
                 images: formData.images,
-                listingType: "CLASSIFIED",
+                listingType: formData.listingType,
                 make: formData.make || undefined,
                 model: formData.model || undefined,
                 description: formData.description || undefined,
@@ -606,25 +607,62 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             <p className="text-lg text-gray-400 max-w-lg mx-auto">Present your vehicle to thousands of high-intent buyers seeking premium quality.</p>
                         </div>
 
-                        <div
-                            onClick={handleMethodClick}
-                            className="relative cursor-pointer group max-w-xl mx-auto"
-                        >
-                            <div className="relative dealer-glass-card p-10 border-white/10 hover:border-primary/40 transition-all duration-300 overflow-hidden hover:shadow-[0_10px_40px_rgba(237,28,36,0.15)] rounded-2xl bg-[#0A0A0C]/80">
-                                <div className="absolute top-0 right-0 w-40 h-40 bg-primary/10 rounded-full blur-3xl -z-10 group-hover:bg-primary/20 transition-colors" />
-                                <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl -z-10" />
-                                <div className="w-20 h-20 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl flex items-center justify-center mb-8 border border-white/10 group-hover:border-primary/50 group-hover:shadow-[0_0_30px_rgba(237,28,36,0.2)] transition-all">
-                                    <List className="text-primary w-10 h-10" />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+                            {/* Retail Listing card */}
+                            <div
+                                onClick={handleMethodClick}
+                                className="relative cursor-pointer group"
+                            >
+                                <div className="relative dealer-glass-card p-8 border-white/10 hover:border-primary/40 transition-all duration-300 overflow-hidden hover:shadow-[0_10px_40px_rgba(237,28,36,0.15)] rounded-2xl bg-[#0A0A0C]/80 h-full flex flex-col">
+                                    <div className="absolute top-0 right-0 w-40 h-40 bg-primary/10 rounded-full blur-3xl -z-10 group-hover:bg-primary/20 transition-colors" />
+                                    <div className="w-16 h-16 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl flex items-center justify-center mb-6 border border-white/10 group-hover:border-primary/50 group-hover:shadow-[0_0_30px_rgba(237,28,36,0.2)] transition-all">
+                                        <List className="text-primary w-8 h-8" />
+                                    </div>
+                                    <h2 className="text-2xl font-bold mb-2 font-heading">Retail Listing</h2>
+                                    <p className="text-gray-400 mb-6 text-sm">Set your asking price and let buyers submit offers. You choose who to accept.</p>
+                                    <ul className="space-y-2.5 mb-6 text-gray-300 flex-1">
+                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Free to list</li>
+                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> DVLA-verified vehicle data</li>
+                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Instant estimated valuation</li>
+                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Reach thousands of buyers</li>
+                                    </ul>
+                                    <Button className="w-full py-4 group-hover:shadow-neon">Start Listing <ArrowRight className="ml-2 h-4 w-4" /></Button>
                                 </div>
-                                <h2 className="text-3xl font-bold mb-3 font-heading">List My Car</h2>
-                                <p className="text-gray-400 mb-8">Set your asking price and let buyers submit offers. You choose who to accept.</p>
-                                <ul className="space-y-3 mb-8 text-gray-300">
-                                    <li className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-400" /> Free to list</li>
-                                    <li className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-400" /> DVLA-verified vehicle data</li>
-                                    <li className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-400" /> Instant estimated valuation</li>
-                                    <li className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-400" /> Reach thousands of buyers</li>
-                                </ul>
-                                <Button className="w-full py-6 text-lg group-hover:shadow-neon">Start Listing <ArrowRight className="ml-2" /></Button>
+                            </div>
+
+                            {/* Auction card */}
+                            <div
+                                onClick={() => {
+                                    if (!isAuthenticated) { setShowLoginModal(true); return }
+                                    if (!isEmailVerified) { router.push("/auth/onboarding"); return }
+                                    set("listingType", "AUCTION")
+                                    setSellingMethod("list")
+                                    set("status", "ACTIVE")
+                                }}
+                                className="relative cursor-pointer group"
+                            >
+                                <div className="relative dealer-glass-card p-8 border-orange-500/20 hover:border-orange-500/50 transition-all duration-300 overflow-hidden hover:shadow-[0_10px_40px_rgba(249,115,22,0.15)] rounded-2xl bg-[#0A0A0C]/80 h-full flex flex-col">
+                                    <div className="absolute top-0 right-0 w-40 h-40 bg-orange-500/10 rounded-full blur-3xl -z-10 group-hover:bg-orange-500/20 transition-colors" />
+                                    <div className="absolute top-3 right-3 z-10">
+                                        <span className="flex items-center gap-1 bg-orange-500/20 border border-orange-500/40 text-orange-400 text-[10px] font-bold px-2.5 py-1 rounded-full">
+                                            <span className="w-1.5 h-1.5 bg-orange-400 rounded-full animate-pulse" /> LIVE BIDDING
+                                        </span>
+                                    </div>
+                                    <div className="w-16 h-16 bg-gradient-to-br from-orange-900/40 to-slate-900 rounded-2xl flex items-center justify-center mb-6 border border-orange-500/20 group-hover:border-orange-500/50 group-hover:shadow-[0_0_30px_rgba(249,115,22,0.2)] transition-all">
+                                        <Gavel className="text-orange-400 w-8 h-8" />
+                                    </div>
+                                    <h2 className="text-2xl font-bold mb-2 font-heading">Auction</h2>
+                                    <p className="text-gray-400 mb-6 text-sm">Let buyers bid in real-time. 5-hour live auctions with anti-snipe protection.</p>
+                                    <ul className="space-y-2.5 mb-6 text-gray-300 flex-1">
+                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Real-time live bidding</li>
+                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Anti-snipe protection</li>
+                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Set your reserve price</li>
+                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Connect with winner via chat</li>
+                                    </ul>
+                                    <Button className="w-full py-4 bg-orange-600 hover:bg-orange-500 border-0 group-hover:shadow-[0_0_20px_rgba(249,115,22,0.4)]">
+                                        List for Auction <Gavel className="ml-2 h-4 w-4" />
+                                    </Button>
+                                </div>
                             </div>
                         </div>
 
@@ -670,7 +708,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 </div>
 
                 <div className="text-center mb-10">
-                    <h1 className="text-3xl md:text-4xl font-heading font-bold text-white">List Your Car</h1>
+                    <h1 className="text-3xl md:text-4xl font-heading font-bold text-white">
+                        {formData.listingType === "AUCTION" ? "List for Auction" : "List Your Car"}
+                    </h1>
                     <p className="text-gray-400 mt-2">Step {currentStep} of {STEPS.length}</p>
                 </div>
 

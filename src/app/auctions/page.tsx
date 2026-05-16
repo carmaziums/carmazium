@@ -16,6 +16,11 @@ import {
     Search,
     RefreshCw,
     Clock,
+    Shield,
+    MessageSquare,
+    Trophy,
+    CheckCircle,
+    Star,
 } from "lucide-react"
 import { CountdownTimer } from "@/components/features/CountdownTimer"
 import {
@@ -396,8 +401,128 @@ export default function AuctionsPage() {
                 )}
             </div>
 
+            {/* ── Why Auction? Benefits ─────────────────────────────────────── */}
+            <div className="container mx-auto px-6 pt-20">
+                <div className="text-center mb-12">
+                    <p className="text-red-500 text-xs font-bold uppercase tracking-widest mb-3">Why Carmazium Auctions?</p>
+                    <h2 className="text-3xl md:text-4xl font-bold text-white font-heading">The Smartest Way to Buy<br />or Sell a Car</h2>
+                    <p className="text-slate-400 mt-4 max-w-xl mx-auto">No negotiation lag. No ghost buyers. Just real-time competition that drives the best price — for both sides.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+                    {[
+                        {
+                            icon: TrendingUp,
+                            color: "emerald",
+                            title: "Competitive Pricing",
+                            desc: "Live bidding creates natural price discovery. Sellers get fair market value; buyers compete transparently.",
+                            stat: "5 hours",
+                            statLabel: "per auction",
+                        },
+                        {
+                            icon: Shield,
+                            color: "blue",
+                            title: "Reserve Protection",
+                            desc: "Set a minimum you'll accept. If bidding doesn't reach your reserve, the listing returns to active — no obligation.",
+                            stat: "You decide",
+                            statLabel: "the reserve",
+                        },
+                        {
+                            icon: Zap,
+                            color: "orange",
+                            title: "Anti-Snipe Rule",
+                            desc: "Any bid in the final 3 minutes resets the clock by 3 minutes. No last-second grabs — fair until the very end.",
+                            stat: "3 min",
+                            statLabel: "extension rule",
+                        },
+                        {
+                            icon: MessageSquare,
+                            color: "purple",
+                            title: "Instant Connection",
+                            desc: "When the gavel drops, winner and seller are auto-connected via chat to arrange collection — no middleman.",
+                            stat: "Auto",
+                            statLabel: "chat created",
+                        },
+                        {
+                            icon: Trophy,
+                            color: "amber",
+                            title: "Win Premium Vehicles",
+                            desc: "Access rare and sought-after vehicles that never hit the standard classifieds. Bid early, bid smart.",
+                            stat: "Exclusive",
+                            statLabel: "listings",
+                        },
+                        {
+                            icon: Users,
+                            color: "red",
+                            title: "Live Audience",
+                            desc: "Real-time viewer counts show demand. Sellers know their vehicle is generating genuine interest the moment it goes live.",
+                            stat: "Real-time",
+                            statLabel: "bidding",
+                        },
+                    ].map(({ icon: Icon, color, title, desc, stat, statLabel }) => {
+                        const colors: Record<string, string> = {
+                            emerald: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
+                            blue: "bg-blue-500/10 border-blue-500/20 text-blue-400",
+                            orange: "bg-orange-500/10 border-orange-500/20 text-orange-400",
+                            purple: "bg-purple-500/10 border-purple-500/20 text-purple-400",
+                            amber: "bg-amber-500/10 border-amber-500/20 text-amber-400",
+                            red: "bg-red-500/10 border-red-500/20 text-red-400",
+                        }
+                        return (
+                            <motion.div
+                                key={title}
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.4 }}
+                                className="bg-slate-900/60 border border-white/5 rounded-2xl p-6 hover:border-white/10 transition-all group"
+                            >
+                                <div className={`w-11 h-11 rounded-xl border flex items-center justify-center mb-4 ${colors[color]}`}>
+                                    <Icon size={20} />
+                                </div>
+                                <h3 className="text-white font-bold mb-2">{title}</h3>
+                                <p className="text-slate-500 text-sm leading-relaxed mb-4">{desc}</p>
+                                <div className="flex items-baseline gap-1.5">
+                                    <span className={`font-mono font-black text-lg ${colors[color].split(' ').find(c => c.startsWith('text-'))}`}>{stat}</span>
+                                    <span className="text-slate-600 text-xs">{statLabel}</span>
+                                </div>
+                            </motion.div>
+                        )
+                    })}
+                </div>
+
+                {/* Seller CTA */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    className="relative bg-gradient-to-br from-slate-900 to-slate-800 border border-white/8 rounded-2xl p-10 md:p-14 text-center overflow-hidden mb-20"
+                >
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[200px] bg-red-600/10 blur-3xl pointer-events-none" />
+                    <div className="relative z-10">
+                        <div className="inline-flex items-center gap-2 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold px-4 py-1.5 rounded-full mb-6">
+                            <Star size={11} /> For Sellers, Dealers & Private Owners
+                        </div>
+                        <h2 className="text-3xl md:text-4xl font-bold text-white font-heading mb-4">Ready to Put Your Car<br />Under the Gavel?</h2>
+                        <p className="text-slate-400 max-w-lg mx-auto mb-8">Any verified user can list a vehicle for auction. Set your reserve, schedule your start time, and let the market decide. 5-hour sprint. Real buyers. Real bids.</p>
+                        <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
+                            {["Free to list", "Set your own reserve", "Anti-snipe protection", "Auto-chat with winner"].map(f => (
+                                <span key={f} className="flex items-center gap-1.5 text-sm text-slate-300 bg-slate-800/60 border border-white/8 px-3 py-1.5 rounded-full">
+                                    <CheckCircle size={13} className="text-emerald-400" /> {f}
+                                </span>
+                            ))}
+                        </div>
+                        <Link href="/sell">
+                            <button className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white font-bold px-8 py-4 rounded-full transition-all hover:shadow-[0_0_30px_rgba(220,38,38,0.4)] text-base">
+                                List My Car for Auction <Gavel size={18} />
+                            </button>
+                        </Link>
+                    </div>
+                </motion.div>
+            </div>
+
             {/* ── How Auctions Work ─────────────────────────────────────────── */}
-            <div className="container mx-auto px-6 pt-20 max-w-4xl">
+            <div className="container mx-auto px-6 pt-0 max-w-4xl">
                 <div className="text-center mb-10">
                     <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-2">How It Works</p>
                     <h2 className="text-2xl font-bold text-white">Bid. Win. Connect.</h2>

@@ -11,6 +11,7 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { useAuth } from "@/context/AuthContext"
+import { useSearchParams } from "next/navigation"
 import {
     getMyAuctions, createAuction, cancelAuction,
     getCurrentBid, getBidCount,
@@ -50,8 +51,18 @@ function addHours(iso: string, hours: number): string {
     })
 }
 
-export default function SellerAuctionsPage() {
+export default function SellerAuctionsPageWrapper() {
+    return (
+        <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-900"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}>
+            <SellerAuctionsPage />
+        </React.Suspense>
+    )
+}
+
+function SellerAuctionsPage() {
     const { user, loading: authLoading } = useAuth()
+    const searchParams = useSearchParams()
+    const preselectedListingId = searchParams.get("listingId") ?? ""
     const [auctions, setAuctions] = React.useState<Auction[]>([])
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
@@ -61,7 +72,7 @@ export default function SellerAuctionsPage() {
     const [tick, setTick] = React.useState(0)
 
     // Form state
-    const [formListingId, setFormListingId] = React.useState("")
+    const [formListingId, setFormListingId] = React.useState(preselectedListingId)
     const [formStartTime, setFormStartTime] = React.useState("")
     const [formReservePrice, setFormReservePrice] = React.useState("")
     const [formStartingBid, setFormStartingBid] = React.useState("")
@@ -90,6 +101,12 @@ export default function SellerAuctionsPage() {
     React.useEffect(() => {
         if (!authLoading && user) fetchAuctions()
     }, [user, authLoading])
+
+    // Auto-open form if coming from inventory with a pre-selected listing
+    React.useEffect(() => {
+        if (preselectedListingId && !authLoading && user) openForm()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [preselectedListingId, authLoading, user])
 
     async function openForm() {
         setShowForm(true)
