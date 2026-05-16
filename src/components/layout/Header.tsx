@@ -13,15 +13,14 @@ import { getPendingOffersCount } from "@/lib/listingApi"
 import { NotificationBell } from "@/components/layout/NotificationBell"
 
 
-const navLinks: { name: string; href: string; prefetch?: boolean; badge?: string; badgeColor?: string }[] = [
+const navLinks: { name: string; href: string; prefetch?: boolean; badge?: string }[] = [
     { name: "Home", href: "/" },
     { name: "Buy Cars", href: "/search" },
-    { name: "Auctions", href: "/auctions", badge: "LIVE" },
     { name: "Sell Cars", href: "/sell", prefetch: false },
+    { name: "Auctions", href: "/auctions", badge: "LIVE" },
+    { name: "Compare", href: "/compare" },
     { name: "Pricing", href: "/pricing" },
     { name: "About", href: "/about" },
-    { name: "Compare", href: "/compare" },
-    { name: "Carmazium Pro", href: "/pricing", badge: "PRO", badgeColor: "amber" },
 ]
 
 export function Header() {
@@ -94,16 +93,10 @@ export function Header() {
                         >
                             {link.name}
                             {link.badge && (
-                                link.badgeColor === "amber" ? (
-                                    <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full leading-none">
-                                        {link.badge}
-                                    </span>
-                                ) : (
-                                    <span className="flex items-center gap-0.5 bg-red-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full leading-none">
-                                        <span className="w-1 h-1 bg-white rounded-full animate-pulse" />
-                                        {link.badge}
-                                    </span>
-                                )
+                                <span className="flex items-center gap-0.5 bg-red-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full leading-none">
+                                    <span className="w-1 h-1 bg-white rounded-full animate-pulse" />
+                                    {link.badge}
+                                </span>
                             )}
                             <span className={cn(
                                 "absolute bottom-0 left-0 w-full h-[2px] bg-primary transform scale-x-0 transition-transform group-hover:scale-x-100",
