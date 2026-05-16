@@ -1,6 +1,6 @@
 import { apiClient } from './apiClient';
 
-const API = '/api';
+const API = '';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
