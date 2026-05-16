@@ -1,7 +1,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/Button"
-import { Mail, Phone, MapPin } from "lucide-react"
+import { Mail, Phone, MapPin, Gavel } from "lucide-react"
 
 export function Footer() {
     return (
@@ -35,6 +35,16 @@ export function Footer() {
                         <ul className="space-y-2 text-gray-400">
                             <li><Link href="/" className="hover:text-primary transition-colors">Home</Link></li>
                             <li><Link href="/search" className="hover:text-primary transition-colors">Buy Cars</Link></li>
+                            <li>
+                                <Link href="/auctions" className="hover:text-primary transition-colors flex items-center gap-2">
+                                    <Gavel size={14} className="text-red-500 shrink-0" />
+                                    Live Auctions
+                                    <span className="flex items-center gap-0.5 bg-red-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full leading-none">
+                                        <span className="w-1 h-1 bg-white rounded-full animate-pulse" />
+                                        LIVE
+                                    </span>
+                                </Link>
+                            </li>
                             <li><Link href="/sell" className="hover:text-primary transition-colors">Sell Cars</Link></li>
                             <li><Link href="/about" className="hover:text-primary transition-colors">About</Link></li>
                             <li><Link href="/terms" className="hover:text-primary transition-colors">Terms & Conditions</Link></li>
