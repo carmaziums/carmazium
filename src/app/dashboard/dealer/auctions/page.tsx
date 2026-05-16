@@ -123,7 +123,7 @@ function DealerAuctionsPage() {
                     .map(a => a.listingId)
             )
             setEligibleListings(
-                listed.filter(l => l.type === "AUCTION" && !auctionListingIds.has(l.id))
+                listed.filter(l => l.status === "ACTIVE" && !auctionListingIds.has(l.id))
             )
         } catch {
             setFormError("Failed to load your listings.")

@@ -491,9 +491,9 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                         <Link href={`/dashboard/seller/add-listing?editId=${listing.id}`} className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-white/5">
                                                             <Pencil size={14} /> Edit
                                                         </Link>
-                                                        {listing.type === 'AUCTION' && listing.status === 'ACTIVE' && (
+                                                        {listing.status === 'ACTIVE' && listing.status !== 'SOLD' && (
                                                             <Link href={`${auctionDashPath}?listingId=${listing.id}`} className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-orange-500/10 text-orange-400 w-full">
-                                                                <Gavel size={14} /> Schedule Auction
+                                                                <Gavel size={14} /> Put to Auction
                                                             </Link>
                                                         )}
                                                         {listing.status !== 'SOLD' && (
