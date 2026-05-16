@@ -48,16 +48,20 @@ export class AuctionsService {
             throw new ForbiddenException('You do not own this listing');
         }
 
-        if (listing.type !== 'AUCTION') {
-            throw new BadRequestException('Listing must be of type AUCTION to create an auction');
-        }
-
         const existing = await this.prisma.auction.findUnique({
             where: { listingId: createAuctionDto.listingId },
         });
 
         if (existing && !existing.deletedAt) {
             throw new BadRequestException('An auction already exists for this listing');
+        }
+
+        // Auto-convert listing to AUCTION type so bids validation passes
+        if (listing.type !== 'AUCTION') {
+            await this.prisma.listing.update({
+                where: { id: createAuctionDto.listingId },
+                data: { type: 'AUCTION' },
+            });
         }
 
         return this.prisma.auction.create({

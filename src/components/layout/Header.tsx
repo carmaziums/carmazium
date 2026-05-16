@@ -13,9 +13,10 @@ import { getPendingOffersCount } from "@/lib/listingApi"
 import { NotificationBell } from "@/components/layout/NotificationBell"
 
 
-const navLinks: { name: string; href: string; prefetch?: boolean }[] = [
+const navLinks: { name: string; href: string; prefetch?: boolean; badge?: string }[] = [
     { name: "Home", href: "/" },
     { name: "Buy Cars", href: "/search" },
+    { name: "Auctions", href: "/auctions", badge: "LIVE" },
     { name: "Sell Cars", href: "/sell", prefetch: false },
     { name: "Pricing", href: "/pricing" },
     { name: "About", href: "/about" },
@@ -86,11 +87,17 @@ export function Header() {
                             href={link.href}
                             prefetch={link.prefetch}
                             className={cn(
-                                "text-[0.95rem] font-semibold uppercase tracking-wider hover:text-primary transition-colors pb-1 relative group",
+                                "text-[0.95rem] font-semibold uppercase tracking-wider hover:text-primary transition-colors pb-1 relative group flex items-center gap-1.5",
                                 activeLink === link.href ? "text-primary" : "opacity-80 hover:opacity-100"
                             )}
                         >
                             {link.name}
+                            {link.badge && (
+                                <span className="flex items-center gap-0.5 bg-red-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full leading-none">
+                                    <span className="w-1 h-1 bg-white rounded-full animate-pulse" />
+                                    {link.badge}
+                                </span>
+                            )}
                             <span className={cn(
                                 "absolute bottom-0 left-0 w-full h-[2px] bg-primary transform scale-x-0 transition-transform group-hover:scale-x-100",
                                 activeLink === link.href && "scale-x-100"
@@ -214,12 +221,18 @@ export function Header() {
                                 href={link.href}
                                 prefetch={link.prefetch}
                                 className={cn(
-                                    "text-lg font-medium py-2 hover:text-primary transition-colors",
+                                    "text-lg font-medium py-2 hover:text-primary transition-colors flex items-center justify-center gap-2",
                                     activeLink === link.href && "text-primary"
                                 )}
                                 onClick={() => setIsMobileMenuOpen(false)}
                             >
                                 {link.name}
+                                {link.badge && (
+                                    <span className="flex items-center gap-0.5 bg-red-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full leading-none">
+                                        <span className="w-1 h-1 bg-white rounded-full animate-pulse" />
+                                        {link.badge}
+                                    </span>
+                                )}
                             </Link>
                         ))}
 
