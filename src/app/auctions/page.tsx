@@ -5,58 +5,30 @@ import Link from "next/link"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import {
-    Gavel,
-    Flame,
-    Calendar,
-    ArrowRight,
-    Zap,
-    Users,
-    TrendingUp,
-    AlertTriangle,
-    Search,
-    RefreshCw,
-    Clock,
-    Shield,
-    MessageSquare,
-    Trophy,
-    CheckCircle,
-    Star,
+    Gavel, Flame, Calendar, ArrowRight, Zap, Users, TrendingUp,
+    Search, RefreshCw, Clock, Shield, MessageSquare, Trophy,
+    CheckCircle, ChevronRight, Timer,
 } from "lucide-react"
 import { CountdownTimer } from "@/components/features/CountdownTimer"
 import {
-    getActiveAuctions,
-    getScheduledAuctions,
-    getCurrentBid,
-    getBidCount,
-    isAntiSnipeActive,
-    type Auction,
+    getActiveAuctions, getScheduledAuctions, getCurrentBid,
+    getBidCount, isAntiSnipeActive, type Auction,
 } from "@/lib/auctionApi"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatTimeSince(iso: string): string {
-    const diff = Date.now() - new Date(iso).getTime()
-    const mins = Math.floor(diff / 60_000)
-    const hours = Math.floor(diff / 3_600_000)
-    const days = Math.floor(diff / 86_400_000)
-    if (days > 0) return `${days}d ago`
-    if (hours > 0) return `${hours}h ago`
-    if (mins > 0) return `${mins}m ago`
-    return "just now"
-}
-
 function formatStartsIn(startTime: string): string {
     const diff = new Date(startTime).getTime() - Date.now()
     if (diff <= 0) return "Starting…"
-    const hours = Math.floor(diff / 3_600_000)
-    const mins = Math.floor((diff % 3_600_000) / 60_000)
-    if (hours > 0) return `${hours}h ${mins}m`
-    return `${mins}m`
+    const h = Math.floor(diff / 3_600_000)
+    const m = Math.floor((diff % 3_600_000) / 60_000)
+    if (h > 0) return `${h}h ${m}m`
+    return `${m}m`
 }
 
 // ─── Auction Card ─────────────────────────────────────────────────────────────
 
-function AuctionCard({ auction }: { auction: Auction }) {
+function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
     const currentBid = getCurrentBid(auction)
     const bidCount = getBidCount(auction)
     const antiSnipe = isAntiSnipeActive(auction)
@@ -66,107 +38,90 @@ function AuctionCard({ auction }: { auction: Auction }) {
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            className="group relative"
+            transition={{ delay: index * 0.06, duration: 0.4 }}
+            className="group"
         >
-            {/* Glow border on hover */}
-            <div className="absolute -inset-px bg-gradient-to-r from-red-600 to-orange-500 rounded-2xl opacity-0 group-hover:opacity-60 blur transition-all duration-500 pointer-events-none" />
-
-            <Link href={`/auctions/live/${auction.id}`} className="relative block bg-slate-900 rounded-2xl overflow-hidden border border-white/8 hover:border-red-500/30 transition-all duration-300">
-
+            <Link
+                href={`/auctions/live/${auction.id}`}
+                className="block bg-[#0d0d0f] border border-white/[0.07] rounded-2xl overflow-hidden hover:border-white/20 transition-all duration-300 hover:shadow-[0_8px_40px_rgba(0,0,0,0.6)]"
+            >
                 {/* Image */}
-                <div className="relative h-52 overflow-hidden">
+                <div className="relative h-56 overflow-hidden">
                     <Image
                         src={image}
                         alt={auction.listing.title}
                         fill
-                        sizes="(max-width: 768px) 100vw, 50vw"
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        className="object-cover transition-transform duration-700 group-hover:scale-[1.04]"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/20 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0f] via-[#0d0d0f]/30 to-transparent" />
 
-                    {/* Status badges */}
+                    {/* Top badges */}
                     <div className="absolute top-3 left-3 flex items-center gap-2 z-10">
                         {isActive ? (
-                            <span className="flex items-center gap-1.5 bg-red-600 text-white text-[11px] font-bold px-3 py-1 rounded-full shadow-[0_0_12px_rgba(220,38,38,0.5)]">
-                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                                LIVE
+                            <span className="flex items-center gap-1.5 bg-red-600 text-white text-[10px] font-black px-2.5 py-1 rounded-full tracking-wider shadow-[0_0_16px_rgba(220,38,38,0.6)]">
+                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> LIVE
                             </span>
                         ) : (
-                            <span className="flex items-center gap-1.5 bg-slate-800/90 backdrop-blur text-slate-300 text-[11px] font-bold px-3 py-1 rounded-full border border-white/10">
-                                <Clock size={10} />
-                                STARTS IN {formatStartsIn(auction.startTime)}
+                            <span className="flex items-center gap-1.5 bg-black/60 backdrop-blur text-slate-300 text-[10px] font-bold px-2.5 py-1 rounded-full border border-white/10">
+                                <Clock size={9} /> {formatStartsIn(auction.startTime)}
                             </span>
                         )}
-
                         {antiSnipe && (
-                            <span className="flex items-center gap-1 bg-orange-500/90 backdrop-blur text-white text-[10px] font-bold px-2.5 py-1 rounded-full animate-pulse">
-                                <Zap size={9} />
-                                ANTI-SNIPE
+                            <span className="flex items-center gap-1 bg-amber-500/90 text-white text-[9px] font-black px-2 py-0.5 rounded-full animate-pulse">
+                                <Zap size={8} /> SNIPE
                             </span>
                         )}
                     </div>
 
-                    {/* Bid count */}
-                    <div className="absolute top-3 right-3 z-10">
-                        <span className="flex items-center gap-1 bg-black/50 backdrop-blur text-white text-[11px] font-bold px-2.5 py-1 rounded-full border border-white/10">
-                            <Users size={10} />
-                            {bidCount}
-                        </span>
+                    {/* Bid count top-right */}
+                    <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-black/50 backdrop-blur px-2.5 py-1 rounded-full border border-white/10 text-white text-[10px] font-bold">
+                        <Users size={10} className="text-slate-400" /> {bidCount}
+                    </div>
+
+                    {/* Bottom overlay — price prominent */}
+                    <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
+                        <p className="text-slate-400 text-[10px] uppercase tracking-widest font-bold mb-0.5">{vehicle}</p>
+                        <h3 className="text-white font-bold text-base leading-tight line-clamp-1">{auction.listing.title}</h3>
                     </div>
                 </div>
 
-                {/* Content */}
-                <div className="p-4 space-y-3">
-                    <div>
-                        <div className="flex items-center justify-between">
-                            <p className="text-slate-500 text-[11px] uppercase tracking-widest font-bold">{vehicle}</p>
-                            {(auction.listing as any).createdAt && (
-                                <span className="text-[10px] text-slate-600 flex items-center gap-1">
-                                    <Clock size={9} />
-                                    Listed {formatTimeSince((auction.listing as any).createdAt)}
-                                </span>
-                            )}
-                        </div>
-                        <h3 className="text-white font-bold text-base leading-tight mt-0.5 line-clamp-1">{auction.listing.title}</h3>
-                    </div>
-
-                    {/* Bid / timer row */}
-                    <div className="flex items-center justify-between bg-slate-800/60 border border-white/5 rounded-xl px-3 py-2.5">
+                {/* Footer */}
+                <div className="px-4 pt-3 pb-4 space-y-3">
+                    {/* Bid row */}
+                    <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
+                            <p className="text-[10px] text-slate-600 uppercase tracking-widest font-bold">
                                 {bidCount > 0 ? "Current Bid" : "Starting Bid"}
                             </p>
-                            <p className="text-white font-mono font-bold text-lg leading-none mt-0.5">
+                            <p className="text-xl font-black text-white font-mono mt-0.5">
                                 £{currentBid.toLocaleString()}
                             </p>
                         </div>
-
-                        {isActive ? (
-                            <div className="text-right">
-                                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-0.5">Ends In</p>
-                                <div className="text-red-400">
-                                    <CountdownTimer targetDate={new Date(auction.endTime)} minimal />
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="text-right">
-                                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-0.5">Starts In</p>
-                                <div className="text-slate-300 font-mono font-bold text-sm">
-                                    {formatStartsIn(auction.startTime)}
-                                </div>
-                            </div>
-                        )}
+                        <div className="text-right">
+                            {isActive ? (
+                                <>
+                                    <p className="text-[10px] text-slate-600 uppercase tracking-widest font-bold">Ends In</p>
+                                    <div className="text-red-400 font-mono font-bold text-sm mt-0.5">
+                                        <CountdownTimer targetDate={new Date(auction.endTime)} minimal />
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-[10px] text-slate-600 uppercase tracking-widest font-bold">Starts In</p>
+                                    <p className="text-slate-300 font-mono font-bold text-sm mt-0.5">{formatStartsIn(auction.startTime)}</p>
+                                </>
+                            )}
+                        </div>
                     </div>
 
-                    {/* CTA */}
-                    <div className="flex items-center justify-between">
-                        <span className="text-[11px] text-slate-500">
-                            Reserve: £{Number(auction.reservePrice).toLocaleString()}
-                        </span>
-                        <span className="flex items-center gap-1 text-red-500 text-xs font-bold group-hover:gap-2 transition-all">
-                            {isActive ? "Bid Now" : "View Details"} <ArrowRight size={12} />
+                    {/* Divider + CTA */}
+                    <div className="flex items-center justify-between pt-2 border-t border-white/[0.06]">
+                        <span className="text-[10px] text-slate-600">Reserve: £{Number(auction.reservePrice).toLocaleString()}</span>
+                        <span className="flex items-center gap-1 text-xs font-bold text-red-500 group-hover:text-red-400 transition-colors">
+                            {isActive ? "Bid Now" : "View"} <ChevronRight size={13} />
                         </span>
                     </div>
                 </div>
@@ -175,31 +130,46 @@ function AuctionCard({ auction }: { auction: Auction }) {
     )
 }
 
+// ─── Skeleton Card ────────────────────────────────────────────────────────────
+
+function SkeletonCard() {
+    return (
+        <div className="bg-[#0d0d0f] border border-white/[0.07] rounded-2xl overflow-hidden animate-pulse">
+            <div className="h-56 bg-white/[0.04]" />
+            <div className="p-4 space-y-3">
+                <div className="h-3 bg-white/[0.04] rounded w-1/3" />
+                <div className="h-5 bg-white/[0.04] rounded w-2/3" />
+                <div className="h-px bg-white/[0.04]" />
+                <div className="flex justify-between">
+                    <div className="h-4 bg-white/[0.04] rounded w-1/4" />
+                    <div className="h-4 bg-white/[0.04] rounded w-1/4" />
+                </div>
+            </div>
+        </div>
+    )
+}
+
 // ─── Empty State ──────────────────────────────────────────────────────────────
 
 function EmptyState({ tab }: { tab: "live" | "upcoming" }) {
     return (
-        <div className="col-span-full flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-slate-800 border border-white/5 flex items-center justify-center mb-4">
-                {tab === "live" ? (
-                    <Flame size={24} className="text-slate-600" />
-                ) : (
-                    <Calendar size={24} className="text-slate-600" />
-                )}
+        <div className="col-span-full flex flex-col items-center justify-center py-24 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mb-4">
+                {tab === "live" ? <Flame size={22} className="text-slate-600" /> : <Calendar size={22} className="text-slate-600" />}
             </div>
-            <p className="text-slate-400 font-bold">
-                {tab === "live" ? "No live auctions right now" : "No upcoming auctions scheduled"}
+            <p className="text-slate-400 font-bold text-sm">
+                {tab === "live" ? "No live auctions right now" : "No upcoming auctions"}
             </p>
-            <p className="text-slate-600 text-sm mt-1">
+            <p className="text-slate-700 text-xs mt-1 max-w-xs">
                 {tab === "live"
-                    ? "Check back soon — auctions activate automatically at their scheduled time."
-                    : "New auctions are added regularly. Check back soon."}
+                    ? "Auctions go live automatically at their scheduled time. Check back soon."
+                    : "New auctions are added regularly."}
             </p>
         </div>
     )
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AuctionsPage() {
     const [activeTab, setActiveTab] = React.useState<"live" | "upcoming">("live")
@@ -219,7 +189,7 @@ export default function AuctionsPage() {
             setScheduledAuctions(scheduled)
             setLastRefresh(Date.now())
         } catch {
-            setError("Failed to load auctions. Please try again.")
+            setError("Failed to load auctions.")
         } finally {
             setLoading(false)
         }
@@ -238,103 +208,83 @@ export default function AuctionsPage() {
     })
 
     return (
-        <div className="bg-slate-950 min-h-screen pb-20">
+        <div className="bg-[#080809] min-h-screen text-white">
 
-            {/* ── Hero ─────────────────────────────────────────────────────── */}
-            <div className="relative min-h-[55vh] overflow-hidden flex items-center pt-20">
-                <Image
-                    src="/assets/images/hero-bg.png"
-                    alt="Auctions Hero"
-                    fill
-                    sizes="100vw"
-                    priority
-                    className="object-cover opacity-50"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/70 to-transparent" />
+            {/* ── Hero ──────────────────────────────────────────────────────── */}
+            <div className="relative overflow-hidden pt-20">
+                {/* Subtle background texture */}
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(220,38,38,0.08)_0%,transparent_60%)]" />
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(30,30,40,0.8)_0%,transparent_60%)]" />
 
-                {/* Animated glow */}
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[700px] h-[300px] bg-red-600/10 blur-3xl pointer-events-none" />
-
-                <div className="container mx-auto px-6 relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                <div className="container mx-auto px-6 py-16 md:py-24 relative z-10">
                     <motion.div
-                        initial={{ opacity: 0, x: -30 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.6 }}
-                        className="space-y-6"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5 }}
+                        className="max-w-3xl"
                     >
-                        {/* Live pill */}
-                        <div className="flex items-center gap-2 text-red-500 font-bold tracking-widest uppercase text-xs">
-                            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                            {liveAuctions.length > 0 ? `${liveAuctions.length} Auctions Live Now` : "Live Auctions"}
+                        {/* Status pill */}
+                        <div className="inline-flex items-center gap-2 bg-white/[0.06] border border-white/[0.1] rounded-full px-4 py-1.5 mb-6">
+                            <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+                            <span className="text-xs font-bold text-slate-300 uppercase tracking-widest">
+                                {liveAuctions.length > 0 ? `${liveAuctions.length} Active Now` : "Live Auctions"}
+                            </span>
                         </div>
 
-                        <h1 className="text-5xl md:text-6xl font-bold font-heading text-white leading-tight">
-                            The Gavel{" "}
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-orange-500">
+                        <h1 className="text-5xl md:text-7xl font-black font-heading tracking-tight text-white leading-[0.95] mb-5">
+                            The Gavel<br />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-red-700">
                                 Drops Here.
                             </span>
                         </h1>
-                        <p className="text-lg text-slate-400 max-w-lg leading-relaxed">
-                            Real-time bidding on verified vehicles. Place your bid, watch the action live,
-                            and connect with the seller when you win.
+                        <p className="text-slate-400 text-lg max-w-lg leading-relaxed mb-8">
+                            Real-time bidding on verified vehicles. Compete live, win fairly, connect instantly.
                         </p>
 
-                        {/* Stats bar */}
-                        <div className="flex items-center gap-6 pt-2">
+                        {/* Stat chips */}
+                        <div className="flex flex-wrap items-center gap-3">
                             {[
-                                { icon: Flame, value: liveAuctions.length, label: "Live" },
-                                { icon: Calendar, value: scheduledAuctions.length, label: "Upcoming" },
-                                { icon: TrendingUp, value: "6hr", label: "Duration" },
-                            ].map(({ icon: Icon, value, label }) => (
-                                <div key={label} className="flex items-center gap-2">
-                                    <Icon size={14} className="text-red-500" />
-                                    <span className="text-white font-bold text-sm">{value}</span>
-                                    <span className="text-slate-500 text-xs">{label}</span>
+                                { icon: Flame, value: `${liveAuctions.length} Live`, color: "text-red-400" },
+                                { icon: Calendar, value: `${scheduledAuctions.length} Upcoming`, color: "text-slate-400" },
+                                { icon: Timer, value: "6hr Duration", color: "text-slate-400" },
+                                { icon: Zap, value: "Anti-Snipe", color: "text-amber-400" },
+                            ].map(({ icon: Icon, value, color }) => (
+                                <div key={value} className={`flex items-center gap-1.5 text-sm font-bold ${color}`}>
+                                    <Icon size={13} /> {value}
                                 </div>
                             ))}
                         </div>
                     </motion.div>
                 </div>
+
+                {/* Bottom fade */}
+                <div className="h-px bg-white/[0.06]" />
             </div>
 
-            {/* ── Anti-Snipe Info Banner ────────────────────────────────────── */}
-            {liveAuctions.some(isAntiSnipeActive) && (
-                <div className="bg-orange-500/10 border-y border-orange-500/20 py-2.5">
-                    <div className="container mx-auto px-6 flex items-center justify-center gap-2 text-orange-400 text-xs font-bold">
-                        <AlertTriangle size={13} />
-                        Anti-Snipe Active on some auctions — bids in the final 3 minutes extend the auction by 3 minutes
-                    </div>
-                </div>
-            )}
-
-            {/* ── Sticky Filter Bar ─────────────────────────────────────────── */}
-            <div className="sticky top-[64px] z-30 bg-slate-900/80 backdrop-blur-md border-b border-white/5 py-3">
-                <div className="container mx-auto px-6 flex flex-col sm:flex-row items-center gap-3 justify-between">
-
+            {/* ── Filter bar ────────────────────────────────────────────────── */}
+            <div className="sticky top-[80px] z-30 bg-[#080809]/90 backdrop-blur-xl border-b border-white/[0.06]">
+                <div className="container mx-auto px-6 h-14 flex items-center justify-between gap-4">
                     {/* Tabs */}
-                    <div className="flex items-center gap-1 bg-slate-800/60 rounded-xl p-1">
-                        {(["live", "upcoming"] as const).map((tab) => (
+                    <div className="flex items-center gap-0 bg-white/[0.04] border border-white/[0.08] rounded-xl p-1">
+                        {(["live", "upcoming"] as const).map(tab => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
-                                className={`relative px-5 py-2 rounded-lg text-sm font-bold capitalize transition-all ${
-                                    activeTab === tab
-                                        ? "text-white"
-                                        : "text-slate-500 hover:text-slate-300"
+                                className={`relative px-5 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
+                                    activeTab === tab ? "text-white" : "text-slate-600 hover:text-slate-400"
                                 }`}
                             >
                                 {activeTab === tab && (
                                     <motion.div
-                                        layoutId="tab-pill"
-                                        className="absolute inset-0 bg-red-600 rounded-lg"
-                                        transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
+                                        layoutId="tab-bg"
+                                        className="absolute inset-0 bg-white/[0.08] rounded-lg"
+                                        transition={{ type: "spring", bounce: 0.2, duration: 0.3 }}
                                     />
                                 )}
                                 <span className="relative z-10 flex items-center gap-2">
-                                    {tab === "live" ? <Flame size={13} /> : <Calendar size={13} />}
+                                    {tab === "live" ? <Flame size={11} /> : <Calendar size={11} />}
                                     {tab}
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${activeTab === tab ? "bg-white/20 text-white" : "bg-slate-700 text-slate-400"}`}>
+                                    <span className="bg-white/[0.08] text-slate-400 text-[9px] px-1.5 py-0.5 rounded-full font-bold">
                                         {tab === "live" ? liveAuctions.length : scheduledAuctions.length}
                                     </span>
                                 </span>
@@ -342,52 +292,41 @@ export default function AuctionsPage() {
                         ))}
                     </div>
 
-                    {/* Search + Refresh */}
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <div className="relative group flex-1 sm:w-56">
-                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                    {/* Search + refresh */}
+                    <div className="flex items-center gap-2 flex-1 max-w-xs">
+                        <div className="relative flex-1">
+                            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
                             <input
                                 type="text"
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
-                                placeholder="Search make or model…"
-                                className="w-full bg-slate-800/60 border border-white/8 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500/40 transition-colors"
+                                placeholder="Search…"
+                                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-white/20 transition-colors"
                             />
                         </div>
                         <button
                             onClick={load}
                             disabled={loading}
-                            title="Refresh"
-                            className="p-2 rounded-xl border border-white/8 bg-slate-800/60 text-slate-400 hover:text-white hover:border-white/20 transition-all"
+                            className="p-2 rounded-xl border border-white/[0.08] text-slate-600 hover:text-white hover:border-white/20 transition-all"
                         >
-                            <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
+                            <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
                         </button>
                     </div>
                 </div>
             </div>
 
-            {/* ── Auction Grid ──────────────────────────────────────────────── */}
-            <div className="container mx-auto px-6 pt-10">
-
+            {/* ── Grid ──────────────────────────────────────────────────────── */}
+            <div className="container mx-auto px-6 py-10">
                 {error && (
-                    <div className="text-center py-10">
+                    <div className="text-center py-16">
                         <p className="text-red-400 text-sm mb-3">{error}</p>
-                        <button onClick={load} className="text-red-500 underline text-sm">Try again</button>
+                        <button onClick={load} className="text-red-500 underline text-xs">Try again</button>
                     </div>
                 )}
 
                 {loading && !error && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {[1, 2, 3].map(i => (
-                            <div key={i} className="bg-slate-900 rounded-2xl border border-white/5 overflow-hidden animate-pulse">
-                                <div className="h-52 bg-slate-800" />
-                                <div className="p-4 space-y-3">
-                                    <div className="h-3 bg-slate-800 rounded w-1/3" />
-                                    <div className="h-5 bg-slate-800 rounded w-2/3" />
-                                    <div className="h-14 bg-slate-800 rounded-xl" />
-                                </div>
-                            </div>
-                        ))}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
                     </div>
                 )}
 
@@ -398,189 +337,104 @@ export default function AuctionsPage() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                            transition={{ duration: 0.15 }}
+                            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
                         >
                             {displayed.length === 0 ? (
                                 <EmptyState tab={activeTab} />
                             ) : (
-                                displayed.map(auction => (
-                                    <AuctionCard key={auction.id} auction={auction} />
+                                displayed.map((auction, i) => (
+                                    <AuctionCard key={auction.id} auction={auction} index={i} />
                                 ))
                             )}
                         </motion.div>
                     </AnimatePresence>
                 )}
 
-                {/* Last updated */}
                 {!loading && (
-                    <p className="text-center text-slate-700 text-xs mt-8">
-                        Last updated {new Date(lastRefresh).toLocaleTimeString("en-GB")}
+                    <p className="text-center text-slate-800 text-[10px] mt-10 font-mono">
+                        Updated {new Date(lastRefresh).toLocaleTimeString("en-GB")}
                     </p>
                 )}
             </div>
 
-            {/* ── Why Auction? Benefits ─────────────────────────────────────── */}
-            <div className="container mx-auto px-6 pt-20">
-                <div className="text-center mb-12">
-                    <p className="text-red-500 text-xs font-bold uppercase tracking-widest mb-3">Why Carmazium Auctions?</p>
-                    <h2 className="text-3xl md:text-4xl font-bold text-white font-heading">The Smartest Way to Buy<br />or Sell a Car</h2>
-                    <p className="text-slate-400 mt-4 max-w-xl mx-auto">No negotiation lag. No ghost buyers. Just real-time competition that drives the best price — for both sides.</p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
-                    {[
-                        {
-                            icon: TrendingUp,
-                            color: "emerald",
-                            title: "Competitive Pricing",
-                            desc: "Live bidding creates natural price discovery. Sellers get fair market value; buyers compete transparently.",
-                            stat: "6 hours",
-                            statLabel: "per auction",
-                        },
-                        {
-                            icon: Shield,
-                            color: "blue",
-                            title: "Reserve Protection",
-                            desc: "Set a minimum you'll accept. If bidding doesn't reach your reserve, the listing returns to active — no obligation.",
-                            stat: "You decide",
-                            statLabel: "the reserve",
-                        },
-                        {
-                            icon: Zap,
-                            color: "orange",
-                            title: "Anti-Snipe Rule",
-                            desc: "Any bid in the final 3 minutes resets the clock by 3 minutes. No last-second grabs — fair until the very end.",
-                            stat: "3 min",
-                            statLabel: "extension rule",
-                        },
-                        {
-                            icon: MessageSquare,
-                            color: "purple",
-                            title: "Instant Connection",
-                            desc: "When the gavel drops, winner and seller are auto-connected via chat to arrange collection — no middleman.",
-                            stat: "Auto",
-                            statLabel: "chat created",
-                        },
-                        {
-                            icon: Trophy,
-                            color: "amber",
-                            title: "Win Premium Vehicles",
-                            desc: "Access rare and sought-after vehicles that never hit the standard classifieds. Bid early, bid smart.",
-                            stat: "Exclusive",
-                            statLabel: "listings",
-                        },
-                        {
-                            icon: Users,
-                            color: "red",
-                            title: "Live Audience",
-                            desc: "Real-time viewer counts show demand. Sellers know their vehicle is generating genuine interest the moment it goes live.",
-                            stat: "Real-time",
-                            statLabel: "bidding",
-                        },
-                    ].map(({ icon: Icon, color, title, desc, stat, statLabel }) => {
-                        const colors: Record<string, string> = {
-                            emerald: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
-                            blue: "bg-blue-500/10 border-blue-500/20 text-blue-400",
-                            orange: "bg-orange-500/10 border-orange-500/20 text-orange-400",
-                            purple: "bg-purple-500/10 border-purple-500/20 text-purple-400",
-                            amber: "bg-amber-500/10 border-amber-500/20 text-amber-400",
-                            red: "bg-red-500/10 border-red-500/20 text-red-400",
-                        }
-                        return (
-                            <motion.div
-                                key={title}
-                                initial={{ opacity: 0, y: 20 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 0.4 }}
-                                className="bg-slate-900/60 border border-white/5 rounded-2xl p-6 hover:border-white/10 transition-all group"
-                            >
-                                <div className={`w-11 h-11 rounded-xl border flex items-center justify-center mb-4 ${colors[color]}`}>
-                                    <Icon size={20} />
-                                </div>
-                                <h3 className="text-white font-bold mb-2">{title}</h3>
-                                <p className="text-slate-500 text-sm leading-relaxed mb-4">{desc}</p>
-                                <div className="flex items-baseline gap-1.5">
-                                    <span className={`font-mono font-black text-lg ${colors[color].split(' ').find(c => c.startsWith('text-'))}`}>{stat}</span>
-                                    <span className="text-slate-600 text-xs">{statLabel}</span>
-                                </div>
-                            </motion.div>
-                        )
-                    })}
-                </div>
-
-                {/* Seller CTA */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    className="relative bg-gradient-to-br from-slate-900 to-slate-800 border border-white/8 rounded-2xl p-10 md:p-14 text-center overflow-hidden mb-20"
-                >
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[200px] bg-red-600/10 blur-3xl pointer-events-none" />
-                    <div className="relative z-10">
-                        <div className="inline-flex items-center gap-2 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold px-4 py-1.5 rounded-full mb-6">
-                            <Star size={11} /> For Sellers, Dealers & Private Owners
-                        </div>
-                        <h2 className="text-3xl md:text-4xl font-bold text-white font-heading mb-4">Ready to Put Your Car<br />Under the Gavel?</h2>
-                        <p className="text-slate-400 max-w-lg mx-auto mb-8">Any verified user can list a vehicle for auction. Set your reserve, schedule your start time, and let the market decide. 6-hour sprint. Real buyers. Real bids.</p>
-                        <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
-                            {["Free to list", "Set your own reserve", "Anti-snipe protection", "Auto-chat with winner"].map(f => (
-                                <span key={f} className="flex items-center gap-1.5 text-sm text-slate-300 bg-slate-800/60 border border-white/8 px-3 py-1.5 rounded-full">
-                                    <CheckCircle size={13} className="text-emerald-400" /> {f}
-                                </span>
-                            ))}
-                        </div>
-                        <Link href="/sell">
-                            <button className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white font-bold px-8 py-4 rounded-full transition-all hover:shadow-[0_0_30px_rgba(220,38,38,0.4)] text-base">
-                                List My Car for Auction <Gavel size={18} />
-                            </button>
-                        </Link>
+            {/* ── How it works ──────────────────────────────────────────────── */}
+            <div className="border-t border-white/[0.06] mt-8">
+                <div className="container mx-auto px-6 py-20">
+                    <div className="text-center mb-12">
+                        <p className="text-red-600 text-[10px] font-black uppercase tracking-[0.2em] mb-3">How It Works</p>
+                        <h2 className="text-3xl md:text-4xl font-black text-white font-heading">Bid. Win. Connect.</h2>
                     </div>
-                </motion.div>
-            </div>
 
-            {/* ── How Auctions Work ─────────────────────────────────────────── */}
-            <div className="container mx-auto px-6 pt-0 max-w-4xl">
-                <div className="text-center mb-10">
-                    <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-2">How It Works</p>
-                    <h2 className="text-2xl font-bold text-white">Bid. Win. Connect.</h2>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {[
-                        {
-                            icon: Gavel,
-                            step: "01",
-                            title: "Place a Bid",
-                            desc: "Bid above the current highest in minimum increment steps. Every bid is real-time.",
-                        },
-                        {
-                            icon: Zap,
-                            step: "02",
-                            title: "Anti-Snipe Rule",
-                            desc: "Any bid in the final 3 minutes extends the auction by 3 minutes — no last-second grabs.",
-                        },
-                        {
-                            icon: TrendingUp,
-                            step: "03",
-                            title: "Win & Connect",
-                            desc: "Highest bid above reserve wins. A chat with the seller is auto-created to arrange collection.",
-                        },
-                    ].map(({ icon: Icon, step, title, desc }) => (
-                        <div key={step} className="relative bg-slate-900/60 border border-white/5 rounded-2xl p-5 hover:border-red-500/20 transition-all group">
-                            <div className="flex items-start gap-4">
-                                <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-red-600/10 border border-red-500/20 flex items-center justify-center">
-                                    <Icon size={18} className="text-red-500" />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-16">
+                        {[
+                            { icon: Gavel, step: "01", title: "Place a Bid", desc: "Outbid the current leader in minimum increment steps. Every bid is broadcast live to all watchers.", color: "red" },
+                            { icon: Zap, step: "02", title: "Anti-Snipe Rule", desc: "Any bid in the final 3 minutes automatically extends the auction by 3 minutes — no last-second grabs.", color: "amber" },
+                            { icon: MessageSquare, step: "03", title: "Win & Connect", desc: "Highest bid above reserve wins. A private chat with the seller is created instantly to arrange the deal.", color: "emerald" },
+                        ].map(({ icon: Icon, step, title, desc, color }) => {
+                            const c: Record<string, string> = {
+                                red: "bg-red-500/10 border-red-500/20 text-red-500",
+                                amber: "bg-amber-500/10 border-amber-500/20 text-amber-400",
+                                emerald: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
+                            }
+                            return (
+                                <div key={step} className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-6 hover:border-white/[0.12] transition-all">
+                                    <div className="flex items-start gap-4">
+                                        <div className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${c[color]}`}>
+                                            <Icon size={17} />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-slate-700 tracking-widest mb-1">{step}</p>
+                                            <h3 className="text-white font-bold mb-1.5 text-sm">{title}</h3>
+                                            <p className="text-slate-500 text-xs leading-relaxed">{desc}</p>
+                                        </div>
+                                    </div>
                                 </div>
+                            )
+                        })}
+                    </div>
+
+                    {/* Feature pills */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-16">
+                        {[
+                            { icon: Shield, title: "Reserve Protection", desc: "Set the minimum you'll accept. No obligation if reserve isn't met.", color: "text-blue-400" },
+                            { icon: Trophy, title: "Premium Vehicles", desc: "Access rare and sought-after cars that rarely hit standard listings.", color: "text-amber-400" },
+                            { icon: Users, title: "Live Audience", desc: "Real-time watcher counts show genuine demand as it happens.", color: "text-red-400" },
+                        ].map(({ icon: Icon, title, desc, color }) => (
+                            <div key={title} className="flex gap-4 p-5 bg-white/[0.02] border border-white/[0.06] rounded-2xl">
+                                <Icon size={18} className={`${color} shrink-0 mt-0.5`} />
                                 <div>
-                                    <p className="text-[10px] font-bold text-slate-600 tracking-widest mb-1">{step}</p>
-                                    <h3 className="text-white font-bold mb-1">{title}</h3>
-                                    <p className="text-slate-500 text-sm leading-relaxed">{desc}</p>
+                                    <p className="text-white font-bold text-sm mb-1">{title}</p>
+                                    <p className="text-slate-500 text-xs leading-relaxed">{desc}</p>
                                 </div>
                             </div>
+                        ))}
+                    </div>
+
+                    {/* CTA */}
+                    <div className="relative bg-white/[0.03] border border-white/[0.08] rounded-2xl p-10 md:p-14 text-center overflow-hidden">
+                        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(220,38,38,0.06)_0%,transparent_60%)]" />
+                        <div className="relative z-10">
+                            <h2 className="text-2xl md:text-3xl font-black text-white font-heading mb-3">
+                                Ready to put your car under the gavel?
+                            </h2>
+                            <p className="text-slate-500 text-sm max-w-md mx-auto mb-6">
+                                Free to list. 6-hour sprint. Set your reserve, schedule your time, and let buyers compete.
+                            </p>
+                            <div className="flex flex-wrap items-center justify-center gap-2 mb-7">
+                                {["Free to list", "Set your own reserve", "Anti-snipe protection", "Auto-connect with winner"].map(f => (
+                                    <span key={f} className="flex items-center gap-1.5 text-xs text-slate-400 bg-white/[0.04] border border-white/[0.08] px-3 py-1.5 rounded-full">
+                                        <CheckCircle size={11} className="text-emerald-500" /> {f}
+                                    </span>
+                                ))}
+                            </div>
+                            <Link href="/sell">
+                                <button className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white font-black text-sm px-8 py-3.5 rounded-full transition-all hover:shadow-[0_0_30px_rgba(220,38,38,0.4)] uppercase tracking-wider">
+                                    List for Auction <Gavel size={16} />
+                                </button>
+                            </Link>
                         </div>
-                    ))}
+                    </div>
                 </div>
             </div>
         </div>
