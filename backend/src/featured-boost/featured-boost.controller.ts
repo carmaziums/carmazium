@@ -4,9 +4,6 @@ import {
     Get,
     Param,
     UseGuards,
-    Headers,
-    RawBodyRequest,
-    Req,
     HttpCode,
     HttpStatus,
 } from '@nestjs/common';
@@ -21,30 +18,20 @@ import { FeaturedBoostService } from './featured-boost.service';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse } from '../listings/dto/response.dto';
-import { Request } from 'express';
 
 @ApiTags('Featured Boost')
 @Controller('featured-boost')
 export class FeaturedBoostController {
     constructor(private readonly featuredBoostService: FeaturedBoostService) { }
 
-    /**
-     * POST /featured-boost/:listingId
-     * Activate a boost. In bypass mode: immediately active.
-     * In Stripe mode: returns a redirect URL.
-     */
     @Post(':listingId')
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()
     @HttpCode(HttpStatus.OK)
-    @ApiOperation({
-        summary: 'Boost a listing',
-        description:
-            'Activates a featured boost for a listing. In bypass mode returns immediately. In Stripe mode returns a checkout URL.',
-    })
+    @ApiOperation({ summary: 'Boost a listing — returns Stripe checkout URL' })
     @ApiParam({ name: 'listingId', description: 'UUID of the listing to boost' })
-    @ApiResponse({ status: 200, description: 'Boost activated or Stripe URL returned' })
-    @ApiResponse({ status: 400, description: 'Listing already featured or not ACTIVE' })
+    @ApiResponse({ status: 200, description: 'Stripe checkout URL returned' })
+    @ApiResponse({ status: 400, description: 'Listing already featured' })
     @ApiResponse({ status: 403, description: 'Not your listing' })
     async boost(
         @Param('listingId') listingId: string,
@@ -54,25 +41,6 @@ export class FeaturedBoostController {
         return new StandardResponse(result);
     }
 
-    /**
-     * POST /featured-boost/webhook
-     * Stripe webhook — verifies signature and activates boost on payment.
-     */
-    @Post('webhook')
-    @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Stripe webhook handler' })
-    async webhook(
-        @Req() req: RawBodyRequest<Request>,
-        @Headers('stripe-signature') sig: string,
-    ) {
-        const rawBody = req.rawBody ?? Buffer.from('');
-        return this.featuredBoostService.handleStripeWebhook(rawBody, sig);
-    }
-
-    /**
-     * GET /featured-boost/my
-     * Returns the authenticated seller's boost history.
-     */
     @Get('my')
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()
@@ -82,10 +50,6 @@ export class FeaturedBoostController {
         return new StandardResponse(boosts);
     }
 
-    /**
-     * GET /featured-boost/status/:listingId
-     * Returns boost status for a listing.
-     */
     @Get('status/:listingId')
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()

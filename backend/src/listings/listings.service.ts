@@ -139,12 +139,18 @@ export class ListingsService {
         const slug = this.generateSlug(createListingDto.title);
 
         const listingType: ListingType = createListingDto.listingType === 'AUCTION' ? 'AUCTION' : 'CLASSIFIED';
-        const listingStatus: ListingStatus = createListingDto.status === 'ACTIVE' ? 'ACTIVE' :
-            createListingDto.status === 'SOLD' ? 'SOLD' : 'DRAFT';
 
         // Badge tier — default FREE
         const badgeTier = createListingDto.badgeTier ?? 'FREE';
         const isPremium = badgeTier === 'PREMIUM';
+
+        // Paid tiers (BASIC/STANDARD/PREMIUM) must start as DRAFT — the Stripe webhook
+        // activates them once payment completes. FREE listings can be ACTIVE immediately.
+        const listingStatus: ListingStatus = badgeTier !== 'FREE'
+            ? 'DRAFT'
+            : createListingDto.status === 'ACTIVE' ? 'ACTIVE'
+            : createListingDto.status === 'SOLD' ? 'SOLD'
+            : 'DRAFT';
 
         // Block imported vehicles
         if (createListingDto.isImported) {
