@@ -17,7 +17,7 @@ const navLinks: { name: string; href: string; prefetch?: boolean; badge?: string
     { name: "Home", href: "/" },
     { name: "Buy Cars", href: "/search" },
     { name: "Sell Cars", href: "/sell", prefetch: false },
-    { name: "Auctions", href: "/auctions", badge: "LIVE" },
+    { name: "Auctions", href: "/auctions" },
     { name: "Compare", href: "/compare" },
     { name: "Pricing", href: "/pricing" },
     { name: "About", href: "/about" },
