@@ -145,7 +145,7 @@ export function Header() {
                                         <p className="text-sm font-semibold truncate">{user.email}</p>
                                     </div>
                                     <Link
-                                        href="/dashboard"
+                                        href={profile?.role === 'ADMIN' ? '/dashboard/admin' : '/dashboard'}
                                         onClick={() => setIsUserMenuOpen(false)}
                                         className="flex items-center gap-3 px-4 py-2 hover:bg-primary/5 text-sm transition-colors"
                                         style={{ color: 'var(--text-secondary)' }}
