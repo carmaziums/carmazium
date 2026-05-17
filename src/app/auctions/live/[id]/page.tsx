@@ -9,8 +9,8 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import {
     ArrowLeft, Share2, Gavel, Users, AlertCircle, CheckCircle,
-    ShieldCheck, Info, Zap, Trophy, Clock, WifiOff, ChevronRight,
-    MessageSquare, Timer, Flame,
+    ShieldCheck, Info, Zap, Trophy, Clock, WifiOff,
+    MessageSquare, Timer, Flame, TrendingUp,
 } from "lucide-react"
 import { CountdownTimer } from "@/components/features/CountdownTimer"
 import { useAuth } from "@/context/AuthContext"
@@ -151,20 +151,22 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
 
     // ── Loading / Error ───────────────────────────────────────────────────────
     if (loading) return (
-        <div className="bg-[#080809] min-h-screen flex items-center justify-center">
-            <div className="flex flex-col items-center gap-3 text-slate-600">
-                <div className="w-8 h-8 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
-                <p className="text-xs font-bold uppercase tracking-widest">Loading auction…</p>
+        <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-body)' }}>
+            <div className="flex flex-col items-center gap-3">
+                <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Loading auction…</p>
             </div>
         </div>
     )
 
     if (loadError || !auction) return (
-        <div className="bg-[#080809] min-h-screen flex flex-col items-center justify-center gap-4">
-            <Gavel size={32} className="text-slate-700" />
+        <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ background: 'var(--bg-body)' }}>
+            <div className="w-16 h-16 rounded-2xl bg-slate-800 border border-white/5 flex items-center justify-center">
+                <Gavel size={24} className="text-slate-500" />
+            </div>
             <p className="text-slate-400 text-sm">{loadError ?? "Auction not found."}</p>
-            <Link href="/auctions" className="text-red-500 text-xs font-bold uppercase tracking-widest hover:text-red-400 transition-colors">
-                ← Back to Auctions
+            <Link href="/auctions" className="text-primary text-xs font-bold uppercase tracking-widest hover:text-red-400 transition-colors flex items-center gap-1">
+                <ArrowLeft size={13} /> Back to Auctions
             </Link>
         </div>
     )
@@ -176,7 +178,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const image = auction.listing.images?.[0] ?? "/assets/images/hero-bg.png"
 
     return (
-        <div className="bg-[#080809] min-h-screen text-white flex flex-col">
+        <div className="min-h-screen text-white flex flex-col" style={{ background: 'var(--bg-body)' }}>
 
             {/* ── Anti-Snipe Toast ──────────────────────────────────────────── */}
             <AnimatePresence>
@@ -193,50 +195,52 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             </AnimatePresence>
 
             {/* ── Sub-header ────────────────────────────────────────────────── */}
-            <div className="sticky top-[80px] z-30 bg-[#080809]/95 backdrop-blur-xl border-b border-white/[0.06] px-6 h-14 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <Link href="/auctions" className="text-slate-600 hover:text-white transition-colors">
-                        <ArrowLeft size={16} />
-                    </Link>
-                    <div className="w-px h-4 bg-white/[0.08]" />
-                    <div className="flex items-center gap-2.5">
-                        {isLive && (
-                            <span className="flex items-center gap-1.5 bg-red-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full tracking-widest">
-                                <span className="w-1 h-1 bg-white rounded-full animate-pulse" /> LIVE
-                            </span>
-                        )}
-                        {isEnded && (
-                            <span className="bg-white/[0.08] text-slate-500 text-[9px] font-black px-2 py-0.5 rounded-full tracking-widest uppercase">Ended</span>
-                        )}
-                        {antiSnipeActive && isLive && (
-                            <span className="flex items-center gap-1 bg-amber-500/20 text-amber-400 text-[9px] font-black px-2 py-0.5 rounded-full animate-pulse">
-                                <Zap size={8} /> Anti-Snipe
-                            </span>
-                        )}
-                        <h1 className="text-white font-bold text-sm truncate max-w-[180px] md:max-w-sm">
-                            {auction.listing.title}
-                        </h1>
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                    {isLive && endTime && (
-                        <div className="hidden sm:flex flex-col items-end">
-                            <p className="text-[9px] text-slate-600 uppercase tracking-widest font-bold">Ends In</p>
-                            <CountdownTimer targetDate={endTime} minimal />
+            <div className="sticky top-[80px] z-30 backdrop-blur-xl border-b" style={{ background: 'var(--bg-header)', borderColor: 'var(--border-default)' }}>
+                <div className="container mx-auto px-6 h-14 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <Link href="/auctions" className="text-slate-500 hover:text-white transition-colors">
+                            <ArrowLeft size={16} />
+                        </Link>
+                        <div className="w-px h-4 bg-white/10" />
+                        <div className="flex items-center gap-2.5">
+                            {isLive && (
+                                <span className="flex items-center gap-1.5 bg-primary text-white text-[9px] font-black px-2.5 py-1 rounded-full tracking-widest shadow-[0_0_10px_rgba(237,28,36,0.4)]">
+                                    <span className="w-1 h-1 bg-white rounded-full animate-pulse" /> LIVE
+                                </span>
+                            )}
+                            {isEnded && (
+                                <span className="bg-slate-700 text-slate-400 text-[9px] font-black px-2.5 py-1 rounded-full tracking-widest uppercase">Ended</span>
+                            )}
+                            {antiSnipeActive && isLive && (
+                                <span className="flex items-center gap-1 bg-amber-500/20 text-amber-400 text-[9px] font-black px-2 py-0.5 rounded-full animate-pulse">
+                                    <Zap size={8} /> Anti-Snipe
+                                </span>
+                            )}
+                            <h1 className="text-white font-bold text-sm truncate max-w-[180px] md:max-w-sm">
+                                {auction.listing.title}
+                            </h1>
                         </div>
-                    )}
-                    <div className="flex items-center gap-1.5 bg-white/[0.04] border border-white/[0.08] px-3 py-1.5 rounded-full">
-                        <Users size={11} className="text-red-500" />
-                        <span className="text-xs font-bold">{watchers}</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                        <span className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-emerald-500" : "bg-slate-700"}`} />
-                        <span className="text-[9px] text-slate-600 hidden sm:inline">{connected ? "Live" : "Offline"}</span>
+
+                    <div className="flex items-center gap-3">
+                        {isLive && endTime && (
+                            <div className="hidden sm:flex flex-col items-end">
+                                <p className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Ends In</p>
+                                <CountdownTimer targetDate={endTime} minimal />
+                            </div>
+                        )}
+                        <div className="flex items-center gap-1.5 bg-slate-800 border border-white/10 px-3 py-1.5 rounded-full">
+                            <Users size={11} className="text-primary" />
+                            <span className="text-xs font-bold">{watchers}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <span className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-emerald-500" : "bg-slate-600"}`} />
+                            <span className="text-[9px] text-slate-500 hidden sm:inline">{connected ? "Live" : "Offline"}</span>
+                        </div>
+                        <button className="text-slate-500 hover:text-white transition-colors">
+                            <Share2 size={15} />
+                        </button>
                     </div>
-                    <button className="text-slate-600 hover:text-white transition-colors">
-                        <Share2 size={15} />
-                    </button>
                 </div>
             </div>
 
@@ -246,26 +250,28 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     <motion.div
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: "auto", opacity: 1 }}
-                        className={`border-b ${userWon ? "bg-emerald-500/10 border-emerald-500/20" : "bg-white/[0.03] border-white/[0.06]"}`}
+                        className={`border-b ${userWon ? "bg-emerald-500/10 border-emerald-500/20" : "bg-slate-800/40 border-white/5"}`}
                     >
                         <div className="container mx-auto px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
                             {userWon ? (
                                 <>
                                     <div className="flex items-center gap-3">
-                                        <Trophy size={20} className="text-emerald-400" />
+                                        <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                                            <Trophy size={18} className="text-emerald-400" />
+                                        </div>
                                         <div>
-                                            <p className="text-emerald-400 font-black text-sm uppercase tracking-wider">You won this auction</p>
+                                            <p className="text-emerald-400 font-black text-sm uppercase tracking-wider">You won this auction!</p>
                                             <p className="text-slate-400 text-xs">Winning bid: £{Number(endedPayload?.winningBidAmount).toLocaleString()} — chat the seller to arrange collection</p>
                                         </div>
                                     </div>
                                     <Link href="/dashboard/buyer/messages">
-                                        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-2 text-xs h-9">
+                                        <Button className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-2 text-xs h-9">
                                             <MessageSquare size={13} /> Open Chat
                                         </Button>
                                     </Link>
                                 </>
                             ) : endedPayload?.reserveMet === false ? (
-                                <div className="flex items-center gap-2 text-slate-500 text-sm">
+                                <div className="flex items-center gap-2 text-slate-400 text-sm">
                                     <Info size={15} />
                                     <p>Auction ended — reserve price was not met.</p>
                                 </div>
@@ -287,44 +293,46 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                 <div className="space-y-5 min-w-0">
 
                     {/* Vehicle image */}
-                    <div className="relative aspect-video rounded-2xl overflow-hidden bg-[#0d0d0f] border border-white/[0.07]">
+                    <div className="relative aspect-video rounded-2xl overflow-hidden bg-slate-800 border border-white/5 shadow-xl">
                         <Image src={image} alt={auction.listing.title} fill className="object-cover" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent" />
 
+                        {/* Top-left: Live badge */}
                         {isLive && (
-                            <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-red-600 text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.5)] tracking-widest">
+                            <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-primary text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-[0_0_20px_rgba(237,28,36,0.5)] tracking-widest z-10">
                                 <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" /> LIVE
                             </div>
                         )}
 
-                        {/* Bottom overlay: current bid + countdown prominent */}
-                        <div className="absolute bottom-0 left-0 right-0 p-5 flex items-end justify-between">
+                        {/* Bottom overlay */}
+                        <div className="absolute bottom-0 left-0 right-0 p-5 flex items-end justify-between z-10">
                             <div>
                                 <p className="text-white/50 text-[10px] uppercase tracking-widest font-bold mb-1">
                                     {isEnded ? "Final Bid" : "Current Bid"}
                                 </p>
-                                <p className="text-4xl font-black text-white font-mono leading-none">
+                                <p className="text-4xl md:text-5xl font-black text-white font-mono leading-none drop-shadow-2xl">
                                     £{currentBid.toLocaleString()}
                                 </p>
+                                {reserveMet && (
+                                    <div className="flex items-center gap-1 mt-2 text-emerald-400 text-[10px] font-bold">
+                                        <ShieldCheck size={11} /> Reserve Met
+                                    </div>
+                                )}
                             </div>
+
                             <div className="flex flex-col items-end gap-2">
                                 {isLive && isWinning && (
-                                    <div className="flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-black px-3 py-1 rounded-full">
+                                    <div className="flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] font-black px-3 py-1.5 rounded-full backdrop-blur">
                                         <CheckCircle size={10} /> Winning
                                     </div>
                                 )}
                                 {isLive && !isWinning && user && (
-                                    <div className="flex items-center gap-1.5 bg-red-500/20 border border-red-500/30 text-red-400 text-[10px] font-black px-3 py-1 rounded-full">
+                                    <div className="flex items-center gap-1.5 bg-red-500/20 border border-red-500/30 text-red-400 text-[10px] font-black px-3 py-1.5 rounded-full backdrop-blur">
                                         <AlertCircle size={10} /> Outbid
                                     </div>
                                 )}
-                                {reserveMet && (
-                                    <div className="flex items-center gap-1.5 bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold px-2.5 py-1 rounded-full">
-                                        <ShieldCheck size={10} /> Reserve Met
-                                    </div>
-                                )}
                                 {isLive && endTime && (
-                                    <div className="bg-black/60 backdrop-blur border border-white/10 rounded-xl px-3 py-2 text-center">
+                                    <div className="bg-slate-900/80 backdrop-blur border border-white/10 rounded-xl px-3 py-2 text-center">
                                         <p className="text-[8px] text-white/40 uppercase tracking-widest font-bold mb-0.5">Ends In</p>
                                         <div className="text-white font-mono font-black text-lg leading-none">
                                             <CountdownTimer targetDate={endTime} minimal />
@@ -335,14 +343,14 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                         </div>
                     </div>
 
-                    {/* Anti-snipe banner */}
+                    {/* Anti-snipe alert */}
                     <AnimatePresence>
                         {antiSnipeActive && isLive && (
                             <motion.div
                                 initial={{ opacity: 0, y: -6 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0 }}
-                                className="flex items-center gap-3 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 text-amber-400 text-xs font-bold"
+                                className="flex items-center gap-3 bg-amber-500/10 border border-amber-500/25 rounded-xl px-4 py-3 text-amber-400 text-xs font-bold"
                             >
                                 <Zap size={14} className="animate-pulse shrink-0" />
                                 Anti-Snipe Active — any bid in the final 3 minutes extends the auction
@@ -351,8 +359,8 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     </AnimatePresence>
 
                     {/* Tabs */}
-                    <div className="bg-[#0d0d0f] border border-white/[0.07] rounded-2xl overflow-hidden">
-                        <div className="flex border-b border-white/[0.06]">
+                    <div className="bg-slate-800/60 border border-white/10 rounded-2xl overflow-hidden">
+                        <div className="flex border-b border-white/5">
                             {[
                                 { id: "details", label: "Details", icon: Info },
                                 { id: "bids", label: `Bids (${bidHistory.length})`, icon: Timer },
@@ -361,11 +369,11 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                                    className={`relative flex-1 sm:flex-none px-5 py-3.5 text-[10px] font-black uppercase tracking-widest flex items-center justify-center sm:justify-start gap-1.5 transition-colors ${activeTab === tab.id ? "text-white" : "text-slate-600 hover:text-slate-400"}`}
+                                    className={`relative flex-1 sm:flex-none px-5 py-3.5 text-[10px] font-black uppercase tracking-widest flex items-center justify-center sm:justify-start gap-1.5 transition-colors ${activeTab === tab.id ? "text-white" : "text-slate-500 hover:text-slate-300"}`}
                                 >
                                     <tab.icon size={11} /> {tab.label}
                                     {activeTab === tab.id && (
-                                        <motion.div layoutId="tab-line" className="absolute bottom-0 left-0 w-full h-0.5 bg-red-500" />
+                                        <motion.div layoutId="tab-line" className="absolute bottom-0 left-0 w-full h-0.5 bg-primary" />
                                     )}
                                 </button>
                             ))}
@@ -379,27 +387,27 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                 { label: "Year", value: auction.listing.year ?? "—" },
                                                 { label: "Make", value: auction.listing.make ?? "—" },
                                                 { label: "Model", value: auction.listing.model ?? "—" },
-                                                { label: "Min Bid", value: `£${Number(auction.minIncrement).toLocaleString()}` },
+                                                { label: "Min Increment", value: `£${Number(auction.minIncrement).toLocaleString()}` },
                                             ].map(s => (
-                                                <div key={s.label} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 text-center">
-                                                    <p className="text-[9px] text-slate-600 uppercase tracking-widest mb-1">{s.label}</p>
+                                                <div key={s.label} className="bg-slate-900/60 border border-white/5 rounded-xl p-3 text-center">
+                                                    <p className="text-[9px] text-slate-500 uppercase tracking-widest mb-1">{s.label}</p>
                                                     <p className="text-sm font-black text-white">{s.value}</p>
                                                 </div>
                                             ))}
                                         </div>
-                                        <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 space-y-2.5 text-xs text-slate-400">
+                                        <div className="bg-slate-900/40 border border-white/5 rounded-xl p-4 space-y-2.5">
                                             {[
                                                 ["Starting Bid", `£${Number(auction.startingBid).toLocaleString()}`],
                                                 ["Reserve Price", `£${Number(auction.reservePrice).toLocaleString()}`],
                                                 ["Auction Ends", endTime ? endTime.toLocaleString("en-GB") : "—"],
                                             ].map(([k, v]) => (
-                                                <div key={k} className="flex justify-between items-center">
-                                                    <span>{k}</span>
+                                                <div key={k} className="flex justify-between items-center text-xs">
+                                                    <span className="text-slate-500">{k}</span>
                                                     <span className="text-white font-bold font-mono">{v}</span>
                                                 </div>
                                             ))}
                                         </div>
-                                        <div className="flex items-start gap-2.5 p-3.5 bg-white/[0.02] border border-white/[0.06] rounded-xl text-slate-600 text-xs leading-relaxed">
+                                        <div className="flex items-start gap-2.5 p-3.5 bg-slate-900/30 border border-white/5 rounded-xl text-slate-500 text-xs leading-relaxed">
                                             <Info size={12} className="shrink-0 mt-0.5" />
                                             <p>All transactions are arranged directly between buyer and seller. A chat is auto-created when the auction ends.</p>
                                         </div>
@@ -409,12 +417,12 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                     <motion.div key="bids" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-1">
                                         {bidHistory.length === 0 ? (
                                             <div className="py-12 text-center">
-                                                <Gavel size={24} className="text-slate-700 mx-auto mb-2" />
-                                                <p className="text-slate-600 text-xs">No bids yet — be the first.</p>
+                                                <Gavel size={24} className="text-slate-600 mx-auto mb-2" />
+                                                <p className="text-slate-500 text-xs">No bids yet — be the first.</p>
                                             </div>
                                         ) : (
                                             <>
-                                                <div className="flex justify-between text-[9px] text-slate-700 uppercase tracking-widest px-2 pb-2">
+                                                <div className="flex justify-between text-[9px] text-slate-600 uppercase tracking-widest px-2 pb-2">
                                                     <span>Bidder</span><span>Amount</span>
                                                 </div>
                                                 {bidHistory.map((bid, i) => (
@@ -422,18 +430,18 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                         key={i}
                                                         initial={bid.isNew ? { opacity: 0, x: -8 } : false}
                                                         animate={{ opacity: 1, x: 0 }}
-                                                        className={`flex justify-between items-center px-3 py-2.5 rounded-xl ${i === 0 ? "bg-white/[0.05] border border-white/[0.08]" : "hover:bg-white/[0.03]"}`}
+                                                        className={`flex justify-between items-center px-3 py-2.5 rounded-xl transition-colors ${i === 0 ? "bg-primary/5 border border-primary/20" : "hover:bg-white/5"}`}
                                                     >
                                                         <div className="flex items-center gap-2.5">
-                                                            <div className="w-7 h-7 rounded-full bg-white/[0.06] flex items-center justify-center text-[9px] font-black text-slate-400">
+                                                            <div className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-[9px] font-black text-slate-400">
                                                                 {bid.initials}
                                                             </div>
                                                             <span className="text-xs font-bold text-slate-400">{bid.initials}</span>
-                                                            {i === 0 && <span className="text-[9px] bg-red-600/20 text-red-400 px-1.5 py-0.5 rounded-full font-black uppercase">Leader</span>}
+                                                            {i === 0 && <span className="text-[9px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-black uppercase">Leader</span>}
                                                         </div>
                                                         <div className="text-right">
                                                             <p className="font-mono font-black text-white text-sm">£{bid.amount.toLocaleString()}</p>
-                                                            <p className="text-[9px] text-slate-700">{bid.time}</p>
+                                                            <p className="text-[9px] text-slate-600">{bid.time}</p>
                                                         </div>
                                                     </motion.div>
                                                 ))}
@@ -443,17 +451,17 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                 )}
                                 {activeTab === "seller" && (
                                     <motion.div key="seller" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                                        <div className="flex items-center gap-4 p-4 bg-white/[0.03] border border-white/[0.06] rounded-xl">
-                                            <div className="w-14 h-14 rounded-full bg-white/[0.06] flex items-center justify-center text-white font-black border border-white/[0.08] shrink-0">
+                                        <div className="flex items-center gap-4 p-4 bg-slate-900/40 border border-white/5 rounded-xl">
+                                            <div className="w-14 h-14 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-black shrink-0">
                                                 {getSellerInitials(auction)}
                                             </div>
                                             <div>
                                                 <h3 className="font-bold text-white text-sm">{getSellerName(auction)}</h3>
                                                 <div className="flex items-center gap-1 text-emerald-400 text-xs font-bold mt-0.5">
-                                                    <ShieldCheck size={11} /> Verified
+                                                    <ShieldCheck size={11} /> Verified Seller
                                                 </div>
                                                 <p className="text-slate-500 text-xs mt-2 leading-relaxed">
-                                                    Win the auction and a direct chat with this seller is created automatically.
+                                                    Win the auction and a direct chat with this seller opens automatically.
                                                 </p>
                                             </div>
                                         </div>
@@ -468,24 +476,22 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                 <aside className="flex flex-col gap-4">
 
                     {/* Live feed */}
-                    <div className="bg-[#0d0d0f] border border-white/[0.07] rounded-2xl overflow-hidden flex flex-col" style={{ height: 420 }}>
-                        {/* Header */}
-                        <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between bg-white/[0.02]">
+                    <div className="bg-slate-800/60 border border-white/10 rounded-2xl overflow-hidden flex flex-col" style={{ height: 400 }}>
+                        <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between bg-slate-900/30">
                             <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400">
-                                <Flame size={12} className="text-red-500" /> Live Feed
+                                <Flame size={12} className="text-primary" /> Live Feed
                             </div>
                             <div className="flex items-center gap-1.5">
                                 {connected
-                                    ? <><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /><span className="text-[9px] text-slate-600">Connected</span></>
-                                    : <><WifiOff size={10} className="text-slate-700" /><span className="text-[9px] text-slate-700">Offline</span></>
+                                    ? <><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /><span className="text-[9px] text-slate-500">Connected</span></>
+                                    : <><WifiOff size={10} className="text-slate-600" /><span className="text-[9px] text-slate-600">Offline</span></>
                                 }
                             </div>
                         </div>
 
-                        {/* Feed */}
                         <div ref={feedRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-1.5">
                             {bidHistory.length === 0 ? (
-                                <div className="h-full flex flex-col items-center justify-center gap-2 text-slate-700">
+                                <div className="h-full flex flex-col items-center justify-center gap-2 text-slate-600">
                                     <Gavel size={20} />
                                     <p className="text-xs">Waiting for first bid…</p>
                                 </div>
@@ -495,12 +501,15 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         key={i}
                                         initial={bid.isNew ? { opacity: 0, y: -6 } : false}
                                         animate={{ opacity: 1, y: 0 }}
-                                        className={`flex items-center gap-2 px-3 py-2 rounded-xl ${i === 0 ? "bg-white/[0.05] border border-white/[0.08]" : "hover:bg-white/[0.03]"}`}
+                                        className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-colors ${i === 0 ? "bg-primary/5 border border-primary/15" : "hover:bg-white/5"}`}
                                     >
-                                        <span className="text-[10px] font-black text-slate-500 w-6 text-center">{bid.initials}</span>
-                                        <span className="text-slate-600 text-[10px]">bid</span>
+                                        <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center">
+                                            <span className="text-[9px] font-black text-slate-400">{bid.initials}</span>
+                                        </div>
+                                        <span className="text-slate-500 text-[10px]">bid</span>
                                         <span className="font-mono font-black text-white text-xs">£{bid.amount.toLocaleString()}</span>
-                                        <span className="ml-auto text-[9px] text-slate-700">{bid.time}</span>
+                                        {i === 0 && <TrendingUp size={10} className="text-emerald-400 shrink-0" />}
+                                        <span className="ml-auto text-[9px] text-slate-600">{bid.time}</span>
                                     </motion.div>
                                 ))
                             )}
@@ -508,32 +517,45 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     </div>
 
                     {/* Bid controls */}
-                    <div className="bg-[#0d0d0f] border border-white/[0.07] rounded-2xl p-4 space-y-3">
+                    <div className="bg-slate-800/60 border border-white/10 rounded-2xl p-5 space-y-4">
                         {isEnded ? (
-                            <p className="text-center text-slate-600 text-xs font-bold uppercase tracking-widest py-4">Auction Ended</p>
+                            <div className="text-center py-4">
+                                <Gavel size={20} className="text-slate-500 mx-auto mb-2" />
+                                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Auction Ended</p>
+                            </div>
                         ) : !user ? (
-                            <Link href="/auth/login">
-                                <Button className="w-full bg-red-600 hover:bg-red-500 text-white font-black text-xs uppercase tracking-widest h-11">
-                                    Sign In to Bid
-                                </Button>
-                            </Link>
+                            <div className="space-y-3">
+                                <p className="text-slate-400 text-xs text-center">Sign in to place a bid</p>
+                                <Link href="/auth/login">
+                                    <Button className="w-full bg-gradient-to-br from-primary to-red-700 hover:from-red-500 hover:to-primary text-white font-black text-sm h-11 shadow-neon">
+                                        Sign In to Bid
+                                    </Button>
+                                </Link>
+                            </div>
                         ) : !isLive ? (
-                            <div className="text-center py-4 text-slate-600 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2">
+                            <div className="text-center py-4 text-slate-500 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2">
                                 <Clock size={12} /> Not Started Yet
                             </div>
                         ) : (
                             <>
+                                {/* Current bid display */}
+                                <div className="text-center pb-2 border-b border-white/5">
+                                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Current Bid</p>
+                                    <p className="text-2xl font-black text-white font-mono">£{currentBid.toLocaleString()}</p>
+                                    <p className="text-[10px] text-slate-500 mt-1">Min next: <span className="text-white font-bold">£{(currentBid + minIncrement).toLocaleString()}</span></p>
+                                </div>
+
                                 {/* Quick bids */}
-                                <div className="grid grid-cols-4 gap-1.5">
+                                <div className="grid grid-cols-2 gap-2">
                                     {quickBids.map(inc => (
                                         <button
                                             key={inc}
                                             onClick={() => handleBid(currentBid + inc)}
                                             disabled={bidLoading}
-                                            className="bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/20 rounded-xl py-3 flex flex-col items-center gap-0.5 transition-all active:scale-95 disabled:opacity-40"
+                                            className="bg-slate-900/60 hover:bg-primary/10 hover:border-primary/30 border border-white/10 rounded-xl py-3 flex flex-col items-center gap-0.5 transition-all active:scale-95 disabled:opacity-40"
                                         >
                                             <span className="text-[9px] text-slate-500 font-bold">+£{inc >= 1000 ? `${inc / 1000}k` : inc}</span>
-                                            <span className="text-[10px] text-white font-black">£{(currentBid + inc).toLocaleString()}</span>
+                                            <span className="text-sm text-white font-black font-mono">£{(currentBid + inc).toLocaleString()}</span>
                                         </button>
                                     ))}
                                 </div>
@@ -541,11 +563,11 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                 {/* Custom bid */}
                                 <div className="flex gap-2">
                                     <div className="relative flex-1">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 text-xs font-black">£</span>
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-black">£</span>
                                         <Input
                                             type="number"
                                             placeholder="Custom amount"
-                                            className="bg-white/[0.04] border-white/[0.08] focus:border-red-500/50 text-white pl-6 h-11 text-sm font-mono"
+                                            className="bg-slate-900/60 border-white/10 focus:border-primary/50 text-white pl-6 h-11 text-sm font-mono"
                                             value={bidAmount}
                                             onChange={e => setBidAmount(e.target.value)}
                                             onKeyDown={e => { if (e.key === "Enter" && bidAmount) handleBid(Number(bidAmount)) }}
@@ -554,21 +576,26 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                     <Button
                                         onClick={() => handleBid(Number(bidAmount) || currentBid + minIncrement)}
                                         disabled={bidLoading}
-                                        className="h-11 px-5 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-black text-xs uppercase tracking-widest shadow-[0_0_20px_rgba(220,38,38,0.25)]"
+                                        className="h-11 px-5 bg-gradient-to-br from-primary to-red-700 hover:from-red-500 hover:to-primary disabled:opacity-50 text-white font-black text-xs uppercase tracking-widest shadow-neon transition-all"
                                     >
                                         {bidLoading ? "…" : <><Gavel size={14} /> Bid</>}
                                     </Button>
                                 </div>
 
                                 {bidError && (
-                                    <p className="text-red-400 text-xs text-center">{bidError}</p>
+                                    <div className="flex items-center gap-2 p-2.5 bg-red-500/10 border border-red-500/20 rounded-lg">
+                                        <AlertCircle size={13} className="text-red-400 shrink-0" />
+                                        <p className="text-red-400 text-xs">{bidError}</p>
+                                    </div>
                                 )}
-
-                                <p className="text-[9px] text-slate-700 text-center font-bold uppercase tracking-widest">
-                                    Min next bid: £{(currentBid + minIncrement).toLocaleString()}
-                                </p>
                             </>
                         )}
+                    </div>
+
+                    {/* Trust note */}
+                    <div className="flex items-start gap-2.5 px-3 py-2.5 bg-slate-800/40 border border-white/5 rounded-xl text-xs text-slate-500">
+                        <ShieldCheck size={13} className="shrink-0 mt-0.5 text-emerald-500" />
+                        All deals are arranged directly between buyer and seller via Carmazium chat.
                     </div>
                 </aside>
             </div>

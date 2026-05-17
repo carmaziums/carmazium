@@ -1583,7 +1583,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                                     <div className="flex items-center gap-2 mt-1">
                                         {formData.badgeTier === 'FREE' && (
-                                            <span className="text-xs bg-white/10 text-gray-400 px-2 py-0.5 rounded-md">Basic — £1</span>
+                                            formData.listingType === 'AUCTION'
+                                                ? <span className="text-xs bg-orange-500/15 text-orange-400 border border-orange-500/20 px-2 py-0.5 rounded-md flex items-center gap-1">🔨 For Auction — Free</span>
+                                                : <span className="text-xs bg-white/10 text-gray-400 px-2 py-0.5 rounded-md">Basic — £1</span>
                                         )}
                                         {formData.badgeTier === 'STANDARD' && (
                                             <>
