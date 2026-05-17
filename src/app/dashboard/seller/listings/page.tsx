@@ -6,7 +6,7 @@ import Image from "next/image"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { getMyListings, deleteListing, boostListing, updateListingStatus, formatPrice, type Listing } from "@/lib/listingApi"
 import { useAuth } from "@/context/AuthContext"
-import { PlusCircle, Loader2, Trash2, Eye, Zap, X, AlertCircle, CheckCircle2, MoreVertical, Pencil } from "lucide-react"
+import { PlusCircle, Loader2, Trash2, Eye, Zap, X, AlertCircle, CheckCircle2, MoreVertical, Pencil, Gavel } from "lucide-react"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 
 export default function MyListingsPage() {
@@ -150,6 +150,17 @@ export default function MyListingsPage() {
                         </div>
                     )}
 
+                    {/* ── Auction listings notice ──────────────────── */}
+                    {listings.some(l => l.type === 'AUCTION') && (
+                        <div className="flex items-center gap-3 p-4 bg-orange-500/10 border border-orange-500/20 rounded-xl text-sm">
+                            <Gavel size={16} className="text-orange-400 shrink-0" />
+                            <span className="text-orange-300">
+                                You have <strong>{listings.filter(l => l.type === 'AUCTION').length}</strong> auction listing{listings.filter(l => l.type === 'AUCTION').length !== 1 ? 's' : ''} — manage them in your{" "}
+                                <Link href="/dashboard/seller/auctions" className="underline text-orange-400 hover:text-orange-300 font-bold">Auctions dashboard</Link>.
+                            </span>
+                        </div>
+                    )}
+
                     {/* ── Table ────────────────────────────────────── */}
                     <div className="glass-card overflow-hidden">
                         <div className="overflow-x-auto">
@@ -170,15 +181,15 @@ export default function MyListingsPage() {
                                                 <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
                                             </td>
                                         </tr>
-                                    ) : listings.length === 0 ? (
+                                    ) : listings.filter(l => l.type !== 'AUCTION').length === 0 ? (
                                         <tr>
                                             <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
-                                                No listings yet.{" "}
+                                                No classified listings yet.{" "}
                                                 <Link href="/dashboard/seller/add-listing" className="text-primary hover:underline">Create your first listing!</Link>
                                             </td>
                                         </tr>
                                     ) : (
-                                        listings.map((listing) => {
+                                        listings.filter(l => l.type !== 'AUCTION').map((listing) => {
                                             const daysLeft = getDaysRemaining(listing.featuredUntil)
                                             return (
                                                 <tr
