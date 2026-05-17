@@ -13,7 +13,7 @@ import { useAuth } from "@/context/AuthContext"
 function LoginContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
-    const { user, loading: authLoading } = useAuth()
+    const { user, profile, loading: authLoading } = useAuth()
     const [formData, setFormData] = React.useState({
         email: "",
         password: ""
@@ -35,12 +35,16 @@ function LoginContent() {
         return fallback
     }
 
-    // Redirect authenticated users to the intended destination
+    // Redirect authenticated users — admin goes to admin panel, others to intended destination
     React.useEffect(() => {
-        if (!authLoading && user) {
-            router.replace(targetAfterLogin)
+        if (!authLoading && user && profile) {
+            if (profile.role === 'ADMIN') {
+                router.replace('/dashboard/admin')
+            } else {
+                router.replace(targetAfterLogin)
+            }
         }
-    }, [user, authLoading, router, targetAfterLogin])
+    }, [user, profile, authLoading, router, targetAfterLogin])
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -70,8 +74,7 @@ function LoginContent() {
                 return
             }
 
-            // Do not block UX on backend bridge here; AuthContext handles bridge/profile sync.
-            router.replace(targetAfterLogin)
+            // Redirect handled by useEffect once profile role is resolved
         } catch (err: unknown) {
             setError(getSafeErrorMessage(err, 'Invalid email or password'))
         } finally {

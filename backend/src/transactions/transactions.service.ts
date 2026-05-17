@@ -50,13 +50,13 @@ export class TransactionsService {
         // created by the payer/buyer.
         const whereCompleted = {
             deletedAt: null,
-            status: 'COMPLETED',
+            status: 'COMPLETED' as const,
             listing: { sellerId: userId },
         };
 
         const wherePending = {
             deletedAt: null,
-            status: 'PENDING',
+            status: 'PENDING' as const,
             listing: { sellerId: userId },
         };
 
@@ -81,9 +81,9 @@ export class TransactionsService {
         ]);
 
         return {
-            available: Number(completed._sum.amount || 0),
-            pendingClearance: Number(pending._sum.amount || 0),
-            totalYTD: Number(allTime._sum.amount || 0),
+            available: Number(completed._sum?.amount ?? 0),
+            pendingClearance: Number(pending._sum?.amount ?? 0),
+            totalYTD: Number(allTime._sum?.amount ?? 0),
         };
     }
 }

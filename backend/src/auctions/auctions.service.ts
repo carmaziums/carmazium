@@ -231,6 +231,49 @@ export class AuctionsService {
         });
     }
 
+    async submitHandoverProof(auctionId: string, userId: string, proofUrl: string): Promise<any> {
+        const auction = await this.prisma.auction.findUnique({
+            where: { id: auctionId },
+            include: { listing: { select: { sellerId: true, title: true } } },
+        });
+
+        if (!auction || auction.deletedAt) {
+            throw new NotFoundException('Auction not found');
+        }
+        if (auction.listing.sellerId !== userId) {
+            throw new ForbiddenException('You do not own this auction');
+        }
+        if (auction.status !== 'ENDED') {
+            throw new BadRequestException('Handover proof can only be submitted for ended auctions');
+        }
+        if (!auction.winnerId) {
+            throw new BadRequestException('This auction has no winner');
+        }
+        if (auction.handoverProofUrl) {
+            throw new BadRequestException('Handover proof has already been submitted');
+        }
+
+        const updated = await this.prisma.auction.update({
+            where: { id: auctionId },
+            data: {
+                handoverProofUrl: proofUrl,
+                handoverSubmittedAt: new Date(),
+            },
+        });
+
+        // Notify seller that proof is under review
+        this.notificationsGateway.sendNotification(userId, {
+            type: 'AUCTION_ENDED',
+            title: 'Handover proof received',
+            message: `Your proof for "${auction.listing.title}" is under review. Your £100 seller bonus will be released once verified.`,
+            entityType: 'AUCTION',
+            entityId: auctionId,
+            link: `/dashboard/seller/auctions`,
+        });
+
+        return updated;
+    }
+
     // Called by BidsService after a bid is placed
     async maybeExtend(auctionId: string, bidPlacedAt: Date): Promise<Auction | null> {
         const auction = await this.prisma.auction.findUnique({ where: { id: auctionId } });

@@ -6,13 +6,16 @@ import { useSearchParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { Shield, Lock, CreditCard, ArrowLeft, Loader2, Car, CheckCircle, BadgeCheck } from "lucide-react"
+import { Shield, Lock, CreditCard, ArrowLeft, Loader2, Car, CheckCircle, BadgeCheck, Gavel, Handshake, Info } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { getListingBySlug, type Listing, formatPrice } from "@/lib/listingApi"
 import { createCheckoutSession } from "@/lib/paymentApi"
 import { useAuth } from "@/context/AuthContext"
 
 const DEPOSIT_AMOUNT = 500 // £500 refundable deposit
+const AUCTION_BUYER_FEE = 125 // £125 total: £100 seller bonus + £25 platform
+const AUCTION_SELLER_BONUS = 100 // released to seller after handover proof
+const AUCTION_PLATFORM_FEE = 25 // non-refundable Carmazium fee
 
 export default function CheckoutPage() {
     return (
@@ -32,12 +35,14 @@ function CheckoutContent() {
     const { user, loading: authLoading } = useAuth()
 
     const listingId = searchParams.get("listing_id")
-    const mode = searchParams.get("mode") as "deposit" | "full" | null
+    const mode = searchParams.get("mode") as "deposit" | "full" | "auction_fee" | null
+
+    const isAuctionFee = mode === "auction_fee"
 
     const [listing, setListing] = useState<Listing | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [isProcessing, setIsProcessing] = useState(false)
-    const [selectedMode, setSelectedMode] = useState<"deposit" | "full">(mode || "deposit")
+    const [selectedMode, setSelectedMode] = useState<"deposit" | "full">(isAuctionFee ? "deposit" : (mode as "deposit" | "full") || "deposit")
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
@@ -61,8 +66,15 @@ function CheckoutContent() {
         setError(null)
 
         try {
-            const amount = selectedMode === "deposit" ? DEPOSIT_AMOUNT : parseFloat(String(listing.price))
-            const type = selectedMode === "deposit" ? "DEPOSIT" : "FULL_PAYMENT"
+            let amount: number
+            let type: "DEPOSIT" | "FULL_PAYMENT" | "COMMISSION"
+            if (isAuctionFee) {
+                amount = AUCTION_BUYER_FEE
+                type = "COMMISSION"
+            } else {
+                amount = selectedMode === "deposit" ? DEPOSIT_AMOUNT : parseFloat(String(listing.price))
+                type = selectedMode === "deposit" ? "DEPOSIT" : "FULL_PAYMENT"
+            }
             const result = await createCheckoutSession(listing.id, amount, type, "gbp")
             if (result.url) {
                 window.location.href = result.url
@@ -186,51 +198,93 @@ function CheckoutContent() {
                         transition={{ duration: 0.4, delay: 0.1 }}
                         className="lg:col-span-3 space-y-6"
                     >
-                        {/* Payment mode selection */}
-                        <div className="rounded-2xl border p-6 space-y-5"
-                            style={{ background: 'var(--bg-card)', borderColor: 'var(--border-default)' }}>
-                            <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Choose Payment Option</h2>
+                        {isAuctionFee ? (
+                            /* ── Auction Buyer Fee breakdown ─────────────────── */
+                            <div className="rounded-2xl border p-6 space-y-5"
+                                style={{ background: 'var(--bg-card)', borderColor: 'var(--border-default)' }}>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+                                        <Gavel size={18} className="text-amber-400" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Auction Buyer Fee</h2>
+                                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Required for verified dealers who win auctions</p>
+                                    </div>
+                                </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {/* Deposit option */}
-                                <button
-                                    onClick={() => setSelectedMode("deposit")}
-                                    className={`relative p-5 rounded-xl border-2 text-left transition-all ${selectedMode === "deposit"
-                                        ? 'border-primary bg-primary/5 shadow-lg'
-                                        : 'hover:border-white/20'
-                                    }`}
-                                    style={selectedMode !== "deposit" ? { borderColor: 'var(--border-default)', background: 'var(--bg-input)' } : undefined}
-                                >
-                                    {selectedMode === "deposit" && (
-                                        <div className="absolute top-3 right-3">
-                                            <CheckCircle size={20} className="text-primary" />
+                                {/* Fee breakdown */}
+                                <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: 'var(--border-default)', background: 'var(--bg-input)' }}>
+                                    <p className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Fee Breakdown</p>
+                                    <div className="space-y-2 text-sm">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <Handshake size={14} className="text-emerald-400 shrink-0" />
+                                                <span style={{ color: 'var(--text-muted)' }}>Seller completion bonus</span>
+                                            </div>
+                                            <span className="font-bold text-emerald-400">£{AUCTION_SELLER_BONUS}</span>
                                         </div>
-                                    )}
-                                    <div className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Refundable Deposit</div>
-                                    <div className="text-2xl font-bold text-primary font-mono">£{DEPOSIT_AMOUNT.toLocaleString()}</div>
-                                    <p className="text-xs mt-2" style={{ color: 'var(--text-faint)' }}>Reserve this vehicle — fully refundable within 7 days</p>
-                                </button>
+                                        <p className="text-[10px] pl-6" style={{ color: 'var(--text-faint)' }}>Released to seller once handover proof is verified</p>
 
-                                {/* Full payment option */}
-                                <button
-                                    onClick={() => setSelectedMode("full")}
-                                    className={`relative p-5 rounded-xl border-2 text-left transition-all ${selectedMode === "full"
-                                        ? 'border-primary bg-primary/5 shadow-lg'
-                                        : 'hover:border-white/20'
-                                        }`}
-                                    style={selectedMode !== "full" ? { borderColor: 'var(--border-default)', background: 'var(--bg-input)' } : undefined}
-                                >
-                                    {selectedMode === "full" && (
-                                        <div className="absolute top-3 right-3">
-                                            <CheckCircle size={20} className="text-primary" />
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <Info size={14} className="text-amber-400 shrink-0" />
+                                                <span style={{ color: 'var(--text-muted)' }}>Carmazium platform fee</span>
+                                            </div>
+                                            <span className="font-bold" style={{ color: 'var(--text-primary)' }}>£{AUCTION_PLATFORM_FEE}</span>
                                         </div>
-                                    )}
-                                    <div className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Full Payment</div>
-                                    <div className="text-2xl font-bold text-primary font-mono">{formatPrice(fullPrice)}</div>
-                                    <p className="text-xs mt-2" style={{ color: 'var(--text-faint)' }}>Complete the purchase — vehicle is yours</p>
-                                </button>
+                                        <p className="text-[10px] pl-6" style={{ color: 'var(--text-faint)' }}>Non-refundable in all cases — covers sale handling</p>
+                                    </div>
+                                    <div className="border-t pt-3 flex items-center justify-between" style={{ borderColor: 'var(--border-default)' }}>
+                                        <span className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Total Due Now</span>
+                                        <span className="text-2xl font-black text-amber-400 font-mono">£{AUCTION_BUYER_FEE}</span>
+                                    </div>
+                                </div>
+
+                                {/* Refund policy */}
+                                <div className="rounded-xl p-3 space-y-1.5 bg-blue-500/5 border border-blue-500/15">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Refund Policy</p>
+                                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                                        If the sale does not complete for any reason, <span className="text-white font-bold">£100 is refunded</span> to you. The £25 platform fee is non-refundable.
+                                    </p>
+                                </div>
                             </div>
-                        </div>
+                        ) : (
+                            /* ── Standard deposit / full payment ─────────────── */
+                            <div className="rounded-2xl border p-6 space-y-5"
+                                style={{ background: 'var(--bg-card)', borderColor: 'var(--border-default)' }}>
+                                <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Choose Payment Option</h2>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <button
+                                        onClick={() => setSelectedMode("deposit")}
+                                        className={`relative p-5 rounded-xl border-2 text-left transition-all ${selectedMode === "deposit" ? 'border-primary bg-primary/5 shadow-lg' : 'hover:border-white/20'}`}
+                                        style={selectedMode !== "deposit" ? { borderColor: 'var(--border-default)', background: 'var(--bg-input)' } : undefined}
+                                    >
+                                        {selectedMode === "deposit" && <div className="absolute top-3 right-3"><CheckCircle size={20} className="text-primary" /></div>}
+                                        <div className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Refundable Deposit</div>
+                                        <div className="text-2xl font-bold text-primary font-mono">£{DEPOSIT_AMOUNT.toLocaleString()}</div>
+                                        <p className="text-xs mt-2" style={{ color: 'var(--text-faint)' }}>Reserve this vehicle — fully refundable within 7 days</p>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setSelectedMode("full")}
+                                        className={`relative p-5 rounded-xl border-2 text-left transition-all ${selectedMode === "full" ? 'border-primary bg-primary/5 shadow-lg' : 'hover:border-white/20'}`}
+                                        style={selectedMode !== "full" ? { borderColor: 'var(--border-default)', background: 'var(--bg-input)' } : undefined}
+                                    >
+                                        {selectedMode === "full" && <div className="absolute top-3 right-3"><CheckCircle size={20} className="text-primary" /></div>}
+                                        <div className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Full Payment</div>
+                                        <div className="text-2xl font-bold text-primary font-mono">{formatPrice(fullPrice)}</div>
+                                        <p className="text-xs mt-2" style={{ color: 'var(--text-faint)' }}>Complete the purchase — vehicle is yours</p>
+                                    </button>
+                                </div>
+
+                                {/* Retail buyer fee notice */}
+                                <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/15 text-xs">
+                                    <CheckCircle size={13} className="text-emerald-400 shrink-0" />
+                                    <span style={{ color: 'var(--text-muted)' }}>Retail buyers pay <span className="text-white font-bold">no buyer fees</span> — only the vehicle price above.</span>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Order summary */}
                         <div className="rounded-2xl border p-6 space-y-4"
@@ -240,18 +294,18 @@ function CheckoutContent() {
                             <div className="space-y-3 text-sm">
                                 <div className="flex justify-between">
                                     <span style={{ color: 'var(--text-muted)' }}>{listing.title}</span>
-                                    <span style={{ color: 'var(--text-primary)' }}>{formatPrice(fullPrice)}</span>
+                                    <span style={{ color: 'var(--text-primary)' }}>{isAuctionFee ? "Auction Win" : formatPrice(fullPrice)}</span>
                                 </div>
                                 <div className="border-t" style={{ borderColor: 'var(--border-default)' }} />
                                 <div className="flex justify-between">
                                     <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>
-                                        {selectedMode === "deposit" ? "Deposit Amount" : "Total Due"}
+                                        {isAuctionFee ? "Buyer Fee" : selectedMode === "deposit" ? "Deposit Amount" : "Total Due"}
                                     </span>
                                     <span className="text-lg font-bold text-primary font-mono">
-                                        {selectedMode === "deposit" ? `£${DEPOSIT_AMOUNT.toLocaleString()}.00` : formatPrice(fullPrice)}
+                                        {isAuctionFee ? `£${AUCTION_BUYER_FEE}` : selectedMode === "deposit" ? `£${DEPOSIT_AMOUNT.toLocaleString()}.00` : formatPrice(fullPrice)}
                                     </span>
                                 </div>
-                                {selectedMode === "deposit" && (
+                                {!isAuctionFee && selectedMode === "deposit" && (
                                     <div className="flex justify-between text-xs">
                                         <span style={{ color: 'var(--text-faint)' }}>Remaining balance</span>
                                         <span style={{ color: 'var(--text-faint)' }}>{formatPrice(fullPrice - DEPOSIT_AMOUNT)}</span>
@@ -281,7 +335,9 @@ function CheckoutContent() {
                             ) : (
                                 <>
                                     <CreditCard size={20} />
-                                    Pay {selectedMode === "deposit" ? `£${DEPOSIT_AMOUNT}` : formatPrice(fullPrice)} Securely
+                                    {isAuctionFee
+                                        ? `Pay £${AUCTION_BUYER_FEE} Buyer Fee`
+                                        : `Pay ${selectedMode === "deposit" ? `£${DEPOSIT_AMOUNT}` : formatPrice(fullPrice)} Securely`}
                                 </>
                             )}
                         </Button>

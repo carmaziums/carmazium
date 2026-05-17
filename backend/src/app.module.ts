@@ -30,8 +30,6 @@ import { FeaturedBoostModule } from './featured-boost/featured-boost.module';
 import { OffersModule } from './offers/offers.module';
 import { AiModule } from './ai/ai.module';
 import { DealersModule } from './dealers/dealers.module';
-import { PricingModule } from './pricing/pricing.module';
-import { ScraperModule } from './scraper/scraper.module';
 import { EmailModule } from './email/email.module';
 import { DamageAnalysisModule } from './damage/damage.module';
 import { HpiModule } from './hpi/hpi.module';
@@ -71,8 +69,6 @@ import { HpiModule } from './hpi/hpi.module';
     OffersModule,
     AiModule,
     DealersModule,
-    PricingModule,
-    ScraperModule,
     EmailModule,
     DamageAnalysisModule,
     HpiModule,

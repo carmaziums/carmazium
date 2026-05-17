@@ -8,7 +8,7 @@ import {
     Car, Camera, List, DollarSign, CheckCircle,
     ArrowRight, ArrowLeft, Loader2, Search,
     BadgeCheck, TrendingDown, Upload, Eye, X,
-    Shield, Star, Sparkles, Zap, MapPin, LocateFixed, Edit, Info, Handshake, CreditCard, AlertTriangle, ChevronDown, Lock, FileText, Activity, Gavel, Clock, TrendingUp
+    Shield, Star, Sparkles, Zap, MapPin, LocateFixed, Edit, Info, Handshake, CreditCard, AlertTriangle, ChevronDown, Lock, FileText, Activity, Gavel, Clock
 } from "lucide-react"
 import Image from "next/image"
 import { ImageUpload } from "@/components/listing/ImageUpload"
@@ -24,7 +24,6 @@ import { aiGenerateDescription } from "@/lib/aiApi"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { useAuth } from "@/context/AuthContext"
 import { VehicleDamageMapper, type DamageRecord } from "./VehicleDamageMapper"
-import { RoadPriceBox } from "./RoadPriceBox"
 import { useRouter, useSearchParams } from "next/navigation"
 import { apiClient } from "@/lib/apiClient"
 
@@ -1358,14 +1357,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <p className="text-xs text-red-400 flex items-center gap-1"><AlertTriangle size={12} /> Lower price cannot be higher than the asking price.</p>
                             )}
 
-                            {/* Road Price */}
-                            <RoadPriceBox
-                                make={formData.make}
-                                model={formData.model}
-                                year={formData.year}
-                                mileage={formData.mileage}
-                            />
-
                             {formData.priceAsking && (() => {
                                 const pMin = parseFloat(formData.priceMin) || 0
                                 const pAsk = parseFloat(formData.priceAsking) || 0
@@ -1412,7 +1403,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     >
                                         {formData.listingType === 'AUCTION' && <span className="absolute top-2 right-2 text-[10px] bg-orange-500 text-white font-bold px-2 py-0.5 rounded-full">Selected</span>}
                                         <p className="text-orange-400 font-bold text-sm mb-1 flex items-center gap-1"><Gavel size={14} /> Auction</p>
-                                        <p className="text-2xl font-black text-white mb-3">Free</p>
+                                        <div className="mb-3">
+                                            <p className="text-2xl font-black text-white">Free</p>
+                                            <p className="text-[10px] text-orange-400/70 font-semibold">£0 seller listing fee</p>
+                                        </div>
                                         <ul className="space-y-1.5 text-xs text-gray-400">
                                             <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Open bidding</li>
                                             <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> 6-hour auction</li>
@@ -1484,6 +1478,51 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     <p className="text-xs text-emerald-400 mt-3 flex items-center gap-1">
                                         <CheckCircle size={12} /> Payment is bypassed during beta — badges are applied immediately at no charge.
                                     </p>
+                                )}
+
+                                {/* Fee Transparency Box */}
+                                {formData.listingType === 'AUCTION' ? (
+                                    <div className="mt-4 rounded-xl border border-orange-500/20 bg-orange-500/5 p-4 space-y-3">
+                                        <p className="text-xs font-black uppercase tracking-widest text-orange-400 flex items-center gap-1.5"><Gavel size={12} /> Auction Fee Structure</p>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                                            <div className="rounded-lg bg-white/[0.03] border border-white/5 p-3">
+                                                <p className="text-gray-500 font-bold uppercase tracking-widest text-[9px] mb-1">Seller (You)</p>
+                                                <p className="text-2xl font-black text-emerald-400">£0</p>
+                                                <p className="text-gray-400 mt-1">No listing fee — free to list in auction</p>
+                                            </div>
+                                            <div className="rounded-lg bg-white/[0.03] border border-white/5 p-3">
+                                                <p className="text-gray-500 font-bold uppercase tracking-widest text-[9px] mb-1">Buyer (Verified Dealer)</p>
+                                                <p className="text-2xl font-black text-white">£125</p>
+                                                <p className="text-gray-400 mt-1">One-time buyer fee paid on winning</p>
+                                            </div>
+                                        </div>
+                                        <div className="border-t border-white/5 pt-3 space-y-1.5 text-xs text-gray-400">
+                                            <div className="flex items-start gap-2">
+                                                <CheckCircle size={12} className="text-emerald-400 shrink-0 mt-0.5" />
+                                                <span><span className="text-white font-bold">£100</span> returned to you after you upload proof of successful handover</span>
+                                            </div>
+                                            <div className="flex items-start gap-2">
+                                                <Info size={12} className="text-orange-400 shrink-0 mt-0.5" />
+                                                <span><span className="text-white font-bold">£25</span> Carmazium platform fee — non-refundable in all cases</span>
+                                            </div>
+                                            <div className="flex items-start gap-2">
+                                                <Handshake size={12} className="text-blue-400 shrink-0 mt-0.5" />
+                                                <span>If handover doesn't complete, buyer gets <span className="text-white font-bold">£100 refunded</span> — £25 is kept</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-2">
+                                        <p className="text-xs font-black uppercase tracking-widest text-gray-400 flex items-center gap-1.5"><CreditCard size={12} /> Retail Fee Structure</p>
+                                        <div className="flex items-center justify-between text-xs">
+                                            <span className="text-gray-400">Your listing fee</span>
+                                            <span className="text-white font-bold">{formData.badgeTier === 'FREE' ? '£1' : formData.badgeTier === 'STANDARD' ? '£10' : '£25'} one-time</span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-xs">
+                                            <span className="text-gray-400">Buyer fee</span>
+                                            <span className="text-emerald-400 font-bold">£0 — free for buyers</span>
+                                        </div>
+                                    </div>
                                 )}
                             </div>
                         </div>

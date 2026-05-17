@@ -9,6 +9,7 @@ import {
     UseGuards,
     HttpCode,
     HttpStatus,
+    BadRequestException,
 } from '@nestjs/common';
 import {
     ApiTags,
@@ -111,5 +112,25 @@ export class AuctionsController {
     async remove(@Param('id') id: string, @CurrentUser() user: any) {
         const auction = await this.auctionsService.remove(id, user.id);
         return new StandardResponse(auction);
+    }
+
+    @Post(':id/handover-proof')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Submit handover proof for an ended auction (seller only)' })
+    @ApiResponse({ status: 200, description: 'Proof submitted — £100 seller bonus pending admin verification' })
+    @ApiResponse({ status: 400, description: 'Auction not ended, no winner, or proof already submitted' })
+    @ApiResponse({ status: 403, description: 'You do not own this auction' })
+    async submitHandoverProof(
+        @Param('id') id: string,
+        @Body('proofUrl') proofUrl: string,
+        @CurrentUser() user: any,
+    ) {
+        if (!proofUrl) {
+            throw new BadRequestException('proofUrl is required');
+        }
+        const result = await this.auctionsService.submitHandoverProof(id, user.id, proofUrl);
+        return new StandardResponse(result);
     }
 }

@@ -25,7 +25,10 @@ import {
     Tag,
     Users,
     Kanban,
-    Building2
+    Building2,
+    Handshake,
+    Receipt,
+    TrendingUp,
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
@@ -123,7 +126,10 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             { href: "/dashboard/admin", label: "Overview", icon: LayoutDashboard },
             { href: "/dashboard/admin/users", label: "Accounts", icon: Users },
             { href: "/dashboard/admin/listings", label: "Listings", icon: Car },
-            { href: "/dashboard/admin/settings", label: "Settings", icon: Settings },
+            { href: "/dashboard/admin/auctions", label: "Auctions", icon: Gavel },
+            { href: "/dashboard/admin/handovers", label: "Handovers", icon: Handshake },
+            { href: "/dashboard/admin/transactions", label: "Transactions", icon: Receipt },
+            { href: "/dashboard/admin/analytics", label: "Analytics", icon: TrendingUp },
         ]
     }
 

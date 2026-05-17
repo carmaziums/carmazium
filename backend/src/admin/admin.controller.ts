@@ -1,13 +1,15 @@
 import {
     Controller,
     Get,
+    Post,
     Patch,
     Delete,
     Param,
     Query,
     Body,
     UseGuards,
-    SetMetadata,
+    HttpCode,
+    HttpStatus,
 } from '@nestjs/common';
 import {
     ApiTags,
@@ -31,6 +33,8 @@ import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dt
 @Roles(UserRole.ADMIN)
 export class AdminController {
     constructor(private readonly adminService: AdminService) { }
+
+    // ── Users ─────────────────────────────────────────────────────────────────
 
     @Get('users')
     @ApiOperation({ summary: 'List all users' })
@@ -66,6 +70,8 @@ export class AdminController {
         return new StandardResponse(user);
     }
 
+    // ── Listings ──────────────────────────────────────────────────────────────
+
     @Get('listings')
     @ApiOperation({ summary: 'List all listings (including drafts/deleted)' })
     @ApiQuery({ name: 'page', required: false })
@@ -86,10 +92,75 @@ export class AdminController {
         return new StandardResponse(listing);
     }
 
+    // ── Auctions ──────────────────────────────────────────────────────────────
+
+    @Get('auctions')
+    @ApiOperation({ summary: 'List all auctions' })
+    @ApiQuery({ name: 'page', required: false })
+    @ApiQuery({ name: 'limit', required: false })
+    async getAllAuctions(
+        @Query('page') page = 1,
+        @Query('limit') limit = 20,
+    ): Promise<PaginatedResponse<any>> {
+        const { data, total } = await this.adminService.getAllAuctions(Number(page), Number(limit));
+        return new PaginatedResponse(data, total, Number(page), Number(limit));
+    }
+
+    // ── Handovers ─────────────────────────────────────────────────────────────
+
+    @Get('handovers/pending')
+    @ApiOperation({ summary: 'Get auctions with pending handover proofs' })
+    async getPendingHandovers(): Promise<StandardResponse<any>> {
+        const data = await this.adminService.getPendingHandovers();
+        return new StandardResponse(data);
+    }
+
+    @Post('handovers/:auctionId/approve')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Approve a handover proof and release seller bonus' })
+    @ApiParam({ name: 'auctionId' })
+    async approveHandover(@Param('auctionId') auctionId: string): Promise<StandardResponse<any>> {
+        const result = await this.adminService.approveHandover(auctionId);
+        return new StandardResponse(result);
+    }
+
+    @Post('handovers/:auctionId/deny')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Deny a handover proof and refund buyer £100' })
+    @ApiParam({ name: 'auctionId' })
+    async denyHandover(@Param('auctionId') auctionId: string): Promise<StandardResponse<any>> {
+        const result = await this.adminService.denyHandover(auctionId);
+        return new StandardResponse(result);
+    }
+
+    // ── Transactions ──────────────────────────────────────────────────────────
+
+    @Get('transactions')
+    @ApiOperation({ summary: 'List all transactions' })
+    @ApiQuery({ name: 'page', required: false })
+    @ApiQuery({ name: 'limit', required: false })
+    async getAllTransactions(
+        @Query('page') page = 1,
+        @Query('limit') limit = 20,
+    ): Promise<PaginatedResponse<any>> {
+        const { data, total } = await this.adminService.getAllTransactions(Number(page), Number(limit));
+        return new PaginatedResponse(data, total, Number(page), Number(limit));
+    }
+
+    // ── Stats & Analytics ─────────────────────────────────────────────────────
+
     @Get('stats')
     @ApiOperation({ summary: 'Get platform stats' })
     async getPlatformStats(): Promise<StandardResponse<any>> {
         const stats = await this.adminService.getPlatformStats();
         return new StandardResponse(stats);
+    }
+
+    @Get('analytics')
+    @ApiOperation({ summary: 'Get monthly analytics data (last 6 months)' })
+    @ApiResponse({ status: 200, description: 'Monthly users, listings, and revenue data' })
+    async getAnalytics(): Promise<StandardResponse<any>> {
+        const data = await this.adminService.getAnalyticsData();
+        return new StandardResponse(data);
     }
 }
