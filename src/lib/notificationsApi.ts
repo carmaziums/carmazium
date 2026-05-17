@@ -49,17 +49,28 @@ export async function markNotificationRead(id: string): Promise<void> {
 // ─── Icon helper — returns a lucide icon name based on notification type ───────
 export function notificationIcon(type: string): string {
     const map: Record<string, string> = {
-        OFFER_RECEIVED:   'Tag',
-        OFFER_ACCEPTED:   'CheckCircle',
-        OFFER_REJECTED:   'XCircle',
-        OFFER_COUNTERED:  'RefreshCw',
-        OFFER_WITHDRAWN:  'MinusCircle',
-        NEW_MESSAGE:      'MessageSquare',
-        MESSAGE_RECEIVED: 'MessageSquare',
-        DEAL_CLOSED:      'CheckCircle',
-        LISTING_SOLD:     'BadgeCheck',
-        FINANCE_UPDATE:   'CreditCard',
-        SYSTEM:           'Bell',
+        OFFER_RECEIVED:        'Tag',
+        OFFER_ACCEPTED:        'CheckCircle',
+        OFFER_REJECTED:        'XCircle',
+        OFFER_COUNTERED:       'RefreshCw',
+        OFFER_WITHDRAWN:       'MinusCircle',
+        NEW_MESSAGE:           'MessageSquare',
+        MESSAGE_RECEIVED:      'MessageSquare',
+        DEAL_CLOSED:           'CheckCircle',
+        LISTING_SOLD:          'BadgeCheck',
+        FINANCE_UPDATE:        'CreditCard',
+        SYSTEM:                'Bell',
+        // Auction types
+        AUCTION_BID:           'Gavel',
+        AUCTION_BID_PLACED:    'Gavel',
+        AUCTION_OUTBID:        'TrendingDown',
+        AUCTION_WON:           'Trophy',
+        AUCTION_ENDED:         'Gavel',
+        AUCTION_ENDED_NO_SALE: 'AlertCircle',
+        AUCTION_STARTED:       'Zap',
+        AUCTION_ENDING_SOON:   'Timer',
+        AUCTION_CANCELLED:     'XCircle',
+        AUCTION_RESERVE_MET:   'ShieldCheck',
     }
     return map[type] ?? 'Bell'
 }

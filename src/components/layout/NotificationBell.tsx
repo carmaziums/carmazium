@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation"
 import {
     Bell, Tag, CheckCircle, XCircle, RefreshCw,
     MessageSquare, BadgeCheck, CreditCard, MinusCircle,
-    Loader2, Check,
+    Loader2, Check, Gavel, Trophy, Timer, Zap,
+    TrendingDown, ShieldCheck, AlertCircle,
 } from "lucide-react"
 import {
     getNotifications, markAllNotificationsRead, markNotificationRead,
@@ -19,16 +20,30 @@ import { getPendingOffersCount } from "@/lib/listingApi"
 // ─── Icon map ─────────────────────────────────────────────────────────────────
 
 const ICON_MAP: Record<string, React.ReactNode> = {
-    OFFER_RECEIVED:  <Tag size={14} className="text-amber-400" />,
-    OFFER_ACCEPTED:  <CheckCircle size={14} className="text-emerald-400" />,
-    OFFER_REJECTED:  <XCircle size={14} className="text-red-400" />,
-    OFFER_COUNTERED: <RefreshCw size={14} className="text-blue-400" />,
-    OFFER_WITHDRAWN: <MinusCircle size={14} className="text-gray-400" />,
-    NEW_MESSAGE:     <MessageSquare size={14} className="text-blue-400" />,
-    MESSAGE_RECEIVED: <MessageSquare size={14} className="text-blue-400" />,
-    DEAL_CLOSED:     <CheckCircle size={14} className="text-emerald-400" />,
-    LISTING_SOLD:    <BadgeCheck size={14} className="text-emerald-400" />,
-    FINANCE_UPDATE:  <CreditCard size={14} className="text-purple-400" />,
+    // Offers
+    OFFER_RECEIVED:        <Tag size={14} className="text-amber-400" />,
+    OFFER_ACCEPTED:        <CheckCircle size={14} className="text-emerald-400" />,
+    OFFER_REJECTED:        <XCircle size={14} className="text-red-400" />,
+    OFFER_COUNTERED:       <RefreshCw size={14} className="text-blue-400" />,
+    OFFER_WITHDRAWN:       <MinusCircle size={14} className="text-gray-400" />,
+    // Messages
+    NEW_MESSAGE:           <MessageSquare size={14} className="text-blue-400" />,
+    MESSAGE_RECEIVED:      <MessageSquare size={14} className="text-blue-400" />,
+    // Deals / listings
+    DEAL_CLOSED:           <CheckCircle size={14} className="text-emerald-400" />,
+    LISTING_SOLD:          <BadgeCheck size={14} className="text-emerald-400" />,
+    FINANCE_UPDATE:        <CreditCard size={14} className="text-purple-400" />,
+    // Auctions
+    AUCTION_BID:           <Gavel size={14} className="text-orange-400" />,
+    AUCTION_BID_PLACED:    <Gavel size={14} className="text-orange-400" />,
+    AUCTION_OUTBID:        <TrendingDown size={14} className="text-red-400" />,
+    AUCTION_WON:           <Trophy size={14} className="text-amber-400" />,
+    AUCTION_ENDED:         <Gavel size={14} className="text-slate-400" />,
+    AUCTION_ENDED_NO_SALE: <AlertCircle size={14} className="text-slate-400" />,
+    AUCTION_STARTED:       <Zap size={14} className="text-emerald-400" />,
+    AUCTION_ENDING_SOON:   <Timer size={14} className="text-amber-400" />,
+    AUCTION_CANCELLED:     <XCircle size={14} className="text-red-400" />,
+    AUCTION_RESERVE_MET:   <ShieldCheck size={14} className="text-emerald-400" />,
 }
 
 function getIcon(type: string) {
@@ -72,13 +87,23 @@ export function NotificationBell() {
     const [pendingOffers, setPendingOffers] = React.useState(0)
     const ref = React.useRef<HTMLDivElement>(null)
 
-    // Poll unread count every 30s
+    // Poll pending offers every 30s
     React.useEffect(() => {
         if (!user) { setPendingOffers(0); return }
         const fetch = () => getPendingOffersCount().then(setPendingOffers).catch(() => {})
         fetch()
         const id = setInterval(fetch, 30000)
         return () => clearInterval(id)
+    }, [user])
+
+    // Listen for auction notification refresh triggers from the live auction room
+    React.useEffect(() => {
+        if (!user) return
+        const handler = () => {
+            getNotifications(12).then(setNotifications).catch(() => {})
+        }
+        window.addEventListener("auction:refresh-notifications", handler)
+        return () => window.removeEventListener("auction:refresh-notifications", handler)
     }, [user])
 
     // Click-outside close
@@ -121,6 +146,28 @@ export function NotificationBell() {
             href = `/dashboard/user?tab=messages&room=${dataObj.roomId}`
         }
 
+        // Auction notification routing — navigate to the live auction room
+        if (n.type.startsWith("AUCTION_")) {
+            const auctionId = typeof dataObj.auctionId === "string" ? dataObj.auctionId : n.entityId
+            if (auctionId && (
+                n.type === "AUCTION_BID" ||
+                n.type === "AUCTION_BID_PLACED" ||
+                n.type === "AUCTION_OUTBID" ||
+                n.type === "AUCTION_WON" ||
+                n.type === "AUCTION_ENDED" ||
+                n.type === "AUCTION_STARTED" ||
+                n.type === "AUCTION_ENDING_SOON" ||
+                n.type === "AUCTION_RESERVE_MET"
+            )) {
+                router.push(`/auctions/live/${auctionId}`)
+                return
+            }
+            if (n.type === "AUCTION_ENDED_NO_SALE" || n.type === "AUCTION_CANCELLED") {
+                router.push("/dashboard/seller/auctions")
+                return
+            }
+        }
+
         if (href) {
             router.push(normalizeNotificationHref(href))
             return
@@ -129,13 +176,17 @@ export function NotificationBell() {
         const eType = n.entityType ?? undefined
         const eId = n.entityId ?? undefined
 
+        if (eType === "AUCTION" && eId) {
+            router.push(`/auctions/live/${eId}`)
+            return
+        }
+
         if (eType === "LISTING" && eId) {
             router.push("/dashboard/user?tab=inventory")
             return
         }
 
         if (eType === "OFFER" && eId) {
-            // Without a stored link, only OFFER_COUNTERED is buyer-specific; other offer types may be seller-side.
             if (n.type === "OFFER_COUNTERED") {
                 router.push("/dashboard/user?tab=bids")
                 return
@@ -144,20 +195,9 @@ export function NotificationBell() {
             return
         }
 
-        if (n.type === "DEAL_CLOSED") {
-            router.push("/dashboard/user?tab=offers")
-            return
-        }
-
-        if (n.type === "MESSAGE_RECEIVED" || n.type === "NEW_MESSAGE") {
-            router.push("/dashboard/user?tab=messages")
-            return
-        }
-
-        if (n.type.startsWith("OFFER_")) {
-            router.push("/dashboard/user?tab=offers")
-            return
-        }
+        if (n.type === "DEAL_CLOSED") { router.push("/dashboard/user?tab=offers"); return }
+        if (n.type === "MESSAGE_RECEIVED" || n.type === "NEW_MESSAGE") { router.push("/dashboard/user?tab=messages"); return }
+        if (n.type.startsWith("OFFER_")) { router.push("/dashboard/user?tab=offers"); return }
 
         router.push("/dashboard/user?tab=overview")
     }
@@ -214,27 +254,34 @@ export function NotificationBell() {
                                 <p className="text-gray-500 text-xs font-semibold">No notifications yet</p>
                             </div>
                         ) : (
-                            notifications.map(n => (
-                                <button
-                                    key={n.id}
-                                    onClick={() => handleClickNotif(n)}
-                                    className={`w-full text-left flex items-start gap-3 px-4 py-3 hover:bg-white/5 transition-colors border-b border-white/5 last:border-0 ${!n.isRead ? 'bg-primary/5' : ''}`}
-                                >
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${!n.isRead ? 'bg-primary/10' : 'bg-white/5'}`}>
-                                        {getIcon(n.type)}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className={`text-xs font-bold mb-0.5 ${!n.isRead ? 'text-white' : 'text-gray-300'}`}>
-                                            {n.title}
-                                        </p>
-                                        <p className="text-[11px] text-gray-500 leading-relaxed line-clamp-2">{n.body ?? n.message}</p>
-                                        <p className="text-[10px] text-gray-600 mt-1">{timeAgo(n.createdAt)}</p>
-                                    </div>
-                                    {!n.isRead && (
-                                        <div className="w-2 h-2 rounded-full bg-primary shrink-0 mt-2" />
-                                    )}
-                                </button>
-                            ))
+                            notifications.map(n => {
+                                const isAuction = n.type.startsWith("AUCTION_")
+                                return (
+                                    <button
+                                        key={n.id}
+                                        onClick={() => handleClickNotif(n)}
+                                        className={`w-full text-left flex items-start gap-3 px-4 py-3 hover:bg-white/5 transition-colors border-b border-white/5 last:border-0 ${!n.isRead ? 'bg-primary/5' : ''}`}
+                                    >
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                                            !n.isRead
+                                                ? isAuction ? 'bg-orange-500/10' : 'bg-primary/10'
+                                                : 'bg-white/5'
+                                        }`}>
+                                            {getIcon(n.type)}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className={`text-xs font-bold mb-0.5 ${!n.isRead ? 'text-white' : 'text-gray-300'}`}>
+                                                {n.title}
+                                            </p>
+                                            <p className="text-[11px] text-gray-500 leading-relaxed line-clamp-2">{n.body ?? n.message}</p>
+                                            <p className="text-[10px] text-gray-600 mt-1">{timeAgo(n.createdAt)}</p>
+                                        </div>
+                                        {!n.isRead && (
+                                            <div className={`w-2 h-2 rounded-full shrink-0 mt-2 ${isAuction ? 'bg-orange-400' : 'bg-primary'}`} />
+                                        )}
+                                    </button>
+                                )
+                            })
                         )}
                     </div>
 
