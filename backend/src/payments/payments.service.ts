@@ -33,11 +33,15 @@ export class PaymentsService {
     /**
      * Create a Stripe Checkout Session for a vehicle purchase or deposit.
      */
+    private readonly AUCTION_BUYER_FEE = 125;
+    private readonly AUCTION_SELLER_BONUS = 100;
+    private readonly AUCTION_PLATFORM_FEE = 25;
+
     async createCheckoutSession(
         listingId: string,
         userId: string,
         amount: number,
-        type: 'DEPOSIT' | 'FULL_PAYMENT' = 'FULL_PAYMENT',
+        type: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' = 'FULL_PAYMENT',
         currency = 'gbp',
     ) {
         const listing = await this.prisma.listing.findUnique({
@@ -51,19 +55,34 @@ export class PaymentsService {
         const stripe = await this.getStripe();
         const baseUrl = this.config.get<string>('FRONTEND_URL') || this.config.get<string>('NEXT_PUBLIC_BASE_URL') || 'http://localhost:3000';
 
-        // Create a pending transaction record
+        const descriptionMap: Record<string, string> = {
+            DEPOSIT: `Refundable deposit for ${listing.title}`,
+            FULL_PAYMENT: `Full payment for ${listing.title}`,
+            COMMISSION: `Auction buyer fee — ${listing.title} (£${this.AUCTION_SELLER_BONUS} seller bonus + £${this.AUCTION_PLATFORM_FEE} platform fee)`,
+        };
+
         const transaction = await this.prisma.transaction.create({
             data: {
                 listingId,
                 userId,
                 amount,
-                type,
+                type: type as any,
                 status: 'PENDING',
-                description: type === 'DEPOSIT'
-                    ? `Refundable deposit for ${listing.title}`
-                    : `Full payment for ${listing.title}`,
+                description: descriptionMap[type] ?? `Payment for ${listing.title}`,
             },
         });
+
+        const productNameMap: Record<string, string> = {
+            DEPOSIT: listing.title,
+            FULL_PAYMENT: listing.title,
+            COMMISSION: 'Auction Buyer Fee — Carmazium',
+        };
+
+        const productDescMap: Record<string, string> = {
+            DEPOSIT: 'Refundable deposit — secures your vehicle',
+            FULL_PAYMENT: `Full payment for ${listing.make || ''} ${listing.model || ''} ${listing.year || ''}`.trim(),
+            COMMISSION: `£${this.AUCTION_SELLER_BONUS} released to seller after handover · £${this.AUCTION_PLATFORM_FEE} Carmazium platform fee (non-refundable)`,
+        };
 
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
@@ -73,15 +92,13 @@ export class PaymentsService {
                     price_data: {
                         currency,
                         product_data: {
-                            name: listing.title,
-                            description: type === 'DEPOSIT'
-                                ? `Refundable deposit — secures your vehicle`
-                                : `Full payment for ${listing.make || ''} ${listing.model || ''} ${listing.year || ''}`.trim(),
-                            ...(listing.images?.[0] && !listing.images[0].includes('example.com')
+                            name: productNameMap[type] ?? listing.title,
+                            description: productDescMap[type],
+                            ...(type !== 'COMMISSION' && listing.images?.[0] && !listing.images[0].includes('example.com')
                                 ? { images: [listing.images[0]] }
                                 : {}),
                         },
-                        unit_amount: Math.round(amount * 100), // pence
+                        unit_amount: Math.round(amount * 100),
                     },
                     quantity: 1,
                 },
@@ -327,10 +344,25 @@ export class PaymentsService {
 
                 if (type === 'HPI_REPORT') {
                     const { vrm } = session.metadata;
-                    // Fire and forget to prevent blocking the webhook response
                     this.hpiService.generateAndSaveReport(listingId, vrm, transactionId).catch(err => {
                         console.error('Failed to generate HPI report after payment:', err);
                     });
+                }
+
+                // Auction buyer fee paid — mark auction and record transaction ID
+                if (type === 'COMMISSION') {
+                    const auction = await this.prisma.auction.findFirst({
+                        where: { listingId, status: 'ENDED', deletedAt: null },
+                    });
+                    if (auction) {
+                        await this.prisma.auction.update({
+                            where: { id: auction.id },
+                            data: {
+                                buyerFeePaid: true,
+                                buyerFeeTransactionId: transactionId,
+                            },
+                        });
+                    }
                 }
                 break;
             }
@@ -349,5 +381,35 @@ export class PaymentsService {
         }
 
         return { received: true };
+    }
+
+    /**
+     * Issue a partial Stripe refund of £100 to the auction buyer (platform keeps £25).
+     * Called by admin when denying a handover proof.
+     */
+    async issueRefundForAuction(auctionId: string): Promise<void> {
+        const auction = await this.prisma.auction.findUnique({ where: { id: auctionId } });
+        if (!auction?.buyerFeeTransactionId) return;
+
+        const transaction = await this.prisma.transaction.findUnique({
+            where: { id: auction.buyerFeeTransactionId },
+        });
+        if (!transaction?.stripePaymentId) return;
+
+        const stripe = await this.getStripe();
+        const session = await stripe.checkout.sessions.retrieve(transaction.stripePaymentId);
+        const paymentIntentId = session.payment_intent as string;
+
+        if (paymentIntentId) {
+            await stripe.refunds.create({
+                payment_intent: paymentIntentId,
+                amount: 10000, // £100 in pence — platform keeps the £25 fee
+            });
+        }
+
+        await this.prisma.transaction.update({
+            where: { id: auction.buyerFeeTransactionId },
+            data: { status: 'REFUNDED' as any },
+        });
     }
 }

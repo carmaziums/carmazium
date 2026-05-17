@@ -11,7 +11,7 @@ import {
     ArrowLeft, Share2, Gavel, Users, AlertCircle, CheckCircle,
     ShieldCheck, Info, Zap, Trophy, Clock, WifiOff,
     MessageSquare, Timer, Flame, TrendingUp, RefreshCw,
-    Ban, CalendarClock,
+    Ban, CalendarClock, CreditCard, Handshake,
 } from "lucide-react"
 import { CountdownTimer } from "@/components/features/CountdownTimer"
 import { useAuth } from "@/context/AuthContext"
@@ -407,20 +407,41 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                         <div className="container mx-auto px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
                             {userWon ? (
                                 <>
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                                    <div className="flex items-center gap-3 flex-1">
+                                        <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
                                             <Trophy size={18} className="text-emerald-400" />
                                         </div>
-                                        <div>
+                                        <div className="min-w-0">
                                             <p className="text-emerald-400 font-black text-sm uppercase tracking-wider">You won this auction!</p>
-                                            <p className="text-slate-400 text-xs">Winning bid: <span className="text-white font-bold">£{Number(endedPayload?.winningBidAmount).toLocaleString()}</span> — contact the seller to arrange collection</p>
+                                            <p className="text-slate-400 text-xs">Winning bid: <span className="text-white font-bold">£{Number(endedPayload?.winningBidAmount).toLocaleString()}</span></p>
                                         </div>
                                     </div>
-                                    <Link href="/dashboard/buyer/messages">
-                                        <Button className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-2 text-xs h-9">
-                                            <MessageSquare size={13} /> Open Chat
-                                        </Button>
-                                    </Link>
+                                    {/* Buyer fee + chat actions */}
+                                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+                                        <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-xs">
+                                            <p className="text-amber-400 font-black text-[10px] uppercase tracking-widest mb-0.5">Buyer Fee Due</p>
+                                            <div className="flex items-baseline gap-1">
+                                                <span className="text-white font-black text-base">£125</span>
+                                                <span className="text-slate-500 text-[10px]">verified dealers</span>
+                                            </div>
+                                            <div className="text-[10px] text-slate-500 mt-1 space-y-0.5">
+                                                <p>£100 → seller (after handover)</p>
+                                                <p>£25 → Carmazium (non-refundable)</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col gap-1.5">
+                                            <Link href={`/checkout?listing_id=${auction.listingId}&mode=auction_fee`}>
+                                                <Button className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black text-xs h-9 flex items-center gap-1.5">
+                                                    <CreditCard size={13} /> Pay £125 Fee
+                                                </Button>
+                                            </Link>
+                                            <Link href="/dashboard/buyer/messages">
+                                                <Button variant="outline" className="w-full border-white/10 text-slate-400 font-bold text-xs h-9 flex items-center gap-1.5">
+                                                    <MessageSquare size={13} /> Message Seller
+                                                </Button>
+                                            </Link>
+                                        </div>
+                                    </div>
                                 </>
                             ) : endedPayload?.reserveMet === false ? (
                                 <div className="flex items-center gap-2 text-slate-400 text-sm">
@@ -841,6 +862,33 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                         <div className="flex items-start gap-2.5 px-3 py-2.5 bg-slate-800/40 border border-white/5 rounded-xl text-xs text-slate-500">
                             <ShieldCheck size={13} className="shrink-0 mt-0.5 text-emerald-500" />
                             All deals are arranged directly between buyer and seller via Carmazium secure chat.
+                        </div>
+                    )}
+
+                    {/* Buyer fee notice */}
+                    {!isCancelled && !isSeller && isLive && (
+                        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 space-y-2">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-amber-400 flex items-center gap-1.5">
+                                <CreditCard size={11} /> Buyer Fee — Verified Dealers
+                            </p>
+                            <div className="flex items-center justify-between text-xs">
+                                <span className="text-slate-400">Buyer fee on winning</span>
+                                <span className="text-white font-black">£125</span>
+                            </div>
+                            <div className="space-y-1 text-[10px] text-slate-500 border-t border-white/5 pt-2">
+                                <div className="flex items-center gap-1.5">
+                                    <CheckCircle size={10} className="text-emerald-400 shrink-0" />
+                                    £100 released to seller after handover proof
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <Info size={10} className="text-amber-400 shrink-0" />
+                                    £25 Carmazium fee — non-refundable
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <Handshake size={10} className="text-blue-400 shrink-0" />
+                                    £100 refunded if handover doesn't complete
+                                </div>
+                            </div>
                         </div>
                     )}
                 </aside>

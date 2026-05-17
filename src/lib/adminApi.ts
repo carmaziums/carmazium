@@ -5,12 +5,27 @@ export interface AdminStats {
   totalListings: number;
   activeListings: number;
   soldListings: number;
+  totalAuctions: number;
+  activeAuctions: number;
+  endedAuctions: number;
   totalBids: number;
   totalRevenue: number;
 }
 
+export interface AnalyticsMonth {
+  month: string;
+  newUsers: number;
+  newListings: number;
+  revenue: number;
+}
+
 export async function getAdminStats(): Promise<AdminStats> {
   const result = await apiClient<{ data: AdminStats }>('/admin/stats');
+  return result.data;
+}
+
+export async function getAdminAnalytics(): Promise<AnalyticsMonth[]> {
+  const result = await apiClient<{ data: AnalyticsMonth[] }>('/admin/analytics');
   return result.data;
 }
 
@@ -21,6 +36,31 @@ export async function getAdminUsers(page = 1, limit = 20) {
 
 export async function getAdminListings(page = 1, limit = 20) {
   const result = await apiClient<any>(`/admin/listings?page=${page}&limit=${limit}`);
+  return result;
+}
+
+export async function getAdminAuctions(page = 1, limit = 20) {
+  const result = await apiClient<any>(`/admin/auctions?page=${page}&limit=${limit}`);
+  return result;
+}
+
+export async function getAdminTransactions(page = 1, limit = 20) {
+  const result = await apiClient<any>(`/admin/transactions?page=${page}&limit=${limit}`);
+  return result;
+}
+
+export async function getPendingHandovers() {
+  const result = await apiClient<{ data: any[] }>('/admin/handovers/pending');
+  return result.data;
+}
+
+export async function approveHandover(auctionId: string) {
+  const result = await apiClient<any>(`/admin/handovers/${auctionId}/approve`, { method: 'POST' });
+  return result;
+}
+
+export async function denyHandover(auctionId: string) {
+  const result = await apiClient<any>(`/admin/handovers/${auctionId}/deny`, { method: 'POST' });
   return result;
 }
 

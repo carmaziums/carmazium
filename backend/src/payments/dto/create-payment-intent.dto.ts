@@ -13,11 +13,11 @@ export class CreateCheckoutSessionDto {
     @Type(() => Number)
     amount: number;
 
-    @ApiPropertyOptional({ description: 'Payment type: DEPOSIT or FULL_PAYMENT', default: 'FULL_PAYMENT' })
+    @ApiPropertyOptional({ description: 'Payment type', default: 'FULL_PAYMENT' })
     @IsOptional()
     @IsString()
-    @IsIn(['DEPOSIT', 'FULL_PAYMENT'])
-    type?: 'DEPOSIT' | 'FULL_PAYMENT';
+    @IsIn(['DEPOSIT', 'FULL_PAYMENT', 'COMMISSION'])
+    type?: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION';
 
     @ApiPropertyOptional({ description: 'ISO 4217 currency code', default: 'gbp' })
     @IsOptional()

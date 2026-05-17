@@ -591,9 +591,18 @@ model Auction {
   status           AuctionStatus @default(SCHEDULED)
   winnerId         String?
   winningBidAmount Decimal?      @db.Decimal(12, 2)
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  deletedAt        DateTime?
+
+  // Buyer fee & handover tracking
+  buyerFeePaid           Boolean   @default(false)
+  buyerFeeTransactionId  String?
+  handoverProofUrl       String?
+  handoverSubmittedAt    DateTime?
+  sellerBonusReleased    Boolean   @default(false)
+  sellerBonusReleasedAt  DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
   winner  User?   @relation("AuctionWinner", fields: [winnerId], references: [id])
