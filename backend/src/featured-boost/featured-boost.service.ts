@@ -19,18 +19,11 @@ export class FeaturedBoostService {
         private readonly config: ConfigService,
     ) { }
 
-    private get isBypassMode(): boolean {
-        const bypass = this.config.get<string>('PAYMENT_BYPASS');
-        return bypass !== 'false'; // Default to true for beta unless explicitly disabled
-    }
-
     /**
-     * Activate a listing boost.
-     * - Bypass mode: immediately activates the boost, no payment required.
-     * - Stripe mode (future): creates a Checkout Session and returns a redirect URL.
+     * Activate a listing boost via Stripe Checkout.
+     * Returns { url } to redirect the seller to Stripe.
      */
     async activateBoost(listingId: string, sellerId: string) {
-        // Ensure listing exists and belongs to this seller
         const listing = await this.prisma.listing.findUnique({
             where: { id: listingId },
         });
@@ -43,57 +36,14 @@ export class FeaturedBoostService {
             throw new ForbiddenException('You do not own this listing');
         }
 
-        // Check if already actively featured
         if (listing.isFeatured && listing.featuredUntil && listing.featuredUntil > new Date()) {
             throw new BadRequestException('This listing is already featured');
         }
 
-        if (this.isBypassMode) {
-            return this.activateBypass(listingId, sellerId);
-        }
-
-        // ── Stripe mode (called when PAYMENT_BYPASS=false) ──────────────────
         return this.createStripeSession(listingId, sellerId);
     }
 
-    /**
-     * Bypass mode: immediately activate the boost without any payment.
-     */
-    private async activateBypass(listingId: string, sellerId: string) {
-        const expiresAt = addDays(new Date(), BOOST_DURATION_DAYS);
-
-        const [boost] = await this.prisma.$transaction([
-            this.prisma.featuredBoost.create({
-                data: {
-                    listingId,
-                    sellerId,
-                    amountPaid: BOOST_AMOUNT,
-                    currency: BOOST_CURRENCY,
-                    expiresAt,
-                    isActive: true,
-                    bypassed: true,
-                },
-            }),
-            this.prisma.listing.update({
-                where: { id: listingId },
-                data: { isFeatured: true, featuredUntil: expiresAt },
-            }),
-        ]);
-
-        return {
-            bypassed: true,
-            boostId: boost.id,
-            expiresAt,
-            message: `Listing boosted for ${BOOST_DURATION_DAYS} days (bypass mode — no payment taken)`,
-        };
-    }
-
-    /**
-     * Stripe mode: create a Checkout Session.
-     * Called only when PAYMENT_BYPASS=false and Stripe keys are configured.
-     */
     private async createStripeSession(listingId: string, sellerId: string) {
-        // Dynamically import Stripe so the module loads even without the key
         const Stripe = (await import('stripe')).default;
         const stripe = new Stripe(this.config.get<string>('STRIPE_SECRET_KEY')!, {
             apiVersion: '2026-02-25.clover',
@@ -102,7 +52,6 @@ export class FeaturedBoostService {
         const expiresAt = addDays(new Date(), BOOST_DURATION_DAYS);
         const baseUrl = this.config.get<string>('FRONTEND_URL') || 'http://localhost:3000';
 
-        // Create a pending boost record first (activated by webhook)
         const boost = await this.prisma.featuredBoost.create({
             data: {
                 listingId,
@@ -126,7 +75,7 @@ export class FeaturedBoostService {
                             name: '⭐ Featured Listing Boost — 4 Weeks',
                             description: 'Your listing will appear at the top of search results and in the Featured section for 28 days.',
                         },
-                        unit_amount: BOOST_AMOUNT * 100, // pence
+                        unit_amount: BOOST_AMOUNT * 100,
                     },
                     quantity: 1,
                 },
@@ -136,62 +85,12 @@ export class FeaturedBoostService {
             cancel_url: `${baseUrl}/dashboard/seller/listings?boost=cancelled`,
         });
 
-        // Store session ID for webhook reconciliation
         await this.prisma.featuredBoost.update({
             where: { id: boost.id },
             data: { stripeSessionId: session.id },
         });
 
         return { url: session.url, sessionId: session.id };
-    }
-
-    /**
-     * Stripe webhook handler — activates the boost when payment completes.
-     */
-    async handleStripeWebhook(rawBody: Buffer, signature: string) {
-        if (this.isBypassMode) {
-            return { received: true, mode: 'bypass' };
-        }
-
-        const Stripe = (await import('stripe')).default;
-        const stripe = new Stripe(this.config.get<string>('STRIPE_SECRET_KEY')!, {
-            apiVersion: '2026-02-25.clover',
-        });
-
-        let event: any;
-        try {
-            event = stripe.webhooks.constructEvent(
-                rawBody,
-                signature,
-                this.config.get<string>('STRIPE_WEBHOOK_SECRET')!,
-            );
-        } catch (err: any) {
-            throw new BadRequestException(`Webhook signature verification failed: ${err.message}`);
-        }
-
-        if (event.type === 'checkout.session.completed') {
-            const session = event.data.object;
-            const { boostId, listingId } = session.metadata;
-
-            await this.prisma.$transaction([
-                this.prisma.featuredBoost.update({
-                    where: { id: boostId },
-                    data: {
-                        isActive: true,
-                        stripePaymentId: session.payment_intent,
-                    },
-                }),
-                this.prisma.listing.update({
-                    where: { id: listingId },
-                    data: {
-                        isFeatured: true,
-                        featuredUntil: addDays(new Date(), BOOST_DURATION_DAYS),
-                    },
-                }),
-            ]);
-        }
-
-        return { received: true };
     }
 
     /**
@@ -233,7 +132,6 @@ export class FeaturedBoostService {
     async expireBoosts(): Promise<{ expired: number }> {
         const now = new Date();
 
-        // Find expired active boosts
         const expired = await this.prisma.featuredBoost.findMany({
             where: { isActive: true, expiresAt: { lt: now } },
             select: { id: true, listingId: true },
@@ -245,12 +143,10 @@ export class FeaturedBoostService {
         const listingIds = [...new Set(expired.map((b) => b.listingId))];
 
         await this.prisma.$transaction([
-            // Deactivate the boost records
             this.prisma.featuredBoost.updateMany({
                 where: { id: { in: expiredIds } },
                 data: { isActive: false },
             }),
-            // Reset the listing fields
             this.prisma.listing.updateMany({
                 where: { id: { in: listingIds } },
                 data: { isFeatured: false, featuredUntil: null },

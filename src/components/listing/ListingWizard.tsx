@@ -553,14 +553,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                               </div>
                           </div>
                           
-                          {/* Bypass Note for Beta */}
-                          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 flex items-start gap-2">
-                               <Info size={16} className="text-blue-400 shrink-0 mt-0.5" />
-                               <div>
-                                   <p className="text-xs font-bold text-blue-300">Beta Testing Mode</p>
-                                   <p className="text-[10px] text-blue-400/80 mt-1 leading-relaxed">Payment gateways are disabled on this environment. Use the bypass button below to simulate a successful payment and unlock the HPI report instantly.</p>
-                               </div>
-                          </div>
                      </div>
                      
                      <Button 
@@ -1474,11 +1466,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </button>
                                 </div>
 
-                                {formData.badgeTier !== 'FREE' && (
-                                    <p className="text-xs text-emerald-400 mt-3 flex items-center gap-1">
-                                        <CheckCircle size={12} /> Payment is bypassed during beta — badges are applied immediately at no charge.
-                                    </p>
-                                )}
 
                                 {/* Fee Transparency Box */}
                                 {formData.listingType === 'AUCTION' ? (
