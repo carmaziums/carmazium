@@ -31,7 +31,7 @@ export interface PurchaseItem {
     documentsTotal?: number
 }
 
-const STATUS_CONFIG: Record<PurchaseStatus, { label: string; icon: React.ElementType; color: string; bg: string; border: string }> = {
+const STATUS_CONFIG: Record<PurchaseStatus, { label: string; icon: React.ComponentType<{ size?: number; className?: string }>; color: string; bg: string; border: string }> = {
     awaiting_confirmation: {
         label: "Awaiting Confirmation",
         icon: Clock,

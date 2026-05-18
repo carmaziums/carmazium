@@ -42,7 +42,7 @@ interface EmailLead {
     createdAt: string
 }
 
-const EVENT_ICONS: Record<string, React.ElementType> = {
+const EVENT_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
     page_view: Eye,
     search: Search,
     listing_view: MousePointerClick,

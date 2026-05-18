@@ -84,7 +84,7 @@ const STATUS_ORDER: PurchaseStatus[] = [
     "delivery_requested",
 ]
 
-const STATUS_LABELS: Record<PurchaseStatus, { label: string; icon: React.ElementType; color: string }> = {
+const STATUS_LABELS: Record<PurchaseStatus, { label: string; icon: React.ComponentType<{ size?: number; className?: string }>; color: string }> = {
     awaiting_confirmation: { label: "Awaiting Confirmation", icon: Clock, color: "text-amber-400" },
     reviewing_docs: { label: "Reviewing Docs", icon: FileSearch, color: "text-blue-400" },
     checks_complete: { label: "Checks Complete", icon: CheckCircle2, color: "text-emerald-400" },

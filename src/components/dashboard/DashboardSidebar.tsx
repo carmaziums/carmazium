@@ -75,7 +75,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
 
     const displayType = initialUserType || profile?.role || (role.charAt(0).toUpperCase() + role.slice(1)) + " Account"
 
-    type LinkObj = { href: string; label: string; icon: React.ElementType; badge?: number }
+    type LinkObj = { href: string; label: string; icon: React.ComponentType<{ size?: number; className?: string }>; badge?: number }
 
     const unifiedLinks = [
         { href: "/dashboard/user?tab=overview", label: "Overview", icon: LayoutDashboard },
