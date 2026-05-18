@@ -1,6 +1,7 @@
 import * as React from "react"
+import * as THREE from "three"
 import { Canvas } from "@react-three/fiber"
-import { useGLTF, OrbitControls, Environment, Html, Center, useProgress } from "@react-three/drei"
+import { useGLTF, OrbitControls, Environment, Html, useProgress } from "@react-three/drei"
 import { Loader2 } from "lucide-react"
 
 // ─── Model → GLB mapping ──────────────────────────────────────────────────────
@@ -24,9 +25,10 @@ const MODEL_URL: Record<string, string> = {
 const DEFAULT_MODEL = "/assets/3D/2020_volkswagen_polo__jetta_va3.glb"
 
 // ─── Zone definitions ─────────────────────────────────────────────────────────
-// Position: [x (right+), y (up+), z (front toward camera+)]
-// Approximate coords for a ~4-unit-long centered car model.
-// Adjust ZONE_POSITIONS if hotspots need repositioning after visual check.
+// All positions are in the normalised coordinate space where the car is:
+//   Length ~5 units along Z (front = +Z, rear = -Z)
+//   Width  ~2 units along X (left = -X, right = +X)
+//   Height ~1.6 units along Y (bottom = 0, roof ≈ 1.55)
 
 export interface Zone {
   id: string
@@ -35,24 +37,67 @@ export interface Zone {
 }
 
 export const ALL_ZONES: Zone[] = [
-  { id: "front-bumper",     label: "Front Bumper",      position: [0,     0.25,  2.4]  },
-  { id: "bonnet",           label: "Bonnet / Hood",      position: [0,     0.7,   1.5]  },
-  { id: "windshield",       label: "Windshield",         position: [0,     1.15,  0.7]  },
-  { id: "front-left-door",  label: "Front Left Door",   position: [-1.05, 0.75,  0.35] },
-  { id: "front-right-door", label: "Front Right Door",  position: [1.05,  0.75,  0.35] },
-  { id: "roof",             label: "Roof",               position: [0,     1.6,   0.0]  },
-  { id: "rear-left-door",   label: "Rear Left Door",    position: [-1.05, 0.75, -0.85] },
-  { id: "rear-right-door",  label: "Rear Right Door",   position: [1.05,  0.75, -0.85] },
-  { id: "boot",             label: "Boot / Trunk",       position: [0,     0.7,  -1.8]  },
-  { id: "rear-bumper",      label: "Rear Bumper",        position: [0,     0.25, -2.4]  },
+  { id: "front-bumper",     label: "Front Bumper",      position: [0,     0.2,   2.5]  },
+  { id: "bonnet",           label: "Bonnet / Hood",      position: [0,     0.65,  1.5]  },
+  { id: "windshield",       label: "Windshield",         position: [0,     1.1,   0.65] },
+  { id: "front-left-door",  label: "Front Left Door",   position: [-1.05, 0.7,   0.35] },
+  { id: "front-right-door", label: "Front Right Door",  position: [1.05,  0.7,   0.35] },
+  { id: "roof",             label: "Roof",               position: [0,     1.55,  0.0]  },
+  { id: "rear-left-door",   label: "Rear Left Door",    position: [-1.05, 0.7,  -0.85] },
+  { id: "rear-right-door",  label: "Rear Right Door",   position: [1.05,  0.7,  -0.85] },
+  { id: "boot",             label: "Boot / Trunk",       position: [0,     0.65, -1.8]  },
+  { id: "rear-bumper",      label: "Rear Bumper",        position: [0,     0.2,  -2.5]  },
 ]
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Normalised vehicle model ─────────────────────────────────────────────────
+// GLBs may be modelled in millimetres (thousands of units). This component
+// measures the bounding box and scales + repositions the model so that:
+//   • longest axis = TARGET_SIZE units
+//   • bottom of car sits at Y = 0
+//   • car is centred on X and Z
+
+const TARGET_SIZE = 5 // units along the longest dimension
 
 function VehicleModel({ url }: { url: string }) {
   const { scene } = useGLTF(url)
-  return <primitive object={scene} />
+  const groupRef = React.useRef<THREE.Group>(null)
+
+  React.useLayoutEffect(() => {
+    const group = groupRef.current
+    if (!group) return
+
+    // Reset any previous transforms
+    group.scale.set(1, 1, 1)
+    group.position.set(0, 0, 0)
+
+    // Measure the raw scene
+    const box = new THREE.Box3().setFromObject(group)
+    const size = box.getSize(new THREE.Vector3())
+    const maxDim = Math.max(size.x, size.y, size.z)
+    if (maxDim === 0) return
+
+    // Scale uniformly so the longest dimension = TARGET_SIZE
+    const scale = TARGET_SIZE / maxDim
+    group.scale.setScalar(scale)
+
+    // Re-measure after scale to get correct world positions
+    const scaledBox = new THREE.Box3().setFromObject(group)
+    const center = scaledBox.getCenter(new THREE.Vector3())
+
+    // Centre on X/Z, sit bottom on Y=0
+    group.position.x -= center.x
+    group.position.z -= center.z
+    group.position.y -= scaledBox.min.y
+  }, [scene])
+
+  return (
+    <group ref={groupRef}>
+      <primitive object={scene} />
+    </group>
+  )
 }
+
+// ─── Loading screen ───────────────────────────────────────────────────────────
 
 function LoadingScreen() {
   const { progress } = useProgress()
@@ -74,6 +119,8 @@ function LoadingScreen() {
   )
 }
 
+// ─── Hotspot button ───────────────────────────────────────────────────────────
+
 interface HotspotProps {
   zone: Zone
   isMarked: boolean
@@ -83,7 +130,12 @@ interface HotspotProps {
 
 function Hotspot({ zone, isMarked, isSelected, onClick }: HotspotProps) {
   return (
-    <Html position={zone.position} distanceFactor={6} zIndexRange={[100, 0]} style={{ pointerEvents: "auto" }}>
+    <Html
+      position={zone.position}
+      distanceFactor={6}
+      zIndexRange={[100, 0]}
+      style={{ pointerEvents: "auto" }}
+    >
       <button
         onClick={() => onClick(zone.id)}
         title={zone.label}
@@ -114,29 +166,34 @@ export interface ThreeDVehicleViewerProps {
   onZoneClick: (zoneId: string) => void
 }
 
-export function ThreeDVehicleViewer({ bodyType, selectedZone, markedZones, onZoneClick }: ThreeDVehicleViewerProps) {
+export function ThreeDVehicleViewer({
+  bodyType,
+  selectedZone,
+  markedZones,
+  onZoneClick,
+}: ThreeDVehicleViewerProps) {
   const url = (bodyType && MODEL_URL[bodyType]) ?? DEFAULT_MODEL
   const markedSet = new Set(markedZones)
 
   return (
-    <div className="w-full rounded-2xl overflow-hidden bg-slate-950/80 border border-white/8" style={{ height: 380 }}>
+    <div
+      className="w-full rounded-2xl overflow-hidden bg-slate-950/80 border border-white/8"
+      style={{ height: 400 }}
+    >
       <Canvas
-        camera={{ position: [4.5, 2.5, 5.5], fov: 38 }}
+        camera={{ position: [5, 3, 7], fov: 42 }}
         gl={{ antialias: true, alpha: true }}
         style={{ background: "transparent" }}
       >
-        {/* Lighting */}
-        <ambientLight intensity={0.7} />
+        <ambientLight intensity={0.8} />
         <directionalLight position={[6, 8, 5]} intensity={1.4} castShadow />
         <directionalLight position={[-4, 3, -4]} intensity={0.4} />
-        <pointLight position={[0, 5, 0]} intensity={0.5} />
+        <pointLight position={[0, 4, 0]} intensity={0.5} />
 
         <Environment preset="city" />
 
         <React.Suspense fallback={<LoadingScreen />}>
-          <Center>
-            <VehicleModel url={url} />
-          </Center>
+          <VehicleModel url={url} />
 
           {ALL_ZONES.map(zone => (
             <Hotspot
@@ -157,15 +214,15 @@ export function ThreeDVehicleViewer({ bodyType, selectedZone, markedZones, onZon
           minPolarAngle={Math.PI / 8}
           maxPolarAngle={Math.PI / 2.2}
           enablePan={false}
-          minDistance={5}
-          maxDistance={14}
+          minDistance={4}
+          maxDistance={18}
         />
       </Canvas>
     </div>
   )
 }
 
-// Kick off downloads as soon as this module is loaded
+// Preload all models immediately
 useGLTF.preload("/assets/3D/2020_volkswagen_polo__jetta_va3.glb")
 useGLTF.preload("/assets/3D/2023_volkswagen_polo_gti.glb")
 useGLTF.preload("/assets/3D/bmw_x7_m60i.glb")
