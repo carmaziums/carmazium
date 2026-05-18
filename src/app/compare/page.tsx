@@ -139,7 +139,7 @@ function CompareContent() {
 
     /* ── Section renderer ─────────────────────────────────────────────────── */
 
-    const SectionHeader = ({ icon: Icon, label }: { icon: React.ElementType; label: string }) => (
+    const SectionHeader = ({ icon: Icon, label }: { icon: React.ComponentType<{ size?: number; className?: string }>; label: string }) => (
         <tr>
             <td colSpan={3} className="pt-8 pb-4 px-6 sticky left-0 z-10 bg-slate-900/60 backdrop-blur-md border-y" style={{ borderColor: 'var(--border-default)' }}>
                 <div className="flex items-center gap-3 justify-center">

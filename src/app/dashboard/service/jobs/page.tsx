@@ -54,7 +54,7 @@ export default function ServiceJobsPage() {
         )
     }
 
-    const statusConfig: Record<string, { color: string; icon: React.ElementType; next?: { label: string; status: string } }> = {
+    const statusConfig: Record<string, { color: string; icon: React.ComponentType<{ size?: number; className?: string }>; next?: { label: string; status: string } }> = {
         PENDING: { color: "bg-amber-500/20 text-amber-400", icon: Clock, next: { label: "Accept", status: "ACCEPTED" } },
         ACCEPTED: { color: "bg-blue-500/20 text-blue-400", icon: Play, next: { label: "Start Work", status: "IN_PROGRESS" } },
         IN_PROGRESS: { color: "bg-purple-500/20 text-purple-400", icon: Play, next: { label: "Complete", status: "COMPLETED" } },
