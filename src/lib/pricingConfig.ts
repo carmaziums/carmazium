@@ -7,7 +7,7 @@
 
 export const PRICING = {
     listing: {
-        basic: { price: 0, label: 'Basic', description: 'Free forever' },
+        basic: { price: 1, label: 'Basic', description: '£1 one-off' },
         standard: { price: 10, label: 'Standard', description: '£10 one-off' },
         premium: { price: 25, label: 'Premium', description: '£25 one-off' },
     },

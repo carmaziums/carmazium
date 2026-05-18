@@ -14,7 +14,7 @@ export class PaymentsService {
     // Prices in GBP
     private readonly HPI_REPORT_PRICE = 9.99;
     private readonly LISTING_FEES = {
-        BASIC: 1.00,
+        BASIC: 1.00,  // £1 one-off
         STANDARD: 10.00,
         PREMIUM: 25.00,
     };

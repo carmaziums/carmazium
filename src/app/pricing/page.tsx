@@ -36,8 +36,8 @@ const TIER_FEATURES: TierFeature[] = [
 
 const FAQS = [
     {
-        q: "Is it really free to list my car?",
-        a: "Yes. Our Basic tier is completely free — no hidden fees. You get a public listing with up to 5 photos, the offer system, and buyer chat. Upgrade to Standard or Premium if you want more photos, analytics, or better placement.",
+        q: "How much does it cost to list my car?",
+        a: "Our Basic tier costs just £1 — no subscription, no hidden fees. You get a public listing with up to 5 photos, the offer system, and buyer chat. Upgrade to Standard or Premium if you want more photos, analytics, or better placement.",
     },
     {
         q: "What does the HPI Check include?",
@@ -136,9 +136,10 @@ export default function PricingPage() {
                         <div className="mb-6">
                             <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Basic</p>
                             <div className="flex items-end gap-2 mb-1">
-                                <span className="text-5xl font-black text-white">Free</span>
+                                <span className="text-5xl font-black text-white">£{PRICING.listing.basic.price}</span>
+                                <span className="text-gray-500 text-sm mb-1.5">one-off</span>
                             </div>
-                            <p className="text-gray-500 text-sm">Always free, no card required</p>
+                            <p className="text-gray-500 text-sm">Standard listing, quick to list</p>
                         </div>
                         <ul className="space-y-3 mb-8 flex-1">
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Public marketplace listing</li>
@@ -150,7 +151,7 @@ export default function PricingPage() {
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><XCircle size={15} className="text-gray-700 shrink-0" /> Priority placement</li>
                         </ul>
                         <Link href="/sell" className="block w-full py-3 rounded-xl border border-white/20 text-center text-sm font-bold text-white hover:bg-white/10 transition-all">
-                            List for Free
+                            Get Basic
                         </Link>
                     </div>
 

@@ -163,6 +163,7 @@ export class AuctionsService {
                         _count: { select: { bids: true } },
                     },
                 },
+                winner: { select: { id: true, firstName: true, lastName: true } },
             },
             orderBy: { createdAt: 'desc' },
         });

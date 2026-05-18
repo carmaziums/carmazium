@@ -16,6 +16,7 @@ import { VehicleJsonLd } from "@/components/seo/JsonLd"
 import { Input } from "@/components/ui/Input"
 import { SellerBadge } from "@/components/ui/SellerBadge"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
+import { HpiReportModal } from "@/components/hpi/HpiReportModal"
 
 // ─── Offer Status Chip ───────────────────────────────────────────────────────
 // viewerRole: 'buyer' = the person who made the offer
@@ -210,6 +211,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
     const [isWatchlisted, setIsWatchlisted] = React.useState(false)
     const [watchlistLoading, setWatchlistLoading] = React.useState(false)
     const [shareToast, setShareToast] = React.useState(false)
+    const [showHpiModal, setShowHpiModal] = React.useState(false)
 
     // Auto-open offer modal if navigated with ?editOffer=true
     React.useEffect(() => {
@@ -423,6 +425,11 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                     <span className="text-sm font-semibold">Link copied to clipboard!</span>
                     <button onClick={() => setShareToast(false)} className="ml-2"><X size={14} /></button>
                 </div>
+            )}
+
+            {/* HPI Report Modal */}
+            {showHpiModal && listing && (
+                <HpiReportModal listingId={listing.id} onClose={() => setShowHpiModal(false)} />
             )}
             {/* Vehicle JSON-LD */}
             <VehicleJsonLd
@@ -799,6 +806,27 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                         {listing.markedForExport !== null && <div className="flex justify-between"><span className="text-gray-400 text-sm">Exported:</span><span className="text-white font-semibold text-sm">{listing.markedForExport ? "Yes" : "No"}</span></div>}
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+
+                        {/* HPI Report Section */}
+                        <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-6">
+                            <div className="flex items-center justify-between gap-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                                        <ShieldCheck size={18} className="text-emerald-400" />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-white text-sm">HPI History Check</p>
+                                        <p className="text-xs text-gray-400">Comprehensive vehicle history report — stolen, finance, write-off & more</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setShowHpiModal(true)}
+                                    className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 text-xs font-bold transition-colors"
+                                >
+                                    <ShieldCheck size={13} /> View Report
+                                </button>
                             </div>
                         </div>
 

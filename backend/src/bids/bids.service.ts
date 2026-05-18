@@ -123,6 +123,7 @@ export class BidsService {
                             make: true,
                             model: true,
                             year: true,
+                            sellerId: true,
                             auction: {
                                 select: {
                                     id: true,

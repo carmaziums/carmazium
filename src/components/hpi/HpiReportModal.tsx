@@ -1,0 +1,254 @@
+"use client"
+
+import * as React from "react"
+import { X, ShieldCheck, ShieldX, Download, Printer, CheckCircle2, XCircle, AlertTriangle, Car, Loader2 } from "lucide-react"
+import { apiClient } from "@/lib/apiClient"
+
+interface HpiCheck {
+    passed: boolean
+    detail: string
+    category?: string | null
+    agreementId?: string | null
+}
+
+interface HpiSummary {
+    vrm: string
+    make: string
+    model: string
+    colour: string
+    yearOfManufacture: string
+    registrationDate: string
+    engineSize: string
+    fuelType: string
+    isClear: boolean
+    purchasedAt: string
+    createdAt: string
+    checks: {
+        stolen: HpiCheck
+        writeOff: HpiCheck
+        scrapped: HpiCheck
+        financeOutstanding: HpiCheck
+        plateChange: HpiCheck
+        mileageAnomaly: HpiCheck
+    }
+}
+
+interface Props {
+    listingId: string
+    onClose: () => void
+}
+
+const CHECK_LABELS: Record<string, string> = {
+    stolen: "Stolen Vehicle",
+    writeOff: "Insurance Write-Off",
+    scrapped: "Scrapped / SORN",
+    financeOutstanding: "Outstanding Finance",
+    plateChange: "Plate Change",
+    mileageAnomaly: "Mileage Consistency",
+}
+
+export function HpiReportModal({ listingId, onClose }: Props) {
+    const [summary, setSummary] = React.useState<HpiSummary | null>(null)
+    const [loading, setLoading] = React.useState(true)
+    const [error, setError] = React.useState<string | null>(null)
+    const printRef = React.useRef<HTMLDivElement>(null)
+
+    React.useEffect(() => {
+        async function fetchSummary() {
+            try {
+                const res = await apiClient<{ success: boolean; data: HpiSummary }>(`/hpi/listing/${listingId}/summary`)
+                setSummary(res.data)
+            } catch (e: any) {
+                setError(e?.message || "Failed to load HPI report")
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchSummary()
+    }, [listingId])
+
+    function handlePrint() {
+        if (!printRef.current) return
+        const win = window.open("", "_blank")
+        if (!win) return
+        win.document.write(`
+            <html><head><title>HPI Report — ${summary?.vrm}</title>
+            <style>
+                body { font-family: Arial, sans-serif; color: #111; padding: 32px; }
+                h1 { font-size: 22px; font-weight: bold; margin-bottom: 4px; }
+                h2 { font-size: 14px; color: #555; margin: 0 0 24px; font-weight: normal; }
+                .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+                .cell { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; }
+                .cell-label { font-size: 10px; text-transform: uppercase; color: #888; margin-bottom: 4px; letter-spacing: 0.05em; }
+                .cell-value { font-size: 14px; font-weight: bold; }
+                .check { display: flex; align-items: flex-start; gap: 12px; padding: 12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid; }
+                .pass { background: #f0fdf4; border-color: #bbf7d0; }
+                .fail { background: #fff7ed; border-color: #fed7aa; }
+                .check-title { font-weight: bold; font-size: 13px; margin-bottom: 2px; }
+                .check-detail { font-size: 12px; color: #555; }
+                .status-pass { color: #16a34a; font-size: 18px; }
+                .status-fail { color: #ea580c; font-size: 18px; }
+                .footer { margin-top: 32px; font-size: 11px; color: #888; border-top: 1px solid #e5e7eb; padding-top: 16px; }
+                .clear { background: #f0fdf4; border: 2px solid #16a34a; border-radius: 8px; padding: 12px 16px; margin-bottom: 24px; color: #15803d; font-weight: bold; }
+                .not-clear { background: #fff7ed; border: 2px solid #ea580c; border-radius: 8px; padding: 12px 16px; margin-bottom: 24px; color: #c2410c; font-weight: bold; }
+            </style></head><body>
+            ${printRef.current.innerHTML}
+            </body></html>
+        `)
+        win.document.close()
+        win.focus()
+        win.print()
+        win.close()
+    }
+
+    const allChecks = summary ? Object.entries(summary.checks) : []
+    const passCount = allChecks.filter(([, c]) => c.passed).length
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+            <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border border-white/10 rounded-2xl shadow-2xl">
+                {/* Header */}
+                <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-slate-900/95 backdrop-blur border-b border-white/5">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                            <ShieldCheck size={18} className="text-primary" />
+                        </div>
+                        <div>
+                            <h2 className="font-bold text-white text-lg">HPI Check Report</h2>
+                            {summary && (
+                                <p className="text-xs text-gray-500">
+                                    {summary.vrm} · Generated {new Date(summary.purchasedAt || summary.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {summary && (
+                            <button
+                                onClick={handlePrint}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-gray-400 hover:text-white text-xs font-bold transition-colors"
+                            >
+                                <Printer size={13} /> Print
+                            </button>
+                        )}
+                        <button onClick={onClose} className="p-2 text-gray-500 hover:text-white transition-colors">
+                            <X size={18} />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="p-6 space-y-6">
+                    {loading && (
+                        <div className="flex items-center justify-center py-16">
+                            <Loader2 size={32} className="animate-spin text-primary" />
+                        </div>
+                    )}
+
+                    {error && (
+                        <div className="flex items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
+                            <AlertTriangle size={18} />
+                            <p className="text-sm">{error}</p>
+                        </div>
+                    )}
+
+                    {summary && (
+                        <div ref={printRef}>
+                            {/* Print header */}
+                            <div className="hidden print:block mb-6">
+                                <h1>HPI Check Report — Carmazium</h1>
+                                <h2>{summary.make} {summary.model} ({summary.vrm})</h2>
+                            </div>
+
+                            {/* Overall status */}
+                            <div className={`flex items-center gap-3 p-4 rounded-xl border ${summary.isClear ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-amber-500/10 border-amber-500/20 text-amber-400"}`}>
+                                {summary.isClear
+                                    ? <CheckCircle2 size={22} className="shrink-0" />
+                                    : <AlertTriangle size={22} className="shrink-0" />
+                                }
+                                <div>
+                                    <p className="font-bold text-sm">
+                                        {summary.isClear ? "Clear — No major issues detected" : "Attention Required — Issues found"}
+                                    </p>
+                                    <p className="text-xs opacity-80">
+                                        {passCount}/{allChecks.length} checks passed
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Vehicle identity */}
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                    <Car size={14} className="text-primary" />
+                                    <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Vehicle Details</p>
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                    {[
+                                        { label: "Registration", value: summary.vrm },
+                                        { label: "Make", value: summary.make },
+                                        { label: "Model", value: summary.model },
+                                        { label: "Year", value: summary.yearOfManufacture },
+                                        { label: "Colour", value: summary.colour },
+                                        { label: "Fuel Type", value: summary.fuelType },
+                                        { label: "Engine Size", value: summary.engineSize },
+                                        { label: "Reg. Date", value: summary.registrationDate ? new Date(summary.registrationDate).toLocaleDateString("en-GB") : "" },
+                                    ].map(({ label, value }) => value ? (
+                                        <div key={label} className="p-3 rounded-xl bg-slate-800/50 border border-white/5">
+                                            <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">{label}</p>
+                                            <p className="text-sm font-bold text-white">{value}</p>
+                                        </div>
+                                    ) : null)}
+                                </div>
+                            </div>
+
+                            {/* Checks */}
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                    <ShieldCheck size={14} className="text-primary" />
+                                    <p className="text-xs font-bold uppercase tracking-widest text-gray-400">History Checks</p>
+                                </div>
+                                <div className="space-y-2">
+                                    {allChecks.map(([key, check]) => (
+                                        <div
+                                            key={key}
+                                            className={`flex items-start gap-3 p-4 rounded-xl border ${check.passed ? "bg-emerald-500/5 border-emerald-500/15" : "bg-red-500/5 border-red-500/20"}`}
+                                        >
+                                            <div className="shrink-0 mt-0.5">
+                                                {check.passed
+                                                    ? <CheckCircle2 size={18} className="text-emerald-400" />
+                                                    : <XCircle size={18} className="text-red-400" />
+                                                }
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className={`text-sm font-bold ${check.passed ? "text-emerald-300" : "text-red-300"}`}>
+                                                    {CHECK_LABELS[key] ?? key}
+                                                </p>
+                                                <p className="text-xs text-gray-400 mt-0.5">{check.detail}</p>
+                                                {check.category && (
+                                                    <p className="text-xs text-amber-400 mt-1 font-semibold">Category: {check.category}</p>
+                                                )}
+                                            </div>
+                                            <div className="shrink-0">
+                                                <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${check.passed ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"}`}>
+                                                    {check.passed ? "PASS" : "FAIL"}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Disclaimer */}
+                            <div className="p-4 rounded-xl bg-slate-800/30 border border-white/5">
+                                <p className="text-[11px] text-gray-500 leading-relaxed">
+                                    This HPI check was performed by Carmazium via OneAutoAPI and reflects data available at the time of purchase.
+                                    Results are based on DVLA, insurance industry, and finance house records. Carmazium is not liable for any discrepancies.
+                                    Report generated: {new Date(summary.purchasedAt || summary.createdAt).toLocaleString("en-GB")}.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    )
+}

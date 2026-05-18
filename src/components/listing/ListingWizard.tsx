@@ -485,6 +485,46 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 }
 
                 router.push('/dashboard/seller/listings')
+            } else if (draftListingId) {
+                // User returned from HPI payment — update the existing draft listing instead of creating a new one
+                const response = await apiClient<{ data: any }>(`/listings/${draftListingId}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify(payload),
+                })
+                const finalListingId = response.data.id
+                const finalSlug = response.data.slug
+
+                if (damageRecords.length > 0) {
+                    try {
+                        const detections = damageRecords.map(r => ({
+                            part: r.zone,
+                            type: r.description,
+                            size: "MEDIUM",
+                            coords: { x: r.x, y: r.y, view: r.view },
+                            imageUrl: r.photoUrl ?? "",
+                        }))
+                        await apiClient(`/damage/${finalListingId}/save`, {
+                            method: 'POST',
+                            body: JSON.stringify({ detections }),
+                        })
+                    } catch (e) {
+                        console.error('Failed to save damage records:', e)
+                    }
+                }
+
+                localStorage.removeItem('carmazium_listing_draft')
+                localStorage.removeItem('carmazium_hpi_draft_id')
+
+                if (payload.badgeTier !== 'FREE' && payload.status === 'ACTIVE') {
+                    const checkout = await createListingCheckoutSession(finalListingId, payload.badgeTier as string)
+                    window.location.href = checkout.url
+                    return
+                }
+
+                setFormData(INITIAL_FORM)
+                setCurrentStep(1)
+                setSellingMethod(null)
+                router.push(`/buy-cars/${finalSlug}`)
             } else {
                 const response = await createListing(payload)
                 const newListingId = response.data.id
@@ -492,9 +532,16 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 // Save damage records separately (not part of listing DTO to avoid validation issues)
                 if (damageRecords.length > 0) {
                     try {
+                        const detections = damageRecords.map(r => ({
+                            part: r.zone,
+                            type: r.description,
+                            size: "MEDIUM",
+                            coords: { x: r.x, y: r.y, view: r.view },
+                            imageUrl: r.photoUrl ?? "",
+                        }))
                         await apiClient(`/damage/${newListingId}/save`, {
                             method: 'POST',
-                            body: JSON.stringify({ detections: damageRecords }),
+                            body: JSON.stringify({ detections }),
                         })
                     } catch (e) {
                         console.error('Failed to save damage records:', e)
@@ -1072,6 +1119,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </div>
                                 </div>
                                 <VehicleDamageMapper
+                                    bodyType={formData.bodyType || undefined}
                                     existingRecords={damageRecords}
                                     onComplete={(records) => setDamageRecords(records)}
                                 />

@@ -6,8 +6,9 @@ import Image from "next/image"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { getMyListings, deleteListing, boostListing, updateListingStatus, formatPrice, type Listing } from "@/lib/listingApi"
 import { useAuth } from "@/context/AuthContext"
-import { PlusCircle, Loader2, Trash2, Eye, Zap, X, AlertCircle, CheckCircle2, MoreVertical, Pencil, Gavel } from "lucide-react"
+import { PlusCircle, Loader2, Trash2, Eye, Zap, X, AlertCircle, CheckCircle2, MoreVertical, Pencil, Gavel, ShieldCheck } from "lucide-react"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
+import { HpiReportModal } from "@/components/hpi/HpiReportModal"
 
 export default function MyListingsPage() {
     const { user, loading: authLoading } = useAuth()
@@ -21,6 +22,7 @@ export default function MyListingsPage() {
     const [boostTarget, setBoostTarget] = React.useState<Listing | null>(null)
     const [boostSuccess, setBoostSuccess] = React.useState<string | null>(null)
     const [updatingStatus, setUpdatingStatus] = React.useState<string | null>(null)
+    const [hpiListingId, setHpiListingId] = React.useState<string | null>(null)
 
     const fetchListings = React.useCallback(async () => {
         if (!user) return
@@ -279,9 +281,15 @@ export default function MyListingsPage() {
                                                                             <Gavel size={14} /> Put to Auction
                                                                         </Link>
                                                                     )}
+                                                                    <button
+                                                                        onClick={() => setHpiListingId(listing.id)}
+                                                                        className="flex items-center gap-2 px-3 py-2 text-sm text-blue-400 hover:bg-blue-500/10 transition-colors w-full text-left"
+                                                                    >
+                                                                        <ShieldCheck size={14} /> HPI Report
+                                                                    </button>
                                                                     {listing.status !== 'SOLD' && (
-                                                                        <button 
-                                                                            onClick={() => handleMarkSold(listing.id)} 
+                                                                        <button
+                                                                            onClick={() => handleMarkSold(listing.id)}
                                                                             disabled={updatingStatus === listing.id}
                                                                             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-emerald-500/10 hover:text-emerald-400 transition-colors w-full text-left disabled:opacity-50"
                                                                         >
@@ -376,6 +384,11 @@ export default function MyListingsPage() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* HPI Report Modal */}
+            {hpiListingId && (
+                <HpiReportModal listingId={hpiListingId} onClose={() => setHpiListingId(null)} />
             )}
         </div>
     )
