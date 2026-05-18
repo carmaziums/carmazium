@@ -321,4 +321,19 @@ export class CreateListingDto {
     @IsBoolean()
     @IsOptional()
     isImported?: boolean;
+
+    @ApiProperty({ description: 'Has the vehicle ever been reported stolen or recovered?', example: false, required: false })
+    @IsBoolean()
+    @IsOptional()
+    stolenRecovered?: boolean;
+
+    @ApiProperty({ description: 'Is there currently outstanding finance on the vehicle?', example: false, required: false })
+    @IsBoolean()
+    @IsOptional()
+    hasOutstandingFinance?: boolean;
+
+    @ApiProperty({ description: 'Is the seller the legal registered keeper of the vehicle?', example: true, required: false })
+    @IsBoolean()
+    @IsOptional()
+    isLegalRegisteredKeeper?: boolean;
 }

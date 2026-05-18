@@ -258,13 +258,27 @@ export default function MyListingsPage() {
                                                                 </button>
 
                                                                 {/* Dropdown menu */}
-                                                                <div className="absolute right-0 top-full mt-1 w-36 bg-slate-800 border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20 flex flex-col py-1">
+                                                                <div className="absolute right-0 top-full mt-1 w-44 bg-slate-800 border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20 flex flex-col py-1">
                                                                     <Link href={`/dashboard/seller/add-listing?editId=${listing.id}&editSlug=${listing.slug}`} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
                                                                         <Pencil size={14} /> Edit
                                                                     </Link>
                                                                     <Link href={`/buy-cars/${listing.slug}`} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
                                                                         <Eye size={14} /> View
                                                                     </Link>
+                                                                    {listing.status === 'ACTIVE' && (
+                                                                        <button
+                                                                            onClick={() => setBoostTarget(listing)}
+                                                                            disabled={boosting === listing.id}
+                                                                            className="flex items-center gap-2 px-3 py-2 text-sm text-amber-400 hover:bg-amber-500/10 transition-colors w-full text-left disabled:opacity-50"
+                                                                        >
+                                                                            <Zap size={14} className="fill-amber-400" /> Boost to Featured
+                                                                        </button>
+                                                                    )}
+                                                                    {listing.status === 'ACTIVE' && (
+                                                                        <Link href={`/dashboard/seller/auctions?listingId=${listing.id}`} className="flex items-center gap-2 px-3 py-2 text-sm text-orange-400 hover:bg-orange-500/10 transition-colors">
+                                                                            <Gavel size={14} /> Put to Auction
+                                                                        </Link>
+                                                                    )}
                                                                     {listing.status !== 'SOLD' && (
                                                                         <button 
                                                                             onClick={() => handleMarkSold(listing.id)} 

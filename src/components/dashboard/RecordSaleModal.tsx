@@ -14,7 +14,7 @@ interface RecordSaleModalProps {
 
 export function RecordSaleModal({ listing, onClose, onSuccess }: RecordSaleModalProps) {
     const [soldPrice, setSoldPrice] = React.useState(listing.price.toString())
-    const [buyerId, setBuyerId] = React.useState("")
+    const [buyerName, setBuyerName] = React.useState("")
     const [loading, setLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
     const [success, setSuccess] = React.useState(false)
@@ -26,7 +26,7 @@ export function RecordSaleModal({ listing, onClose, onSuccess }: RecordSaleModal
             setError(null)
             await recordSale(listing.id, {
                 soldPrice: Number(soldPrice),
-                buyerId: buyerId || undefined,
+                buyerName: buyerName || undefined,
             })
             setSuccess(true)
             setTimeout(() => {
@@ -94,12 +94,12 @@ export function RecordSaleModal({ listing, onClose, onSuccess }: RecordSaleModal
 
                     <div className="space-y-2">
                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                            <User size={12} /> Buyer ID (Optional)
+                            <User size={12} /> Buyer Name (Optional)
                         </label>
-                        <Input 
-                            placeholder="Enter Buyer ID if known"
-                            value={buyerId}
-                            onChange={(e) => setBuyerId(e.target.value)}
+                        <Input
+                            placeholder="e.g. John Smith or username"
+                            value={buyerName}
+                            onChange={(e) => setBuyerName(e.target.value)}
                             className="bg-white/5 border-white/10 focus:border-primary text-white h-12"
                         />
                         <p className="text-[10px] text-gray-500 italic">Leave blank if sold outside the platform.</p>

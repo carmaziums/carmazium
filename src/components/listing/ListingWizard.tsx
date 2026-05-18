@@ -55,6 +55,12 @@ interface FormData {
     serviceHistory: string
     owners: string
     isImported: boolean
+    // Legal declarations (Write-Off & Compliance)
+    writeOffCategory: 'CAT_A' | 'CAT_B' | 'CAT_S' | 'CAT_N' | 'NONE' | ''
+    stolenRecovered: boolean | null
+    hasOutstandingFinance: boolean | null
+    isLegalRegisteredKeeper: boolean | null
+    declarationAcknowledged: boolean
     // UK Compliance
     ulezCompliant: boolean | null
     euroStandard: EuroStandardValue | ""
@@ -104,6 +110,7 @@ const INITIAL_FORM: FormData = {
     doors: "", seats: "", engineSize: "", bhp: "",
     features: [], description: "", title: "",
     condition: "", serviceHistory: "", owners: "", isImported: false,
+    writeOffCategory: "", stolenRecovered: null, hasOutstandingFinance: null, isLegalRegisteredKeeper: null, declarationAcknowledged: false,
     ulezCompliant: null, euroStandard: "", co2Emissions: "",
     motStatus: "", taxStatus: "", motExpiryDate: "", taxDueDate: "",
     markedForExport: null, monthOfFirstRegistration: "",
@@ -232,6 +239,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const [showHpiModal, setShowHpiModal] = React.useState(false)
     const [isHpiUnlocked, setIsHpiUnlocked] = React.useState(false)
     const [isProcessingPayment, setIsProcessingPayment] = React.useState(false)
+    const [draftListingId, setDraftListingId] = React.useState<string | null>(null)
     const [damageImageCount, setDamageImageCount] = React.useState(0)
     const [damageRecords, setDamageRecords] = React.useState<DamageRecord[]>([])
     const [hasAttemptedNext, setHasAttemptedNext] = React.useState(false)
@@ -315,6 +323,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     console.error("Failed to parse saved draft", e)
                 }
             }
+            // Restore draft listing ID if present
+            const savedDraftId = localStorage.getItem('carmazium_hpi_draft_id')
+            if (savedDraftId) setDraftListingId(savedDraftId)
             if (urlVrm && !formData.vrm) {
                 setFormData(prev => ({ ...prev, vrm: urlVrm }))
             }
@@ -355,7 +366,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
     const validateStep = (): boolean => {
         switch (currentStep) {
-            case 1: return !!(formData.vrm && formData.make && formData.model && formData.year && formData.mileage && formData.fuelType && formData.transmission && formData.title)
+            case 1: {
+                const baseValid = !!(formData.vrm && formData.make && formData.model && formData.year && formData.mileage && formData.fuelType && formData.transmission && formData.title)
+                const declarationsValid = formData.writeOffCategory !== '' && formData.stolenRecovered !== null && formData.hasOutstandingFinance !== null && formData.isLegalRegisteredKeeper === true && formData.declarationAcknowledged
+                if (formData.writeOffCategory === 'CAT_A' || formData.writeOffCategory === 'CAT_B') return false
+                return baseValid && declarationsValid
+            }
             case 2: return formData.images.length > 0
             case 3: {
                 const pMin = parseFloat(formData.priceMin)
@@ -448,7 +464,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 vehicleType: formData.vehicleType as VehicleTypeValue,
                 isImported: formData.isImported,
                 condition: formData.condition as any || undefined,
-                damageRecords: damageRecords.length > 0 ? damageRecords : undefined,
+                // Legal declarations
+                stolenRecovered: formData.stolenRecovered ?? undefined,
+                hasOutstandingFinance: formData.hasOutstandingFinance ?? undefined,
+                isLegalRegisteredKeeper: formData.isLegalRegisteredKeeper ?? undefined,
             }
 
             if (editId) {
@@ -468,10 +487,23 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 router.push('/dashboard/seller/listings')
             } else {
                 const response = await createListing(payload)
-                
+                const newListingId = response.data.id
+
+                // Save damage records separately (not part of listing DTO to avoid validation issues)
+                if (damageRecords.length > 0) {
+                    try {
+                        await apiClient(`/damage/${newListingId}/save`, {
+                            method: 'POST',
+                            body: JSON.stringify({ detections: damageRecords }),
+                        })
+                    } catch (e) {
+                        console.error('Failed to save damage records:', e)
+                    }
+                }
+
                 if (payload.badgeTier !== 'FREE' && payload.status === 'ACTIVE') {
                     // Redirect to payment
-                    const checkout = await createListingCheckoutSession(response.data.id, payload.badgeTier as string)
+                    const checkout = await createListingCheckoutSession(newListingId, payload.badgeTier as string)
                     window.location.href = checkout.url
                     return
                 }
@@ -555,7 +587,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                           
                      </div>
                      
-                     <Button 
+                     <Button
                          disabled={isProcessingPayment}
                          onClick={async () => {
                              if (!formData.vrm) {
@@ -564,7 +596,28 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                              }
                              setIsProcessingPayment(true)
                              try {
-                                 const checkout = await createHpiCheckoutSession(formData.vrm)
+                                 // Need a listing ID for HPI checkout — create a draft first if we don't have one
+                                 let listingId = draftListingId
+                                 if (!listingId) {
+                                     const draft = await createListing({
+                                         title: formData.title || `${formData.make || ''} ${formData.model || ''} ${formData.year || ''}`.trim() || formData.vrm,
+                                         price: parseFloat(formData.priceAsking) || 1,
+                                         mileage: parseInt(formData.mileage) || 0,
+                                         year: parseInt(formData.year) || new Date().getFullYear(),
+                                         vrm: formData.vrm,
+                                         images: formData.images,
+                                         listingType: formData.listingType,
+                                         make: formData.make || undefined,
+                                         model: formData.model || undefined,
+                                         status: 'DRAFT',
+                                         badgeTier: 'FREE',
+                                         vehicleType: formData.vehicleType,
+                                     })
+                                     listingId = draft.data.id
+                                     setDraftListingId(listingId)
+                                     localStorage.setItem('carmazium_hpi_draft_id', listingId)
+                                 }
+                                 const checkout = await createHpiCheckoutSession(formData.vrm, listingId)
                                  window.location.href = checkout.url
                              } catch (err: any) {
                                  console.error("HPI Checkout error:", err)
@@ -1291,11 +1344,146 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
 
 
+                            {/* ── Write-Off & Legal Declaration ──────────────── */}
+                            <div className="border border-red-500/30 bg-red-500/5 rounded-xl p-6 space-y-6">
+                                <div className="flex items-start gap-3">
+                                    <div className="p-2 bg-red-500/10 rounded-lg border border-red-500/20 shrink-0">
+                                        <AlertTriangle className="text-red-400 w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base font-bold text-red-300 uppercase tracking-wider">Write-Off &amp; Legal Declaration</h3>
+                                        <p className="text-xs text-gray-400 mt-1">Required by law. False declarations void the listing and may be reported to relevant authorities.</p>
+                                    </div>
+                                </div>
+
+                                {/* Write-Off Category */}
+                                <div className="space-y-3">
+                                    <label className="text-sm font-bold uppercase text-gray-300 flex items-center gap-1.5">
+                                        Insurance Write-Off Status *
+                                        <InfoTooltip text="Cat A/B vehicles cannot be re-registered and cannot be listed. Cat S/N have been repaired after a write-off." />
+                                    </label>
+                                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                                        {([
+                                            { value: 'NONE', label: 'None', desc: 'Not a write-off' },
+                                            { value: 'CAT_S', label: 'Cat S', desc: 'Structural — repaired' },
+                                            { value: 'CAT_N', label: 'Cat N', desc: 'Non-structural — repaired' },
+                                            { value: 'CAT_A', label: 'Cat A', desc: 'Cannot be listed' },
+                                            { value: 'CAT_B', label: 'Cat B', desc: 'Cannot be listed' },
+                                        ] as const).map((opt) => {
+                                            const isBlocked = opt.value === 'CAT_A' || opt.value === 'CAT_B'
+                                            const active = formData.writeOffCategory === opt.value
+                                            return (
+                                                <button key={opt.value} type="button"
+                                                    onClick={() => set("writeOffCategory", opt.value)}
+                                                    className={`p-3 rounded-xl border text-center transition-all flex flex-col gap-0.5 ${active
+                                                        ? isBlocked
+                                                            ? "border-red-500 bg-red-500/20 text-red-300"
+                                                            : "border-emerald-500 bg-emerald-500/10 text-emerald-300"
+                                                        : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"
+                                                        }`}
+                                                >
+                                                    <span className="text-sm font-bold">{opt.label}</span>
+                                                    <span className="text-[10px] leading-tight opacity-70">{opt.desc}</span>
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+                                    {(formData.writeOffCategory === 'CAT_A' || formData.writeOffCategory === 'CAT_B') && (
+                                        <p className="text-xs text-red-400 flex items-center gap-1.5">
+                                            <AlertTriangle size={12} /> Category A and B write-offs cannot be re-registered and cannot be listed on CarMazium.
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Stolen / Recovered */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold uppercase text-gray-300">Has this vehicle ever been reported stolen or recovered? *</label>
+                                    <div className="flex gap-3">
+                                        {([{ label: 'Yes', val: true }, { label: 'No', val: false }] as const).map(({ label, val }) => (
+                                            <button key={label} type="button"
+                                                onClick={() => set("stolenRecovered", val)}
+                                                className={`flex-1 py-2.5 rounded-xl border text-sm font-semibold transition-all ${formData.stolenRecovered === val
+                                                    ? val ? "border-amber-500 bg-amber-500/10 text-amber-300" : "border-emerald-500 bg-emerald-500/10 text-emerald-300"
+                                                    : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"
+                                                    }`}
+                                            >
+                                                {label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Outstanding Finance */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold uppercase text-gray-300">Is there currently outstanding finance on this vehicle? *</label>
+                                    <div className="flex gap-3">
+                                        {([{ label: 'Yes', val: true }, { label: 'No', val: false }] as const).map(({ label, val }) => (
+                                            <button key={label} type="button"
+                                                onClick={() => set("hasOutstandingFinance", val)}
+                                                className={`flex-1 py-2.5 rounded-xl border text-sm font-semibold transition-all ${formData.hasOutstandingFinance === val
+                                                    ? val ? "border-amber-500 bg-amber-500/10 text-amber-300" : "border-emerald-500 bg-emerald-500/10 text-emerald-300"
+                                                    : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"
+                                                    }`}
+                                            >
+                                                {label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {formData.hasOutstandingFinance === true && (
+                                        <p className="text-xs text-amber-400 flex items-center gap-1.5">
+                                            <AlertTriangle size={12} /> Listing with outstanding finance requires lender consent. Buyers will be informed.
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Legal Registered Keeper */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold uppercase text-gray-300">Are you the legal registered keeper of this vehicle? *</label>
+                                    <div className="flex gap-3">
+                                        {([{ label: 'Yes', val: true }, { label: 'No — I am not the keeper', val: false }] as const).map(({ label, val }) => (
+                                            <button key={label} type="button"
+                                                onClick={() => set("isLegalRegisteredKeeper", val)}
+                                                className={`flex-1 py-2.5 rounded-xl border text-sm font-semibold transition-all ${formData.isLegalRegisteredKeeper === val
+                                                    ? val ? "border-emerald-500 bg-emerald-500/10 text-emerald-300" : "border-red-500 bg-red-500/10 text-red-300"
+                                                    : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"
+                                                    }`}
+                                            >
+                                                {label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {formData.isLegalRegisteredKeeper === false && (
+                                        <p className="text-xs text-red-400 flex items-center gap-1.5">
+                                            <AlertTriangle size={12} /> Only the legal registered keeper may list this vehicle.
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Declaration Acknowledgment */}
+                                <label className="flex items-start gap-3 cursor-pointer group">
+                                    <div
+                                        onClick={() => set("declarationAcknowledged", !formData.declarationAcknowledged)}
+                                        className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-all ${formData.declarationAcknowledged ? "bg-emerald-500 border-emerald-500" : "border-white/20 bg-slate-900/50 group-hover:border-white/40"}`}
+                                    >
+                                        {formData.declarationAcknowledged && <CheckCircle size={12} className="text-white" />}
+                                    </div>
+                                    <span className="text-xs text-gray-400 leading-relaxed">
+                                        I confirm that the above declarations are true and accurate to the best of my knowledge. I understand that false declarations void the listing and may result in legal action.
+                                    </span>
+                                </label>
+
+                                {hasAttemptedNext && (formData.writeOffCategory === '' || formData.stolenRecovered === null || formData.hasOutstandingFinance === null || formData.isLegalRegisteredKeeper === null || !formData.declarationAcknowledged) && (
+                                    <p className="text-xs text-red-400 flex items-center gap-1.5">
+                                        <AlertTriangle size={12} /> Please complete all declarations above before proceeding.
+                                    </p>
+                                )}
+                            </div>
+
                             {/* HPI Bait Section (shown after VRM lookup) */}
                             {dvlaSuccess && (
-                                <HpiBaitSection 
-                                    isUnlocked={isHpiUnlocked} 
-                                    onUnlock={() => setShowHpiModal(true)} 
+                                <HpiBaitSection
+                                    isUnlocked={isHpiUnlocked}
+                                    onUnlock={() => setShowHpiModal(true)}
                                 />
                             )}
                         </div>

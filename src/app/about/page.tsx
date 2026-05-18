@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { Users, Globe, Award, TrendingUp, Handshake, Target, Rocket } from "lucide-react"
+import { Users, Globe, Award, TrendingUp, Handshake, Target, Rocket, MapPin, Phone } from "lucide-react"
 import { motion, useScroll, useTransform } from "framer-motion"
 
 import { AccordionItem } from "@/components/ui/Accordion"
@@ -138,11 +138,10 @@ export default function AboutPage() {
                         <p className="text-gray-400 max-w-2xl mx-auto text-lg">The diverse team of petrolheads and engineers working behind the scenes.</p>
                     </motion.div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
                         {[
-                            { name: "Alex Morgan", role: "Chief Executive Officer", desc: "Former F1 strategist turned tech entrepreneur.", delay: 0 },
-                            { name: "Sarah Jenkins", role: "Head of Operations", desc: "15 years experience in luxury logistics.", delay: 0.1 },
-                            { name: "David Chen", role: "Lead Engineer", desc: "Building scalable systems for the future of trade.", delay: 0.2 },
+                            { name: "Afaq Iftikhar", role: "Chief Executive Officer", desc: "Visionary entrepreneur driving CarMazium's mission to redefine the automotive marketplace.", delay: 0 },
+                            { name: "Wajahat Ali", role: "Head of Operations", desc: "Ensuring seamless operations and an exceptional experience for every buyer and seller.", delay: 0.1 },
                         ].map((member, i) => (
                             <motion.div
                                 key={i}
@@ -163,6 +162,58 @@ export default function AboutPage() {
                             </motion.div>
                         ))}
                     </div>
+                </div>
+            </section>
+
+            {/* Contact & Location Section */}
+            <section className="py-20 container mx-auto px-5">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    className="text-center mb-12"
+                >
+                    <h2 className="text-3xl md:text-5xl font-heading font-bold text-white mb-4">Get In <span className="text-primary">Touch</span></h2>
+                    <p className="text-gray-400 max-w-xl mx-auto">We&apos;d love to hear from you. Visit us or reach out directly.</p>
+                </motion.div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                    <motion.div
+                        initial={{ opacity: 0, x: -30 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        className="glass-card p-8 flex flex-col gap-4 group hover:border-primary/40 transition-colors"
+                    >
+                        <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                            <MapPin className="text-primary w-6 h-6" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-white mb-2">Our Location</h3>
+                            <p className="text-gray-400 leading-relaxed">
+                                181-187 Hunters Rd<br />
+                                Lozells, Birmingham<br />
+                                B19 1ES, United Kingdom
+                            </p>
+                        </div>
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0, x: 30 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        className="glass-card p-8 flex flex-col gap-4 group hover:border-primary/40 transition-colors"
+                    >
+                        <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                            <Phone className="text-primary w-6 h-6" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-white mb-2">Contact Us</h3>
+                            <p className="text-gray-400 mb-1">
+                                <a href="tel:+442034757619" className="hover:text-primary transition-colors">+44 2034 757619</a>
+                            </p>
+                            <p className="text-gray-500 text-sm">Monday – Friday, 9am – 6pm GMT</p>
+                        </div>
+                    </motion.div>
                 </div>
             </section>
 
