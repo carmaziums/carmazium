@@ -528,6 +528,10 @@ model Listing {
   // Phase 6: Offering System — price range
   priceMin                 Decimal?          @db.Decimal(12, 2)
   priceMax                 Decimal?          @db.Decimal(12, 2)
+  // Legal declarations — compliance fields (Write-Off & Legal)
+  stolenRecovered          Boolean?
+  hasOutstandingFinance    Boolean?
+  isLegalRegisteredKeeper  Boolean?
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -1009,6 +1013,7 @@ model Sale {
   listingId String   @unique
   sellerId  String
   buyerId   String?
+  buyerName String?
   soldPrice Decimal  @db.Decimal(12, 2)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

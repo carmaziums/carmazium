@@ -217,6 +217,10 @@ export class ListingsService {
                 // Vehicle type & import status
                 vehicleType: createListingDto.vehicleType ?? 'CAR',
                 isImported: createListingDto.isImported ?? false,
+                // Legal declarations
+                stolenRecovered: createListingDto.stolenRecovered ?? null,
+                hasOutstandingFinance: createListingDto.hasOutstandingFinance ?? null,
+                isLegalRegisteredKeeper: createListingDto.isLegalRegisteredKeeper ?? null,
             },
         });
 
@@ -516,6 +520,9 @@ export class ListingsService {
         if (updateListingDto.monthOfFirstRegistration !== undefined) updateData.monthOfFirstRegistration = updateListingDto.monthOfFirstRegistration;
         if (updateListingDto.wheelplan !== undefined) updateData.wheelplan = updateListingDto.wheelplan;
         if (updateListingDto.typeApproval !== undefined) updateData.typeApproval = updateListingDto.typeApproval;
+        if (updateListingDto.stolenRecovered !== undefined) updateData.stolenRecovered = updateListingDto.stolenRecovered;
+        if (updateListingDto.hasOutstandingFinance !== undefined) updateData.hasOutstandingFinance = updateListingDto.hasOutstandingFinance;
+        if (updateListingDto.isLegalRegisteredKeeper !== undefined) updateData.isLegalRegisteredKeeper = updateListingDto.isLegalRegisteredKeeper;
 
         // Update the listing
         const updatedListing = await this.prisma.listing.update({
@@ -612,7 +619,7 @@ export class ListingsService {
     async recordSale(
         id: string,
         userId: string,
-        dto: { soldPrice: number; buyerId?: string },
+        dto: { soldPrice: number; buyerId?: string; buyerName?: string },
     ): Promise<Listing> {
         const listing = await this.findById(id);
 
@@ -648,6 +655,7 @@ export class ListingsService {
                     listingId: id,
                     sellerId: listing.sellerId || userId,
                     buyerId: dto.buyerId || null,
+                    buyerName: dto.buyerName || null,
                     soldPrice: dto.soldPrice,
                 },
             });

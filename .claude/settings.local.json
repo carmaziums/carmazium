@@ -3,7 +3,28 @@
     "allow": [
       "Bash(dir \"d:\\\\carmazium\\\\backend\\\\src\\\\auctions\")",
       "Bash(dir \"d:\\\\carmazium\\\\backend\\\\src\\\\bids\")",
-      "Bash(npx prisma *)"
+      "Bash(npx prisma *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(flyctl deploy *)",
+      "Bash(curl -s https://carmazium-hjoh9w.fly.dev/auctions/active)",
+      "Bash(git commit *)",
+      "Bash(Get-ChildItem -Path \"d:\\\\carmazium\" -Recurse -Directory -Name)",
+      "Bash(Select-Object -First 50)",
+      "Bash(New-Item -ItemType Directory -Force \"d:\\\\carmazium\\\\src\\\\app\\\\api\\\\road-price\")",
+      "Bash(Out-Null)",
+      "Bash(Write-Host \"done\")",
+      "Bash(xargs grep -l \"resend\\\\|Resend\\\\|sendEmail\\\\|email.*template\\\\|emailTemplate\")",
+      "Bash(xargs grep -l \"RESEND\\\\|resend_api\\\\|resend\")",
+      "WebSearch",
+      "WebFetch(domain:pulsecars.co.uk)",
+      "Bash(Remove-Item -Force \"d:\\\\carmazium\\\\src\\\\app\\\\api\\\\road-price\\\\route.ts\")",
+      "Bash(Remove-Item -Force \"d:\\\\carmazium\\\\src\\\\components\\\\listing\\\\RoadPriceBox.tsx\")",
+      "Bash(Remove-Item -Force \"d:\\\\carmazium\\\\src\\\\lib\\\\pricingApi.ts\")",
+      "Bash(Write-Output \"Deleted 3 files\")",
+      "Bash(fly deploy *)",
+      "PowerShell(New-Item -ItemType Directory -Path \"d:\\\\carmazium\\\\backend\\\\prisma\\\\migrations\\\\20260518_add_legal_declarations_to_listings\" -Force)"
     ]
   }
 }

@@ -52,16 +52,9 @@ export interface CreateListingRequest {
     badgeTier?: 'FREE' | 'STANDARD' | 'PREMIUM'
     vehicleType?: VehicleTypeValue
     isImported?: boolean
-    damageRecords?: Array<{
-        id: string
-        zone: string
-        description: string
-        photoUrl?: string
-        bodyType: string
-        view: string
-        x: number
-        y: number
-    }>
+    stolenRecovered?: boolean
+    hasOutstandingFinance?: boolean
+    isLegalRegisteredKeeper?: boolean
 }
 
 export interface CreateListingResponse {
@@ -868,7 +861,7 @@ export async function getMyOfferForListing(listingId: string): Promise<LatestOff
 /**
  * Seller: Record a final sale for a listing
  */
-export async function recordSale(listingId: string, data: { soldPrice: number; buyerId?: string }): Promise<Listing> {
+export async function recordSale(listingId: string, data: { soldPrice: number; buyerId?: string; buyerName?: string }): Promise<Listing> {
     const res = await apiClient<{ data: Listing }>(`/listings/${listingId}/sold`, {
         method: 'PATCH',
         body: JSON.stringify(data),
@@ -974,10 +967,10 @@ export async function getPendingOffersCount(): Promise<number> {
 /**
  * Payments: Create HPI Checkout Session
  */
-export async function createHpiCheckoutSession(vrm: string): Promise<{ url: string }> {
+export async function createHpiCheckoutSession(vrm: string, listingId: string): Promise<{ url: string }> {
     const data = await apiClient<{ data: { url: string } }>('/payments/hpi-checkout', {
         method: 'POST',
-        body: JSON.stringify({ vrm }),
+        body: JSON.stringify({ vrm, listingId }),
     })
     return data.data
 }
