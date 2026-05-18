@@ -7,6 +7,7 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { getMyBids, formatPrice, type Bid } from "@/lib/listingApi"
 import { Loader2, Gavel, MessageSquare, Radio, Trophy } from "lucide-react"
+import { createChatRoom } from "@/lib/chatApi"
 
 export default function MyBidsPage() {
     const { user, loading: authLoading } = useAuth()
@@ -14,6 +15,7 @@ export default function MyBidsPage() {
     const [loading, setLoading] = React.useState(true)
     const [page, setPage] = React.useState(1)
     const [totalPages, setTotalPages] = React.useState(1)
+    const [connectingChat, setConnectingChat] = React.useState<string | null>(null)
 
     React.useEffect(() => {
         async function fetchBids() {
@@ -47,6 +49,20 @@ export default function MyBidsPage() {
             auctionActive: auction?.status === "ACTIVE",
             userWon: auction?.status === "ENDED" && auction?.winnerId === user?.id && bid.isWinning,
             auctionEnded: auction?.status === "ENDED" || auction?.status === "CANCELLED",
+        }
+    }
+
+    async function handleChatWithSeller(bid: Bid) {
+        const sellerId = bid.listing.sellerId
+        if (!sellerId) return
+        setConnectingChat(bid.id)
+        try {
+            const room = await createChatRoom(sellerId, bid.listing.id)
+            window.location.href = `/dashboard/buyer/messages?room=${room.id}`
+        } catch (err: any) {
+            alert(err.message || "Failed to open chat")
+        } finally {
+            setConnectingChat(null)
         }
     }
 
@@ -168,13 +184,18 @@ export default function MyBidsPage() {
                                                     <td className="px-6 py-4 text-right">
                                                         {userWon ? (
                                                             <div className="flex flex-col items-end gap-1.5">
-                                                                <span className="text-xs text-amber-400 font-bold">You won! 🎉</span>
-                                                                <Link
-                                                                    href="/dashboard/buyer/messages"
-                                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-400/10 text-amber-400 border border-amber-400/20 text-xs font-bold hover:bg-amber-400/20 transition-colors"
+                                                                <span className="text-xs text-amber-400 font-bold">You won!</span>
+                                                                <button
+                                                                    onClick={() => handleChatWithSeller(bid)}
+                                                                    disabled={connectingChat === bid.id}
+                                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-400/10 text-amber-400 border border-amber-400/20 text-xs font-bold hover:bg-amber-400/20 transition-colors disabled:opacity-50"
                                                                 >
-                                                                    <MessageSquare size={13} /> Chat with Seller
-                                                                </Link>
+                                                                    {connectingChat === bid.id
+                                                                        ? <Loader2 size={13} className="animate-spin" />
+                                                                        : <MessageSquare size={13} />
+                                                                    }
+                                                                    Chat with Seller
+                                                                </button>
                                                             </div>
                                                         ) : isAuction && auctionActive && auction ? (
                                                             <Link

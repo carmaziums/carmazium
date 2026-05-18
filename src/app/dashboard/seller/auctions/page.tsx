@@ -7,7 +7,9 @@ import {
     Gavel, PlusCircle, Loader2, Eye, XCircle, Clock,
     ChevronRight, AlertCircle, CheckCircle2, Calendar, X,
     Upload, Handshake, Info, CheckCircle, ImageIcon,
+    Trophy, MessageSquare, BarChart2, Users, TrendingUp,
 } from "lucide-react"
+import { createChatRoom } from "@/lib/chatApi"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
@@ -82,6 +84,8 @@ function SellerAuctionsPage() {
     const [submitting, setSubmitting] = React.useState(false)
     const [formError, setFormError] = React.useState<string | null>(null)
     const [successMsg, setSuccessMsg] = React.useState<string | null>(null)
+    const [resultsAuction, setResultsAuction] = React.useState<Auction | null>(null)
+    const [connectingChat, setConnectingChat] = React.useState(false)
 
     React.useEffect(() => {
         const id = setInterval(() => setTick(t => t + 1), 1000)
@@ -202,7 +206,21 @@ function SellerAuctionsPage() {
 
     const endedWithWinner = auctions.filter(a => a.status === "ENDED" && a.winnerId)
 
+    async function handleConnectWithWinner(auction: Auction) {
+        if (!auction.winnerId) return
+        setConnectingChat(true)
+        try {
+            const room = await createChatRoom(auction.winnerId, auction.listingId)
+            window.location.href = `/dashboard/seller/messages?room=${room.id}`
+        } catch (err: any) {
+            alert(err.message || "Failed to open chat")
+        } finally {
+            setConnectingChat(false)
+        }
+    }
+
     return (
+        <>
         <div className="min-h-screen pt-20 pb-12 bg-slate-900">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="seller" />
@@ -527,12 +545,12 @@ function SellerAuctionsPage() {
                                                             </button>
                                                         )}
                                                         {(auction.status === "ENDED" || auction.status === "CANCELLED") && (
-                                                            <Link
-                                                                href={`/auctions/live/${auction.id}`}
+                                                            <button
+                                                                onClick={() => setResultsAuction(auction)}
                                                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 text-gray-400 border border-white/10 text-xs font-bold hover:bg-white/10 transition-colors"
                                                             >
-                                                                <ChevronRight size={13} /> Results
-                                                            </Link>
+                                                                <BarChart2 size={13} /> Results
+                                                            </button>
                                                         )}
                                                     </div>
                                                 </td>
@@ -664,5 +682,118 @@ function SellerAuctionsPage() {
                 </main>
             </div>
         </div>
+
+        {/* Auction Results Modal */}
+
+        {resultsAuction && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) setResultsAuction(null) }}>
+                <div className="w-full max-w-lg bg-slate-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                                <BarChart2 size={16} className="text-primary" />
+                            </div>
+                            <div>
+                                <h2 className="font-bold text-white">Auction Results</h2>
+                                <p className="text-xs text-gray-500 truncate max-w-[260px]">{resultsAuction.listing.title}</p>
+                            </div>
+                        </div>
+                        <button onClick={() => setResultsAuction(null)} className="p-2 text-gray-500 hover:text-white transition-colors">
+                            <X size={18} />
+                        </button>
+                    </div>
+
+                    <div className="p-6 space-y-5">
+                        {/* Status banner */}
+                        {resultsAuction.winnerId ? (
+                            <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                                <Trophy size={20} className="text-amber-400 shrink-0" />
+                                <div>
+                                    <p className="font-bold text-amber-300 text-sm">Auction Sold</p>
+                                    <p className="text-xs text-gray-400">Winner: <span className="text-white font-semibold">
+                                        {resultsAuction.winner
+                                            ? `${resultsAuction.winner.firstName || ""} ${resultsAuction.winner.lastName || ""}`.trim() || "Anonymous Bidder"
+                                            : "Anonymous Bidder"}
+                                    </span></p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-3 p-4 rounded-xl bg-gray-500/10 border border-gray-500/20">
+                                <XCircle size={20} className="text-gray-400 shrink-0" />
+                                <div>
+                                    <p className="font-bold text-gray-300 text-sm">No Winner</p>
+                                    <p className="text-xs text-gray-500">Reserve price not met or no bids placed</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Stats grid */}
+                        <div className="grid grid-cols-3 gap-3">
+                            <div className="rounded-xl bg-slate-800/50 border border-white/5 p-3 text-center">
+                                <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Winning Bid</p>
+                                <p className="text-lg font-black text-white font-mono">
+                                    {resultsAuction.winningBidAmount
+                                        ? `£${Number(resultsAuction.winningBidAmount).toLocaleString()}`
+                                        : "—"}
+                                </p>
+                            </div>
+                            <div className="rounded-xl bg-slate-800/50 border border-white/5 p-3 text-center">
+                                <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Total Bids</p>
+                                <p className="text-lg font-black text-white">
+                                    {getBidCount(resultsAuction)}
+                                </p>
+                            </div>
+                            <div className="rounded-xl bg-slate-800/50 border border-white/5 p-3 text-center">
+                                <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Reserve</p>
+                                <p className="text-lg font-black text-white font-mono">
+                                    £{Number(resultsAuction.reservePrice).toLocaleString()}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Timeline */}
+                        <div className="space-y-2 text-xs text-gray-400">
+                            <div className="flex justify-between">
+                                <span>Started</span>
+                                <span className="text-white">{formatDate(resultsAuction.startTime)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span>Ended</span>
+                                <span className="text-white">{formatDate(resultsAuction.endTime)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span>Starting Bid</span>
+                                <span className="text-white font-mono">£{Number(resultsAuction.startingBid).toLocaleString()}</span>
+                            </div>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex gap-3 pt-1">
+                            <Link
+                                href={`/auctions/live/${resultsAuction.id}`}
+                                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-slate-800 border border-white/10 text-gray-300 text-sm font-bold hover:bg-slate-700 transition-colors"
+                            >
+                                <Eye size={14} /> View Auction
+                            </Link>
+                            {resultsAuction.winnerId && (
+                                <button
+                                    onClick={() => handleConnectWithWinner(resultsAuction)}
+                                    disabled={connectingChat}
+                                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-primary hover:bg-red-600 text-white text-sm font-bold transition-colors disabled:opacity-50"
+                                >
+                                    {connectingChat
+                                        ? <Loader2 size={14} className="animate-spin" />
+                                        : <MessageSquare size={14} />
+                                    }
+                                    Connect with Winner
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+        </>
     )
 }

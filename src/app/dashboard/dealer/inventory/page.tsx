@@ -45,8 +45,8 @@ export default function DealerInventoryPage() {
         try {
             const query = new URLSearchParams()
             if (search.trim()) query.set("search", search.trim())
-            const suffix = query.toString() ? `?${query.toString()}` : ""
-            const res = await apiClient<{ data: any[] }>(`/listings/my${suffix}`)
+            query.set("includeSold", "true")  // always include SOLD for dealer inventory tabs
+            const res = await apiClient<{ data: any[] }>(`/listings/my?${query.toString()}`)
             setListings(res?.data ?? [])
         } catch (err) {
             console.error('Failed to load listings:', err)

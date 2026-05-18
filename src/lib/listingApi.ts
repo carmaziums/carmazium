@@ -407,6 +407,7 @@ export interface Bid {
         make: string | null
         model: string | null
         year: number | null
+        sellerId?: string | null
         auction?: {
             id: string
             status: 'SCHEDULED' | 'ACTIVE' | 'ENDED' | 'CANCELLED'

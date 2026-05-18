@@ -7,6 +7,7 @@ import { firstValueFrom } from 'rxjs';
 @Injectable()
 export class HpiService {
     private readonly logger = new Logger(HpiService.name);
+    private readonly API_URL = 'https://api.oneautoapi.com/ukvehicledata/vehicledetailsfromvrm/v2';
 
     constructor(
         private readonly httpService: HttpService,
@@ -19,34 +20,36 @@ export class HpiService {
      */
     async generateAndSaveReport(listingId: string, vrm: string, transactionId?: string) {
         const apiKey = this.configService.get<string>('ONE_AUTO_API_KEY');
-        const apiUrl = this.configService.get<string>('ONE_AUTO_API_URL') || 'https://api.oneautoapi.com/ukvehicledata/keyvehicledetailsfromvrm/v2';
 
         if (!apiKey) {
             this.logger.error('ONE_AUTO_API_KEY is not configured');
-            throw new Error('API Key missing');
+            throw new Error('HPI API key not configured');
         }
 
         try {
-            // Call OneAutoAPI
             const response = await firstValueFrom(
-                this.httpService.get(`${apiUrl}?vehicle_registration_mark=${vrm}`, {
+                this.httpService.get(`${this.API_URL}?vehicle_registration_mark=${vrm}`, {
                     headers: { 'x-api-key': apiKey },
                 })
             );
 
             const data = response.data;
-            
-            // Logic to determine if vehicle is clear (Depends on exact API structure, simplified here)
-            // Typically check for stolen, scrapped, imported, exported flags
-            let isClear = true; 
-            
-            // Note: Since OneAutoAPI structure requires inspection, we assume a safe default 
-            // based on the presence of any negative markers if they existed in response.
-            if (data?.result?.stolen === true || data?.result?.scrapped === true || data?.result?.writtenOff === true) {
+
+            // Parse OneAutoAPI response structure to determine if vehicle is clear
+            // vehicledetailsfromvrm/v2 returns structured vehicle data
+            let isClear = true;
+            const result = data?.Response?.DataItems || data?.result || data;
+
+            // Check for negative markers in the response
+            const stolen = result?.StolenDetails?.IsStolen === true || result?.stolen === true;
+            const scrapped = result?.VehicleStatus?.IsScrapped === true || result?.scrapped === true;
+            const writtenOff = result?.WriteOffDetails?.IsWrittenOff === true || result?.writtenOff === true;
+            const financeOutstanding = result?.FinanceDetails?.IsOnFinance === true;
+
+            if (stolen || scrapped || writtenOff) {
                 isClear = false;
             }
 
-            // Upsert the report into the database
             const report = await this.prisma.hpiReport.upsert({
                 where: { listingId },
                 update: {
@@ -87,4 +90,93 @@ export class HpiService {
 
         return report;
     }
+
+    /**
+     * Parse the raw OneAutoAPI response into a clean, structured summary for display
+     */
+    parseReportSummary(rawData: any): HpiReportSummary {
+        const items = rawData?.Response?.DataItems || rawData?.result || rawData || {};
+
+        const vehicleReg = items?.VehicleRegistration || {};
+        const vehicleStatus = items?.VehicleStatus || {};
+        const stolenDetails = items?.StolenDetails || {};
+        const financeDetails = items?.FinanceDetails || {};
+        const writeOffDetails = items?.WriteOffDetails || {};
+        const plateChangeDetails = items?.PlateChangeDetails || {};
+        const mileageDetails = items?.MileageDetails || {};
+        const technicalDetails = items?.TechnicalDetails || {};
+
+        return {
+            vrm: vehicleReg.Vrm || items.vrm || '',
+            make: vehicleReg.Make || items.make || '',
+            model: vehicleReg.Model || items.model || '',
+            colour: vehicleReg.Colour || items.colour || '',
+            yearOfManufacture: vehicleReg.YearOfManufacture || items.yearOfManufacture || '',
+            registrationDate: vehicleReg.DateFirstRegistered || items.registrationDate || '',
+            engineSize: technicalDetails?.SmmtDetails?.EngineCapacity || vehicleReg.EngineSize || items.engineSize || '',
+            fuelType: vehicleReg.FuelType || items.fuelType || '',
+            checks: {
+                stolen: {
+                    passed: !(stolenDetails?.IsStolen === true),
+                    detail: stolenDetails?.IsStolen === true ? 'Vehicle reported as stolen' : 'No record of being reported stolen',
+                },
+                writeOff: {
+                    passed: !(writeOffDetails?.IsWrittenOff === true),
+                    detail: writeOffDetails?.IsWrittenOff === true
+                        ? `Written off: Category ${writeOffDetails?.Category || 'Unknown'}`
+                        : 'No insurance write-off recorded',
+                    category: writeOffDetails?.Category || null,
+                },
+                scrapped: {
+                    passed: !(vehicleStatus?.IsScrapped === true),
+                    detail: vehicleStatus?.IsScrapped === true ? 'Vehicle recorded as scrapped' : 'Not recorded as scrapped',
+                },
+                financeOutstanding: {
+                    passed: !(financeDetails?.IsOnFinance === true),
+                    detail: financeDetails?.IsOnFinance === true
+                        ? `Outstanding finance of £${financeDetails?.AgreementAmount || 'unknown'}`
+                        : 'No outstanding finance detected',
+                    agreementId: financeDetails?.AgreementId || null,
+                },
+                plateChange: {
+                    passed: !(plateChangeDetails?.HasPlateChange === true),
+                    detail: plateChangeDetails?.HasPlateChange === true
+                        ? `${plateChangeDetails?.NumberOfPlateChanges || 1} plate change(s) recorded`
+                        : 'No plate changes recorded',
+                },
+                mileageAnomaly: {
+                    passed: !(mileageDetails?.HasMileageAnomaly === true),
+                    detail: mileageDetails?.HasMileageAnomaly === true
+                        ? 'Possible mileage discrepancy detected'
+                        : 'Mileage appears consistent',
+                },
+            },
+        };
+    }
+}
+
+export interface HpiCheckResult {
+    passed: boolean;
+    detail: string;
+    category?: string | null;
+    agreementId?: string | null;
+}
+
+export interface HpiReportSummary {
+    vrm: string;
+    make: string;
+    model: string;
+    colour: string;
+    yearOfManufacture: string;
+    registrationDate: string;
+    engineSize: string;
+    fuelType: string;
+    checks: {
+        stolen: HpiCheckResult;
+        writeOff: HpiCheckResult;
+        scrapped: HpiCheckResult;
+        financeOutstanding: HpiCheckResult;
+        plateChange: HpiCheckResult;
+        mileageAnomaly: HpiCheckResult;
+    };
 }

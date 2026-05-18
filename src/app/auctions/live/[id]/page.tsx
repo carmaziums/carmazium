@@ -17,7 +17,7 @@ import { CountdownTimer } from "@/components/features/CountdownTimer"
 import { useAuth } from "@/context/AuthContext"
 import { getAuction, type Auction, type BidBroadcastPayload, type AuctionEndPayload } from "@/lib/auctionApi"
 import { placeBid } from "@/lib/listingApi"
-import { getWebSocketUrl } from "@/lib/chatApi"
+import { getWebSocketUrl, createChatRoom } from "@/lib/chatApi"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -74,6 +74,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const [endTime, setEndTime] = React.useState<Date | null>(null)
     const [startTime, setStartTime] = React.useState<Date | null>(null)
     const [copied, setCopied] = React.useState(false)
+    const [connectingChat, setConnectingChat] = React.useState(false)
 
     const feedRef = React.useRef<HTMLDivElement>(null)
     const socketRef = React.useRef<Socket | null>(null)
@@ -97,6 +98,16 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     time: new Date(b.timestamp).toLocaleTimeString("en-GB"),
                 })))
                 setAntiSnipeActive(new Date(data.endTime).getTime() - Date.now() <= 3 * 60 * 1000)
+                // If auction already ended, synthesize endedPayload from DB data so banner renders on page load
+                if (data.status === "ENDED") {
+                    const winningBid = bids[0] ? Number(bids[0].amount) : null
+                    setEndedPayload({
+                        auctionId: data.id,
+                        winnerId: data.winnerId,
+                        winningBidAmount: data.winningBidAmount ? Number(data.winningBidAmount) : winningBid,
+                        reserveMet: winningBid !== null && winningBid >= Number(data.reservePrice),
+                    })
+                }
             })
             .catch(() => setLoadError("Failed to load auction. Please refresh."))
             .finally(() => setLoading(false))
@@ -252,7 +263,8 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const isEnded = auction.status === "ENDED"
     const isCancelled = auction.status === "CANCELLED"
     const isSeller = !!user && auction.listing.sellerId === user.id
-    const userWon = isEnded && endedPayload?.winnerId === user?.id
+    // userWon: check both socket payload (real-time) and auction.winnerId (page load for ended auctions)
+    const userWon = isEnded && !!(endedPayload?.winnerId === user?.id || (auction.winnerId && auction.winnerId === user?.id))
     const reserveMet = !!(auction.listing.bids?.[0] && Number(auction.listing.bids[0].amount) >= Number(auction.reservePrice))
     const image = auction.listing.images?.[0] ?? "/assets/images/hero-bg.png"
     const bidCount = bidHistory.length
@@ -422,11 +434,6 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             <p className="text-amber-400 font-black text-[10px] uppercase tracking-widest mb-0.5">Buyer Fee Due</p>
                                             <div className="flex items-baseline gap-1">
                                                 <span className="text-white font-black text-base">£125</span>
-                                                <span className="text-slate-500 text-[10px]">verified dealers</span>
-                                            </div>
-                                            <div className="text-[10px] text-slate-500 mt-1 space-y-0.5">
-                                                <p>£100 → seller (after handover)</p>
-                                                <p>£25 → Carmazium (non-refundable)</p>
                                             </div>
                                         </div>
                                         <div className="flex flex-col gap-1.5">
@@ -435,11 +442,26 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                     <CreditCard size={13} /> Pay £125 Fee
                                                 </Button>
                                             </Link>
-                                            <Link href="/dashboard/buyer/messages">
-                                                <Button variant="outline" className="w-full border-white/10 text-slate-400 font-bold text-xs h-9 flex items-center gap-1.5">
-                                                    <MessageSquare size={13} /> Message Seller
-                                                </Button>
-                                            </Link>
+                                            <Button
+                                                variant="outline"
+                                                className="w-full border-white/10 text-slate-400 font-bold text-xs h-9 flex items-center gap-1.5"
+                                                disabled={connectingChat}
+                                                onClick={async () => {
+                                                    const sellerId = auction.listing.sellerId
+                                                    if (!sellerId) return
+                                                    setConnectingChat(true)
+                                                    try {
+                                                        const room = await createChatRoom(sellerId, auction.listingId)
+                                                        window.location.href = `/dashboard/buyer/messages?room=${room.id}`
+                                                    } catch {
+                                                        window.location.href = "/dashboard/buyer/messages"
+                                                    } finally {
+                                                        setConnectingChat(false)
+                                                    }
+                                                }}
+                                            >
+                                                <MessageSquare size={13} /> Message Seller
+                                            </Button>
                                         </div>
                                     </div>
                                 </>
@@ -869,26 +891,13 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     {!isCancelled && !isSeller && isLive && (
                         <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 space-y-2">
                             <p className="text-[10px] font-black uppercase tracking-widest text-amber-400 flex items-center gap-1.5">
-                                <CreditCard size={11} /> Buyer Fee — Verified Dealers
+                                <CreditCard size={11} /> Buyer Fee
                             </p>
                             <div className="flex items-center justify-between text-xs">
-                                <span className="text-slate-400">Buyer fee on winning</span>
-                                <span className="text-white font-black">£125</span>
+                                <span className="text-slate-400">Fee on winning</span>
+                                <span className="text-white font-black text-base">£125</span>
                             </div>
-                            <div className="space-y-1 text-[10px] text-slate-500 border-t border-white/5 pt-2">
-                                <div className="flex items-center gap-1.5">
-                                    <CheckCircle size={10} className="text-emerald-400 shrink-0" />
-                                    £100 released to seller after handover proof
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <Info size={10} className="text-amber-400 shrink-0" />
-                                    £25 Carmazium fee — non-refundable
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <Handshake size={10} className="text-blue-400 shrink-0" />
-                                    £100 refunded if handover doesn't complete
-                                </div>
-                            </div>
+                            <p className="text-[10px] text-slate-500">One-time fee payable after the auction closes if you win.</p>
                         </div>
                     )}
                 </aside>
