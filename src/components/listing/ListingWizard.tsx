@@ -83,7 +83,7 @@ interface FormData {
     // Step 3 — Pricing (3-tier seller evaluation)
     priceMin: string      // Lower bound — minimum the seller will accept
     priceAsking: string   // Asking price — displayed publicly on the listing
-    badgeTier: 'FREE' | 'STANDARD' | 'PREMIUM'
+    badgeTier: 'FREE' | 'BASIC' | 'STANDARD' | 'PREMIUM'
     status: "DRAFT" | "ACTIVE"
     listingType: "CLASSIFIED" | "AUCTION"
 }
@@ -118,7 +118,7 @@ const INITIAL_FORM: FormData = {
     primaryColour: "",
     dateOfLastV5CIssued: "",
     images: [],
-    priceMin: "", priceAsking: "", badgeTier: 'FREE', status: "DRAFT", listingType: "CLASSIFIED",
+    priceMin: "", priceAsking: "", badgeTier: 'BASIC', status: "DRAFT", listingType: "CLASSIFIED",
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -659,7 +659,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                          make: formData.make || undefined,
                                          model: formData.model || undefined,
                                          status: 'DRAFT',
-                                         badgeTier: 'FREE',
+                                         badgeTier: formData.badgeTier,
                                          vehicleType: formData.vehicleType,
                                      })
                                      listingId = draft.data.id
@@ -1665,15 +1665,15 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         </ul>
                                     </button>
 
-                                    {/* Free */}
+                                    {/* Basic */}
                                     <button type="button"
-                                        onClick={() => { set('badgeTier', 'FREE'); set('listingType', 'CLASSIFIED') }}
-                                        className={`relative rounded-xl border p-4 text-left transition-all ${formData.badgeTier === 'FREE' && formData.listingType !== 'AUCTION'
+                                        onClick={() => { set('badgeTier', 'BASIC'); set('listingType', 'CLASSIFIED') }}
+                                        className={`relative rounded-xl border p-4 text-left transition-all ${formData.badgeTier === 'BASIC'
                                             ? 'border-primary bg-primary/10 ring-1 ring-primary/50'
                                             : 'border-white/10 bg-white/[0.02] hover:border-white/20'
                                             }`}
                                     >
-                                        {formData.badgeTier === 'FREE' && formData.listingType !== 'AUCTION' && <span className="absolute top-2 right-2 text-[10px] bg-primary text-black font-bold px-2 py-0.5 rounded-full">Selected</span>}
+                                        {formData.badgeTier === 'BASIC' && <span className="absolute top-2 right-2 text-[10px] bg-primary text-black font-bold px-2 py-0.5 rounded-full">Selected</span>}
                                         <p className="text-white font-bold text-sm mb-1">Basic</p>
                                         <p className="text-2xl font-black text-white mb-3">£1</p>
                                         <ul className="space-y-1.5 text-xs text-gray-400">
@@ -1761,7 +1761,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         <p className="text-xs font-black uppercase tracking-widest text-gray-400 flex items-center gap-1.5"><CreditCard size={12} /> Retail Fee Structure</p>
                                         <div className="flex items-center justify-between text-xs">
                                             <span className="text-gray-400">Your listing fee</span>
-                                            <span className="text-white font-bold">{formData.badgeTier === 'FREE' ? '£1' : formData.badgeTier === 'STANDARD' ? '£10' : '£25'} one-time</span>
+                                            <span className="text-white font-bold">{formData.badgeTier === 'BASIC' ? '£1' : formData.badgeTier === 'STANDARD' ? '£10' : '£25'} one-time</span>
                                         </div>
                                         <div className="flex items-center justify-between text-xs">
                                             <span className="text-gray-400">Buyer fee</span>
@@ -1866,10 +1866,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </div>
 
                                     <div className="flex items-center gap-2 mt-1">
-                                        {formData.badgeTier === 'FREE' && (
-                                            formData.listingType === 'AUCTION'
-                                                ? <span className="text-xs bg-orange-500/15 text-orange-400 border border-orange-500/20 px-2 py-0.5 rounded-md flex items-center gap-1">🔨 For Auction — Free</span>
-                                                : <span className="text-xs bg-white/10 text-gray-400 px-2 py-0.5 rounded-md">Basic — £1</span>
+                                        {formData.badgeTier === 'FREE' && formData.listingType === 'AUCTION' && (
+                                            <span className="text-xs bg-orange-500/15 text-orange-400 border border-orange-500/20 px-2 py-0.5 rounded-md flex items-center gap-1">🔨 For Auction — Free</span>
+                                        )}
+                                        {formData.badgeTier === 'BASIC' && (
+                                            <span className="text-xs bg-white/10 text-gray-400 px-2 py-0.5 rounded-md">Basic — £1</span>
                                         )}
                                         {formData.badgeTier === 'STANDARD' && (
                                             <>
