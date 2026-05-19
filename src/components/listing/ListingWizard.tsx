@@ -477,8 +477,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     body: JSON.stringify(payload),
                 })
                 
-                if (payload.badgeTier !== 'FREE' && payload.status === 'ACTIVE') {
-                    // Redirect to payment if upgraded and trying to activate
+                if (payload.badgeTier !== 'FREE') {
                     const checkout = await createListingCheckoutSession(editId, payload.badgeTier as string)
                     window.location.href = checkout.url
                     return
@@ -515,7 +514,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 localStorage.removeItem('carmazium_listing_draft')
                 localStorage.removeItem('carmazium_hpi_draft_id')
 
-                if (payload.badgeTier !== 'FREE' && payload.status === 'ACTIVE') {
+                if (payload.badgeTier !== 'FREE') {
                     const checkout = await createListingCheckoutSession(finalListingId, payload.badgeTier as string)
                     window.location.href = checkout.url
                     return
@@ -526,7 +525,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 setSellingMethod(null)
                 router.push(`/buy-cars/${finalSlug}`)
             } else {
-                const response = await createListing(payload)
+                // For paid tiers, create as DRAFT — the Stripe webhook activates it after payment
+                const isPaidTier = payload.badgeTier !== 'FREE'
+                const createPayload = isPaidTier ? { ...payload, status: 'DRAFT' as const } : payload
+                const response = await createListing(createPayload)
                 const newListingId = response.data.id
 
                 // Save damage records separately (not part of listing DTO to avoid validation issues)
@@ -548,8 +550,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     }
                 }
 
-                if (payload.badgeTier !== 'FREE' && payload.status === 'ACTIVE') {
-                    // Redirect to payment
+                if (isPaidTier) {
+                    // Redirect to Stripe — webhook activates listing on success
                     const checkout = await createListingCheckoutSession(newListingId, payload.badgeTier as string)
                     window.location.href = checkout.url
                     return
