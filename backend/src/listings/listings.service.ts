@@ -440,6 +440,9 @@ export class ListingsService {
                 hpiReport: {
                     select: { isClear: true, purchasedAt: true }
                 },
+                damageRecords: {
+                    orderBy: { createdAt: 'asc' },
+                },
             }
         });
 
