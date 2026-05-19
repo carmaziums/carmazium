@@ -1686,7 +1686,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                                     {/* Standard */}
                                     <button type="button"
-                                        onClick={() => set('badgeTier', 'STANDARD')}
+                                        onClick={() => { set('badgeTier', 'STANDARD'); set('listingType', 'CLASSIFIED') }}
                                         className={`relative rounded-xl border p-4 text-left transition-all ${formData.badgeTier === 'STANDARD'
                                             ? 'border-blue-500 bg-blue-500/10 ring-1 ring-blue-500/50'
                                             : 'border-white/10 bg-white/[0.02] hover:border-white/20'
@@ -1705,7 +1705,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                                     {/* Premium */}
                                     <button type="button"
-                                        onClick={() => set('badgeTier', 'PREMIUM')}
+                                        onClick={() => { set('badgeTier', 'PREMIUM'); set('listingType', 'CLASSIFIED') }}
                                         className={`relative rounded-xl border p-4 text-left transition-all ${formData.badgeTier === 'PREMIUM'
                                             ? 'border-amber-500 bg-amber-500/10 ring-1 ring-amber-500/50'
                                             : 'border-white/10 bg-white/[0.02] hover:border-white/20'
