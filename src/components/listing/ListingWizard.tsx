@@ -367,7 +367,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const validateStep = (): boolean => {
         switch (currentStep) {
             case 1: {
-                const baseValid = !!(formData.vrm && formData.make && formData.model && formData.year && formData.mileage && formData.fuelType && formData.transmission && formData.title)
+                const baseValid = !!(formData.vrm && formData.make && formData.model && formData.year && formData.mileage && formData.fuelType && formData.transmission && formData.title && formData.title.length >= 5)
                 const declarationsValid = formData.writeOffCategory !== '' && formData.stolenRecovered !== null && formData.hasOutstandingFinance !== null && formData.isLegalRegisteredKeeper === true && formData.declarationAcknowledged
                 if (formData.writeOffCategory === 'CAT_A' || formData.writeOffCategory === 'CAT_B') return false
                 return baseValid && declarationsValid
@@ -880,8 +880,28 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 if (r.colour) set("color", r.colour)
                                                 if (r.year) set("year", String(r.year))
                                                 if (r.engineSize) set("engineSize", String(r.engineSize))
-                                                if (r.fuelType) set("fuelType", r.fuelType)
-                                                if (r.transmission) set("transmission", r.transmission.toUpperCase())
+                                                if (r.fuelType) {
+                                                    const fuelTypeMap: Record<string, string> = {
+                                                        'PETROL': 'PETROL', 'DIESEL': 'DIESEL',
+                                                        'ELECTRICITY': 'ELECTRIC', 'ELECTRIC': 'ELECTRIC',
+                                                        'HYBRID': 'HYBRID', 'PLUGIN_HYBRID': 'PLUGIN_HYBRID',
+                                                        'PLUGIN HYBRID': 'PLUGIN_HYBRID', 'PLUG-IN HYBRID': 'PLUGIN_HYBRID',
+                                                        'LPG': 'LPG', 'GAS': 'LPG',
+                                                        'HYDROGEN': 'HYDROGEN_CELL', 'HYDROGEN_CELL': 'HYDROGEN_CELL',
+                                                    }
+                                                    const mappedFuel = fuelTypeMap[r.fuelType.toUpperCase()]
+                                                    if (mappedFuel) set("fuelType", mappedFuel)
+                                                }
+                                                if (r.transmission) {
+                                                    const transmissionMap: Record<string, string> = {
+                                                        'MANUAL': 'MANUAL', 'AUTOMATIC': 'AUTOMATIC',
+                                                        'SEMI_AUTOMATIC': 'SEMI_AUTOMATIC', 'SEMI-AUTOMATIC': 'SEMI_AUTOMATIC',
+                                                        'SEMI AUTOMATIC': 'SEMI_AUTOMATIC',
+                                                        'CVT': 'CVT', 'CONTINUOUSLY VARIABLE': 'CVT',
+                                                    }
+                                                    const mappedTrans = transmissionMap[r.transmission.toUpperCase()]
+                                                    if (mappedTrans) set("transmission", mappedTrans)
+                                                }
                                                 if (r.euroStandard) set("euroStandard", r.euroStandard as EuroStandardValue)
                                                 if (r.co2Emissions) set("co2Emissions", String(r.co2Emissions))
                                                 // DVLA extended fields
