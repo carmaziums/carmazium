@@ -17,7 +17,7 @@ import { useAuth } from "@/context/AuthContext"
 import { SellerBadge } from "@/components/ui/SellerBadge"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 import { EnquireModal } from "@/components/listing/EnquireModal"
-import { getListingBySlug, makeOffer, getMyOfferForListing, respondToCounterOffer, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, formatPrice, type Listing, type LatestOffer } from "@/lib/listingApi"
+import { getListingBySlug, makeOffer, getMyOfferForListing, respondToCounterOffer, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, getDamageRecords, formatPrice, type Listing, type LatestOffer } from "@/lib/listingApi"
 import { createChatRoom } from "@/lib/chatApi"
 import { useRouter } from "next/navigation"
 
@@ -447,6 +447,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
     const [watchlistLoading, setWatchlistLoading] = React.useState(false)
     const [shareToast, setShareToast] = React.useState(false)
     const [enquiring, setEnquiring] = React.useState(false)
+    const [damageRecords, setDamageRecords] = React.useState<any[]>([])
 
     const router = useRouter()
 
@@ -511,6 +512,12 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
         if (!user || !listing) return
         checkWatchlist(listing.id).then(setIsWatchlisted).catch(() => { })
     }, [user, listing])
+
+    // Fetch damage records for this listing
+    React.useEffect(() => {
+        if (!listing) return
+        getDamageRecords(listing.id).then(setDamageRecords).catch(() => { })
+    }, [listing])
 
     // Determine the current viewer's relationship to the offer
     const offerViewerRole: 'buyer' | 'seller' | 'public' = React.useMemo(() => {
@@ -1109,33 +1116,46 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                             </div>
                         )}
 
-                        {/* Damage Records */}
-                        {Array.isArray((listing as any).damageRecords) && (listing as any).damageRecords.length > 0 && (
-                            <div className="bg-slate-800/50 backdrop-blur-md border border-amber-500/20 rounded-xl p-8 mb-8">
-                                <h3 className="text-xl font-bold text-white mb-2 border-l-4 border-amber-500 pl-4 flex items-center gap-2">
+                        {/* Seller-Reported Damage */}
+                        {damageRecords.length > 0 && (
+                            <div className="bg-slate-800/50 backdrop-blur-md border border-amber-500/20 rounded-xl p-8">
+                                <h3 className="text-xl font-bold text-white mb-1 border-l-4 border-amber-500 pl-4 flex items-center gap-2">
                                     <Wrench size={18} className="text-amber-400" />
                                     Seller-Reported Damage
                                 </h3>
-                                <p className="text-xs text-gray-500 mb-6 ml-6">The seller has marked the following areas of the vehicle as having known damage.</p>
+                                <p className="text-xs text-gray-500 mb-6 pl-6">The seller has disclosed the following known damage areas.</p>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    {((listing as any).damageRecords as any[]).map((record: any, i: number) => (
-                                        <div key={record.id ?? i} className="flex gap-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/15">
-                                            {record.photoUrl && (
-                                                <div className="w-20 h-16 rounded-lg overflow-hidden shrink-0 border border-white/10">
-                                                    <img src={record.photoUrl} alt={record.zone} className="w-full h-full object-cover" />
+                                    {damageRecords.map((record: any, i: number) => {
+                                        const zoneLabel = record.part
+                                            ? record.part.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
+                                            : 'Unknown Area'
+                                        const view = record.coords?.view ?? record.view ?? null
+                                        return (
+                                            <div key={record.id ?? i} className="flex gap-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/15">
+                                                {record.imageUrl && (
+                                                    <div className="w-20 h-16 rounded-lg overflow-hidden shrink-0 border border-white/10">
+                                                        <img src={record.imageUrl} alt={zoneLabel} className="w-full h-full object-cover" />
+                                                    </div>
+                                                )}
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">
+                                                            {zoneLabel}
+                                                        </span>
+                                                        {record.size && (
+                                                            <span className="text-[10px] text-gray-600 font-medium">{record.size}</span>
+                                                        )}
+                                                        {view && (
+                                                            <span className="text-[10px] text-gray-700">{view}</span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-sm text-gray-300 leading-snug line-clamp-3">
+                                                        {record.type || 'No description provided.'}
+                                                    </p>
                                                 </div>
-                                            )}
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">
-                                                        {record.zone?.replace(/_/g, ' ') ?? 'Unknown Area'}
-                                                    </span>
-                                                    <span className="text-[10px] text-gray-600">{record.bodyType} · {record.view}</span>
-                                                </div>
-                                                <p className="text-sm text-gray-300 leading-snug line-clamp-3">{record.description || 'No description provided.'}</p>
                                             </div>
-                                        </div>
-                                    ))}
+                                        )
+                                    })}
                                 </div>
                             </div>
                         )}
