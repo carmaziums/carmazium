@@ -44,6 +44,11 @@ function normalizeErrorMessage(body: any, status: number, statusText: string): s
     if (typeof body === 'string' && body.trim()) return body;
 
     if (body && typeof body === 'object') {
+        // NestJS class-validator returns message as a string[] — join them
+        if (Array.isArray(body.message) && body.message.length > 0) {
+            return body.message.join(', ');
+        }
+
         const possible = [
             body.message,
             body.error,
