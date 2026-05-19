@@ -49,7 +49,7 @@ export interface CreateListingRequest {
     wheelplan?: string
     typeApproval?: string
     status?: 'DRAFT' | 'ACTIVE' | 'SOLD'
-    badgeTier?: 'FREE' | 'STANDARD' | 'PREMIUM'
+    badgeTier?: 'FREE' | 'BASIC' | 'STANDARD' | 'PREMIUM'
     vehicleType?: VehicleTypeValue
     isImported?: boolean
     stolenRecovered?: boolean
