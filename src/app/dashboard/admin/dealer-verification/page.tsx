@@ -238,8 +238,11 @@ export default function AdminDealerVerificationPage() {
       KYC_FIELDS.forEach((field) => {
         const item = existingStatuses[field.id];
         initialDecisions[field.id] = {
-          status: item?.status || "APPROVED",
-          note: item?.note || "",
+          // Only preserve REJECTED from a previous review; default everything else
+          // (including PENDING first-submissions) to APPROVED so the admin only
+          // needs to actively reject fields rather than approve each one manually.
+          status: item?.status === "REJECTED" ? "REJECTED" : "APPROVED",
+          note: item?.status === "REJECTED" ? (item?.note || "") : "",
         };
       });
       setDecisions(initialDecisions);
@@ -400,10 +403,17 @@ export default function AdminDealerVerificationPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-3 shrink-0 self-stretch sm:self-auto justify-end border-t sm:border-t-0 border-white/5 pt-3 sm:pt-0">
-                          <span className="px-2.5 py-1 rounded-md text-[9px] font-extrabold uppercase tracking-wider border bg-amber-500/10 border-amber-500/20 text-amber-500 flex items-center gap-1.5">
-                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping" />
-                            Pending Review
-                          </span>
+                          {item.status === "REJECTED" ? (
+                            <span className="px-2.5 py-1 rounded-md text-[9px] font-extrabold uppercase tracking-wider border bg-red-500/10 border-red-500/20 text-red-400 flex items-center gap-1.5">
+                              <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                              Rejected — Awaiting Fix
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-md text-[9px] font-extrabold uppercase tracking-wider border bg-amber-500/10 border-amber-500/20 text-amber-500 flex items-center gap-1.5">
+                              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping" />
+                              Pending Review
+                            </span>
+                          )}
                           {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                         </div>
                       </div>

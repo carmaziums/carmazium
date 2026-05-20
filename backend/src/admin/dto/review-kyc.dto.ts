@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsArray, ValidateNested } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsIn, IsArray, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -8,7 +8,7 @@ export class ReviewKycFieldDto {
     field: string;
 
     @ApiProperty({ description: 'Review status for this specific field', enum: ['APPROVED', 'REJECTED'] })
-    @IsEnum(['APPROVED', 'REJECTED'])
+    @IsIn(['APPROVED', 'REJECTED'])
     status: 'APPROVED' | 'REJECTED';
 
     @ApiPropertyOptional({ description: 'Feedback/rejection note for this field' })
