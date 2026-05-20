@@ -357,9 +357,12 @@ model DealerKyc {
   representativeName         String
   representativePosition     String
   vatNumber                  String
+  vatProof                   String?       // Optional URL to stored VAT proof image
   companyRegistrationNumber  String
+  companyRegistrationProof   String?       // Optional URL to stored Company House cert
   personOfSignificantControl String
   directorName               String
+  directorIdProof            String?       // Optional URL to stored Director ID photo
   businessWebsite            String
   businessRegisteredAddress  String
   tradingAddress             String?

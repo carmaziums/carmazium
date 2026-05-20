@@ -39,34 +39,77 @@ export class DealersService {
         return profile;
     }
 
-    /** Get the KYC record for a dealer */
+    /** Get the KYC record for a dealer — auto-creates profile for new DEALER registrations */
     async getKyc(userId: string) {
-        const profile = await this.prisma.dealerProfile.findUnique({
+        let profileResult = await this.prisma.dealerProfile.findUnique({
             where: { userId },
             include: { kyc: true },
         });
 
-        if (!profile) throw new NotFoundException('Dealer profile not found');
-        return profile.kyc;
+        if (!profileResult) {
+            // Auto-create a blank profile so new dealers don't hit 404
+            const user = await this.prisma.user.findUnique({ where: { id: userId } });
+            if (!user || user.role !== 'DEALER') {
+                throw new NotFoundException('Dealer profile not found');
+            }
+            profileResult = await this.prisma.dealerProfile.create({
+                data: {
+                    userId,
+                    companyName: user.firstName ? `${user.firstName}'s Dealership` : 'My Dealership',
+                    vatNumber: '',
+                    registrationNumber: '',
+                    businessAddress: '',
+                    isVerified: false,
+                },
+                include: { kyc: true },
+            });
+        }
+
+        // At this point profileResult is guaranteed non-null (we either found or created it)
+        const resolvedProfile = profileResult!;
+        return resolvedProfile.kyc;
     }
 
-    /** Submit/Update the KYC record for a dealer */
+    /** Submit/Update the KYC record for a dealer — auto-creates profile for new DEALER registrations */
     async submitKyc(userId: string, dto: CreateKycDto) {
-        const profile = await this.prisma.dealerProfile.findUnique({
+        let profileResult = await this.prisma.dealerProfile.findUnique({
             where: { userId },
             include: { kyc: true, user: true },
         });
 
-        if (!profile) throw new NotFoundException('Dealer profile not found');
+        if (!profileResult) {
+            // Auto-create a blank profile so new dealers don't hit 404 on first submission
+            const user = await this.prisma.user.findUnique({ where: { id: userId } });
+            if (!user || user.role !== 'DEALER') {
+                throw new NotFoundException('Dealer profile not found');
+            }
+            profileResult = await this.prisma.dealerProfile.create({
+                data: {
+                    userId,
+                    companyName: user.firstName ? `${user.firstName}'s Dealership` : 'My Dealership',
+                    vatNumber: '',
+                    registrationNumber: '',
+                    businessAddress: '',
+                    isVerified: false,
+                },
+                include: { kyc: true, user: true },
+            });
+        }
+
+        // At this point profileResult is guaranteed non-null
+        const profile = profileResult!;
 
         const fieldsList = [
             'companyHouseName',
             'representativeName',
             'representativePosition',
             'vatNumber',
+            'vatProof',
             'companyRegistrationNumber',
+            'companyRegistrationProof',
             'personOfSignificantControl',
             'directorName',
+            'directorIdProof',
             'businessWebsite',
             'businessRegisteredAddress',
             'tradingAddress',
