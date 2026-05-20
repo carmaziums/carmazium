@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Shield,
@@ -18,10 +18,222 @@ import {
   LogOut,
   Loader2,
   FileSpreadsheet,
+  Upload,
+  FileImage,
+  X,
+  Eye,
+  IdCard,
+  Receipt,
+  FileCheck,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getDealerKyc, submitDealerKyc, DealerKycData } from "@/lib/dealerApi";
+import { uploadImage } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
+
+// ─── File Upload Component ─────────────────────────────────────────────────────
+
+interface FileUploadFieldProps {
+  label: string;
+  hint: string;
+  fieldName: string;
+  value: string;
+  onUpload: (fieldName: string, url: string) => void;
+  onClear: (fieldName: string) => void;
+  isApproved: boolean;
+  rejectionNote: string | null;
+  isSubmitting: boolean;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+}
+
+function FileUploadField({
+  label,
+  hint,
+  fieldName,
+  value,
+  onUpload,
+  onClear,
+  isApproved,
+  rejectionNote,
+  isSubmitting,
+  icon: Icon,
+}: FileUploadFieldProps) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [dragging, setDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (file: File) => {
+    if (isApproved || isSubmitting) return;
+    setUploadError("");
+
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      setUploadError("File too large. Max size is 10MB.");
+      return;
+    }
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+    if (!allowedTypes.includes(file.type)) {
+      setUploadError("Only JPG, PNG, WEBP, or PDF files are accepted.");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const url = await uploadImage(file, "kyc-documents");
+      onUpload(fieldName, url);
+    } catch (err: any) {
+      setUploadError(err.message || "Upload failed. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFile(file);
+    // Reset so same file can be re-selected
+    e.target.value = "";
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
+  };
+
+  const isImage = value && (value.includes(".jpg") || value.includes(".jpeg") || value.includes(".png") || value.includes(".webp"));
+
+  const borderClass = isApproved
+    ? "border-emerald-500/30 bg-emerald-500/5"
+    : rejectionNote
+    ? "border-red-500/30 bg-red-500/5"
+    : dragging
+    ? "border-primary/60 bg-primary/5"
+    : "border-white/10 bg-slate-950/50";
+
+  return (
+    <div className="space-y-1.5 text-left">
+      <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider flex items-center justify-between">
+        <span className="flex items-center gap-1.5">
+          <Icon size={11} className={isApproved ? "text-emerald-500" : rejectionNote ? "text-red-400" : "text-slate-500"} />
+          {label}
+        </span>
+        {isApproved && (
+          <span className="flex items-center gap-1 text-[8px] font-black text-emerald-400 uppercase tracking-widest px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+            <Lock size={8} /> LOCKED &amp; VERIFIED
+          </span>
+        )}
+      </label>
+
+      {value && !uploading ? (
+        /* ── Preview Block ── */
+        <div className={`rounded-xl border p-3 transition-all ${borderClass}`}>
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${isApproved ? "bg-emerald-500/10" : "bg-slate-900"}`}>
+              {isImage ? (
+                <FileImage size={18} className={isApproved ? "text-emerald-400" : "text-primary"} />
+              ) : (
+                <FileCheck size={18} className={isApproved ? "text-emerald-400" : "text-primary"} />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-slate-200 truncate">
+                {isApproved ? "✓ Document Verified" : "Document Uploaded"}
+              </p>
+              <p className="text-[10px] text-slate-500 truncate">{value.split("/").pop()}</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <a
+                href={value}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+                title="Preview"
+              >
+                <Eye size={13} />
+              </a>
+              {!isApproved && !isSubmitting && (
+                <button
+                  type="button"
+                  onClick={() => onClear(fieldName)}
+                  className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors"
+                  title="Remove"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+          </div>
+          {isImage && (
+            <div className="mt-2.5 rounded-lg overflow-hidden border border-white/5 max-h-24">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={value} alt="Document preview" className="w-full h-24 object-cover opacity-80" />
+            </div>
+          )}
+        </div>
+      ) : (
+        /* ── Upload Drop Zone ── */
+        <div
+          className={`rounded-xl border-2 border-dashed transition-all duration-200 cursor-pointer ${borderClass} ${
+            isApproved || isSubmitting ? "opacity-50 pointer-events-none" : "hover:border-primary/40 hover:bg-primary/5"
+          }`}
+          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={handleDrop}
+          onClick={() => !isApproved && !isSubmitting && fileInputRef.current?.click()}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,application/pdf"
+            className="hidden"
+            onChange={handleInputChange}
+            disabled={isApproved || isSubmitting}
+          />
+
+          <div className="flex flex-col items-center justify-center py-5 px-4 gap-2">
+            {uploading ? (
+              <>
+                <Loader2 size={22} className="animate-spin text-primary" />
+                <p className="text-xs font-semibold text-slate-300">Uploading securely...</p>
+              </>
+            ) : (
+              <>
+                <div className="p-2 rounded-lg bg-slate-900 border border-white/5">
+                  <Upload size={16} className="text-slate-400" />
+                </div>
+                <div className="text-center">
+                  <p className="text-xs font-bold text-slate-300">
+                    {dragging ? "Drop file here" : "Click or drag to upload"}
+                  </p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">{hint}</p>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {uploadError && (
+        <p className="text-[10px] text-red-500 font-semibold flex items-start gap-1">
+          <AlertCircle size={10} className="shrink-0 mt-0.5" />
+          <span>{uploadError}</span>
+        </p>
+      )}
+
+      {rejectionNote && (
+        <p className="text-[10px] text-red-400 font-semibold leading-relaxed flex items-start gap-1">
+          <AlertCircle size={10} className="shrink-0 mt-0.5" />
+          <span>{rejectionNote}</span>
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─── Main KYC Overlay Component ────────────────────────────────────────────────
 
 export function KycOverlayForm() {
   const { profile, signOut, refreshProfile } = useAuth();
@@ -34,7 +246,7 @@ export function KycOverlayForm() {
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  // Form Fields
+  // ── Text Form Fields ──
   const [formData, setFormData] = useState({
     companyHouseName: "",
     representativeName: "",
@@ -48,10 +260,17 @@ export function KycOverlayForm() {
     tradingAddress: "",
     googleReviewsLink: "",
     paymentReference: "",
+  });
+
+  // ── File Upload URL Fields ──
+  const [fileUrls, setFileUrls] = useState({
+    directorIdProof: "",
+    vatProof: "",
+    companyRegistrationProof: "",
     paymentScreenshot: "",
   });
 
-  // Load existing KYC record on mount
+  // ── Load existing KYC record on mount ──
   useEffect(() => {
     async function loadKyc() {
       try {
@@ -71,6 +290,11 @@ export function KycOverlayForm() {
             tradingAddress: kyc.tradingAddress || "",
             googleReviewsLink: kyc.googleReviewsLink || "",
             paymentReference: kyc.paymentReference || "",
+          });
+          setFileUrls({
+            directorIdProof: kyc.directorIdProof || "",
+            vatProof: kyc.vatProof || "",
+            companyRegistrationProof: kyc.companyRegistrationProof || "",
             paymentScreenshot: kyc.paymentScreenshot || "",
           });
         }
@@ -80,7 +304,6 @@ export function KycOverlayForm() {
         setLoading(false);
       }
     }
-
     loadKyc();
   }, []);
 
@@ -89,14 +312,21 @@ export function KycOverlayForm() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const isFieldApproved = (fieldName: keyof typeof formData): boolean => {
-    if (!kycData || !kycData.documentStatuses) return false;
-    const fieldStatus = kycData.documentStatuses[fieldName]?.status;
-    return fieldStatus === "APPROVED";
+  const handleFileUpload = (fieldName: string, url: string) => {
+    setFileUrls((prev) => ({ ...prev, [fieldName]: url }));
   };
 
-  const getFieldRejectionNote = (fieldName: keyof typeof formData): string | null => {
-    if (!kycData || !kycData.documentStatuses) return null;
+  const handleFileClear = (fieldName: string) => {
+    setFileUrls((prev) => ({ ...prev, [fieldName]: "" }));
+  };
+
+  const isFieldApproved = (fieldName: string): boolean => {
+    if (!kycData?.documentStatuses) return false;
+    return kycData.documentStatuses[fieldName]?.status === "APPROVED";
+  };
+
+  const getFieldRejectionNote = (fieldName: string): string | null => {
+    if (!kycData?.documentStatuses) return null;
     const item = kycData.documentStatuses[fieldName];
     return item?.status === "REJECTED" ? item.note : null;
   };
@@ -113,56 +343,24 @@ export function KycOverlayForm() {
   const validateStep = (step: number): boolean => {
     setErrorMsg("");
     if (step === 1) {
-      if (!formData.companyHouseName.trim()) {
-        setErrorMsg("Company Name is required.");
-        return false;
-      }
-      if (!formData.representativeName.trim()) {
-        setErrorMsg("Representative Name is required.");
-        return false;
-      }
-      if (!formData.representativePosition.trim()) {
-        setErrorMsg("Representative Position is required.");
-        return false;
-      }
-      if (!formData.directorName.trim()) {
-        setErrorMsg("Director Name is required.");
-        return false;
-      }
-      if (!formData.personOfSignificantControl.trim()) {
-        setErrorMsg("Person of Significant Control (PSC) is required.");
-        return false;
-      }
+      if (!formData.companyHouseName.trim()) { setErrorMsg("Company Name is required."); return false; }
+      if (!formData.representativeName.trim()) { setErrorMsg("Representative Name is required."); return false; }
+      if (!formData.representativePosition.trim()) { setErrorMsg("Representative Position is required."); return false; }
+      if (!formData.directorName.trim()) { setErrorMsg("Director Name is required."); return false; }
+      if (!formData.personOfSignificantControl.trim()) { setErrorMsg("Person of Significant Control (PSC) is required."); return false; }
     } else if (step === 2) {
-      if (!formData.vatNumber.trim()) {
-        setErrorMsg("VAT Number is required.");
-        return false;
-      }
-      if (!formData.companyRegistrationNumber.trim()) {
-        setErrorMsg("Company Registration Number is required.");
-        return false;
-      }
-      if (!formData.businessWebsite.trim()) {
-        setErrorMsg("Business Website is required.");
-        return false;
-      }
-      if (!formData.businessRegisteredAddress.trim()) {
-        setErrorMsg("Registered Business Address is required.");
-        return false;
-      }
+      if (!formData.vatNumber.trim()) { setErrorMsg("VAT Number is required."); return false; }
+      if (!formData.companyRegistrationNumber.trim()) { setErrorMsg("Company Registration Number is required."); return false; }
+      if (!formData.businessWebsite.trim()) { setErrorMsg("Business Website is required."); return false; }
+      if (!formData.businessRegisteredAddress.trim()) { setErrorMsg("Registered Business Address is required."); return false; }
     } else if (step === 3) {
-      if (!formData.paymentReference.trim()) {
-        setErrorMsg("Bank Transfer Reference is required.");
-        return false;
-      }
+      if (!formData.paymentReference.trim()) { setErrorMsg("Bank Transfer Reference is required."); return false; }
     }
     return true;
   };
 
   const nextStep = () => {
-    if (validateStep(activeStep)) {
-      setActiveStep((prev) => Math.min(prev + 1, 3));
-    }
+    if (validateStep(activeStep)) setActiveStep((prev) => Math.min(prev + 1, 3));
   };
 
   const prevStep = () => {
@@ -179,21 +377,27 @@ export function KycOverlayForm() {
     setSuccessMsg("");
 
     try {
-      // Build submission data by filtering out approved fields (locked)
-      // and sending the updated ones
+      // Build payload — locked (APPROVED) fields are skipped; the backend handles that
+      const allTextFields = Object.keys(formData) as Array<keyof typeof formData>;
       const payload: Partial<DealerKycData> = {};
-      Object.keys(formData).forEach((key) => {
-        const fieldName = key as keyof typeof formData;
-        if (!isFieldApproved(fieldName)) {
-          payload[fieldName] = formData[fieldName];
+
+      allTextFields.forEach((key) => {
+        if (!isFieldApproved(key)) {
+          (payload as any)[key] = formData[key];
+        }
+      });
+
+      // Always include file URL fields if they are not locked
+      const fileFieldNames = Object.keys(fileUrls) as Array<keyof typeof fileUrls>;
+      fileFieldNames.forEach((key) => {
+        if (!isFieldApproved(key)) {
+          (payload as any)[key] = fileUrls[key] || undefined;
         }
       });
 
       const response = await submitDealerKyc(payload);
       setKycData(response);
       setSuccessMsg("KYC documents submitted successfully! Our administrators have been notified.");
-      
-      // Refresh AuthContext profile to ensure components get the fresh status
       await refreshProfile();
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to submit KYC data. Please verify your fields and try again.");
@@ -202,7 +406,7 @@ export function KycOverlayForm() {
     }
   };
 
-  // Render Loading Spinner
+  // ─── Render Loading ───────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/90 backdrop-blur-md text-white">
@@ -214,18 +418,16 @@ export function KycOverlayForm() {
     );
   }
 
-  // Render "Under Review" State if status is PENDING
+  // ─── Render "Under Review" State ─────────────────────────────────────────────
   if (kycData && kycData.status === "PENDING") {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-4">
-        {/* Decorative Neon Blurs */}
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
 
         <div className="dealer-glass-card max-w-xl w-full p-8 md:p-10 border border-white/5 relative overflow-hidden flex flex-col items-center text-center">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-right from-amber-500 via-primary to-amber-500 animate-pulse" />
-          
-          {/* Top Bar for Sign Out */}
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 via-primary to-amber-500 animate-pulse" />
+
           <div className="absolute top-4 right-4 z-20">
             <button
               onClick={handleSignOut}
@@ -247,9 +449,9 @@ export function KycOverlayForm() {
           <h2 className="text-2xl md:text-3xl font-black font-heading text-white tracking-tight mb-3">
             VERIFICATION IN PROGRESS
           </h2>
-          
+
           <p className="text-slate-300 text-sm leading-relaxed mb-6">
-            Your KYC application has been received and is currently under review by our superadmin team. 
+            Your KYC application has been received and is currently under review by our superadmin team.
             Verification typically takes between 1–2 hours during business operations.
           </p>
 
@@ -259,8 +461,8 @@ export function KycOverlayForm() {
               <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Submitted Items Locker</span>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              All uploaded legal forms, company registry credentials, and transfer statements are encrypted and locked. 
-              You will receive an automated email response as soon as our superadmin reviews your submission.
+              All uploaded legal forms, company registry credentials, director IDs, and transfer statements are encrypted
+              and locked. You will receive an automated email response as soon as our superadmin reviews your submission.
             </p>
           </div>
 
@@ -284,10 +486,9 @@ export function KycOverlayForm() {
     );
   }
 
-  // Render 3-Step Form Overlay
+  // ─── Render 3-Step Form Overlay ──────────────────────────────────────────────
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/95 backdrop-blur-xl p-4 overflow-y-auto custom-scrollbar">
-      {/* Decorative Neon Blurs */}
       <div className="absolute top-10 left-10 w-96 h-96 bg-primary/10 rounded-full blur-[140px] pointer-events-none" />
       <div className="absolute bottom-10 right-10 w-96 h-96 bg-blue-500/10 rounded-full blur-[140px] pointer-events-none" />
 
@@ -326,8 +527,9 @@ export function KycOverlayForm() {
                 Submission Requires Attention
               </h3>
               <p className="text-slate-300 text-xs mt-1 leading-relaxed">
-                Superadmins have completed a review of your application. Specific fields were rejected and require revision. 
-                Previously approved fields are locked and marked with a verified badge. Please update the fields highlighted in red below.
+                Superadmins have completed a review of your application. Specific fields were rejected and require
+                revision. Previously approved fields are locked and marked with a verified badge. Please update the
+                fields highlighted in red below.
               </p>
             </div>
           </div>
@@ -337,13 +539,12 @@ export function KycOverlayForm() {
         <div className="grid grid-cols-3 gap-2 mb-6">
           {[
             { step: 1, label: "Corporate Info", icon: Building2 },
-            { step: 2, label: "Commercials", icon: FileSpreadsheet },
+            { step: 2, label: "Registrations", icon: FileSpreadsheet },
             { step: 3, label: "Bank Transfer", icon: CreditCard },
           ].map((item) => {
             const isCompleted = activeStep > item.step;
             const isActive = activeStep === item.step;
             const StepIcon = item.icon;
-
             return (
               <div
                 key={item.step}
@@ -385,140 +586,111 @@ export function KycOverlayForm() {
               exit={{ opacity: 0, x: -15 }}
               transition={{ duration: 0.2 }}
             >
-              {/* STEP 1: CORPORATE DETAILS */}
+              {/* ── STEP 1: CORPORATE DETAILS ── */}
               {activeStep === 1 && (
                 <div className="space-y-5">
                   <h3 className="text-base font-extrabold uppercase text-white tracking-tight border-b border-white/5 pb-2">
-                    Step 1: Representative & Company Details
+                    Step 1: Representative &amp; Company Details
                   </h3>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    {/* Company House Name */}
-                    {renderInput({
-                      label: "Company House Registered Name",
-                      name: "companyHouseName",
-                      value: formData.companyHouseName,
-                      placeholder: "e.g. Carmazium Dealership Ltd",
-                      icon: Building2,
-                    })}
+                    {renderInput({ label: "Company House Registered Name", name: "companyHouseName", value: formData.companyHouseName, placeholder: "e.g. Carmazium Dealership Ltd", icon: Building2 })}
+                    {renderInput({ label: "Lead Director Full Name", name: "directorName", value: formData.directorName, placeholder: "e.g. Arthur Pendragon", icon: User })}
+                    {renderInput({ label: "Account Representative Full Name", name: "representativeName", value: formData.representativeName, placeholder: "e.g. John Doe", icon: User })}
+                    {renderInput({ label: "Representative Job Title", name: "representativePosition", value: formData.representativePosition, placeholder: "e.g. Head of Acquisitions", icon: User })}
 
-                    {/* Director Name */}
-                    {renderInput({
-                      label: "Lead Director Full Name",
-                      name: "directorName",
-                      value: formData.directorName,
-                      placeholder: "e.g. Arthur Pendragon",
-                      icon: User,
-                    })}
-
-                    {/* Representative Name */}
-                    {renderInput({
-                      label: "Account Representative Full Name",
-                      name: "representativeName",
-                      value: formData.representativeName,
-                      placeholder: "e.g. John Doe",
-                      icon: User,
-                    })}
-
-                    {/* Representative Position */}
-                    {renderInput({
-                      label: "Representative Job Title",
-                      name: "representativePosition",
-                      value: formData.representativePosition,
-                      placeholder: "e.g. Head of Acquisitions",
-                      icon: User,
-                    })}
-
-                    {/* PSC */}
                     <div className="md:col-span-2">
-                      {renderInput({
-                        label: "Person of Significant Control (PSC)",
-                        name: "personOfSignificantControl",
-                        value: formData.personOfSignificantControl,
-                        placeholder: "e.g. Arthur Pendragon (85% Ownership)",
-                        icon: User,
-                      })}
+                      {renderInput({ label: "Person of Significant Control (PSC)", name: "personOfSignificantControl", value: formData.personOfSignificantControl, placeholder: "e.g. Arthur Pendragon (85% Ownership)", icon: User })}
                     </div>
+                  </div>
+
+                  {/* Director ID Upload */}
+                  <div className="pt-2 border-t border-white/5">
+                    <p className="text-[10px] font-extrabold uppercase text-primary tracking-widest mb-3 flex items-center gap-1.5">
+                      <IdCard size={11} />
+                      Supporting Document Upload
+                    </p>
+                    <FileUploadField
+                      label="Director ID / Passport Photo"
+                      hint="Passport, driver's licence, or national ID · JPG, PNG, PDF · Max 10MB"
+                      fieldName="directorIdProof"
+                      value={fileUrls.directorIdProof}
+                      onUpload={handleFileUpload}
+                      onClear={handleFileClear}
+                      isApproved={isFieldApproved("directorIdProof")}
+                      rejectionNote={getFieldRejectionNote("directorIdProof")}
+                      isSubmitting={submitting}
+                      icon={IdCard}
+                    />
                   </div>
                 </div>
               )}
 
-              {/* STEP 2: COMMERCIAL REGISTRATIONS */}
+              {/* ── STEP 2: COMMERCIAL REGISTRATIONS ── */}
               {activeStep === 2 && (
                 <div className="space-y-5">
                   <h3 className="text-base font-extrabold uppercase text-white tracking-tight border-b border-white/5 pb-2">
-                    Step 2: Registrations & Business Address
+                    Step 2: Registrations &amp; Business Address
                   </h3>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    {/* VAT Number */}
-                    {renderInput({
-                      label: "VAT Registration Number",
-                      name: "vatNumber",
-                      value: formData.vatNumber,
-                      placeholder: "e.g. GB 123456789",
-                      icon: FileSpreadsheet,
-                    })}
+                    {renderInput({ label: "VAT Registration Number", name: "vatNumber", value: formData.vatNumber, placeholder: "e.g. GB 123456789", icon: FileSpreadsheet })}
+                    {renderInput({ label: "Company House Registration Number", name: "companyRegistrationNumber", value: formData.companyRegistrationNumber, placeholder: "e.g. 12345678", icon: FileSpreadsheet })}
+                    {renderInput({ label: "Corporate Website URL", name: "businessWebsite", value: formData.businessWebsite, placeholder: "e.g. https://www.mydealership.co.uk", icon: Globe })}
+                    {renderInput({ label: "Google Reviews Listing Link (Optional)", name: "googleReviewsLink", value: formData.googleReviewsLink, placeholder: "e.g. https://g.page/r/...", icon: Globe })}
 
-                    {/* Company Reg Number */}
-                    {renderInput({
-                      label: "Company House Registration Number",
-                      name: "companyRegistrationNumber",
-                      value: formData.companyRegistrationNumber,
-                      placeholder: "e.g. 12345678",
-                      icon: FileSpreadsheet,
-                    })}
-
-                    {/* Website */}
-                    {renderInput({
-                      label: "Corporate Website URL",
-                      name: "businessWebsite",
-                      value: formData.businessWebsite,
-                      placeholder: "e.g. https://www.mydealership.co.uk",
-                      icon: Globe,
-                    })}
-
-                    {/* Google Reviews */}
-                    {renderInput({
-                      label: "Google Reviews Listing Link (Optional)",
-                      name: "googleReviewsLink",
-                      value: formData.googleReviewsLink,
-                      placeholder: "e.g. https://g.page/r/...",
-                      icon: Globe,
-                    })}
-
-                    {/* Registered Address */}
                     <div className="md:col-span-2">
-                      {renderTextarea({
-                        label: "Registered Business Address",
-                        name: "businessRegisteredAddress",
-                        value: formData.businessRegisteredAddress,
-                        placeholder: "e.g. 12 Guildhall St, Folkestone, Kent, CT20 1EE, United Kingdom",
-                        icon: MapPin,
-                      })}
+                      {renderTextarea({ label: "Registered Business Address", name: "businessRegisteredAddress", value: formData.businessRegisteredAddress, placeholder: "e.g. 12 Guildhall St, Folkestone, Kent, CT20 1EE", icon: MapPin })}
                     </div>
-
-                    {/* Trading Address */}
                     <div className="md:col-span-2">
-                      {renderTextarea({
-                        label: "Trading Address (If different from Registered Address)",
-                        name: "tradingAddress",
-                        value: formData.tradingAddress,
-                        placeholder: "Leave empty if identical to registered address",
-                        icon: MapPin,
-                      })}
+                      {renderTextarea({ label: "Trading Address (If different from Registered Address)", name: "tradingAddress", value: formData.tradingAddress, placeholder: "Leave empty if identical to registered address", icon: MapPin })}
+                    </div>
+                  </div>
+
+                  {/* Document Proof Uploads */}
+                  <div className="pt-2 border-t border-white/5 space-y-4">
+                    <p className="text-[10px] font-extrabold uppercase text-primary tracking-widest flex items-center gap-1.5">
+                      <FileCheck size={11} />
+                      Supporting Document Uploads
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FileUploadField
+                        label="VAT Certificate / Registration Proof"
+                        hint="HMRC VAT registration letter or certificate · JPG, PNG, PDF · Max 10MB"
+                        fieldName="vatProof"
+                        value={fileUrls.vatProof}
+                        onUpload={handleFileUpload}
+                        onClear={handleFileClear}
+                        isApproved={isFieldApproved("vatProof")}
+                        rejectionNote={getFieldRejectionNote("vatProof")}
+                        isSubmitting={submitting}
+                        icon={FileCheck}
+                      />
+                      <FileUploadField
+                        label="Company House Certificate"
+                        hint="Certificate of Incorporation or Companies House printout · JPG, PNG, PDF · Max 10MB"
+                        fieldName="companyRegistrationProof"
+                        value={fileUrls.companyRegistrationProof}
+                        onUpload={handleFileUpload}
+                        onClear={handleFileClear}
+                        isApproved={isFieldApproved("companyRegistrationProof")}
+                        rejectionNote={getFieldRejectionNote("companyRegistrationProof")}
+                        isSubmitting={submitting}
+                        icon={FileCheck}
+                      />
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* STEP 3: PAYMENT VERIFICATION */}
+              {/* ── STEP 3: PAYMENT VERIFICATION ── */}
               {activeStep === 3 && (
                 <div className="space-y-5">
                   <h3 className="text-base font-extrabold uppercase text-white tracking-tight border-b border-white/5 pb-2">
                     Step 3: Verification Bank Transfer
                   </h3>
 
+                  {/* Bank Details Card */}
                   <div className="p-5 rounded-xl border border-primary/20 bg-primary/5 flex flex-col md:flex-row gap-5 items-start">
                     <CreditCard className="text-primary shrink-0 animate-float" size={32} />
                     <div className="space-y-2.5 text-slate-300 text-xs">
@@ -526,9 +698,9 @@ export function KycOverlayForm() {
                         Verify Account Activity (£1.00 GBP)
                       </h4>
                       <p className="leading-relaxed">
-                        To activate your commercial privileges, we require a manual £1.00 test deposit. This process validates active account ownership.
+                        To activate your commercial privileges, we require a manual £1.00 test deposit. This process
+                        validates active account ownership.
                       </p>
-                      
                       <div className="grid grid-cols-2 gap-4 py-3 px-4 bg-slate-950/80 rounded-xl border border-white/5">
                         <div>
                           <p className="text-[10px] text-slate-500 uppercase tracking-widest font-extrabold">Bank Name</p>
@@ -547,7 +719,6 @@ export function KycOverlayForm() {
                           <p className="font-bold text-white text-xs">8827 9901</p>
                         </div>
                       </div>
-
                       <p className="text-[11px] leading-relaxed text-slate-400 italic">
                         *Please insert your unique reference ID generated below into your bank transfer ref.
                       </p>
@@ -555,37 +726,40 @@ export function KycOverlayForm() {
                   </div>
 
                   <div className="space-y-5">
-                    {/* Payment Reference */}
-                    {renderInput({
-                      label: "Unique Bank Payment Reference Code",
-                      name: "paymentReference",
-                      value: formData.paymentReference,
-                      placeholder: "e.g. DEPOSIT-CARMAZIUM-XXXX",
-                      icon: CreditCard,
-                    })}
+                    {renderInput({ label: "Unique Bank Payment Reference Code", name: "paymentReference", value: formData.paymentReference, placeholder: "e.g. DEPOSIT-CARMAZIUM-XXXX", icon: CreditCard })}
 
-                    {/* Screenshot Reference URL or Description */}
-                    {renderInput({
-                      label: "Payment Confirmation Code / Optional Screenshot URL",
-                      name: "paymentScreenshot",
-                      value: formData.paymentScreenshot,
-                      placeholder: "e.g. TxID: #99012388 or screenshot link",
-                      icon: CreditCard,
-                    })}
+                    {/* Payment Screenshot Upload */}
+                    <div className="pt-2 border-t border-white/5 space-y-3">
+                      <p className="text-[10px] font-extrabold uppercase text-primary tracking-widest flex items-center gap-1.5">
+                        <Receipt size={11} />
+                        Payment Receipt Upload
+                      </p>
+                      <FileUploadField
+                        label="Bank Transfer Receipt / Screenshot"
+                        hint="Screenshot or photo of your completed bank transfer · JPG, PNG, PDF · Max 10MB"
+                        fieldName="paymentScreenshot"
+                        value={fileUrls.paymentScreenshot}
+                        onUpload={handleFileUpload}
+                        onClear={handleFileClear}
+                        isApproved={isFieldApproved("paymentScreenshot")}
+                        rejectionNote={getFieldRejectionNote("paymentScreenshot")}
+                        isSubmitting={submitting}
+                        icon={Receipt}
+                      />
+                    </div>
                   </div>
                 </div>
               )}
             </motion.div>
           </AnimatePresence>
 
-          {/* Alert messages */}
+          {/* Alert Messages */}
           {errorMsg && (
             <div className="mt-6 p-4 rounded-xl border border-red-500/20 bg-red-500/5 flex items-start gap-2.5 text-xs text-red-500">
               <AlertCircle size={16} className="shrink-0 mt-0.5" />
               <span>{errorMsg}</span>
             </div>
           )}
-
           {successMsg && (
             <div className="mt-6 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 flex items-start gap-2.5 text-xs text-emerald-400">
               <CheckCircle2 size={16} className="shrink-0 mt-0.5" />
@@ -643,13 +817,9 @@ export function KycOverlayForm() {
     </div>
   );
 
-  // Helper renderer for input fields
+  // ─── Helper: Text Input Field ─────────────────────────────────────────────────
   function renderInput({
-    label,
-    name,
-    value,
-    placeholder,
-    icon: Icon,
+    label, name, value, placeholder, icon: Icon,
   }: {
     label: string;
     name: keyof typeof formData;
@@ -659,18 +829,16 @@ export function KycOverlayForm() {
   }) {
     const isApproved = isFieldApproved(name);
     const rejectionNote = getFieldRejectionNote(name);
-
     return (
       <div className="space-y-1.5 text-left">
-        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider block flex items-center justify-between">
+        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider flex items-center justify-between">
           <span>{label}</span>
           {isApproved && (
             <span className="flex items-center gap-1 text-[8px] font-black text-emerald-400 uppercase tracking-widest px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
-              <Lock size={8} /> LOCKED & VERIFIED
+              <Lock size={8} /> LOCKED &amp; VERIFIED
             </span>
           )}
         </label>
-
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
             <Icon size={14} className={isApproved ? "text-emerald-500" : rejectionNote ? "text-red-500" : ""} />
@@ -691,7 +859,6 @@ export function KycOverlayForm() {
             }`}
           />
         </div>
-
         {rejectionNote && (
           <p className="text-[10px] text-red-500 font-semibold leading-relaxed flex items-start gap-1">
             <AlertCircle size={10} className="shrink-0 mt-0.5" />
@@ -702,13 +869,9 @@ export function KycOverlayForm() {
     );
   }
 
-  // Helper renderer for textarea fields
+  // ─── Helper: Textarea Field ───────────────────────────────────────────────────
   function renderTextarea({
-    label,
-    name,
-    value,
-    placeholder,
-    icon: Icon,
+    label, name, value, placeholder, icon: Icon,
   }: {
     label: string;
     name: keyof typeof formData;
@@ -718,18 +881,16 @@ export function KycOverlayForm() {
   }) {
     const isApproved = isFieldApproved(name);
     const rejectionNote = getFieldRejectionNote(name);
-
     return (
       <div className="space-y-1.5 text-left">
-        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider block flex items-center justify-between">
+        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider flex items-center justify-between">
           <span>{label}</span>
           {isApproved && (
             <span className="flex items-center gap-1 text-[8px] font-black text-emerald-400 uppercase tracking-widest px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
-              <Lock size={8} /> LOCKED & VERIFIED
+              <Lock size={8} /> LOCKED &amp; VERIFIED
             </span>
           )}
         </label>
-
         <div className="relative">
           <div className="absolute top-3 left-3.5 flex items-start pointer-events-none text-slate-500">
             <Icon size={14} className={isApproved ? "text-emerald-500" : rejectionNote ? "text-red-500" : ""} />
@@ -750,7 +911,6 @@ export function KycOverlayForm() {
             }`}
           />
         </div>
-
         {rejectionNote && (
           <p className="text-[10px] text-red-500 font-semibold leading-relaxed flex items-start gap-1">
             <AlertCircle size={10} className="shrink-0 mt-0.5" />

@@ -7,9 +7,12 @@ export interface DealerKycData {
   representativeName: string;
   representativePosition: string;
   vatNumber: string;
+  vatProof?: string;
   companyRegistrationNumber: string;
+  companyRegistrationProof?: string;
   personOfSignificantControl: string;
   directorName: string;
+  directorIdProof?: string;
   businessWebsite: string;
   businessRegisteredAddress: string;
   tradingAddress?: string;
@@ -27,6 +30,7 @@ export interface DealerKycData {
   submittedAt?: string;
   reviewedAt?: string;
 }
+
 
 export async function getDealerKyc(): Promise<DealerKycData | null> {
   const result = await apiClient<{ data: DealerKycData | null }>('/dealers/kyc');

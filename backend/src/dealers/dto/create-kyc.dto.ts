@@ -22,10 +22,20 @@ export class CreateKycDto {
     @IsNotEmpty()
     vatNumber: string;
 
+    @ApiPropertyOptional({ description: 'URL to uploaded VAT certificate/proof image' })
+    @IsOptional()
+    @IsString()
+    vatProof?: string;
+
     @ApiProperty({ description: 'Company Registration Number' })
     @IsString()
     @IsNotEmpty()
     companyRegistrationNumber: string;
+
+    @ApiPropertyOptional({ description: 'URL to uploaded Company House registration certificate' })
+    @IsOptional()
+    @IsString()
+    companyRegistrationProof?: string;
 
     @ApiProperty({ description: 'Person of Significant Control' })
     @IsString()
@@ -36,6 +46,11 @@ export class CreateKycDto {
     @IsString()
     @IsNotEmpty()
     directorName: string;
+
+    @ApiPropertyOptional({ description: 'URL to uploaded Director ID / Passport photo' })
+    @IsOptional()
+    @IsString()
+    directorIdProof?: string;
 
     @ApiProperty({ description: 'Business Website' })
     @IsString()
@@ -62,7 +77,7 @@ export class CreateKycDto {
     @IsNotEmpty()
     paymentReference: string;
 
-    @ApiPropertyOptional({ description: 'Stripe/Supabase URL of payment proof screenshot' })
+    @ApiPropertyOptional({ description: 'Supabase Storage URL of payment proof screenshot' })
     @IsOptional()
     @IsString()
     paymentScreenshot?: string;
