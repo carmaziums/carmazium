@@ -108,7 +108,7 @@ async function directUploadToSupabase(
             'Authorization': authHeader,
             'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
             'Content-Type': file.type || 'application/octet-stream',
-            'x-upsert': 'false',
+            'x-upsert': 'true', // Allow overwrite to avoid 400 on duplicate names
             'Cache-Control': 'max-age=3600',
         },
         body: file,
@@ -126,28 +126,32 @@ async function directUploadToSupabase(
 }
 
 /**
- * Upload an image to Supabase Storage
- * Uses the Supabase SDK first. If it fails with an abort/network error,
- * falls back to a direct REST upload that avoids the SDK's internal AbortController.
+ * Upload an image/document to Supabase Storage.
+ * Uses the existing 'listings' bucket by default (already configured and public).
+ * Pass a folder prefix (e.g. 'kyc') to organise files in sub-paths within the bucket.
  *
- * @param file - The file to upload
+ * @param file   - The file to upload
  * @param bucket - The storage bucket name (default: 'listings')
+ * @param folder - Optional sub-folder path inside the bucket (e.g. 'kyc', 'handover/123')
  * @returns Public URL of the uploaded file
  */
 export async function uploadImage(
     file: File,
-    bucket: string = 'listings'
+    bucket: string = 'listings',
+    folder?: string
 ): Promise<string> {
     // Check if initialized properly
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
         throw new Error('Supabase is not configured. Please add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your environment variables.');
     }
 
-    // Generate unique filename: timestamp-uuid-originalname
+    // Generate unique filename: timestamp-uuid.ext
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2, 15);
-    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-    const fileName = `${timestamp}-${randomId}.${fileExt}`;
+    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'bin';
+    const baseName = `${timestamp}-${randomId}.${fileExt}`;
+    // Prepend folder prefix if provided (e.g. 'kyc/1234567-abc.jpg')
+    const fileName = folder ? `${folder.replace(/\/+$/, '')}/${baseName}` : baseName;
 
     let lastError: Error | null = null;
     const maxDirectAttempts = 3;
@@ -172,9 +176,9 @@ export async function uploadImage(
 
     // All strategies exhausted
     throw new Error(
-        'Unable to upload image after multiple attempts. ' +
+        'Unable to upload file after multiple attempts. ' +
         'This may be caused by a slow or unstable connection. ' +
-        'Please try again in a moment, or try uploading a smaller image. (' + lastError?.message + ')'
+        'Please try again in a moment, or try uploading a smaller file. (' + lastError?.message + ')'
     );
 }
 
