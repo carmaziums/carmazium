@@ -209,6 +209,15 @@ enum AuctionStatus {
   @@map("auction_status")
 }
 
+enum KycStatus {
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@map("kyc_status")
+}
+
+
 // ============================================================================
 // USER MANAGEMENT & PROFILES
 // ============================================================================
@@ -335,10 +344,40 @@ model DealerProfile {
   staff DealerStaff[]
   leads Lead[]
   invites DealerInvite[]
+  kyc   DealerKyc?
 
   @@index([userId])
   @@map("dealer_profiles")
 }
+
+model DealerKyc {
+  id                         String        @id @default(uuid())
+  dealerProfileId            String        @unique
+  companyHouseName           String
+  representativeName         String
+  representativePosition     String
+  vatNumber                  String
+  companyRegistrationNumber  String
+  personOfSignificantControl String
+  directorName               String
+  businessWebsite            String
+  businessRegisteredAddress  String
+  tradingAddress             String?
+  googleReviewsLink          String?
+  paymentReference           String
+  paymentScreenshot          String?       // Optional URL to stored image
+  status                     KycStatus     @default(PENDING)
+  documentStatuses           Json?         // Granular field status: Map of field name to { status: KycStatus, note: string }
+  submittedAt                DateTime      @default(now())
+  reviewedAt                 DateTime?
+  createdAt                  DateTime      @default(now())
+  updatedAt                  DateTime      @updatedAt
+
+  dealerProfile              DealerProfile @relation(fields: [dealerProfileId], references: [id], onDelete: Cascade)
+
+  @@map("dealer_kycs")
+}
+
 
 model DealerInvite {
   id              String     @id @default(uuid())

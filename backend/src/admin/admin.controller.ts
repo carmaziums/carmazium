@@ -20,6 +20,7 @@ import {
     ApiResponse,
 } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
+import { ReviewKycDto } from './dto/review-kyc.dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -163,4 +164,28 @@ export class AdminController {
         const data = await this.adminService.getAnalyticsData();
         return new StandardResponse(data);
     }
+
+    // ── Dealer KYC Review ─────────────────────────────────────────────────────
+
+    @Get('dealers/kyc-pending')
+    @ApiOperation({ summary: 'Get list of all pending or rejected dealer KYC applications' })
+    @ApiResponse({ status: 200, description: 'List of pending dealer KYC applications' })
+    async getPendingKyc(): Promise<StandardResponse<any>> {
+        const list = await this.adminService.getPendingKyc();
+        return new StandardResponse(list);
+    }
+
+    @Patch('dealers/kyc/:id/review')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Submit field-by-field review decisions and notes for a dealer KYC application' })
+    @ApiParam({ name: 'id', description: 'DealerKyc record UUID' })
+    @ApiResponse({ status: 200, description: 'KYC review successfully processed' })
+    async reviewKyc(
+        @Param('id') id: string,
+        @Body() dto: ReviewKycDto,
+    ): Promise<StandardResponse<any>> {
+        const kyc = await this.adminService.reviewKyc(id, dto);
+        return new StandardResponse(kyc);
+    }
 }
+
