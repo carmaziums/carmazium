@@ -47,20 +47,25 @@ export class DealersService {
         });
 
         if (!profileResult) {
-            // Auto-create a blank profile so new dealers don't hit 404
+            // Auto-create a blank profile so new dealers don't hit 404.
+            // Use a unique placeholder vatNumber (prefixed with userId) to avoid
+            // the @unique constraint violation that causes a 500 when vatNumber is ''.
             const user = await this.prisma.user.findUnique({ where: { id: userId } });
             if (!user || user.role !== 'DEALER') {
                 throw new NotFoundException('Dealer profile not found');
             }
-            profileResult = await this.prisma.dealerProfile.create({
-                data: {
+            profileResult = await this.prisma.dealerProfile.upsert({
+                where: { userId },
+                create: {
                     userId,
-                    companyName: user.firstName ? `${user.firstName}'s Dealership` : 'My Dealership',
-                    vatNumber: '',
-                    registrationNumber: '',
-                    businessAddress: '',
+                    companyName: user.firstName
+                        ? `${user.firstName}${user.lastName ? ' ' + user.lastName : ''}'s Dealership`
+                        : 'My Dealership',
+                    // Unique placeholder — dealer will set real VAT number in their KYC form
+                    vatNumber: `PENDING-${userId.substring(0, 8)}`,
                     isVerified: false,
                 },
+                update: {},
                 include: { kyc: true },
             });
         }
@@ -78,20 +83,25 @@ export class DealersService {
         });
 
         if (!profileResult) {
-            // Auto-create a blank profile so new dealers don't hit 404 on first submission
+            // Auto-create a blank profile using upsert to handle race conditions.
+            // Use a unique placeholder vatNumber to avoid the @unique constraint
+            // violation that crashes the endpoint with a 500 when vatNumber is ''.
             const user = await this.prisma.user.findUnique({ where: { id: userId } });
             if (!user || user.role !== 'DEALER') {
                 throw new NotFoundException('Dealer profile not found');
             }
-            profileResult = await this.prisma.dealerProfile.create({
-                data: {
+            profileResult = await this.prisma.dealerProfile.upsert({
+                where: { userId },
+                create: {
                     userId,
-                    companyName: user.firstName ? `${user.firstName}'s Dealership` : 'My Dealership',
-                    vatNumber: '',
-                    registrationNumber: '',
-                    businessAddress: '',
+                    companyName: user.firstName
+                        ? `${user.firstName}${user.lastName ? ' ' + user.lastName : ''}'s Dealership`
+                        : 'My Dealership',
+                    // Unique placeholder — dealer will set real VAT number in their KYC form
+                    vatNumber: `PENDING-${userId.substring(0, 8)}`,
                     isVerified: false,
                 },
+                update: {},
                 include: { kyc: true, user: true },
             });
         }
@@ -118,30 +128,50 @@ export class DealersService {
             'paymentScreenshot',
         ];
 
+        // Fields that are required (non-nullable) in the DealerKyc schema.
+        // We must never write null to these — fall back to existing DB value instead.
+        const requiredFields = new Set([
+            'companyHouseName',
+            'representativeName',
+            'representativePosition',
+            'vatNumber',
+            'companyRegistrationNumber',
+            'personOfSignificantControl',
+            'directorName',
+            'businessWebsite',
+            'businessRegisteredAddress',
+            'paymentReference',
+        ]);
+
         let documentStatuses: Record<string, any> = {};
         const updatedFields: Record<string, any> = {};
 
         if (profile.kyc) {
-            // Existing KYC record
+            // ─── Existing KYC record — resubmission after review ───────────
             const existingStatuses = (profile.kyc.documentStatuses as Record<string, any>) || {};
-            
+
             for (const field of fieldsList) {
                 const existingFieldStatus = existingStatuses[field]?.status;
+                const existingValue = (profile.kyc as any)[field];
+                const incomingValue = (dto as any)[field];
+
                 if (existingFieldStatus === 'APPROVED') {
-                    // Lock: keep existing value and approved status
-                    updatedFields[field] = (profile.kyc as any)[field];
+                    // Lock: always use the already-approved DB value
+                    updatedFields[field] = existingValue;
                     documentStatuses[field] = existingStatuses[field];
                 } else {
-                    // Update: use new value, set to PENDING
-                    updatedFields[field] = (dto as any)[field] ?? null;
-                    documentStatuses[field] = {
-                        status: 'PENDING',
-                        note: '',
-                    };
+                    // Update with incoming value.
+                    // For required (non-nullable) fields, fall back to the existing DB
+                    // value if the DTO provides null/undefined to prevent Prisma crashes.
+                    const value = (incomingValue !== null && incomingValue !== undefined)
+                        ? incomingValue
+                        : (requiredFields.has(field) ? (existingValue ?? '') : null);
+
+                    updatedFields[field] = value;
+                    documentStatuses[field] = { status: 'PENDING', note: '' };
                 }
             }
 
-            // Update the KYC record
             const updatedKyc = await this.prisma.dealerKyc.update({
                 where: { id: profile.kyc.id },
                 data: {
@@ -152,18 +182,20 @@ export class DealersService {
                 } as any,
             });
 
-            // Alert admins
+            // Alert admins of resubmission
             await this.notifyAdminsOfKycSubmission(profile.companyName);
-
             return updatedKyc;
+
         } else {
-            // New KYC record
+            // ─── First KYC submission ────────────────────────────────────────
             for (const field of fieldsList) {
-                updatedFields[field] = (dto as any)[field] ?? null;
-                documentStatuses[field] = {
-                    status: 'PENDING',
-                    note: '',
-                };
+                const incomingValue = (dto as any)[field];
+                // For required fields default to '' rather than null to prevent DB errors
+                updatedFields[field] = (incomingValue !== null && incomingValue !== undefined)
+                    ? incomingValue
+                    : (requiredFields.has(field) ? '' : null);
+
+                documentStatuses[field] = { status: 'PENDING', note: '' };
             }
 
             const newKyc = await this.prisma.dealerKyc.create({
@@ -176,9 +208,8 @@ export class DealersService {
                 } as any,
             });
 
-            // Alert admins
+            // Alert admins of first submission
             await this.notifyAdminsOfKycSubmission(profile.companyName);
-
             return newKyc;
         }
     }
