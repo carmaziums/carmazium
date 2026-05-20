@@ -377,23 +377,15 @@ export function KycOverlayForm() {
     setSuccessMsg("");
 
     try {
-      // Build payload — locked (APPROVED) fields are skipped; the backend handles that
-      const allTextFields = Object.keys(formData) as Array<keyof typeof formData>;
-      const payload: Partial<DealerKycData> = {};
-
-      allTextFields.forEach((key) => {
-        if (!isFieldApproved(key)) {
-          (payload as any)[key] = formData[key];
-        }
-      });
-
-      // Always include file URL fields if they are not locked
-      const fileFieldNames = Object.keys(fileUrls) as Array<keyof typeof fileUrls>;
-      fileFieldNames.forEach((key) => {
-        if (!isFieldApproved(key)) {
-          (payload as any)[key] = fileUrls[key] || undefined;
-        }
-      });
+      // Send ALL fields in the payload — the backend service locks approved fields
+      // by reading their values from the database (ignoring what arrives in the DTO).
+      // Previously we skipped approved fields here, which caused the backend's
+      // class-validator to reject the request with 400 "field should not be empty"
+      // because required fields were absent from the payload.
+      const payload: Partial<DealerKycData> = {
+        ...formData,
+        ...fileUrls,
+      };
 
       const response = await submitDealerKyc(payload);
       setKycData(response);
@@ -403,6 +395,7 @@ export function KycOverlayForm() {
       setErrorMsg(err.message || "Failed to submit KYC data. Please verify your fields and try again.");
     } finally {
       setSubmitting(false);
+
     }
   };
 
