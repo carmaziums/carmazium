@@ -411,6 +411,36 @@ export function KycOverlayForm() {
     );
   }
 
+  // ─── Render "Approved" State ─────────────────────────────────────────────────
+  // Edge case: if the KYC is APPROVED but the layout hasn't unmounted this
+  // component yet (profile refresh still in-flight), show a success screen
+  // and push to the dashboard so the layout re-evaluates the guard.
+  if (kycData && kycData.status === "APPROVED") {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-4">
+        <div className="dealer-glass-card max-w-xl w-full p-8 md:p-10 border border-emerald-500/20 relative overflow-hidden flex flex-col items-center text-center">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-primary to-emerald-500" />
+          <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mb-6">
+            <CheckCircle2 size={40} className="text-emerald-400" />
+          </div>
+          <h2 className="text-2xl md:text-3xl font-black font-heading text-white tracking-tight mb-3">
+            KYC APPROVED
+          </h2>
+          <p className="text-slate-300 text-sm leading-relaxed mb-8">
+            Your dealership has been fully verified. Click below to access your dashboard.
+          </p>
+          <button
+            onClick={() => router.push("/dashboard/dealer")}
+            className="flex items-center justify-center gap-2 px-8 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+          >
+            <Check size={14} />
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // ─── Render "Under Review" State ─────────────────────────────────────────────
   if (kycData && kycData.status === "PENDING") {
     return (
@@ -466,7 +496,13 @@ export function KycOverlayForm() {
                 const kyc = await getDealerKyc();
                 setKycData(kyc);
                 await refreshProfile();
-                setLoading(false);
+                if (kyc?.status === "APPROVED") {
+                  // Profile is refreshed (isVerified = true); push to dashboard so
+                  // the layout guard re-evaluates and unmounts this overlay.
+                  router.push("/dashboard/dealer");
+                } else {
+                  setLoading(false);
+                }
               }}
               className="flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest transition-all cursor-pointer shadow-neon"
             >
