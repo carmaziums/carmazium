@@ -80,7 +80,7 @@ function FileUploadField({
 
     setUploading(true);
     try {
-      const url = await uploadImage(file, "kyc-documents");
+      const url = await uploadImage(file, "listings", "kyc");
       onUpload(fieldName, url);
     } catch (err: any) {
       setUploadError(err.message || "Upload failed. Please try again.");
