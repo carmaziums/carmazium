@@ -25,6 +25,7 @@ import { DealersService } from './dealers.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { InviteStaffDto } from './dto/invite-staff.dto';
+import { CreateKycDto } from './dto/create-kyc.dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dto';
@@ -136,4 +137,27 @@ export class DealersController {
         const result = await this.dealersService.removeStaff(user.id, id);
         return new StandardResponse(result);
     }
+
+    // ─── KYC (Business Verification) ───────────────────────────────
+
+    @Get('kyc')
+    @ApiOperation({ summary: 'Get current dealer KYC status and document statuses' })
+    @ApiResponse({ status: 200, description: 'KYC data' })
+    async getKyc(@CurrentUser() user: any): Promise<StandardResponse<any>> {
+        const kyc = await this.dealersService.getKyc(user.id);
+        return new StandardResponse(kyc);
+    }
+
+    @Post('kyc')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Submit or update dealer KYC business documents' })
+    @ApiResponse({ status: 200, description: 'KYC application submitted' })
+    async submitKyc(
+        @CurrentUser() user: any,
+        @Body() dto: CreateKycDto,
+    ): Promise<StandardResponse<any>> {
+        const kyc = await this.dealersService.submitKyc(user.id, dto);
+        return new StandardResponse(kyc);
+    }
 }
+

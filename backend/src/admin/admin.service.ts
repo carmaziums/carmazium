@@ -2,12 +2,15 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
 import { UserRole } from '@prisma/client';
+import { EmailService } from '../email/email.service';
+import { ReviewKycDto } from './dto/review-kyc.dto';
 
 @Injectable()
 export class AdminService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly paymentsService: PaymentsService,
+        private readonly emailService: EmailService,
     ) { }
 
     async getAllUsers(page = 1, limit = 20) {
@@ -254,4 +257,144 @@ export class AdminService {
 
         return data;
     }
+
+    async getPendingKyc() {
+        return this.prisma.dealerKyc.findMany({
+            where: {
+                status: {
+                    in: ['PENDING', 'REJECTED']
+                }
+            },
+            include: {
+                dealerProfile: {
+                    include: {
+                        user: {
+                            select: {
+                                email: true,
+                                firstName: true,
+                                lastName: true,
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: { submittedAt: 'desc' },
+        });
+    }
+
+    async reviewKyc(kycId: string, dto: ReviewKycDto) {
+        const kyc = await this.prisma.dealerKyc.findUnique({
+            where: { id: kycId },
+            include: {
+                dealerProfile: {
+                    include: {
+                        user: {
+                            select: {
+                                email: true,
+                                firstName: true,
+                                lastName: true,
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!kyc) {
+            throw new NotFoundException('KYC record not found');
+        }
+
+        const currentDocStatuses = (kyc.documentStatuses as Record<string, any>) || {};
+        const updatedDocStatuses = { ...currentDocStatuses };
+
+        // Process the reviews granularly
+        for (const review of dto.fields) {
+            updatedDocStatuses[review.field] = {
+                status: review.status,
+                note: review.status === 'REJECTED' ? (review.note || '') : '',
+            };
+        }
+
+        // Determine if all are approved, or if any is rejected
+        const allFields = [
+            'companyHouseName',
+            'representativeName',
+            'representativePosition',
+            'vatNumber',
+            'companyRegistrationNumber',
+            'personOfSignificantControl',
+            'directorName',
+            'businessWebsite',
+            'businessRegisteredAddress',
+            'tradingAddress',
+            'googleReviewsLink',
+            'paymentReference',
+            'paymentScreenshot',
+        ];
+
+        let hasRejected = false;
+        let hasPending = false;
+        const rejectedFields: { field: string; note: string }[] = [];
+
+        for (const field of allFields) {
+            const fieldStatus = updatedDocStatuses[field]?.status || 'PENDING';
+            if (fieldStatus === 'REJECTED') {
+                hasRejected = true;
+                rejectedFields.push({
+                    field,
+                    note: updatedDocStatuses[field]?.note || '',
+                });
+            } else if (fieldStatus === 'PENDING') {
+                hasPending = true;
+            }
+        }
+
+        let overallStatus: 'PENDING' | 'APPROVED' | 'REJECTED' = 'PENDING';
+        if (hasRejected) {
+            overallStatus = 'REJECTED';
+        } else if (!hasPending) {
+            overallStatus = 'APPROVED';
+        }
+
+        // Update the KYC record
+        const updatedKyc = await this.prisma.dealerKyc.update({
+            where: { id: kycId },
+            data: {
+                status: overallStatus,
+                documentStatuses: updatedDocStatuses,
+                reviewedAt: new Date(),
+            },
+        });
+
+        const dealerEmail = kyc.dealerProfile.user.email;
+        const dealerName = kyc.dealerProfile.companyName || kyc.dealerProfile.user.firstName || 'Dealer';
+
+        if (overallStatus === 'APPROVED') {
+            // Unblock dealer dashboard
+            await this.prisma.dealerProfile.update({
+                where: { id: kyc.dealerProfileId },
+                data: {
+                    isVerified: true,
+                    verificationDate: new Date(),
+                },
+            });
+
+            // Send approval email
+            await this.emailService.sendKycApprovedDealerAlert(dealerEmail, dealerName).catch(console.error);
+        } else if (overallStatus === 'REJECTED') {
+            // Keep blocked
+            await this.prisma.dealerProfile.update({
+                where: { id: kyc.dealerProfileId },
+                data: {
+                    isVerified: false,
+                },
+            });
+
+            // Send rejection email
+            await this.emailService.sendKycRejectedDealerAlert(dealerEmail, dealerName, rejectedFields).catch(console.error);
+        }
+
+        return updatedKyc;
+    }
 }
+

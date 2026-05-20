@@ -24,7 +24,12 @@
       "Bash(Remove-Item -Force \"d:\\\\carmazium\\\\src\\\\lib\\\\pricingApi.ts\")",
       "Bash(Write-Output \"Deleted 3 files\")",
       "Bash(fly deploy *)",
-      "PowerShell(New-Item -ItemType Directory -Path \"d:\\\\carmazium\\\\backend\\\\prisma\\\\migrations\\\\20260518_add_legal_declarations_to_listings\" -Force)"
+      "PowerShell(New-Item -ItemType Directory -Path \"d:\\\\carmazium\\\\backend\\\\prisma\\\\migrations\\\\20260518_add_legal_declarations_to_listings\" -Force)",
+      "Bash(Get-ChildItem -Path \"D:\\\\carmazium\\\\backend\\\\src\\\\hpi\" -File -Recurse)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "PowerShell(Get-ChildItem -Path \"d:\\\\carmazium\\\\public\\\\assets\\\\3D\" -Recurse -ErrorAction SilentlyContinue | Select-Object FullName, @{Name=\"SizeMB\";Expression={[math]::Round\\($_.Length/1MB, 2\\)}} | ConvertTo-Json)",
+      "PowerShell(Get-ChildItem -Path \"d:\\\\carmazium\\\\public\\\\assets\\\\3D\" -File | Select-Object Name, @{Name=\"SizeMB\";Expression={[math]::Round\\($_.Length/1MB, 2\\)}}, @{Name=\"SizeKB\";Expression={[math]::Round\\($_.Length/1KB, 2\\)}} | Format-Table -AutoSize)",
+      "Bash(npm install *)"
     ]
   }
 }

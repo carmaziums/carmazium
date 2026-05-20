@@ -277,4 +277,96 @@ export class EmailService {
             return null;
         }
     }
+
+    async sendKycSubmissionAdminAlert(adminEmails: string[], dealerName: string) {
+        const bodyHtml = `
+            <h1 style="margin: 0 0 16px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 24px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
+                New Dealer KYC Submission 🛡️
+            </h1>
+            <p style="margin: 0 0 24px; font-size: 15px; color: #cbd5e1; line-height: 1.6;">
+                A new dealer profile, <strong>${dealerName}</strong>, has submitted their business verification documents for review.
+            </p>
+            <p style="margin: 0 0 32px; font-size: 14px; color: #94a3b8; line-height: 1.6;">
+                Please log in to your Superadmin Dashboard and navigate to the Dealer KYC section to inspect their submitted files and approve or reject them field-by-field.
+            </p>
+            <div style="text-align: center; margin: 36px 0 24px;">
+                <a href="${this.frontendUrl}/dashboard/admin/dealer-verification" target="_blank"
+                   style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #ed1c24, #c41920); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 8px 25px rgba(237,28,36,0.35);">
+                    Review KYC Submission
+                </a>
+            </div>
+        `;
+        return this.sendBrandedEmail({
+            to: adminEmails,
+            subject: `Action Required: New KYC Submission from ${dealerName} 🛡️`,
+            bodyHtml,
+        });
+    }
+
+    async sendKycApprovedDealerAlert(dealerEmail: string, dealerName: string) {
+        const bodyHtml = `
+            <h1 style="margin: 0 0 16px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 24px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
+                KYC Verification Approved! 🎉
+            </h1>
+            <p style="margin: 0 0 24px; font-size: 15px; color: #cbd5e1; line-height: 1.6;">
+                Dear <strong>${dealerName}</strong>, we are thrilled to inform you that your dealership business verification (KYC) has been fully approved by our administration!
+            </p>
+            <p style="margin: 0 0 32px; font-size: 14px; color: #94a3b8; line-height: 1.6;">
+                All your submitted business documents have been verified. Your dealer dashboard is now fully unlocked and ready to use. You can list cars, run auctions, and manage leads!
+            </p>
+            <div style="text-align: center; margin: 36px 0 24px;">
+                <a href="${this.frontendUrl}/dashboard/dealer" target="_blank"
+                   style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #4ade80, #16a34a); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 8px 25px rgba(74,222,128,0.35);">
+                    Access Dealer Dashboard
+                </a>
+            </div>
+        `;
+        return this.sendBrandedEmail({
+            to: dealerEmail,
+            subject: 'Congratulations! Your CarMazium Dealer Profile is Approved 🎉',
+            bodyHtml,
+        });
+    }
+
+    async sendKycRejectedDealerAlert(dealerEmail: string, dealerName: string, rejectedFields: { field: string; note: string }[]) {
+        const fieldListHtml = rejectedFields
+            .map(
+                (f) => `
+                <li style="margin-bottom: 12px; color: #fda4af; font-size: 14px; line-height: 1.5;">
+                    <strong style="color: #ffffff;">${f.field.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase())}:</strong> 
+                    <span style="display: block; font-style: italic; color: #cbd5e1; margin-top: 4px; padding-left: 12px; border-left: 2px solid #f43f5e;">"${f.note || 'No reason provided.'}"</span>
+                </li>`,
+            )
+            .join('');
+
+        const bodyHtml = `
+            <h1 style="margin: 0 0 16px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 24px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
+                KYC Verification Update ⚠️
+            </h1>
+            <p style="margin: 0 0 24px; font-size: 15px; color: #cbd5e1; line-height: 1.6;">
+                Dear <strong>${dealerName}</strong>, some of the business verification documents you provided could not be approved by our administration.
+            </p>
+            <p style="margin: 0 0 16px; font-size: 14px; color: #94a3b8; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em;">
+                Please review the feedback and re-upload the following details:
+            </p>
+            <ul style="margin: 0 0 32px; padding-left: 20px;">
+                ${fieldListHtml}
+            </ul>
+            <p style="margin: 0 0 32px; font-size: 14px; color: #94a3b8; line-height: 1.6;">
+                Note that your previously approved documents are locked and saved; you only need to re-submit these specific items.
+            </p>
+            <div style="text-align: center; margin: 36px 0 24px;">
+                <a href="${this.frontendUrl}/dashboard/dealer" target="_blank"
+                   style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #ed1c24, #c41920); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 8px 25px rgba(237,28,36,0.35);">
+                    Update Documents
+                </a>
+            </div>
+        `;
+        return this.sendBrandedEmail({
+            to: dealerEmail,
+            subject: 'Action Required: Update your CarMazium Dealer Documents ⚠️',
+            bodyHtml,
+        });
+    }
 }
+

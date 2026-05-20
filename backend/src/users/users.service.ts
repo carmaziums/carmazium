@@ -46,7 +46,11 @@ export class UsersService {
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
             include: {
-                dealerProfile: true,
+                dealerProfile: {
+                    include: {
+                        kyc: true
+                    }
+                },
                 contractorProfile: true,
                 financePartnerProfile: true,
                 insurancePartnerProfile: true,

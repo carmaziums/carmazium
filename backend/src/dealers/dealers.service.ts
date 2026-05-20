@@ -4,10 +4,15 @@ import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { InviteStaffDto } from './dto/invite-staff.dto';
 import { subDays } from 'date-fns';
+import { EmailService } from '../email/email.service';
+import { CreateKycDto } from './dto/create-kyc.dto';
 
 @Injectable()
 export class DealersService {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly emailService: EmailService,
+    ) {}
 
     // ─── Profile helpers ────────────────────────────────────────────
 
@@ -32,6 +37,122 @@ export class DealersService {
 
         if (!profile) throw new NotFoundException('Dealer profile not found');
         return profile;
+    }
+
+    /** Get the KYC record for a dealer */
+    async getKyc(userId: string) {
+        const profile = await this.prisma.dealerProfile.findUnique({
+            where: { userId },
+            include: { kyc: true },
+        });
+
+        if (!profile) throw new NotFoundException('Dealer profile not found');
+        return profile.kyc;
+    }
+
+    /** Submit/Update the KYC record for a dealer */
+    async submitKyc(userId: string, dto: CreateKycDto) {
+        const profile = await this.prisma.dealerProfile.findUnique({
+            where: { userId },
+            include: { kyc: true, user: true },
+        });
+
+        if (!profile) throw new NotFoundException('Dealer profile not found');
+
+        const fieldsList = [
+            'companyHouseName',
+            'representativeName',
+            'representativePosition',
+            'vatNumber',
+            'companyRegistrationNumber',
+            'personOfSignificantControl',
+            'directorName',
+            'businessWebsite',
+            'businessRegisteredAddress',
+            'tradingAddress',
+            'googleReviewsLink',
+            'paymentReference',
+            'paymentScreenshot',
+        ];
+
+        let documentStatuses: Record<string, any> = {};
+        const updatedFields: Record<string, any> = {};
+
+        if (profile.kyc) {
+            // Existing KYC record
+            const existingStatuses = (profile.kyc.documentStatuses as Record<string, any>) || {};
+            
+            for (const field of fieldsList) {
+                const existingFieldStatus = existingStatuses[field]?.status;
+                if (existingFieldStatus === 'APPROVED') {
+                    // Lock: keep existing value and approved status
+                    updatedFields[field] = (profile.kyc as any)[field];
+                    documentStatuses[field] = existingStatuses[field];
+                } else {
+                    // Update: use new value, set to PENDING
+                    updatedFields[field] = (dto as any)[field] ?? null;
+                    documentStatuses[field] = {
+                        status: 'PENDING',
+                        note: '',
+                    };
+                }
+            }
+
+            // Update the KYC record
+            const updatedKyc = await this.prisma.dealerKyc.update({
+                where: { id: profile.kyc.id },
+                data: {
+                    ...updatedFields,
+                    status: 'PENDING',
+                    documentStatuses,
+                    submittedAt: new Date(),
+                } as any,
+            });
+
+            // Alert admins
+            await this.notifyAdminsOfKycSubmission(profile.companyName);
+
+            return updatedKyc;
+        } else {
+            // New KYC record
+            for (const field of fieldsList) {
+                updatedFields[field] = (dto as any)[field] ?? null;
+                documentStatuses[field] = {
+                    status: 'PENDING',
+                    note: '',
+                };
+            }
+
+            const newKyc = await this.prisma.dealerKyc.create({
+                data: {
+                    ...updatedFields,
+                    dealerProfileId: profile.id,
+                    status: 'PENDING',
+                    documentStatuses,
+                    submittedAt: new Date(),
+                } as any,
+            });
+
+            // Alert admins
+            await this.notifyAdminsOfKycSubmission(profile.companyName);
+
+            return newKyc;
+        }
+    }
+
+    private async notifyAdminsOfKycSubmission(companyName: string) {
+        try {
+            const admins = await this.prisma.user.findMany({
+                where: { role: 'ADMIN' },
+                select: { email: true },
+            });
+            const adminEmails = admins.map((a) => a.email).filter(Boolean);
+            if (adminEmails.length > 0) {
+                await this.emailService.sendKycSubmissionAdminAlert(adminEmails, companyName);
+            }
+        } catch (err) {
+            console.error('Failed to send admin KYC submission alert email:', err);
+        }
     }
 
     // ─── Dashboard KPIs ─────────────────────────────────────────────

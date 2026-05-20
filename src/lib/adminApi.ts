@@ -78,3 +78,17 @@ export async function deleteListingForce(listingId: string) {
   });
   return result;
 }
+
+export async function getPendingKycList() {
+  const result = await apiClient<{ data: any[] }>('/admin/dealers/kyc-pending');
+  return result.data;
+}
+
+export async function reviewKyc(id: string, fields: { field: string; status: 'APPROVED' | 'REJECTED'; note?: string }[]) {
+  const result = await apiClient<any>(`/admin/dealers/kyc/${id}/review`, {
+    method: 'PATCH',
+    body: JSON.stringify({ fields }),
+  });
+  return result;
+}
+

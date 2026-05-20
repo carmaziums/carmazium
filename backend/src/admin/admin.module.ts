@@ -5,11 +5,13 @@ import { AdminService } from './admin.service';
 import { AdminController } from './admin.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { EmailModule } from '../email/email.module';
 
 @Module({
-    imports: [PrismaModule, AuthModule, ConfigModule, PaymentsModule],
+    imports: [PrismaModule, AuthModule, ConfigModule, PaymentsModule, EmailModule],
     controllers: [AdminController],
     providers: [AdminService],
     exports: [AdminService],
 })
 export class AdminModule { }
+

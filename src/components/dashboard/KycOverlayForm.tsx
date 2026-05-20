@@ -1,0 +1,763 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Shield,
+  Building2,
+  User,
+  Globe,
+  MapPin,
+  CreditCard,
+  ArrowRight,
+  ArrowLeft,
+  Check,
+  CheckCircle2,
+  Lock,
+  AlertCircle,
+  LogOut,
+  Loader2,
+  FileSpreadsheet,
+} from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { getDealerKyc, submitDealerKyc, DealerKycData } from "@/lib/dealerApi";
+import { useRouter } from "next/navigation";
+
+export function KycOverlayForm() {
+  const { profile, signOut, refreshProfile } = useAuth();
+  const router = useRouter();
+
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [kycData, setKycData] = useState<DealerKycData | null>(null);
+  const [activeStep, setActiveStep] = useState(1);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+
+  // Form Fields
+  const [formData, setFormData] = useState({
+    companyHouseName: "",
+    representativeName: "",
+    representativePosition: "",
+    directorName: "",
+    personOfSignificantControl: "",
+    vatNumber: "",
+    companyRegistrationNumber: "",
+    businessWebsite: "",
+    businessRegisteredAddress: "",
+    tradingAddress: "",
+    googleReviewsLink: "",
+    paymentReference: "",
+    paymentScreenshot: "",
+  });
+
+  // Load existing KYC record on mount
+  useEffect(() => {
+    async function loadKyc() {
+      try {
+        const kyc = await getDealerKyc();
+        setKycData(kyc);
+        if (kyc) {
+          setFormData({
+            companyHouseName: kyc.companyHouseName || "",
+            representativeName: kyc.representativeName || "",
+            representativePosition: kyc.representativePosition || "",
+            directorName: kyc.directorName || "",
+            personOfSignificantControl: kyc.personOfSignificantControl || "",
+            vatNumber: kyc.vatNumber || "",
+            companyRegistrationNumber: kyc.companyRegistrationNumber || "",
+            businessWebsite: kyc.businessWebsite || "",
+            businessRegisteredAddress: kyc.businessRegisteredAddress || "",
+            tradingAddress: kyc.tradingAddress || "",
+            googleReviewsLink: kyc.googleReviewsLink || "",
+            paymentReference: kyc.paymentReference || "",
+            paymentScreenshot: kyc.paymentScreenshot || "",
+          });
+        }
+      } catch (err: any) {
+        console.error("Failed to load dealer KYC info:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadKyc();
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const isFieldApproved = (fieldName: keyof typeof formData): boolean => {
+    if (!kycData || !kycData.documentStatuses) return false;
+    const fieldStatus = kycData.documentStatuses[fieldName]?.status;
+    return fieldStatus === "APPROVED";
+  };
+
+  const getFieldRejectionNote = (fieldName: keyof typeof formData): string | null => {
+    if (!kycData || !kycData.documentStatuses) return null;
+    const item = kycData.documentStatuses[fieldName];
+    return item?.status === "REJECTED" ? item.note : null;
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      router.push("/");
+    } catch (err) {
+      console.error("Sign out failed:", err);
+    }
+  };
+
+  const validateStep = (step: number): boolean => {
+    setErrorMsg("");
+    if (step === 1) {
+      if (!formData.companyHouseName.trim()) {
+        setErrorMsg("Company Name is required.");
+        return false;
+      }
+      if (!formData.representativeName.trim()) {
+        setErrorMsg("Representative Name is required.");
+        return false;
+      }
+      if (!formData.representativePosition.trim()) {
+        setErrorMsg("Representative Position is required.");
+        return false;
+      }
+      if (!formData.directorName.trim()) {
+        setErrorMsg("Director Name is required.");
+        return false;
+      }
+      if (!formData.personOfSignificantControl.trim()) {
+        setErrorMsg("Person of Significant Control (PSC) is required.");
+        return false;
+      }
+    } else if (step === 2) {
+      if (!formData.vatNumber.trim()) {
+        setErrorMsg("VAT Number is required.");
+        return false;
+      }
+      if (!formData.companyRegistrationNumber.trim()) {
+        setErrorMsg("Company Registration Number is required.");
+        return false;
+      }
+      if (!formData.businessWebsite.trim()) {
+        setErrorMsg("Business Website is required.");
+        return false;
+      }
+      if (!formData.businessRegisteredAddress.trim()) {
+        setErrorMsg("Registered Business Address is required.");
+        return false;
+      }
+    } else if (step === 3) {
+      if (!formData.paymentReference.trim()) {
+        setErrorMsg("Bank Transfer Reference is required.");
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const nextStep = () => {
+    if (validateStep(activeStep)) {
+      setActiveStep((prev) => Math.min(prev + 1, 3));
+    }
+  };
+
+  const prevStep = () => {
+    setErrorMsg("");
+    setActiveStep((prev) => Math.max(prev - 1, 1));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateStep(3)) return;
+
+    setSubmitting(true);
+    setErrorMsg("");
+    setSuccessMsg("");
+
+    try {
+      // Build submission data by filtering out approved fields (locked)
+      // and sending the updated ones
+      const payload: Partial<DealerKycData> = {};
+      Object.keys(formData).forEach((key) => {
+        const fieldName = key as keyof typeof formData;
+        if (!isFieldApproved(fieldName)) {
+          payload[fieldName] = formData[fieldName];
+        }
+      });
+
+      const response = await submitDealerKyc(payload);
+      setKycData(response);
+      setSuccessMsg("KYC documents submitted successfully! Our administrators have been notified.");
+      
+      // Refresh AuthContext profile to ensure components get the fresh status
+      await refreshProfile();
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to submit KYC data. Please verify your fields and try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Render Loading Spinner
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/90 backdrop-blur-md text-white">
+        <Loader2 className="animate-spin text-primary mb-4" size={48} />
+        <p className="text-sm tracking-wider uppercase text-slate-400 font-semibold font-heading">
+          Loading Security Profiles...
+        </p>
+      </div>
+    );
+  }
+
+  // Render "Under Review" State if status is PENDING
+  if (kycData && kycData.status === "PENDING") {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-4">
+        {/* Decorative Neon Blurs */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
+
+        <div className="dealer-glass-card max-w-xl w-full p-8 md:p-10 border border-white/5 relative overflow-hidden flex flex-col items-center text-center">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-right from-amber-500 via-primary to-amber-500 animate-pulse" />
+          
+          {/* Top Bar for Sign Out */}
+          <div className="absolute top-4 right-4 z-20">
+            <button
+              onClick={handleSignOut}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 text-xs font-bold text-slate-300 transition-colors"
+            >
+              <LogOut size={14} />
+              Sign Out
+            </button>
+          </div>
+
+          <div className="w-20 h-20 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mb-6 relative animate-float">
+            <Shield size={40} className="text-amber-500" />
+            <span className="absolute -top-1 -right-1 flex h-4 w-4">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-500 opacity-75" />
+              <span className="relative inline-flex rounded-full h-4 w-4 bg-amber-500" />
+            </span>
+          </div>
+
+          <h2 className="text-2xl md:text-3xl font-black font-heading text-white tracking-tight mb-3">
+            VERIFICATION IN PROGRESS
+          </h2>
+          
+          <p className="text-slate-300 text-sm leading-relaxed mb-6">
+            Your KYC application has been received and is currently under review by our superadmin team. 
+            Verification typically takes between 1–2 hours during business operations.
+          </p>
+
+          <div className="w-full bg-slate-900/60 border border-white/5 rounded-xl p-5 mb-8 text-left">
+            <div className="flex items-center gap-3 mb-3">
+              <CheckCircle2 size={16} className="text-primary" />
+              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Submitted Items Locker</span>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              All uploaded legal forms, company registry credentials, and transfer statements are encrypted and locked. 
+              You will receive an automated email response as soon as our superadmin reviews your submission.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 w-full justify-center">
+            <button
+              onClick={async () => {
+                setLoading(true);
+                const kyc = await getDealerKyc();
+                setKycData(kyc);
+                await refreshProfile();
+                setLoading(false);
+              }}
+              className="flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest transition-all cursor-pointer shadow-neon"
+            >
+              <Loader2 className="animate-spin" size={14} />
+              Check Status Now
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Render 3-Step Form Overlay
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/95 backdrop-blur-xl p-4 overflow-y-auto custom-scrollbar">
+      {/* Decorative Neon Blurs */}
+      <div className="absolute top-10 left-10 w-96 h-96 bg-primary/10 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-10 right-10 w-96 h-96 bg-blue-500/10 rounded-full blur-[140px] pointer-events-none" />
+
+      <div className="w-full max-w-3xl my-8">
+        {/* Header Block */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20">
+              <Shield className="text-primary" size={24} />
+            </div>
+            <div>
+              <h1 className="text-xl md:text-2xl font-black font-heading text-white tracking-tight uppercase">
+                Dealer KYC Portal
+              </h1>
+              <p className="text-xs text-slate-400 uppercase tracking-widest font-bold">
+                Verification Required for Dashboard Access
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={handleSignOut}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-white/5 bg-slate-900/60 hover:bg-slate-900/80 text-xs font-bold text-slate-300 transition-colors"
+          >
+            <LogOut size={14} />
+            Sign Out
+          </button>
+        </div>
+
+        {/* Info Box if Rejected */}
+        {kycData && kycData.status === "REJECTED" && (
+          <div className="mb-6 p-4 rounded-xl border border-red-500/20 bg-red-500/5 flex items-start gap-3">
+            <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={18} />
+            <div>
+              <h3 className="text-xs font-extrabold uppercase text-red-500 tracking-wider">
+                Submission Requires Attention
+              </h3>
+              <p className="text-slate-300 text-xs mt-1 leading-relaxed">
+                Superadmins have completed a review of your application. Specific fields were rejected and require revision. 
+                Previously approved fields are locked and marked with a verified badge. Please update the fields highlighted in red below.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Steps Progress Indicator */}
+        <div className="grid grid-cols-3 gap-2 mb-6">
+          {[
+            { step: 1, label: "Corporate Info", icon: Building2 },
+            { step: 2, label: "Commercials", icon: FileSpreadsheet },
+            { step: 3, label: "Bank Transfer", icon: CreditCard },
+          ].map((item) => {
+            const isCompleted = activeStep > item.step;
+            const isActive = activeStep === item.step;
+            const StepIcon = item.icon;
+
+            return (
+              <div
+                key={item.step}
+                className={`p-3.5 rounded-xl border transition-all duration-300 flex flex-col md:flex-row items-center gap-3 ${
+                  isActive
+                    ? "border-primary bg-primary/5 text-white"
+                    : isCompleted
+                    ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-400"
+                    : "border-white/5 bg-slate-900/40 text-slate-500"
+                }`}
+              >
+                <div
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
+                    isActive
+                      ? "border-primary bg-primary text-white"
+                      : isCompleted
+                      ? "border-emerald-500 bg-emerald-500 text-slate-950"
+                      : "border-white/10 bg-slate-950 text-slate-500"
+                  }`}
+                >
+                  {isCompleted ? <Check size={16} /> : <StepIcon size={16} />}
+                </div>
+                <div className="text-center md:text-left">
+                  <p className="text-[10px] font-extrabold uppercase tracking-widest opacity-60">Step 0{item.step}</p>
+                  <p className="text-xs font-bold font-heading truncate max-w-[120px] md:max-w-none">{item.label}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Form Container */}
+        <form onSubmit={handleSubmit} className="dealer-glass-card p-6 md:p-8 border border-white/5">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeStep}
+              initial={{ opacity: 0, x: 15 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -15 }}
+              transition={{ duration: 0.2 }}
+            >
+              {/* STEP 1: CORPORATE DETAILS */}
+              {activeStep === 1 && (
+                <div className="space-y-5">
+                  <h3 className="text-base font-extrabold uppercase text-white tracking-tight border-b border-white/5 pb-2">
+                    Step 1: Representative & Company Details
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {/* Company House Name */}
+                    {renderInput({
+                      label: "Company House Registered Name",
+                      name: "companyHouseName",
+                      value: formData.companyHouseName,
+                      placeholder: "e.g. Carmazium Dealership Ltd",
+                      icon: Building2,
+                    })}
+
+                    {/* Director Name */}
+                    {renderInput({
+                      label: "Lead Director Full Name",
+                      name: "directorName",
+                      value: formData.directorName,
+                      placeholder: "e.g. Arthur Pendragon",
+                      icon: User,
+                    })}
+
+                    {/* Representative Name */}
+                    {renderInput({
+                      label: "Account Representative Full Name",
+                      name: "representativeName",
+                      value: formData.representativeName,
+                      placeholder: "e.g. John Doe",
+                      icon: User,
+                    })}
+
+                    {/* Representative Position */}
+                    {renderInput({
+                      label: "Representative Job Title",
+                      name: "representativePosition",
+                      value: formData.representativePosition,
+                      placeholder: "e.g. Head of Acquisitions",
+                      icon: User,
+                    })}
+
+                    {/* PSC */}
+                    <div className="md:col-span-2">
+                      {renderInput({
+                        label: "Person of Significant Control (PSC)",
+                        name: "personOfSignificantControl",
+                        value: formData.personOfSignificantControl,
+                        placeholder: "e.g. Arthur Pendragon (85% Ownership)",
+                        icon: User,
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 2: COMMERCIAL REGISTRATIONS */}
+              {activeStep === 2 && (
+                <div className="space-y-5">
+                  <h3 className="text-base font-extrabold uppercase text-white tracking-tight border-b border-white/5 pb-2">
+                    Step 2: Registrations & Business Address
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {/* VAT Number */}
+                    {renderInput({
+                      label: "VAT Registration Number",
+                      name: "vatNumber",
+                      value: formData.vatNumber,
+                      placeholder: "e.g. GB 123456789",
+                      icon: FileSpreadsheet,
+                    })}
+
+                    {/* Company Reg Number */}
+                    {renderInput({
+                      label: "Company House Registration Number",
+                      name: "companyRegistrationNumber",
+                      value: formData.companyRegistrationNumber,
+                      placeholder: "e.g. 12345678",
+                      icon: FileSpreadsheet,
+                    })}
+
+                    {/* Website */}
+                    {renderInput({
+                      label: "Corporate Website URL",
+                      name: "businessWebsite",
+                      value: formData.businessWebsite,
+                      placeholder: "e.g. https://www.mydealership.co.uk",
+                      icon: Globe,
+                    })}
+
+                    {/* Google Reviews */}
+                    {renderInput({
+                      label: "Google Reviews Listing Link (Optional)",
+                      name: "googleReviewsLink",
+                      value: formData.googleReviewsLink,
+                      placeholder: "e.g. https://g.page/r/...",
+                      icon: Globe,
+                    })}
+
+                    {/* Registered Address */}
+                    <div className="md:col-span-2">
+                      {renderTextarea({
+                        label: "Registered Business Address",
+                        name: "businessRegisteredAddress",
+                        value: formData.businessRegisteredAddress,
+                        placeholder: "e.g. 12 Guildhall St, Folkestone, Kent, CT20 1EE, United Kingdom",
+                        icon: MapPin,
+                      })}
+                    </div>
+
+                    {/* Trading Address */}
+                    <div className="md:col-span-2">
+                      {renderTextarea({
+                        label: "Trading Address (If different from Registered Address)",
+                        name: "tradingAddress",
+                        value: formData.tradingAddress,
+                        placeholder: "Leave empty if identical to registered address",
+                        icon: MapPin,
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 3: PAYMENT VERIFICATION */}
+              {activeStep === 3 && (
+                <div className="space-y-5">
+                  <h3 className="text-base font-extrabold uppercase text-white tracking-tight border-b border-white/5 pb-2">
+                    Step 3: Verification Bank Transfer
+                  </h3>
+
+                  <div className="p-5 rounded-xl border border-primary/20 bg-primary/5 flex flex-col md:flex-row gap-5 items-start">
+                    <CreditCard className="text-primary shrink-0 animate-float" size={32} />
+                    <div className="space-y-2.5 text-slate-300 text-xs">
+                      <h4 className="font-extrabold text-white text-sm uppercase tracking-wide">
+                        Verify Account Activity (£1.00 GBP)
+                      </h4>
+                      <p className="leading-relaxed">
+                        To activate your commercial privileges, we require a manual £1.00 test deposit. This process validates active account ownership.
+                      </p>
+                      
+                      <div className="grid grid-cols-2 gap-4 py-3 px-4 bg-slate-950/80 rounded-xl border border-white/5">
+                        <div>
+                          <p className="text-[10px] text-slate-500 uppercase tracking-widest font-extrabold">Bank Name</p>
+                          <p className="font-bold text-white text-xs">Apex Clearing UK</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-500 uppercase tracking-widest font-extrabold">Account Name</p>
+                          <p className="font-bold text-white text-xs">Carmazium Capital Ltd</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-500 uppercase tracking-widest font-extrabold">Sort Code</p>
+                          <p className="font-bold text-white text-xs">40-02-50</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-500 uppercase tracking-widest font-extrabold">Account Number</p>
+                          <p className="font-bold text-white text-xs">8827 9901</p>
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] leading-relaxed text-slate-400 italic">
+                        *Please insert your unique reference ID generated below into your bank transfer ref.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-5">
+                    {/* Payment Reference */}
+                    {renderInput({
+                      label: "Unique Bank Payment Reference Code",
+                      name: "paymentReference",
+                      value: formData.paymentReference,
+                      placeholder: "e.g. DEPOSIT-CARMAZIUM-XXXX",
+                      icon: CreditCard,
+                    })}
+
+                    {/* Screenshot Reference URL or Description */}
+                    {renderInput({
+                      label: "Payment Confirmation Code / Optional Screenshot URL",
+                      name: "paymentScreenshot",
+                      value: formData.paymentScreenshot,
+                      placeholder: "e.g. TxID: #99012388 or screenshot link",
+                      icon: CreditCard,
+                    })}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Alert messages */}
+          {errorMsg && (
+            <div className="mt-6 p-4 rounded-xl border border-red-500/20 bg-red-500/5 flex items-start gap-2.5 text-xs text-red-500">
+              <AlertCircle size={16} className="shrink-0 mt-0.5" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          {successMsg && (
+            <div className="mt-6 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 flex items-start gap-2.5 text-xs text-emerald-400">
+              <CheckCircle2 size={16} className="shrink-0 mt-0.5" />
+              <span>{successMsg}</span>
+            </div>
+          )}
+
+          {/* Form Actions */}
+          <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-between">
+            {activeStep > 1 ? (
+              <button
+                type="button"
+                onClick={prevStep}
+                disabled={submitting}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg border border-white/10 bg-slate-900/60 hover:bg-slate-900 text-xs font-bold text-slate-300 transition-colors disabled:opacity-50"
+              >
+                <ArrowLeft size={14} />
+                Back
+              </button>
+            ) : (
+              <div />
+            )}
+
+            {activeStep < 3 ? (
+              <button
+                type="button"
+                onClick={nextStep}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary hover:bg-primary/95 text-white font-bold text-xs uppercase tracking-widest shadow-neon transition-all"
+              >
+                Continue
+                <ArrowRight size={14} />
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={submitting}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold text-xs uppercase tracking-widest transition-all cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="animate-spin" size={14} />
+                    Submitting Account...
+                  </>
+                ) : (
+                  <>
+                    <Check size={14} />
+                    Finalize Submission
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+
+  // Helper renderer for input fields
+  function renderInput({
+    label,
+    name,
+    value,
+    placeholder,
+    icon: Icon,
+  }: {
+    label: string;
+    name: keyof typeof formData;
+    value: string;
+    placeholder: string;
+    icon: React.ComponentType<{ size?: number; className?: string }>;
+  }) {
+    const isApproved = isFieldApproved(name);
+    const rejectionNote = getFieldRejectionNote(name);
+
+    return (
+      <div className="space-y-1.5 text-left">
+        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider block flex items-center justify-between">
+          <span>{label}</span>
+          {isApproved && (
+            <span className="flex items-center gap-1 text-[8px] font-black text-emerald-400 uppercase tracking-widest px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+              <Lock size={8} /> LOCKED & VERIFIED
+            </span>
+          )}
+        </label>
+
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+            <Icon size={14} className={isApproved ? "text-emerald-500" : rejectionNote ? "text-red-500" : ""} />
+          </div>
+          <input
+            type="text"
+            name={name}
+            value={value}
+            onChange={handleInputChange}
+            disabled={isApproved || submitting}
+            placeholder={placeholder}
+            className={`w-full pl-10 pr-4 py-2.5 rounded-lg border text-slate-200 text-xs font-semibold placeholder:text-slate-600 transition-all ${
+              isApproved
+                ? "bg-slate-950/40 border-emerald-500/30 text-slate-400 select-none pointer-events-none"
+                : rejectionNote
+                ? "bg-red-500/5 border-red-500/40 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                : "bg-slate-950/70 border-white/5 focus:border-primary focus:ring-1 focus:ring-primary"
+            }`}
+          />
+        </div>
+
+        {rejectionNote && (
+          <p className="text-[10px] text-red-500 font-semibold leading-relaxed flex items-start gap-1">
+            <AlertCircle size={10} className="shrink-0 mt-0.5" />
+            <span>{rejectionNote}</span>
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // Helper renderer for textarea fields
+  function renderTextarea({
+    label,
+    name,
+    value,
+    placeholder,
+    icon: Icon,
+  }: {
+    label: string;
+    name: keyof typeof formData;
+    value: string;
+    placeholder: string;
+    icon: React.ComponentType<{ size?: number; className?: string }>;
+  }) {
+    const isApproved = isFieldApproved(name);
+    const rejectionNote = getFieldRejectionNote(name);
+
+    return (
+      <div className="space-y-1.5 text-left">
+        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider block flex items-center justify-between">
+          <span>{label}</span>
+          {isApproved && (
+            <span className="flex items-center gap-1 text-[8px] font-black text-emerald-400 uppercase tracking-widest px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+              <Lock size={8} /> LOCKED & VERIFIED
+            </span>
+          )}
+        </label>
+
+        <div className="relative">
+          <div className="absolute top-3 left-3.5 flex items-start pointer-events-none text-slate-500">
+            <Icon size={14} className={isApproved ? "text-emerald-500" : rejectionNote ? "text-red-500" : ""} />
+          </div>
+          <textarea
+            name={name}
+            value={value}
+            onChange={handleInputChange}
+            disabled={isApproved || submitting}
+            placeholder={placeholder}
+            rows={2}
+            className={`w-full pl-10 pr-4 py-2.5 rounded-lg border text-slate-200 text-xs font-semibold placeholder:text-slate-600 transition-all resize-none ${
+              isApproved
+                ? "bg-slate-950/40 border-emerald-500/30 text-slate-400 select-none pointer-events-none"
+                : rejectionNote
+                ? "bg-red-500/5 border-red-500/40 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                : "bg-slate-950/70 border-white/5 focus:border-primary focus:ring-1 focus:ring-primary"
+            }`}
+          />
+        </div>
+
+        {rejectionNote && (
+          <p className="text-[10px] text-red-500 font-semibold leading-relaxed flex items-start gap-1">
+            <AlertCircle size={10} className="shrink-0 mt-0.5" />
+            <span>{rejectionNote}</span>
+          </p>
+        )}
+      </div>
+    );
+  }
+}

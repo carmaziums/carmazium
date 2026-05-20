@@ -130,6 +130,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             { href: "/dashboard/admin/handovers", label: "Handovers", icon: Handshake },
             { href: "/dashboard/admin/transactions", label: "Transactions", icon: Receipt },
             { href: "/dashboard/admin/analytics", label: "Analytics", icon: TrendingUp },
+            { href: "/dashboard/admin/dealer-verification", label: "Dealer KYC", icon: Shield },
         ]
     }
 
