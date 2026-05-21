@@ -656,6 +656,8 @@ export interface UpdateProfileRequest {
     lastName?: string
     phone?: string
     profileImage?: string
+    notifyOnSale?: boolean
+    showPublicProfile?: boolean
 }
 
 /**
@@ -907,6 +909,24 @@ export async function getEarnings(): Promise<EarningsResponse> {
         cache: 'no-store',
     })
     return data.data
+}
+
+export async function exportEarningsCsv(): Promise<void> {
+    const { getAccessToken } = await import('./supabase')
+    const token = await getAccessToken()
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev'
+    const res = await fetch(`${API_URL}/listings/earnings/export`, {
+        credentials: 'include',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    if (!res.ok) throw new Error('Export failed')
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'earnings.csv'
+    a.click()
+    URL.revokeObjectURL(url)
 }
 
 /**

@@ -76,6 +76,8 @@ export class UsersService {
             lastName?: string;
             phone?: string;
             profileImage?: string;
+            notifyOnSale?: boolean;
+            showPublicProfile?: boolean;
         },
     ) {
         const user = await this.prisma.user.findUnique({
@@ -92,9 +94,9 @@ export class UsersService {
                 ...(data.firstName !== undefined && { firstName: data.firstName }),
                 ...(data.lastName !== undefined && { lastName: data.lastName }),
                 ...(data.phone !== undefined && { phone: data.phone }),
-                ...(data.profileImage !== undefined && {
-                    profileImage: data.profileImage,
-                }),
+                ...(data.profileImage !== undefined && { profileImage: data.profileImage }),
+                ...(data.notifyOnSale !== undefined && { notifyOnSale: data.notifyOnSale }),
+                ...(data.showPublicProfile !== undefined && { showPublicProfile: data.showPublicProfile }),
             },
             include: {
                 dealerProfile: true,

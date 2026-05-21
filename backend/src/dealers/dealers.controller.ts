@@ -138,6 +138,33 @@ export class DealersController {
         return new StandardResponse(result);
     }
 
+    @Post('invites/accept')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Accept a staff invitation by token' })
+    @ApiResponse({ status: 200, description: 'Invitation accepted, staff record created' })
+    async acceptInvite(
+        @Body('token') token: string,
+        @CurrentUser() user: any,
+    ): Promise<StandardResponse<any>> {
+        const result = await this.dealersService.acceptInvite(token, user.id);
+        return new StandardResponse(result);
+    }
+
+    // ─── Purchases ───────────────────────────────────────────────────
+
+    @Get('purchases')
+    @ApiOperation({ summary: 'List dealer purchases (Sales where buyer is this dealer)' })
+    @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+    @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+    async getDealerPurchases(
+        @CurrentUser() user: any,
+        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
+        @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit?: number,
+    ): Promise<PaginatedResponse<any>> {
+        const { data, total } = await this.dealersService.getDealerPurchases(user.id, page, limit);
+        return new PaginatedResponse(data, total, page!, limit!);
+    }
+
     // ─── KYC (Business Verification) ───────────────────────────────
 
     @Get('kyc')

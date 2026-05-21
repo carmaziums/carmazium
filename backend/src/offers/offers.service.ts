@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
+import { EmailService } from '../email/email.service';
 import { CreateOfferDto } from './dto/create-offer.dto';
 import { OfferResponseStatus } from './dto/respond-offer.dto';
 import { Offer, OfferStatus } from '@prisma/client';
@@ -17,6 +18,7 @@ export class OffersService {
         private readonly prisma: PrismaService,
         private readonly notificationsService: NotificationsService,
         private readonly notificationsGateway: NotificationsGateway,
+        private readonly emailService: EmailService,
     ) { }
 
     // ─── Buyer: Make an offer ────────────────────────────────────────────────
@@ -116,17 +118,26 @@ export class OffersService {
                     type: 'OFFER_RECEIVED',
                     title: 'New Offer Received',
                     message: `You received an offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${listing.title}".`,
-                    link: '/dashboard/user?tab=offers',
+                    link: '/dashboard/seller/offers',
                     entityType: 'OFFER',
                     entityId: offer.id,
                     actionType: 'CREATED',
                     data: { listingId: listing.id, offerId: offer.id },
                 });
-                // Push real-time notification via WebSocket
                 this.notificationsGateway.sendNotification(listing.sellerId, notification);
+
+                // Email the seller
+                const seller = await this.prisma.user.findUnique({ where: { id: listing.sellerId }, select: { email: true, firstName: true } });
+                if (seller?.email) {
+                    this.emailService.sendOfferReceivedEmail(
+                        seller.email,
+                        seller.firstName || 'there',
+                        listing.title,
+                        Number(offer.amount),
+                    ).catch(console.error);
+                }
             } catch (error) {
                 console.error('Failed to send offer notification:', error);
-                // We don't rethrow here because the offer was successfully created
             }
         }
 
@@ -281,6 +292,15 @@ export class OffersService {
             });
         }
 
+        // If rejecting a previously-accepted offer (seller "Cancel & Relist"),
+        // revert the listing back to ACTIVE so buyers can make new offers.
+        if (prismaStatus === 'REJECTED' && offer.status === 'ACCEPTED') {
+            await this.prisma.listing.update({
+                where: { id: offer.listingId },
+                data: { status: 'ACTIVE' }
+            });
+        }
+
         // Notify the buyer
         let notifMessage = '';
         let notifTitle = '';
@@ -306,14 +326,27 @@ export class OffersService {
                 type: notifType,
                 title: notifTitle,
                 message: notifMessage,
-                link: '/dashboard/user?tab=bids',
+                link: '/dashboard/buyer/offers',
                 entityType: 'OFFER',
                 entityId: offer.id,
                 actionType: prismaStatus,
                 data: { listingId: offer.listingId, offerId: offer.id },
             });
-            // Push real-time notification to the buyer
             this.notificationsGateway.sendNotification(offer.buyerId, buyerNotification);
+
+            // Email the buyer
+            const buyer = await this.prisma.user.findUnique({ where: { id: offer.buyerId }, select: { email: true, firstName: true } });
+            if (buyer?.email) {
+                const slug = offer.listing.slug;
+                const amt = Number(offer.amount);
+                if (prismaStatus === 'ACCEPTED') {
+                    this.emailService.sendOfferAcceptedEmail(buyer.email, buyer.firstName || 'there', offer.listing.title, amt, slug).catch(console.error);
+                } else if (prismaStatus === 'REJECTED') {
+                    this.emailService.sendOfferRejectedEmail(buyer.email, buyer.firstName || 'there', offer.listing.title, amt, slug).catch(console.error);
+                } else if (prismaStatus === 'COUNTERED' && counterAmount) {
+                    this.emailService.sendOfferCounteredEmail(buyer.email, buyer.firstName || 'there', offer.listing.title, amt, counterAmount, slug).catch(console.error);
+                }
+            }
         } catch (error) {
             console.error('Failed to notify buyer after offer response:', error);
         }
@@ -326,7 +359,7 @@ export class OffersService {
                     type: 'DEAL_CLOSED',
                     title: '✅ Offer Accepted',
                     message: `You accepted an offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${offer.listing.title}". The listing remains active — mark it as Sold from your inventory when the deal is complete.`,
-                    link: '/dashboard/user?tab=offers',
+                    link: '/dashboard/seller/offers',
                     entityType: 'OFFER',
                     entityId: offer.id,
                     actionType: 'ACCEPTED',
@@ -434,10 +467,10 @@ export class OffersService {
         if (offer.listing.sellerId) {
             const sellerNotification = await this.notificationsService.create({
                 userId: offer.listing.sellerId,
-                type: 'OFFER_REJECTED', // Using REJECTED type for withdrawn notifications
+                type: 'OFFER_WITHDRAWN',
                 title: 'Offer Withdrawn',
                 message: `An offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${offer.listing.title}" was withdrawn by the buyer.`,
-                link: '/dashboard/user?tab=offers',
+                link: '/dashboard/seller/offers',
                 entityType: 'OFFER',
                 entityId: offer.id,
                 actionType: 'WITHDRAWN',
@@ -517,13 +550,26 @@ export class OffersService {
                 type: prismaStatus === 'ACCEPTED' ? 'OFFER_ACCEPTED' : 'OFFER_REJECTED',
                 title: notifTitle,
                 message: notifMessage,
-                link: '/dashboard/user?tab=offers',
+                link: '/dashboard/seller/offers',
                 entityType: 'OFFER',
                 entityId: offer.id,
                 actionType: prismaStatus,
                 data: { listingId: offer.listingId, offerId: offer.id },
             });
             this.notificationsGateway.sendNotification(offer.listing.sellerId, sellerNotification);
+
+            // Email the seller when buyer accepts counter
+            if (prismaStatus === 'ACCEPTED' && offer.counterAmount) {
+                const seller = await this.prisma.user.findUnique({ where: { id: offer.listing.sellerId }, select: { email: true, firstName: true } });
+                if (seller?.email) {
+                    this.emailService.sendCounterAcceptedEmail(
+                        seller.email,
+                        seller.firstName || 'there',
+                        offer.listing.title,
+                        Number(offer.counterAmount),
+                    ).catch(console.error);
+                }
+            }
         }
 
         return updated;

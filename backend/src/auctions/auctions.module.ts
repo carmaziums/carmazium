@@ -6,6 +6,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { AuthModule } from '../auth/auth.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { BidsModule } from '../bids/bids.module';
+import { EmailModule } from '../email/email.module';
 
 @Module({
     imports: [
@@ -13,6 +14,7 @@ import { BidsModule } from '../bids/bids.module';
         AuthModule,
         NotificationsModule,
         forwardRef(() => BidsModule),
+        EmailModule,
     ],
     controllers: [AuctionsController],
     providers: [AuctionsService, AuctionGateway],

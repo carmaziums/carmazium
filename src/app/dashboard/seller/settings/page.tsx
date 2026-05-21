@@ -13,6 +13,8 @@ export default function SellerSettingsPage() {
     const [lastName, setLastName] = React.useState("")
     const [email, setEmail] = React.useState("")
     const [profileImage, setProfileImage] = React.useState("")
+    const [notifyOnSale, setNotifyOnSale] = React.useState(true)
+    const [showPublicProfile, setShowPublicProfile] = React.useState(true)
     const [saving, setSaving] = React.useState(false)
     const [uploadingImage, setUploadingImage] = React.useState(false)
     const [saveStatus, setSaveStatus] = React.useState<"idle" | "success" | "error">("idle")
@@ -24,6 +26,8 @@ export default function SellerSettingsPage() {
             setLastName(profile.lastName || "")
             setEmail(profile.email || user?.email || "")
             setProfileImage(profile.profileImage || "")
+            if (typeof (profile as any).notifyOnSale === 'boolean') setNotifyOnSale((profile as any).notifyOnSale)
+            if (typeof (profile as any).showPublicProfile === 'boolean') setShowPublicProfile((profile as any).showPublicProfile)
         } else if (user) {
             setEmail(user.email || "")
             setProfileImage("")
@@ -41,7 +45,7 @@ export default function SellerSettingsPage() {
         try {
             setSaving(true)
             setSaveStatus("idle")
-            await updateProfile({ firstName, lastName, profileImage })
+            await updateProfile({ firstName, lastName, profileImage, notifyOnSale, showPublicProfile })
             setSaveStatus("success")
             setTimeout(() => setSaveStatus("idle"), 3000)
         } catch (err) {
@@ -141,12 +145,22 @@ export default function SellerSettingsPage() {
                                     <h3 className="text-xl font-bold text-white mb-4 border-b border-white/10 pb-2">Seller Preferences</h3>
                                     <div className="space-y-3">
                                         <label className="flex items-center gap-3 cursor-pointer group">
-                                            <input type="checkbox" defaultChecked className="w-5 h-5 rounded border-gray-600 text-primary focus:ring-primary bg-slate-800" />
+                                            <input
+                                                type="checkbox"
+                                                checked={notifyOnSale}
+                                                onChange={e => setNotifyOnSale(e.target.checked)}
+                                                className="w-5 h-5 rounded border-gray-600 text-primary focus:ring-primary bg-slate-800"
+                                            />
                                             <span className="text-gray-300 group-hover:text-white transition-colors">Email me when a listing is sold</span>
                                         </label>
                                         <label className="flex items-center gap-3 cursor-pointer group">
-                                            <input type="checkbox" defaultChecked className="w-5 h-5 rounded border-gray-600 text-primary focus:ring-primary bg-slate-800" />
-                                            <span className="text-gray-300 group-hover:text-white transition-colors">Show my profile publically</span>
+                                            <input
+                                                type="checkbox"
+                                                checked={showPublicProfile}
+                                                onChange={e => setShowPublicProfile(e.target.checked)}
+                                                className="w-5 h-5 rounded border-gray-600 text-primary focus:ring-primary bg-slate-800"
+                                            />
+                                            <span className="text-gray-300 group-hover:text-white transition-colors">Show my profile publicly</span>
                                         </label>
                                     </div>
                                 </section>

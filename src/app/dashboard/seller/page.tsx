@@ -160,7 +160,7 @@ export default function SellerDashboard() {
                                                 <td className="px-6 py-4 text-right font-bold">{formatPrice(listing.price)}</td>
                                                 <td className="px-6 py-4 text-center text-gray-400">{listing.viewCount || 0}</td>
                                                 <td className="px-6 py-4 text-right">
-                                                    <Link href={`/vehicle/${listing.slug}`} className="text-primary hover:text-white text-xs font-bold transition-colors">
+                                                    <Link href={`/buy-cars/${listing.slug}`} className="text-primary hover:text-white text-xs font-bold transition-colors">
                                                         View
                                                     </Link>
                                                 </td>
