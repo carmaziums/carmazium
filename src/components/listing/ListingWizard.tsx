@@ -1774,20 +1774,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 <p className="text-gray-400 mt-1">One-time buyer fee paid on winning</p>
                                             </div>
                                         </div>
-                                        <div className="border-t border-white/5 pt-3 space-y-1.5 text-xs text-gray-400">
-                                            <div className="flex items-start gap-2">
-                                                <CheckCircle size={12} className="text-emerald-400 shrink-0 mt-0.5" />
-                                                <span><span className="text-white font-bold">£100</span> returned to you after you upload proof of successful handover</span>
-                                            </div>
-                                            <div className="flex items-start gap-2">
-                                                <Info size={12} className="text-orange-400 shrink-0 mt-0.5" />
-                                                <span><span className="text-white font-bold">£25</span> Carmazium platform fee — non-refundable in all cases</span>
-                                            </div>
-                                            <div className="flex items-start gap-2">
-                                                <Handshake size={12} className="text-blue-400 shrink-0 mt-0.5" />
-                                                <span>If handover doesn't complete, buyer gets <span className="text-white font-bold">£100 refunded</span> — £25 is kept</span>
-                                            </div>
-                                        </div>
                                     </div>
                                 ) : (
                                     <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-2">
