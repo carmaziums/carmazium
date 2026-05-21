@@ -186,6 +186,16 @@ function SellerAuctionsPage() {
     const [handoverDone, setHandoverDone] = React.useState<Set<string>>(new Set())
     const [handoverError, setHandoverError] = React.useState<Record<string, string>>({})
 
+    // Seed handoverDone from API data whenever auctions load
+    React.useEffect(() => {
+        const submittedIds = auctions
+            .filter(a => a.handoverProofUrl && !a.sellerBonusReleased)
+            .map(a => a.id)
+        if (submittedIds.length > 0) {
+            setHandoverDone(prev => new Set([...prev, ...submittedIds]))
+        }
+    }, [auctions])
+
     async function handleHandoverUpload(auctionId: string, file: File) {
         setHandoverUploading(auctionId)
         setHandoverError(prev => ({ ...prev, [auctionId]: "" }))
@@ -204,7 +214,10 @@ function SellerAuctionsPage() {
         }
     }
 
-    const endedWithWinner = auctions.filter(a => a.status === "ENDED" && a.winnerId)
+    // Auctions where handover is needed or pending — exclude fully approved ones
+    const endedWithWinner = auctions.filter(a => a.status === "ENDED" && a.winnerId && !a.sellerBonusReleased)
+    // Auctions where bonus has been approved — show a completion card
+    const approvedHandovers = auctions.filter(a => a.status === "ENDED" && a.winnerId && a.sellerBonusReleased)
 
     async function handleConnectWithWinner(auction: Auction) {
         if (!auction.winnerId) return
@@ -561,6 +574,24 @@ function SellerAuctionsPage() {
                             </table>
                         </div>
                     </div>
+                    {/* ── Approved Handovers ──────────────────────────────── */}
+                    {approvedHandovers.length > 0 && (
+                        <div className="space-y-3">
+                            {approvedHandovers.map(auction => (
+                                <div key={auction.id} className="glass-card p-4 flex items-center gap-4 border border-emerald-500/20 bg-emerald-500/5 rounded-2xl">
+                                    <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
+                                        <CheckCircle size={18} className="text-emerald-400" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-bold text-white text-sm">{auction.listing?.title}</p>
+                                        <p className="text-xs text-emerald-400 mt-0.5">Handover verified — £100 seller bonus released</p>
+                                    </div>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg">Complete</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
                     {/* ── Handover Proof Section ──────────────────────────── */}
                     {endedWithWinner.length > 0 && (
                         <div className="space-y-4">

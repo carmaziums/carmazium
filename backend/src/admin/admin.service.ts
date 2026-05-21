@@ -4,6 +4,7 @@ import { PaymentsService } from '../payments/payments.service';
 import { UserRole } from '@prisma/client';
 import { EmailService } from '../email/email.service';
 import { ReviewKycDto } from './dto/review-kyc.dto';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 
 @Injectable()
 export class AdminService {
@@ -11,6 +12,7 @@ export class AdminService {
         private readonly prisma: PrismaService,
         private readonly paymentsService: PaymentsService,
         private readonly emailService: EmailService,
+        private readonly notificationsGateway: NotificationsGateway,
     ) { }
 
     async getAllUsers(page = 1, limit = 20) {
@@ -143,20 +145,40 @@ export class AdminService {
     }
 
     async approveHandover(auctionId: string) {
-        const auction = await this.prisma.auction.findUnique({ where: { id: auctionId } });
+        const auction = await this.prisma.auction.findUnique({
+            where: { id: auctionId },
+            include: { listing: { select: { sellerId: true, title: true } } },
+        });
         if (!auction) throw new NotFoundException('Auction not found');
 
-        return this.prisma.auction.update({
+        const updated = await this.prisma.auction.update({
             where: { id: auctionId },
             data: {
                 sellerBonusReleased: true,
                 sellerBonusReleasedAt: new Date(),
             },
         });
+
+        const sellerId = auction.listing?.sellerId;
+        if (sellerId) {
+            this.notificationsGateway.sendNotification(sellerId, {
+                type: 'HANDOVER_APPROVED',
+                title: 'Handover verified',
+                message: `Your handover proof for "${auction.listing.title}" has been approved. Your £100 seller bonus has been released.`,
+                entityType: 'AUCTION',
+                entityId: auctionId,
+                link: '/dashboard/seller/auctions',
+            });
+        }
+
+        return updated;
     }
 
     async denyHandover(auctionId: string) {
-        const auction = await this.prisma.auction.findUnique({ where: { id: auctionId } });
+        const auction = await this.prisma.auction.findUnique({
+            where: { id: auctionId },
+            include: { listing: { select: { sellerId: true, title: true } } },
+        });
         if (!auction) throw new NotFoundException('Auction not found');
 
         // Issue £100 partial Stripe refund to buyer if they paid
@@ -166,14 +188,28 @@ export class AdminService {
             });
         }
 
-        // Clear the proof URL so seller can resubmit if needed
-        return this.prisma.auction.update({
+        // Clear the proof URL so seller can resubmit
+        const updated = await this.prisma.auction.update({
             where: { id: auctionId },
             data: {
                 handoverProofUrl: null,
                 handoverSubmittedAt: null,
             },
         });
+
+        const sellerId = auction.listing?.sellerId;
+        if (sellerId) {
+            this.notificationsGateway.sendNotification(sellerId, {
+                type: 'HANDOVER_DENIED',
+                title: 'Handover proof rejected',
+                message: `Your handover proof for "${auction.listing.title}" was not accepted. Please upload a clearer or more appropriate document to receive your £100 bonus.`,
+                entityType: 'AUCTION',
+                entityId: auctionId,
+                link: '/dashboard/seller/auctions',
+            });
+        }
+
+        return updated;
     }
 
     async getAllTransactions(page = 1, limit = 20) {

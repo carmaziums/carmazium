@@ -48,6 +48,9 @@ export interface Auction {
     minIncrement: string | number;
     winnerId: string | null;
     winningBidAmount: string | number | null;
+    handoverProofUrl: string | null;
+    handoverSubmittedAt: string | null;
+    sellerBonusReleased: boolean;
     createdAt: string;
     updatedAt: string;
     listing: AuctionListing;
