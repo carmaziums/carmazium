@@ -5,6 +5,7 @@ import dynamic from "next/dynamic"
 import { Camera, X, Plus, AlertTriangle, CheckCircle2, Trash2 } from "lucide-react"
 import Image from "next/image"
 import { ALL_ZONES } from "./ThreeDVehicleViewer"
+import { uploadImage } from "@/lib/supabase"
 import type { ThreeDVehicleViewerProps } from "./ThreeDVehicleViewer"
 
 // Dynamic import — Three.js must not run on the server
@@ -100,13 +101,8 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
     if (!file) return
     setUploading(true)
     try {
-      const fd = new FormData()
-      fd.append("file", file)
-      const res = await fetch("/api/upload", { method: "POST", body: fd })
-      if (res.ok) {
-        const data = await res.json()
-        setPendingPhoto(data.url)
-      }
+      const url = await uploadImage(file, 'listings', 'damage')
+      setPendingPhoto(url)
     } catch {
       // Fallback: preview the image locally if upload fails
       const reader = new FileReader()
