@@ -169,6 +169,17 @@ enum VehicleCondition {
   @@map("vehicle_condition")
 }
 
+/// Insurance write-off category — separate from general vehicle condition
+enum WriteOffCategory {
+  NONE  /// Not a write-off
+  CAT_S /// Structural damage, repaired — can be re-registered; retail & auction
+  CAT_N /// Non-structural damage, repaired — can be re-registered; retail & auction
+  CAT_A /// Structural write-off, cannot be re-registered — AUCTION ONLY
+  CAT_B /// Body salvage only, cannot be re-registered — AUCTION ONLY
+
+  @@map("write_off_category")
+}
+
 /// European emission standards relevant to UK ULEZ/CAZ zones
 enum EuroStandard {
   EURO_4
@@ -574,6 +585,7 @@ model Listing {
   stolenRecovered          Boolean?
   hasOutstandingFinance    Boolean?
   isLegalRegisteredKeeper  Boolean?
+  writeOffCategory         WriteOffCategory? @default(NONE)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
