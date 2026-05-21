@@ -19,16 +19,6 @@ async function bootstrap() {
   });
 
   // ---------------------------------------------------------------------------
-  // Raw body capture for Stripe webhook signature verification
-  // ---------------------------------------------------------------------------
-  app.use('/api/payments/webhook', (req: any, _res: any, next: any) => {
-    const chunks: Buffer[] = [];
-    req.on('data', (chunk: Buffer) => chunks.push(chunk));
-    req.on('end', () => { req.rawBody = Buffer.concat(chunks); });
-    next();
-  });
-
-  // ---------------------------------------------------------------------------
   // WebSocket Redis Adapter (Scalability)
   // ---------------------------------------------------------------------------
   const redisIoAdapter = new RedisIoAdapter(app);
