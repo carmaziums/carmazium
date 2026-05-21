@@ -13,69 +13,14 @@ import {
     ModalOverlay,
 } from "@/components/dealer/PipelineRow"
 import type { PurchaseItem, PurchaseStatus } from "@/components/dealer/PipelineRow"
+import { apiClient } from "@/lib/apiClient"
 
-// ─── Demo Data (replace with real API) ──────────────────────────────────────
-
-const MOCK_PURCHASES: PurchaseItem[] = [
-    {
-        id: "p1",
-        vehicleTitle: "2024 Porsche 911 GT3",
-        vehicleSubtitle: "4.0L Flat-6 • 1,200 mi • Shark Blue",
-        purchasePrice: 142000,
-        purchaseDate: "2026-04-28",
-        sellerName: "Elite Motors London",
-        sellerEmail: "sales@elitemotors.co.uk",
-        sellerPhone: "+44 20 7946 0958",
-        status: "awaiting_confirmation",
-    },
-    {
-        id: "p2",
-        vehicleTitle: "2023 BMW M4 CSL",
-        vehicleSubtitle: "3.0L I6 • 4,500 mi • Frozen Brooklyn Grey",
-        purchasePrice: 96000,
-        purchaseDate: "2026-04-25",
-        sellerName: "Bavarian Specialist Cars",
-        sellerEmail: "info@bavarianspecialist.com",
-        sellerPhone: "+44 121 789 4523",
-        status: "reviewing_docs",
-        documentsReceived: 3,
-        documentsTotal: 5,
-    },
-    {
-        id: "p3",
-        vehicleTitle: "2023 Audi RS6 Avant",
-        vehicleSubtitle: "4.0L V8 • 12,450 mi • Nardo Grey",
-        purchasePrice: 89000,
-        purchaseDate: "2026-04-20",
-        sellerName: "Prestige Audi Birmingham",
-        sellerEmail: "trade@prestigeaudi.co.uk",
-        sellerPhone: "+44 121 456 7890",
-        status: "checks_complete",
-    },
-    {
-        id: "p4",
-        vehicleTitle: "2024 Mercedes-AMG C 63 S E",
-        vehicleSubtitle: "2.0L Hybrid • 1,800 mi • Selenite Grey",
-        purchasePrice: 82400,
-        purchaseDate: "2026-04-15",
-        sellerName: "Mercedes-Benz of Manchester",
-        sellerEmail: "fleet@mbmanchester.co.uk",
-        sellerPhone: "+44 161 234 5678",
-        status: "delivery_requested",
-        estimatedDelivery: "2026-05-06",
-    },
-    {
-        id: "p5",
-        vehicleTitle: "2023 Ferrari Roma",
-        vehicleSubtitle: "3.9L V8 • 5,200 mi • Rosso Corsa",
-        purchasePrice: 178000,
-        purchaseDate: "2026-04-10",
-        sellerName: "Maranello Sales Ltd",
-        sellerEmail: "enquiries@maranellosales.com",
-        sellerPhone: "+44 1onal 234 5678",
-        status: "awaiting_confirmation",
-    },
-]
+const DB_STATUS_MAP: Record<string, PurchaseStatus> = {
+    AWAITING_CONFIRMATION: "awaiting_confirmation",
+    REVIEWING_DOCS: "reviewing_docs",
+    CHECKS_COMPLETE: "checks_complete",
+    DELIVERY_REQUESTED: "delivery_requested",
+}
 
 const STATUS_ORDER: PurchaseStatus[] = [
     "awaiting_confirmation",
@@ -95,9 +40,25 @@ type ViewMode = "list" | "kanban"
 
 export default function DealerPurchasesPage() {
     const { user, profile, loading: authLoading } = useAuth()
-    const [loading, setLoading] = React.useState(false)
+    const [loading, setLoading] = React.useState(true)
     const [viewMode, setViewMode] = React.useState<ViewMode>("list")
-    const [purchases] = React.useState<PurchaseItem[]>(MOCK_PURCHASES)
+    const [purchases, setPurchases] = React.useState<PurchaseItem[]>([])
+
+    React.useEffect(() => {
+        if (authLoading || !user) return
+        setLoading(true)
+        apiClient<{ data: any[]; total: number }>("/dealers/purchases?limit=100")
+            .then((res) => {
+                setPurchases(
+                    res.data.map((item) => ({
+                        ...item,
+                        status: DB_STATUS_MAP[item.status] ?? "awaiting_confirmation",
+                    }))
+                )
+            })
+            .catch(() => {})
+            .finally(() => setLoading(false))
+    }, [authLoading, user])
 
     // Modal state
     const [summaryItem, setSummaryItem] = React.useState<PurchaseItem | null>(null)
@@ -203,8 +164,15 @@ export default function DealerPurchasesPage() {
                         />
                     </div>
 
+                    {/* Loading skeleton */}
+                    {loading && (
+                        <div className="flex items-center justify-center py-24">
+                            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                        </div>
+                    )}
+
                     {/* List View */}
-                    {viewMode === "list" && (
+                    {!loading && viewMode === "list" && (
                         <div className="space-y-8">
                             {STATUS_ORDER.map((status) => {
                                 const items = grouped[status]
@@ -250,7 +218,7 @@ export default function DealerPurchasesPage() {
                     )}
 
                     {/* Kanban View */}
-                    {viewMode === "kanban" && (
+                    {!loading && viewMode === "kanban" && (
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start">
                             {STATUS_ORDER.map((status) => {
                                 const items = grouped[status]

@@ -59,7 +59,7 @@ export interface Auction {
 
 export interface CreateAuctionRequest {
     listingId: string;
-    startTime: string;       // ISO datetime — endTime is always startTime + 5h server-side
+    startTime: string;       // ISO datetime — endTime is always startTime + 6h server-side
     reservePrice: number;
     startingBid: number;
     minIncrement?: number;   // default 100

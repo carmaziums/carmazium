@@ -169,6 +169,11 @@ export class AdminService {
                 entityId: auctionId,
                 link: '/dashboard/seller/auctions',
             });
+
+            const seller = await this.prisma.user.findUnique({ where: { id: sellerId }, select: { email: true, firstName: true } });
+            if (seller?.email) {
+                this.emailService.sendHandoverApprovedEmail(seller.email, seller.firstName || 'there', auction.listing.title).catch(console.error);
+            }
         }
 
         return updated;
@@ -207,6 +212,11 @@ export class AdminService {
                 entityId: auctionId,
                 link: '/dashboard/seller/auctions',
             });
+
+            const seller = await this.prisma.user.findUnique({ where: { id: sellerId }, select: { email: true, firstName: true } });
+            if (seller?.email) {
+                this.emailService.sendHandoverDeniedEmail(seller.email, seller.firstName || 'there', auction.listing.title).catch(console.error);
+            }
         }
 
         return updated;

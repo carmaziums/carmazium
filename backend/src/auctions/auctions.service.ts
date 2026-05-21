@@ -9,11 +9,12 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { AuctionGateway, AuctionEndPayload } from './auction.gateway';
+import { EmailService } from '../email/email.service';
 import { CreateAuctionDto } from './dto/create-auction.dto';
 import { UpdateAuctionDto } from './dto/update-auction.dto';
 import { Auction } from '@prisma/client';
 
-const AUCTION_DURATION_MS = 5 * 60 * 60 * 1000; // 5 hours in milliseconds
+const AUCTION_DURATION_MS = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
 const ANTI_SNIPE_MINUTES = 3;
 
 @Injectable()
@@ -23,6 +24,7 @@ export class AuctionsService {
         private readonly notificationsGateway: NotificationsGateway,
         @Inject(forwardRef(() => AuctionGateway))
         private readonly auctionGateway: AuctionGateway,
+        private readonly emailService: EmailService,
     ) { }
 
     async create(createAuctionDto: CreateAuctionDto, userId: string): Promise<Auction> {
@@ -33,7 +35,7 @@ export class AuctionsService {
             throw new BadRequestException('Start time must be in the future');
         }
 
-        // Compute endTime server-side — always startTime + 5 hours
+        // Compute endTime server-side — always startTime + 6 hours
         const endTime = new Date(startTime.getTime() + AUCTION_DURATION_MS);
 
         const listing = await this.prisma.listing.findUnique({
@@ -46,6 +48,10 @@ export class AuctionsService {
 
         if (listing.sellerId !== userId) {
             throw new ForbiddenException('You do not own this listing');
+        }
+
+        if (listing.status === 'SOLD') {
+            throw new BadRequestException('This listing has already been sold');
         }
 
         const existing = await this.prisma.auction.findUnique({
@@ -320,6 +326,7 @@ export class AuctionsService {
 
         if (reserveMet && topBid) {
             // Winner found
+            const sellerId = auction.listing.sellerId;
             await this.prisma.$transaction([
                 this.prisma.auction.update({
                     where: { id: auctionId },
@@ -331,8 +338,24 @@ export class AuctionsService {
                 }),
                 this.prisma.listing.update({
                     where: { id: auction.listingId },
-                    data: { status: 'OFFER_ACCEPTED' },
+                    data: { status: 'SOLD' },
                 }),
+                // Create Sale record so revenue appears in earnings, stats, and buyer history
+                ...(sellerId ? [
+                    this.prisma.sale.create({
+                        data: {
+                            listingId: auction.listingId,
+                            sellerId,
+                            buyerId: topBid.bidderId,
+                            soldPrice: topBid.amount,
+                        },
+                    }),
+                    this.prisma.sellerProfile.upsert({
+                        where: { userId: sellerId },
+                        create: { userId: sellerId, totalSales: 1 },
+                        update: { totalSales: { increment: 1 } },
+                    }),
+                ] : []),
             ]);
 
             const endPayload: AuctionEndPayload = {
@@ -407,8 +430,20 @@ export class AuctionsService {
                         participantId: listing.sellerId,
                         listingId: auction.listingId,
                     },
-                    update: {},
+                    update: { listingId: auction.listingId },
                 });
+            }
+
+            // Email winner and seller
+            const [buyer, seller] = await Promise.all([
+                this.prisma.user.findUnique({ where: { id: winnerId }, select: { email: true, firstName: true } }),
+                listing.sellerId ? this.prisma.user.findUnique({ where: { id: listing.sellerId }, select: { email: true, firstName: true } }) : null,
+            ]);
+            if (buyer?.email) {
+                this.emailService.sendAuctionWonEmail(buyer.email, buyer.firstName || 'there', vehicle || listing.title, winningAmount, auction.id).catch(console.error);
+            }
+            if (seller?.email) {
+                this.emailService.sendAuctionEndedSellerEmail(seller.email, seller.firstName || 'there', vehicle || listing.title, winningAmount, auction.id).catch(console.error);
             }
         } else {
             // No winner — notify seller only
@@ -421,6 +456,11 @@ export class AuctionsService {
                     entityId: auction.id,
                     link: `/auctions/live/${auction.id}`,
                 });
+
+                const seller = await this.prisma.user.findUnique({ where: { id: listing.sellerId }, select: { email: true, firstName: true } });
+                if (seller?.email) {
+                    this.emailService.sendAuctionReserveNotMetEmail(seller.email, seller.firstName || 'there', vehicle || listing.title, auction.id).catch(console.error);
+                }
             }
         }
     }

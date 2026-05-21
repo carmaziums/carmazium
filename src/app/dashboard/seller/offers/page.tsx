@@ -6,7 +6,7 @@ import {
     Loader2, AlertTriangle, Tag, CheckCircle, XCircle,
     Clock, ChevronRight, Car, MessageSquare, RefreshCw, X
 } from "lucide-react"
-import { getOffersForListing, getMyListings, respondToOffer, type Offer, type Listing } from "@/lib/listingApi"
+import { getOffersForListing, getMyListings, respondToOffer, recordSale, type Offer, type Listing } from "@/lib/listingApi"
 import { createChatRoom } from "@/lib/chatApi"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
@@ -45,16 +45,22 @@ function formatGBP(val: string | number) {
 
 function OfferRow({
     offer,
+    listingId,
     onRespond,
     onMessage,
+    onMarkSold,
     startingChat,
     responding,
+    markingSold,
 }: {
     offer: Offer
+    listingId: string
     onRespond: (id: string, status: 'ACCEPTED' | 'REJECTED' | 'COUNTERED', amount?: number) => void
     onMessage: (buyerId: string) => void
+    onMarkSold: (offerId: string, soldPrice: number, buyerId: string) => void
     startingChat: string | null
     responding: string | null
+    markingSold: string | null
 }) {
     const buyer = offer.buyer
     const isPending = offer.status === 'PENDING'
@@ -160,7 +166,7 @@ function OfferRow({
                 </div>
             )}
             
-            {/* Relist (only for accepted) */}
+            {/* Accepted offer actions */}
             {offer.status === 'ACCEPTED' && (
                 <div className="flex gap-2 shrink-0">
                     <Button
@@ -171,6 +177,15 @@ function OfferRow({
                         disabled={startingChat === offer.buyerId}
                     >
                         {startingChat === offer.buyerId ? <Loader2 size={13} className="animate-spin" /> : <MessageSquare size={13} />} Message
+                    </Button>
+                    <Button
+                        size="sm"
+                        className="bg-emerald-600 hover:bg-emerald-500 gap-1 shadow-[0_0_12px_rgba(52,211,153,0.25)]"
+                        disabled={markingSold === offer.id}
+                        onClick={() => onMarkSold(offer.id, Number(offer.counterAmount ?? offer.amount), offer.buyerId)}
+                    >
+                        {markingSold === offer.id ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle size={13} />}
+                        Mark as Sold
                     </Button>
                     <Button
                         size="sm"
@@ -202,6 +217,7 @@ export default function SellerOffersPage() {
     const [error, setError] = React.useState<string | null>(null)
     const [responding, setResponding] = React.useState<string | null>(null)
     const [startingChat, setStartingChat] = React.useState<string | null>(null)
+    const [markingSold, setMarkingSold] = React.useState<string | null>(null)
     const [expanded, setExpanded] = React.useState<Set<string>>(new Set())
     const [toast, setToast] = React.useState<string | null>(null)
     const router = useRouter()
@@ -287,6 +303,19 @@ export default function SellerOffersPage() {
             setTimeout(() => setToast(null), 4000)
         } finally {
             setResponding(null)
+        }
+    }
+
+    const handleMarkSold = async (listingId: string, offerId: string, soldPrice: number, buyerId: string) => {
+        setMarkingSold(offerId)
+        try {
+            await recordSale(listingId, { soldPrice, buyerId })
+            setToast("Listing marked as sold")
+            setListings(prev => prev.filter(l => l.id !== listingId))
+        } catch (err: any) {
+            setToast(err.message || "Failed to mark as sold")
+        } finally {
+            setMarkingSold(null)
         }
     }
 
@@ -401,10 +430,13 @@ export default function SellerOffersPage() {
                                                             <OfferRow
                                                                 key={offer.id}
                                                                 offer={offer}
+                                                                listingId={listing.id}
                                                                 onRespond={(id, status, amount) => handleRespond(id, listing.id, status, amount)}
                                                                 onMessage={(buyerId) => handleMessageBuyer(buyerId, listing.id)}
+                                                                onMarkSold={(offerId, soldPrice, buyerId) => handleMarkSold(listing.id, offerId, soldPrice, buyerId)}
                                                                 startingChat={startingChat}
                                                                 responding={responding}
+                                                                markingSold={markingSold}
                                                             />
                                                         ))}
                                                     </div>

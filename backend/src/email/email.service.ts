@@ -278,6 +278,51 @@ export class EmailService {
         }
     }
 
+    async sendStaffInviteEmail(
+        toEmail: string,
+        dealerName: string,
+        role: string,
+        inviteToken: string,
+    ) {
+        const inviteUrl = `${this.frontendUrl}/auth/accept-invite?token=${inviteToken}`;
+        const roleLabel = role === 'ADMIN' ? 'Admin' : role === 'FINANCE_MANAGER' ? 'Finance Manager' : 'Sales Agent';
+
+        const bodyHtml = `
+            <h1 style="margin: 0 0 8px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
+                You've been invited! 🎉
+            </h1>
+            <p style="margin: 0 0 28px; font-size: 15px; color: #94a3b8; line-height: 1.6;">
+                <strong style="color: #ffffff;">${dealerName}</strong> has invited you to join their dealership on CarMazium as a <strong style="color: #ed1c24;">${roleLabel}</strong>.
+            </p>
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 24px; margin-bottom: 32px;">
+                <p style="margin: 0 0 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b;">Your Role</p>
+                <p style="margin: 0; font-size: 18px; font-weight: 800; color: #ffffff;">${roleLabel}</p>
+                <p style="margin: 6px 0 0; font-size: 12px; color: #64748b;">at ${dealerName}</p>
+            </div>
+            <p style="margin: 0 0 24px; font-size: 14px; color: #94a3b8; line-height: 1.6;">
+                Click the button below to accept this invitation. The link expires in 7 days.
+                If you don't have an account yet, you'll be prompted to create one first.
+            </p>
+            <div style="text-align: center; margin: 36px 0 24px;">
+                <a href="${inviteUrl}" target="_blank"
+                   style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #ed1c24, #c41920); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 8px 25px rgba(237,28,36,0.35);">
+                    Accept Invitation →
+                </a>
+            </div>
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; text-align: center; margin-top: 20px;">
+                <p style="margin: 0; font-size: 12px; color: #475569; line-height: 1.5;">
+                    If you weren't expecting this invitation, you can safely ignore this email.
+                </p>
+            </div>
+        `;
+
+        return this.sendBrandedEmail({
+            to: toEmail,
+            subject: `You've been invited to join ${dealerName} on CarMazium`,
+            bodyHtml,
+        });
+    }
+
     async sendKycSubmissionAdminAlert(adminEmails: string[], dealerName: string) {
         const bodyHtml = `
             <h1 style="margin: 0 0 16px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 24px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
@@ -326,6 +371,281 @@ export class EmailService {
             subject: 'Congratulations! Your CarMazium Dealer Profile is Approved 🎉',
             bodyHtml,
         });
+    }
+
+    // ─── Offer Emails ────────────────────────────────────────────────
+
+    async sendOfferReceivedEmail(sellerEmail: string, sellerName: string, vehicleTitle: string, offerAmount: number) {
+        const bodyHtml = `
+            <h1 style="margin: 0 0 8px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
+                New Offer Received
+            </h1>
+            <p style="margin: 0 0 28px; font-size: 15px; color: #94a3b8; line-height: 1.6;">
+                Hi <strong style="color: #ffffff;">${sellerName}</strong>, a buyer has submitted an offer on one of your listings.
+            </p>
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 24px; margin-bottom: 32px;">
+                <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b;">Vehicle</p>
+                <p style="margin: 0 0 20px; font-size: 16px; font-weight: 700; color: #ffffff;">${vehicleTitle}</p>
+                <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b;">Offer Amount</p>
+                <p style="margin: 0; font-size: 28px; font-weight: 800; color: #ed1c24;">£${offerAmount.toLocaleString('en-GB')}</p>
+            </div>
+            <p style="margin: 0 0 28px; font-size: 14px; color: #94a3b8; line-height: 1.6;">
+                Log in to your dashboard to accept, reject, or counter this offer.
+            </p>
+            <div style="text-align: center; margin: 36px 0 24px;">
+                <a href="${this.frontendUrl}/dashboard/seller/offers" target="_blank"
+                   style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #ed1c24, #c41920); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 8px 25px rgba(237,28,36,0.35);">
+                    Review Offer →
+                </a>
+            </div>
+        `;
+        return this.sendBrandedEmail({ to: sellerEmail, subject: `New offer on "${vehicleTitle}" — CarMazium`, bodyHtml });
+    }
+
+    async sendOfferAcceptedEmail(buyerEmail: string, buyerName: string, vehicleTitle: string, offerAmount: number, listingSlug: string) {
+        const bodyHtml = `
+            <h1 style="margin: 0 0 8px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
+                Your Offer Was Accepted! 🎉
+            </h1>
+            <p style="margin: 0 0 28px; font-size: 15px; color: #94a3b8; line-height: 1.6;">
+                Congratulations <strong style="color: #ffffff;">${buyerName}</strong>! The seller has accepted your offer.
+            </p>
+            <div style="background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.15); border-radius: 14px; padding: 24px; margin-bottom: 32px;">
+                <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b;">Vehicle</p>
+                <p style="margin: 0 0 20px; font-size: 16px; font-weight: 700; color: #ffffff;">${vehicleTitle}</p>
+                <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b;">Accepted Offer</p>
+                <p style="margin: 0; font-size: 28px; font-weight: 800; color: #4ade80;">£${offerAmount.toLocaleString('en-GB')}</p>
+            </div>
+            <p style="margin: 0 0 28px; font-size: 14px; color: #94a3b8; line-height: 1.6;">
+                Use the messaging feature on your dashboard to contact the seller and arrange the next steps.
+            </p>
+            <div style="text-align: center; margin: 36px 0 24px;">
+                <a href="${this.frontendUrl}/buy-cars/${listingSlug}" target="_blank"
+                   style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #4ade80, #16a34a); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 8px 25px rgba(74,222,128,0.3);">
+                    View Listing →
+                </a>
+            </div>
+        `;
+        return this.sendBrandedEmail({ to: buyerEmail, subject: `Offer accepted on "${vehicleTitle}" — CarMazium 🎉`, bodyHtml });
+    }
+
+    async sendOfferRejectedEmail(buyerEmail: string, buyerName: string, vehicleTitle: string, offerAmount: number, listingSlug: string) {
+        const bodyHtml = `
+            <h1 style="margin: 0 0 8px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
+                Offer Update
+            </h1>
+            <p style="margin: 0 0 28px; font-size: 15px; color: #94a3b8; line-height: 1.6;">
+                Hi <strong style="color: #ffffff;">${buyerName}</strong>, unfortunately the seller has declined your offer.
+            </p>
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 24px; margin-bottom: 32px;">
+                <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b;">Vehicle</p>
+                <p style="margin: 0 0 20px; font-size: 16px; font-weight: 700; color: #ffffff;">${vehicleTitle}</p>
+                <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b;">Your Offer</p>
+                <p style="margin: 0; font-size: 24px; font-weight: 800; color: #94a3b8; text-decoration: line-through;">£${offerAmount.toLocaleString('en-GB')}</p>
+            </div>
+            <p style="margin: 0 0 28px; font-size: 14px; color: #94a3b8; line-height: 1.6;">
+                Don't give up — you can visit the listing to make a new offer.
+            </p>
+            <div style="text-align: center; margin: 36px 0 24px;">
+                <a href="${this.frontendUrl}/buy-cars/${listingSlug}" target="_blank"
+                   style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #ed1c24, #c41920); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 8px 25px rgba(237,28,36,0.35);">
+                    View Listing →
+                </a>
+            </div>
+        `;
+        return this.sendBrandedEmail({ to: buyerEmail, subject: `Offer update on "${vehicleTitle}" — CarMazium`, bodyHtml });
+    }
+
+    async sendOfferCounteredEmail(buyerEmail: string, buyerName: string, vehicleTitle: string, originalAmount: number, counterAmount: number, listingSlug: string) {
+        const bodyHtml = `
+            <h1 style="margin: 0 0 8px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
+                Counter Offer Received 🔄
+            </h1>
+            <p style="margin: 0 0 28px; font-size: 15px; color: #94a3b8; line-height: 1.6;">
+                Hi <strong style="color: #ffffff;">${buyerName}</strong>, the seller has responded to your offer with a counter proposal.
+            </p>
+            <div style="background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.15); border-radius: 14px; padding: 24px; margin-bottom: 32px;">
+                <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b;">Vehicle</p>
+                <p style="margin: 0 0 20px; font-size: 16px; font-weight: 700; color: #ffffff;">${vehicleTitle}</p>
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                    <tr>
+                        <td style="padding-right: 16px;">
+                            <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b;">Your Offer</p>
+                            <p style="margin: 0; font-size: 22px; font-weight: 800; color: #94a3b8;">£${originalAmount.toLocaleString('en-GB')}</p>
+                        </td>
+                        <td style="padding: 0 16px; color: #475569; font-size: 20px; font-weight: 800;">→</td>
+                        <td>
+                            <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b;">Counter Offer</p>
+                            <p style="margin: 0; font-size: 22px; font-weight: 800; color: #60a5fa;">£${counterAmount.toLocaleString('en-GB')}</p>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <p style="margin: 0 0 28px; font-size: 14px; color: #94a3b8; line-height: 1.6;">
+                Log in to your dashboard to accept or decline the counter offer.
+            </p>
+            <div style="text-align: center; margin: 36px 0 24px;">
+                <a href="${this.frontendUrl}/dashboard/buyer/offers" target="_blank"
+                   style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 8px 25px rgba(59,130,246,0.3);">
+                    Respond to Counter →
+                </a>
+            </div>
+        `;
+        return this.sendBrandedEmail({ to: buyerEmail, subject: `Counter offer on "${vehicleTitle}" — CarMazium 🔄`, bodyHtml });
+    }
+
+    async sendCounterAcceptedEmail(sellerEmail: string, sellerName: string, vehicleTitle: string, counterAmount: number) {
+        const bodyHtml = `
+            <h1 style="margin: 0 0 8px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
+                Counter Offer Accepted! 💰
+            </h1>
+            <p style="margin: 0 0 28px; font-size: 15px; color: #94a3b8; line-height: 1.6;">
+                Great news <strong style="color: #ffffff;">${sellerName}</strong>! The buyer has accepted your counter offer.
+            </p>
+            <div style="background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.15); border-radius: 14px; padding: 24px; margin-bottom: 32px;">
+                <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b;">Vehicle</p>
+                <p style="margin: 0 0 20px; font-size: 16px; font-weight: 700; color: #ffffff;">${vehicleTitle}</p>
+                <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b;">Agreed Price</p>
+                <p style="margin: 0; font-size: 28px; font-weight: 800; color: #4ade80;">£${counterAmount.toLocaleString('en-GB')}</p>
+            </div>
+            <p style="margin: 0 0 28px; font-size: 14px; color: #94a3b8; line-height: 1.6;">
+                Contact the buyer via the messaging feature to arrange the handover. Once the sale is finalised, mark the listing as Sold from your offers dashboard.
+            </p>
+            <div style="text-align: center; margin: 36px 0 24px;">
+                <a href="${this.frontendUrl}/dashboard/seller/offers" target="_blank"
+                   style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #4ade80, #16a34a); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 8px 25px rgba(74,222,128,0.3);">
+                    Go to Offers →
+                </a>
+            </div>
+        `;
+        return this.sendBrandedEmail({ to: sellerEmail, subject: `Counter offer accepted on "${vehicleTitle}" — CarMazium 💰`, bodyHtml });
+    }
+
+    // ─── Auction Emails ──────────────────────────────────────────────
+
+    async sendAuctionWonEmail(buyerEmail: string, buyerName: string, vehicleTitle: string, winningAmount: number, auctionId: string) {
+        const bodyHtml = `
+            <h1 style="margin: 0 0 8px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
+                You Won the Auction! 🏆
+            </h1>
+            <p style="margin: 0 0 28px; font-size: 15px; color: #94a3b8; line-height: 1.6;">
+                Congratulations <strong style="color: #ffffff;">${buyerName}</strong>! Your bid was the highest and you have won the auction.
+            </p>
+            <div style="background: rgba(237,28,36,0.06); border: 1px solid rgba(237,28,36,0.2); border-radius: 14px; padding: 24px; margin-bottom: 32px;">
+                <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b;">Vehicle Won</p>
+                <p style="margin: 0 0 20px; font-size: 16px; font-weight: 700; color: #ffffff;">${vehicleTitle}</p>
+                <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b;">Winning Bid</p>
+                <p style="margin: 0; font-size: 28px; font-weight: 800; color: #ed1c24;">£${winningAmount.toLocaleString('en-GB')}</p>
+            </div>
+            <p style="margin: 0 0 28px; font-size: 14px; color: #94a3b8; line-height: 1.6;">
+                Contact the seller through the auction page to arrange collection or delivery. A chat room has been automatically created for you.
+            </p>
+            <div style="text-align: center; margin: 36px 0 24px;">
+                <a href="${this.frontendUrl}/auctions/live/${auctionId}" target="_blank"
+                   style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #ed1c24, #c41920); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 8px 25px rgba(237,28,36,0.35);">
+                    View Auction →
+                </a>
+            </div>
+        `;
+        return this.sendBrandedEmail({ to: buyerEmail, subject: `You won the auction for "${vehicleTitle}" — CarMazium 🏆`, bodyHtml });
+    }
+
+    async sendAuctionEndedSellerEmail(sellerEmail: string, sellerName: string, vehicleTitle: string, winningAmount: number, auctionId: string) {
+        const bodyHtml = `
+            <h1 style="margin: 0 0 8px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
+                Your Auction Has Ended
+            </h1>
+            <p style="margin: 0 0 28px; font-size: 15px; color: #94a3b8; line-height: 1.6;">
+                Hi <strong style="color: #ffffff;">${sellerName}</strong>, your auction has successfully ended with a winning bid.
+            </p>
+            <div style="background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.15); border-radius: 14px; padding: 24px; margin-bottom: 32px;">
+                <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b;">Vehicle Sold</p>
+                <p style="margin: 0 0 20px; font-size: 16px; font-weight: 700; color: #ffffff;">${vehicleTitle}</p>
+                <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b;">Winning Bid</p>
+                <p style="margin: 0; font-size: 28px; font-weight: 800; color: #4ade80;">£${winningAmount.toLocaleString('en-GB')}</p>
+            </div>
+            <p style="margin: 0 0 28px; font-size: 14px; color: #94a3b8; line-height: 1.6;">
+                A chat room has been created so you can coordinate handover with the buyer. Once the vehicle has been handed over, submit your proof via your auction dashboard to release your £100 seller bonus.
+            </p>
+            <div style="text-align: center; margin: 36px 0 24px;">
+                <a href="${this.frontendUrl}/dashboard/seller/auctions" target="_blank"
+                   style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #ed1c24, #c41920); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 8px 25px rgba(237,28,36,0.35);">
+                    View My Auctions →
+                </a>
+            </div>
+        `;
+        return this.sendBrandedEmail({ to: sellerEmail, subject: `Auction ended — "${vehicleTitle}" sold for £${winningAmount.toLocaleString('en-GB')} — CarMazium`, bodyHtml });
+    }
+
+    async sendAuctionReserveNotMetEmail(sellerEmail: string, sellerName: string, vehicleTitle: string, auctionId: string) {
+        const bodyHtml = `
+            <h1 style="margin: 0 0 8px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
+                Auction Ended — Reserve Not Met
+            </h1>
+            <p style="margin: 0 0 28px; font-size: 15px; color: #94a3b8; line-height: 1.6;">
+                Hi <strong style="color: #ffffff;">${sellerName}</strong>, your auction for <strong style="color: #ffffff;">${vehicleTitle}</strong> has ended, but the reserve price was not reached.
+            </p>
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 20px; margin-bottom: 32px;">
+                <p style="margin: 0; font-size: 14px; color: #94a3b8; line-height: 1.6;">
+                    You can relist the vehicle with a lower reserve price, or create a new classified listing to attract direct offers.
+                </p>
+            </div>
+            <div style="text-align: center; margin: 36px 0 24px;">
+                <a href="${this.frontendUrl}/dashboard/seller/auctions" target="_blank"
+                   style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #ed1c24, #c41920); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 8px 25px rgba(237,28,36,0.35);">
+                    Re-auction Vehicle →
+                </a>
+            </div>
+        `;
+        return this.sendBrandedEmail({ to: sellerEmail, subject: `Auction ended — reserve not met for "${vehicleTitle}" — CarMazium`, bodyHtml });
+    }
+
+    // ─── Handover Emails ─────────────────────────────────────────────
+
+    async sendHandoverApprovedEmail(sellerEmail: string, sellerName: string, vehicleTitle: string) {
+        const bodyHtml = `
+            <h1 style="margin: 0 0 8px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
+                Handover Proof Verified ✅
+            </h1>
+            <p style="margin: 0 0 28px; font-size: 15px; color: #94a3b8; line-height: 1.6;">
+                Hi <strong style="color: #ffffff;">${sellerName}</strong>, great news! Your handover proof for the auction of <strong style="color: #ffffff;">${vehicleTitle}</strong> has been reviewed and approved by our team.
+            </p>
+            <div style="background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.15); border-radius: 14px; padding: 20px; margin-bottom: 32px; text-align: center;">
+                <p style="margin: 0 0 8px; font-size: 36px;">🎉</p>
+                <p style="margin: 0; font-size: 18px; font-weight: 800; color: #4ade80;">£100 Seller Bonus Released</p>
+                <p style="margin: 8px 0 0; font-size: 13px; color: #64748b;">Your bonus has been released to your account.</p>
+            </div>
+            <div style="text-align: center; margin: 36px 0 24px;">
+                <a href="${this.frontendUrl}/dashboard/seller/auctions" target="_blank"
+                   style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #4ade80, #16a34a); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 8px 25px rgba(74,222,128,0.3);">
+                    View My Auctions →
+                </a>
+            </div>
+        `;
+        return this.sendBrandedEmail({ to: sellerEmail, subject: `Handover verified — £100 bonus released — CarMazium ✅`, bodyHtml });
+    }
+
+    async sendHandoverDeniedEmail(sellerEmail: string, sellerName: string, vehicleTitle: string) {
+        const bodyHtml = `
+            <h1 style="margin: 0 0 8px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
+                Handover Proof Needs Attention ⚠️
+            </h1>
+            <p style="margin: 0 0 28px; font-size: 15px; color: #94a3b8; line-height: 1.6;">
+                Hi <strong style="color: #ffffff;">${sellerName}</strong>, unfortunately the handover proof you submitted for <strong style="color: #ffffff;">${vehicleTitle}</strong> could not be approved.
+            </p>
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 20px; margin-bottom: 32px;">
+                <p style="margin: 0; font-size: 14px; color: #94a3b8; line-height: 1.6;">
+                    Please upload a clearer or more appropriate document — such as a signed handover form, V5C transfer confirmation, or photographic proof — to receive your £100 seller bonus.
+                </p>
+            </div>
+            <div style="text-align: center; margin: 36px 0 24px;">
+                <a href="${this.frontendUrl}/dashboard/seller/auctions" target="_blank"
+                   style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #ed1c24, #c41920); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 8px 25px rgba(237,28,36,0.35);">
+                    Resubmit Proof →
+                </a>
+            </div>
+        `;
+        return this.sendBrandedEmail({ to: sellerEmail, subject: `Action required: resubmit handover proof for "${vehicleTitle}" — CarMazium`, bodyHtml });
     }
 
     async sendKycRejectedDealerAlert(dealerEmail: string, dealerName: string, rejectedFields: { field: string; note: string }[]) {

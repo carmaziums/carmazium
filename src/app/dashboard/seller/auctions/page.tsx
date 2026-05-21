@@ -334,7 +334,7 @@ function SellerAuctionsPage() {
                                                 type="datetime-local"
                                                 value={formStartTime}
                                                 onChange={e => setFormStartTime(e.target.value)}
-                                                min={new Date(Date.now() + 3_600_000).toISOString().slice(0, 16)}
+                                                min={new Date(Date.now() + 30 * 60_000).toISOString().slice(0, 16)}
                                                 className="bg-slate-800 border-white/10 text-white h-11 rounded-lg"
                                             />
                                         </div>
@@ -807,7 +807,7 @@ function SellerAuctionsPage() {
                             >
                                 <Eye size={14} /> View Auction
                             </Link>
-                            {resultsAuction.winnerId && (
+                            {resultsAuction.winnerId ? (
                                 <button
                                     onClick={() => handleConnectWithWinner(resultsAuction)}
                                     disabled={connectingChat}
@@ -818,6 +818,17 @@ function SellerAuctionsPage() {
                                         : <MessageSquare size={14} />
                                     }
                                     Connect with Winner
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => {
+                                        setResultsAuction(null)
+                                        setFormListingId(resultsAuction.listingId)
+                                        openForm()
+                                    }}
+                                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-primary hover:bg-red-600 text-white text-sm font-bold transition-colors"
+                                >
+                                    <Gavel size={14} /> Re-auction
                                 </button>
                             )}
                         </div>

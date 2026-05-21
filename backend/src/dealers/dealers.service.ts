@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
@@ -691,41 +692,122 @@ export class DealersService {
         const profile = await this.getDealerProfile(userId);
         const email = dto.email.toLowerCase().trim();
 
-        // 1. If user exists, add them directly
+        // 1. If user exists, add them directly as active staff
         const targetUser = await this.prisma.user.findUnique({ where: { email } });
         if (targetUser) {
             const existing = await this.prisma.dealerStaff.findUnique({
                 where: { userId_dealerProfileId: { userId: targetUser.id, dealerProfileId: profile.id } },
             });
-            if (existing) throw new BadRequestException('User is already a staff member of this dealership');
+            if (existing) {
+                if (existing.isActive) throw new BadRequestException('User is already a staff member of this dealership');
+                // Reactivate previously deactivated staff
+                return this.prisma.dealerStaff.update({
+                    where: { id: existing.id },
+                    data: { isActive: true, role: dto.role as any },
+                    include: { user: { select: { id: true, firstName: true, lastName: true, email: true } } },
+                });
+            }
 
-            return this.prisma.dealerStaff.create({
+            const staff = await this.prisma.dealerStaff.create({
                 data: {
                     userId: targetUser.id,
                     dealerProfileId: profile.id,
                     role: dto.role as any,
                 },
-                include: {
-                    user: { select: { id: true, firstName: true, lastName: true, email: true } },
-                },
+                include: { user: { select: { id: true, firstName: true, lastName: true, email: true } } },
             });
+
+            // Notify existing user they were added
+            await this.emailService.sendStaffInviteEmail(
+                email,
+                profile.companyName,
+                dto.role,
+                '', // No token needed — they're added directly
+            ).catch(() => {}); // fire-and-forget, don't fail the request
+
+            return staff;
         }
 
-        // 2. If user doesn't exist, create a pending invitation
+        // 2. If user doesn't exist, create a pending invitation with a secure token
         const existingInvite = await this.prisma.dealerInvite.findUnique({
             where: { email_dealerProfileId: { email, dealerProfileId: profile.id } },
         });
         if (existingInvite) throw new BadRequestException('An invitation has already been sent to this email');
 
-        return this.prisma.dealerInvite.create({
+        const token = randomBytes(32).toString('hex');
+
+        const invite = await this.prisma.dealerInvite.create({
             data: {
                 email,
                 dealerProfileId: profile.id,
                 role: dto.role as any,
-                token: Math.random().toString(36).substring(2, 15), // Placeholder token
+                token,
                 expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
             },
         });
+
+        // Send the invitation email
+        await this.emailService.sendStaffInviteEmail(
+            email,
+            profile.companyName,
+            dto.role,
+            token,
+        ).catch(() => {}); // fire-and-forget
+
+        return invite;
+    }
+
+    async acceptInvite(token: string, userId: string) {
+        const invite = await this.prisma.dealerInvite.findUnique({ where: { token } });
+
+        if (!invite) throw new NotFoundException('Invitation not found or already used.');
+        if (invite.expiresAt < new Date()) throw new BadRequestException('This invitation has expired.');
+
+        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) throw new NotFoundException('User not found.');
+
+        // Check the email matches (prevent token theft by logged-in users with different emails)
+        if (user.email.toLowerCase() !== invite.email.toLowerCase()) {
+            throw new ForbiddenException(
+                'This invitation was sent to a different email address. Please log in with the invited email.',
+            );
+        }
+
+        // Prevent duplicate staff membership
+        const existing = await this.prisma.dealerStaff.findUnique({
+            where: { userId_dealerProfileId: { userId, dealerProfileId: invite.dealerProfileId } },
+        });
+
+        if (existing) {
+            if (existing.isActive) {
+                // Already a member — clean up stale invite and return success
+                await this.prisma.dealerInvite.delete({ where: { token } });
+                return { message: 'You are already a staff member of this dealership.' };
+            }
+            // Reactivate
+            await this.prisma.dealerStaff.update({
+                where: { id: existing.id },
+                data: { isActive: true, role: invite.role },
+            });
+        } else {
+            await this.prisma.dealerStaff.create({
+                data: {
+                    userId,
+                    dealerProfileId: invite.dealerProfileId,
+                    role: invite.role,
+                },
+            });
+        }
+
+        // Delete the invite so it can't be reused
+        await this.prisma.dealerInvite.delete({ where: { token } });
+
+        const dealerProfile = await this.prisma.dealerProfile.findUnique({
+            where: { id: invite.dealerProfileId },
+            select: { companyName: true },
+        });
+
+        return { message: `You have successfully joined ${dealerProfile?.companyName ?? 'the dealership'}.` };
     }
 
     async removeStaff(userId: string, staffId: string) {
@@ -748,5 +830,73 @@ export class DealersService {
             where: { id: staffId },
             data: { isActive: false },
         });
+    }
+
+    // ─── Purchases ────────────────────────────────────────────────────
+
+    async getDealerPurchases(userId: string, page = 1, limit = 20) {
+        const skip = (page - 1) * limit;
+
+        const [sales, total] = await Promise.all([
+            this.prisma.sale.findMany({
+                where: { buyerId: userId },
+                include: {
+                    listing: {
+                        select: {
+                            id: true,
+                            title: true,
+                            slug: true,
+                            images: true,
+                            make: true,
+                            model: true,
+                            year: true,
+                            mileage: true,
+                            color: true,
+                            engineSize: true,
+                        },
+                    },
+                    seller: {
+                        select: {
+                            id: true,
+                            firstName: true,
+                            lastName: true,
+                            email: true,
+                            phone: true,
+                        },
+                    },
+                },
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit,
+            }),
+            this.prisma.sale.count({ where: { buyerId: userId } }),
+        ]);
+
+        const data = sales.map((sale) => {
+            const l = sale.listing;
+            const subtitle = [
+                l?.engineSize ? `${(l.engineSize / 1000).toFixed(1)}L` : null,
+                l?.mileage != null ? `${l.mileage.toLocaleString()} mi` : null,
+                l?.color ?? null,
+            ].filter(Boolean).join(' • ');
+
+            return {
+                id: sale.id,
+                listingId: sale.listingId,
+                vehicleTitle: l?.title ?? `${l?.make ?? ''} ${l?.model ?? ''} ${l?.year ?? ''}`.trim(),
+                vehicleSubtitle: subtitle || undefined,
+                imageUrl: l?.images?.[0] ?? undefined,
+                purchasePrice: Number(sale.soldPrice),
+                purchaseDate: sale.createdAt.toISOString(),
+                sellerName: sale.seller
+                    ? `${sale.seller.firstName ?? ''} ${sale.seller.lastName ?? ''}`.trim() || sale.seller.email
+                    : undefined,
+                sellerEmail: sale.seller?.email ?? undefined,
+                sellerPhone: sale.seller?.phone ?? undefined,
+                status: sale.purchaseStatus,
+            };
+        });
+
+        return { data, total };
     }
 }

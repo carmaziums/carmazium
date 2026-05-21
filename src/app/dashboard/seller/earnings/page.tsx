@@ -21,13 +21,14 @@ import { Button } from "@/components/ui/Button"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 import { useAuth } from "@/context/AuthContext"
-import { getEarnings, formatPrice, type SaleRecord, type EarningsResponse } from "@/lib/listingApi"
+import { getEarnings, exportEarningsCsv, formatPrice, type SaleRecord, type EarningsResponse } from "@/lib/listingApi"
 
 export default function EarningsPage() {
     const { user, profile, loading: authLoading } = useAuth()
     const [data, setData] = React.useState<EarningsResponse | null>(null)
     const [loading, setLoading] = React.useState(true)
     const [searchTerm, setSearchTerm] = React.useState("")
+    const [exporting, setExporting] = React.useState(false)
 
     React.useEffect(() => {
         async function fetchData() {
@@ -76,8 +77,17 @@ export default function EarningsPage() {
                             <h1 className="text-3xl font-black font-heading text-white uppercase tracking-tight">Revenue & Earnings</h1>
                             <p className="text-gray-400 mt-1 font-medium text-sm">Track your sales performance and platform revenue.</p>
                         </div>
-                        <Button className="flex items-center gap-2 shadow-neon h-12" variant="outline" size="sm">
-                            <Download size={18} /> Export CSV
+                        <Button
+                            className="flex items-center gap-2 shadow-neon h-12"
+                            variant="outline"
+                            size="sm"
+                            disabled={exporting}
+                            onClick={async () => {
+                                setExporting(true)
+                                try { await exportEarningsCsv() } catch { alert('Export failed') } finally { setExporting(false) }
+                            }}
+                        >
+                            {exporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />} Export CSV
                         </Button>
                     </div>
 

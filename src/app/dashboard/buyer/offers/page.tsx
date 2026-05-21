@@ -232,11 +232,11 @@ export default function BuyerOffersPage() {
                                                     {/* Vehicle */}
                                                     <td className="px-6 py-5">
                                                         <div className="flex items-center gap-4">
-                                                            <Link href={`/vehicle/${slug}`} className="shrink-0 relative w-16 h-12 rounded object-cover overflow-hidden bg-slate-800 border border-white/10 group-hover:border-primary/50 transition-colors">
+                                                            <Link href={`/buy-cars/${slug}`} className="shrink-0 relative w-16 h-12 rounded object-cover overflow-hidden bg-slate-800 border border-white/10 group-hover:border-primary/50 transition-colors">
                                                                 <Image src={image} alt={listing?.title ?? ""} fill className="object-cover" />
                                                             </Link>
                                                             <div>
-                                                                <Link href={`/vehicle/${slug}`} className="font-bold text-white text-[15px] hover:text-primary transition-colors block mb-1">
+                                                                <Link href={`/buy-cars/${slug}`} className="font-bold text-white text-[15px] hover:text-primary transition-colors block mb-1">
                                                                     {listing?.title ?? "Listing"}
                                                                 </Link>
                                                                 <div className="text-xs text-gray-400">
@@ -321,7 +321,7 @@ export default function BuyerOffersPage() {
                                                             >
                                                                 {startingChat === offer.listing?.id ? <Loader2 size={16} className="animate-spin" /> : "Message"}
                                                             </button>
-                                                            <Link href={`/vehicle/${slug}`} className="inline-flex items-center justify-center w-10 h-10 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]" title="View Listing">
+                                                            <Link href={`/buy-cars/${slug}`} className="inline-flex items-center justify-center w-10 h-10 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]" title="View Listing">
                                                                 <Eye size={18} />
                                                             </Link>
                                                         </div>

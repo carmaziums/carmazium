@@ -10,7 +10,9 @@ import {
     HttpCode,
     HttpStatus,
     UseGuards,
+    Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import {
     ApiTags,
     ApiOperation,
@@ -208,6 +210,31 @@ export class ListingsController {
     ): Promise<StandardResponse<any>> {
         const earnings = await this.listingsService.getEarnings(user.id);
         return new StandardResponse(earnings);
+    }
+
+    @Get('earnings/export')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Export earnings history as CSV' })
+    async exportEarnings(
+        @CurrentUser() user: any,
+        @Res() res: Response,
+    ): Promise<void> {
+        const earnings = await this.listingsService.getEarnings(user.id);
+        const rows: string[] = ['Date,Vehicle,VRM,Buyer,Listed Price,Sold Price'];
+        for (const sale of earnings.sales) {
+            const date = new Date(sale.createdAt).toLocaleDateString('en-GB');
+            const title = `"${(sale.listing?.title ?? '').replace(/"/g, '""')}"`;
+            const vrm = sale.listing?.vrm ?? '';
+            const buyer = sale.buyer ? `${sale.buyer.firstName ?? ''} ${sale.buyer.lastName ?? ''}`.trim() : 'Private';
+            const listed = Number(sale.listing?.price ?? 0).toFixed(2);
+            const sold = Number(sale.soldPrice).toFixed(2);
+            rows.push(`${date},${title},${vrm},${buyer},${listed},${sold}`);
+        }
+        const csv = rows.join('\n');
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="earnings.csv"');
+        res.send(csv);
     }
 
     /**

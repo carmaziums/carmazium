@@ -177,20 +177,33 @@ export class BidsService {
         watchlistCount: number;
         totalSpent: number;
     }> {
-        const [activeBids, wonAuctions] = await Promise.all([
+        const [activeBids, wonAuctions, watchlistCount, totalSpentAgg] = await Promise.all([
+            // Bids placed on currently ACTIVE auctions only
             this.prisma.bid.count({
-                where: { bidderId: userId, deletedAt: null },
+                where: {
+                    bidderId: userId,
+                    deletedAt: null,
+                    listing: { auction: { status: 'ACTIVE' } },
+                },
             }),
             this.prisma.auction.count({
                 where: { winnerId: userId, status: 'ENDED' },
+            }),
+            this.prisma.watchlistItem.count({
+                where: { userId },
+            }),
+            // Sum of soldPrice for all purchases where this user is the buyer
+            this.prisma.sale.aggregate({
+                where: { buyerId: userId },
+                _sum: { soldPrice: true },
             }),
         ]);
 
         return {
             activeBids,
             wonAuctions,
-            watchlistCount: 0,
-            totalSpent: 0,
+            watchlistCount,
+            totalSpent: Number(totalSpentAgg._sum.soldPrice ?? 0),
         };
     }
 }
