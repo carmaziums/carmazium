@@ -71,11 +71,26 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
   const [uploading, setUploading] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
+  const [customZoneInput, setCustomZoneInput] = React.useState('')
+  const [pendingCustomLabel, setPendingCustomLabel] = React.useState('')
+
   const markedZones = records.map(r => r.zone)
-  const pendingZone = ALL_ZONES.find(z => z.id === pendingZoneId) ?? null
+  const pendingZone =
+    pendingZoneId === '__custom__'
+      ? { id: '__custom__', label: pendingCustomLabel, position: [0, 0, 0] as [number, number, number] }
+      : ALL_ZONES.find(z => z.id === pendingZoneId) ?? null
 
   function handleZoneClick(zoneId: string) {
     setPendingZoneId(zoneId)
+    setPendingDesc("")
+    setPendingPhoto(undefined)
+  }
+
+  function handleCustomZone() {
+    const label = customZoneInput.trim()
+    if (!label) return
+    setPendingCustomLabel(label)
+    setPendingZoneId('__custom__')
     setPendingDesc("")
     setPendingPhoto(undefined)
   }
@@ -104,16 +119,32 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
 
   function addRecord() {
     if (!pendingZoneId || !pendingDesc.trim()) return
-    const zone = ALL_ZONES.find(z => z.id === pendingZoneId)!
+
+    let zoneId: string
+    let x: number
+    let y: number
+
+    if (pendingZoneId === '__custom__') {
+      if (!pendingCustomLabel) return
+      zoneId = pendingCustomLabel
+      x = 0
+      y = 0
+    } else {
+      const z = ALL_ZONES.find(z => z.id === pendingZoneId)!
+      zoneId = pendingZoneId
+      x = z.position[0]
+      y = z.position[1]
+    }
+
     const rec: DamageRecord = {
       id: crypto.randomUUID(),
-      zone: pendingZoneId,
+      zone: zoneId,
       description: pendingDesc.trim(),
       photoUrl: pendingPhoto,
       bodyType,
       view: "TOP",
-      x: zone.position[0],
-      y: zone.position[1],
+      x,
+      y,
     }
     const updated = [...records, rec]
     setRecords(updated)
@@ -121,6 +152,8 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
     setPendingZoneId(null)
     setPendingDesc("")
     setPendingPhoto(undefined)
+    setCustomZoneInput('')
+    setPendingCustomLabel('')
   }
 
   function removeRecord(id: string) {
@@ -198,6 +231,33 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
         })}
       </div>
 
+      {/* Custom area input */}
+      <div className="space-y-1.5">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Other Damage Area</p>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="e.g. Interior – Driver Seat, Engine Bay…"
+            value={customZoneInput}
+            onChange={e => setCustomZoneInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleCustomZone()}
+            className="flex-1 rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-primary focus:outline-none"
+            maxLength={80}
+          />
+          <button
+            type="button"
+            onClick={handleCustomZone}
+            disabled={!customZoneInput.trim()}
+            className="rounded-xl bg-slate-700 px-4 py-2 text-sm font-bold text-white hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            Mark
+          </button>
+        </div>
+        <p className="text-[10px] text-gray-600">
+          Not in the list above? Type any area and press Mark to describe the damage.
+        </p>
+      </div>
+
       {/* Pending zone panel */}
       {pendingZone && (
         <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5 space-y-4 animate-in fade-in slide-in-from-bottom-2">
@@ -208,7 +268,7 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
                 Marking: <span className="text-primary">{pendingZone.label}</span>
               </p>
             </div>
-            <button type="button" onClick={() => setPendingZoneId(null)} className="text-gray-500 hover:text-white">
+            <button type="button" onClick={() => { setPendingZoneId(null); setCustomZoneInput(''); setPendingCustomLabel('') }} className="text-gray-500 hover:text-white">
               <X size={15} />
             </button>
           </div>

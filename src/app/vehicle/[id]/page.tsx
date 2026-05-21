@@ -1120,8 +1120,11 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                 <p className="text-xs text-gray-500 mb-6 pl-6">The seller has disclosed the following known damage areas.</p>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     {((listing as any).damageRecords as any[]).map((record: any, i: number) => {
+                                        const isKebabId = /^[a-z][a-z-]*$/.test(record.part ?? '')
                                         const zoneLabel = record.part
-                                            ? record.part.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
+                                            ? isKebabId
+                                                ? record.part.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
+                                                : record.part
                                             : 'Unknown Area'
                                         const view = record.coords?.view ?? null
                                         return (
