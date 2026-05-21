@@ -55,6 +55,7 @@ export interface CreateListingRequest {
     stolenRecovered?: boolean
     hasOutstandingFinance?: boolean
     isLegalRegisteredKeeper?: boolean
+    writeOffCategory?: 'NONE' | 'CAT_S' | 'CAT_N' | 'CAT_A' | 'CAT_B'
 }
 
 export interface CreateListingResponse {

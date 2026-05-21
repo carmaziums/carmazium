@@ -362,6 +362,16 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         window.scrollTo({ top: 0, behavior: "smooth" })
     }, [currentStep, sellingMethod])
 
+    // If the listing type switches from AUCTION to CLASSIFIED (e.g. user changes
+    // tier in the pricing step), clear any Cat A/B selection — those are
+    // auction-only categories and must not carry over to a retail listing.
+    React.useEffect(() => {
+        if (formData.listingType === 'CLASSIFIED' &&
+            (formData.writeOffCategory === 'CAT_A' || formData.writeOffCategory === 'CAT_B')) {
+            set('writeOffCategory', '')
+        }
+    }, [formData.listingType])
+
     // ─── Navigation ─────────────────────────────────────────────────────────────
 
     const validateStep = (): boolean => {
@@ -369,7 +379,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             case 1: {
                 const baseValid = !!(formData.vrm && formData.make && formData.model && formData.year && formData.mileage && formData.fuelType && formData.transmission && formData.title && formData.title.length >= 5)
                 const declarationsValid = formData.writeOffCategory !== '' && formData.stolenRecovered !== null && formData.hasOutstandingFinance !== null && formData.isLegalRegisteredKeeper === true && formData.declarationAcknowledged
-                if (formData.writeOffCategory === 'CAT_A' || formData.writeOffCategory === 'CAT_B') return false
+                // Cat A/B are total-loss write-offs — only allowed for auction listings
+                if ((formData.writeOffCategory === 'CAT_A' || formData.writeOffCategory === 'CAT_B') && formData.listingType !== 'AUCTION') return false
                 return baseValid && declarationsValid
             }
             case 2: return formData.images.length > 0
@@ -468,6 +479,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 stolenRecovered: formData.stolenRecovered ?? undefined,
                 hasOutstandingFinance: formData.hasOutstandingFinance ?? undefined,
                 isLegalRegisteredKeeper: formData.isLegalRegisteredKeeper ?? undefined,
+                writeOffCategory: (formData.writeOffCategory !== '' ? formData.writeOffCategory : 'NONE') as 'NONE' | 'CAT_S' | 'CAT_N' | 'CAT_A' | 'CAT_B',
             }
 
             if (editId) {
@@ -1430,27 +1442,42 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <div className="space-y-3">
                                     <label className="text-sm font-bold uppercase text-gray-300 flex items-center gap-1.5">
                                         Insurance Write-Off Status *
-                                        <InfoTooltip text="Cat A/B vehicles cannot be re-registered and cannot be listed. Cat S/N have been repaired after a write-off." />
+                                        <InfoTooltip text="Cat S/N have been repaired after a write-off and can still be re-registered. Cat A/B are total-loss write-offs (structural or body-salvage) — these cannot be re-registered and are only available when listing via Auction." />
                                     </label>
                                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                                         {([
-                                            { value: 'NONE', label: 'None', desc: 'Not a write-off' },
-                                            { value: 'CAT_S', label: 'Cat S', desc: 'Structural — repaired' },
-                                            { value: 'CAT_N', label: 'Cat N', desc: 'Non-structural — repaired' },
-                                            { value: 'CAT_A', label: 'Cat A', desc: 'Cannot be listed' },
-                                            { value: 'CAT_B', label: 'Cat B', desc: 'Cannot be listed' },
+                                            { value: 'NONE',  label: 'None',  desc: 'Not a write-off',           auctionOnly: false },
+                                            { value: 'CAT_S', label: 'Cat S', desc: 'Structural — repaired',      auctionOnly: false },
+                                            { value: 'CAT_N', label: 'Cat N', desc: 'Non-structural — repaired',  auctionOnly: false },
+                                            { value: 'CAT_A', label: 'Cat A', desc: 'Auction only',               auctionOnly: true  },
+                                            { value: 'CAT_B', label: 'Cat B', desc: 'Auction only',               auctionOnly: true  },
                                         ] as const).map((opt) => {
-                                            const isBlocked = opt.value === 'CAT_A' || opt.value === 'CAT_B'
+                                            const isAuctionOnly = opt.auctionOnly
+                                            const isRetailListing = formData.listingType !== 'AUCTION'
+                                            const isLocked = isAuctionOnly && isRetailListing
                                             const active = formData.writeOffCategory === opt.value
+
+                                            if (isLocked) {
+                                                return (
+                                                    <div key={opt.value} title="Only available for Auction listings"
+                                                        className="p-3 rounded-xl border border-white/5 bg-slate-950/60 text-center flex flex-col gap-0.5 opacity-50 cursor-not-allowed select-none relative"
+                                                    >
+                                                        <Lock size={10} className="absolute top-2 right-2 text-slate-500" />
+                                                        <span className="text-sm font-bold text-slate-500">{opt.label}</span>
+                                                        <span className="text-[10px] leading-tight text-slate-600">Auction only</span>
+                                                    </div>
+                                                )
+                                            }
+
                                             return (
                                                 <button key={opt.value} type="button"
                                                     onClick={() => set("writeOffCategory", opt.value)}
                                                     className={`p-3 rounded-xl border text-center transition-all flex flex-col gap-0.5 ${active
-                                                        ? isBlocked
-                                                            ? "border-red-500 bg-red-500/20 text-red-300"
+                                                        ? isAuctionOnly
+                                                            ? "border-amber-500 bg-amber-500/10 text-amber-300"
                                                             : "border-emerald-500 bg-emerald-500/10 text-emerald-300"
                                                         : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"
-                                                        }`}
+                                                    }`}
                                                 >
                                                     <span className="text-sm font-bold">{opt.label}</span>
                                                     <span className="text-[10px] leading-tight opacity-70">{opt.desc}</span>
@@ -1458,9 +1485,15 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             )
                                         })}
                                     </div>
-                                    {(formData.writeOffCategory === 'CAT_A' || formData.writeOffCategory === 'CAT_B') && (
-                                        <p className="text-xs text-red-400 flex items-center gap-1.5">
-                                            <AlertTriangle size={12} /> Category A and B write-offs cannot be re-registered and cannot be listed on CarMazium.
+                                    {/* Context-aware hint */}
+                                    {formData.listingType !== 'AUCTION' && (
+                                        <p className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                                            <Lock size={10} /> Cat A and Cat B are locked — they require an <strong className="text-slate-400">Auction listing</strong> to enable.
+                                        </p>
+                                    )}
+                                    {formData.listingType === 'AUCTION' && (formData.writeOffCategory === 'CAT_A' || formData.writeOffCategory === 'CAT_B') && (
+                                        <p className="text-[11px] text-amber-400 flex items-center gap-1.5">
+                                            <AlertTriangle size={11} /> Cat A/B write-offs will be auctioned for parts or scrapping only and cannot be re-registered.
                                         </p>
                                     )}
                                 </div>

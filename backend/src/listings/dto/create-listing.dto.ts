@@ -93,6 +93,17 @@ export enum VehicleType {
     MOTORCYCLE = 'MOTORCYCLE',
 }
 
+/** Insurance write-off category — mirrors the Prisma WriteOffCategory enum */
+export enum WriteOffCategory {
+    NONE  = 'NONE',
+    CAT_S = 'CAT_S',
+    CAT_N = 'CAT_N',
+    /** Structural total loss — auction only, cannot be re-registered */
+    CAT_A = 'CAT_A',
+    /** Body salvage — auction only, cannot be re-registered */
+    CAT_B = 'CAT_B',
+}
+
 // ─── DTO ─────────────────────────────────────────────────────────────────────
 
 export class CreateListingDto {
@@ -336,4 +347,14 @@ export class CreateListingDto {
     @IsBoolean()
     @IsOptional()
     isLegalRegisteredKeeper?: boolean;
+
+    @ApiProperty({
+        description: 'Insurance write-off category. CAT_A and CAT_B are only permitted for AUCTION listings.',
+        enum: WriteOffCategory,
+        example: WriteOffCategory.NONE,
+        required: false,
+    })
+    @IsEnum(WriteOffCategory)
+    @IsOptional()
+    writeOffCategory?: WriteOffCategory;
 }

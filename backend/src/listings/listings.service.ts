@@ -157,6 +157,15 @@ export class ListingsService {
             throw new BadRequestException('Imported vehicles cannot be listed on CarMazium.');
         }
 
+        // Cat A and Cat B are total-loss / body-salvage write-offs that cannot be
+        // re-registered. They may only be listed for auction (parts/scrapping).
+        const writeOff = createListingDto.writeOffCategory;
+        if ((writeOff === 'CAT_A' || writeOff === 'CAT_B') && listingType === 'CLASSIFIED') {
+            throw new BadRequestException(
+                'Cat A and Cat B write-offs cannot be listed for retail sale. Switch to an Auction listing to proceed.',
+            );
+        }
+
         // Re-host any external images
         let finalImages: string[] = [];
         if (createListingDto.images && createListingDto.images.length > 0) {
@@ -221,6 +230,7 @@ export class ListingsService {
                 stolenRecovered: createListingDto.stolenRecovered ?? null,
                 hasOutstandingFinance: createListingDto.hasOutstandingFinance ?? null,
                 isLegalRegisteredKeeper: createListingDto.isLegalRegisteredKeeper ?? null,
+                writeOffCategory: createListingDto.writeOffCategory ?? 'NONE',
             },
         });
 
@@ -526,6 +536,18 @@ export class ListingsService {
         if (updateListingDto.stolenRecovered !== undefined) updateData.stolenRecovered = updateListingDto.stolenRecovered;
         if (updateListingDto.hasOutstandingFinance !== undefined) updateData.hasOutstandingFinance = updateListingDto.hasOutstandingFinance;
         if (updateListingDto.isLegalRegisteredKeeper !== undefined) updateData.isLegalRegisteredKeeper = updateListingDto.isLegalRegisteredKeeper;
+        if (updateListingDto.writeOffCategory !== undefined) {
+            // Enforce the auction-only rule on update too
+            const targetType = updateListingDto.listingType
+                ? (updateListingDto.listingType === 'AUCTION' ? 'AUCTION' : 'CLASSIFIED')
+                : listing.type;
+            if ((updateListingDto.writeOffCategory === 'CAT_A' || updateListingDto.writeOffCategory === 'CAT_B') && targetType === 'CLASSIFIED') {
+                throw new BadRequestException(
+                    'Cat A and Cat B write-offs cannot be listed for retail sale. Switch to an Auction listing to proceed.',
+                );
+            }
+            updateData.writeOffCategory = updateListingDto.writeOffCategory;
+        }
 
         // Update the listing
         const updatedListing = await this.prisma.listing.update({
