@@ -5,7 +5,7 @@ import { Suspense, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { CheckCircle, ArrowRight, Home, Car, Loader2, PartyPopper } from "lucide-react"
+import { CheckCircle, ArrowRight, Home, Car, Loader2, PartyPopper, LayoutDashboard } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { getSessionStatus} from "@/lib/paymentApi"
 import type { SessionStatus } from "@/lib/paymentApi"
@@ -93,9 +93,13 @@ function CheckoutSuccessContent() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
                 >
-                    <h1 className="text-3xl md:text-4xl font-heading font-bold text-white">Payment Successful!</h1>
+                    <h1 className="text-3xl md:text-4xl font-heading font-bold text-white">
+                        {sessionData?.metadata?.type === 'LISTING_FEE' ? 'Your Listing is Live!' : 'Payment Successful!'}
+                    </h1>
                     <p className="mt-3 text-lg" style={{ color: 'var(--text-muted)' }}>
-                        Your transaction has been completed securely through Stripe.
+                        {sessionData?.metadata?.type === 'LISTING_FEE'
+                            ? 'Your vehicle is now published and visible to buyers.'
+                            : 'Your transaction has been completed securely through Stripe.'}
                     </p>
                 </motion.div>
 
@@ -134,16 +138,33 @@ function CheckoutSuccessContent() {
                     transition={{ delay: 0.6 }}
                     className="flex flex-col sm:flex-row gap-4 justify-center"
                 >
-                    <Button asChild className="gap-2 bg-gradient-to-r from-primary to-[#ff4d4d] hover:from-[#ff4d4d] hover:to-primary px-6">
-                        <Link href="/dashboard">
-                            <Car size={18} /> View Dashboard <ArrowRight size={14} />
-                        </Link>
-                    </Button>
-                    <Button asChild variant="outline" className="gap-2 border-white/20 hover:bg-white/5">
-                        <Link href="/">
-                            <Home size={18} /> Return Home
-                        </Link>
-                    </Button>
+                    {sessionData?.metadata?.type === 'LISTING_FEE' ? (
+                        <>
+                            <Button asChild className="gap-2 bg-gradient-to-r from-primary to-[#ff4d4d] hover:from-[#ff4d4d] hover:to-primary px-6">
+                                <Link href="/dashboard/seller/listings">
+                                    <LayoutDashboard size={18} /> View My Listings <ArrowRight size={14} />
+                                </Link>
+                            </Button>
+                            <Button asChild variant="outline" className="gap-2 border-white/20 hover:bg-white/5">
+                                <Link href="/sell">
+                                    <Car size={18} /> List Another
+                                </Link>
+                            </Button>
+                        </>
+                    ) : (
+                        <>
+                            <Button asChild className="gap-2 bg-gradient-to-r from-primary to-[#ff4d4d] hover:from-[#ff4d4d] hover:to-primary px-6">
+                                <Link href="/dashboard">
+                                    <Car size={18} /> View Dashboard <ArrowRight size={14} />
+                                </Link>
+                            </Button>
+                            <Button asChild variant="outline" className="gap-2 border-white/20 hover:bg-white/5">
+                                <Link href="/">
+                                    <Home size={18} /> Return Home
+                                </Link>
+                            </Button>
+                        </>
+                    )}
                 </motion.div>
             </motion.div>
         </div>
