@@ -141,7 +141,7 @@ function CheckoutSuccessContent() {
                     {sessionData?.metadata?.type === 'LISTING_FEE' ? (
                         <>
                             <Button asChild className="gap-2 bg-gradient-to-r from-primary to-[#ff4d4d] hover:from-[#ff4d4d] hover:to-primary px-6">
-                                <Link href="/dashboard/seller/listings">
+                                <Link href="/dashboard/user?tab=inventory">
                                     <LayoutDashboard size={18} /> View My Listings <ArrowRight size={14} />
                                 </Link>
                             </Button>
