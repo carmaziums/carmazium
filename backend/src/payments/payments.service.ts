@@ -223,8 +223,8 @@ export class PaymentsService {
                 badgeTier,
                 type: 'LISTING_FEE',
             },
-            success_url: `${baseUrl}/dashboard/seller/listings?success=true`,
-            cancel_url: `${baseUrl}/dashboard/seller/listings?cancel=true`,
+            success_url: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${baseUrl}/dashboard/user?tab=inventory`,
         });
 
         await this.prisma.transaction.update({
