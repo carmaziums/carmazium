@@ -4,6 +4,7 @@ import {
     ForbiddenException,
     BadRequestException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import {
     CreateListingDto,
@@ -79,6 +80,7 @@ export class ListingsService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly sellersService: SellersService,
+        private readonly config: ConfigService,
     ) { }
 
     /**
@@ -640,8 +642,13 @@ export class ListingsService {
     /**
      * Activate a DRAFT listing after verifying a completed LISTING_FEE payment.
      * Safe to call at any time — idempotent if listing is already ACTIVE.
-     * Returns { activated: true } if listing is now active, or
-     *         { activated: false, requiresPayment: true } if no completed payment found.
+     *
+     * Handles two cases:
+     *   1. Transaction is COMPLETED (webhook already ran) — activate immediately.
+     *   2. Transaction is PENDING with a stripePaymentId (webhook failed/delayed) —
+     *      verify directly with Stripe; if paid, mark COMPLETED and activate.
+     *
+     * Returns { activated: true } or { activated: false, requiresPayment: true }.
      */
     async publishListing(id: string, userId: string): Promise<{ activated: boolean; requiresPayment?: boolean }> {
         const listing = await this.findById(id);
@@ -659,12 +666,45 @@ export class ListingsService {
             throw new BadRequestException('Only DRAFT listings can be published');
         }
 
-        // Look for a completed payment for this listing's listing fee
-        const completedPayment = await (this.prisma as any).transaction.findFirst({
-            where: { listingId: id, userId, type: 'LISTING_FEE', status: 'COMPLETED' },
+        // Find the most recent LISTING_FEE transaction for this listing
+        const transaction = await (this.prisma as any).transaction.findFirst({
+            where: { listingId: id, userId, type: 'LISTING_FEE' },
+            orderBy: { createdAt: 'desc' },
         });
 
-        if (!completedPayment) {
+        if (!transaction) {
+            return { activated: false, requiresPayment: true };
+        }
+
+        // Case 1: webhook already ran and marked it completed
+        const isPaid = transaction.status === 'COMPLETED';
+
+        // Case 2: webhook failed/delayed — verify directly with Stripe
+        let stripeVerified = false;
+        if (!isPaid && transaction.stripePaymentId) {
+            try {
+                const Stripe = (await import('stripe')).default;
+                const stripe = new Stripe(this.config.get<string>('STRIPE_SECRET_KEY')!, {
+                    apiVersion: '2026-02-25.clover',
+                });
+                const session = await stripe.checkout.sessions.retrieve(transaction.stripePaymentId);
+                if (session.payment_status === 'paid') {
+                    // Heal the transaction record so future calls are instant
+                    await (this.prisma as any).transaction.update({
+                        where: { id: transaction.id },
+                        data: {
+                            status: 'COMPLETED',
+                            stripePaymentId: (session.payment_intent as string) ?? session.id,
+                        },
+                    });
+                    stripeVerified = true;
+                }
+            } catch {
+                // Stripe unreachable — don't block, fall through to requiresPayment
+            }
+        }
+
+        if (!isPaid && !stripeVerified) {
             return { activated: false, requiresPayment: true };
         }
 
