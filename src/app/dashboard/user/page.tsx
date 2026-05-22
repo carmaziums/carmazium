@@ -29,6 +29,7 @@ import {
     Pencil,
     MoreVertical,
     CheckCircle2,
+    Upload,
     AlertCircle,
     X,
     Clock,
@@ -59,6 +60,8 @@ import {
     getMyListings,
     deleteListing,
     boostListing,
+    publishListing,
+    createListingCheckoutSession,
     getOffersForListing,
     getMyOffers,
     getMyBids,
@@ -349,6 +352,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const [deleting, setDeleting] = React.useState<string | null>(null)
     const [boosting, setBoosting] = React.useState<string | null>(null)
     const [saleListing, setSaleListing] = React.useState<Listing | null>(null)
+    const [publishing, setPublishing] = React.useState<string | null>(null)
 
     const auctionDashPath = profile?.role === 'DEALER' ? '/dashboard/dealer/auctions' : '/dashboard/seller/auctions'
 
@@ -380,6 +384,23 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
             alert('Failed to delete: ' + err.message)
         } finally {
             setDeleting(null)
+        }
+    }
+
+    const handlePublish = async (listing: Listing) => {
+        try {
+            setPublishing(listing.id)
+            const result = await publishListing(listing.id)
+            if (result.activated) {
+                setListings(prev => prev.map(l => l.id === listing.id ? { ...l, status: 'ACTIVE' as const } : l))
+            } else if (result.requiresPayment) {
+                const checkout = await createListingCheckoutSession(listing.id, listing.badgeTier || 'BASIC')
+                window.location.href = checkout.url
+            }
+        } catch (err: any) {
+            alert('Failed to publish: ' + err.message)
+        } finally {
+            setPublishing(null)
         }
     }
 
@@ -458,8 +479,9 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
-                                                listing.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 
+                                                listing.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
                                                 listing.status === 'SOLD' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                                listing.status === 'DRAFT' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
                                                 'bg-slate-700/50 text-gray-400 border-white/5'
                                             }`}>
                                                 {listing.status}
@@ -472,10 +494,20 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="flex justify-end gap-2">
+                                            <div className="flex justify-end gap-2 items-center">
+                                                {listing.status === 'DRAFT' && (
+                                                    <button
+                                                        onClick={() => handlePublish(listing)}
+                                                        disabled={publishing === listing.id}
+                                                        className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-black rounded-full bg-emerald-500 text-white hover:bg-emerald-400 hover:scale-105 transition-all shadow-[0_0_12px_rgba(16,185,129,0.4)] disabled:opacity-60"
+                                                    >
+                                                        {publishing === listing.id ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                                                        Publish
+                                                    </button>
+                                                )}
                                                 {listing.status === 'ACTIVE' && !listing.isFeatured && listing.viewCount > 20 && (
-                                                    <Button 
-                                                        size="sm" 
+                                                    <Button
+                                                        size="sm"
                                                         className="h-8 px-3 text-[10px] bg-gradient-to-r from-amber-400 to-orange-500 text-black font-black"
                                                         onClick={() => handleBoost(listing.id)}
                                                         disabled={boosting === listing.id}
@@ -487,7 +519,16 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                     <button className="p-2 text-gray-400 hover:text-white transition-colors">
                                                         <MoreVertical size={16} />
                                                     </button>
-                                                    <div className="absolute right-0 top-full mt-1 w-40 bg-slate-800 border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 py-2">
+                                                    <div className="absolute right-0 top-full mt-1 w-44 bg-slate-800 border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 py-2">
+                                                        {listing.status === 'DRAFT' && (
+                                                            <button
+                                                                onClick={() => handlePublish(listing)}
+                                                                disabled={publishing === listing.id}
+                                                                className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-emerald-500/10 text-emerald-400 w-full text-left font-bold"
+                                                            >
+                                                                <Upload size={14} /> Publish Listing
+                                                            </button>
+                                                        )}
                                                         <Link href={`/dashboard/seller/add-listing?editId=${listing.id}`} className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-white/5">
                                                             <Pencil size={14} /> Edit
                                                         </Link>
