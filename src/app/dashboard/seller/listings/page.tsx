@@ -239,26 +239,13 @@ export default function MyListingsPage() {
 
                                                     {/* Status */}
                                                     <td className="px-6 py-4">
-                                                        <div className="flex flex-col gap-1.5">
-                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border w-fit ${listing.status === "ACTIVE" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
-                                                                listing.status === "SOLD" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
-                                                                    "bg-amber-500/10 text-amber-400 border-amber-500/20"
-                                                                }`}>
-                                                                {listing.status}
-                                                            </span>
-                                                            {listing.status === 'DRAFT' && (
-                                                                <button
-                                                                    onClick={() => handlePublish(listing)}
-                                                                    disabled={publishing === listing.id}
-                                                                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 transition-colors disabled:opacity-50 w-fit"
-                                                                >
-                                                                    {publishing === listing.id
-                                                                        ? <Loader2 size={10} className="animate-spin" />
-                                                                        : <Upload size={10} />}
-                                                                    Publish
-                                                                </button>
-                                                            )}
-                                                        </div>
+                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                                                            listing.status === "ACTIVE" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                                                            listing.status === "SOLD"   ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
+                                                                                          "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                                                        }`}>
+                                                            {listing.status}
+                                                        </span>
                                                     </td>
 
                                                     {/* Price */}
@@ -270,7 +257,22 @@ export default function MyListingsPage() {
                                                     {/* Actions */}
                                                     <td className="px-6 py-4">
                                                         <div className="flex justify-end items-center gap-2">
-                                                            {/* Boost button */}
+                                                            {/* Publish button — DRAFT listings only */}
+                                                            {listing.status === 'DRAFT' && (
+                                                                <button
+                                                                    onClick={() => handlePublish(listing)}
+                                                                    disabled={publishing === listing.id}
+                                                                    className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-black rounded-full bg-emerald-500 text-white hover:bg-emerald-400 hover:scale-105 transition-all disabled:opacity-50 disabled:hover:scale-100 shadow-[0_0_12px_rgba(16,185,129,0.4)]"
+                                                                    title="Publish this listing"
+                                                                >
+                                                                    {publishing === listing.id
+                                                                        ? <Loader2 size={12} className="animate-spin" />
+                                                                        : <Upload size={12} />}
+                                                                    Publish
+                                                                </button>
+                                                            )}
+
+                                                            {/* Boost button — ACTIVE listings only */}
                                                             {!listing.isFeatured && listing.status === "ACTIVE" && (
                                                                 <button
                                                                     onClick={() => setBoostTarget(listing)}
@@ -294,6 +296,15 @@ export default function MyListingsPage() {
 
                                                                 {/* Dropdown menu */}
                                                                 <div className="absolute right-0 top-full mt-1 w-44 bg-slate-800 border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20 flex flex-col py-1">
+                                                                    {listing.status === 'DRAFT' && (
+                                                                        <button
+                                                                            onClick={() => handlePublish(listing)}
+                                                                            disabled={publishing === listing.id}
+                                                                            className="flex items-center gap-2 px-3 py-2 text-sm text-emerald-400 hover:bg-emerald-500/10 transition-colors w-full text-left disabled:opacity-50 font-bold"
+                                                                        >
+                                                                            {publishing === listing.id ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />} Publish Listing
+                                                                        </button>
+                                                                    )}
                                                                     <Link href={`/dashboard/seller/add-listing?editId=${listing.id}&editSlug=${listing.slug}`} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
                                                                         <Pencil size={14} /> Edit
                                                                     </Link>
