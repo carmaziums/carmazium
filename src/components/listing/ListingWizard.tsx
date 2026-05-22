@@ -1827,6 +1827,28 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 </div>
                             </SummarySection>
 
+                            {/* Damage Records */}
+                            {damageRecords.length > 0 && (
+                                <SummarySection title={`Reported Damage (${damageRecords.length} zone${damageRecords.length !== 1 ? 's' : ''})`} onEdit={() => goToStep(2)}>
+                                    <div className="space-y-2">
+                                        {damageRecords.map((record, i) => (
+                                            <div key={i} className="flex items-start gap-3 p-2 rounded-lg bg-slate-900/50 border border-white/5">
+                                                {record.photoUrl && (
+                                                    <div className="relative w-12 h-12 rounded-md overflow-hidden flex-shrink-0 border border-white/10">
+                                                        <Image src={record.photoUrl} alt={record.zone} fill className="object-cover" sizes="48px" />
+                                                    </div>
+                                                )}
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-semibold text-white">{record.zone}</p>
+                                                    <p className="text-xs text-gray-400">{record.description}</p>
+                                                    <p className="text-[10px] text-gray-600 uppercase tracking-wide mt-0.5">{record.view} view</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </SummarySection>
+                            )}
+
                             {/* Specs */}
                             <SummarySection title="Technical Specs" onEdit={() => goToStep(1)}>
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">

@@ -8,7 +8,8 @@ import { AccordionItem } from "@/components/ui/Accordion"
 import dynamic from "next/dynamic"
 const FinanceCalculator = dynamic(() => import("@/components/features/FinanceCalculator").then(mod => mod.FinanceCalculator), { ssr: false })
 import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale, Loader2, MessageCircle, Tag, X, Clock, ThumbsUp, XCircle, AlertTriangle, BadgeCheck, Star, Sparkles, Info, Phone, Globe } from "lucide-react"
-import { getListingBySlug, makeOffer, getMyOfferForListing, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, type Listing, type LatestOffer, formatPrice } from "@/lib/listingApi"
+import { getListingBySlug, makeOffer, getMyOfferForListing, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, getDamageRecords, type Listing, type LatestOffer, formatPrice } from "@/lib/listingApi"
+import { CarDamageMap, type DamagePoint } from "@/components/listing/CarDamageMap"
 import { createChatRoom } from "@/lib/chatApi"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -212,6 +213,8 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
     const [watchlistLoading, setWatchlistLoading] = React.useState(false)
     const [shareToast, setShareToast] = React.useState(false)
     const [showHpiModal, setShowHpiModal] = React.useState(false)
+    const [damageRecords, setDamageRecords] = React.useState<DamagePoint[]>([])
+    const [damageView, setDamageView] = React.useState<'FRONT' | 'SIDE' | 'REAR'>('FRONT')
 
     // Auto-open offer modal if navigated with ?editOffer=true
     React.useEffect(() => {
@@ -253,6 +256,12 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
         if (!user || !listing) return
         checkWatchlist(listing.id).then(setIsWatchlisted).catch(() => { })
     }, [user, listing])
+
+    // Fetch damage records (publicly visible — builds buyer trust)
+    React.useEffect(() => {
+        if (!listing) return
+        getDamageRecords(listing.id).then(setDamageRecords).catch(() => { })
+    }, [listing])
 
     // Determine the current viewer's relationship to the offer
     // Uses myOffer (not latestOffer) so third-party buyers aren't misidentified as 'public'
@@ -808,6 +817,47 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                 </div>
                             </div>
                         </div>
+
+                        {/* Damage Report Section */}
+                        {damageRecords.length > 0 && (
+                            <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-8">
+                                <h3 className="text-xl font-bold text-white mb-2 border-l-4 border-amber-500 pl-4">Reported Damage</h3>
+                                <p className="text-xs text-gray-500 mb-6 pl-5">{damageRecords.length} zone{damageRecords.length !== 1 ? 's' : ''} marked by seller</p>
+
+                                {/* View Tabs */}
+                                <div className="flex gap-2 mb-4">
+                                    {(['FRONT', 'SIDE', 'REAR'] as const).map(v => (
+                                        <button
+                                            key={v}
+                                            onClick={() => setDamageView(v)}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide transition-colors ${damageView === v ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'text-gray-500 hover:text-gray-300 border border-white/5'}`}
+                                        >
+                                            {v}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <CarDamageMap points={damageRecords} view={damageView} />
+
+                                {/* Damage list */}
+                                <div className="mt-4 space-y-2">
+                                    {damageRecords.map((record, i) => (
+                                        <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-slate-900/50 border border-white/5">
+                                            {record.imageUrl && (
+                                                <div className="relative w-12 h-12 rounded-md overflow-hidden flex-shrink-0 border border-white/10">
+                                                    <Image src={record.imageUrl} alt={record.part} fill className="object-cover" sizes="48px" />
+                                                </div>
+                                            )}
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-semibold text-white">{record.part}</p>
+                                                <p className="text-xs text-gray-400">{record.type}{record.size ? ` — ${record.size}` : ''}</p>
+                                                <p className="text-[10px] text-gray-600 uppercase tracking-wide mt-0.5">{record.coords.view} view</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* HPI Report Section */}
                         <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-6">
