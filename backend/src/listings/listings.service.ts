@@ -666,45 +666,75 @@ export class ListingsService {
             throw new BadRequestException('Only DRAFT listings can be published');
         }
 
-        // Find the most recent LISTING_FEE transaction for this listing
-        const transaction = await (this.prisma as any).transaction.findFirst({
-            where: { listingId: id, userId, type: 'LISTING_FEE' },
+        // FREE tier listings have no fee — activate directly
+        if (listing.badgeTier === 'FREE') {
+            await this.prisma.listing.update({ where: { id }, data: { status: 'ACTIVE' } });
+            if (listing.sellerId) await this.sellersService.incrementListings(listing.sellerId);
+            return { activated: true };
+        }
+
+        // Find ALL LISTING_FEE transactions for this listing (there may be several if the user
+        // attempted payment more than once). Check newest-first — but a newer PENDING session that
+        // the user never completed must not shadow an older session they actually paid.
+        const transactions = await (this.prisma as any).transaction.findMany({
+            where: { listingId: id, type: 'LISTING_FEE' },
             orderBy: { createdAt: 'desc' },
         });
 
-        if (!transaction) {
+        if (!transactions.length) {
             return { activated: false, requiresPayment: true };
         }
 
-        // Case 1: webhook already ran and marked it completed
-        const isPaid = transaction.status === 'COMPLETED';
-
-        // Case 2: webhook failed/delayed — verify directly with Stripe
-        let stripeVerified = false;
-        if (!isPaid && transaction.stripePaymentId) {
-            try {
-                const Stripe = (await import('stripe')).default;
-                const stripe = new Stripe(this.config.get<string>('STRIPE_SECRET_KEY')!, {
-                    apiVersion: '2026-02-25.clover',
-                });
-                const session = await stripe.checkout.sessions.retrieve(transaction.stripePaymentId);
-                if (session.payment_status === 'paid') {
-                    // Heal the transaction record so future calls are instant
-                    await (this.prisma as any).transaction.update({
-                        where: { id: transaction.id },
-                        data: {
-                            status: 'COMPLETED',
-                            stripePaymentId: (session.payment_intent as string) ?? session.id,
-                        },
-                    });
-                    stripeVerified = true;
-                }
-            } catch {
-                // Stripe unreachable — don't block, fall through to requiresPayment
-            }
+        // Case 1: any transaction already marked COMPLETED
+        const completedTx = transactions.find((t: any) => t.status === 'COMPLETED');
+        if (completedTx) {
+            // Activate and return
+            const isPremium = listing.badgeTier === 'PREMIUM';
+            await this.prisma.listing.update({
+                where: { id },
+                data: {
+                    status: 'ACTIVE',
+                    isFeatured: isPremium,
+                    featuredUntil: isPremium ? new Date(Date.now() + 28 * 24 * 60 * 60 * 1000) : null,
+                },
+            });
+            if (listing.sellerId) await this.sellersService.incrementListings(listing.sellerId);
+            return { activated: true };
         }
 
-        if (!isPaid && !stripeVerified) {
+        // Case 2: no COMPLETED transaction — verify each PENDING one against Stripe
+        // until we find one that was actually paid (webhook-missed scenario).
+        let verifiedTxId: string | null = null;
+        try {
+            const Stripe = (await import('stripe')).default;
+            const stripe = new Stripe(this.config.get<string>('STRIPE_SECRET_KEY')!, {
+                apiVersion: '2026-02-25.clover',
+            });
+            for (const tx of transactions) {
+                if (!tx.stripePaymentId) continue;
+                try {
+                    const session = await stripe.checkout.sessions.retrieve(tx.stripePaymentId);
+                    if (session.payment_status === 'paid') {
+                        // Heal this transaction so future calls are instant
+                        await (this.prisma as any).transaction.update({
+                            where: { id: tx.id },
+                            data: {
+                                status: 'COMPLETED',
+                                stripePaymentId: (session.payment_intent as string) ?? session.id,
+                            },
+                        });
+                        verifiedTxId = tx.id;
+                        break;
+                    }
+                } catch {
+                    // This specific session ID invalid/expired — try next
+                }
+            }
+        } catch {
+            // Stripe SDK init failed — fall through to requiresPayment
+        }
+
+        if (!verifiedTxId) {
             return { activated: false, requiresPayment: true };
         }
 
