@@ -294,6 +294,17 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     priceAsking: l.price ? String(l.price) : '',
                     status: l.status === 'ACTIVE' ? 'ACTIVE' : 'DRAFT',
                     badgeTier: l.badgeTier || 'FREE',
+                    // Fields missing from original prefill
+                    vin: l.vin || '',
+                    vehicleType: l.vehicleType || 'CAR',
+                    isImported: l.isImported ?? false,
+                    stolenRecovered: l.stolenRecovered ?? null,
+                    hasOutstandingFinance: l.hasOutstandingFinance ?? null,
+                    isLegalRegisteredKeeper: l.isLegalRegisteredKeeper ?? null,
+                    writeOffCategory: (l.writeOffCategory || 'NONE') as FormData['writeOffCategory'],
+                    listingType: (l.type || 'CLASSIFIED') as 'CLASSIFIED' | 'AUCTION',
+                    serviceHistory: l.serviceHistory || '',
+                    owners: l.owners ? String(l.owners) : '',
                 }))
                 // Jump straight to step 1 (already pre-filled)
                 setSellingMethod('list')

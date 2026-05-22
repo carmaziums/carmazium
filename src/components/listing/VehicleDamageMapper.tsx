@@ -65,6 +65,13 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
   const [bodyType, setBodyType] = React.useState<string>(() => resolveBodyType(initialBodyType))
   const [records, setRecords] = React.useState<DamageRecord[]>(existingRecords)
 
+  // Sync existing records when the parent loads them asynchronously (edit mode)
+  React.useEffect(() => {
+    if (existingRecords.length > 0) {
+      setRecords(existingRecords)
+    }
+  }, [existingRecords])
+
   // Zone being configured (clicked in viewer or legend)
   const [pendingZoneId, setPendingZoneId] = React.useState<string | null>(null)
   const [pendingDesc, setPendingDesc] = React.useState("")
