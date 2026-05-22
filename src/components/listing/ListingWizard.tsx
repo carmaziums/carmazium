@@ -16,7 +16,7 @@ import {
     createListing, formatPrice,
     type CreateListingRequest, type BodyTypeValue,
     type EuroStandardValue, type VehicleTypeValue,
-    createHpiCheckoutSession, createListingCheckoutSession
+    createHpiCheckoutSession, createListingCheckoutSession, publishListing
 } from "@/lib/listingApi"
 import { uploadImage } from "@/lib/supabase"
 import { dvlaLookup } from "@/lib/dvlaApi"
@@ -484,12 +484,19 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
             if (editId) {
                 // Update existing listing
-                const response = await apiClient<{ data: any }>(`/listings/${editId}`, {
+                await apiClient<{ data: any }>(`/listings/${editId}`, {
                     method: 'PATCH',
                     body: JSON.stringify(payload),
                 })
-                
+
                 if (payload.badgeTier !== 'FREE') {
+                    // Check if this listing already has a completed payment — avoid double-charging
+                    const publish = await publishListing(editId)
+                    if (publish.activated) {
+                        router.push('/dashboard/seller/listings')
+                        return
+                    }
+                    // No completed payment found — go to Stripe
                     const checkout = await createListingCheckoutSession(editId, payload.badgeTier as string)
                     window.location.href = checkout.url
                     return
@@ -527,6 +534,16 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 localStorage.removeItem('carmazium_hpi_draft_id')
 
                 if (payload.badgeTier !== 'FREE') {
+                    // Check if this draft already has a completed payment — avoid double-charging
+                    const publish = await publishListing(finalListingId)
+                    if (publish.activated) {
+                        setFormData(INITIAL_FORM)
+                        setCurrentStep(1)
+                        setSellingMethod(null)
+                        router.push(`/buy-cars/${finalSlug}`)
+                        return
+                    }
+                    // No completed payment — go to Stripe
                     const checkout = await createListingCheckoutSession(finalListingId, payload.badgeTier as string)
                     window.location.href = checkout.url
                     return

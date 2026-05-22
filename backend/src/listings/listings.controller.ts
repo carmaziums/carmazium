@@ -304,6 +304,25 @@ export class ListingsController {
     }
 
     /**
+     * Publish a DRAFT listing — verifies completed LISTING_FEE payment first.
+     * Idempotent: returns { activated: true } if listing is already ACTIVE.
+     */
+    @Post(':id/publish')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Activate a DRAFT listing after payment verification' })
+    @ApiParam({ name: 'id', description: 'UUID of the listing' })
+    @ApiResponse({ status: 200, description: '{ activated: true } or { activated: false, requiresPayment: true }' })
+    @ApiResponse({ status: 403, description: 'Forbidden' })
+    async publishListing(
+        @Param('id') id: string,
+        @CurrentUser() user: any,
+    ): Promise<StandardResponse<{ activated: boolean; requiresPayment?: boolean }>> {
+        const result = await this.listingsService.publishListing(id, user.id);
+        return new StandardResponse(result);
+    }
+
+    /**
      * Update listing status
      * Requires authentication and ownership
      */

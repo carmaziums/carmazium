@@ -638,6 +638,54 @@ export class ListingsService {
     }
 
     /**
+     * Activate a DRAFT listing after verifying a completed LISTING_FEE payment.
+     * Safe to call at any time — idempotent if listing is already ACTIVE.
+     * Returns { activated: true } if listing is now active, or
+     *         { activated: false, requiresPayment: true } if no completed payment found.
+     */
+    async publishListing(id: string, userId: string): Promise<{ activated: boolean; requiresPayment?: boolean }> {
+        const listing = await this.findById(id);
+
+        if (!listing || listing.sellerId !== userId) {
+            throw new ForbiddenException('You do not have permission to publish this listing');
+        }
+
+        // Already active — nothing to do
+        if (listing.status === 'ACTIVE') {
+            return { activated: true };
+        }
+
+        if (listing.status !== 'DRAFT') {
+            throw new BadRequestException('Only DRAFT listings can be published');
+        }
+
+        // Look for a completed payment for this listing's listing fee
+        const completedPayment = await (this.prisma as any).transaction.findFirst({
+            where: { listingId: id, userId, type: 'LISTING_FEE', status: 'COMPLETED' },
+        });
+
+        if (!completedPayment) {
+            return { activated: false, requiresPayment: true };
+        }
+
+        const isPremium = listing.badgeTier === 'PREMIUM';
+        await this.prisma.listing.update({
+            where: { id },
+            data: {
+                status: 'ACTIVE',
+                isFeatured: isPremium,
+                featuredUntil: isPremium ? new Date(Date.now() + 28 * 24 * 60 * 60 * 1000) : null,
+            },
+        });
+
+        if (listing.sellerId) {
+            await this.sellersService.incrementListings(listing.sellerId);
+        }
+
+        return { activated: true };
+    }
+
+    /**
      * Record a final sale for a listing
      * Marks listing as SOLD and creates a Sale record for earnings tracking
      */

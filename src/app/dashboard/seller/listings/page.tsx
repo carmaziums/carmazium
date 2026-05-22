@@ -4,9 +4,9 @@ import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
-import { getMyListings, deleteListing, boostListing, updateListingStatus, formatPrice, type Listing } from "@/lib/listingApi"
+import { getMyListings, deleteListing, boostListing, updateListingStatus, publishListing, createListingCheckoutSession, formatPrice, type Listing } from "@/lib/listingApi"
 import { useAuth } from "@/context/AuthContext"
-import { PlusCircle, Loader2, Trash2, Eye, Zap, X, AlertCircle, CheckCircle2, MoreVertical, Pencil, Gavel, ShieldCheck } from "lucide-react"
+import { PlusCircle, Loader2, Trash2, Eye, Zap, X, AlertCircle, CheckCircle2, MoreVertical, Pencil, Gavel, ShieldCheck, Upload } from "lucide-react"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 import { HpiReportModal } from "@/components/hpi/HpiReportModal"
 
@@ -23,6 +23,7 @@ export default function MyListingsPage() {
     const [boostSuccess, setBoostSuccess] = React.useState<string | null>(null)
     const [updatingStatus, setUpdatingStatus] = React.useState<string | null>(null)
     const [hpiListingId, setHpiListingId] = React.useState<string | null>(null)
+    const [publishing, setPublishing] = React.useState<string | null>(null)
 
     const fetchListings = React.useCallback(async () => {
         if (!user) return
@@ -68,6 +69,24 @@ export default function MyListingsPage() {
             alert('Failed to update status: ' + err.message)
         } finally {
             setUpdatingStatus(null)
+        }
+    }
+
+    const handlePublish = async (listing: Listing) => {
+        try {
+            setPublishing(listing.id)
+            const result = await publishListing(listing.id)
+            if (result.activated) {
+                setListings(prev => prev.map(l => l.id === listing.id ? { ...l, status: 'ACTIVE' as const } : l))
+            } else if (result.requiresPayment) {
+                // Payment not found — send to Stripe
+                const checkout = await createListingCheckoutSession(listing.id, listing.badgeTier || 'BASIC')
+                window.location.href = checkout.url
+            }
+        } catch (err: any) {
+            alert('Failed to publish: ' + err.message)
+        } finally {
+            setPublishing(null)
         }
     }
 
@@ -220,12 +239,26 @@ export default function MyListingsPage() {
 
                                                     {/* Status */}
                                                     <td className="px-6 py-4">
-                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${listing.status === "ACTIVE" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
-                                                            listing.status === "SOLD" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
-                                                                "bg-slate-700/50 text-gray-400 border-slate-600"
-                                                            }`}>
-                                                            {listing.status}
-                                                        </span>
+                                                        <div className="flex flex-col gap-1.5">
+                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border w-fit ${listing.status === "ACTIVE" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                                                                listing.status === "SOLD" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
+                                                                    "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                                                                }`}>
+                                                                {listing.status}
+                                                            </span>
+                                                            {listing.status === 'DRAFT' && (
+                                                                <button
+                                                                    onClick={() => handlePublish(listing)}
+                                                                    disabled={publishing === listing.id}
+                                                                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 transition-colors disabled:opacity-50 w-fit"
+                                                                >
+                                                                    {publishing === listing.id
+                                                                        ? <Loader2 size={10} className="animate-spin" />
+                                                                        : <Upload size={10} />}
+                                                                    Publish
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </td>
 
                                                     {/* Price */}
