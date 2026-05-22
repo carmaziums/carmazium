@@ -1009,6 +1009,17 @@ export async function createListingCheckoutSession(listingId: string, badgeTier:
 }
 
 /**
+ * Activate a DRAFT listing after verifying completed payment.
+ * Returns { activated: true } if now live, or { activated: false, requiresPayment: true } if unpaid.
+ */
+export async function publishListing(listingId: string): Promise<{ activated: boolean; requiresPayment?: boolean }> {
+    const data = await apiClient<{ data: { activated: boolean; requiresPayment?: boolean } }>(`/listings/${listingId}/publish`, {
+        method: 'POST',
+    })
+    return data.data
+}
+
+/**
  * Damage Analysis: Save detected damage records
  */
 export async function saveDamageRecords(listingId: string, detections: any[]): Promise<{ success: boolean }> {
