@@ -13,7 +13,7 @@ import {
 import Image from "next/image"
 import { ImageUpload } from "@/components/listing/ImageUpload"
 import {
-    createListing, formatPrice,
+    createListing, formatPrice, getDamageRecords,
     type CreateListingRequest, type BodyTypeValue,
     type EuroStandardValue, type VehicleTypeValue,
     createHpiCheckoutSession, createListingCheckoutSession, publishListing
@@ -298,6 +298,23 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 // Jump straight to step 1 (already pre-filled)
                 setSellingMethod('list')
                 setCurrentStep(1)
+
+                // Load existing damage records
+                return getDamageRecords(editId!)
+            })
+            .then(damageData => {
+                if (!damageData) return
+                const mapped = damageData.map((r: any) => ({
+                    id: crypto.randomUUID(),
+                    zone: r.part,
+                    description: r.type || '',
+                    photoUrl: r.imageUrl || undefined,
+                    bodyType: r.bodyType || '',
+                    view: (r.coords?.view ?? 'TOP') as 'TOP' | 'FRONT',
+                    x: r.coords?.x ?? 0,
+                    y: r.coords?.y ?? 0,
+                }))
+                setDamageRecords(mapped)
             })
             .catch(err => console.error('Failed to load listing for edit:', err))
             .finally(() => setEditLoading(false))
@@ -488,6 +505,25 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     method: 'PATCH',
                     body: JSON.stringify(payload),
                 })
+
+                // Save damage records (overwrites previous damage for this listing)
+                if (damageRecords.length > 0) {
+                    try {
+                        const detections = damageRecords.map(r => ({
+                            part: r.zone,
+                            type: r.description,
+                            size: "MEDIUM",
+                            coords: { x: r.x, y: r.y, view: r.view },
+                            imageUrl: r.photoUrl ?? "",
+                        }))
+                        await apiClient(`/damage/${editId}/save`, {
+                            method: 'POST',
+                            body: JSON.stringify({ detections }),
+                        })
+                    } catch (e) {
+                        console.error('Failed to save damage records:', e)
+                    }
+                }
 
                 if (payload.badgeTier !== 'FREE') {
                     // Check if this listing already has a completed payment — avoid double-charging
