@@ -71,6 +71,38 @@ export class AdminController {
         return new StandardResponse(user);
     }
 
+    @Patch('users/:id/ban')
+    @ApiOperation({ summary: 'Ban a user (soft delete)' })
+    @ApiParam({ name: 'id', description: 'User UUID' })
+    async banUser(@Param('id') id: string): Promise<StandardResponse<any>> {
+        const user = await this.adminService.banUser(id);
+        return new StandardResponse(user);
+    }
+
+    @Patch('users/:id/unban')
+    @ApiOperation({ summary: 'Unban a user' })
+    @ApiParam({ name: 'id', description: 'User UUID' })
+    async unbanUser(@Param('id') id: string): Promise<StandardResponse<any>> {
+        const user = await this.adminService.unbanUser(id);
+        return new StandardResponse(user);
+    }
+
+    @Patch('users/:id/lock')
+    @ApiOperation({ summary: 'Lock a user account for 24 hours' })
+    @ApiParam({ name: 'id', description: 'User UUID' })
+    async lockUser(@Param('id') id: string): Promise<StandardResponse<any>> {
+        const user = await this.adminService.lockUser(id);
+        return new StandardResponse(user);
+    }
+
+    @Patch('users/:id/unlock')
+    @ApiOperation({ summary: 'Unlock a user account' })
+    @ApiParam({ name: 'id', description: 'User UUID' })
+    async unlockUser(@Param('id') id: string): Promise<StandardResponse<any>> {
+        const user = await this.adminService.unlockUser(id);
+        return new StandardResponse(user);
+    }
+
     // ── Listings ──────────────────────────────────────────────────────────────
 
     @Get('listings')

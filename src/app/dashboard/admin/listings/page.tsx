@@ -162,7 +162,7 @@ export default function AdminListingsPage() {
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex items-center justify-end gap-2">
-                                                    <Link href={`/vehicle/${l.slug}`} target="_blank" className="p-2 hover:bg-white/10 rounded-lg transition-colors text-blue-400 hover:text-white" title="View Listing">
+                                                    <Link href={`/buy-cars/${l.slug}`} target="_blank" className="p-2 hover:bg-white/10 rounded-lg transition-colors text-blue-400 hover:text-white" title="View Listing">
                                                         <Eye size={18} />
                                                     </Link>
                                                     <button 
