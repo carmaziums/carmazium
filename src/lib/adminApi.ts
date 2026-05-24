@@ -72,6 +72,22 @@ export async function updateUserRole(userId: string, role: string) {
   return result;
 }
 
+export async function banUser(userId: string) {
+  return apiClient<any>(`/admin/users/${userId}/ban`, { method: 'PATCH' });
+}
+
+export async function unbanUser(userId: string) {
+  return apiClient<any>(`/admin/users/${userId}/unban`, { method: 'PATCH' });
+}
+
+export async function lockUser(userId: string) {
+  return apiClient<any>(`/admin/users/${userId}/lock`, { method: 'PATCH' });
+}
+
+export async function unlockUser(userId: string) {
+  return apiClient<any>(`/admin/users/${userId}/unlock`, { method: 'PATCH' });
+}
+
 export async function deleteListingForce(listingId: string) {
   const result = await apiClient<any>(`/admin/listings/${listingId}`, {
     method: 'DELETE',

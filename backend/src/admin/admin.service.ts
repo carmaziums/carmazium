@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
 import { UserRole } from '@prisma/client';
@@ -32,6 +32,8 @@ export class AdminService {
                     role: true,
                     isEmailVerified: true,
                     createdAt: true,
+                    deletedAt: true,
+                    lockoutUntil: true,
                     dealerProfile: { select: { isVerified: true, companyName: true } },
                     _count: { select: { listings: true } },
                 },
@@ -45,6 +47,38 @@ export class AdminService {
         return this.prisma.user.update({
             where: { id: userId },
             data: { role },
+        });
+    }
+
+    async banUser(userId: string) {
+        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) throw new NotFoundException('User not found');
+        if (user.role === 'ADMIN') throw new BadRequestException('Cannot ban another admin');
+        return this.prisma.user.update({
+            where: { id: userId },
+            data: { deletedAt: new Date() },
+        });
+    }
+
+    async unbanUser(userId: string) {
+        return this.prisma.user.update({
+            where: { id: userId },
+            data: { deletedAt: null },
+        });
+    }
+
+    async lockUser(userId: string) {
+        const lockUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        return this.prisma.user.update({
+            where: { id: userId },
+            data: { lockoutUntil: lockUntil },
+        });
+    }
+
+    async unlockUser(userId: string) {
+        return this.prisma.user.update({
+            where: { id: userId },
+            data: { lockoutUntil: null, loginAttempts: 0 },
         });
     }
 
@@ -79,8 +113,9 @@ export class AdminService {
     }
 
     async deleteListing(id: string) {
-        return this.prisma.listing.delete({
+        return this.prisma.listing.update({
             where: { id },
+            data: { deletedAt: new Date() },
         });
     }
 
