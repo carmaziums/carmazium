@@ -417,7 +417,7 @@ export function KycOverlayForm() {
   // and push to the dashboard so the layout re-evaluates the guard.
   if (kycData && kycData.status === "APPROVED") {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-4 overflow-y-auto">
         <div className="dealer-glass-card max-w-xl w-full p-8 md:p-10 border border-emerald-500/20 relative overflow-hidden flex flex-col items-center text-center">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-primary to-emerald-500" />
           <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mb-6">
@@ -444,7 +444,7 @@ export function KycOverlayForm() {
   // ─── Render "Under Review" State ─────────────────────────────────────────────
   if (kycData && kycData.status === "PENDING") {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-4 overflow-y-auto">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
 
@@ -517,22 +517,22 @@ export function KycOverlayForm() {
 
   // ─── Render 3-Step Form Overlay ──────────────────────────────────────────────
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/95 backdrop-blur-xl p-4 overflow-y-auto custom-scrollbar">
+    <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-xl overflow-y-auto custom-scrollbar">
       <div className="absolute top-10 left-10 w-96 h-96 bg-primary/10 rounded-full blur-[140px] pointer-events-none" />
       <div className="absolute bottom-10 right-10 w-96 h-96 bg-blue-500/10 rounded-full blur-[140px] pointer-events-none" />
 
-      <div className="w-full max-w-3xl my-8">
+      <div className="w-full max-w-3xl mx-auto px-4 py-8">
         {/* Header Block */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20">
-              <Shield className="text-primary" size={24} />
+        <div className="flex items-start sm:items-center justify-between mb-6 gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 shrink-0">
+              <Shield className="text-primary" size={22} />
             </div>
-            <div>
-              <h1 className="text-xl md:text-2xl font-black font-heading text-white tracking-tight uppercase">
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl md:text-2xl font-black font-heading text-white tracking-tight uppercase leading-tight">
                 Dealer KYC Portal
               </h1>
-              <p className="text-xs text-slate-400 uppercase tracking-widest font-bold">
+              <p className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-widest font-bold truncate">
                 Verification Required for Dashboard Access
               </p>
             </div>
@@ -540,10 +540,10 @@ export function KycOverlayForm() {
 
           <button
             onClick={handleSignOut}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-white/5 bg-slate-900/60 hover:bg-slate-900/80 text-xs font-bold text-slate-300 transition-colors"
+            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg border border-white/5 bg-slate-900/60 hover:bg-slate-900/80 text-xs font-bold text-slate-300 transition-colors shrink-0"
           >
-            <LogOut size={14} />
-            Sign Out
+            <LogOut size={13} />
+            <span className="hidden xs:inline sm:inline">Sign Out</span>
           </button>
         </div>
 
@@ -577,7 +577,7 @@ export function KycOverlayForm() {
             return (
               <div
                 key={item.step}
-                className={`p-3.5 rounded-xl border transition-all duration-300 flex flex-col md:flex-row items-center gap-3 ${
+                className={`p-2.5 sm:p-3.5 rounded-xl border transition-all duration-300 flex items-center gap-2 sm:gap-3 ${
                   isActive
                     ? "border-primary bg-primary/5 text-white"
                     : isCompleted
@@ -586,7 +586,7 @@ export function KycOverlayForm() {
                 }`}
               >
                 <div
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 border ${
                     isActive
                       ? "border-primary bg-primary text-white"
                       : isCompleted
@@ -594,11 +594,14 @@ export function KycOverlayForm() {
                       : "border-white/10 bg-slate-950 text-slate-500"
                   }`}
                 >
-                  {isCompleted ? <Check size={16} /> : <StepIcon size={16} />}
+                  {isCompleted ? <Check size={14} /> : <StepIcon size={14} />}
                 </div>
-                <div className="text-center md:text-left">
-                  <p className="text-[10px] font-extrabold uppercase tracking-widest opacity-60">Step 0{item.step}</p>
-                  <p className="text-xs font-bold font-heading truncate max-w-[120px] md:max-w-none">{item.label}</p>
+                <div className="hidden sm:block min-w-0">
+                  <p className="text-[10px] font-extrabold uppercase tracking-widest opacity-60 leading-none mb-0.5">Step 0{item.step}</p>
+                  <p className="text-xs font-bold font-heading truncate">{item.label}</p>
+                </div>
+                <div className="sm:hidden">
+                  <p className="text-[10px] font-extrabold uppercase tracking-widest opacity-60">{item.step}</p>
                 </div>
               </div>
             );

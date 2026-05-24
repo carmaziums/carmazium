@@ -5,6 +5,7 @@ import { UserRole } from '@prisma/client';
 import { EmailService } from '../email/email.service';
 import { ReviewKycDto } from './dto/review-kyc.dto';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class AdminService {
@@ -13,6 +14,7 @@ export class AdminService {
         private readonly paymentsService: PaymentsService,
         private readonly emailService: EmailService,
         private readonly notificationsGateway: NotificationsGateway,
+        private readonly notificationsService: NotificationsService,
     ) { }
 
     async getAllUsers(page = 1, limit = 20) {
@@ -336,6 +338,7 @@ export class AdminService {
                     include: {
                         user: {
                             select: {
+                                id: true,
                                 email: true,
                                 firstName: true,
                                 lastName: true,
@@ -418,6 +421,8 @@ export class AdminService {
         const dealerEmail = kyc.dealerProfile.user.email;
         const dealerName = kyc.dealerProfile.companyName || kyc.dealerProfile.user.firstName || 'Dealer';
 
+        const dealerUserId = kyc.dealerProfile.user?.id ?? null;
+
         if (overallStatus === 'APPROVED') {
             // Unblock dealer dashboard
             await this.prisma.dealerProfile.update({
@@ -430,6 +435,23 @@ export class AdminService {
 
             // Send approval email
             await this.emailService.sendKycApprovedDealerAlert(dealerEmail, dealerName).catch(console.error);
+
+            // In-app notification to dealer
+            if (dealerUserId) {
+                const notification = await this.notificationsService.create({
+                    userId: dealerUserId,
+                    type: 'KYC_APPROVED',
+                    title: 'KYC Verification Approved',
+                    message: 'Your dealership documents have been verified. Your dealer dashboard is now fully unlocked!',
+                    link: '/dashboard/dealer',
+                    entityType: 'DealerKyc',
+                    entityId: kyc.id,
+                    actionType: 'APPROVED',
+                }).catch(() => null);
+                if (notification) {
+                    this.notificationsGateway.sendNotification(dealerUserId, notification);
+                }
+            }
         } else if (overallStatus === 'REJECTED') {
             // Keep blocked
             await this.prisma.dealerProfile.update({
@@ -441,6 +463,24 @@ export class AdminService {
 
             // Send rejection email
             await this.emailService.sendKycRejectedDealerAlert(dealerEmail, dealerName, rejectedFields).catch(console.error);
+
+            // In-app notification to dealer
+            if (dealerUserId) {
+                const fieldNames = rejectedFields.map(f => f.field.replace(/([A-Z])/g, ' $1').trim()).join(', ');
+                const notification = await this.notificationsService.create({
+                    userId: dealerUserId,
+                    type: 'KYC_REJECTED',
+                    title: 'KYC Documents Need Attention',
+                    message: `Some documents require revision: ${fieldNames}. Please log in and re-upload the flagged items.`,
+                    link: '/dashboard/dealer',
+                    entityType: 'DealerKyc',
+                    entityId: kyc.id,
+                    actionType: 'REJECTED',
+                }).catch(() => null);
+                if (notification) {
+                    this.notificationsGateway.sendNotification(dealerUserId, notification);
+                }
+            }
         }
 
         return updatedKyc;

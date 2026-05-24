@@ -385,7 +385,7 @@ export default function AdminDealerVerificationPage() {
                       {/* Collapsed Header */}
                       <div
                         onClick={() => toggleExpand(item)}
-                        className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 cursor-pointer hover:bg-white/5 transition-colors"
+                        className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 cursor-pointer hover:bg-white/5 transition-colors"
                       >
                         <div className="flex items-start gap-4">
                           <div className="p-3 rounded-xl bg-slate-900 border border-white/5 text-primary shrink-0">
@@ -420,7 +420,7 @@ export default function AdminDealerVerificationPage() {
 
                       {/* Expanded Review Panel */}
                       {isExpanded && (
-                        <div className="border-t border-white/5 bg-slate-950/40 p-6 md:p-8 space-y-8 animate-fadeIn">
+                        <div className="border-t border-white/5 bg-slate-950/40 p-4 md:p-8 space-y-6 md:space-y-8 animate-fadeIn">
                           {/* Summary Meta */}
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-slate-900/60 border border-white/5 text-xs">
                             <div>
@@ -512,97 +512,98 @@ export default function AdminDealerVerificationPage() {
                   return (
                     <div
                       key={field.id}
-                      className={`p-4 rounded-xl border transition-all duration-300 flex flex-col md:flex-row md:items-start justify-between gap-4 ${
+                      className={`p-3 sm:p-4 rounded-xl border transition-all duration-300 ${
                         isApproved ? "bg-slate-900/40 border-white/5" : "bg-red-500/5 border-red-500/20"
                       }`}
                     >
-                      {/* Left: Content */}
-                      <div className="space-y-2 max-w-lg min-w-0 flex-1">
-                        <p className="text-[10px] text-slate-500 font-extrabold uppercase tracking-wider">
-                          {field.label}
-                        </p>
+                      {/* Top row: label + field value left, approve/reject buttons right */}
+                      <div className="flex items-start justify-between gap-3">
+                        {/* Left: Content */}
+                        <div className="space-y-1.5 min-w-0 flex-1">
+                          <p className="text-[10px] text-slate-500 font-extrabold uppercase tracking-wider">
+                            {field.label}
+                          </p>
 
-                        {field.isProof ? (
-                          /* Proof Document Thumbnail or Empty State */
-                          hasValue ? (
-                            <ProofThumbnail
-                              url={val}
-                              label={field.label}
-                              onView={(url, label) => setLightbox({ url, label })}
-                            />
+                          {field.isProof ? (
+                            hasValue ? (
+                              <ProofThumbnail
+                                url={val}
+                                label={field.label}
+                                onView={(url, label) => setLightbox({ url, label })}
+                              />
+                            ) : (
+                              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-white/10 bg-slate-900/40">
+                                <FileImage size={14} className="text-slate-600" />
+                                <span className="text-[11px] text-slate-500 font-semibold italic">
+                                  No document uploaded
+                                </span>
+                              </div>
+                            )
+                          ) : field.isLink && hasValue ? (
+                            <a
+                              href={val}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-primary font-bold hover:underline flex items-center gap-1 inline-flex break-all"
+                            >
+                              <span className="truncate max-w-[200px] sm:max-w-none">{val}</span>
+                              <ExternalLink size={11} className="shrink-0" />
+                            </a>
+                          ) : field.isTextarea ? (
+                            <p className="text-xs font-semibold text-slate-200 leading-relaxed whitespace-pre-line">
+                              {val || "—"}
+                            </p>
                           ) : (
-                            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-white/10 bg-slate-900/40">
-                              <FileImage size={14} className="text-slate-600" />
-                              <span className="text-[11px] text-slate-500 font-semibold italic">
-                                No document uploaded
-                              </span>
-                            </div>
-                          )
-                        ) : field.isLink && hasValue ? (
-                          <a
-                            href={val}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-primary font-bold hover:underline flex items-center gap-1 inline-flex"
-                          >
-                            {val}
-                            <ExternalLink size={11} />
-                          </a>
-                        ) : field.isTextarea ? (
-                          <p className="text-xs font-semibold text-slate-200 leading-relaxed whitespace-pre-line">
-                            {val || "—"}
-                          </p>
-                        ) : (
-                          <p className="text-xs font-semibold text-slate-200 truncate">
-                            {hasValue ? val : <span className="text-slate-500 italic">Not provided</span>}
-                          </p>
-                        )}
-                      </div>
+                            <p className="text-xs font-semibold text-slate-200 truncate">
+                              {hasValue ? val : <span className="text-slate-500 italic">Not provided</span>}
+                            </p>
+                          )}
+                        </div>
 
-                      {/* Right: Approve / Reject Controls */}
-                      <div className="flex flex-col gap-2 shrink-0 md:items-end w-full md:w-auto">
-                        <div className="flex gap-2">
+                        {/* Right: Approve / Reject Buttons (always inline) */}
+                        <div className="flex gap-1.5 shrink-0">
                           <button
                             type="button"
                             onClick={() => handleDecisionChange(field.id, "APPROVED")}
-                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all flex items-center gap-1.5 cursor-pointer ${
+                            className={`px-2 sm:px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all flex items-center gap-1 cursor-pointer ${
                               isApproved
                                 ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]"
                                 : "bg-slate-950/60 border-white/5 text-slate-500 hover:text-slate-300"
                             }`}
                           >
-                            <Check size={12} />
-                            Approve
+                            <Check size={11} />
+                            <span className="hidden sm:inline">Approve</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDecisionChange(field.id, "REJECTED")}
-                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all flex items-center gap-1.5 cursor-pointer ${
+                            className={`px-2 sm:px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all flex items-center gap-1 cursor-pointer ${
                               isRejected
                                 ? "bg-red-500/10 border-red-500/30 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.1)]"
                                 : "bg-slate-950/60 border-white/5 text-slate-500 hover:text-slate-300"
                             }`}
                           >
-                            <X size={12} />
-                            Reject
+                            <X size={11} />
+                            <span className="hidden sm:inline">Reject</span>
                           </button>
                         </div>
-
-                        {isRejected && (
-                          <div className="w-full md:w-64 relative mt-1">
-                            <div className="absolute top-2.5 left-2.5 text-red-500 pointer-events-none">
-                              <MessageSquare size={12} />
-                            </div>
-                            <input
-                              type="text"
-                              value={decision.note}
-                              onChange={(e) => handleNoteChange(field.id, e.target.value)}
-                              placeholder="Reason for rejection..."
-                              className="w-full pl-8 pr-3 py-1.5 bg-slate-950 border border-red-500/40 focus:border-red-500 rounded-lg text-[11px] font-semibold text-slate-300 placeholder:text-slate-600 focus:ring-1 focus:ring-red-500 transition-all"
-                            />
-                          </div>
-                        )}
                       </div>
+
+                      {/* Rejection note — full width below, only when rejected */}
+                      {isRejected && (
+                        <div className="relative mt-2.5">
+                          <div className="absolute top-2.5 left-2.5 text-red-500 pointer-events-none">
+                            <MessageSquare size={12} />
+                          </div>
+                          <input
+                            type="text"
+                            value={decision.note}
+                            onChange={(e) => handleNoteChange(field.id, e.target.value)}
+                            placeholder="Reason for rejection..."
+                            className="w-full pl-8 pr-3 py-1.5 bg-slate-950 border border-red-500/40 focus:border-red-500 rounded-lg text-[11px] font-semibold text-slate-300 placeholder:text-slate-600 focus:ring-1 focus:ring-red-500 transition-all"
+                          />
+                        </div>
+                      )}
                     </div>
                   );
                 })}
