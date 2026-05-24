@@ -31,8 +31,8 @@ export class AuctionsService {
         const now = new Date();
         const startTime = new Date(createAuctionDto.startTime);
 
-        if (startTime <= now) {
-            throw new BadRequestException('Start time must be in the future');
+        if (startTime.getTime() < now.getTime() + 30 * 60 * 1000) {
+            throw new BadRequestException('Start time must be at least 30 minutes in the future');
         }
 
         // Compute endTime server-side — always startTime + 6 hours

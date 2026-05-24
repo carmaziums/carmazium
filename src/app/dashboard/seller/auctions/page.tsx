@@ -140,8 +140,8 @@ function SellerAuctionsPage() {
         if (!formStartTime) { setFormError("Please set a start date/time."); return }
 
         const startMs = new Date(formStartTime).getTime()
-        if (startMs < Date.now() + 60 * 60 * 1000) {
-            setFormError("Start time must be at least 1 hour in the future.")
+        if (startMs < Date.now() + 30 * 60 * 1000) {
+            setFormError("Start time must be at least 30 minutes in the future.")
             return
         }
 
