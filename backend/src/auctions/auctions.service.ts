@@ -58,7 +58,8 @@ export class AuctionsService {
             where: { listingId: createAuctionDto.listingId },
         });
 
-        if (existing && !existing.deletedAt) {
+        // Active or scheduled auction already running — block
+        if (existing && !existing.deletedAt && existing.status !== 'ENDED') {
             throw new BadRequestException('An auction already exists for this listing');
         }
 
@@ -67,6 +68,30 @@ export class AuctionsService {
             await this.prisma.listing.update({
                 where: { id: createAuctionDto.listingId },
                 data: { type: 'AUCTION' },
+            });
+        }
+
+        // Re-use the existing cancelled/ended row (listingId is @unique — can't create a second row)
+        if (existing) {
+            return this.prisma.auction.update({
+                where: { id: existing.id },
+                data: {
+                    startTime,
+                    endTime,
+                    reservePrice: createAuctionDto.reservePrice,
+                    startingBid: createAuctionDto.startingBid,
+                    minIncrement: createAuctionDto.minIncrement,
+                    status: 'SCHEDULED',
+                    deletedAt: null,
+                    winnerId: null,
+                    winningBidAmount: null,
+                    buyerFeePaid: false,
+                    buyerFeeTransactionId: null,
+                    handoverProofUrl: null,
+                    handoverSubmittedAt: null,
+                    sellerBonusReleased: false,
+                    sellerBonusReleasedAt: null,
+                },
             });
         }
 
