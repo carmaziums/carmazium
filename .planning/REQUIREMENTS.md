@@ -175,33 +175,98 @@
 
 ## Traceability
 
-*(Populated by gsd-roadmapper)*
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 through INFRA-06 | Phase 1 | Pending |
-| PUSH-01 through PUSH-10 | Phase 1 | Pending |
-| BUYER-01 through BUYER-04 | Phase 2 | Pending |
-| SELL-DASH-01 through SELL-DASH-04 | Phase 2 | Pending |
-| DEALER-01 through DEALER-03 | Phase 2 | Pending |
-| SELL-01 through SELL-08 | Phase 3 | Pending |
-| KYC-01 through KYC-05 | Phase 4 | Pending |
-| DINV-01 through DINV-04 | Phase 5 | Pending |
-| DCRM-01 through DCRM-04 | Phase 5 | Pending |
-| DAUC-01 through DAUC-03 | Phase 5 | Pending |
-| OFFER-01 through OFFER-05 | Phase 6 | Pending |
-| PUR-01 through PUR-03 | Phase 6 | Pending |
-| WIN-01 through WIN-03 | Phase 6 | Pending |
-| AI-01 through AI-04 | Phase 7 | Pending |
-| MAP-01 through MAP-06 | Phase 7 | Pending |
-| CMP-01 through CMP-04 | Phase 7 | Pending |
-| STORE-01 through STORE-08 | Phase 8 | Pending |
+| INFRA-01 | Phase 1 | Pending |
+| INFRA-02 | Phase 1 | Pending |
+| INFRA-03 | Phase 1 | Pending |
+| INFRA-04 | Phase 1 | Pending |
+| INFRA-05 | Phase 1 | Pending |
+| INFRA-06 | Phase 1 | Pending |
+| PUSH-01 | Phase 1 | Pending |
+| PUSH-02 | Phase 1 | Pending |
+| PUSH-03 | Phase 1 | Pending |
+| PUSH-04 | Phase 1 | Pending |
+| PUSH-05 | Phase 1 | Pending |
+| PUSH-06 | Phase 1 | Pending |
+| PUSH-07 | Phase 1 | Pending |
+| PUSH-08 | Phase 1 | Pending |
+| PUSH-09 | Phase 1 | Pending |
+| PUSH-10 | Phase 1 | Pending |
+| BUYER-01 | Phase 2 | Pending |
+| BUYER-02 | Phase 2 | Pending |
+| BUYER-03 | Phase 2 | Pending |
+| BUYER-04 | Phase 2 | Pending |
+| SELL-DASH-01 | Phase 2 | Pending |
+| SELL-DASH-02 | Phase 2 | Pending |
+| SELL-DASH-03 | Phase 2 | Pending |
+| SELL-DASH-04 | Phase 2 | Pending |
+| DEALER-01 | Phase 2 | Pending |
+| DEALER-02 | Phase 2 | Pending |
+| DEALER-03 | Phase 2 | Pending |
+| SELL-01 | Phase 3 | Pending |
+| SELL-02 | Phase 3 | Pending |
+| SELL-03 | Phase 3 | Pending |
+| SELL-04 | Phase 3 | Pending |
+| SELL-05 | Phase 3 | Pending |
+| SELL-06 | Phase 3 | Pending |
+| SELL-07 | Phase 3 | Pending |
+| SELL-08 | Phase 3 | Pending |
+| KYC-01 | Phase 4 | Pending |
+| KYC-02 | Phase 4 | Pending |
+| KYC-03 | Phase 4 | Pending |
+| KYC-04 | Phase 4 | Pending |
+| KYC-05 | Phase 4 | Pending |
+| DINV-01 | Phase 5 | Pending |
+| DINV-02 | Phase 5 | Pending |
+| DINV-03 | Phase 5 | Pending |
+| DINV-04 | Phase 5 | Pending |
+| DCRM-01 | Phase 5 | Pending |
+| DCRM-02 | Phase 5 | Pending |
+| DCRM-03 | Phase 5 | Pending |
+| DCRM-04 | Phase 5 | Pending |
+| DAUC-01 | Phase 5 | Pending |
+| DAUC-02 | Phase 5 | Pending |
+| DAUC-03 | Phase 5 | Pending |
+| OFFER-01 | Phase 6 | Pending |
+| OFFER-02 | Phase 6 | Pending |
+| OFFER-03 | Phase 6 | Pending |
+| OFFER-04 | Phase 6 | Pending |
+| OFFER-05 | Phase 6 | Pending |
+| PUR-01 | Phase 6 | Pending |
+| PUR-02 | Phase 6 | Pending |
+| PUR-03 | Phase 6 | Pending |
+| WIN-01 | Phase 6 | Pending |
+| WIN-02 | Phase 6 | Pending |
+| WIN-03 | Phase 6 | Pending |
+| AI-01 | Phase 7 | Pending |
+| AI-02 | Phase 7 | Pending |
+| AI-03 | Phase 7 | Pending |
+| AI-04 | Phase 7 | Pending |
+| MAP-01 | Phase 7 | Pending |
+| MAP-02 | Phase 7 | Pending |
+| MAP-03 | Phase 7 | Pending |
+| MAP-04 | Phase 7 | Pending |
+| MAP-05 | Phase 7 | Pending |
+| MAP-06 | Phase 7 | Pending |
+| CMP-01 | Phase 7 | Pending |
+| CMP-02 | Phase 7 | Pending |
+| CMP-03 | Phase 7 | Pending |
+| CMP-04 | Phase 7 | Pending |
+| STORE-01 | Phase 8 | Pending |
+| STORE-02 | Phase 8 | Pending |
+| STORE-03 | Phase 8 | Pending |
+| STORE-04 | Phase 8 | Pending |
+| STORE-05 | Phase 8 | Pending |
+| STORE-06 | Phase 8 | Pending |
+| STORE-07 | Phase 8 | Pending |
+| STORE-08 | Phase 8 | Pending |
 
 **Coverage:**
 - v1.0 requirements: 82 total
 - Mapped to phases: 82
-- Unmapped: 0 ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-30*
-*Last updated: 2026-05-30 — Initial definition*
+*Last updated: 2026-05-30 — Traceability populated by gsd-roadmapper (8 phases, 82 requirements)*
