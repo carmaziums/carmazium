@@ -36,17 +36,50 @@ export interface Zone {
   position: [number, number, number]
 }
 
+// OS = Off Side (driver's side, right in UK), NS = Near Side (passenger, left in UK)
+// F = Front, R = Rear  →  OSF = Off Side Front, NSR = Near Side Rear, etc.
 export const ALL_ZONES: Zone[] = [
-  { id: "front-bumper",     label: "Front Bumper",      position: [0,     0.2,   2.5]  },
-  { id: "bonnet",           label: "Bonnet / Hood",      position: [0,     0.65,  1.5]  },
-  { id: "windshield",       label: "Windshield",         position: [0,     1.1,   0.65] },
-  { id: "front-left-door",  label: "Front Left Door",   position: [-1.05, 0.7,   0.35] },
-  { id: "front-right-door", label: "Front Right Door",  position: [1.05,  0.7,   0.35] },
-  { id: "roof",             label: "Roof",               position: [0,     1.55,  0.0]  },
-  { id: "rear-left-door",   label: "Rear Left Door",    position: [-1.05, 0.7,  -0.85] },
-  { id: "rear-right-door",  label: "Rear Right Door",   position: [1.05,  0.7,  -0.85] },
-  { id: "boot",             label: "Boot / Trunk",       position: [0,     0.65, -1.8]  },
-  { id: "rear-bumper",      label: "Rear Bumper",        position: [0,     0.2,  -2.5]  },
+  // ─── Exterior: Front ──────────────────────────────────────────────────────
+  { id: "front-bumper",     label: "Front Bumper",            position: [0,     0.2,   2.5]  },
+  { id: "ns-headlight",     label: "Headlight (NS)",          position: [-0.65, 0.5,   2.6]  },
+  { id: "os-headlight",     label: "Headlight (OS)",          position: [0.65,  0.5,   2.6]  },
+  { id: "bonnet",           label: "Bonnet / Hood",           position: [0,     0.65,  1.5]  },
+  { id: "nsf-wing",         label: "Front Wing / Qtr NS",     position: [-1.05, 0.65,  1.4]  },
+  { id: "osf-wing",         label: "Front Wing / Qtr OS",     position: [1.05,  0.65,  1.4]  },
+  // ─── Exterior: Windscreens ────────────────────────────────────────────────
+  { id: "windshield",       label: "Windscreen (Front)",      position: [0,     1.1,   0.65] },
+  { id: "rear-windshield",  label: "Windscreen (Rear)",       position: [0,     1.1,  -0.65] },
+  // ─── Exterior: Roof ───────────────────────────────────────────────────────
+  { id: "roof",             label: "Roof",                    position: [0,     1.55,  0.0]  },
+  // ─── Exterior: Doors ──────────────────────────────────────────────────────
+  { id: "front-left-door",  label: "Door NSF (Front NS)",     position: [-1.05, 0.7,   0.35] },
+  { id: "front-right-door", label: "Door OSF (Front OS)",     position: [1.05,  0.7,   0.35] },
+  { id: "rear-left-door",   label: "Door NSR (Rear NS)",      position: [-1.05, 0.7,  -0.85] },
+  { id: "rear-right-door",  label: "Door OSR (Rear OS)",      position: [1.05,  0.7,  -0.85] },
+  // ─── Exterior: Sills ──────────────────────────────────────────────────────
+  { id: "ns-sill",          label: "Sill (NS)",               position: [-1.05, 0.15, -0.2]  },
+  { id: "os-sill",          label: "Sill (OS)",               position: [1.05,  0.15, -0.2]  },
+  // ─── Exterior: Rear ───────────────────────────────────────────────────────
+  { id: "nsr-quarter",      label: "Rear Qtr Panel (NS)",     position: [-1.05, 0.65, -1.4]  },
+  { id: "osr-quarter",      label: "Rear Qtr Panel (OS)",     position: [1.05,  0.65, -1.4]  },
+  { id: "boot",             label: "Boot / Trunk Lid",        position: [0,     0.65, -1.8]  },
+  { id: "ns-rear-light",    label: "Rear Light (NS)",         position: [-0.65, 0.5,  -2.6]  },
+  { id: "os-rear-light",    label: "Rear Light (OS)",         position: [0.65,  0.5,  -2.6]  },
+  { id: "rear-bumper",      label: "Rear Bumper",             position: [0,     0.2,  -2.5]  },
+  // ─── Exterior: Wheels ─────────────────────────────────────────────────────
+  { id: "nsf-wheel",        label: "Wheel NSF",               position: [-1.0,  0.15,  1.3]  },
+  { id: "osf-wheel",        label: "Wheel OSF",               position: [1.0,   0.15,  1.3]  },
+  { id: "nsr-wheel",        label: "Wheel NSR",               position: [-1.0,  0.15, -1.2]  },
+  { id: "osr-wheel",        label: "Wheel OSR",               position: [1.0,   0.15, -1.2]  },
+  // ─── Interior ─────────────────────────────────────────────────────────────
+  { id: "dashboard",        label: "Dashboard",               position: [0,     0.7,   0.6]  },
+  { id: "steering-wheel",   label: "Steering Wheel",          position: [0.55,  0.75,  0.5]  },
+  { id: "driver-seat",      label: "Driver's Seat (OS)",      position: [0.6,   0.3,   0.0]  },
+  { id: "passenger-seat",   label: "Passenger's Seat (NS)",   position: [-0.6,  0.3,   0.0]  },
+  { id: "rear-seat",        label: "Rear Seats",              position: [0,     0.3,  -0.9]  },
+  { id: "centre-console",   label: "Centre Console",          position: [0,     0.4,   0.2]  },
+  { id: "headlining",       label: "Headlining / Roof Lining",position: [0,     1.4,   0.0]  },
+  { id: "boot-interior",    label: "Boot Interior",           position: [0,     0.4,  -2.0]  },
 ]
 
 // ─── Normalised vehicle model ─────────────────────────────────────────────────

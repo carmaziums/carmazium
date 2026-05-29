@@ -16,8 +16,18 @@ import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/
 import { DualRangeSlider } from "@/components/ui/DualRangeSlider"
 import { useUserLocation } from "@/hooks/useUserLocation"
 import { haversineDistanceMiles } from "@/lib/distance"
+import { CAR_MAKES, getModelsForMake } from "@/lib/carData"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
+
+const POPULAR_FEATURES = [
+    'Air Conditioning', 'Climate Control', 'Alloy Wheels',
+    'Parking Sensors (Front)', 'Parking Sensors (Rear)', 'Reverse Camera',
+    'Sat Nav', 'Bluetooth / Hands Free', 'DAB Radio',
+    'Heated Seats', 'Cruise Control', 'Panoramic Roof',
+    'Apple CarPlay', 'Android Auto', 'Keyless Entry',
+    'Lane Assist', 'Blind Spot Monitoring', 'Adaptive Cruise Control',
+] as const
 
 const FUEL_TYPES = ['Petrol', 'Diesel', 'Hybrid', 'Electric', 'Plugin Hybrid', 'LPG', 'Hydrogen Fuel Cell'] as const
 const FUEL_MAP: Record<string, string> = {
@@ -99,6 +109,7 @@ interface FilterState {
     location: string
     listingType: 'CLASSIFIED' | 'AUCTION' | ''
     sortBy: string
+    features: string[]
 }
 
 const INITIAL_FILTERS: FilterState = {
@@ -115,6 +126,7 @@ const INITIAL_FILTERS: FilterState = {
     minBhp: '', maxBhp: '',
     sellerType: '', location: '', listingType: '',
     sortBy: 'newest',
+    features: [],
 }
 
 // ─── Collapsible Section ──────────────────────────────────────────────────────
@@ -546,12 +558,45 @@ function SearchPageContent() {
                             {/* Make & Model */}
                             <FilterSection title="Make / Model" defaultOpen={true}>
                                 <div className="space-y-2">
-                                    <Input placeholder="Make (e.g. BMW)" value={filters.make}
-                                        onChange={(e) => set('make', e.target.value)}
-                                        className="h-9 text-sm bg-slate-800 border-white/10 text-white placeholder:text-gray-500" />
-                                    <Input placeholder="Model (e.g. M4)" value={filters.model}
-                                        onChange={(e) => set('model', e.target.value)}
-                                        className="h-9 text-sm bg-slate-800 border-white/10 text-white placeholder:text-gray-500" />
+                                    {/* Make — text input with datalist autocomplete */}
+                                    <div className="relative">
+                                        <input
+                                            list="make-options"
+                                            placeholder="Make (e.g. BMW)"
+                                            value={filters.make}
+                                            onChange={(e) => {
+                                                set('make', e.target.value)
+                                                set('model', '') // reset model when make changes
+                                            }}
+                                            className="h-9 w-full rounded-md border border-white/10 bg-slate-800 px-3 text-sm text-white placeholder:text-gray-500 focus:border-primary focus:outline-none"
+                                        />
+                                        <datalist id="make-options">
+                                            {CAR_MAKES.map(m => <option key={m} value={m} />)}
+                                        </datalist>
+                                    </div>
+                                    {/* Model — dropdown when make is known, text input otherwise */}
+                                    {(() => {
+                                        const models = getModelsForMake(filters.make)
+                                        return models.length > 0 ? (
+                                            <select
+                                                value={filters.model}
+                                                onChange={(e) => set('model', e.target.value)}
+                                                className="h-9 w-full rounded-md border border-white/10 bg-slate-800 px-3 text-sm text-white focus:border-primary focus:outline-none cursor-pointer"
+                                            >
+                                                <option value="">All {filters.make} models</option>
+                                                {models.map(m => (
+                                                    <option key={m} value={m}>{m}</option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <Input
+                                                placeholder="Model (e.g. M4)"
+                                                value={filters.model}
+                                                onChange={(e) => set('model', e.target.value)}
+                                                className="h-9 text-sm bg-slate-800 border-white/10 text-white placeholder:text-gray-500"
+                                            />
+                                        )
+                                    })()}
                                 </div>
                             </FilterSection>
 
@@ -713,6 +758,28 @@ function SearchPageContent() {
                                     onMinChange={(v) => set('minBhp', v)} onMaxChange={(v) => set('maxBhp', v)}
                                     minPlaceholder="Min BHP" maxPlaceholder="Max BHP"
                                     sliderMin={50} sliderMax={600} step={25} />
+                            </FilterSection>
+
+                            {/* Features / Options */}
+                            <FilterSection title="Features / Options">
+                                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                                    {POPULAR_FEATURES.map(feat => (
+                                        <label key={feat} className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer hover:text-primary transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                checked={filters.features.includes(feat)}
+                                                onChange={() => setFilters(prev => ({
+                                                    ...prev,
+                                                    features: prev.features.includes(feat)
+                                                        ? prev.features.filter(f => f !== feat)
+                                                        : [...prev.features, feat]
+                                                }))}
+                                                className="accent-primary rounded w-4 h-4 bg-slate-800 border-white/10"
+                                            />
+                                            {feat}
+                                        </label>
+                                    ))}
+                                </div>
                             </FilterSection>
 
                             {/* Location */}
