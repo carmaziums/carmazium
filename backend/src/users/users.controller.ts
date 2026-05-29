@@ -4,6 +4,7 @@ import {
     Post,
     Body,
     Patch,
+    Req,
     UseGuards,
     BadRequestException,
 } from '@nestjs/common';
@@ -41,6 +42,7 @@ export class UsersController {
     @ApiOperation({ summary: 'Update current user profile' })
     async updateMe(
         @CurrentUser() user: any,
+        @Req() req: any,
         @Body()
         body: {
             firstName?: string;
@@ -51,10 +53,12 @@ export class UsersController {
             preferences?: Record<string, any>;
         },
     ) {
-        return {
-            success: true,
-            data: await this.usersService.updateProfile(user.id, body),
-        };
+        const updated = await this.usersService.updateProfile(user.id, body);
+        // Keep session cache in sync so middleware doesn't serve stale profile data
+        if (req.session?.cachedUser) {
+            req.session.cachedUser = { ...req.session.cachedUser, ...updated };
+        }
+        return { success: true, data: updated };
     }
 
     /**
