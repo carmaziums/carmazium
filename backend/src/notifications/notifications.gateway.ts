@@ -6,7 +6,7 @@ import {
     OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Logger } from '@nestjs/common';
+import { forwardRef, Inject, Logger } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 
 @WebSocketGateway({
@@ -30,7 +30,10 @@ export class NotificationsGateway
     private connectedUsers: Map<string, string[]> = new Map();
     private static readonly MAX_SOCKETS_PER_USER = 5;
 
-    constructor(private readonly notificationsService: NotificationsService) { }
+    constructor(
+        @Inject(forwardRef(() => NotificationsService))
+        private readonly notificationsService: NotificationsService,
+    ) { }
 
     afterInit(server: Server): void {
         this.logger.log('Notifications WebSocket Gateway initialized');
@@ -97,5 +100,14 @@ export class NotificationsGateway
      */
     sendNotification(userId: string, notification: any) {
         this.server.to(`user:${userId}`).emit('notification:new', notification);
+    }
+
+    /**
+     * Check if a user has at least one active socket connection to /notifications.
+     * Used by NotificationsService to skip FCM push when user is online.
+     */
+    isUserConnected(userId: string): boolean {
+        const socketIds = this.connectedUsers.get(userId);
+        return !!socketIds && socketIds.length > 0;
     }
 }
