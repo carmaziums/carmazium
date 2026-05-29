@@ -250,6 +250,7 @@ function SearchPageContent() {
             sellerType: (p('sellerType') as 'PRIVATE' | 'DEALER') || '',
             location: p('location'), listingType: (p('listingType') as 'CLASSIFIED' | 'AUCTION') || '',
             sortBy: p('sortBy') || 'newest',
+            features: searchParams.get('features')?.split(',').filter(Boolean) || [],
         }
     }, [searchParams])
 
