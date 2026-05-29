@@ -668,6 +668,8 @@ export interface UpdateProfileRequest {
     profileImage?: string
     notifyOnSale?: boolean
     showPublicProfile?: boolean
+    location?: string
+    preferences?: Record<string, any>
 }
 
 /**
