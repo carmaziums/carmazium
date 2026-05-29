@@ -30,7 +30,38 @@ export interface AuctionListing {
     make: string | null;
     model: string | null;
     year: number | null;
+    mileage: number | null;
     price: number | null;
+    description: string | null;
+    // Specs
+    fuelType: string | null;
+    transmission: string | null;
+    bodyType: string | null;
+    color: string | null;
+    doors: number | null;
+    seats: number | null;
+    engineSize: number | null;
+    bhp: number | null;
+    // Compliance
+    condition: string | null;
+    ulezCompliant: boolean | null;
+    euroStandard: string | null;
+    co2Emissions: number | null;
+    // Identity
+    vrm: string | null;
+    vin: string | null;
+    writeOffCategory: string | null;
+    // History
+    motStatus: string | null;
+    motExpiryDate: string | null;
+    taxStatus: string | null;
+    taxDueDate: string | null;
+    monthOfFirstRegistration: string | null;
+    // Features & location
+    features: string[] | null;
+    location: string | null;
+    type: 'AUCTION' | 'CLASSIFIED';
+    status: string;
     sellerId: string | null;
     seller?: AuctionSeller | null;
     bids?: AuctionBid[];

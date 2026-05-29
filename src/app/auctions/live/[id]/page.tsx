@@ -12,6 +12,8 @@ import {
     ShieldCheck, Info, Zap, Trophy, Clock, WifiOff,
     MessageSquare, Timer, Flame, TrendingUp, RefreshCw,
     Ban, CalendarClock, CreditCard, Handshake,
+    Gauge, Fuel, Car, Cog, Palette, DoorOpen, Star,
+    FileText, Wrench, Leaf, TriangleAlert,
 } from "lucide-react"
 import { CountdownTimer } from "@/components/features/CountdownTimer"
 import { useAuth } from "@/context/AuthContext"
@@ -620,33 +622,138 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                         <div className="p-5">
                             <AnimatePresence mode="wait">
                                 {activeTab === "details" && (
-                                    <motion.div key="details" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    <motion.div key="details" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5">
+
+                                        {/* ── Quick-stat grid ─────────────────────────────── */}
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                                             {[
-                                                { label: "Year", value: auction.listing.year ?? "—" },
-                                                { label: "Make", value: auction.listing.make ?? "—" },
-                                                { label: "Model", value: auction.listing.model ?? "—" },
-                                                { label: "Min Increment", value: `£${Number(auction.minIncrement).toLocaleString()}` },
+                                                { label: "Year",         value: auction.listing.year ?? "—" },
+                                                { label: "Mileage",      value: auction.listing.mileage ? `${auction.listing.mileage.toLocaleString()} mi` : "—" },
+                                                { label: "Fuel",         value: auction.listing.fuelType?.replace(/_/g, " ") ?? "—" },
+                                                { label: "Transmission", value: auction.listing.transmission?.replace(/_/g, " ") ?? "—" },
+                                                { label: "Engine",       value: auction.listing.engineSize ? `${(auction.listing.engineSize / 1000).toFixed(1)}L` : "—" },
+                                                { label: "Power",        value: auction.listing.bhp ? `${auction.listing.bhp} BHP` : "—" },
+                                                { label: "Body",         value: auction.listing.bodyType?.replace(/_/g, " ") ?? "—" },
+                                                { label: "Colour",       value: auction.listing.color ?? "—" },
                                             ].map(s => (
                                                 <div key={s.label} className="bg-slate-900/60 border border-white/5 rounded-xl p-3 text-center">
                                                     <p className="text-[9px] text-slate-500 uppercase tracking-widest mb-1">{s.label}</p>
-                                                    <p className="text-sm font-black text-white">{s.value}</p>
+                                                    <p className="text-xs font-black text-white capitalize">{s.value}</p>
                                                 </div>
                                             ))}
                                         </div>
-                                        <div className="bg-slate-900/40 border border-white/5 rounded-xl p-4 space-y-2.5">
+
+                                        {/* ── Description ─────────────────────────────────── */}
+                                        {auction.listing.description && (
+                                            <div className="bg-slate-900/40 border border-white/5 rounded-xl p-4">
+                                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5"><FileText size={11} /> Description</p>
+                                                <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-line">{auction.listing.description}</p>
+                                            </div>
+                                        )}
+
+                                        {/* ── Full spec table ──────────────────────────────── */}
+                                        <div className="bg-slate-900/40 border border-white/5 rounded-xl p-4 space-y-0 divide-y divide-white/5">
+                                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 pb-3 flex items-center gap-1.5"><Car size={11} /> Vehicle Specifications</p>
                                             {[
-                                                ["Starting Bid", `£${Number(auction.startingBid).toLocaleString()}`],
-                                                ["Reserve Price", `£${Number(auction.reservePrice).toLocaleString()}`],
-                                                ["Starts", startTime ? startTime.toLocaleString("en-GB") : "—"],
-                                                ["Ends", endTime ? endTime.toLocaleString("en-GB") : "—"],
+                                                ["Make",         auction.listing.make],
+                                                ["Model",        auction.listing.model],
+                                                ["Year",         auction.listing.year],
+                                                ["Mileage",      auction.listing.mileage ? `${auction.listing.mileage.toLocaleString()} miles` : null],
+                                                ["Body Type",    auction.listing.bodyType?.replace(/_/g, " ")],
+                                                ["Colour",       auction.listing.color],
+                                                ["Doors",        auction.listing.doors],
+                                                ["Seats",        auction.listing.seats],
+                                                ["Engine",       auction.listing.engineSize ? `${(auction.listing.engineSize / 1000).toFixed(1)}L (${auction.listing.engineSize} cc)` : null],
+                                                ["Power",        auction.listing.bhp ? `${auction.listing.bhp} BHP` : null],
+                                                ["Fuel Type",    auction.listing.fuelType?.replace(/_/g, " ")],
+                                                ["Transmission", auction.listing.transmission?.replace(/_/g, " ")],
+                                                ["Condition",    auction.listing.condition?.replace(/_/g, " ")],
+                                                ["VRM",          auction.listing.vrm],
+                                                ["First Reg.",   auction.listing.monthOfFirstRegistration],
+                                                ["Location",     auction.listing.location],
+                                            ].filter(([, v]) => v != null && v !== "").map(([k, v]) => (
+                                                <div key={k as string} className="flex justify-between items-center py-2 text-xs">
+                                                    <span className="text-slate-500">{k}</span>
+                                                    <span className="text-white font-semibold capitalize">{String(v)}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* ── Compliance & environment ─────────────────────── */}
+                                        {(auction.listing.ulezCompliant != null || auction.listing.euroStandard || auction.listing.co2Emissions) && (
+                                            <div className="bg-slate-900/40 border border-white/5 rounded-xl p-4 space-y-0 divide-y divide-white/5">
+                                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 pb-3 flex items-center gap-1.5"><Leaf size={11} /> Compliance & Environment</p>
+                                                {[
+                                                    ["ULEZ / CAZ Compliant", auction.listing.ulezCompliant == null ? null : auction.listing.ulezCompliant ? "✓ Compliant" : "✗ Non-compliant"],
+                                                    ["Euro Standard",         auction.listing.euroStandard?.replace(/_/g, " ")],
+                                                    ["CO₂ Emissions",         auction.listing.co2Emissions ? `${auction.listing.co2Emissions} g/km` : null],
+                                                ].filter(([, v]) => v != null).map(([k, v]) => (
+                                                    <div key={k as string} className="flex justify-between items-center py-2 text-xs">
+                                                        <span className="text-slate-500">{k}</span>
+                                                        <span className={`font-semibold ${String(v).startsWith("✓") ? "text-emerald-400" : String(v).startsWith("✗") ? "text-red-400" : "text-white"}`}>{String(v)}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* ── MOT & Tax ───────────────────────────────────── */}
+                                        {(auction.listing.motStatus || auction.listing.taxStatus) && (
+                                            <div className="bg-slate-900/40 border border-white/5 rounded-xl p-4 space-y-0 divide-y divide-white/5">
+                                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 pb-3 flex items-center gap-1.5"><Wrench size={11} /> MOT &amp; Tax</p>
+                                                {[
+                                                    ["MOT Status",  auction.listing.motStatus],
+                                                    ["MOT Expiry",  auction.listing.motExpiryDate],
+                                                    ["Tax Status",  auction.listing.taxStatus],
+                                                    ["Tax Due",     auction.listing.taxDueDate],
+                                                ].filter(([, v]) => v != null && v !== "").map(([k, v]) => (
+                                                    <div key={k as string} className="flex justify-between items-center py-2 text-xs">
+                                                        <span className="text-slate-500">{k}</span>
+                                                        <span className="text-white font-semibold">{String(v)}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* ── Features ────────────────────────────────────── */}
+                                        {auction.listing.features && Array.isArray(auction.listing.features) && auction.listing.features.length > 0 && (
+                                            <div className="bg-slate-900/40 border border-white/5 rounded-xl p-4">
+                                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-1.5"><Star size={11} /> Features &amp; Options</p>
+                                                <div className="grid grid-cols-2 gap-1.5">
+                                                    {(auction.listing.features as string[]).map((f: string) => (
+                                                        <div key={f} className="flex items-center gap-1.5 text-xs text-slate-300">
+                                                            <CheckCircle size={10} className="text-emerald-400 shrink-0" /> {f}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* ── Write-off warning ────────────────────────────── */}
+                                        {auction.listing.writeOffCategory && auction.listing.writeOffCategory !== "NONE" && (
+                                            <div className="flex items-start gap-2.5 p-3.5 bg-amber-500/8 border border-amber-500/20 rounded-xl text-amber-400 text-xs leading-relaxed">
+                                                <TriangleAlert size={12} className="shrink-0 mt-0.5" />
+                                                <p><span className="font-bold">{auction.listing.writeOffCategory.replace(/_/g, " ")} Write-off</span> — This vehicle has been categorised as a write-off. Please review condition details carefully before bidding.</p>
+                                            </div>
+                                        )}
+
+                                        {/* ── Auction parameters ───────────────────────────── */}
+                                        <div className="bg-slate-900/40 border border-white/5 rounded-xl p-4 space-y-0 divide-y divide-white/5">
+                                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 pb-3 flex items-center gap-1.5"><Gavel size={11} /> Auction Details</p>
+                                            {[
+                                                ["Starting Bid",   `£${Number(auction.startingBid).toLocaleString()}`],
+                                                ["Reserve Price",  `£${Number(auction.reservePrice).toLocaleString()}`],
+                                                ["Min Increment",  `£${Number(auction.minIncrement).toLocaleString()}`],
+                                                ["Starts",         startTime ? startTime.toLocaleString("en-GB") : "—"],
+                                                ["Ends",           endTime   ? endTime.toLocaleString("en-GB")   : "—"],
                                             ].map(([k, v]) => (
-                                                <div key={k} className="flex justify-between items-center text-xs">
+                                                <div key={k} className="flex justify-between items-center py-2 text-xs">
                                                     <span className="text-slate-500">{k}</span>
                                                     <span className="text-white font-bold font-mono">{v}</span>
                                                 </div>
                                             ))}
                                         </div>
+
+                                        {/* ── Trust note ──────────────────────────────────── */}
                                         <div className="flex items-start gap-2.5 p-3.5 bg-slate-900/30 border border-white/5 rounded-xl text-slate-500 text-xs leading-relaxed">
                                             <Info size={12} className="shrink-0 mt-0.5" />
                                             <p>All transactions are arranged directly between buyer and seller. A chat opens automatically when the auction ends with the winner.</p>
