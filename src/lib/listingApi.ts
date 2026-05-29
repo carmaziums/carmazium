@@ -213,6 +213,7 @@ export interface ListingFilters {
     fuelTypes?: string[]
     transmission?: string
     transmissions?: string[]
+    features?: string[]
     bodyType?: string
     color?: string
     minDoors?: number
@@ -255,6 +256,7 @@ export async function getListings(filters?: ListingFilters): Promise<ListingsRes
         else if (filters.fuelType) params.append('fuelType', filters.fuelType)
         if (filters.transmissions?.length) params.append('transmissions', filters.transmissions.join(','))
         else if (filters.transmission) params.append('transmission', filters.transmission)
+        if (filters.features?.length) params.append('features', filters.features.join(','))
         if (filters.bodyType) params.append('bodyType', filters.bodyType)
         if (filters.color) params.append('color', filters.color)
         if (filters.minDoors !== undefined) params.append('minDoors', filters.minDoors.toString())

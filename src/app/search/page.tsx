@@ -330,6 +330,7 @@ function SearchPageContent() {
         if (state.location) f.location = state.location
         if (state.listingType) f.listingType = state.listingType
         if (state.sortBy && state.sortBy !== 'newest') f.sortBy = state.sortBy
+        if (state.features?.length) f.features = state.features
         return f
     }, [])
 

@@ -95,6 +95,12 @@ export class ListingFilterDto {
     @IsOptional()
     transmissions?: TransmissionType[];
 
+    @ApiPropertyOptional({ description: 'Filter listings that include ALL specified features (comma-separated)', example: 'Air Conditioning,Sat Nav' })
+    @Transform(({ value }) => typeof value === 'string' ? value.split(',').map((v: string) => v.trim()).filter(Boolean) : value)
+    @IsArray()
+    @IsOptional()
+    features?: string[];
+
     @ApiPropertyOptional({ description: 'Filter by body type', enum: BodyType })
     @IsEnum(BodyType)
     @IsOptional()

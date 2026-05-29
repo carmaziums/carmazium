@@ -298,7 +298,7 @@ export class ListingsService {
             vehicleType,
             minBhp, maxBhp,
             sellerType, location, listingType,
-            sortBy, search,
+            sortBy, search, features,
             page = 1, limit = 20,
         } = filterDto;
         const where: any = { deletedAt: null, status: { in: ['ACTIVE', 'SOLD'] } };
@@ -339,6 +339,10 @@ export class ListingsService {
         if (condition) where.condition = condition;
         if (euroStandard) where.euroStandard = euroStandard;
         if (vehicleType) where.vehicleType = vehicleType;
+
+        // ─── Features (JSON array contains) ─────────────────────────────────
+        // Filter listings where the JSON features array contains ALL requested features
+        if (features?.length) where.features = { array_contains: features };
 
         // ─── Colour (case-insensitive) ──────────────────────────────────────
         if (color) where.color = { contains: color, mode: 'insensitive' };
@@ -618,6 +622,18 @@ export class ListingsService {
             where: { id },
             data: updateData,
         });
+
+        // Re-geocode if location changed
+        if (updateListingDto.location && updateListingDto.location !== listing.location) {
+            this.geocodeLocation(updateListingDto.location)
+                .then(coords => {
+                    if (coords) return this.prisma.listing.update({
+                        where: { id },
+                        data: { latitude: coords.lat, longitude: coords.lng },
+                    });
+                })
+                .catch(() => { /* silent */ });
+        }
 
         // Phase 2: If status changed to ACTIVE, increment seller's listing count
         if (updateData.status === 'ACTIVE' && updatedListing.sellerId && listing.status !== 'ACTIVE') {
