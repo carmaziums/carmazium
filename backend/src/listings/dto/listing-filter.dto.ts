@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type, Transform } from 'class-transformer';
-import { IsInt, IsNumber, IsOptional, IsString, Min, IsEnum, IsBoolean } from 'class-validator';
+import { IsInt, IsNumber, IsOptional, IsString, Min, IsEnum, IsBoolean, IsArray, IsIn } from 'class-validator';
 import {
     FuelType,
     Transmission as TransmissionType,
@@ -78,10 +78,22 @@ export class ListingFilterDto {
     @IsOptional()
     fuelType?: FuelType;
 
+    @ApiPropertyOptional({ description: 'Filter by multiple fuel types (comma-separated)', example: 'PETROL,ELECTRIC' })
+    @Transform(({ value }) => typeof value === 'string' ? value.split(',').map((v: string) => v.trim()) : value)
+    @IsArray()
+    @IsOptional()
+    fuelTypes?: FuelType[];
+
     @ApiPropertyOptional({ description: 'Filter by transmission type', enum: TransmissionType })
     @IsEnum(TransmissionType)
     @IsOptional()
     transmission?: TransmissionType;
+
+    @ApiPropertyOptional({ description: 'Filter by multiple transmission types (comma-separated)', example: 'MANUAL,AUTOMATIC' })
+    @Transform(({ value }) => typeof value === 'string' ? value.split(',').map((v: string) => v.trim()) : value)
+    @IsArray()
+    @IsOptional()
+    transmissions?: TransmissionType[];
 
     @ApiPropertyOptional({ description: 'Filter by body type', enum: BodyType })
     @IsEnum(BodyType)

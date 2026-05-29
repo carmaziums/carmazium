@@ -294,7 +294,9 @@ function SearchPageContent() {
         if (state.minMileage) f.minMileage = parseInt(state.minMileage)
         if (state.maxMileage) f.maxMileage = parseInt(state.maxMileage)
         if (state.fuelTypes.length === 1) f.fuelType = FUEL_MAP[state.fuelTypes[0]]
+        else if (state.fuelTypes.length > 1) f.fuelTypes = state.fuelTypes.map(t => FUEL_MAP[t])
         if (state.transmissions.length === 1) f.transmission = TRANS_MAP[state.transmissions[0]]
+        else if (state.transmissions.length > 1) f.transmissions = state.transmissions.map(t => TRANS_MAP[t])
         if (state.bodyType) f.bodyType = state.bodyType
         if (state.color) f.color = state.color
         if (state.minDoors) f.minDoors = parseInt(state.minDoors)
@@ -325,16 +327,7 @@ function SearchPageContent() {
             apiFilters.page = page
             const response = await getListings(apiFilters)
 
-            let data = response.data
-            // Client-side multi-select filtering (API supports single enum only)
-            if (filterState.fuelTypes.length > 1) {
-                const mapped = filterState.fuelTypes.map(f => FUEL_MAP[f])
-                data = data.filter(l => l.fuelType && mapped.includes(l.fuelType))
-            }
-            if (filterState.transmissions.length > 1) {
-                const mapped = filterState.transmissions.map(t => TRANS_MAP[t])
-                data = data.filter(l => l.transmission && mapped.includes(l.transmission))
-            }
+            const data = response.data
             if (append) {
                 setListings(prev => [...prev, ...data])
             } else {
