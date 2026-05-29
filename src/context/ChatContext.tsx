@@ -55,6 +55,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     const messageCallbacks = useRef<Set<(message: ChatMessage) => void>>(new Set())
     const typingCallbacks = useRef<Set<(data: any) => void>>(new Set())
     const readCallbacks = useRef<Set<(data: any) => void>>(new Set())
+    const hasInitiallyLoaded = useRef(false)
 
     // Initialize socket connection — only after profile is loaded (backend session confirmed)
     useEffect(() => {
@@ -62,6 +63,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             socketRef.current?.disconnect()
             socketRef.current = null
             setIsConnected(false)
+            hasInitiallyLoaded.current = false
             return
         }
 
@@ -147,9 +149,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         }
     }, [user])
 
-    // Initial load only after backend session is ready (profile loaded) to avoid 401s
+    // Initial load only after backend session is ready (profile loaded) to avoid 401s.
+    // Guard with hasInitiallyLoaded to prevent re-fetching on token refresh or socket reconnect
+    // (socket events keep rooms/unread in sync after the first load).
     useEffect(() => {
-        if (user && profile && !authLoading) {
+        if (user && profile && !authLoading && !hasInitiallyLoaded.current) {
+            hasInitiallyLoaded.current = true
             refreshRooms()
             refreshUnreadCount()
         }

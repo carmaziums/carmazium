@@ -96,12 +96,19 @@ async function bootstrap() {
 
   app.use(async (req: any, _res: any, next: any) => {
     if (req.session?.userId && !req.user) {
-      const user = await authService.validateSession(req.session.userId);
-      if (user) {
-        req.user = user;
+      if (req.session.cachedUser) {
+        // Use the user object cached in the session store — no extra DB query needed
+        req.user = req.session.cachedUser;
       } else {
-        // Session references a deleted/invalid user — clear it
-        req.session.destroy(() => { });
+        // Fallback for existing sessions that pre-date this optimisation
+        const user = await authService.validateSession(req.session.userId);
+        if (user) {
+          req.user = user;
+          req.session.cachedUser = user;
+        } else {
+          // Session references a deleted/invalid user — clear it
+          req.session.destroy(() => { });
+        }
       }
     }
     next();

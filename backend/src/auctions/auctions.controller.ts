@@ -6,6 +6,7 @@ import {
     Delete,
     Body,
     Param,
+    Query,
     UseGuards,
     HttpCode,
     HttpStatus,
@@ -42,9 +43,12 @@ export class AuctionsController {
     @Get('scheduled')
     @ApiOperation({ summary: 'Get all upcoming (SCHEDULED) auctions' })
     @ApiResponse({ status: 200, description: 'List of scheduled auctions' })
-    async findAllScheduled() {
-        const auctions = await this.auctionsService.findAllScheduled();
-        return new StandardResponse(auctions);
+    async findAllScheduled(
+        @Query('page') page = '1',
+        @Query('limit') limit = '20',
+    ) {
+        const result = await this.auctionsService.findAllScheduled(+page, +limit);
+        return new StandardResponse(result);
     }
 
     // ── Authenticated Routes ──────────────────────────────────────────────────
@@ -53,9 +57,13 @@ export class AuctionsController {
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()
     @ApiOperation({ summary: "Get the current user's auctions" })
-    async findMyAuctions(@CurrentUser() user: any) {
-        const auctions = await this.auctionsService.findMyAuctions(user.id);
-        return new StandardResponse(auctions);
+    async findMyAuctions(
+        @CurrentUser() user: any,
+        @Query('page') page = '1',
+        @Query('limit') limit = '20',
+    ) {
+        const result = await this.auctionsService.findMyAuctions(user.id, +page, +limit);
+        return new StandardResponse(result);
     }
 
     @Get(':id')
