@@ -168,11 +168,9 @@ export class ListingsService {
             );
         }
 
-        // Re-host any external images
-        let finalImages: string[] = [];
-        if (createListingDto.images && createListingDto.images.length > 0) {
-            finalImages = await Promise.all(createListingDto.images.map(img => this.rehostImage(img)));
-        }
+        // Create listing immediately with original image URLs so the endpoint returns fast.
+        // Image re-hosting (Supabase upload) runs in the background and updates the record.
+        const originalImages = createListingDto.images ?? [];
 
         const listing = await this.prisma.listing.create({
             data: {
@@ -180,7 +178,7 @@ export class ListingsService {
                 price: createListingDto.price,
                 priceMin: createListingDto.priceMin ?? null,
                 priceMax: createListingDto.priceMax ?? null,
-                images: finalImages,
+                images: originalImages,
                 type: listingType,
                 status: listingStatus,
                 description: createListingDto.description ?? null,
@@ -235,6 +233,16 @@ export class ListingsService {
                 writeOffCategory: createListingDto.writeOffCategory ?? 'NONE',
             },
         });
+
+        // Re-host images in background — non-blocking so the endpoint returns immediately
+        if (originalImages.length > 0) {
+            Promise.all(originalImages.map(img => this.rehostImage(img)))
+                .then(hostedUrls => this.prisma.listing.update({
+                    where: { id: listing.id },
+                    data: { images: hostedUrls },
+                }))
+                .catch(err => console.warn(`Image re-host failed for listing ${listing.id}: ${err?.message}`));
+        }
 
         // Phase 2: Increment seller's total listings count
         if (userId && listingStatus === 'ACTIVE') {

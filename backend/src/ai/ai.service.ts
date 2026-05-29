@@ -88,10 +88,13 @@ Or with a filter card:
 
 Always respond in JSON only — no markdown wrappers.`;
 
+const SEARCH_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
 @Injectable()
 export class AiService {
     private readonly logger = new Logger(AiService.name);
     private openai: OpenAI;
+    private readonly searchCache = new Map<string, { result: AiSearchResult; expiresAt: number }>();
 
     constructor(private configService: ConfigService) {
         const apiKey = this.configService.get<string>('OPENAI_API_KEY');
@@ -102,6 +105,12 @@ export class AiService {
     }
 
     async searchRecommendation(query: string): Promise<AiSearchResult> {
+        const cacheKey = query.trim().toLowerCase();
+        const cached = this.searchCache.get(cacheKey);
+        if (cached && cached.expiresAt > Date.now()) {
+            return cached.result;
+        }
+
         try {
             const completion = await this.openai.chat.completions.create({
                 model: 'gpt-4o-mini',
@@ -121,6 +130,7 @@ export class AiService {
 
             const cleanContent = content.replace(/```json\n?/gi, '').replace(/```\n?/gi, '').trim();
             const parsed = JSON.parse(cleanContent) as AiSearchResult;
+            this.searchCache.set(cacheKey, { result: parsed, expiresAt: Date.now() + SEARCH_CACHE_TTL_MS });
             return parsed;
         } catch (error) {
             this.logger.error('OpenAI search error:', error);
