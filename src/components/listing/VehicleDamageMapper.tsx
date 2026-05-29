@@ -210,29 +210,62 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
         onZoneClick={handleZoneClick}
       />
 
-      {/* Zone legend grid — alternative click target + shows marked state */}
-      <div className="grid grid-cols-2 gap-1.5">
-        {ALL_ZONES.map(z => {
-          const isMarked = records.some(r => r.zone === z.id)
-          const isSelected = pendingZoneId === z.id
-          return (
-            <div
-              key={z.id}
-              onClick={() => handleZoneClick(z.id)}
-              className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[10px] border cursor-pointer transition-colors ${
-                isSelected
-                  ? "bg-primary/15 border-primary/40 text-white"
-                  : isMarked
-                    ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
-                    : "bg-slate-800/30 border-white/5 text-gray-500 hover:border-white/15 hover:text-gray-300"
-              }`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSelected ? "bg-primary" : isMarked ? "bg-amber-400" : "bg-gray-600"}`} />
-              {z.label}
+      {/* Zone legend — grouped by area (BCA-standard categories) */}
+      {[
+        {
+          label: "Exterior — Front",
+          ids: ["front-bumper", "ns-headlight", "os-headlight", "bonnet", "nsf-wing", "osf-wing"],
+        },
+        {
+          label: "Exterior — Windscreens & Roof",
+          ids: ["windshield", "rear-windshield", "roof"],
+        },
+        {
+          label: "Exterior — Doors & Sills",
+          ids: ["front-left-door", "front-right-door", "rear-left-door", "rear-right-door", "ns-sill", "os-sill"],
+        },
+        {
+          label: "Exterior — Rear",
+          ids: ["nsr-quarter", "osr-quarter", "boot", "ns-rear-light", "os-rear-light", "rear-bumper"],
+        },
+        {
+          label: "Wheels",
+          ids: ["nsf-wheel", "osf-wheel", "nsr-wheel", "osr-wheel"],
+        },
+        {
+          label: "Interior",
+          ids: ["dashboard", "steering-wheel", "driver-seat", "passenger-seat", "rear-seat", "centre-console", "headlining", "boot-interior"],
+        },
+      ].map(group => {
+        const groupZones = ALL_ZONES.filter(z => group.ids.includes(z.id))
+        return (
+          <div key={group.label} className="space-y-1">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-gray-600 pt-1">{group.label}</p>
+            <div className="grid grid-cols-2 gap-1">
+              {groupZones.map(z => {
+                const isMarked = records.some(r => r.zone === z.id)
+                const isSelected = pendingZoneId === z.id
+                return (
+                  <div
+                    key={z.id}
+                    onClick={() => handleZoneClick(z.id)}
+                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[10px] border cursor-pointer transition-colors ${
+                      isSelected
+                        ? "bg-primary/15 border-primary/40 text-white"
+                        : isMarked
+                          ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
+                          : "bg-slate-800/30 border-white/5 text-gray-500 hover:border-white/15 hover:text-gray-300"
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSelected ? "bg-primary" : isMarked ? "bg-amber-400" : "bg-gray-600"}`} />
+                    {z.label}
+                  </div>
+                )
+              })}
             </div>
-          )
-        })}
-      </div>
+          </div>
+        )
+      })}
 
       {/* Custom area input */}
       <div className="space-y-1.5">
