@@ -208,7 +208,9 @@ export interface ListingFilters {
     minMileage?: number
     maxMileage?: number
     fuelType?: string
+    fuelTypes?: string[]
     transmission?: string
+    transmissions?: string[]
     bodyType?: string
     color?: string
     minDoors?: number
@@ -247,8 +249,10 @@ export async function getListings(filters?: ListingFilters): Promise<ListingsRes
         if (filters.year !== undefined) params.append('year', filters.year.toString())
         if (filters.minMileage !== undefined) params.append('minMileage', filters.minMileage.toString())
         if (filters.maxMileage !== undefined) params.append('maxMileage', filters.maxMileage.toString())
-        if (filters.fuelType) params.append('fuelType', filters.fuelType)
-        if (filters.transmission) params.append('transmission', filters.transmission)
+        if (filters.fuelTypes?.length) params.append('fuelTypes', filters.fuelTypes.join(','))
+        else if (filters.fuelType) params.append('fuelType', filters.fuelType)
+        if (filters.transmissions?.length) params.append('transmissions', filters.transmissions.join(','))
+        else if (filters.transmission) params.append('transmission', filters.transmission)
         if (filters.bodyType) params.append('bodyType', filters.bodyType)
         if (filters.color) params.append('color', filters.color)
         if (filters.minDoors !== undefined) params.append('minDoors', filters.minDoors.toString())

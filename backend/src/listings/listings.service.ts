@@ -254,7 +254,7 @@ export class ListingsService {
             make, model,
             minYear, maxYear, year,  // year is deprecated alias for minYear
             minMileage, maxMileage,
-            fuelType, transmission, bodyType,
+            fuelType, fuelTypes, transmission, transmissions, bodyType,
             color, minDoors, minSeats,
             minEngine, maxEngine, maxCo2,
             condition, ulezCompliant, euroStandard,
@@ -293,8 +293,11 @@ export class ListingsService {
         }
 
         // ─── Enum filters ───────────────────────────────────────────────────
-        if (fuelType) where.fuelType = fuelType;
-        if (transmission) where.transmission = transmission;
+        // fuelTypes (array) takes precedence over single fuelType for multi-select support
+        if (fuelTypes?.length) where.fuelType = { in: fuelTypes };
+        else if (fuelType) where.fuelType = fuelType;
+        if (transmissions?.length) where.transmission = { in: transmissions };
+        else if (transmission) where.transmission = transmission;
         if (bodyType) where.bodyType = bodyType;
         if (condition) where.condition = condition;
         if (euroStandard) where.euroStandard = euroStandard;

@@ -70,6 +70,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const [activeTab, setActiveTab] = React.useState<"details" | "bids" | "seller">("details")
     const [connected, setConnected] = React.useState(false)
     const [antiSnipeActive, setAntiSnipeActive] = React.useState(false)
+    const [showAllBids, setShowAllBids] = React.useState(false)
     const [antiSnipeToast, setAntiSnipeToast] = React.useState(false)
     const [endTime, setEndTime] = React.useState<Date | null>(null)
     const [startTime, setStartTime] = React.useState<Date | null>(null)
@@ -171,14 +172,18 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
         return () => { socket.disconnect() }
     }, [auction?.id, user])
 
-    // ── Anti-snipe interval ───────────────────────────────────────────────────
+    // ── Anti-snipe activation ─────────────────────────────────────────────────
+    // Schedule a single timeout to fire exactly when we enter the anti-snipe window,
+    // instead of polling every 10 seconds.
     React.useEffect(() => {
         if (!endTime || auction?.status !== "ACTIVE") return
-        const iv = setInterval(() => {
-            const left = endTime.getTime() - Date.now()
-            setAntiSnipeActive(left > 0 && left <= 3 * 60 * 1000)
-        }, 10_000)
-        return () => clearInterval(iv)
+        const msUntilWindow = endTime.getTime() - Date.now() - 3 * 60 * 1000
+        if (msUntilWindow <= 0) {
+            setAntiSnipeActive(true)
+            return
+        }
+        const t = setTimeout(() => setAntiSnipeActive(true), msUntilWindow)
+        return () => clearTimeout(t)
     }, [endTime, auction?.status])
 
     // ── Auto-scroll bid feed ──────────────────────────────────────────────────
@@ -660,7 +665,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                 <div className="flex justify-between text-[9px] text-slate-600 uppercase tracking-widest px-2 pb-2">
                                                     <span>Bidder</span><span>Amount</span>
                                                 </div>
-                                                {bidHistory.map((bid, i) => (
+                                                {(showAllBids ? bidHistory : bidHistory.slice(0, 20)).map((bid, i) => (
                                                     <motion.div
                                                         key={i}
                                                         initial={bid.isNew ? { opacity: 0, x: -8 } : false}
@@ -680,6 +685,14 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                         </div>
                                                     </motion.div>
                                                 ))}
+                                                {!showAllBids && bidHistory.length > 20 && (
+                                                    <button
+                                                        onClick={() => setShowAllBids(true)}
+                                                        className="w-full py-2 text-[10px] font-bold text-slate-500 hover:text-slate-300 transition-colors"
+                                                    >
+                                                        Show all {bidHistory.length} bids
+                                                    </button>
+                                                )}
                                             </>
                                         )}
                                     </motion.div>
