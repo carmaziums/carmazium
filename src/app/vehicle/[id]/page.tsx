@@ -639,7 +639,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                 <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-3 py-1 rounded-full mb-3 border border-red-500/20 bg-red-500/10 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.1)]">
                                     Offers Welcome
                                 </span>
-                                <p className="text-[11px] text-gray-400 mt-1 pb-5 border-b border-white/10">Price includes VAT. Financing available from 5.9% APR.</p>
+                                <p className="text-[11px] text-gray-400 mt-1 pb-5 border-b border-white/10">Price includes VAT. Financing available from 19% APR.</p>
                                 <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
                                     <Clock size={12} /> Listed on {new Date(listing.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                                 </p>
@@ -1325,7 +1325,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                             Offers Welcome
                                         </span>
                                     </div>
-                                    <p className="text-xs text-gray-400 mt-3">Price includes VAT. Financing available from 5.9% APR.</p>
+                                    <p className="text-xs text-gray-400 mt-3">Price includes VAT. Financing available from 19% APR.</p>
                                     <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
                                         <Clock size={12} /> Listed on {new Date(listing.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                                     </p>
