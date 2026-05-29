@@ -91,6 +91,11 @@ interface FilterState {
     ulezCompliant: 'yes' | 'no' | ''
     euroStandard: EuroStandardValue | ''
     vehicleType: string
+    minBhp: string
+    maxBhp: string
+    sellerType: 'PRIVATE' | 'DEALER' | ''
+    location: string
+    listingType: 'CLASSIFIED' | 'AUCTION' | ''
     sortBy: string
 }
 
@@ -105,6 +110,8 @@ const INITIAL_FILTERS: FilterState = {
     minEngine: '', maxEngine: '', maxCo2: '',
     condition: '', ulezCompliant: '', euroStandard: '',
     vehicleType: 'CAR',
+    minBhp: '', maxBhp: '',
+    sellerType: '', location: '', listingType: '',
     sortBy: 'newest',
 }
 
@@ -224,6 +231,9 @@ function SearchPageContent() {
             ulezCompliant: (p('ulezCompliant') as 'yes' | 'no') || '',
             euroStandard: (p('euroStandard') as EuroStandardValue) || '',
             vehicleType: p('vehicleType') || 'CAR',
+            minBhp: p('minBhp'), maxBhp: p('maxBhp'),
+            sellerType: (p('sellerType') as 'PRIVATE' | 'DEALER') || '',
+            location: p('location'), listingType: (p('listingType') as 'CLASSIFIED' | 'AUCTION') || '',
             sortBy: p('sortBy') || 'newest',
         }
     }, [searchParams])
@@ -264,6 +274,10 @@ function SearchPageContent() {
         if (appliedFilters.ulezCompliant) count++
         if (appliedFilters.euroStandard) count++
         if (appliedFilters.vehicleType && appliedFilters.vehicleType !== 'CAR') count++
+        if (appliedFilters.minBhp || appliedFilters.maxBhp) count++
+        if (appliedFilters.sellerType) count++
+        if (appliedFilters.location) count++
+        if (appliedFilters.listingType) count++
         return count
     }, [appliedFilters])
 
@@ -292,6 +306,11 @@ function SearchPageContent() {
         if (state.ulezCompliant) f.ulezCompliant = state.ulezCompliant === 'yes'
         if (state.euroStandard) f.euroStandard = state.euroStandard
         if (state.vehicleType) f.vehicleType = state.vehicleType
+        if (state.minBhp) f.minBhp = parseInt(state.minBhp)
+        if (state.maxBhp) f.maxBhp = parseInt(state.maxBhp)
+        if (state.sellerType) f.sellerType = state.sellerType
+        if (state.location) f.location = state.location
+        if (state.listingType) f.listingType = state.listingType
         if (state.sortBy && state.sortBy !== 'newest') f.sortBy = state.sortBy
         return f
     }, [])
@@ -692,6 +711,57 @@ function SearchPageContent() {
                             </FilterSection>
 
 
+                            {/* BHP / Power */}
+                            <FilterSection title="Power (BHP)">
+                                <RangeInputs minVal={filters.minBhp} maxVal={filters.maxBhp}
+                                    onMinChange={(v) => set('minBhp', v)} onMaxChange={(v) => set('maxBhp', v)}
+                                    minPlaceholder="Min BHP" maxPlaceholder="Max BHP"
+                                    sliderMin={50} sliderMax={600} step={25} />
+                            </FilterSection>
+
+                            {/* Location */}
+                            <FilterSection title="Location">
+                                <Input
+                                    placeholder="e.g. London, Manchester, B1…"
+                                    value={filters.location}
+                                    onChange={(e) => set('location', e.target.value)}
+                                    className="h-9 text-sm bg-slate-800 border-white/10 text-white placeholder:text-gray-500"
+                                />
+                                <p className="text-[10px] text-gray-600 mt-1">Matches listings by city or postcode area</p>
+                            </FilterSection>
+
+                            {/* Listing Type */}
+                            <FilterSection title="Listing Type">
+                                <div className="flex gap-2">
+                                    {([
+                                        { value: '' as const, label: 'All' },
+                                        { value: 'CLASSIFIED' as const, label: 'Buy Now' },
+                                        { value: 'AUCTION' as const, label: 'Auction' },
+                                    ]).map(opt => (
+                                        <button key={opt.value} type="button"
+                                            onClick={() => set('listingType', opt.value)}
+                                            className={`flex-1 py-1.5 rounded-md border text-xs font-semibold transition-all cursor-pointer ${filters.listingType === opt.value ? 'border-primary bg-primary/15 text-primary' : 'border-white/10 text-gray-400 hover:border-white/20'}`}
+                                        >{opt.label}</button>
+                                    ))}
+                                </div>
+                            </FilterSection>
+
+                            {/* Seller Type */}
+                            <FilterSection title="Seller Type">
+                                <div className="flex gap-2">
+                                    {([
+                                        { value: '' as const, label: 'All' },
+                                        { value: 'PRIVATE' as const, label: 'Private' },
+                                        { value: 'DEALER' as const, label: 'Dealer' },
+                                    ]).map(opt => (
+                                        <button key={opt.value} type="button"
+                                            onClick={() => set('sellerType', opt.value)}
+                                            className={`flex-1 py-1.5 rounded-md border text-xs font-semibold transition-all cursor-pointer ${filters.sellerType === opt.value ? 'border-primary bg-primary/15 text-primary' : 'border-white/10 text-gray-400 hover:border-white/20'}`}
+                                        >{opt.label}</button>
+                                    ))}
+                                </div>
+                            </FilterSection>
+
                         </div>
 
                         {/* Auction Promo Card */}
@@ -760,6 +830,10 @@ function SearchPageContent() {
                             {appliedFilters.condition && <FilterTag label={`Condition: ${appliedFilters.condition}`} onRemove={() => clearFilter({ condition: '' })} />}
                             {appliedFilters.ulezCompliant && <FilterTag label={appliedFilters.ulezCompliant === 'yes' ? 'ULEZ Compliant' : 'Non-ULEZ'} onRemove={() => clearFilter({ ulezCompliant: '' })} />}
                             {appliedFilters.euroStandard && <FilterTag label={appliedFilters.euroStandard.replace('_', ' ')} onRemove={() => clearFilter({ euroStandard: '' })} />}
+                            {(appliedFilters.minBhp || appliedFilters.maxBhp) && <FilterTag label={`BHP: ${appliedFilters.minBhp || '0'}–${appliedFilters.maxBhp || '∞'}`} onRemove={() => clearFilter({ minBhp: '', maxBhp: '' })} />}
+                            {appliedFilters.location && <FilterTag label={`Near: ${appliedFilters.location}`} onRemove={() => clearFilter({ location: '' })} />}
+                            {appliedFilters.listingType && <FilterTag label={appliedFilters.listingType === 'AUCTION' ? 'Auction' : 'Buy Now'} onRemove={() => clearFilter({ listingType: '' })} />}
+                            {appliedFilters.sellerType && <FilterTag label={appliedFilters.sellerType === 'DEALER' ? 'Dealer' : 'Private Seller'} onRemove={() => clearFilter({ sellerType: '' })} />}
                         </div>
                     )}
 
@@ -818,6 +892,7 @@ function SearchPageContent() {
                                         mileage={listing.mileage ?? undefined}
                                         fuelType={listing.fuelType ?? undefined}
                                         bodyType={listing.bodyType ?? undefined}
+                                        location={listing.location ?? undefined}
                                         isFeatured={true}
                                         badgeTier={listing.badgeTier}
                                         status={listing.status}
@@ -845,6 +920,7 @@ function SearchPageContent() {
                                     mileage={listing.mileage ?? undefined}
                                     fuelType={listing.fuelType ?? undefined}
                                     bodyType={listing.bodyType ?? undefined}
+                                    location={listing.location ?? undefined}
                                     isFeatured={listing.isFeatured}
                                     badgeTier={listing.badgeTier}
                                     status={listing.status}

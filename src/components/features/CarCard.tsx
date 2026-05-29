@@ -5,7 +5,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui/Button"
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion"
 import { useRef } from "react"
-import { Calendar, Gauge, Fuel, Car, BadgeCheck, ShieldCheck, Star, Sparkles } from "lucide-react"
+import { Calendar, Gauge, Fuel, Car, BadgeCheck, ShieldCheck, Star, Sparkles, MapPin } from "lucide-react"
 import { SellerBadge } from "@/components/ui/SellerBadge"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 
@@ -37,6 +37,7 @@ interface CarCardProps {
     mileage?: number
     fuelType?: string
     bodyType?: string
+    location?: string | null
     sellerId?: string
     sellerScore?: number
     isFeatured?: boolean
@@ -48,7 +49,7 @@ interface CarCardProps {
 
 export function CarCard({
     title, price, priceMin, priceMax, image, href = "#",
-    year, mileage, fuelType, bodyType,
+    year, mileage, fuelType, bodyType, location,
     sellerId, sellerScore, isFeatured = false, badgeTier, status
 }: CarCardProps) {
     const ref = useRef<HTMLDivElement>(null)
@@ -234,6 +235,11 @@ export function CarCard({
                         {bodyType && BODY_TYPE_LABELS[bodyType] && (
                             <span className="inline-flex items-center gap-1 bg-white/5 border border-white/10 text-gray-400 text-[10px] font-semibold px-2 py-1 rounded-md">
                                 <Car size={10} /> {BODY_TYPE_LABELS[bodyType]}
+                            </span>
+                        )}
+                        {location && (
+                            <span className="inline-flex items-center gap-1 bg-white/5 border border-white/10 text-gray-400 text-[10px] font-semibold px-2 py-1 rounded-md">
+                                <MapPin size={10} /> {location.split(',')[0].trim()}
                             </span>
                         )}
                     </div>

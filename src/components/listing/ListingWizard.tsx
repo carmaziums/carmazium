@@ -433,7 +433,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const validateStep = (): boolean => {
         switch (currentStep) {
             case 1: {
-                const baseValid = !!(formData.vrm && formData.make && formData.model && formData.year && formData.mileage && formData.fuelType && formData.transmission && formData.title && formData.title.length >= 5)
+                const baseValid = !!(formData.vrm && formData.make && formData.model && formData.year && formData.mileage && formData.fuelType && formData.transmission && formData.title && formData.title.length >= 5 && formData.location)
                 const declarationsValid = formData.writeOffCategory !== '' && formData.stolenRecovered !== null && formData.hasOutstandingFinance !== null && formData.isLegalRegisteredKeeper === true && formData.declarationAcknowledged
                 // Cat A/B are total-loss write-offs — only allowed for auction listings
                 if ((formData.writeOffCategory === 'CAT_A' || formData.writeOffCategory === 'CAT_B') && formData.listingType !== 'AUCTION') return false
