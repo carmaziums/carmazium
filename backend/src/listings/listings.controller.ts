@@ -207,8 +207,10 @@ export class ListingsController {
     @ApiResponse({ status: 200, description: 'Earnings data retrieved successfully' })
     async getEarnings(
         @CurrentUser() user: any,
+        @Query('page') page = '1',
+        @Query('limit') limit = '20',
     ): Promise<StandardResponse<any>> {
-        const earnings = await this.listingsService.getEarnings(user.id);
+        const earnings = await this.listingsService.getEarnings(user.id, +page, +limit);
         return new StandardResponse(earnings);
     }
 
@@ -220,7 +222,8 @@ export class ListingsController {
         @CurrentUser() user: any,
         @Res() res: Response,
     ): Promise<void> {
-        const earnings = await this.listingsService.getEarnings(user.id);
+        // Fetch all records for CSV export (no pagination cap)
+        const earnings = await this.listingsService.getEarnings(user.id, 1, 9999);
         const rows: string[] = ['Date,Vehicle,VRM,Buyer,Listed Price,Sold Price'];
         for (const sale of earnings.sales) {
             const date = new Date(sale.createdAt).toLocaleDateString('en-GB');

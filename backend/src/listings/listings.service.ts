@@ -1024,7 +1024,7 @@ export class ListingsService {
     /**
      * Get earnings history for a seller or dealer
      */
-    async getEarnings(userId: string) {
+    async getEarnings(userId: string, page = 1, limit = 20) {
         // Handle staff/owner logic
         let targetOwnerId = userId;
         const staffRecord = await this.prisma.dealerStaff.findFirst({
@@ -1035,60 +1035,70 @@ export class ListingsService {
             targetOwnerId = staffRecord.dealerProfile.userId;
         }
 
-        const sales = await this.prisma.sale.findMany({
-            where: { sellerId: targetOwnerId },
-            include: {
-                listing: {
-                    select: {
-                        id: true,
-                        title: true,
-                        images: true,
-                        vrm: true,
-                        price: true,
-                        status: true,
-                        offers: {
-                            orderBy: { createdAt: 'desc' },
-                            select: {
-                                id: true,
-                                amount: true,
-                                initialAmount: true,
-                                counterAmount: true,
-                                sellerCounterAmount: true,
-                                buyerCounterAmount: true,
-                                finalAmount: true,
-                                status: true,
-                                createdAt: true,
-                                buyer: {
-                                    select: {
-                                        id: true,
-                                        firstName: true,
-                                        lastName: true,
+        const skip = (page - 1) * limit;
+        const where = { sellerId: targetOwnerId };
+
+        const [sales, totalSales, revenueAgg] = await Promise.all([
+            this.prisma.sale.findMany({
+                where,
+                include: {
+                    listing: {
+                        select: {
+                            id: true,
+                            title: true,
+                            images: true,
+                            vrm: true,
+                            price: true,
+                            status: true,
+                            offers: {
+                                orderBy: { createdAt: 'desc' },
+                                take: 10,
+                                select: {
+                                    id: true,
+                                    amount: true,
+                                    initialAmount: true,
+                                    counterAmount: true,
+                                    sellerCounterAmount: true,
+                                    buyerCounterAmount: true,
+                                    finalAmount: true,
+                                    status: true,
+                                    createdAt: true,
+                                    buyer: {
+                                        select: {
+                                            id: true,
+                                            firstName: true,
+                                            lastName: true,
+                                        }
                                     }
                                 }
                             }
                         }
+                    },
+                    buyer: {
+                        select: {
+                            id: true,
+                            firstName: true,
+                            lastName: true,
+                            email: true,
+                        }
                     }
                 },
-                buyer: {
-                    select: {
-                        id: true,
-                        firstName: true,
-                        lastName: true,
-                        email: true,
-                    }
-                }
-            },
-            orderBy: { createdAt: 'desc' }
-        });
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit,
+            }),
+            this.prisma.sale.count({ where }),
+            this.prisma.sale.aggregate({ where, _sum: { soldPrice: true } }),
+        ]);
 
-        // Calculate totals
-        const totalRevenue = sales.reduce((acc: number, sale: any) => acc + Number(sale.soldPrice), 0);
-        const totalSales = sales.length;
+        const totalRevenue = Number(revenueAgg._sum.soldPrice ?? 0);
 
         return {
             sales,
             totalRevenue,
             totalSales,
+            page,
+            totalPages: Math.ceil(totalSales / limit),
         };
     }
 }

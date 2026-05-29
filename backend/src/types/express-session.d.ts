@@ -8,5 +8,6 @@ declare module 'express-session' {
     interface SessionData {
         userId: string;
         userRole: UserRole;
+        cachedUser?: Record<string, any>;
     }
 }

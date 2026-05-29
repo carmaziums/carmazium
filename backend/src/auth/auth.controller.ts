@@ -42,6 +42,7 @@ export class AuthController {
         if (req.session) {
             req.session.userId = user.id;
             req.session.userRole = user.role;
+            req.session.cachedUser = user;
         }
 
         return {
@@ -70,6 +71,7 @@ export class AuthController {
         if (req.session) {
             req.session.userId = user.id;
             req.session.userRole = user.role;
+            req.session.cachedUser = user;
         }
 
         return {
@@ -149,6 +151,7 @@ export class AuthController {
         if (req.session) {
             req.session.userId = user.id;
             req.session.userRole = user.role;
+            req.session.cachedUser = user;
         }
 
         return {

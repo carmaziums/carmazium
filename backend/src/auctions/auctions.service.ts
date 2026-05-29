@@ -128,18 +128,25 @@ export class AuctionsService {
         });
     }
 
-    async findAllScheduled(): Promise<any[]> {
-        return this.prisma.auction.findMany({
-            where: { status: 'SCHEDULED', deletedAt: null },
-            include: {
-                listing: {
-                    include: {
-                        _count: { select: { bids: true } },
+    async findAllScheduled(page = 1, limit = 20): Promise<{ data: any[]; total: number }> {
+        const skip = (page - 1) * limit;
+        const [data, total] = await Promise.all([
+            this.prisma.auction.findMany({
+                where: { status: 'SCHEDULED', deletedAt: null },
+                include: {
+                    listing: {
+                        include: {
+                            _count: { select: { bids: true } },
+                        },
                     },
                 },
-            },
-            orderBy: { startTime: 'asc' },
-        });
+                orderBy: { startTime: 'asc' },
+                skip,
+                take: limit,
+            }),
+            this.prisma.auction.count({ where: { status: 'SCHEDULED', deletedAt: null } }),
+        ]);
+        return { data, total };
     }
 
     async findOne(id: string): Promise<any> {
@@ -159,6 +166,7 @@ export class AuctionsService {
                         bids: {
                             where: { deletedAt: null },
                             orderBy: { amount: 'desc' },
+                            take: 50,
                             include: {
                                 bidder: { select: { id: true, firstName: true, lastName: true } },
                             },
@@ -176,28 +184,33 @@ export class AuctionsService {
         return auction;
     }
 
-    async findMyAuctions(userId: string): Promise<any[]> {
-        return this.prisma.auction.findMany({
-            where: {
-                deletedAt: null,
-                listing: { sellerId: userId },
-            },
-            include: {
-                listing: {
-                    include: {
-                        bids: {
-                            where: { deletedAt: null },
-                            orderBy: { amount: 'desc' },
-                            take: 1,
-                            select: { amount: true },
+    async findMyAuctions(userId: string, page = 1, limit = 20): Promise<{ data: any[]; total: number }> {
+        const skip = (page - 1) * limit;
+        const where = { deletedAt: null, listing: { sellerId: userId } };
+        const [data, total] = await Promise.all([
+            this.prisma.auction.findMany({
+                where,
+                include: {
+                    listing: {
+                        include: {
+                            bids: {
+                                where: { deletedAt: null },
+                                orderBy: { amount: 'desc' },
+                                take: 1,
+                                select: { amount: true },
+                            },
+                            _count: { select: { bids: true } },
                         },
-                        _count: { select: { bids: true } },
                     },
+                    winner: { select: { id: true, firstName: true, lastName: true } },
                 },
-                winner: { select: { id: true, firstName: true, lastName: true } },
-            },
-            orderBy: { createdAt: 'desc' },
-        });
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit,
+            }),
+            this.prisma.auction.count({ where }),
+        ]);
+        return { data, total };
     }
 
     async update(id: string, updateAuctionDto: UpdateAuctionDto, userId: string): Promise<Auction> {
