@@ -134,6 +134,23 @@ export class ListingsService {
     }
 
     /**
+     * Geocode a UK location string to lat/lng via OpenStreetMap Nominatim.
+     * Returns null silently on any failure — never blocks listing creation.
+     */
+    private async geocodeLocation(location: string): Promise<{ lat: number; lng: number } | null> {
+        try {
+            const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location)}&countrycodes=gb&format=json&limit=1`;
+            const res = await fetch(url, {
+                headers: { 'User-Agent': 'Carmazium/1.0 (contact@carmazium.co.uk)' },
+                signal: AbortSignal.timeout(5000),
+            });
+            const data = await res.json();
+            if (data[0]) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+        } catch { /* silent */ }
+        return null;
+    }
+
+    /**
      * Create a new listing
      * Auto-generates slug and saves Supabase image URLs
      */
@@ -242,6 +259,18 @@ export class ListingsService {
                     data: { images: hostedUrls },
                 }))
                 .catch(err => console.warn(`Image re-host failed for listing ${listing.id}: ${err?.message}`));
+        }
+
+        // Geocode location in background — non-blocking
+        if (createListingDto.location) {
+            this.geocodeLocation(createListingDto.location)
+                .then(coords => {
+                    if (coords) return this.prisma.listing.update({
+                        where: { id: listing.id },
+                        data: { latitude: coords.lat, longitude: coords.lng },
+                    });
+                })
+                .catch(() => { /* silent */ });
         }
 
         // Phase 2: Increment seller's total listings count

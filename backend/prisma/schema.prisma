@@ -580,6 +580,8 @@ model Listing {
   bodyType                 BodyType?
   features                 Json?
   location                 String?
+  latitude                 Float?
+  longitude                Float?
   // Phase 3: condition and UK compliance fields
   vin                      String? // VIN (17-char, validated frontend-side)
   condition                VehicleCondition?

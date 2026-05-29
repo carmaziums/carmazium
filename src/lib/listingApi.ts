@@ -143,6 +143,8 @@ export interface Listing {
     bhp: number | null
     features: string | string[] | null
     location: string | null
+    latitude: number | null
+    longitude: number | null
     condition: VehicleConditionValue | null
     ulezCompliant: boolean | null
     euroStandard: EuroStandardValue | null

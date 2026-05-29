@@ -14,6 +14,8 @@ import {
 import { getListings, getFeaturedListings, formatPrice, type Listing, type ListingFilters, type VehicleConditionValue, type EuroStandardValue } from "@/lib/listingApi"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { DualRangeSlider } from "@/components/ui/DualRangeSlider"
+import { useUserLocation } from "@/hooks/useUserLocation"
+import { haversineDistanceMiles } from "@/lib/distance"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -198,6 +200,7 @@ export default function SearchPage() {
 function SearchPageContent() {
     const searchParams = useSearchParams()
     const router = useRouter()
+    const { location: userLocation } = useUserLocation()
     const [isFilterOpen, setIsFilterOpen] = React.useState(false)
     const [listings, setListings] = React.useState<Listing[]>([])
     const [loading, setLoading] = React.useState(true)
@@ -886,6 +889,9 @@ function SearchPageContent() {
                                         fuelType={listing.fuelType ?? undefined}
                                         bodyType={listing.bodyType ?? undefined}
                                         location={listing.location ?? undefined}
+                                        distanceMi={userLocation && listing.latitude && listing.longitude
+                                            ? haversineDistanceMiles(userLocation.lat, userLocation.lng, listing.latitude, listing.longitude)
+                                            : null}
                                         isFeatured={true}
                                         badgeTier={listing.badgeTier}
                                         status={listing.status}
@@ -914,6 +920,9 @@ function SearchPageContent() {
                                     fuelType={listing.fuelType ?? undefined}
                                     bodyType={listing.bodyType ?? undefined}
                                     location={listing.location ?? undefined}
+                                    distanceMi={userLocation && listing.latitude && listing.longitude
+                                        ? haversineDistanceMiles(userLocation.lat, userLocation.lng, listing.latitude, listing.longitude)
+                                        : null}
                                     isFeatured={listing.isFeatured}
                                     badgeTier={listing.badgeTier}
                                     status={listing.status}
