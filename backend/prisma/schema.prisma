@@ -293,6 +293,8 @@ model User {
   location        String?
   preferences     Json?
 
+  @@index([role])
+  @@index([createdAt])
   @@map("users")
 }
 
@@ -404,6 +406,8 @@ model DealerKyc {
 
   dealerProfile              DealerProfile @relation(fields: [dealerProfileId], references: [id], onDelete: Cascade)
 
+  @@index([dealerProfileId])
+  @@index([status])
   @@map("dealer_kycs")
 }
 
@@ -420,6 +424,8 @@ model DealerInvite {
   dealerProfile DealerProfile @relation(fields: [dealerProfileId], references: [id], onDelete: Cascade)
 
   @@unique([email, dealerProfileId])
+  @@index([dealerProfileId])
+  @@index([email])
   @@map("dealer_invites")
 }
 
@@ -485,6 +491,7 @@ model ContractorProfile {
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   serviceRequests ServiceRequest[]
 
+  @@index([userId])
   @@map("contractor_profiles")
 }
 
@@ -627,6 +634,8 @@ model Listing {
   @@index([vehicleId])
   @@index([status])
   @@index([slug])
+  @@index([isFeatured, status, featuredUntil])
+  @@index([createdAt])
   @@map("listings")
 }
 
@@ -682,6 +691,7 @@ model Auction {
 
   @@index([status])
   @@index([endTime])
+  @@index([startTime])
   @@map("auctions")
 }
 
@@ -700,6 +710,7 @@ model Bid {
 
   @@index([listingId, amount(sort: Desc)])
   @@index([bidderId])
+  @@index([bidderId, createdAt(sort: Desc)])
   @@map("bids")
 }
 
@@ -844,6 +855,7 @@ model Message {
 
   @@index([chatRoomId])
   @@index([senderId])
+  @@index([chatRoomId, createdAt(sort: Desc)])
   @@map("messages")
 }
 
@@ -989,6 +1001,8 @@ model Offer {
   @@index([buyerId])
   @@index([sellerId])
   @@index([status])
+  @@index([listingId, createdAt(sort: Desc)])
+  @@index([buyerId, status])
   @@map("offers")
 }
 

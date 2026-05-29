@@ -125,10 +125,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 return;
             }
 
-            // Always establish backend session on sign-in or token refresh, then fetch profile
             if (session?.user && token) {
-                if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                if (event === 'SIGNED_IN') {
                     await bridgeThenProfile(token);
+                } else if (event === 'TOKEN_REFRESHED') {
+                    // The backend session persists across token refreshes.
+                    // Only bridge if we have no session yet (e.g. cold tab restore);
+                    // otherwise skip to avoid redundant DB + profile fetches every ~60 min.
+                    if (!bridgedTokenRef.current) {
+                        await bridgeThenProfile(token);
+                    }
                 } else {
                     await fetchProfile();
                 }

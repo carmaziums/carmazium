@@ -143,18 +143,18 @@ export class BidsService {
             this.prisma.bid.count({ where: { bidderId, deletedAt: null } }),
         ]);
 
-        const enrichedBids = await Promise.all(
-            bids.map(async (bid) => {
-                const highestBid = await this.prisma.bid.findFirst({
-                    where: { listingId: bid.listingId, deletedAt: null },
-                    orderBy: { amount: 'desc' },
-                });
-                return {
-                    ...bid,
-                    isWinning: highestBid?.id === bid.id,
-                };
-            })
-        );
+        const listingIds = [...new Set(bids.map(b => b.listingId))];
+        const topBids = await this.prisma.bid.findMany({
+            where: { listingId: { in: listingIds }, deletedAt: null },
+            orderBy: { amount: 'desc' },
+            distinct: ['listingId'],
+            select: { id: true, listingId: true },
+        });
+        const winningMap = new Map(topBids.map(b => [b.listingId, b.id]));
+        const enrichedBids = bids.map(bid => ({
+            ...bid,
+            isWinning: winningMap.get(bid.listingId) === bid.id,
+        }));
 
         return { data: enrichedBids, total };
     }
