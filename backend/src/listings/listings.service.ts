@@ -259,6 +259,8 @@ export class ListingsService {
             minEngine, maxEngine, maxCo2,
             condition, ulezCompliant, euroStandard,
             vehicleType,
+            minBhp, maxBhp,
+            sellerType, location, listingType,
             sortBy, search,
             page = 1, limit = 20,
         } = filterDto;
@@ -317,6 +319,26 @@ export class ListingsService {
 
         // ─── Boolean compliance filter ───────────────────────────────────────
         if (ulezCompliant !== undefined) where.ulezCompliant = ulezCompliant;
+
+        // ─── BHP / Power range ───────────────────────────────────────────────
+        if (minBhp !== undefined || maxBhp !== undefined) {
+            where.bhp = {};
+            if (minBhp !== undefined) where.bhp.gte = minBhp;
+            if (maxBhp !== undefined) where.bhp.lte = maxBhp;
+        }
+
+        // ─── Seller type ─────────────────────────────────────────────────────
+        if (sellerType === 'DEALER') {
+            where.seller = { role: 'DEALER' };
+        } else if (sellerType === 'PRIVATE') {
+            where.seller = { role: { in: ['BUYER', 'SELLER'] } };
+        }
+
+        // ─── Location text search ────────────────────────────────────────────
+        if (location) where.location = { contains: location, mode: 'insensitive' };
+
+        // ─── Listing type ────────────────────────────────────────────────────
+        if (listingType) where.type = listingType;
 
         // ─── Full-text search ────────────────────────────────────────────────
         if (search) {

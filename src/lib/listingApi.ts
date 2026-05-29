@@ -220,6 +220,11 @@ export interface ListingFilters {
     ulezCompliant?: boolean
     euroStandard?: EuroStandardValue
     vehicleType?: string
+    minBhp?: number
+    maxBhp?: number
+    sellerType?: string
+    location?: string
+    listingType?: string
     sortBy?: string
     search?: string
     page?: number
@@ -252,6 +257,11 @@ export async function getListings(filters?: ListingFilters): Promise<ListingsRes
         if (filters.ulezCompliant !== undefined) params.append('ulezCompliant', filters.ulezCompliant.toString())
         if (filters.euroStandard) params.append('euroStandard', filters.euroStandard)
         if (filters.vehicleType) params.append('vehicleType', filters.vehicleType)
+        if (filters.minBhp !== undefined) params.append('minBhp', filters.minBhp.toString())
+        if (filters.maxBhp !== undefined) params.append('maxBhp', filters.maxBhp.toString())
+        if (filters.sellerType) params.append('sellerType', filters.sellerType)
+        if (filters.location) params.append('location', filters.location)
+        if (filters.listingType) params.append('listingType', filters.listingType)
         if (filters.sortBy) params.append('sortBy', filters.sortBy)
         if (filters.search) params.append('search', filters.search)
         if (filters.page) params.append('page', filters.page.toString())

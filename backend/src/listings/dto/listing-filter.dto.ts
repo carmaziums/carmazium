@@ -180,6 +180,39 @@ export class ListingFilterDto {
     @Min(1)
     limit?: number = 20;
 
+    // ─── BHP / Power ──────────────────────────────────────────────────────────
+    @ApiPropertyOptional({ description: 'Minimum BHP', example: 100 })
+    @Type(() => Number)
+    @IsInt()
+    @IsOptional()
+    @Min(0)
+    minBhp?: number;
+
+    @ApiPropertyOptional({ description: 'Maximum BHP', example: 500 })
+    @Type(() => Number)
+    @IsInt()
+    @IsOptional()
+    @Min(0)
+    maxBhp?: number;
+
+    // ─── Seller type ──────────────────────────────────────────────────────────
+    @ApiPropertyOptional({ description: 'Filter by seller type: PRIVATE or DEALER', example: 'DEALER' })
+    @IsString()
+    @IsOptional()
+    sellerType?: string;
+
+    // ─── Location text search ─────────────────────────────────────────────────
+    @ApiPropertyOptional({ description: 'Filter by listing location (city / postcode, case-insensitive contains)', example: 'London' })
+    @IsString()
+    @IsOptional()
+    location?: string;
+
+    // ─── Listing type ─────────────────────────────────────────────────────────
+    @ApiPropertyOptional({ description: 'Filter by listing type: CLASSIFIED or AUCTION', example: 'AUCTION' })
+    @IsString()
+    @IsOptional()
+    listingType?: string;
+
     @ApiPropertyOptional({
         description: 'Include SOLD listings in the result set (used by /listings/my for offer dashboards)',
         example: false,
