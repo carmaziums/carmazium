@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase"
 import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/Input"
 import { BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
+import { updateProfile } from "@/lib/listingApi"
 
 const FUEL_PREFS = [
     { value: 'PETROL', label: 'Petrol' },
@@ -76,8 +77,13 @@ export default function OnboardingPage() {
         setSaving(true)
         try {
             if (location.trim()) {
+                await updateProfile({ location: location.trim() })
                 localStorage.setItem('carmazium_user_location', location.trim())
             }
+            setStep('preferences')
+        } catch (err: any) {
+            console.error('Failed to save location:', err)
+            // Still proceed — don't block the user
             setStep('preferences')
         } finally {
             setSaving(false)
@@ -87,11 +93,16 @@ export default function OnboardingPage() {
     const handleSavePreferences = async () => {
         setSaving(true)
         try {
-            localStorage.setItem('carmazium_user_preferences', JSON.stringify({
+            const prefs = {
                 bodyTypes: selectedBodyTypes,
                 fuelTypes: selectedFuels,
                 budget: selectedBudget,
-            }))
+            }
+            await updateProfile({ preferences: prefs })
+            localStorage.setItem('carmazium_user_preferences', JSON.stringify(prefs))
+            setStep('done')
+        } catch (err: any) {
+            console.error('Failed to save preferences:', err)
             setStep('done')
         } finally {
             setSaving(false)
