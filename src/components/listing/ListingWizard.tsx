@@ -123,6 +123,11 @@ const INITIAL_FORM: FormData = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+function addHours(isoString: string, hours: number): string {
+    const d = new Date(new Date(isoString).getTime() + hours * 60 * 60 * 1000)
+    return d.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
 function SelectField({
     label, value, onChange, options, required = false, error = false
 }: {
@@ -243,6 +248,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const [damageImageCount, setDamageImageCount] = React.useState(0)
     const [damageRecords, setDamageRecords] = React.useState<DamageRecord[]>([])
     const [hasAttemptedNext, setHasAttemptedNext] = React.useState(false)
+    const [auctionSchedule, setAuctionSchedule] = React.useState({
+        startTime: '',
+        reservePrice: '',
+        startingBid: '',
+        minIncrement: '100',
+    })
 
 
     // Edit mode — detect from URL params
@@ -375,6 +386,23 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const set = <K extends keyof FormData>(key: K, val: FormData[K]) =>
         setFormData(prev => ({ ...prev, [key]: val }))
 
+    const isAuction = formData.listingType === 'AUCTION'
+    const totalSteps = isAuction ? 5 : 4
+    const WIZARD_STEPS = isAuction
+        ? [
+            { id: 1, icon: Car, title: "Details" },
+            { id: 2, icon: Camera, title: "Media" },
+            { id: 3, icon: DollarSign, title: "Pricing" },
+            { id: 4, icon: Gavel, title: "Auction" },
+            { id: 5, icon: CheckCircle, title: "Review" },
+        ]
+        : [
+            { id: 1, icon: Car, title: "Details" },
+            { id: 2, icon: Camera, title: "Media" },
+            { id: 3, icon: DollarSign, title: "Pricing" },
+            { id: 4, icon: CheckCircle, title: "Review" },
+        ]
+
     // Auto-generate title from make + model + year
     React.useEffect(() => {
         if (formData.make && formData.model && formData.year) {
@@ -416,8 +444,17 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 const pMin = parseFloat(formData.priceMin)
                 const pAsk = parseFloat(formData.priceAsking)
                 if (!formData.priceAsking || isNaN(pAsk) || pAsk <= 0) return false
-                // If lower is set, it must be <= asking
                 if (formData.priceMin && !isNaN(pMin) && pMin > pAsk) return false
+                return true
+            }
+            case 4: {
+                if (!isAuction) return true // review step for CLASSIFIED — no validation
+                if (!auctionSchedule.startTime) return false
+                const startMs = new Date(auctionSchedule.startTime).getTime()
+                if (startMs < Date.now() + 30 * 60 * 1000) return false
+                if (!auctionSchedule.reservePrice || parseFloat(auctionSchedule.reservePrice) <= 0) return false
+                if (!auctionSchedule.startingBid || parseFloat(auctionSchedule.startingBid) <= 0) return false
+                if (!auctionSchedule.minIncrement || parseFloat(auctionSchedule.minIncrement) <= 0) return false
                 return true
             }
             default: return true
@@ -431,7 +468,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             return
         }
         setHasAttemptedNext(false)
-        setCurrentStep(prev => Math.min(prev + 1, 4))
+        setCurrentStep(prev => Math.min(prev + 1, totalSteps))
     }
     const handleBack = () => setCurrentStep(prev => Math.max(prev - 1, 1))
     const goToStep = (n: number) => setCurrentStep(n)
@@ -580,6 +617,20 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 localStorage.removeItem('carmazium_listing_draft')
                 localStorage.removeItem('carmazium_hpi_draft_id')
 
+                // Schedule auction if this is an auction listing
+                if (payload.listingType === 'AUCTION' && auctionSchedule.startTime) {
+                    await apiClient('/auctions', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            listingId: finalListingId,
+                            startTime: new Date(auctionSchedule.startTime).toISOString(),
+                            reservePrice: parseFloat(auctionSchedule.reservePrice),
+                            startingBid: parseFloat(auctionSchedule.startingBid),
+                            minIncrement: parseFloat(auctionSchedule.minIncrement),
+                        }),
+                    })
+                }
+
                 if (payload.badgeTier !== 'FREE') {
                     // Check if this draft already has a completed payment — avoid double-charging
                     const publish = await publishListing(finalListingId)
@@ -626,6 +677,20 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     }
                 }
 
+                // Schedule auction if this is an auction listing
+                if (payload.listingType === 'AUCTION' && auctionSchedule.startTime) {
+                    await apiClient('/auctions', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            listingId: newListingId,
+                            startTime: new Date(auctionSchedule.startTime).toISOString(),
+                            reservePrice: parseFloat(auctionSchedule.reservePrice),
+                            startingBid: parseFloat(auctionSchedule.startingBid),
+                            minIncrement: parseFloat(auctionSchedule.minIncrement),
+                        }),
+                    })
+                }
+
                 if (isPaidTier) {
                     // Redirect to Stripe — webhook activates listing on success
                     const checkout = await createListingCheckoutSession(newListingId, payload.badgeTier as string)
@@ -637,7 +702,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 localStorage.removeItem('carmazium_listing_draft')
                 setCurrentStep(1)
                 setSellingMethod(null)
-                router.push(`/buy-cars/${response.data.slug}`)
+                if (payload.listingType === 'AUCTION') {
+                    router.push('/dashboard/seller/auctions')
+                } else {
+                    router.push(`/buy-cars/${response.data.slug}`)
+                }
             }
         } catch (error: any) {
             console.error("Submission error:", error)
@@ -883,12 +952,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     <h1 className="text-3xl md:text-4xl font-heading font-bold text-white">
                         {formData.listingType === "AUCTION" ? "List for Auction" : "List Your Car"}
                     </h1>
-                    <p className="text-gray-400 mt-2">Step {currentStep} of {STEPS.length}</p>
+                    <p className="text-gray-400 mt-2">Step {currentStep} of {totalSteps}</p>
                 </div>
 
                 {/* Progress stepper */}
                 <div className="glass-card px-6 py-5 mb-8 flex justify-between relative overflow-hidden">
-                    {STEPS.map((step) => (
+                    {WIZARD_STEPS.map((step) => (
                         <div key={step.id} className={`flex flex-col items-center relative z-10 flex-1 ${currentStep >= step.id ? "text-primary" : "text-gray-500"}`}>
                             <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-1.5 border transition-all ${currentStep >= step.id ? "bg-primary text-white shadow-neon border-primary" : "bg-slate-800 border-white/5"}`}>
                                 <step.icon size={16} />
@@ -897,7 +966,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         </div>
                     ))}
                     <div className="absolute top-[36px] left-0 w-full h-0.5 bg-white/5 -z-0">
-                        <div className="h-full bg-primary transition-all duration-500 shadow-neon" style={{ width: `${(currentStep - 1) / (STEPS.length - 1) * 100}%` }} />
+                        <div className="h-full bg-primary transition-all duration-500 shadow-neon" style={{ width: `${(currentStep - 1) / (totalSteps - 1) * 100}%` }} />
                     </div>
                 </div>
 
@@ -1856,8 +1925,124 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         </div>
                     )}
 
-                    {/* ── STEP 4: Review ────────────────────────────────────────────────── */}
-                    {currentStep === 4 && (
+                    {/* ── STEP 4: Auction Schedule (auction listings only) ──────────────── */}
+                    {currentStep === 4 && isAuction && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                            <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white flex items-center gap-2">
+                                <Gavel size={20} className="text-orange-400" /> Schedule Your Auction
+                            </h2>
+
+                            <div className="p-4 rounded-xl bg-orange-500/5 border border-orange-500/20">
+                                <p className="text-xs text-orange-400 font-bold mb-1">Live Auction — 5-Hour Fixed Duration</p>
+                                <p className="text-xs text-gray-400">Your auction will run for exactly 5 hours. Anti-snipe protection automatically extends bidding by 3 minutes if a bid arrives in the final 3 minutes.</p>
+                            </div>
+
+                            {/* Start Date & Time */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold uppercase text-gray-400">Start Date &amp; Time *</label>
+                                <Input
+                                    type="datetime-local"
+                                    value={auctionSchedule.startTime}
+                                    min={new Date(Date.now() + 30 * 60 * 1000).toISOString().slice(0, 16)}
+                                    onChange={e => setAuctionSchedule(prev => ({ ...prev, startTime: e.target.value }))}
+                                    className={`${inputCls} h-14 ${hasAttemptedNext && !auctionSchedule.startTime ? 'border-red-500' : ''}`}
+                                />
+                                {auctionSchedule.startTime && (
+                                    <p className="text-xs text-orange-400/80 flex items-center gap-1.5">
+                                        <Clock size={12} /> Ends: {addHours(auctionSchedule.startTime, 5)}
+                                    </p>
+                                )}
+                                {hasAttemptedNext && auctionSchedule.startTime && new Date(auctionSchedule.startTime).getTime() < Date.now() + 30 * 60 * 1000 && (
+                                    <p className="text-xs text-red-400 flex items-center gap-1.5">
+                                        <AlertTriangle size={12} /> Start time must be at least 30 minutes in the future.
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Auction Parameters */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold uppercase text-gray-400 flex items-center gap-1">
+                                        Reserve Price *
+                                        <InfoTooltip text="The minimum price you'll accept. If bidding doesn't reach this, the auction ends with no sale. Hidden from buyers." />
+                                    </label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">£</span>
+                                        <Input type="number" placeholder="e.g. 15000"
+                                            value={auctionSchedule.reservePrice}
+                                            onChange={e => setAuctionSchedule(prev => ({ ...prev, reservePrice: e.target.value }))}
+                                            className={`${inputCls} pl-8 h-14 ${hasAttemptedNext && !auctionSchedule.reservePrice ? 'border-red-500' : ''}`}
+                                        />
+                                    </div>
+                                    <p className="text-[10px] text-gray-600">Hidden from buyers — minimum you'll accept</p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold uppercase text-gray-400 flex items-center gap-1">
+                                        Starting Bid *
+                                        <InfoTooltip text="The opening bid price shown to buyers. Should be at or below your reserve price." />
+                                    </label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">£</span>
+                                        <Input type="number" placeholder="e.g. 10000"
+                                            value={auctionSchedule.startingBid}
+                                            onChange={e => setAuctionSchedule(prev => ({ ...prev, startingBid: e.target.value }))}
+                                            className={`${inputCls} pl-8 h-14 ${hasAttemptedNext && !auctionSchedule.startingBid ? 'border-red-500' : ''}`}
+                                        />
+                                    </div>
+                                    <p className="text-[10px] text-gray-600">Opening bid shown publicly</p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold uppercase text-gray-400 flex items-center gap-1">
+                                        Min. Bid Increment *
+                                        <InfoTooltip text="Each new bid must exceed the current highest bid by at least this amount." />
+                                    </label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">£</span>
+                                        <Input type="number" placeholder="e.g. 100"
+                                            value={auctionSchedule.minIncrement}
+                                            onChange={e => setAuctionSchedule(prev => ({ ...prev, minIncrement: e.target.value }))}
+                                            className={`${inputCls} pl-8 h-14 ${hasAttemptedNext && !auctionSchedule.minIncrement ? 'border-red-500' : ''}`}
+                                        />
+                                    </div>
+                                    <p className="text-[10px] text-gray-600">Minimum amount each bid must exceed by</p>
+                                </div>
+                            </div>
+
+                            {/* Summary card */}
+                            {auctionSchedule.reservePrice && auctionSchedule.startingBid && auctionSchedule.startTime && (
+                                <div className="rounded-xl border border-orange-500/20 bg-orange-500/5 p-4 space-y-3">
+                                    <p className="text-xs font-bold uppercase tracking-wider text-orange-400 flex items-center gap-1.5"><Gavel size={12} /> Auction Summary</p>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+                                        <div>
+                                            <p className="text-[10px] text-gray-500 uppercase mb-0.5">Reserve</p>
+                                            <p className="text-white font-black">{formatPrice(parseFloat(auctionSchedule.reservePrice))}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-gray-500 uppercase mb-0.5">Opening Bid</p>
+                                            <p className="text-white font-bold">{formatPrice(parseFloat(auctionSchedule.startingBid))}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-gray-500 uppercase mb-0.5">Min. Increment</p>
+                                            <p className="text-white font-bold">{formatPrice(parseFloat(auctionSchedule.minIncrement || '0'))}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-gray-500 uppercase mb-0.5">Duration</p>
+                                            <p className="text-orange-400 font-bold">5 hours</p>
+                                        </div>
+                                    </div>
+                                    <div className="border-t border-white/5 pt-2 flex items-center justify-between text-xs text-gray-500">
+                                        <span className="flex items-center gap-1"><Clock size={10} /> Starts: {new Date(auctionSchedule.startTime).toLocaleString('en-GB')}</span>
+                                        <span className="flex items-center gap-1"><Clock size={10} /> Ends: {addHours(auctionSchedule.startTime, 5)}</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ── STEP 4/5: Review ─────────────────────────────────────────────── */}
+                    {currentStep === (isAuction ? 5 : 4) && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
                             <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Review Your Listing</h2>
 
@@ -1961,11 +2146,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <div className="flex flex-col gap-3">
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <p className="text-[10px] text-gray-500 uppercase mb-0.5">Lower</p>
-                                            <p className="text-white font-bold text-lg tabular-nums">{formData.priceMin ? formatPrice(formData.priceMin) : '—'}</p>
+                                            <p className="text-[10px] text-gray-500 uppercase mb-0.5">{isAuction ? 'Guide Price' : 'Lower'}</p>
+                                            <p className="text-white font-bold text-lg tabular-nums">{isAuction ? '—' : formData.priceMin ? formatPrice(formData.priceMin) : '—'}</p>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-[10px] text-primary uppercase font-bold mb-0.5">Asking Price</p>
+                                            <p className="text-[10px] text-primary uppercase font-bold mb-0.5">{isAuction ? 'Guide Price' : 'Asking Price'}</p>
                                             <p className="text-white font-black text-2xl tabular-nums">{formatPrice(formData.priceAsking)}</p>
                                         </div>
                                     </div>
@@ -1996,6 +2181,20 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 </div>
                             </SummarySection>
 
+                            {/* Auction Schedule Summary */}
+                            {isAuction && auctionSchedule.startTime && (
+                                <SummarySection title="Auction Schedule" onEdit={() => goToStep(4)}>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                        <SummaryField label="Start Time" value={new Date(auctionSchedule.startTime).toLocaleString('en-GB')} />
+                                        <SummaryField label="End Time" value={addHours(auctionSchedule.startTime, 5)} />
+                                        <SummaryField label="Duration" value="5 hours" />
+                                        <SummaryField label="Reserve Price" value={formatPrice(parseFloat(auctionSchedule.reservePrice)) as string} />
+                                        <SummaryField label="Opening Bid" value={formatPrice(parseFloat(auctionSchedule.startingBid)) as string} />
+                                        <SummaryField label="Min. Increment" value={formatPrice(parseFloat(auctionSchedule.minIncrement || '0')) as string} />
+                                    </div>
+                                </SummarySection>
+                            )}
+
                             {submitError && (
                                 <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4">
                                     <p className="text-red-400 text-sm">{submitError}</p>
@@ -2010,7 +2209,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             ? <Button variant="outline" onClick={handleBack} className="px-7 border-white/20 text-white hover:bg-white/10"><ArrowLeft className="mr-2 h-4 w-4" /> Back</Button>
                             : <div />
                         }
-                        {currentStep < 4
+                        {currentStep < totalSteps
                             ? <Button onClick={handleNext} className="px-7 shadow-neon">Next <ArrowRight className="ml-2 h-4 w-4" /></Button>
                             : <Button onClick={handleSubmit} disabled={isSubmitting}
                                 className="px-7 bg-emerald-600 hover:bg-emerald-700 border-none shadow-[0_0_20px_rgba(16,185,129,0.4)] disabled:opacity-50">
