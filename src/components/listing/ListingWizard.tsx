@@ -893,7 +893,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         <Gavel className="text-orange-400 w-8 h-8" />
                                     </div>
                                     <h2 className="text-2xl font-bold mb-2 font-heading">Auction</h2>
-                                    <p className="text-gray-400 mb-6 text-sm">Let buyers bid in real-time. 5-hour live auctions with anti-snipe protection.</p>
+                                    <p className="text-gray-400 mb-6 text-sm">Let buyers bid in real-time. 6-hour live auctions with anti-snipe protection.</p>
                                     <ul className="space-y-2.5 mb-6 text-gray-300 flex-1">
                                         <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Real-time live bidding</li>
                                         <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Anti-snipe protection</li>
@@ -1933,8 +1933,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             </h2>
 
                             <div className="p-4 rounded-xl bg-orange-500/5 border border-orange-500/20">
-                                <p className="text-xs text-orange-400 font-bold mb-1">Live Auction — 5-Hour Fixed Duration</p>
-                                <p className="text-xs text-gray-400">Your auction will run for exactly 5 hours. Anti-snipe protection automatically extends bidding by 3 minutes if a bid arrives in the final 3 minutes.</p>
+                                <p className="text-xs text-orange-400 font-bold mb-1">Live Auction — 6-Hour Fixed Duration</p>
+                                <p className="text-xs text-gray-400">Your auction will run for exactly 6 hours. Anti-snipe protection automatically extends bidding by 3 minutes if a bid arrives in the final 3 minutes.</p>
                             </div>
 
                             {/* Start Date & Time */}
@@ -2029,7 +2029,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         </div>
                                         <div>
                                             <p className="text-[10px] text-gray-500 uppercase mb-0.5">Duration</p>
-                                            <p className="text-orange-400 font-bold">5 hours</p>
+                                            <p className="text-orange-400 font-bold">6 hours</p>
                                         </div>
                                     </div>
                                     <div className="border-t border-white/5 pt-2 flex items-center justify-between text-xs text-gray-500">
@@ -2186,8 +2186,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <SummarySection title="Auction Schedule" onEdit={() => goToStep(4)}>
                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                                         <SummaryField label="Start Time" value={new Date(auctionSchedule.startTime).toLocaleString('en-GB')} />
-                                        <SummaryField label="End Time" value={addHours(auctionSchedule.startTime, 5)} />
-                                        <SummaryField label="Duration" value="5 hours" />
+                                        <SummaryField label="End Time" value={addHours(auctionSchedule.startTime, 6)} />
+                                        <SummaryField label="Duration" value="6 hours" />
                                         <SummaryField label="Reserve Price" value={formatPrice(parseFloat(auctionSchedule.reservePrice)) as string} />
                                         <SummaryField label="Opening Bid" value={formatPrice(parseFloat(auctionSchedule.startingBid)) as string} />
                                         <SummaryField label="Min. Increment" value={formatPrice(parseFloat(auctionSchedule.minIncrement || '0')) as string} />

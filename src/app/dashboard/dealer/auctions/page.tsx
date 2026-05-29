@@ -296,7 +296,7 @@ function DealerAuctionsPage() {
                                             </label>
                                             <div className="flex items-center gap-2 h-12 px-4 bg-white/[0.03] border border-white/5 rounded-xl text-gray-400 text-sm">
                                                 <Clock size={14} className="text-primary" />
-                                                5 hours (fixed)
+                                                6 hours (fixed)
                                                 {formStartTime && (
                                                     <span className="ml-auto text-xs text-gray-600">
                                                         ends {addHours(new Date(formStartTime).toISOString(), 5)}
