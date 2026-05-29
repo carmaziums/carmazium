@@ -38,6 +38,7 @@ interface CarCardProps {
     fuelType?: string
     bodyType?: string
     location?: string | null
+    distanceMi?: number | null
     sellerId?: string
     sellerScore?: number
     isFeatured?: boolean
@@ -49,7 +50,7 @@ interface CarCardProps {
 
 export function CarCard({
     title, price, priceMin, priceMax, image, href = "#",
-    year, mileage, fuelType, bodyType, location,
+    year, mileage, fuelType, bodyType, location, distanceMi,
     sellerId, sellerScore, isFeatured = false, badgeTier, status
 }: CarCardProps) {
     const ref = useRef<HTMLDivElement>(null)
@@ -237,11 +238,15 @@ export function CarCard({
                                 <Car size={10} /> {BODY_TYPE_LABELS[bodyType]}
                             </span>
                         )}
-                        {location && (
+                        {distanceMi != null ? (
+                            <span className="inline-flex items-center gap-1 bg-primary/10 border border-primary/20 text-primary text-[10px] font-semibold px-2 py-1 rounded-md">
+                                <MapPin size={10} /> {distanceMi < 1 ? '< 1 mi away' : `${Math.round(distanceMi)} mi away`}
+                            </span>
+                        ) : location ? (
                             <span className="inline-flex items-center gap-1 bg-white/5 border border-white/10 text-gray-400 text-[10px] font-semibold px-2 py-1 rounded-md">
                                 <MapPin size={10} /> {location.split(',')[0].trim()}
                             </span>
-                        )}
+                        ) : null}
                     </div>
                 )}
 
