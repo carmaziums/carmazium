@@ -12,7 +12,7 @@ interface FinanceCalculatorProps {
 export function FinanceCalculator({ vehiclePrice }: FinanceCalculatorProps) {
     const [deposit, setDeposit] = React.useState(vehiclePrice * 0.1) // 10% default
     const [term, setTerm] = React.useState(48) // 48 months default
-    const [apr, setApr] = React.useState(5.9) // 5.9% default
+    const [apr, setApr] = React.useState(19) // 19% default
 
     // Calculate monthly payment
     // Formula: M = P [ i(1 + i)^n ] / [ (1 + i)^n – 1 ]

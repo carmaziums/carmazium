@@ -43,7 +43,7 @@ export default function FinanceHubPage() {
                             {[
                                 "No impact on credit score to check eligibility",
                                 "Flexible terms from 12 to 60 months",
-                                "Low APR starting from 5.9% (Subject to status)",
+                                "Low APR starting from 19% (Subject to status)",
                                 "Zero deposit options available"
                             ].map((item, i) => (
                                 <li key={i} className="flex items-center gap-3 text-gray-300">
@@ -55,7 +55,7 @@ export default function FinanceHubPage() {
                         <div className="glass-card p-6 border-l-4 border-l-primary">
                             <h3 className="font-bold text-lg mb-2">Representative Example</h3>
                             <p className="text-sm text-gray-400">
-                                Borrowing £20,000 over 48 months with a representative APR of 5.9%, an annual interest rate of 5.9% (fixed) and a deposit of £2,000.
+                                Borrowing £20,000 over 48 months with a representative APR of 19%, an annual interest rate of 19% (fixed) and a deposit of £2,000.
                                 The amount payable would be £425.32 per month, with a total cost of credit of £2,415.36 and a total amount payable of £22,415.36.
                             </p>
                         </div>
