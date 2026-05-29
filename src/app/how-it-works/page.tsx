@@ -29,8 +29,8 @@ export default function HowItWorksPage() {
       id: "03",
       icon: CreditCard,
       title: "Secure Purchase",
-      desc: "Complete your purchase with confidence using our secure payment shield and delivery.",
-      details: ["Escrow protection", "Home delivery", "7-Day guarantee"]
+      desc: "Connect directly with the seller and agree terms. Delivery arranged via trusted 3rd-party couriers, with warranty options available.",
+      details: ["Secure platform", "3rd-party delivery", "Warranty available"]
     }
   ]
 
@@ -281,9 +281,9 @@ export default function HowItWorksPage() {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
           {[
-            { icon: Truck, title: "Delivery", desc: "Door-to-door" },
-            { icon: Umbrella, title: "Warranty", desc: "Extended cover" },
-            { icon: FileText, title: "Paperwork", desc: "Fully handled" },
+            { icon: Truck, title: "Delivery", desc: "Via trusted 3rd party" },
+            { icon: Umbrella, title: "Warranty", desc: "Via 3rd-party providers" },
+            { icon: Users, title: "Direct Deals", desc: "Buyer & seller connect" },
             { icon: Handshake, title: "Support", desc: "24/7 Expert help" }
           ].map((item, idx) => (
             <div key={idx} className="bg-slate-900/50 border border-white/5 rounded-2xl p-6 text-center hover:bg-slate-900 transition-colors">

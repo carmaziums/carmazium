@@ -236,20 +236,24 @@ export default function AboutPage() {
                         viewport={{ once: true }}
                         transition={{ delay: 0.2 }}
                     >
-                        <AccordionItem title="How does CarMazium verify vehicles?" defaultOpen>
-                            <p>Every vehicle listed on CarMazium undergoes a rigorous 150-point inspection by our certified mechanics. We check everything from engine performance and transmission health to paint depth and interior condition. A detailed report is available for every listing, ensuring complete transparency.</p>
+                        <AccordionItem title="Is CarMazium involved in the sale of vehicles?" defaultOpen>
+                            <p className="font-semibold text-white mb-2">CarMazium is a marketplace platform only — we are not a buyer or seller.</p>
+                            <p>We provide the tools, technology, and platform that connect private sellers and dealers with buyers. All vehicle purchases, payments, and handover arrangements are made <strong className="text-white">directly between the buyer and seller</strong>. CarMazium is not a party to any vehicle sale and does not hold, process, or handle any vehicle purchase funds.</p>
+                        </AccordionItem>
+                        <AccordionItem title="How does vehicle verification work?">
+                            <p>Sellers on CarMazium can provide DVLA-verified vehicle data (auto-filled from the registration plate), service history, HPI reports, and a detailed damage map. Buyers can review all documentation before making contact. We always recommend arranging an independent inspection before completing any purchase.</p>
                         </AccordionItem>
                         <AccordionItem title="How do the live auctions work?">
-                            <p>Our live auctions are real-time, competitive bidding events. Once you register and get verified, you can join a live auction room, place bids, and watch the action unfold. Auctions typically last 15-30 minutes, and if you win, our team handles all the paperwork and logistics.</p>
+                            <p>Our live auctions run for 5 hours with real-time competitive bidding and anti-snipe protection. Once an auction closes, the winning bidder and seller are connected directly via our in-platform chat to agree terms and arrange payment between themselves. CarMazium does not process or hold auction sale funds.</p>
                         </AccordionItem>
                         <AccordionItem title="Can I sell my car on CarMazium?">
-                            <p>Absolutely. We offer a premium selling experience. You can submit your vehicle details, and if it meets our criteria, we'll arrange for an inspection and photography session. You can choose to list it for a fixed price or put it up for auction to maximize its value.</p>
+                            <p>Yes. Simply create your listing — DVLA data is auto-filled from your registration plate. Upload photos, set your price or auction reserve, and go live. All buyer enquiries, offers, and bids come directly to you. You agree terms and handle payment with the buyer directly, without CarMazium being involved in the transaction.</p>
                         </AccordionItem>
                         <AccordionItem title="What financing options are available?">
-                            <p>We partner with leading financial institutions to offer competitive financing rates. You can apply directly through our platform, get pre-approved in minutes, and customize your payment plan. We also accept external financing if you have your own lender.</p>
+                            <p>We partner with finance providers who offer vehicle financing. Applications are submitted directly to the finance provider through our platform. CarMazium facilitates the introduction but is not a party to any finance agreement — all terms are between you and the lender.</p>
                         </AccordionItem>
-                        <AccordionItem title="Are there any hidden fees?">
-                            <p>Transparency is one of our core values. We charge a flat buyer's fee displayed clearly on every listing. For sellers, we take a small commission only when the car helps sells. There are no hidden processing fees or surprise charges at checkout.</p>
+                        <AccordionItem title="Are there any fees?">
+                            <p>Sellers pay a one-time listing badge fee to boost visibility — ranging from Free up to £25 (Basic £1, Standard £10, Premium £25). Auction winners pay a one-time <strong className="text-white">£125 platform fee</strong> on winning a bid. The vehicle purchase price itself is always agreed and paid <strong className="text-white">directly between buyer and seller</strong> — CarMazium does not handle vehicle sale payments.</p>
                         </AccordionItem>
                     </motion.div>
                 </div>
