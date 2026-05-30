@@ -7,9 +7,14 @@ jest.mock('react-native-gifted-charts', () => ({ BarChart: () => null }));
 // Mock expo-router
 jest.mock('expo-router', () => ({ useRouter: () => ({ push: jest.fn() }) }));
 
-// Mock @tanstack/react-query with nominal dealer data
+// Mock dashboard API to avoid AsyncStorage / Supabase native module chain
+jest.mock('@/lib/api/dashboard', () => ({
+  dashboardApi: { dealer: jest.fn() },
+}));
+
+// Mock @tanstack/react-query — useQuery returns nominal dealer data by default
 jest.mock('@tanstack/react-query', () => ({
-  useQuery: () => ({
+  useQuery: jest.fn(() => ({
     data: {
       activeListings: 12,
       activeAuctions: 3,
@@ -30,12 +35,21 @@ jest.mock('@tanstack/react-query', () => ({
     isError: false,
     refetch: jest.fn(),
     isRefetching: false,
-  }),
+  })),
 }));
 
+// eslint-disable-next-line import/first
 import DealerDashboard from '../../app/dashboard/dealer/index';
+// eslint-disable-next-line import/first
+import { useQuery } from '@tanstack/react-query';
+
+const mockUseQuery = useQuery as jest.Mock;
 
 describe('DealerDashboard', () => {
+  beforeEach(() => {
+    mockUseQuery.mockClear();
+  });
+
   it('renders "Active Listings" KPI tile label', () => {
     render(<DealerDashboard />);
     expect(screen.getByText('Active Listings')).toBeTruthy();
@@ -67,9 +81,7 @@ describe('DealerDashboard', () => {
   });
 
   it('shows "No leads yet" when all leadFunnel values are 0', () => {
-    // Re-mock useQuery with zero funnel
-    const { useQuery } = require('@tanstack/react-query');
-    (useQuery as jest.Mock).mockReturnValueOnce({
+    mockUseQuery.mockReturnValueOnce({
       data: {
         activeListings: 0,
         activeAuctions: 0,
@@ -96,9 +108,8 @@ describe('DealerDashboard', () => {
   });
 
   it('shows ActivityIndicator when isLoading is true', () => {
-    const { useQuery } = require('@tanstack/react-query');
-    (useQuery as jest.Mock).mockReturnValueOnce({
-      data: undefined,
+    mockUseQuery.mockReturnValueOnce({
+      data: undefined as unknown as object,
       isLoading: true,
       isError: false,
       refetch: jest.fn(),
