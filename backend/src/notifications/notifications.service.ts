@@ -1,8 +1,12 @@
-import { Injectable, Inject, forwardRef, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { Expo, ExpoPushMessage, ExpoPushTicket } from 'expo-server-sdk';
-import { NotificationsGateway } from './notifications.gateway';
+
+// Imported only as a type to avoid the circular module-level reference that
+// caused "Cannot access NotificationsGateway before initialization" at startup.
+import type { NotificationsGateway } from './notifications.gateway';
 
 @Injectable()
 export class NotificationsService {
@@ -11,9 +15,13 @@ export class NotificationsService {
 
     constructor(
         private readonly prisma: PrismaService,
-        @Inject(forwardRef(() => NotificationsGateway))
-        private readonly notificationsGateway: NotificationsGateway,
+        private readonly moduleRef: ModuleRef,
     ) { }
+
+    // Lazily resolved to break the circular import at class-definition time.
+    private get gateway(): NotificationsGateway {
+        return this.moduleRef.get('NotificationsGateway', { strict: false });
+    }
 
     async create(dto: CreateNotificationDto) {
         // 'link' is not a Prisma column — merge it into the JSON 'data' field
@@ -28,10 +36,10 @@ export class NotificationsService {
         });
 
         // Real-time delivery (foreground — user has active socket connection)
-        this.notificationsGateway.sendNotification(dto.userId, notification);
+        this.gateway.sendNotification(dto.userId, notification);
 
         // Expo push delivery (background / killed — user has no active socket)
-        if (!this.notificationsGateway.isUserConnected(dto.userId)) {
+        if (!this.gateway.isUserConnected(dto.userId)) {
             const user = await this.prisma.user.findUnique({
                 where: { id: dto.userId },
                 select: { preferences: true },
