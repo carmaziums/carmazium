@@ -19,6 +19,7 @@
     "@tanstack/react-query": "^5.80.5",
     "expo": "~52.0.46",
     "expo-constants": "~17.0.8",
+    "expo-device": "~6.0.2",
     "expo-font": "~13.0.4",
     "expo-image": "~2.0.7",
     "expo-image-picker": "~16.0.6",
