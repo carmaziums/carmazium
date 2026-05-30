@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
 import { AuctionGateway, AuctionEndPayload } from './auction.gateway';
 import { EmailService } from '../email/email.service';
 import { CreateAuctionDto } from './dto/create-auction.dto';
@@ -22,6 +23,7 @@ export class AuctionsService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly notificationsGateway: NotificationsGateway,
+        private readonly notificationsService: NotificationsService,
         @Inject(forwardRef(() => AuctionGateway))
         private readonly auctionGateway: AuctionGateway,
         private readonly emailService: EmailService,
@@ -432,25 +434,27 @@ export class AuctionsService {
         const vehicle = `${listing.year ?? ''} ${listing.make ?? ''} ${listing.model ?? ''}`.trim();
 
         if (reserveMet && winnerId && winningAmount !== null) {
-            // Notify winner
-            this.notificationsGateway.sendNotification(winnerId, {
-                type: 'AUCTION_WON',
-                title: 'You won the auction!',
-                message: `You won the auction for ${vehicle} with a bid of £${winningAmount.toLocaleString()}. Contact the seller to arrange collection.`,
+            // Notify winner — persisted + push delivered via notificationsService.create()
+            await this.notificationsService.create({
+                userId:     winnerId,
+                type:       'AUCTION_WON',
+                title:      'You won the auction!',
+                message:    `You won the auction for ${vehicle} with a bid of £${winningAmount.toLocaleString()}. Contact the seller to arrange collection.`,
                 entityType: 'AUCTION',
-                entityId: auction.id,
-                link: `/auctions/live/${auction.id}`,
+                entityId:   auction.id,
+                link:       `/auction/${auction.id}`,
             });
 
-            // Notify seller
+            // Notify seller — persisted + push delivered
             if (listing.sellerId) {
-                this.notificationsGateway.sendNotification(listing.sellerId, {
-                    type: 'AUCTION_ENDED',
-                    title: 'Your auction has ended',
-                    message: `Your auction for ${vehicle} has ended. Winning bid: £${winningAmount.toLocaleString()}.`,
+                await this.notificationsService.create({
+                    userId:     listing.sellerId,
+                    type:       'AUCTION_ENDED',
+                    title:      'Your auction has ended',
+                    message:    `Your auction for ${vehicle} has ended. Winning bid: £${winningAmount.toLocaleString()}.`,
                     entityType: 'AUCTION',
-                    entityId: auction.id,
-                    link: `/auctions/live/${auction.id}`,
+                    entityId:   auction.id,
+                    link:       `/auction/${auction.id}`,
                 });
             }
 
@@ -484,15 +488,16 @@ export class AuctionsService {
                 this.emailService.sendAuctionEndedSellerEmail(seller.email, seller.firstName || 'there', vehicle || listing.title, winningAmount, auction.id).catch(console.error);
             }
         } else {
-            // No winner — notify seller only
+            // No winner — notify seller only, persisted + push delivered
             if (listing.sellerId) {
-                this.notificationsGateway.sendNotification(listing.sellerId, {
-                    type: 'AUCTION_ENDED',
-                    title: 'Auction ended — reserve not met',
-                    message: `Your auction for ${vehicle} ended without meeting the reserve price. You can relist or adjust the reserve.`,
+                await this.notificationsService.create({
+                    userId:     listing.sellerId,
+                    type:       'AUCTION_ENDED',
+                    title:      'Auction ended — reserve not met',
+                    message:    `Your auction for ${vehicle} ended without meeting the reserve price. You can relist or adjust the reserve.`,
                     entityType: 'AUCTION',
-                    entityId: auction.id,
-                    link: `/auctions/live/${auction.id}`,
+                    entityId:   auction.id,
+                    link:       `/auction/${auction.id}`,
                 });
 
                 const seller = await this.prisma.user.findUnique({ where: { id: listing.sellerId }, select: { email: true, firstName: true } });

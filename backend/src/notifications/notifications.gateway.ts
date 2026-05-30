@@ -8,6 +8,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { Logger, Inject, forwardRef } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
+import { AuthService } from '../auth/auth.service';
 
 @WebSocketGateway({
     cors: {
@@ -33,6 +34,7 @@ export class NotificationsGateway
     constructor(
         @Inject(forwardRef(() => NotificationsService))
         private readonly notificationsService: NotificationsService,
+        private readonly authService: AuthService,
     ) { }
 
     afterInit(server: Server): void {
@@ -42,7 +44,17 @@ export class NotificationsGateway
     async handleConnection(client: Socket): Promise<void> {
         try {
             const req = client.request as any;
-            const userId = req?.session?.userId;
+            // Path 1: web session cookie (existing browser flow)
+            let userId: string | null = req?.session?.userId ?? null;
+
+            // Path 2: Bearer token via Socket.IO handshake.auth (React Native mobile)
+            if (!userId) {
+                const token = client.handshake.auth?.token as string | undefined;
+                if (token) {
+                    const user = await this.authService.verifySupabaseToken(token);
+                    userId = user?.id ?? null;
+                }
+            }
 
             if (!userId) {
                 client.disconnect();

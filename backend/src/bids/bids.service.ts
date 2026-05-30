@@ -8,6 +8,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { AuctionsService } from '../auctions/auctions.service';
 import { AuctionGateway } from '../auctions/auction.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateBidDto } from './dto/create-bid.dto';
 import { Bid } from '@prisma/client';
 
@@ -19,6 +20,7 @@ export class BidsService {
         private readonly auctionsService: AuctionsService,
         @Inject(forwardRef(() => AuctionGateway))
         private readonly auctionGateway: AuctionGateway,
+        private readonly notificationsService: NotificationsService,
     ) { }
 
     async create(bidderId: string, createBidDto: CreateBidDto): Promise<Bid> {
@@ -79,6 +81,19 @@ export class BidsService {
                 amount: createBidDto.amount,
             },
         });
+
+        // Notify the displaced highest bidder they've been outbid
+        if (highestBid && highestBid.bidderId !== bidderId) {
+            await this.notificationsService.create({
+                userId:     highestBid.bidderId,
+                type:       'OUTBID',
+                title:      "You've been outbid",
+                message:    `A new bid of £${createBidDto.amount.toLocaleString()} was placed on ${listing.make} ${listing.model}. Bid again to stay in the lead.`,
+                entityType: 'AUCTION',
+                entityId:   auction.id,
+                link:       `/auction/${auction.id}`,
+            });
+        }
 
         // Anti-snipe: extend auction if bid placed in the final window
         const updatedAuction = await this.auctionsService.maybeExtend(auction.id, bid.timestamp);

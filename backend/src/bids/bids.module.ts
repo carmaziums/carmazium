@@ -4,11 +4,13 @@ import { BidsController } from './bids.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AuthModule } from '../auth/auth.module';
 import { AuctionsModule } from '../auctions/auctions.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
     imports: [
         PrismaModule,
         AuthModule,
+        NotificationsModule,
         forwardRef(() => AuctionsModule),
     ],
     controllers: [BidsController],
