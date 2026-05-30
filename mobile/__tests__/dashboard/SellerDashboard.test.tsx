@@ -131,4 +131,34 @@ describe('SellerDashboard', () => {
       expect(screen.getByText('No offers yet')).toBeTruthy();
     });
   });
+
+  describe('Earnings summary (SELL-DASH-04)', () => {
+    it('renders earnings summary with sold price, fee, and net', () => {
+      (useQuery as jest.Mock).mockReturnValueOnce({
+        data: {
+          activeListings: 1,
+          offerCount: 0,
+          enquiries: 0,
+          offers: [],
+          earnings: [
+            {
+              id: 'e1',
+              listing: { title: 'VW Golf' },
+              soldPrice: 12000,
+              platformFee: 240,
+              net: 11760,
+            },
+          ],
+        },
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
+        isRefetching: false,
+      });
+      const { getByText } = render(<SellerDashboard />);
+      expect(getByText(/VW Golf/)).toBeTruthy();
+      expect(getByText(/12,000/)).toBeTruthy();
+      expect(getByText(/11,760/)).toBeTruthy();
+    });
+  });
 });
