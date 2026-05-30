@@ -1,3 +1,4 @@
+import '../global.css';
 import React, { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import { Stack, useRouter } from 'expo-router';

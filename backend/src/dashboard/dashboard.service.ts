@@ -7,23 +7,74 @@ export class DashboardService {
     constructor(private readonly prisma: PrismaService) { }
 
     async getBuyerDashboard(userId: string) {
-        const [bids, watchlist, transactions, notifications] = await Promise.all([
+        const [
+            activeBids,
+            activeOffers,
+            watchlistCount,
+            wonAuctions,
+            bids,
+            offers,
+            history,
+        ] = await Promise.all([
             this.prisma.bid.count({ where: { bidderId: userId } }),
+            this.prisma.offer.count({ where: { buyerId: userId, status: { in: ['PENDING', 'COUNTERED'] } } }),
             this.prisma.watchlistItem.count({ where: { userId } }),
-            this.prisma.transaction.findMany({
-                where: { userId },
-                take: 5,
+            this.prisma.auction.count({ where: { winnerId: userId } }),
+            this.prisma.bid.findMany({
+                where: { bidderId: userId },
+                take: 20,
                 orderBy: { createdAt: 'desc' },
-                include: { listing: true },
+                include: {
+                    listing: {
+                        select: {
+                            title: true,
+                            auction: { select: { status: true } },
+                        },
+                    },
+                },
             }),
-            this.prisma.notification.count({ where: { userId, isRead: false } }),
+            this.prisma.offer.findMany({
+                where: { buyerId: userId },
+                take: 20,
+                orderBy: { createdAt: 'desc' },
+                include: { listing: { select: { title: true } } },
+            }),
+            this.prisma.sale.findMany({
+                where: { buyerId: userId },
+                take: 20,
+                orderBy: { createdAt: 'desc' },
+                include: { listing: { select: { title: true } } },
+            }),
         ]);
 
         return {
-            activeBids: bids,
-            watchlistCount: watchlist,
-            recentTransactions: transactions,
-            unreadNotifications: notifications,
+            activeBids,
+            activeOffers,
+            watchlistCount,
+            wonAuctions,
+            bids: bids.map(b => ({
+                id: b.id,
+                amount: Number(b.amount),
+                auctionStatus: b.listing.auction?.status ?? 'ENDED',
+                listing: { title: b.listing.title },
+                listingId: b.listingId,
+                createdAt: b.createdAt,
+            })),
+            offers: offers.map(o => ({
+                id: o.id,
+                amount: Number(o.amount),
+                status: o.status,
+                listing: { title: o.listing.title },
+                listingId: o.listingId,
+                createdAt: o.createdAt,
+            })),
+            history: history.map(s => ({
+                id: s.id,
+                price: Number(s.soldPrice),
+                listing: { title: s.listing?.title ?? 'Vehicle' },
+                listingId: s.listingId,
+                createdAt: s.createdAt,
+            })),
         };
     }
 
@@ -114,42 +165,111 @@ export class DashboardService {
     }
 
     async getSellerDashboard(userId: string) {
-        const [listings, activeAuctions, transactions, totalBids] = await Promise.all([
-            this.prisma.listing.count({ where: { sellerId: userId } }),
+        const [activeListings, activeAuctions, offerCount, offers, earnings] = await Promise.all([
+            this.prisma.listing.count({ where: { sellerId: userId, status: 'ACTIVE', deletedAt: null } }),
             this.prisma.auction.count({
-                where: {
-                    listing: { sellerId: userId },
-                    endTime: { gt: new Date() },
+                where: { listing: { sellerId: userId }, endTime: { gt: new Date() } },
+            }),
+            this.prisma.offer.count({
+                where: { listing: { sellerId: userId }, status: { in: ['PENDING', 'COUNTERED'] } },
+            }),
+            this.prisma.offer.findMany({
+                where: { listing: { sellerId: userId }, status: { in: ['PENDING', 'COUNTERED'] } },
+                take: 20,
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    listing: { select: { title: true } },
+                    buyer: { select: { firstName: true, lastName: true } },
                 },
             }),
-            this.prisma.transaction.findMany({
-                where: { listing: { sellerId: userId } },
-                take: 5,
+            this.prisma.sale.findMany({
+                where: { sellerId: userId },
+                take: 20,
                 orderBy: { createdAt: 'desc' },
-                include: { listing: true, user: true },
-            }),
-            this.prisma.bid.count({
-                where: { listing: { sellerId: userId } },
+                include: { listing: { select: { title: true } } },
             }),
         ]);
 
         return {
-            totalListings: listings,
+            activeListings,
             activeAuctions,
-            recentSales: transactions,
-            bidsReceived: totalBids,
+            offerCount,
+            enquiries: offerCount,
+            offers: offers.map(o => ({
+                id: o.id,
+                amount: Number(o.amount),
+                status: o.status,
+                listing: { title: o.listing.title },
+                buyer: o.buyer,
+            })),
+            earnings: earnings.map(s => ({
+                id: s.id,
+                soldPrice: Number(s.soldPrice),
+                platformFee: Number(s.soldPrice) * 0.025,
+                net: Number(s.soldPrice) * 0.975,
+                listing: { title: s.listing?.title ?? 'Vehicle' },
+                createdAt: s.createdAt,
+            })),
         };
     }
 
     async getDealerDashboard(userId: string) {
-        const sellerData = await this.getSellerDashboard(userId);
-        const dealerProfile = await this.prisma.dealerProfile.findUnique({
-            where: { userId },
-        });
+        const dealerProfile = await this.prisma.dealerProfile.findUnique({ where: { userId } });
+
+        const soldThisMonthStart = new Date();
+        soldThisMonthStart.setDate(1);
+        soldThisMonthStart.setHours(0, 0, 0, 0);
+
+        const [
+            activeListings,
+            activeAuctions,
+            soldThisMonth,
+            leadCounts,
+            viewAgg,
+            totalListingsForViews,
+        ] = await Promise.all([
+            this.prisma.listing.count({ where: { sellerId: userId, status: 'ACTIVE', deletedAt: null } }),
+            this.prisma.auction.count({ where: { listing: { sellerId: userId }, endTime: { gt: new Date() } } }),
+            this.prisma.sale.count({ where: { sellerId: userId, createdAt: { gte: soldThisMonthStart } } }),
+            dealerProfile
+                ? this.prisma.lead.groupBy({
+                    by: ['status'],
+                    where: { dealerProfileId: dealerProfile.id },
+                    _count: { status: true },
+                })
+                : Promise.resolve([]),
+            this.prisma.listing.aggregate({
+                where: { sellerId: userId, deletedAt: null },
+                _sum: { viewCount: true },
+                _count: { id: true },
+            }),
+            this.prisma.listing.count({ where: { sellerId: userId, deletedAt: null } }),
+        ]);
+
+        const funnelMap: Record<string, number> = {};
+        for (const row of leadCounts as any[]) {
+            funnelMap[row.status] = row._count.status;
+        }
+        const totalLeads = Object.values(funnelMap).reduce((a, b) => a + b, 0);
+        const wonLeads = funnelMap['WON'] ?? 0;
 
         return {
-            ...sellerData,
-            profile: dealerProfile,
+            activeListings,
+            activeAuctions,
+            totalLeads,
+            soldThisMonth,
+            leadFunnel: {
+                NEW:         funnelMap['NEW']         ?? 0,
+                CONTACTED:   funnelMap['CONTACTED']   ?? 0,
+                QUALIFIED:   funnelMap['QUALIFIED']   ?? 0,
+                NEGOTIATING: funnelMap['NEGOTIATING'] ?? 0,
+                WON:         funnelMap['WON']         ?? 0,
+                LOST:        funnelMap['LOST']        ?? 0,
+            },
+            conversionRate: totalLeads > 0 ? wonLeads / totalLeads : 0,
+            avgViews: totalListingsForViews > 0
+                ? Math.round((viewAgg._sum.viewCount ?? 0) / totalListingsForViews)
+                : 0,
         };
     }
 
