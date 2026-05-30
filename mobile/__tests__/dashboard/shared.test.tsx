@@ -20,7 +20,8 @@ describe('KpiTile', () => {
 
   it('renders the label text', () => {
     render(<KpiTile label="Revenue" value={0} />);
-    expect(screen.getByText('REVENUE')).toBeTruthy();
+    // In test env, className 'uppercase' is not applied — label renders as-is
+    expect(screen.getByText('Revenue')).toBeTruthy();
   });
 
   it('renders without accent border by default (accent=false)', () => {

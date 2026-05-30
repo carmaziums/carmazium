@@ -50,6 +50,7 @@
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@testing-library/react-native": "^12.9.0",
+    "@types/jest": "^30.0.0",
     "@types/react": "~18.3.21",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~9.2.0",
