@@ -16,7 +16,7 @@ Starting from a complete scaffold (auth screens, tab screens, detail screens, AP
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: EAS Build and Full Push Notification System** - Configure EAS dev build, register device tokens, wire all notification event types, and deliver a working notifications inbox with preferences
+- [x] **Phase 1: EAS Build and Full Push Notification System** - Configure EAS dev build, register device tokens, wire all notification event types, and deliver a working notifications inbox with preferences (completed 2026-05-30)
 - [ ] **Phase 2: Buyer, Seller, and Dealer Role Dashboards** - Deliver the dashboard home screen for each role with KPI tiles, offer inboxes, and lead funnel summaries
 - [ ] **Phase 3: Sell My Car Wizard and Photo Upload** - Multi-step listing creation wizard (DVLA lookup → condition → photos → review → publish) with Supabase Storage and HEIC conversion
 - [ ] **Phase 4: KYC Identity Verification Flow** - Driver licence upload, compression, submission, and pending state using the storage.ts helper from Phase 3
@@ -239,7 +239,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. EAS Build and Full Push Notification System | 0/TBD | Not started | - |
+| 1. EAS Build and Full Push Notification System | 0/TBD | Complete    | 2026-05-30 |
 | 2. Buyer, Seller, and Dealer Role Dashboards | 0/TBD | Not started | - |
 | 3. Sell My Car Wizard and Photo Upload | 0/TBD | Not started | - |
 | 4. KYC Identity Verification Flow | 0/TBD | Not started | - |

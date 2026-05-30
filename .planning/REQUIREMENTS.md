@@ -7,25 +7,25 @@
 
 ### Infrastructure & Build
 
-- [ ] **INFRA-01**: Developer can run EAS build with development profile and install on physical device for push notification testing
-- [ ] **INFRA-02**: App registers for Expo push notifications and stores device token in user preferences on backend
-- [ ] **INFRA-03**: Android notification channel is created at app startup (prevents silent notification drops on Android 8+)
-- [ ] **INFRA-04**: `notification-icon.png` asset (96×96 white-on-transparent) exists and is referenced correctly in `app.json`
-- [ ] **INFRA-05**: `extra.eas.projectId` is configured in `app.json` (required for `getExpoPushTokenAsync`)
-- [ ] **INFRA-06**: `react-native-gifted-charts` and `react-native-svg` are installed and working
+- [x] **INFRA-01**: Developer can run EAS build with development profile and install on physical device for push notification testing
+- [x] **INFRA-02**: App registers for Expo push notifications and stores device token in user preferences on backend
+- [x] **INFRA-03**: Android notification channel is created at app startup (prevents silent notification drops on Android 8+)
+- [x] **INFRA-04**: `notification-icon.png` asset (96×96 white-on-transparent) exists and is referenced correctly in `app.json`
+- [x] **INFRA-05**: `extra.eas.projectId` is configured in `app.json` (required for `getExpoPushTokenAsync`)
+- [x] **INFRA-06**: `react-native-gifted-charts` and `react-native-svg` are installed and working
 
 ### Push Notifications
 
-- [ ] **PUSH-01**: User receives a push notification when outbid in a live auction (foreground and background)
-- [ ] **PUSH-02**: User receives a push notification when a new offer is made on their listing
-- [ ] **PUSH-03**: User receives a push notification when an offer they made is accepted, rejected, or countered
-- [ ] **PUSH-04**: User receives a push notification when their auction wins and a chat room is created
-- [ ] **PUSH-05**: User receives a push notification when a new chat message arrives while app is backgrounded
-- [ ] **PUSH-06**: Tapping a push notification deep-links to the relevant screen (auction, offer, message thread)
-- [ ] **PUSH-07**: User can view a notifications inbox listing all activity alerts (bids, offers, messages, system)
-- [ ] **PUSH-08**: Notifications are marked as read when viewed
-- [ ] **PUSH-09**: User can configure notification preferences by category (bids, offers, messages, system) with on/off toggles
-- [ ] **PUSH-10**: User can set quiet hours during which push notifications are suppressed
+- [x] **PUSH-01**: User receives a push notification when outbid in a live auction (foreground and background)
+- [x] **PUSH-02**: User receives a push notification when a new offer is made on their listing
+- [x] **PUSH-03**: User receives a push notification when an offer they made is accepted, rejected, or countered
+- [x] **PUSH-04**: User receives a push notification when their auction wins and a chat room is created
+- [x] **PUSH-05**: User receives a push notification when a new chat message arrives while app is backgrounded
+- [x] **PUSH-06**: Tapping a push notification deep-links to the relevant screen (auction, offer, message thread)
+- [x] **PUSH-07**: User can view a notifications inbox listing all activity alerts (bids, offers, messages, system)
+- [x] **PUSH-08**: Notifications are marked as read when viewed
+- [x] **PUSH-09**: User can configure notification preferences by category (bids, offers, messages, system) with on/off toggles
+- [x] **PUSH-10**: User can set quiet hours during which push notifications are suppressed
 
 ### Buyer Dashboard
 
@@ -177,22 +177,22 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | Phase 1 | Pending |
-| INFRA-02 | Phase 1 | Pending |
-| INFRA-03 | Phase 1 | Pending |
-| INFRA-04 | Phase 1 | Pending |
-| INFRA-05 | Phase 1 | Pending |
-| INFRA-06 | Phase 1 | Pending |
-| PUSH-01 | Phase 1 | Pending |
-| PUSH-02 | Phase 1 | Pending |
-| PUSH-03 | Phase 1 | Pending |
-| PUSH-04 | Phase 1 | Pending |
-| PUSH-05 | Phase 1 | Pending |
-| PUSH-06 | Phase 1 | Pending |
-| PUSH-07 | Phase 1 | Pending |
-| PUSH-08 | Phase 1 | Pending |
-| PUSH-09 | Phase 1 | Pending |
-| PUSH-10 | Phase 1 | Pending |
+| INFRA-01 | Phase 1 | Complete |
+| INFRA-02 | Phase 1 | Complete |
+| INFRA-03 | Phase 1 | Complete |
+| INFRA-04 | Phase 1 | Complete |
+| INFRA-05 | Phase 1 | Complete |
+| INFRA-06 | Phase 1 | Complete |
+| PUSH-01 | Phase 1 | Complete |
+| PUSH-02 | Phase 1 | Complete |
+| PUSH-03 | Phase 1 | Complete |
+| PUSH-04 | Phase 1 | Complete |
+| PUSH-05 | Phase 1 | Complete |
+| PUSH-06 | Phase 1 | Complete |
+| PUSH-07 | Phase 1 | Complete |
+| PUSH-08 | Phase 1 | Complete |
+| PUSH-09 | Phase 1 | Complete |
+| PUSH-10 | Phase 1 | Complete |
 | BUYER-01 | Phase 2 | Pending |
 | BUYER-02 | Phase 2 | Pending |
 | BUYER-03 | Phase 2 | Pending |
