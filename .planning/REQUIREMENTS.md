@@ -29,7 +29,7 @@
 
 ### Buyer Dashboard
 
-- [ ] **BUYER-01**: Buyer can view a dashboard overview with KPI tiles (active bids, active offers, watchlist count, won auctions)
+- [x] **BUYER-01**: Buyer can view a dashboard overview with KPI tiles (active bids, active offers, watchlist count, won auctions)
 - [ ] **BUYER-02**: Buyer can view a list of all their bids with current auction status and their bid amount
 - [ ] **BUYER-03**: Buyer can view all offers they have made with current offer status (pending, accepted, rejected, countered)
 - [ ] **BUYER-04**: Buyer can view their order/purchase history
@@ -62,8 +62,8 @@
 
 ### Dealer Dashboard
 
-- [ ] **DEALER-01**: Dealer can view dashboard KPI tiles (active listings, active auctions, total leads, sold this month)
-- [ ] **DEALER-02**: Dealer can view a lead funnel summary (counts by status: NEW, CONTACTED, QUALIFIED, NEGOTIATING, WON, LOST)
+- [x] **DEALER-01**: Dealer can view dashboard KPI tiles (active listings, active auctions, total leads, sold this month)
+- [x] **DEALER-02**: Dealer can view a lead funnel summary (counts by status: NEW, CONTACTED, QUALIFIED, NEGOTIATING, WON, LOST)
 - [ ] **DEALER-03**: Dealer can view offer conversion rate and average views per listing as trend KPIs
 
 ### Dealer Inventory
@@ -193,7 +193,7 @@
 | PUSH-08 | Phase 1 | Complete |
 | PUSH-09 | Phase 1 | Complete |
 | PUSH-10 | Phase 1 | Complete |
-| BUYER-01 | Phase 2 | Pending |
+| BUYER-01 | Phase 2 | Complete |
 | BUYER-02 | Phase 2 | Pending |
 | BUYER-03 | Phase 2 | Pending |
 | BUYER-04 | Phase 2 | Pending |
@@ -201,8 +201,8 @@
 | SELL-DASH-02 | Phase 2 | Pending |
 | SELL-DASH-03 | Phase 2 | Pending |
 | SELL-DASH-04 | Phase 2 | Pending |
-| DEALER-01 | Phase 2 | Pending |
-| DEALER-02 | Phase 2 | Pending |
+| DEALER-01 | Phase 2 | Complete |
+| DEALER-02 | Phase 2 | Complete |
 | DEALER-03 | Phase 2 | Pending |
 | SELL-01 | Phase 3 | Pending |
 | SELL-02 | Phase 3 | Pending |
