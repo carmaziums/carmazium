@@ -8,7 +8,7 @@ module.exports = function (api) {
     ],
     plugins: isTest ? [] : [
       'nativewind/babel',
-      'react-native-reanimated/plugin',
+      // reanimated/plugin removed: Reanimated v4 uses New Architecture worklets natively
     ],
   };
 };
