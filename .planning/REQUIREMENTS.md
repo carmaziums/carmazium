@@ -30,9 +30,9 @@
 ### Buyer Dashboard
 
 - [x] **BUYER-01**: Buyer can view a dashboard overview with KPI tiles (active bids, active offers, watchlist count, won auctions)
-- [ ] **BUYER-02**: Buyer can view a list of all their bids with current auction status and their bid amount
-- [ ] **BUYER-03**: Buyer can view all offers they have made with current offer status (pending, accepted, rejected, countered)
-- [ ] **BUYER-04**: Buyer can view their order/purchase history
+- [x] **BUYER-02**: Buyer can view a list of all their bids with current auction status and their bid amount
+- [x] **BUYER-03**: Buyer can view all offers they have made with current offer status (pending, accepted, rejected, countered)
+- [x] **BUYER-04**: Buyer can view their order/purchase history
 
 ### Seller Dashboard
 
@@ -194,9 +194,9 @@
 | PUSH-09 | Phase 1 | Complete |
 | PUSH-10 | Phase 1 | Complete |
 | BUYER-01 | Phase 2 | Complete |
-| BUYER-02 | Phase 2 | Pending |
-| BUYER-03 | Phase 2 | Pending |
-| BUYER-04 | Phase 2 | Pending |
+| BUYER-02 | Phase 2 | Complete |
+| BUYER-03 | Phase 2 | Complete |
+| BUYER-04 | Phase 2 | Complete |
 | SELL-DASH-01 | Phase 2 | Complete |
 | SELL-DASH-02 | Phase 2 | Complete |
 | SELL-DASH-03 | Phase 2 | Complete |
