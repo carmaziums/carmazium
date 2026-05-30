@@ -36,10 +36,10 @@
 
 ### Seller Dashboard
 
-- [ ] **SELL-DASH-01**: Private seller can view a dashboard showing active listings, offer count, and total enquiries
-- [ ] **SELL-DASH-02**: Private seller can view an inbox of all offers received on their listings with price and buyer details
-- [ ] **SELL-DASH-03**: Private seller can accept, reject, or make a counter-offer from the offers inbox
-- [ ] **SELL-DASH-04**: Private seller can view earnings summary (sold price, platform fee, net)
+- [x] **SELL-DASH-01**: Private seller can view a dashboard showing active listings, offer count, and total enquiries
+- [x] **SELL-DASH-02**: Private seller can view an inbox of all offers received on their listings with price and buyer details
+- [x] **SELL-DASH-03**: Private seller can accept, reject, or make a counter-offer from the offers inbox
+- [x] **SELL-DASH-04**: Private seller can view earnings summary (sold price, platform fee, net)
 
 ### Sell My Car Wizard
 
@@ -197,10 +197,10 @@
 | BUYER-02 | Phase 2 | Pending |
 | BUYER-03 | Phase 2 | Pending |
 | BUYER-04 | Phase 2 | Pending |
-| SELL-DASH-01 | Phase 2 | Pending |
-| SELL-DASH-02 | Phase 2 | Pending |
-| SELL-DASH-03 | Phase 2 | Pending |
-| SELL-DASH-04 | Phase 2 | Pending |
+| SELL-DASH-01 | Phase 2 | Complete |
+| SELL-DASH-02 | Phase 2 | Complete |
+| SELL-DASH-03 | Phase 2 | Complete |
+| SELL-DASH-04 | Phase 2 | Complete |
 | DEALER-01 | Phase 2 | Complete |
 | DEALER-02 | Phase 2 | Complete |
 | DEALER-03 | Phase 2 | Pending |

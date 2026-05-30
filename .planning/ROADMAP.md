@@ -58,7 +58,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Goal:** Every authenticated role (buyer, private seller, dealer) lands on a dashboard that shows their core KPIs and provides the primary navigation entry points for their workflows.
 **Depends on:** Phase 1 (push token registered so dashboards can show notification badges)
 **Requirements:** BUYER-01, BUYER-02, BUYER-03, BUYER-04, SELL-DASH-01, SELL-DASH-02, SELL-DASH-03, SELL-DASH-04, DEALER-01, DEALER-02, DEALER-03
-**Plans:** 1/5 plans executed
+**Plans:** 2/5 plans executed
 Plans:
 - [ ] 02-01-PLAN.md — Foundation: jest config, KpiTile, LeadFunnelBar, role router
 - [ ] 02-02-PLAN.md — Buyer dashboard: overview + bids + offers + history screens
@@ -247,7 +247,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. EAS Build and Full Push Notification System | 0/TBD | Complete    | 2026-05-30 |
-| 2. Buyer, Seller, and Dealer Role Dashboards | 1/5 | In Progress|  |
+| 2. Buyer, Seller, and Dealer Role Dashboards | 2/5 | In Progress|  |
 | 3. Sell My Car Wizard and Photo Upload | 0/TBD | Not started | - |
 | 4. KYC Identity Verification Flow | 0/TBD | Not started | - |
 | 5. Dealer Inventory, CRM Leads, and Auction Manager | 0/TBD | Not started | - |
