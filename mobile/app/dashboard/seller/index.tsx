@@ -45,8 +45,7 @@ function OfferRow({ offer, onRespond, isPending }: OfferRowProps) {
   return (
     <View
       className="px-4 py-4 border-b border-white/5"
-      pointerEvents={isPending ? 'none' : 'auto'}
-      style={isPending ? { opacity: 0.5 } : undefined}
+      style={isPending ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
     >
       {/* Offer header: buyer name + amount */}
       <View className="flex-row items-center justify-between mb-1">
