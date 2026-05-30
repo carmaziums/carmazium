@@ -100,7 +100,12 @@ export class UsersService {
                 ...(data.notifyOnSale !== undefined && { notifyOnSale: data.notifyOnSale }),
                 ...(data.showPublicProfile !== undefined && { showPublicProfile: data.showPublicProfile }),
                 ...(data.location !== undefined && { location: data.location }),
-                ...(data.preferences !== undefined && { preferences: data.preferences }),
+                ...(data.preferences !== undefined && {
+                    preferences: {
+                        ...((user.preferences as Record<string, any>) ?? {}),
+                        ...data.preferences,
+                    },
+                }),
             },
             include: {
                 dealerProfile: true,
