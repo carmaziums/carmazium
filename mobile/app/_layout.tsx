@@ -184,9 +184,6 @@ export default function RootLayout() {
             <Stack.Screen name="auction/[id]"              options={{ presentation: 'modal' }} />
             <Stack.Screen name="messages/index"            options={{ presentation: 'card',  animation: 'slide_from_right' }} />
             <Stack.Screen name="messages/[roomId]"         options={{ presentation: 'card',  animation: 'slide_from_right' }} />
-            <Stack.Screen name="sell/index"                options={{ presentation: 'modal' }} />
-            <Stack.Screen name="compare/index"             options={{ presentation: 'card' }} />
-            <Stack.Screen name="map/index"                 options={{ presentation: 'card' }} />
             <Stack.Screen name="notifications/index"       options={{ presentation: 'card',  animation: 'slide_from_right' }} />
             <Stack.Screen name="notification-prefs/index"  options={{ presentation: 'card',  animation: 'slide_from_right' }} />
           </Stack>
