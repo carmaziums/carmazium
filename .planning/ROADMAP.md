@@ -58,6 +58,13 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Goal:** Every authenticated role (buyer, private seller, dealer) lands on a dashboard that shows their core KPIs and provides the primary navigation entry points for their workflows.
 **Depends on:** Phase 1 (push token registered so dashboards can show notification badges)
 **Requirements:** BUYER-01, BUYER-02, BUYER-03, BUYER-04, SELL-DASH-01, SELL-DASH-02, SELL-DASH-03, SELL-DASH-04, DEALER-01, DEALER-02, DEALER-03
+**Plans:** 5 plans
+Plans:
+- [ ] 02-01-PLAN.md — Foundation: jest config, KpiTile, LeadFunnelBar, role router
+- [ ] 02-02-PLAN.md — Buyer dashboard: overview + bids + offers + history screens
+- [ ] 02-03-PLAN.md — Seller dashboard: overview + offer inbox + earnings
+- [ ] 02-04-PLAN.md — Dealer dashboard: KPI tiles + lead funnel chart + trend stats
+- [ ] 02-05-PLAN.md — Checkpoint: human verify all three role dashboards on device
 **Key tasks:**
 - [ ] Build buyer dashboard screen: KPI tiles (active bids, active offers, watchlist count, won auctions), bids list, offers list, order/purchase history list
 - [ ] Build private seller dashboard screen: active listings overview, offer inbox with price + buyer details, accept/counter/decline actions, earnings summary
@@ -240,7 +247,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. EAS Build and Full Push Notification System | 0/TBD | Complete    | 2026-05-30 |
-| 2. Buyer, Seller, and Dealer Role Dashboards | 0/TBD | Not started | - |
+| 2. Buyer, Seller, and Dealer Role Dashboards | 0/5 | Not started | - |
 | 3. Sell My Car Wizard and Photo Upload | 0/TBD | Not started | - |
 | 4. KYC Identity Verification Flow | 0/TBD | Not started | - |
 | 5. Dealer Inventory, CRM Leads, and Auction Manager | 0/TBD | Not started | - |
