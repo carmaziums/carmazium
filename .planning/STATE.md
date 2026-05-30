@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 02-buyer-seller-and-dealer-role-dashboards-02-03-PLAN.md
-last_updated: "2026-05-30T12:44:07Z"
-last_activity: 2026-05-30 — Phase 2 Plan 3 complete (seller dashboard — overview tiles, offer inbox, earnings)
+stopped_at: Completed 02-buyer-seller-and-dealer-role-dashboards-02-04-PLAN.md
+last_updated: "2026-05-30T12:45:00Z"
+last_activity: 2026-05-30 — Phase 2 Plan 4 complete (dealer dashboard — KPI tiles, lead funnel chart, trend stats)
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 10
-  completed_plans: 8
+  completed_plans: 9
   percent: 0
 ---
 
@@ -19,9 +19,9 @@ progress:
 ## Current Position
 
 Phase: 2 of 8 (Buyer, Seller, and Dealer Role Dashboards)
-Plan: 3 of 5 complete in current phase
+Plan: 4 of 5 complete in current phase
 Status: In Progress
-Last activity: 2026-05-30 — Phase 2 Plan 3 complete (seller dashboard — overview tiles, offer inbox, earnings)
+Last activity: 2026-05-30 — Phase 2 Plan 4 complete (dealer dashboard — KPI tiles, lead funnel chart, trend stats)
 
 Progress: [██████░░░░] 60%
 
@@ -49,12 +49,28 @@ See: .planning/PROJECT.md (updated 2026-05-30)
 - LeadFunnelBar: BarChart wrapper with Math.max(...values, 1) zero-crash guard, "No leads yet" empty state
 - app/dashboard/index.tsx: role-based router (DEALER/SELLER/BUYER) reading Zustand synchronously
 
+### Phase 2 Plan 2 — Complete (Buyer Dashboard)
+
+- app/dashboard/buyer/index.tsx: overview with 4 KPI tiles (activeBids, activeOffers, watchlistCount, wonAuctions), pull-to-refresh, quick nav links
+- app/dashboard/buyer/bids.tsx: bids list with CzBadge auction status (ACTIVE/WON/OUTBID/ENDED)
+- app/dashboard/buyer/offers.tsx: offers list with CzBadge offer status (PENDING/ACCEPTED/REJECTED/COUNTERED)
+- app/dashboard/buyer/history.tsx: purchase history with defensive field fallback (history|purchases|orders) and en-GB date formatting
+- All 4 screens share queryKey ['dashboard', 'buyer'] for cache sync; 10 unit tests green
+
 ### Phase 2 Plan 3 — Complete (Seller Dashboard)
 
 - app/dashboard/seller/index.tsx: single ScrollView with overview KpiTiles, offer inbox, earnings summary
 - OfferRow: inline counter-offer TextInput, parseFloat > 0 validation, isPending guard
 - useMutation wraps offersApi.respond, invalidates ['dashboard','seller'] on success
 - 12 unit tests green (SELL-DASH-01 through SELL-DASH-04 verified)
+
+### Phase 2 Plan 4 — Complete (Dealer Dashboard)
+
+- app/dashboard/dealer/index.tsx: ScrollView with 4 KpiTiles, LeadFunnelBar, trend stats (conversion rate, avg views)
+- Defensive funnel build with nullish coalescing on every LeadFunnel key
+- conversionRate formatted as (rate * 100).toFixed(1)+'%'
+- 8 unit tests green (DEALER-01, DEALER-02, DEALER-03 verified)
+- Pattern established: mock @/lib/api/dashboard in tests to break AsyncStorage/Supabase native module chain
 
 ### Architecture Decisions Locked
 
@@ -76,6 +92,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-30T12:44:07Z
-Stopped at: Completed 02-buyer-seller-and-dealer-role-dashboards-02-03-PLAN.md
+Last session: 2026-05-30T12:45:00Z
+Stopped at: Completed 02-buyer-seller-and-dealer-role-dashboards-02-04-PLAN.md
 Resume file: None
