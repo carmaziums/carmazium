@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/Input"
 import { CarCard } from "@/components/features/CarCard"
 import {
     Search, Filter, X, Gavel, AlertTriangle, Loader2,
-    RotateCcw, ChevronDown, ShieldCheck, Star, ArrowRight,
+    RotateCcw, ChevronDown, ShieldCheck, Star, ArrowRight, MapPin,
 } from "lucide-react"
 import { getListings, getFeaturedListings, formatPrice, type Listing, type ListingFilters, type VehicleConditionValue, type EuroStandardValue } from "@/lib/listingApi"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
@@ -214,6 +214,7 @@ function SearchPageContent() {
     const router = useRouter()
     const { location: userLocation } = useUserLocation()
     const [isFilterOpen, setIsFilterOpen] = React.useState(false)
+    const [detectingLocation, setDetectingLocation] = React.useState(false)
     const [listings, setListings] = React.useState<Listing[]>([])
     const [loading, setLoading] = React.useState(true)
     const [loadingMore, setLoadingMore] = React.useState(false)
@@ -269,6 +270,27 @@ function SearchPageContent() {
 
     const set = <K extends keyof FilterState>(key: K, val: FilterState[K]) =>
         setFilters(prev => ({ ...prev, [key]: val }))
+
+    const handleDetectLocation = async () => {
+        if (!navigator?.geolocation) return
+        setDetectingLocation(true)
+        try {
+            const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+                navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 })
+            )
+            const { latitude, longitude } = pos.coords
+            const resp = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+            )
+            const data = await resp.json()
+            const city = data.address?.city || data.address?.town || data.address?.village || data.address?.county || ''
+            if (city) set('location', city)
+        } catch {
+            // silently ignore — user may have denied permission
+        } finally {
+            setDetectingLocation(false)
+        }
+    }
 
     // Count active filters for badge
     const activeFilterCount = React.useMemo(() => {
@@ -481,14 +503,14 @@ function SearchPageContent() {
                 {/* ── Sidebar Overlay (Mobile) ── */}
                 {isFilterOpen && (
                     <div
-                        className="fixed inset-0 z-40 bg-slate-950/80 backdrop-blur-sm lg:hidden transition-opacity"
+                        className="fixed inset-0 z-[55] bg-slate-950/80 backdrop-blur-sm lg:hidden transition-opacity"
                         onClick={() => setIsFilterOpen(false)}
                     />
                 )}
 
                 {/* ── Sidebar ──────────────────────────────────────────────────── */}
                 <aside className={`
-                    fixed inset-x-0 bottom-0 z-50 lg:z-10 flex flex-col h-[85vh] bg-slate-900 border-t border-white/10 rounded-t-3xl shadow-2xl transition-transform duration-300
+                    fixed inset-x-0 bottom-0 z-[60] lg:z-10 flex flex-col h-[85vh] bg-slate-900 border-t border-white/10 rounded-t-3xl shadow-2xl transition-transform duration-300
                     lg:static lg:w-72 lg:flex-shrink-0 lg:glass-card lg:border lg:rounded-2xl lg:shadow-none lg:translate-y-0 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:flex lg:flex-col lg:overflow-hidden lg:p-0
                     ${isFilterOpen ? 'translate-y-0' : 'translate-y-full lg:translate-y-0'}
                 `}>
@@ -785,14 +807,30 @@ function SearchPageContent() {
                             </FilterSection>
 
                             {/* Location */}
-                            <FilterSection title="Location">
-                                <Input
-                                    placeholder="e.g. London, Manchester, B1…"
-                                    value={filters.location}
-                                    onChange={(e) => set('location', e.target.value)}
-                                    className="h-9 text-sm bg-slate-800 border-white/10 text-white placeholder:text-gray-500"
-                                />
-                                <p className="text-[10px] text-gray-600 mt-1">Matches listings by city or postcode area</p>
+                            <FilterSection title="Location" defaultOpen={true}>
+                                <div className="space-y-1.5">
+                                    <div className="flex gap-2">
+                                        <Input
+                                            placeholder="e.g. London, Manchester, B1…"
+                                            value={filters.location}
+                                            onChange={(e) => set('location', e.target.value)}
+                                            className="h-9 text-sm bg-slate-800 border-white/10 text-white placeholder:text-gray-500 flex-1"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={handleDetectLocation}
+                                            disabled={detectingLocation}
+                                            title="Use my location"
+                                            className="h-9 w-9 flex items-center justify-center rounded-md border border-white/10 bg-slate-800 text-gray-400 hover:text-primary hover:border-primary/40 transition-colors disabled:opacity-50 shrink-0"
+                                        >
+                                            {detectingLocation
+                                                ? <Loader2 size={14} className="animate-spin" />
+                                                : <MapPin size={14} />
+                                            }
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-gray-600">Matches listings by city or postcode area</p>
+                                </div>
                             </FilterSection>
 
                             {/* Listing Type */}

@@ -4,9 +4,10 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
-import { MessageSquare, X, Send, Sparkles, Search, ArrowRight, Car } from "lucide-react"
+import { X, Send, Search, ArrowRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
+import Image from "next/image"
 
 import { aiChat } from "@/lib/aiApi"
 
@@ -51,7 +52,7 @@ export function MaziumWidget() {
     const [messages, setMessages] = React.useState<ChatMessage[]>([
         {
             role: "bot",
-            text: "Hello! I'm Mazium AI — your car-buying assistant. Tell me what you're looking for and I'll find it for you!",
+            text: "Hi! I'm Mazium, your AI car-buying assistant. Tell me what you're looking for and I'll find it!",
         },
     ])
     const [input, setInput] = React.useState("")
@@ -61,6 +62,7 @@ export function MaziumWidget() {
     const [quickReplies, setQuickReplies] = React.useState<QuickReply[]>([])
     const messagesEndRef = React.useRef<HTMLDivElement>(null)
     const greetingIntervalRef = React.useRef<NodeJS.Timeout | null>(null)
+    const [scrolled, setScrolled] = React.useState(false)
 
     // Set daily dynamic quick replies on mount
     React.useEffect(() => {
@@ -95,6 +97,12 @@ export function MaziumWidget() {
         return () => {
             if (greetingIntervalRef.current) clearInterval(greetingIntervalRef.current)
         }
+    }, [])
+
+    React.useEffect(() => {
+        const onScroll = () => setScrolled(window.scrollY > 400)
+        window.addEventListener('scroll', onScroll, { passive: true })
+        return () => window.removeEventListener('scroll', onScroll)
     }, [])
 
     const handleToggle = () => {
@@ -169,7 +177,10 @@ export function MaziumWidget() {
         router.push(`/search?${qs}`)
     }
     return (
-        <div className="fixed bottom-24 lg:bottom-6 right-4 sm:right-6 z-50 flex flex-col items-end">
+        <div className={cn(
+            "fixed bottom-24 lg:bottom-6 right-4 sm:right-6 z-50 flex flex-col items-end transition-opacity duration-500",
+            scrolled && !isOpen ? "opacity-30 hover:opacity-100" : "opacity-100"
+        )}>
             {/* Chat Window */}
             <div
                 className={cn(
@@ -186,8 +197,8 @@ export function MaziumWidget() {
                 {/* Header */}
                 <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-4 text-white flex justify-between items-center">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center relative">
-                            <Sparkles size={20} className="text-primary" />
+                        <div className="w-10 h-10 rounded-full overflow-hidden relative">
+                            <Image src="/assets/images/mazium-bot.jpeg" alt="Mazium" width={40} height={40} className="w-full h-full object-cover" />
                             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-slate-900" />
                         </div>
                         <div>
@@ -373,15 +384,15 @@ export function MaziumWidget() {
                         }}
                     >
                         <div className="relative">
-                            <div className="w-2 h-2 bg-green-500 rounded-full absolute -top-1 -right-1 animate-pulse" />
-                            <Sparkles className="text-primary w-5 h-5" />
+                            <div className="w-2 h-2 bg-green-500 rounded-full absolute -top-1 -right-1 animate-pulse z-10" />
+                            <Image src="/assets/images/mazium-bot.jpeg" alt="Mazium" width={32} height={32} className="rounded-full" />
                         </div>
                         <div>
                             <p className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
-                                Hi there! 👋
+                                Hi, I&apos;m Mazium! 👋
                             </p>
                             <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                                Need help looking for a car?
+                                How can I help you today?
                             </p>
                         </div>
 
@@ -415,16 +426,14 @@ export function MaziumWidget() {
             <button
                 onClick={handleToggle}
                 className={cn(
-                    "h-14 w-14 rounded-full shadow-[0_4px_20px_rgba(237,28,36,0.5)] flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95",
-                    isOpen
-                        ? "bg-slate-800 text-white"
-                        : "bg-gradient-to-r from-[#ed1c24] to-[#7f1d1d] text-white animate-float"
+                    "h-14 w-14 rounded-full shadow-[0_4px_20px_rgba(237,28,36,0.5)] flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 overflow-hidden",
+                    isOpen ? "bg-slate-800" : "animate-float"
                 )}
             >
                 {isOpen ? (
-                    <X size={24} />
+                    <X size={24} className="text-white" />
                 ) : (
-                    <Sparkles size={24} className="animate-pulse" />
+                    <Image src="/assets/images/mazium-bot.jpeg" alt="Mazium AI" width={56} height={56} className="w-full h-full object-cover" />
                 )}
             </button>
         </div>
