@@ -357,4 +357,69 @@ export class CreateListingDto {
     @IsEnum(WriteOffCategory)
     @IsOptional()
     writeOffCategory?: WriteOffCategory;
+
+    // ─── Extended vehicle details ────────────────────────────────────────────
+
+    @ApiProperty({ description: 'Model variant/trim level', example: 'M Sport', required: false })
+    @IsString()
+    @IsOptional()
+    variant?: string;
+
+    @ApiProperty({ description: 'Drive type: FWD, RWD, AWD, 4WD', example: 'AWD', required: false })
+    @IsString()
+    @IsOptional()
+    driveType?: string;
+
+    @ApiProperty({ description: 'Number of keys included with the vehicle', example: 2, required: false })
+    @Type(() => Number)
+    @IsInt()
+    @Min(0)
+    @Max(10)
+    @IsOptional()
+    numberOfKeys?: number;
+
+    @ApiProperty({ description: 'Service history type', example: 'Full Main Dealer', required: false })
+    @IsString()
+    @IsOptional()
+    serviceHistory?: string;
+
+    @ApiProperty({ description: 'Number of previous keepers', example: '2', required: false })
+    @IsString()
+    @IsOptional()
+    owners?: string;
+
+    @ApiProperty({ description: 'Torque in Nm', example: 400, required: false })
+    @Type(() => Number)
+    @IsInt()
+    @Min(0)
+    @IsOptional()
+    torqueNm?: number;
+
+    @ApiProperty({ description: 'Top speed in mph', example: 155, required: false })
+    @Type(() => Number)
+    @IsInt()
+    @Min(0)
+    @IsOptional()
+    topSpeedMph?: number;
+
+    @ApiProperty({ description: '0-60 mph time in seconds', example: 4.5, required: false })
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 2 })
+    @Min(0)
+    @IsOptional()
+    zeroTo60Mph?: number;
+
+    @ApiProperty({ description: 'Combined fuel economy in MPG', example: 38.2, required: false })
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 1 })
+    @Min(0)
+    @IsOptional()
+    combinedMpg?: number;
+
+    @ApiProperty({ description: 'Extra urban fuel economy in MPG', example: 45.6, required: false })
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 1 })
+    @Min(0)
+    @IsOptional()
+    extraUrbanMpg?: number;
 }

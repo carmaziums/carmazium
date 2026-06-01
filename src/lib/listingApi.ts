@@ -56,6 +56,17 @@ export interface CreateListingRequest {
     hasOutstandingFinance?: boolean
     isLegalRegisteredKeeper?: boolean
     writeOffCategory?: 'NONE' | 'CAT_S' | 'CAT_N' | 'CAT_A' | 'CAT_B'
+    // Extended vehicle details
+    variant?: string
+    driveType?: string
+    numberOfKeys?: number
+    serviceHistory?: string
+    owners?: string
+    torqueNm?: number
+    topSpeedMph?: number
+    zeroTo60Mph?: number
+    combinedMpg?: number
+    extraUrbanMpg?: number
 }
 
 export interface CreateListingResponse {
@@ -158,6 +169,17 @@ export interface Listing {
     monthOfFirstRegistration: string | null
     wheelplan: string | null
     typeApproval: string | null
+    // Extended vehicle details
+    variant: string | null
+    driveType: string | null
+    numberOfKeys: number | null
+    serviceHistory: string | null
+    owners: string | null
+    torqueNm: number | null
+    topSpeedMph: number | null
+    zeroTo60Mph: number | null
+    combinedMpg: number | null
+    extraUrbanMpg: number | null
     sellerId: string | null
     isFeatured: boolean
     featuredUntil: string | null

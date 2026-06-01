@@ -248,6 +248,17 @@ export class ListingsService {
                 hasOutstandingFinance: createListingDto.hasOutstandingFinance ?? null,
                 isLegalRegisteredKeeper: createListingDto.isLegalRegisteredKeeper ?? null,
                 writeOffCategory: createListingDto.writeOffCategory ?? 'NONE',
+                // Extended vehicle details
+                variant: createListingDto.variant ?? null,
+                driveType: createListingDto.driveType ?? null,
+                numberOfKeys: createListingDto.numberOfKeys ?? null,
+                serviceHistory: createListingDto.serviceHistory ?? null,
+                owners: createListingDto.owners ?? null,
+                torqueNm: createListingDto.torqueNm ?? null,
+                topSpeedMph: createListingDto.topSpeedMph ?? null,
+                zeroTo60Mph: createListingDto.zeroTo60Mph ?? null,
+                combinedMpg: createListingDto.combinedMpg ?? null,
+                extraUrbanMpg: createListingDto.extraUrbanMpg ?? null,
             },
         });
 
@@ -616,6 +627,17 @@ export class ListingsService {
             }
             updateData.writeOffCategory = updateListingDto.writeOffCategory;
         }
+        // Extended vehicle details
+        if (updateListingDto.variant !== undefined) updateData.variant = updateListingDto.variant;
+        if (updateListingDto.driveType !== undefined) updateData.driveType = updateListingDto.driveType;
+        if (updateListingDto.numberOfKeys !== undefined) updateData.numberOfKeys = updateListingDto.numberOfKeys;
+        if (updateListingDto.serviceHistory !== undefined) updateData.serviceHistory = updateListingDto.serviceHistory;
+        if (updateListingDto.owners !== undefined) updateData.owners = updateListingDto.owners;
+        if (updateListingDto.torqueNm !== undefined) updateData.torqueNm = updateListingDto.torqueNm;
+        if (updateListingDto.topSpeedMph !== undefined) updateData.topSpeedMph = updateListingDto.topSpeedMph;
+        if (updateListingDto.zeroTo60Mph !== undefined) updateData.zeroTo60Mph = updateListingDto.zeroTo60Mph;
+        if (updateListingDto.combinedMpg !== undefined) updateData.combinedMpg = updateListingDto.combinedMpg;
+        if (updateListingDto.extraUrbanMpg !== undefined) updateData.extraUrbanMpg = updateListingDto.extraUrbanMpg;
 
         // Update the listing
         const updatedListing = await this.prisma.listing.update({

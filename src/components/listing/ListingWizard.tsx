@@ -55,6 +55,15 @@ interface FormData {
     serviceHistory: string
     owners: string
     isImported: boolean
+    // Extended vehicle details
+    variant: string
+    driveType: string
+    numberOfKeys: string
+    torqueNm: string
+    topSpeedMph: string
+    zeroTo60Mph: string
+    combinedMpg: string
+    extraUrbanMpg: string
     // Legal declarations (Write-Off & Compliance)
     writeOffCategory: 'CAT_A' | 'CAT_B' | 'CAT_S' | 'CAT_N' | 'NONE' | ''
     stolenRecovered: boolean | null
@@ -110,6 +119,8 @@ const INITIAL_FORM: FormData = {
     doors: "", seats: "", engineSize: "", bhp: "",
     features: [], description: "", title: "",
     condition: "", serviceHistory: "", owners: "", isImported: false,
+    variant: "", driveType: "", numberOfKeys: "",
+    torqueNm: "", topSpeedMph: "", zeroTo60Mph: "", combinedMpg: "", extraUrbanMpg: "",
     writeOffCategory: "", stolenRecovered: null, hasOutstandingFinance: null, isLegalRegisteredKeeper: null, declarationAcknowledged: false,
     ulezCompliant: null, euroStandard: "", co2Emissions: "",
     motStatus: "", taxStatus: "", motExpiryDate: "", taxDueDate: "",
@@ -316,6 +327,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     listingType: (l.type || 'CLASSIFIED') as 'CLASSIFIED' | 'AUCTION',
                     serviceHistory: l.serviceHistory || '',
                     owners: l.owners ? String(l.owners) : '',
+                    variant: l.variant || '',
+                    driveType: l.driveType || '',
+                    numberOfKeys: l.numberOfKeys ? String(l.numberOfKeys) : '',
+                    torqueNm: l.torqueNm ? String(l.torqueNm) : '',
+                    topSpeedMph: l.topSpeedMph ? String(l.topSpeedMph) : '',
+                    zeroTo60Mph: l.zeroTo60Mph ? String(l.zeroTo60Mph) : '',
+                    combinedMpg: l.combinedMpg ? String(l.combinedMpg) : '',
+                    extraUrbanMpg: l.extraUrbanMpg ? String(l.extraUrbanMpg) : '',
                 }))
                 // Jump straight to step 1 (already pre-filled)
                 setSellingMethod('list')
@@ -545,6 +564,17 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 hasOutstandingFinance: formData.hasOutstandingFinance ?? undefined,
                 isLegalRegisteredKeeper: formData.isLegalRegisteredKeeper ?? undefined,
                 writeOffCategory: (formData.writeOffCategory !== '' ? formData.writeOffCategory : 'NONE') as 'NONE' | 'CAT_S' | 'CAT_N' | 'CAT_A' | 'CAT_B',
+                // Extended vehicle details
+                variant: formData.variant || undefined,
+                driveType: formData.driveType || undefined,
+                numberOfKeys: formData.numberOfKeys ? parseInt(formData.numberOfKeys) : undefined,
+                serviceHistory: formData.serviceHistory || undefined,
+                owners: formData.owners || undefined,
+                torqueNm: formData.torqueNm ? parseInt(formData.torqueNm) : undefined,
+                topSpeedMph: formData.topSpeedMph ? parseInt(formData.topSpeedMph) : undefined,
+                zeroTo60Mph: formData.zeroTo60Mph ? parseFloat(formData.zeroTo60Mph) : undefined,
+                combinedMpg: formData.combinedMpg ? parseFloat(formData.combinedMpg) : undefined,
+                extraUrbanMpg: formData.extraUrbanMpg ? parseFloat(formData.extraUrbanMpg) : undefined,
             }
 
             if (editId) {
@@ -1362,6 +1392,97 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         <Input type="number" placeholder="e.g. 5" min={1} max={20} value={formData.seats} onChange={(e) => set("seats", e.target.value)} className={inputCls} />
                                     </div>
                                 )}
+                            </div>
+
+                            {/* ── Model & Variant ───────────────────────────────────────── */}
+                            <div className="border border-white/5 bg-slate-900/40 rounded-xl p-5 space-y-4">
+                                <h3 className="text-sm font-bold uppercase text-gray-400 tracking-wider flex items-center gap-2">
+                                    <Car size={14} /> Model Details
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    {/* Variant/Trim */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold uppercase text-gray-400">Variant / Trim</label>
+                                        <Input placeholder="e.g. M Sport, GT Line, S-Line" value={formData.variant}
+                                            onChange={(e) => set("variant", e.target.value)} className={inputCls} />
+                                    </div>
+                                    {/* Drive Type */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold uppercase text-gray-400">Drive Type</label>
+                                        <div className="grid grid-cols-4 gap-2">
+                                            {(["FWD", "RWD", "AWD", "4WD"] as const).map((dt) => (
+                                                <button key={dt} type="button"
+                                                    onClick={() => set("driveType", formData.driveType === dt ? "" : dt)}
+                                                    className={`py-2 rounded-lg border text-xs font-bold transition-all ${formData.driveType === dt ? "border-primary bg-primary/10 text-white" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"}`}
+                                                >{dt}</button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    {/* Service History */}
+                                    <div className="space-y-2 md:col-span-2">
+                                        <label className="text-sm font-bold uppercase text-gray-400">Service History</label>
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                            {(["Full Main Dealer", "Full Independent", "Partial", "None"] as const).map((sh) => (
+                                                <button key={sh} type="button"
+                                                    onClick={() => set("serviceHistory", formData.serviceHistory === sh ? "" : sh)}
+                                                    className={`py-2.5 px-2 rounded-lg border text-xs font-semibold transition-all text-center ${formData.serviceHistory === sh ? "border-primary bg-primary/10 text-white" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"}`}
+                                                >{sh}</button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    {/* Number of Keys */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold uppercase text-gray-400">Number of Keys</label>
+                                        <div className="flex gap-2">
+                                            {(["1", "2", "3"] as const).map((k) => (
+                                                <button key={k} type="button"
+                                                    onClick={() => set("numberOfKeys", formData.numberOfKeys === k ? "" : k)}
+                                                    className={`flex-1 py-2.5 rounded-lg border text-sm font-bold transition-all ${formData.numberOfKeys === k ? "border-primary bg-primary/10 text-white" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"}`}
+                                                >{k} {k === "3" ? "+" : ""} {parseInt(k) === 1 ? "Key" : "Keys"}</button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* ── Performance & Economy ─────────────────────────────────── */}
+                            <div className="border border-white/5 bg-slate-900/40 rounded-xl p-5 space-y-4">
+                                <h3 className="text-sm font-bold uppercase text-gray-400 tracking-wider flex items-center gap-2">
+                                    <Zap size={14} /> Performance & Economy
+                                </h3>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
+                                    {/* 0-60 */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold uppercase text-gray-400">0–60 mph (secs)</label>
+                                        <Input type="number" step="0.1" placeholder="e.g. 4.5" value={formData.zeroTo60Mph}
+                                            onChange={(e) => set("zeroTo60Mph", e.target.value)} className={inputCls} />
+                                    </div>
+                                    {/* Top Speed */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold uppercase text-gray-400">Top Speed (mph)</label>
+                                        <Input type="number" placeholder="e.g. 155" value={formData.topSpeedMph}
+                                            onChange={(e) => set("topSpeedMph", e.target.value)} className={inputCls} />
+                                    </div>
+                                    {/* Torque */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold uppercase text-gray-400">Torque (Nm)</label>
+                                        <Input type="number" placeholder="e.g. 400" value={formData.torqueNm}
+                                            onChange={(e) => set("torqueNm", e.target.value)} className={inputCls} />
+                                    </div>
+                                    {/* Combined MPG */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold uppercase text-gray-400">Combined MPG</label>
+                                        <Input type="number" step="0.1" placeholder="e.g. 38.2" value={formData.combinedMpg}
+                                            onChange={(e) => set("combinedMpg", e.target.value)} className={inputCls} />
+                                    </div>
+                                    {/* Extra Urban MPG */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold uppercase text-gray-400">Extra Urban MPG</label>
+                                        <Input type="number" step="0.1" placeholder="e.g. 45.6" value={formData.extraUrbanMpg}
+                                            onChange={(e) => set("extraUrbanMpg", e.target.value)} className={inputCls} />
+                                    </div>
+                                </div>
+                                <p className="text-[10px] text-gray-600">All performance figures are optional — check your vehicle handbook or manufacturer spec sheet.</p>
                             </div>
 
                             {/* UK Compliance */}

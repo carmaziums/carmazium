@@ -610,6 +610,17 @@ model Listing {
   hasOutstandingFinance    Boolean?
   isLegalRegisteredKeeper  Boolean?
   writeOffCategory         WriteOffCategory? @default(NONE)
+  // Extended vehicle details (seller-supplied)
+  variant                  String?   // Model variant/trim, e.g. "M Sport", "GT Line"
+  driveType                String?   // FWD, RWD, AWD, 4WD
+  numberOfKeys             Int?      // Number of keys included
+  serviceHistory           String?   // Full Main Dealer, Full Independent, Partial, None
+  owners                   String?   // Number of previous keepers: "1", "2", "3+"
+  torqueNm                 Int?      // Torque in Nm
+  topSpeedMph              Int?      // Top speed in mph
+  zeroTo60Mph              Float?    // 0-60 mph time in seconds
+  combinedMpg              Float?    // Combined fuel economy MPG
+  extraUrbanMpg            Float?    // Extra urban MPG
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
