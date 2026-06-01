@@ -212,12 +212,18 @@ export default function AuctionsPage() {
 
             {/* ── Hero ─────────────────────────────────────────────────────── */}
             <section className="relative overflow-hidden" style={{ marginTop: '-80px', paddingTop: '80px' }}>
-                {/* Background */}
-                <div className="absolute inset-0 bg-gradient-to-b from-slate-900/95 via-slate-900/80 to-transparent" />
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(237,28,36,0.12)_0%,transparent_55%)]" />
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(15,23,42,0.9)_0%,transparent_60%)]" />
-                {/* Subtle grid */}
-                <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
+                {/* Hero image */}
+                <Image
+                    src="/assets/images/live-auction-hero.jpg"
+                    alt="Live car auction"
+                    fill
+                    priority
+                    className="object-cover object-center"
+                />
+                {/* Dark overlays keep text readable */}
+                <div className="absolute inset-0 bg-gradient-to-b from-slate-900/80 via-slate-900/70 to-slate-900" />
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(237,28,36,0.18)_0%,transparent_55%)]" />
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(15,23,42,0.85)_0%,transparent_60%)]" />
 
                 <div className="container mx-auto px-6 py-20 md:py-28 relative z-10">
                     <div className="max-w-4xl">
