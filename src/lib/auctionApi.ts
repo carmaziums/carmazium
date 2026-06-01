@@ -124,18 +124,24 @@ export interface AuctionEndPayload {
 // ─── API Functions ────────────────────────────────────────────────────────────
 
 export async function getActiveAuctions(): Promise<Auction[]> {
-    const res = await apiClient<{ data: Auction[] }>(`${API}/auctions/active`);
-    return res.data;
+    const res = await apiClient<any>(`${API}/auctions/active`);
+    if (Array.isArray(res)) return res;
+    if (Array.isArray(res?.data)) return res.data;
+    return [];
 }
 
 export async function getScheduledAuctions(): Promise<Auction[]> {
-    const res = await apiClient<{ data: Auction[] }>(`${API}/auctions/scheduled`);
-    return res.data;
+    const res = await apiClient<any>(`${API}/auctions/scheduled`);
+    if (Array.isArray(res)) return res;
+    if (Array.isArray(res?.data)) return res.data;
+    return [];
 }
 
 export async function getMyAuctions(): Promise<Auction[]> {
-    const res = await apiClient<{ data: Auction[] }>(`${API}/auctions/my/list`);
-    return res.data;
+    const res = await apiClient<any>(`${API}/auctions/my/list`);
+    if (Array.isArray(res)) return res;
+    if (Array.isArray(res?.data)) return res.data;
+    return [];
 }
 
 export async function getAuction(id: string): Promise<Auction> {
