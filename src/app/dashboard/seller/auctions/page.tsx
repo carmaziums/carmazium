@@ -346,7 +346,7 @@ function SellerAuctionsPage() {
                                             </label>
                                             <div className="flex items-center gap-2 h-11 px-3 bg-slate-800/50 border border-white/5 rounded-lg text-gray-400 text-sm">
                                                 <Clock size={14} className="text-primary shrink-0" />
-                                                <span>6 hours · Open bidding</span>
+                                                <span>24 hours · Open bidding</span>
                                                 {formStartTime && (
                                                     <span className="ml-auto text-xs text-gray-600 shrink-0">
                                                         ends {addHours(new Date(formStartTime).toISOString(), 24)}
