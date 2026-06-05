@@ -141,6 +141,8 @@ export async function getMyAuctions(): Promise<Auction[]> {
     const res = await apiClient<any>(`${API}/auctions/my/list`);
     if (Array.isArray(res)) return res;
     if (Array.isArray(res?.data)) return res.data;
+    // Paginated response: StandardResponse wraps { data: Auction[], total: N }
+    if (Array.isArray(res?.data?.data)) return res.data.data;
     return [];
 }
 

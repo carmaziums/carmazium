@@ -129,7 +129,7 @@ const INITIAL_FORM: FormData = {
     primaryColour: "",
     dateOfLastV5CIssued: "",
     images: [],
-    priceMin: "", priceAsking: "", badgeTier: 'BASIC', status: "DRAFT", listingType: "CLASSIFIED",
+    priceMin: "", priceAsking: "", badgeTier: 'FREE', status: "DRAFT", listingType: "CLASSIFIED",
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -917,6 +917,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     if (!isAuthenticated) { setShowLoginModal(true); return }
                                     if (!isEmailVerified) { router.push("/auth/onboarding"); return }
                                     set("listingType", "AUCTION")
+                                    set("badgeTier", "FREE")
                                     setSellingMethod("list")
                                     set("status", "ACTIVE")
                                 }}
@@ -2021,37 +2022,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </button>
                                 </div>
 
-
-                                {/* Fee Transparency Box */}
-                                {formData.listingType === 'AUCTION' ? (
-                                    <div className="mt-4 rounded-xl border border-orange-500/20 bg-orange-500/5 p-4 space-y-3">
-                                        <p className="text-xs font-black uppercase tracking-widest text-orange-400 flex items-center gap-1.5"><Gavel size={12} /> Auction Fee Structure</p>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                                            <div className="rounded-lg bg-white/[0.03] border border-white/5 p-3">
-                                                <p className="text-gray-500 font-bold uppercase tracking-widest text-[9px] mb-1">Seller (You)</p>
-                                                <p className="text-2xl font-black text-emerald-400">£0</p>
-                                                <p className="text-gray-400 mt-1">No listing fee — free to list in auction</p>
-                                            </div>
-                                            <div className="rounded-lg bg-white/[0.03] border border-white/5 p-3">
-                                                <p className="text-gray-500 font-bold uppercase tracking-widest text-[9px] mb-1">Buyer (Verified Dealer)</p>
-                                                <p className="text-2xl font-black text-white">£125</p>
-                                                <p className="text-gray-400 mt-1">One-time buyer fee paid on winning</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-2">
-                                        <p className="text-xs font-black uppercase tracking-widest text-gray-400 flex items-center gap-1.5"><CreditCard size={12} /> Retail Fee Structure</p>
-                                        <div className="flex items-center justify-between text-xs">
-                                            <span className="text-gray-400">Your listing fee</span>
-                                            <span className="text-white font-bold">{formData.badgeTier === 'BASIC' ? '£1' : formData.badgeTier === 'STANDARD' ? '£10' : '£25'} one-time</span>
-                                        </div>
-                                        <div className="flex items-center justify-between text-xs">
-                                            <span className="text-gray-400">Buyer fee</span>
-                                            <span className="text-emerald-400 font-bold">£0 — free for buyers</span>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         </div>
                     )}
