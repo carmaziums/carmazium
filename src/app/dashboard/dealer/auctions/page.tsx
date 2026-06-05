@@ -152,7 +152,7 @@ function DealerAuctionsPage() {
                 minIncrement: Number(formMinIncrement) || 100,
             }
             await createAuction(dto)
-            const endDisplay = addHours(new Date(formStartTime).toISOString(), 5)
+            const endDisplay = addHours(new Date(formStartTime).toISOString(), 24)
             setSuccessMsg(`Auction scheduled! It will run until ${endDisplay}.`)
             setShowForm(false)
             setFormListingId(""); setFormStartTime(""); setFormReservePrice("")
@@ -299,7 +299,7 @@ function DealerAuctionsPage() {
                                                 6 hours (fixed)
                                                 {formStartTime && (
                                                     <span className="ml-auto text-xs text-gray-600">
-                                                        ends {addHours(new Date(formStartTime).toISOString(), 5)}
+                                                        ends {addHours(new Date(formStartTime).toISOString(), 24)}
                                                     </span>
                                                 )}
                                             </div>

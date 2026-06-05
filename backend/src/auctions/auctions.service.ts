@@ -15,7 +15,7 @@ import { CreateAuctionDto } from './dto/create-auction.dto';
 import { UpdateAuctionDto } from './dto/update-auction.dto';
 import { Auction } from '@prisma/client';
 
-const AUCTION_DURATION_MS = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
+const AUCTION_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 const ANTI_SNIPE_MINUTES = 3;
 
 @Injectable()
@@ -33,8 +33,10 @@ export class AuctionsService {
         const now = new Date();
         const startTime = new Date(createAuctionDto.startTime);
 
-        if (startTime.getTime() < now.getTime() + 30 * 60 * 1000) {
-            throw new BadRequestException('Start time must be at least 30 minutes in the future');
+        // Allow immediate start (startTime in the past or very near future is treated as 'now')
+        // Only reject if startTime is more than 1 minute in the past (clock skew tolerance)
+        if (startTime.getTime() < now.getTime() - 60 * 1000) {
+            throw new BadRequestException('Start time cannot be in the past');
         }
 
         // Compute endTime server-side — always startTime + 6 hours
@@ -407,11 +409,18 @@ export class AuctionsService {
             this.auctionGateway.broadcastAuctionEnd(auctionId, endPayload);
             await this.notifyAuctionEnd(auction, topBid.bidderId, Number(topBid.amount), true);
         } else {
-            // No winner — reserve not met
-            await this.prisma.auction.update({
-                where: { id: auctionId },
-                data: { status: 'ENDED' },
-            });
+            // No winner — reserve not met: end auction and revert listing back to CLASSIFIED retail
+            await this.prisma.$transaction([
+                this.prisma.auction.update({
+                    where: { id: auctionId },
+                    data: { status: 'ENDED' },
+                }),
+                // Revert listing type so it re-appears in the retail (CLASSIFIED) listings
+                this.prisma.listing.update({
+                    where: { id: auction.listingId },
+                    data: { type: 'CLASSIFIED' },
+                }),
+            ]);
 
             const endPayload: AuctionEndPayload = {
                 auctionId,
@@ -436,25 +445,25 @@ export class AuctionsService {
         if (reserveMet && winnerId && winningAmount !== null) {
             // Notify winner — persisted + push delivered via notificationsService.create()
             await this.notificationsService.create({
-                userId:     winnerId,
-                type:       'AUCTION_WON',
-                title:      'You won the auction!',
-                message:    `You won the auction for ${vehicle} with a bid of £${winningAmount.toLocaleString()}. Contact the seller to arrange collection.`,
+                userId: winnerId,
+                type: 'AUCTION_WON',
+                title: 'You won the auction!',
+                message: `You won the auction for ${vehicle} with a bid of £${winningAmount.toLocaleString()}. Contact the seller to arrange collection.`,
                 entityType: 'AUCTION',
-                entityId:   auction.id,
-                link:       `/auction/${auction.id}`,
+                entityId: auction.id,
+                link: `/auction/${auction.id}`,
             });
 
             // Notify seller — persisted + push delivered
             if (listing.sellerId) {
                 await this.notificationsService.create({
-                    userId:     listing.sellerId,
-                    type:       'AUCTION_ENDED',
-                    title:      'Your auction has ended',
-                    message:    `Your auction for ${vehicle} has ended. Winning bid: £${winningAmount.toLocaleString()}.`,
+                    userId: listing.sellerId,
+                    type: 'AUCTION_ENDED',
+                    title: 'Your auction has ended',
+                    message: `Your auction for ${vehicle} has ended. Winning bid: £${winningAmount.toLocaleString()}.`,
                     entityType: 'AUCTION',
-                    entityId:   auction.id,
-                    link:       `/auction/${auction.id}`,
+                    entityId: auction.id,
+                    link: `/auction/${auction.id}`,
                 });
             }
 
@@ -491,13 +500,13 @@ export class AuctionsService {
             // No winner — notify seller only, persisted + push delivered
             if (listing.sellerId) {
                 await this.notificationsService.create({
-                    userId:     listing.sellerId,
-                    type:       'AUCTION_ENDED',
-                    title:      'Auction ended — reserve not met',
-                    message:    `Your auction for ${vehicle} ended without meeting the reserve price. You can relist or adjust the reserve.`,
+                    userId: listing.sellerId,
+                    type: 'AUCTION_ENDED',
+                    title: 'Auction ended — reserve not met',
+                    message: `Your auction for ${vehicle} ended without meeting the reserve price. You can relist or adjust the reserve.`,
                     entityType: 'AUCTION',
-                    entityId:   auction.id,
-                    link:       `/auction/${auction.id}`,
+                    entityId: auction.id,
+                    link: `/auction/${auction.id}`,
                 });
 
                 const seller = await this.prisma.user.findUnique({ where: { id: listing.sellerId }, select: { email: true, firstName: true } });

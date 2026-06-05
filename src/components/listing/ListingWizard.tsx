@@ -468,9 +468,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             }
             case 4: {
                 if (!isAuction) return true // review step for CLASSIFIED — no validation
-                if (!auctionSchedule.startTime) return false
-                const startMs = new Date(auctionSchedule.startTime).getTime()
-                if (startMs < Date.now() + 30 * 60 * 1000) return false
+                if (!auctionSchedule.startTime && auctionSchedule.startTime !== 'NOW') return false
+                if (auctionSchedule.startTime !== 'NOW') {
+                    const startMs = new Date(auctionSchedule.startTime).getTime()
+                    if (startMs < Date.now() - 60 * 1000) return false // only reject if more than 1 min in past
+                }
                 if (!auctionSchedule.reservePrice || parseFloat(auctionSchedule.reservePrice) <= 0) return false
                 if (!auctionSchedule.startingBid || parseFloat(auctionSchedule.startingBid) <= 0) return false
                 if (!auctionSchedule.minIncrement || parseFloat(auctionSchedule.minIncrement) <= 0) return false
@@ -648,12 +650,16 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 localStorage.removeItem('carmazium_hpi_draft_id')
 
                 // Schedule auction if this is an auction listing
-                if (payload.listingType === 'AUCTION' && auctionSchedule.startTime) {
+                if (payload.listingType === 'AUCTION') {
+                    const isImmediate = auctionSchedule.startTime === 'NOW'
+                    const startTimeIso = isImmediate
+                        ? new Date().toISOString()
+                        : new Date(auctionSchedule.startTime).toISOString()
                     await apiClient('/auctions', {
                         method: 'POST',
                         body: JSON.stringify({
                             listingId: finalListingId,
-                            startTime: new Date(auctionSchedule.startTime).toISOString(),
+                            startTime: startTimeIso,
                             reservePrice: parseFloat(auctionSchedule.reservePrice),
                             startingBid: parseFloat(auctionSchedule.startingBid),
                             minIncrement: parseFloat(auctionSchedule.minIncrement),
@@ -708,12 +714,16 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 }
 
                 // Schedule auction if this is an auction listing
-                if (payload.listingType === 'AUCTION' && auctionSchedule.startTime) {
+                if (payload.listingType === 'AUCTION') {
+                    const isImmediate = auctionSchedule.startTime === 'NOW'
+                    const startTimeIso = isImmediate
+                        ? new Date().toISOString()
+                        : new Date(auctionSchedule.startTime).toISOString()
                     await apiClient('/auctions', {
                         method: 'POST',
                         body: JSON.stringify({
                             listingId: newListingId,
-                            startTime: new Date(auctionSchedule.startTime).toISOString(),
+                            startTime: startTimeIso,
                             reservePrice: parseFloat(auctionSchedule.reservePrice),
                             startingBid: parseFloat(auctionSchedule.startingBid),
                             minIncrement: parseFloat(auctionSchedule.minIncrement),
@@ -1946,7 +1956,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         </div>
                                         <ul className="space-y-1.5 text-xs text-gray-400">
                                             <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Open bidding</li>
-                                            <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> 6-hour auction</li>
+                                            <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> 24-hour auction</li>
                                             <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Anyone can bid</li>
                                             <li className="flex items-center gap-1.5 text-gray-600"><X size={12} /> No trust badges</li>
                                         </ul>
@@ -2054,31 +2064,47 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             </h2>
 
                             <div className="p-4 rounded-xl bg-orange-500/5 border border-orange-500/20">
-                                <p className="text-xs text-orange-400 font-bold mb-1">Live Auction — 6-Hour Fixed Duration</p>
-                                <p className="text-xs text-gray-400">Your auction will run for exactly 6 hours. Anti-snipe protection automatically extends bidding by 3 minutes if a bid arrives in the final 3 minutes.</p>
+                                <p className="text-xs text-orange-400 font-bold mb-1">Live Auction — 24-Hour Fixed Duration</p>
+                                <p className="text-xs text-gray-400">Your auction will run for exactly 24 hours. Anti-snipe protection automatically extends bidding by 3 minutes if a bid arrives in the final 3 minutes.</p>
                             </div>
 
-                            {/* Start Date & Time */}
-                            <div className="space-y-2">
+                            {/* Start Mode Toggle */}
+                            <div className="space-y-3">
+                                <label className="text-sm font-bold uppercase text-gray-400">When to Start *</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button type="button"
+                                        onClick={() => setAuctionSchedule(prev => ({ ...prev, startTime: 'NOW' }))}
+                                        className={`p-4 rounded-xl border text-left transition-all ${auctionSchedule.startTime === 'NOW' ? 'border-orange-500 bg-orange-500/10 text-orange-300' : 'border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20'}`}
+                                    >
+                                        <p className="font-bold text-sm mb-0.5">⚡ Start Immediately</p>
+                                        <p className="text-[10px] opacity-70">Auction goes live right now</p>
+                                    </button>
+                                    <button type="button"
+                                        onClick={() => setAuctionSchedule(prev => ({ ...prev, startTime: prev.startTime === 'NOW' ? '' : prev.startTime }))}
+                                        className={`p-4 rounded-xl border text-left transition-all ${auctionSchedule.startTime !== 'NOW' ? 'border-orange-500 bg-orange-500/10 text-orange-300' : 'border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20'}`}
+                                    >
+                                        <p className="font-bold text-sm mb-0.5">📅 Schedule for Later</p>
+                                        <p className="text-[10px] opacity-70">Pick a specific date &amp; time</p>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Start Date & Time — only shown for scheduled mode */}
+                            {auctionSchedule.startTime !== 'NOW' && (<div className="space-y-2">
                                 <label className="text-sm font-bold uppercase text-gray-400">Start Date &amp; Time *</label>
                                 <Input
                                     type="datetime-local"
-                                    value={auctionSchedule.startTime}
-                                    min={new Date(Date.now() + 30 * 60 * 1000).toISOString().slice(0, 16)}
+                                    value={auctionSchedule.startTime === 'NOW' ? '' : auctionSchedule.startTime}
+                                    min={new Date().toISOString().slice(0, 16)}
                                     onChange={e => setAuctionSchedule(prev => ({ ...prev, startTime: e.target.value }))}
                                     className={`${inputCls} h-14 ${hasAttemptedNext && !auctionSchedule.startTime ? 'border-red-500' : ''}`}
                                 />
-                                {auctionSchedule.startTime && (
+                                {auctionSchedule.startTime && auctionSchedule.startTime !== 'NOW' && (
                                     <p className="text-xs text-orange-400/80 flex items-center gap-1.5">
-                                        <Clock size={12} /> Ends: {addHours(auctionSchedule.startTime, 5)}
+                                        <Clock size={12} /> Ends: {addHours(auctionSchedule.startTime, 24)}
                                     </p>
                                 )}
-                                {hasAttemptedNext && auctionSchedule.startTime && new Date(auctionSchedule.startTime).getTime() < Date.now() + 30 * 60 * 1000 && (
-                                    <p className="text-xs text-red-400 flex items-center gap-1.5">
-                                        <AlertTriangle size={12} /> Start time must be at least 30 minutes in the future.
-                                    </p>
-                                )}
-                            </div>
+                            </div>)}
 
                             {/* Auction Parameters */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -2150,12 +2176,20 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         </div>
                                         <div>
                                             <p className="text-[10px] text-gray-500 uppercase mb-0.5">Duration</p>
-                                            <p className="text-orange-400 font-bold">6 hours</p>
+                                            <p className="text-orange-400 font-bold">24 hours</p>
                                         </div>
                                     </div>
                                     <div className="border-t border-white/5 pt-2 flex items-center justify-between text-xs text-gray-500">
-                                        <span className="flex items-center gap-1"><Clock size={10} /> Starts: {new Date(auctionSchedule.startTime).toLocaleString('en-GB')}</span>
-                                        <span className="flex items-center gap-1"><Clock size={10} /> Ends: {addHours(auctionSchedule.startTime, 5)}</span>
+                                        {auctionSchedule.startTime === 'NOW' ? (
+                                            <span className="flex items-center gap-1"><Clock size={10} /> Starts: Immediately</span>
+                                        ) : (
+                                            <span className="flex items-center gap-1"><Clock size={10} /> Starts: {new Date(auctionSchedule.startTime).toLocaleString('en-GB')}</span>
+                                        )}
+                                        {auctionSchedule.startTime === 'NOW' ? (
+                                            <span className="flex items-center gap-1"><Clock size={10} /> Ends: 24 hours from now</span>
+                                        ) : (
+                                            <span className="flex items-center gap-1"><Clock size={10} /> Ends: {addHours(auctionSchedule.startTime, 24)}</span>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -2307,8 +2341,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <SummarySection title="Auction Schedule" onEdit={() => goToStep(4)}>
                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                                         <SummaryField label="Start Time" value={new Date(auctionSchedule.startTime).toLocaleString('en-GB')} />
-                                        <SummaryField label="End Time" value={addHours(auctionSchedule.startTime, 6)} />
-                                        <SummaryField label="Duration" value="6 hours" />
+                                        <SummaryField label="End Time" value={addHours(auctionSchedule.startTime, 24)} />
+                                        <SummaryField label="Duration" value="24 hours" />
                                         <SummaryField label="Reserve Price" value={formatPrice(parseFloat(auctionSchedule.reservePrice)) as string} />
                                         <SummaryField label="Opening Bid" value={formatPrice(parseFloat(auctionSchedule.startingBid)) as string} />
                                         <SummaryField label="Min. Increment" value={formatPrice(parseFloat(auctionSchedule.minIncrement || '0')) as string} />
