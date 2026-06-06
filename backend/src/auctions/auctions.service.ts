@@ -409,16 +409,21 @@ export class AuctionsService {
             this.auctionGateway.broadcastAuctionEnd(auctionId, endPayload);
             await this.notifyAuctionEnd(auction, topBid.bidderId, Number(topBid.amount), true);
         } else {
-            // No winner — reserve not met: end auction and revert listing back to CLASSIFIED retail
+            // No winner — reserve not met.
+            // Move listing to DRAFT (seller's inventory). It will NOT appear in
+            // public retail search until the seller explicitly relists it from
+            // their inventory dashboard.
             await this.prisma.$transaction([
                 this.prisma.auction.update({
                     where: { id: auctionId },
                     data: { status: 'ENDED' },
                 }),
-                // Revert listing type so it re-appears in the retail (CLASSIFIED) listings
                 this.prisma.listing.update({
                     where: { id: auction.listingId },
-                    data: { type: 'CLASSIFIED' },
+                    data: {
+                        status: 'DRAFT',
+                        type: 'CLASSIFIED', // Reset type so seller can list it for retail
+                    },
                 }),
             ]);
 

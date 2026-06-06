@@ -393,7 +393,14 @@ export class ListingsService {
         if (location) where.location = { contains: location, mode: 'insensitive' };
 
         // ─── Listing type ────────────────────────────────────────────────────
-        if (listingType) where.type = listingType;
+        // Auction listings must never appear in the public retail search.
+        // They live exclusively in /auctions. Only return CLASSIFIED listings
+        // unless the caller explicitly requests AUCTION type.
+        if (listingType) {
+            where.type = listingType;
+        } else {
+            where.type = 'CLASSIFIED';
+        }
 
         // ─── Full-text search ────────────────────────────────────────────────
         if (search) {
@@ -455,6 +462,7 @@ export class ListingsService {
             where: {
                 deletedAt: null,
                 status: 'ACTIVE',
+                type: 'CLASSIFIED', // Auction listings never appear in featured retail sections
                 isFeatured: true,
                 featuredUntil: { gt: new Date() },
             },

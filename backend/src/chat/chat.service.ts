@@ -61,13 +61,29 @@ export class ChatService {
             },
             include: {
                 initiator: {
-                    select: { id: true, firstName: true, lastName: true, profileImage: true },
+                    select: { id: true, firstName: true, lastName: true, profileImage: true, role: true },
                 },
                 participant: {
-                    select: { id: true, firstName: true, lastName: true, profileImage: true },
+                    select: { id: true, firstName: true, lastName: true, profileImage: true, role: true },
                 },
                 listing: {
-                    select: { id: true, title: true, slug: true, images: true },
+                    select: {
+                        id: true,
+                        title: true,
+                        slug: true,
+                        images: true,
+                        type: true,
+                        price: true,
+                        auction: {
+                            select: {
+                                id: true,
+                                status: true,
+                                winnerId: true,
+                                buyerFeePaid: true,
+                                winningBidAmount: true,
+                            }
+                        }
+                    },
                 },
                 messages: {
                     orderBy: { createdAt: 'desc' },
@@ -119,13 +135,29 @@ export class ChatService {
             where: { id: roomId },
             include: {
                 initiator: {
-                    select: { id: true, firstName: true, lastName: true, profileImage: true },
+                    select: { id: true, firstName: true, lastName: true, profileImage: true, role: true },
                 },
                 participant: {
-                    select: { id: true, firstName: true, lastName: true, profileImage: true },
+                    select: { id: true, firstName: true, lastName: true, profileImage: true, role: true },
                 },
                 listing: {
-                    select: { id: true, title: true, slug: true, images: true },
+                    select: {
+                        id: true,
+                        title: true,
+                        slug: true,
+                        images: true,
+                        type: true,
+                        price: true,
+                        auction: {
+                            select: {
+                                id: true,
+                                status: true,
+                                winnerId: true,
+                                buyerFeePaid: true,
+                                winningBidAmount: true,
+                            }
+                        }
+                    },
                 },
             },
         });
@@ -212,18 +244,20 @@ export class ChatService {
         if (room) {
             const recipientId = room.initiatorId === senderId ? room.participantId : room.initiatorId;
 
-            // Create notification
-            const notification = await this.notificationsService.create({
-                userId: recipientId,
-                type: 'MESSAGE_RECEIVED',
-                title: 'New Message',
-                message: dto.content.substring(0, 50) + (dto.content.length > 50 ? '...' : ''),
-                link: `/dashboard/user?tab=messages&room=${roomId}`,
-                data: { roomId, messageId: message.id },
-            });
-
-            // Push real-time notification
-            this.notificationsGateway.sendNotification(recipientId, notification);
+            try {
+                const notification = await this.notificationsService.create({
+                    userId: recipientId,
+                    type: 'MESSAGE_RECEIVED',
+                    title: 'New Message',
+                    message: dto.content.substring(0, 50) + (dto.content.length > 50 ? '...' : ''),
+                    link: `/dashboard/user?tab=messages&room=${roomId}`,
+                    data: { roomId, messageId: message.id },
+                });
+                this.notificationsGateway.sendNotification(recipientId, notification);
+            } catch (notifErr) {
+                // Non-fatal: message already saved and broadcast via chat gateway
+                console.warn(`[ChatService] Failed to send message notification: ${notifErr?.message}`);
+            }
         }
 
         return message;

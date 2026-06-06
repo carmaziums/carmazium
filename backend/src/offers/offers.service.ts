@@ -538,37 +538,41 @@ export class OffersService {
 
 
 
-        // Notify the seller
+        // Notify the seller (non-fatal — deal is already recorded)
         if (offer.listing.sellerId) {
-            const notifTitle = prismaStatus === 'ACCEPTED' ? '💰 Counter Offer Accepted!' : 'Counter Offer Declined';
-            const notifMessage = prismaStatus === 'ACCEPTED'
-                ? `The buyer accepted your counter offer of £${Number(offer.counterAmount).toLocaleString('en-GB')} for "${offer.listing.title}"! Contact them to finalize, then mark the listing as Sold from your dashboard.`
-                : `The buyer declined your counter offer for "${offer.listing.title}".`;
+            try {
+                const notifTitle = prismaStatus === 'ACCEPTED' ? '💰 Counter Offer Accepted!' : 'Counter Offer Declined';
+                const notifMessage = prismaStatus === 'ACCEPTED'
+                    ? `The buyer accepted your counter offer of £${Number(offer.counterAmount).toLocaleString('en-GB')} for "${offer.listing.title}"! Contact them to finalize, then mark the listing as Sold from your dashboard.`
+                    : `The buyer declined your counter offer for "${offer.listing.title}".`;
 
-            const sellerNotification = await this.notificationsService.create({
-                userId: offer.listing.sellerId,
-                type: prismaStatus === 'ACCEPTED' ? 'OFFER_ACCEPTED' : 'OFFER_REJECTED',
-                title: notifTitle,
-                message: notifMessage,
-                link: '/dashboard/seller/offers',
-                entityType: 'OFFER',
-                entityId: offer.id,
-                actionType: prismaStatus,
-                data: { listingId: offer.listingId, offerId: offer.id },
-            });
-            this.notificationsGateway.sendNotification(offer.listing.sellerId, sellerNotification);
+                const sellerNotification = await this.notificationsService.create({
+                    userId: offer.listing.sellerId,
+                    type: prismaStatus === 'ACCEPTED' ? 'OFFER_ACCEPTED' : 'OFFER_REJECTED',
+                    title: notifTitle,
+                    message: notifMessage,
+                    link: '/dashboard/seller/offers',
+                    entityType: 'OFFER',
+                    entityId: offer.id,
+                    actionType: prismaStatus,
+                    data: { listingId: offer.listingId, offerId: offer.id },
+                });
+                this.notificationsGateway.sendNotification(offer.listing.sellerId, sellerNotification);
 
-            // Email the seller when buyer accepts counter
-            if (prismaStatus === 'ACCEPTED' && offer.counterAmount) {
-                const seller = await this.prisma.user.findUnique({ where: { id: offer.listing.sellerId }, select: { email: true, firstName: true } });
-                if (seller?.email) {
-                    this.emailService.sendCounterAcceptedEmail(
-                        seller.email,
-                        seller.firstName || 'there',
-                        offer.listing.title,
-                        Number(offer.counterAmount),
-                    ).catch(console.error);
+                // Email the seller when buyer accepts counter
+                if (prismaStatus === 'ACCEPTED' && offer.counterAmount) {
+                    const seller = await this.prisma.user.findUnique({ where: { id: offer.listing.sellerId }, select: { email: true, firstName: true } });
+                    if (seller?.email) {
+                        this.emailService.sendCounterAcceptedEmail(
+                            seller.email,
+                            seller.firstName || 'there',
+                            offer.listing.title,
+                            Number(offer.counterAmount),
+                        ).catch(console.error);
+                    }
                 }
+            } catch (notifErr) {
+                console.error('[OffersService] Failed to notify seller after counter acceptance:', notifErr?.message);
             }
         }
 
