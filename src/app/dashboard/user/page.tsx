@@ -598,6 +598,7 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const [expanded, setExpanded] = React.useState<Set<string>>(new Set())
     const [responding, setResponding] = React.useState<string | null>(null)
     const [countering, setCountering] = React.useState<{id: string, amount: string} | null>(null)
+    const [saleContext, setSaleContext] = React.useState<{ listing: Listing; offer: Offer } | null>(null)
     const router = useRouter()
     const { refreshRooms } = useChat()
 
@@ -666,6 +667,18 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {saleContext && (
+                <RecordSaleModal
+                    listing={saleContext.listing}
+                    offer={saleContext.offer}
+                    onClose={() => setSaleContext(null)}
+                    onSuccess={() => {
+                        setSaleContext(null)
+                        fetchOffers()
+                        onRefreshStats()
+                    }}
+                />
+            )}
             <h2 className="text-2xl font-black font-heading uppercase tracking-tight">Incoming Offers</h2>
             
             {loading ? (
@@ -718,9 +731,14 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                                 <Button size="sm" className="h-9 bg-emerald-600 hover:bg-emerald-500" onClick={() => handleRespond(offer.id, listing.id, 'ACCEPTED')} disabled={!!responding}>Accept</Button>
                                                             </>
                                                         ) : (
-                                                            <div className="flex items-center gap-2">
+                                                            <div className="flex items-center gap-2 flex-wrap">
                                                                 <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">{offer.status}</span>
-                                                                {offer.status === 'ACCEPTED' && <Button size="sm" variant="ghost" className="h-8 text-blue-400" onClick={() => handleMessage(offer.buyerId, listing.id)}>Message</Button>}
+                                                                {offer.status === 'ACCEPTED' && (
+                                                                    <>
+                                                                        <Button size="sm" variant="ghost" className="h-8 text-blue-400" onClick={() => handleMessage(offer.buyerId, listing.id)}>Message</Button>
+                                                                        <Button size="sm" className="h-8 bg-emerald-600 hover:bg-emerald-500 text-white" onClick={() => setSaleContext({ listing, offer })}>Mark as Sold</Button>
+                                                                    </>
+                                                                )}
                                                             </div>
                                                         )}
                                                     </div>

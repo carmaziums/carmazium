@@ -870,7 +870,7 @@ export class ListingsService {
     async recordSale(
         id: string,
         userId: string,
-        dto: { soldPrice: number; buyerId?: string; buyerName?: string },
+        dto: { soldPrice: number; buyerId?: string; buyerName?: string; buyerEmail?: string },
     ): Promise<Listing> {
         const listing = await this.findById(id);
 
@@ -907,6 +907,7 @@ export class ListingsService {
                     sellerId: listing.sellerId || userId,
                     buyerId: dto.buyerId || null,
                     buyerName: dto.buyerName || null,
+                    buyerEmail: dto.buyerEmail || null,
                     soldPrice: dto.soldPrice,
                 },
             });
@@ -963,7 +964,7 @@ export class ListingsService {
             deletedAt: null,
         };
         if (!filterDto?.includeSold) {
-            where.status = { notIn: ['SOLD', 'OFFER_ACCEPTED'] };
+            where.status = { not: 'SOLD' };
         }
 
         // Apply optional filters

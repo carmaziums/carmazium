@@ -1,20 +1,25 @@
 "use client"
 
 import * as React from "react"
-import { X, DollarSign, User, Calendar, Loader2, CheckCircle2 } from "lucide-react"
+import { X, DollarSign, User, Mail, Loader2, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
-import { recordSale, formatPrice, type Listing } from "@/lib/listingApi"
+import { recordSale, formatPrice, type Listing, type Offer } from "@/lib/listingApi"
 
 interface RecordSaleModalProps {
     listing: Listing
+    offer?: Offer
     onClose: () => void
     onSuccess: (listingId: string) => void
 }
 
-export function RecordSaleModal({ listing, onClose, onSuccess }: RecordSaleModalProps) {
-    const [soldPrice, setSoldPrice] = React.useState(listing.price.toString())
-    const [buyerName, setBuyerName] = React.useState("")
+export function RecordSaleModal({ listing, offer, onClose, onSuccess }: RecordSaleModalProps) {
+    const agreedPrice = offer ? Number(offer.counterAmount ?? offer.amount) : Number(listing.price)
+    const [soldPrice, setSoldPrice] = React.useState(agreedPrice.toString())
+    const [buyerName, setBuyerName] = React.useState(
+        offer ? [offer.buyer?.firstName, offer.buyer?.lastName].filter(Boolean).join(' ') : ""
+    )
+    const [buyerEmail, setBuyerEmail] = React.useState(offer?.buyer?.email ?? "")
     const [loading, setLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
     const [success, setSuccess] = React.useState(false)
@@ -26,7 +31,9 @@ export function RecordSaleModal({ listing, onClose, onSuccess }: RecordSaleModal
             setError(null)
             await recordSale(listing.id, {
                 soldPrice: Number(soldPrice),
+                buyerId: offer?.buyerId || undefined,
                 buyerName: buyerName || undefined,
+                buyerEmail: buyerEmail || undefined,
             })
             setSuccess(true)
             setTimeout(() => {
@@ -57,7 +64,7 @@ export function RecordSaleModal({ listing, onClose, onSuccess }: RecordSaleModal
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
             <div className="bg-slate-800 border border-white/10 rounded-2xl p-6 w-full max-w-lg shadow-2xl relative">
-                <button 
+                <button
                     onClick={onClose}
                     className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors"
                 >
@@ -74,14 +81,14 @@ export function RecordSaleModal({ listing, onClose, onSuccess }: RecordSaleModal
                     </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-5">
                     <div className="space-y-2">
                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                             <DollarSign size={12} /> Final Sold Price
                         </label>
                         <div className="relative">
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">£</span>
-                            <Input 
+                            <Input
                                 type="number"
                                 value={soldPrice}
                                 onChange={(e) => setSoldPrice(e.target.value)}
@@ -89,20 +96,34 @@ export function RecordSaleModal({ listing, onClose, onSuccess }: RecordSaleModal
                                 required
                             />
                         </div>
-                        <p className="text-[10px] text-gray-500 italic">Asking price was {formatPrice(listing.price)}</p>
+                        <p className="text-[10px] text-gray-500 italic">
+                            {offer ? `Agreed offer: ${formatPrice(agreedPrice)}` : `Asking price: ${formatPrice(listing.price)}`}
+                        </p>
                     </div>
 
                     <div className="space-y-2">
                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                            <User size={12} /> Buyer Name (Optional)
+                            <User size={12} /> Buyer Name <span className="text-gray-600 normal-case font-medium">(optional)</span>
                         </label>
                         <Input
-                            placeholder="e.g. John Smith or username"
+                            placeholder="e.g. John Smith"
                             value={buyerName}
                             onChange={(e) => setBuyerName(e.target.value)}
                             className="bg-white/5 border-white/10 focus:border-primary text-white h-12"
                         />
-                        <p className="text-[10px] text-gray-500 italic">Leave blank if sold outside the platform.</p>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                            <Mail size={12} /> Buyer Email <span className="text-gray-600 normal-case font-medium">(optional)</span>
+                        </label>
+                        <Input
+                            type="email"
+                            placeholder="buyer@example.com"
+                            value={buyerEmail}
+                            onChange={(e) => setBuyerEmail(e.target.value)}
+                            className="bg-white/5 border-white/10 focus:border-primary text-white h-12"
+                        />
                     </div>
 
                     {error && (
@@ -112,16 +133,16 @@ export function RecordSaleModal({ listing, onClose, onSuccess }: RecordSaleModal
                     )}
 
                     <div className="flex gap-4 pt-2">
-                        <Button 
-                            type="button" 
-                            variant="ghost" 
+                        <Button
+                            type="button"
+                            variant="ghost"
                             className="flex-1 h-12 text-gray-400"
                             onClick={onClose}
                         >
                             Cancel
                         </Button>
-                        <Button 
-                            type="submit" 
+                        <Button
+                            type="submit"
                             className="flex-1 h-12 shadow-neon font-black uppercase tracking-widest"
                             disabled={loading}
                         >
