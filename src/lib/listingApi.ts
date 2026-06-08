@@ -1028,6 +1028,18 @@ export async function getPendingOffersCount(): Promise<number> {
     }
 }
 
+export async function getBuyerActionCount(): Promise<number> {
+    try {
+        const data = await apiClient<{ data: { count: number } }>('/offers/buyer-action-count', {
+            method: 'GET',
+            cache: 'no-store',
+        })
+        return data.data?.count ?? 0
+    } catch {
+        return 0
+    }
+}
+
 /**
  * Payments: Create HPI Checkout Session
  */

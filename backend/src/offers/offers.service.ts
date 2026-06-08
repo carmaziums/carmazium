@@ -430,6 +430,16 @@ export class OffersService {
         });
     }
 
+    /**
+     * Returns the count of the buyer's outgoing offers that are COUNTERED
+     * (seller sent a counter-offer and buyer needs to respond).
+     */
+    async getBuyerActionCount(buyerId: string): Promise<number> {
+        return this.prisma.offer.count({
+            where: { buyerId, status: 'COUNTERED' },
+        });
+    }
+
     // ─── Buyer: Withdraw an offer ───────────────────────────────────────────
 
     /**

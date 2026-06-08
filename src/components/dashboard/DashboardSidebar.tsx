@@ -33,7 +33,7 @@ import {
 import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
 import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
-import { getPendingOffersCount } from "@/lib/listingApi"
+import { getPendingOffersCount, getBuyerActionCount } from "@/lib/listingApi"
 
 interface SidebarProps {
     role: "buyer" | "seller" | "provider" | "finance" | "insurance" | "dealer" | "admin"
@@ -53,11 +53,18 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
     const [pendingOffersCount, setPendingOffersCount] = React.useState(0)
 
-    // Fetch pending offers count for sellers so the Offers tab badge is always visible
     React.useEffect(() => {
-        if (role === 'seller' && user) {
-            getPendingOffersCount().then(setPendingOffersCount).catch(() => {})
+        if (!user) return
+        const fetchCount = () => {
+            if (role === 'seller') {
+                getPendingOffersCount().then(setPendingOffersCount).catch(() => {})
+            } else if (role === 'buyer') {
+                getBuyerActionCount().then(setPendingOffersCount).catch(() => {})
+            }
         }
+        fetchCount()
+        const interval = setInterval(fetchCount, 60_000)
+        return () => clearInterval(interval)
     }, [role, user])
 
     const handleSignOut = async (e: React.MouseEvent) => {

@@ -125,6 +125,17 @@ export class OffersController {
     }
 
     /**
+     * Buyer: Get count of countered offers awaiting buyer response
+     */
+    @Get('buyer-action-count')
+    async getBuyerActionCount(
+        @CurrentUser() user: any,
+    ): Promise<StandardResponse<{ count: number }>> {
+        const count = await this.offersService.getBuyerActionCount(user.id);
+        return new StandardResponse({ count });
+    }
+
+    /**
      * Buyer: Withdraw a pending offer
      */
     @Patch(':id/withdraw')
