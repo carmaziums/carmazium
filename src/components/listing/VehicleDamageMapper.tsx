@@ -7,6 +7,7 @@ import Image from "next/image"
 import { ALL_ZONES } from "./ThreeDVehicleViewer"
 import { uploadImage } from "@/lib/supabase"
 import type { ThreeDVehicleViewerProps } from "./ThreeDVehicleViewer"
+import { ThreeDErrorBoundary } from "./ThreeDErrorBoundary"
 
 // Dynamic import — Three.js must not run on the server
 const ThreeDVehicleViewer = dynamic<ThreeDVehicleViewerProps>(
@@ -133,7 +134,14 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
       x = 0
       y = 0
     } else {
-      const z = ALL_ZONES.find(z => z.id === pendingZoneId)!
+      // Defensive: `pendingZoneId` is set from zone IDs we control (legend
+      // clicks / 3D hotspot clicks), so it should always match an entry in
+      // ALL_ZONES — but a stale ID or future data mismatch must NOT throw
+      // (a non-null assertion here would crash the whole page on click,
+      // since there's no error boundary around event handlers). Fall back
+      // to a safe default position instead.
+      const z = ALL_ZONES.find(z => z.id === pendingZoneId)
+      if (!z) return
       zoneId = pendingZoneId
       x = z.position[0]
       y = z.position[1]
@@ -202,13 +210,29 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
         </div>
       </div>
 
-      {/* 3D Viewer */}
-      <ThreeDVehicleViewer
-        bodyType={bodyType}
-        selectedZone={pendingZoneId}
-        markedZones={markedZones}
-        onZoneClick={handleZoneClick}
-      />
+      {/* 3D Viewer — wrapped in an error boundary because WebGL isn't
+          guaranteed on every device (in-app browsers, low-power mode,
+          older phones). Without this, a WebGL init failure here would
+          crash the entire listing page. */}
+      <ThreeDErrorBoundary
+        fallback={
+          <div
+            className="w-full rounded-2xl border border-white/8 bg-slate-950/80 flex flex-col items-center justify-center gap-2 text-center px-6"
+            style={{ height: 400 }}
+          >
+            <AlertTriangle className="text-amber-400" size={22} />
+            <p className="text-sm font-bold text-white">3D preview isn&apos;t available on this device</p>
+            <p className="text-xs text-gray-500 max-w-xs">No problem — just pick the damaged area from the list below to mark it.</p>
+          </div>
+        }
+      >
+        <ThreeDVehicleViewer
+          bodyType={bodyType}
+          selectedZone={pendingZoneId}
+          markedZones={markedZones}
+          onZoneClick={handleZoneClick}
+        />
+      </ThreeDErrorBoundary>
 
       {/* Zone legend — grouped by area (BCA-standard categories) */}
       {[

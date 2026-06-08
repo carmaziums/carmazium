@@ -8,6 +8,7 @@ import { AccordionItem } from "@/components/ui/Accordion"
 import dynamic from "next/dynamic"
 const FinanceCalculator = dynamic(() => import("@/components/features/FinanceCalculator").then(mod => mod.FinanceCalculator), { ssr: false })
 const ThreeDVehicleViewer = dynamic(() => import("@/components/listing/ThreeDVehicleViewer").then(m => m.ThreeDVehicleViewer), { ssr: false })
+import { ThreeDErrorBoundary } from "@/components/listing/ThreeDErrorBoundary"
 import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale, Loader2, MessageCircle, Tag, X, Clock, ThumbsUp, XCircle, AlertTriangle, BadgeCheck, Star, Sparkles, Info, Phone, Globe } from "lucide-react"
 import { getListingBySlug, makeOffer, getMyOfferForListing, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, getDamageRecords, type Listing, type LatestOffer, formatPrice } from "@/lib/listingApi"
 import { createChatRoom } from "@/lib/chatApi"
@@ -824,12 +825,26 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                 <h3 className="text-xl font-bold text-white mb-2 border-l-4 border-amber-500 pl-4">Reported Damage</h3>
                                 <p className="text-xs text-gray-500 mb-4 pl-5">{damageRecords.length} zone{damageRecords.length !== 1 ? 's' : ''} marked by seller — click a zone to see details</p>
 
-                                <ThreeDVehicleViewer
-                                    bodyType={listing.bodyType ?? undefined}
-                                    markedZones={damageRecords.map((r: any) => r.part)}
-                                    selectedZone={selectedDamageZone}
-                                    onZoneClick={(id) => setSelectedDamageZone(prev => prev === id ? null : id)}
-                                />
+                                {/* WebGL isn't guaranteed on every device (in-app
+                                    browsers, low-power mode, older phones) — wrap
+                                    in an error boundary so a renderer init failure
+                                    here can't crash the whole listing page. */}
+                                <ThreeDErrorBoundary
+                                    fallback={
+                                        <div className="w-full rounded-2xl border border-white/8 bg-slate-950/80 flex flex-col items-center justify-center gap-2 text-center px-6" style={{ height: 400 }}>
+                                            <AlertTriangle className="text-amber-400" size={22} />
+                                            <p className="text-sm font-bold text-white">3D preview isn&apos;t available on this device</p>
+                                            <p className="text-xs text-gray-500 max-w-xs">No problem — the damage details are listed below.</p>
+                                        </div>
+                                    }
+                                >
+                                    <ThreeDVehicleViewer
+                                        bodyType={listing.bodyType ?? undefined}
+                                        markedZones={damageRecords.map((r: any) => r.part)}
+                                        selectedZone={selectedDamageZone}
+                                        onZoneClick={(id) => setSelectedDamageZone(prev => prev === id ? null : id)}
+                                    />
+                                </ThreeDErrorBoundary>
 
                                 {/* Damage list */}
                                 <div className="mt-4 space-y-2">

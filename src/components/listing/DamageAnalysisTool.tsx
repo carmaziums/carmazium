@@ -139,12 +139,23 @@ export function DamageAnalysisTool({ images, onComplete }: DamageAnalysisToolPro
             {activePoint ? (
               <div className="space-y-4">
                 <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-white/10 group">
-                  <Image 
-                    src={activePoint.imageUrl!} 
-                    alt="Damage evidence" 
-                    fill 
-                    className="object-cover"
-                  />
+                  {/* `imageUrl` is declared optional on DamagePoint — passing
+                      `undefined`/empty string to next/image throws synchronously
+                      ("Image is missing required src property"), which crashes
+                      the whole listing page (no error boundary around this tree).
+                      Guard it and fall back to a neutral placeholder instead. */}
+                  {activePoint.imageUrl ? (
+                    <Image
+                      src={activePoint.imageUrl}
+                      alt="Damage evidence"
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center bg-slate-900">
+                      <Camera className="text-gray-700" size={32} />
+                    </div>
+                  )}
                   <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-all" />
                   <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white uppercase tracking-widest">
                     Source Photo
