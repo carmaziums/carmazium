@@ -20,7 +20,7 @@ import { PaymentsService } from './payments.service';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse } from '../listings/dto/response.dto';
-import { CreateCheckoutSessionDto } from './dto/create-payment-intent.dto';
+import { CreateCheckoutSessionDto, CreatePaymentSheetDto } from './dto/create-payment-intent.dto';
 
 @ApiTags('Payments')
 @Controller('payments')
@@ -37,6 +37,25 @@ export class PaymentsController {
         @CurrentUser() user: any,
     ) {
         const result = await this.paymentsService.createCheckoutSession(
+            dto.listingId,
+            user.id,
+            dto.amount,
+            dto.type,
+            dto.currency,
+        );
+        return new StandardResponse(result);
+    }
+
+    @Post('intent')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Create Payment Sheet intent (React Native native SDK)' })
+    @ApiResponse({ status: 201, description: 'Returns clientSecret, ephemeralKey, customerId, publishableKey' })
+    async createPaymentSheet(
+        @Body() dto: CreatePaymentSheetDto,
+        @CurrentUser() user: any,
+    ) {
+        const result = await this.paymentsService.createPaymentSheet(
             dto.listingId,
             user.id,
             dto.amount,

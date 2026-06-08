@@ -44,6 +44,12 @@ export class SessionAuthGuard implements CanActivate {
                 if (request.session) {
                     request.session.userId = user.id;
                     request.session.userRole = user.role;
+                    // Keep cachedUser in lockstep with userId/userRole — main.ts's
+                    // hydration middleware trusts cachedUser blindly on later
+                    // requests. Leaving it unset here let a stale cachedUser from
+                    // a previous occupant of this session record (wrong profile,
+                    // wrong role) survive and be served back to this user.
+                    request.session.cachedUser = user;
                 }
                 // Populate req.user so @CurrentUser() works immediately
                 (request as any).user = user;

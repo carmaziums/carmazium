@@ -252,13 +252,16 @@ model User {
   lastName        String?
   phone           String?
   profileImage    String?
-  isEmailVerified Boolean   @default(false)
-  isPhoneVerified Boolean   @default(false)
-  loginAttempts   Int       @default(0)
-  lockoutUntil    DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  deletedAt       DateTime?
+  isEmailVerified  Boolean   @default(false)
+  isPhoneVerified  Boolean   @default(false)
+  isAddressVerified Boolean  @default(false)
+  addressVerifiedAt DateTime?
+  loginAttempts    Int       @default(0)
+  lockoutUntil     DateTime?
+  stripeCustomerId String?   @unique
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
 
   // Relations
   dealerProfile           DealerProfile?
@@ -282,6 +285,7 @@ model User {
   analyticsEvents         AnalyticsEvent[]
   featuredBoosts          FeaturedBoost[]
   offers                  Offer[]
+  addressVerifications    AddressVerification[]
   assignedLeads           Lead[]               @relation("AssignedAgent")
   salesAsSeller           Sale[]               @relation("SellerSales")
   purchasesAsBuyer        Sale[]               @relation("BuyerPurchases")
@@ -1110,6 +1114,7 @@ model Sale {
   sellerId       String
   buyerId        String?
   buyerName      String?
+  buyerEmail     String?
   soldPrice      Decimal        @db.Decimal(12, 2)
   purchaseStatus PurchaseStatus @default(AWAITING_CONFIRMATION)
   createdAt      DateTime       @default(now())
@@ -1122,5 +1127,25 @@ model Sale {
   @@index([sellerId])
   @@index([buyerId])
   @@map("sales")
+}
+
+// ============================================================================
+// ADDRESS VERIFICATION (Trader/Buyer Protection unlock)
+// ============================================================================
+
+model AddressVerification {
+  id         String    @id @default(uuid())
+  userId     String
+  address    String
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("address_verifications")
 }
 

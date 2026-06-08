@@ -546,8 +546,6 @@ export class OffersService {
             });
         }
 
-
-
         // Notify the seller (non-fatal — deal is already recorded)
         if (offer.listing.sellerId) {
             try {

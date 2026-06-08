@@ -118,6 +118,15 @@ export class AuctionsService {
             include: {
                 listing: {
                     include: {
+                        seller: {
+                            select: {
+                                id: true,
+                                firstName: true,
+                                lastName: true,
+                                dealerProfile: { select: { companyName: true, logo: true } },
+                                sellerProfile: { select: { reliabilityScore: true } },
+                            },
+                        },
                         bids: {
                             where: { deletedAt: null },
                             orderBy: { amount: 'desc' },
@@ -140,6 +149,15 @@ export class AuctionsService {
                 include: {
                     listing: {
                         include: {
+                            seller: {
+                                select: {
+                                    id: true,
+                                    firstName: true,
+                                    lastName: true,
+                                    dealerProfile: { select: { companyName: true, logo: true } },
+                                    sellerProfile: { select: { reliabilityScore: true } },
+                                },
+                            },
                             _count: { select: { bids: true } },
                         },
                     },

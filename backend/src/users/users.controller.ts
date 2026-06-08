@@ -13,6 +13,10 @@ import { UsersService } from './users.service';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
+import {
+    StartAddressVerificationDto,
+    ConfirmAddressVerificationDto,
+} from './dto/address-verification.dto';
 
 @ApiTags('Users')
 @Controller('users')
@@ -93,6 +97,40 @@ export class UsersController {
         return {
             success: true,
             data: await this.usersService.updateDealerProfile(user.id, body),
+        };
+    }
+
+    /**
+     * Start address verification — emails a one-time code to the user.
+     */
+    @Post('me/address-verification/start')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Start address verification by emailing a one-time code' })
+    async startAddressVerification(
+        @CurrentUser() user: any,
+        @Body() dto: StartAddressVerificationDto,
+    ) {
+        return {
+            success: true,
+            data: await this.usersService.startAddressVerification(user.id, dto.address),
+        };
+    }
+
+    /**
+     * Confirm address verification using the emailed one-time code.
+     */
+    @Post('me/address-verification/confirm')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Confirm address verification with a one-time code' })
+    async confirmAddressVerification(
+        @CurrentUser() user: any,
+        @Body() dto: ConfirmAddressVerificationDto,
+    ) {
+        return {
+            success: true,
+            data: await this.usersService.confirmAddressVerification(user.id, dto.code),
         };
     }
 

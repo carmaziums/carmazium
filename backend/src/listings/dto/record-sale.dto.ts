@@ -28,4 +28,13 @@ export class RecordSaleDto {
     @IsOptional()
     @IsString()
     buyerName?: string;
+
+    @ApiProperty({
+        description: 'Optional email of the buyer',
+        example: 'buyer@example.com',
+        required: false,
+    })
+    @IsOptional()
+    @IsString()
+    buyerEmail?: string;
 }

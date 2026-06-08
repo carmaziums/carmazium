@@ -28,3 +28,28 @@ export class CreateCheckoutSessionDto {
 
 // Keep backward-compatible export name
 export { CreateCheckoutSessionDto as CreatePaymentIntentDto };
+
+/** DTO for the Payment Sheet flow (native SDK) */
+export class CreatePaymentSheetDto {
+    @ApiProperty({ description: 'Listing ID' })
+    @IsString()
+    listingId: string;
+
+    @ApiProperty({ description: 'Amount in GBP', minimum: 1 })
+    @IsNumber()
+    @Min(1)
+    @Type(() => Number)
+    amount: number;
+
+    @ApiPropertyOptional({ description: 'Payment type', default: 'FULL_PAYMENT' })
+    @IsOptional()
+    @IsString()
+    @IsIn(['DEPOSIT', 'FULL_PAYMENT', 'COMMISSION'])
+    type?: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION';
+
+    @ApiPropertyOptional({ description: 'ISO 4217 currency code', default: 'gbp' })
+    @IsOptional()
+    @IsString()
+    @Length(3, 3)
+    currency?: string;
+}

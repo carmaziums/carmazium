@@ -27,8 +27,18 @@ export class DashboardService {
                 include: {
                     listing: {
                         select: {
+                            id: true,
                             title: true,
-                            auction: { select: { status: true } },
+                            images: true,
+                            auction: {
+                                select: {
+                                    id: true,
+                                    status: true,
+                                    winnerId: true,
+                                    winningBidAmount: true,
+                                    endTime: true,
+                                },
+                            },
                         },
                     },
                 },
@@ -37,7 +47,22 @@ export class DashboardService {
                 where: { buyerId: userId },
                 take: 20,
                 orderBy: { createdAt: 'desc' },
-                include: { listing: { select: { title: true } } },
+                include: {
+                    listing: {
+                        select: {
+                            id: true,
+                            title: true,
+                            images: true,
+                        },
+                    },
+                    seller: {
+                        select: {
+                            firstName: true,
+                            lastName: true,
+                            dealerProfile: { select: { companyName: true } },
+                        },
+                    },
+                },
             }),
             this.prisma.sale.findMany({
                 where: { buyerId: userId },
@@ -52,19 +77,45 @@ export class DashboardService {
             activeOffers,
             watchlistCount,
             wonAuctions,
-            bids: bids.map(b => ({
+            bids: (bids as any[]).map(b => ({
                 id: b.id,
                 amount: Number(b.amount),
-                auctionStatus: b.listing.auction?.status ?? 'ENDED',
-                listing: { title: b.listing.title },
+                auctionStatus: b.listing?.auction?.status ?? 'ENDED',
+                auctionId: b.listing?.auction?.id ?? null,
+                isWinner: b.listing?.auction?.winnerId === userId,
+                winningBidAmount: b.listing?.auction?.winningBidAmount
+                    ? Number(b.listing.auction.winningBidAmount)
+                    : null,
+                paymentDeadline: b.listing?.auction?.endTime
+                    ? new Date(new Date(b.listing.auction.endTime).getTime() + 24 * 60 * 60 * 1000).toISOString()
+                    : null,
+                bidCount: null,
+                listing: {
+                    id: b.listing?.id ?? null,
+                    title: b.listing?.title ?? 'Vehicle',
+                    images: b.listing?.images ?? [],
+                },
                 listingId: b.listingId,
                 createdAt: b.createdAt,
             })),
-            offers: offers.map(o => ({
+            offers: (offers as any[]).map(o => ({
                 id: o.id,
                 amount: Number(o.amount),
                 status: o.status,
-                listing: { title: o.listing.title },
+                listing: {
+                    id: o.listing?.id ?? null,
+                    title: o.listing?.title ?? 'Vehicle',
+                    images: o.listing?.images ?? [],
+                },
+                seller: o.seller
+                    ? {
+                          firstName: o.seller.firstName,
+                          lastName: o.seller.lastName,
+                          dealerProfile: o.seller.dealerProfile
+                              ? { companyName: o.seller.dealerProfile.companyName }
+                              : null,
+                      }
+                    : null,
                 listingId: o.listingId,
                 createdAt: o.createdAt,
             })),
@@ -165,13 +216,16 @@ export class DashboardService {
     }
 
     async getSellerDashboard(userId: string) {
-        const [activeListings, activeAuctions, offerCount, offers, earnings] = await Promise.all([
+        const [activeListings, activeAuctions, offerCount, savedCount, offers, earnings] = await Promise.all([
             this.prisma.listing.count({ where: { sellerId: userId, status: 'ACTIVE', deletedAt: null } }),
             this.prisma.auction.count({
                 where: { listing: { sellerId: userId }, endTime: { gt: new Date() } },
             }),
             this.prisma.offer.count({
                 where: { listing: { sellerId: userId }, status: { in: ['PENDING', 'COUNTERED'] } },
+            }),
+            this.prisma.watchlistItem.count({
+                where: { listing: { sellerId: userId } },
             }),
             this.prisma.offer.findMany({
                 where: { listing: { sellerId: userId }, status: { in: ['PENDING', 'COUNTERED'] } },
@@ -194,6 +248,7 @@ export class DashboardService {
             activeListings,
             activeAuctions,
             offerCount,
+            savedCount,
             enquiries: offerCount,
             offers: offers.map(o => ({
                 id: o.id,
