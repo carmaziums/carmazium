@@ -7,12 +7,14 @@ import { InviteStaffDto } from './dto/invite-staff.dto';
 import { subDays } from 'date-fns';
 import { EmailService } from '../email/email.service';
 import { CreateKycDto } from './dto/create-kyc.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class DealersService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly emailService: EmailService,
+        private readonly notificationsService: NotificationsService,
     ) {}
 
     // ─── Profile helpers ────────────────────────────────────────────
@@ -219,6 +221,28 @@ export class DealersService {
             await this.notifyAdminsOfKycSubmission(profile.companyName);
             return newKyc;
         }
+    }
+
+    /** Fire-and-forget: email + in-app notification for an existing user added directly as staff */
+    private sendStaffAddedNotifications(
+        user: { id: string; email: string; firstName?: string | null; lastName?: string | null },
+        dealerName: string,
+        role: string,
+    ) {
+        const name = [user.firstName, user.lastName].filter(Boolean).join(' ') || 'there';
+        this.emailService
+            .sendStaffAddedEmail(user.email, name, dealerName, role)
+            .catch(() => {});
+        this.notificationsService
+            .create({
+                userId: user.id,
+                title: 'You\'ve been added to a dealership',
+                message: `${dealerName} has added you to their team. You now have access to the dealer dashboard.`,
+                type: 'TEAM_INVITE',
+                data: { dealerName },
+                link: '/dashboard/dealer',
+            })
+            .catch(() => {});
     }
 
     /** Sync the relevant KYC fields into DealerProfile so the Settings page is pre-filled */
@@ -744,6 +768,7 @@ export class DealersService {
                     }),
                     this.prisma.user.update({ where: { id: targetUser.id }, data: { role: 'DEALER' } }),
                 ]);
+                this.sendStaffAddedNotifications(targetUser, profile.companyName, dto.role);
                 return reactivated;
             }
 
@@ -759,14 +784,7 @@ export class DealersService {
                 this.prisma.user.update({ where: { id: targetUser.id }, data: { role: 'DEALER' } }),
             ]);
 
-            // Notify existing user they were added
-            await this.emailService.sendStaffInviteEmail(
-                email,
-                profile.companyName,
-                dto.role,
-                '', // No token needed — they're added directly
-            ).catch(() => {}); // fire-and-forget, don't fail the request
-
+            this.sendStaffAddedNotifications(targetUser, profile.companyName, dto.role);
             return staff;
         }
 

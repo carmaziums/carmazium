@@ -323,6 +323,42 @@ export class EmailService {
         });
     }
 
+    async sendStaffAddedEmail(toEmail: string, recipientName: string, dealerName: string, role: string) {
+        const roleLabel = role === 'ADMIN' ? 'Admin' : role === 'FINANCE_MANAGER' ? 'Finance Manager' : 'Sales Agent';
+        const bodyHtml = `
+            <h1 style="margin: 0 0 8px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
+                You've been added to a dealership! 🎉
+            </h1>
+            <p style="margin: 0 0 28px; font-size: 15px; color: #94a3b8; line-height: 1.6;">
+                Hi <strong style="color: #ffffff;">${recipientName || 'there'}</strong>, <strong style="color: #ffffff;">${dealerName}</strong> has added you to their dealership team on CarMazium as a <strong style="color: #ed1c24;">${roleLabel}</strong>.
+            </p>
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 24px; margin-bottom: 32px;">
+                <p style="margin: 0 0 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b;">Your Role</p>
+                <p style="margin: 0; font-size: 18px; font-weight: 800; color: #ffffff;">${roleLabel}</p>
+                <p style="margin: 6px 0 0; font-size: 12px; color: #64748b;">at ${dealerName}</p>
+            </div>
+            <p style="margin: 0 0 24px; font-size: 14px; color: #94a3b8; line-height: 1.6;">
+                You now have access to the dealer dashboard. Log in to get started.
+            </p>
+            <div style="text-align: center; margin: 36px 0 24px;">
+                <a href="${this.frontendUrl}/dashboard/dealer" target="_blank"
+                   style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #ed1c24, #c41920); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 8px 25px rgba(237,28,36,0.35);">
+                    Go to Dealer Dashboard →
+                </a>
+            </div>
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; text-align: center; margin-top: 20px;">
+                <p style="margin: 0; font-size: 12px; color: #475569; line-height: 1.5;">
+                    If you weren't expecting this, please contact us at support@carmazium.com.
+                </p>
+            </div>
+        `;
+        return this.sendBrandedEmail({
+            to: toEmail,
+            subject: `You've been added to ${dealerName} on CarMazium`,
+            bodyHtml,
+        });
+    }
+
     async sendKycSubmissionAdminAlert(adminEmails: string[], dealerName: string) {
         const bodyHtml = `
             <h1 style="margin: 0 0 16px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 24px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
@@ -685,6 +721,31 @@ export class EmailService {
         return this.sendBrandedEmail({
             to: dealerEmail,
             subject: 'Action Required: Update your CarMazium Dealer Documents ⚠️',
+            bodyHtml,
+        });
+    }
+
+    async sendAddressVerificationCodeEmail(toEmail: string, name: string, code: string, address: string) {
+        const bodyHtml = `
+            <h1 style="margin: 0 0 8px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
+                Your verification code
+            </h1>
+            <p style="margin: 0 0 28px; font-size: 15px; color: #94a3b8; line-height: 1.6;">
+                Hi <strong style="color: #ffffff;">${name}</strong>, use the code below to confirm the address on your CarMazium account and unlock Trader Verification.
+            </p>
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 24px; margin-bottom: 24px; text-align: center;">
+                <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b;">Verification code</p>
+                <p style="margin: 0; font-size: 36px; font-weight: 800; letter-spacing: 0.3em; color: #ed1c24;">${code}</p>
+            </div>
+            <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b;">Address being verified</p>
+            <p style="margin: 0 0 28px; font-size: 14px; color: #cbd5e1;">${address}</p>
+            <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.6;">
+                This code expires in 30 minutes. If you didn't request this, you can safely ignore this email.
+            </p>
+        `;
+        return this.sendBrandedEmail({
+            to: toEmail,
+            subject: `${code} is your CarMazium verification code`,
             bodyHtml,
         });
     }
