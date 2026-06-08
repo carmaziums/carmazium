@@ -29,6 +29,7 @@ export default function DealerTeamPage() {
     const [inviteEmail, setInviteEmail] = React.useState("")
     const [inviteRole, setInviteRole] = React.useState("SALES_AGENT")
     const [inviting, setInviting] = React.useState(false)
+    const [removingId, setRemovingId] = React.useState<string | null>(null)
 
     React.useEffect(() => {
         if (!authLoading && user) {
@@ -48,6 +49,18 @@ export default function DealerTeamPage() {
             setPendingInvites([])
         } finally {
             setLoading(false)
+        }
+    }
+
+    async function handleRemove(staffId: string) {
+        setRemovingId(staffId)
+        try {
+            await apiClient(`/dealers/staff/${staffId}`, { method: 'DELETE' })
+            setStaff(prev => prev.filter(s => s.id !== staffId))
+        } catch (err) {
+            console.error('Failed to remove staff:', err)
+        } finally {
+            setRemovingId(null)
         }
     }
 
@@ -79,9 +92,9 @@ export default function DealerTeamPage() {
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
                 <main className="flex-1 space-y-6 min-w-0">
-                    <PageHeader 
-                        title={DEALER_ROUTE_CONFIG[7].title} 
-                        subHeader={DEALER_ROUTE_CONFIG[7].subHeader}
+                    <PageHeader
+                        title={DEALER_ROUTE_CONFIG[8].title}
+                        subHeader={DEALER_ROUTE_CONFIG[8].subHeader}
                     >
                         <Button onClick={() => setShowInvite(!showInvite)} className="gap-2 h-11 px-6 rounded-xl shadow-[0_0_20px_rgba(237,28,36,0.3)] bg-gradient-to-r from-red-600 to-red-700 hover:scale-105 transition-all">
                             <PlusCircle size={18} /> Add Personnel
@@ -172,8 +185,16 @@ export default function DealerTeamPage() {
                                         return (
                                             <div key={member.id} className="dealer-glass-card p-6 group relative overflow-hidden bg-slate-900/40 border-white/5 hover:translate-y-[-4px] transition-all">
                                                 <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg">
-                                                        <UserX size={14} />
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-8 w-8 p-0 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg"
+                                                        onClick={() => handleRemove(member.id)}
+                                                        disabled={removingId === member.id}
+                                                    >
+                                                        {removingId === member.id
+                                                            ? <Loader2 size={14} className="animate-spin" />
+                                                            : <UserX size={14} />}
                                                     </Button>
                                                 </div>
                                                 
