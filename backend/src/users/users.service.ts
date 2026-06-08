@@ -59,7 +59,7 @@ export class UsersService {
                 contractorProfile: true,
                 financePartnerProfile: true,
                 insurancePartnerProfile: true,
-                dealerStaff: {
+                dealerStaffMemberships: {
                     where: { isActive: true },
                     include: {
                         dealerProfile: {

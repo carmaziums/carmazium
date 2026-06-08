@@ -963,7 +963,7 @@ export class ListingsService {
             deletedAt: null,
         };
         if (!filterDto?.includeSold) {
-            where.status = { not: 'SOLD' };
+            where.status = { notIn: ['SOLD', 'OFFER_ACCEPTED'] };
         }
 
         // Apply optional filters

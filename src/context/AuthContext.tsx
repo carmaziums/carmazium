@@ -15,7 +15,7 @@ interface UserProfile {
     profileImage?: string
     dealerProfile?: any
     contractorProfile?: any
-    dealerStaff?: Array<{
+    dealerStaffMemberships?: Array<{
         id: string
         role: string
         dealerProfile: { id: string; companyName: string; isVerified: boolean; logo?: string | null }
