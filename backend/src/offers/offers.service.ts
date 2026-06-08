@@ -416,7 +416,7 @@ export class OffersService {
         }
 
         const listings = await this.prisma.listing.findMany({
-            where: { sellerId: targetOwnerId, deletedAt: null },
+            where: { sellerId: targetOwnerId, deletedAt: null, status: 'ACTIVE' },
             select: { id: true },
         });
         const listingIds = listings.map(l => l.id);
