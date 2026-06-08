@@ -77,8 +77,8 @@ export default function DealerFinancePage() {
 
                 <main className="flex-1 space-y-6 min-w-0">
                     <PageHeader 
-                        title={DEALER_ROUTE_CONFIG[4].title} 
-                        subHeader={DEALER_ROUTE_CONFIG[4].subHeader}
+                        title={DEALER_ROUTE_CONFIG[5].title}
+                        subHeader={DEALER_ROUTE_CONFIG[5].subHeader}
                     />
 
                     {/* Summary Cards */}
