@@ -700,22 +700,29 @@ export class DealersService {
             });
             if (existing) {
                 if (existing.isActive) throw new BadRequestException('User is already a staff member of this dealership');
-                // Reactivate previously deactivated staff
-                return this.prisma.dealerStaff.update({
-                    where: { id: existing.id },
-                    data: { isActive: true, role: dto.role as any },
-                    include: { user: { select: { id: true, firstName: true, lastName: true, email: true } } },
-                });
+                // Reactivate previously deactivated staff + re-elevate role
+                const [reactivated] = await this.prisma.$transaction([
+                    this.prisma.dealerStaff.update({
+                        where: { id: existing.id },
+                        data: { isActive: true, role: dto.role as any },
+                        include: { user: { select: { id: true, firstName: true, lastName: true, email: true } } },
+                    }),
+                    this.prisma.user.update({ where: { id: targetUser.id }, data: { role: 'DEALER' } }),
+                ]);
+                return reactivated;
             }
 
-            const staff = await this.prisma.dealerStaff.create({
-                data: {
-                    userId: targetUser.id,
-                    dealerProfileId: profile.id,
-                    role: dto.role as any,
-                },
-                include: { user: { select: { id: true, firstName: true, lastName: true, email: true } } },
-            });
+            const [staff] = await this.prisma.$transaction([
+                this.prisma.dealerStaff.create({
+                    data: {
+                        userId: targetUser.id,
+                        dealerProfileId: profile.id,
+                        role: dto.role as any,
+                    },
+                    include: { user: { select: { id: true, firstName: true, lastName: true, email: true } } },
+                }),
+                this.prisma.user.update({ where: { id: targetUser.id }, data: { role: 'DEALER' } }),
+            ]);
 
             // Notify existing user they were added
             await this.emailService.sendStaffInviteEmail(
@@ -799,6 +806,9 @@ export class DealersService {
             });
         }
 
+        // Elevate user role to DEALER so they can access the dealer dashboard
+        await this.prisma.user.update({ where: { id: userId }, data: { role: 'DEALER' } });
+
         // Delete the invite so it can't be reused
         await this.prisma.dealerInvite.delete({ where: { token } });
 
@@ -826,10 +836,20 @@ export class DealersService {
             if (adminCount <= 1) throw new ForbiddenException('Cannot remove the last admin');
         }
 
-        return this.prisma.dealerStaff.update({
+        await this.prisma.dealerStaff.update({
             where: { id: staffId },
             data: { isActive: false },
         });
+
+        // Demote role back to SELLER if this was their last active position
+        const otherActive = await this.prisma.dealerStaff.count({
+            where: { userId: staff.userId, isActive: true },
+        });
+        if (otherActive === 0) {
+            await this.prisma.user.update({ where: { id: staff.userId }, data: { role: 'SELLER' } });
+        }
+
+        return { success: true };
     }
 
     // ─── Purchases ────────────────────────────────────────────────────

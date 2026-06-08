@@ -28,7 +28,9 @@ export default function DealerDashboardLayout({
     }
 
     const isEmailVerified = !!user?.email_confirmed_at
-    const isVerifiedDealer = !!profile?.dealerProfile?.isVerified
+    // Staff members have dealerStaff records — they bypass KYC (their employer already verified)
+    const isStaffMember = !!((profile as any)?.dealerStaff?.length)
+    const isVerifiedDealer = !!profile?.dealerProfile?.isVerified || isStaffMember
 
     // Block dashboard access with KYC overlay ONLY after they verify their email
     if (isEmailVerified && !isVerifiedDealer) {

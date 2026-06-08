@@ -6,6 +6,11 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole } from '@prisma/client';
 import { EmailService } from '../email/email.service';
+import * as bcrypt from 'bcrypt';
+
+const VERIFICATION_CODE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const MAX_VERIFICATION_ATTEMPTS = 5;
+const BCRYPT_ROUNDS = 12;
 
 @Injectable()
 export class UsersService {
@@ -54,6 +59,14 @@ export class UsersService {
                 contractorProfile: true,
                 financePartnerProfile: true,
                 insurancePartnerProfile: true,
+                dealerStaff: {
+                    where: { isActive: true },
+                    include: {
+                        dealerProfile: {
+                            select: { id: true, companyName: true, isVerified: true, logo: true },
+                        },
+                    },
+                },
             },
         });
 
@@ -149,6 +162,7 @@ export class UsersService {
             vatNumber: string;
             registrationNumber?: string;
             businessAddress?: string;
+            phone?: string;
         },
     ) {
         const user = await this.prisma.user.findUnique({
@@ -220,5 +234,74 @@ export class UsersService {
         }
 
         return user;
+    }
+
+    /**
+     * Start address verification: generates a one-time code, stores its hash,
+     * and emails it to the user's account email address.
+     */
+    async startAddressVerification(userId: string, address: string) {
+        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        const code = String(Math.floor(100000 + Math.random() * 900000));
+        const codeHash = await bcrypt.hash(code, BCRYPT_ROUNDS);
+        const expiresAt = new Date(Date.now() + VERIFICATION_CODE_TTL_MS);
+
+        await this.prisma.addressVerification.create({
+            data: { userId, address, codeHash, expiresAt },
+        });
+
+        const name = user.firstName || 'there';
+        await this.emailService.sendAddressVerificationCodeEmail(user.email, name, code, address);
+
+        return { address, expiresAt, message: `We've emailed a 6-digit verification code to ${user.email}.` };
+    }
+
+    /**
+     * Confirm address verification using the most recent unconsumed code for the user.
+     */
+    async confirmAddressVerification(userId: string, code: string) {
+        const verification = await this.prisma.addressVerification.findFirst({
+            where: { userId, consumedAt: null },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        if (!verification) {
+            throw new BadRequestException('No pending verification found. Please request a new code.');
+        }
+
+        if (verification.expiresAt < new Date()) {
+            throw new BadRequestException('This code has expired. Please request a new one.');
+        }
+
+        if (verification.attempts >= MAX_VERIFICATION_ATTEMPTS) {
+            throw new BadRequestException('Too many incorrect attempts. Please request a new code.');
+        }
+
+        const isMatch = await bcrypt.compare(code, verification.codeHash);
+        if (!isMatch) {
+            await this.prisma.addressVerification.update({
+                where: { id: verification.id },
+                data: { attempts: { increment: 1 } },
+            });
+            throw new BadRequestException('Incorrect code. Please try again.');
+        }
+
+        const now = new Date();
+        await this.prisma.$transaction([
+            this.prisma.addressVerification.update({
+                where: { id: verification.id },
+                data: { consumedAt: now },
+            }),
+            this.prisma.user.update({
+                where: { id: userId },
+                data: { isAddressVerified: true, addressVerifiedAt: now, location: verification.address },
+            }),
+        ]);
+
+        return { verified: true, address: verification.address, verifiedAt: now };
     }
 }

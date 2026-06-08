@@ -55,9 +55,7 @@ function AcceptInviteContent() {
     }, [authLoading, user, token, status, router])
 
     const handleGoToDashboard = () => {
-        // Dealers land on their dashboard; fall back to home if role isn't resolved yet
-        const dest = profile?.role === "DEALER" ? "/dashboard/dealer" : "/dashboard"
-        router.push(dest)
+        router.push("/dashboard/dealer")
     }
 
     // While auth is resolving or we are about to redirect to login, show a spinner
