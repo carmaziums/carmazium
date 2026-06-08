@@ -1219,8 +1219,13 @@ function EarningsTab() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-5">
-                                            <p className="text-sm font-bold text-gray-200 uppercase">
-                                                {sale.buyer ? `${sale.buyer.firstName} ${sale.buyer.lastName || ""}` : "Direct Buyer"}
+                                            <p className="text-sm font-bold text-gray-200 uppercase truncate">
+                                                {sale.buyer
+                                                    ? `${sale.buyer.firstName} ${sale.buyer.lastName || ""}`.trim()
+                                                    : (sale as any).buyerName || "Direct Buyer"}
+                                            </p>
+                                            <p className="text-[10px] text-gray-500 truncate">
+                                                {sale.buyer?.email || (sale as any).buyerEmail || ""}
                                             </p>
                                         </td>
                                         <td className="px-6 py-5 text-right font-black text-emerald-400 text-sm">

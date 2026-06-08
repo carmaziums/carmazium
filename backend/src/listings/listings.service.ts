@@ -900,14 +900,21 @@ export class ListingsService {
                 data: { status: 'SOLD' },
             });
 
-            // Record the sale in the sales table for earnings tracking
-            await tx.sale.create({
-                data: {
+            // Upsert the Sale record — idempotent against any prior auto-creation
+            await tx.sale.upsert({
+                where: { listingId: id },
+                create: {
                     listingId: id,
                     sellerId: listing.sellerId || userId,
-                    buyerId: dto.buyerId || null,
-                    buyerName: dto.buyerName || null,
-                    buyerEmail: dto.buyerEmail || null,
+                    buyerId: dto.buyerId ?? null,
+                    buyerName: dto.buyerName ?? null,
+                    buyerEmail: dto.buyerEmail ?? null,
+                    soldPrice: dto.soldPrice,
+                },
+                update: {
+                    buyerId: dto.buyerId ?? null,
+                    buyerName: dto.buyerName ?? null,
+                    buyerEmail: dto.buyerEmail ?? null,
                     soldPrice: dto.soldPrice,
                 },
             });
