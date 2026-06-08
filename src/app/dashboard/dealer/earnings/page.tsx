@@ -207,7 +207,7 @@ export default function DealerEarningsPage() {
                                                     </div>
                                                 </td>
                                                 <td className="px-8 py-6 text-right font-bold text-gray-400 text-sm">
-                                                    {formatPrice(sale.listedPrice)}
+                                                    {formatPrice((sale as any).listing?.price ?? sale.listedPrice ?? 0)}
                                                 </td>
                                                 <td className="px-8 py-6 text-right">
                                                     <p className="font-black text-white text-lg leading-none">{formatPrice(sale.soldPrice)}</p>

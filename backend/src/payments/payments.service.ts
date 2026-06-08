@@ -234,6 +234,97 @@ export class PaymentsService {
 
         return { url: session.url };
     }
+    /**
+     * Create a Stripe PaymentIntent + EphemeralKey for the React Native Payment Sheet.
+     * Returns clientSecret, ephemeralKey, customerId, and a transactionId for tracking.
+     */
+    async createPaymentSheet(
+        listingId: string,
+        userId: string,
+        amount: number,
+        type: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' = 'FULL_PAYMENT',
+        currency = 'gbp',
+    ) {
+        const listing = await this.prisma.listing.findUnique({
+            where: { id: listingId },
+        });
+        if (!listing || listing.deletedAt) {
+            throw new NotFoundException(`Listing "${listingId}" not found`);
+        }
+
+        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) throw new NotFoundException('User not found');
+
+        const stripe = await this.getStripe();
+
+        // Get or create Stripe Customer for this user
+        let customerId = user.stripeCustomerId ?? null;
+        if (!customerId) {
+            const customer = await stripe.customers.create({
+                email: user.email,
+                name: [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined,
+                metadata: { userId },
+            });
+            customerId = customer.id;
+            await this.prisma.user.update({
+                where: { id: userId },
+                data: { stripeCustomerId: customerId },
+            });
+        }
+
+        // Create Ephemeral Key (required for Payment Sheet saved cards)
+        const ephemeralKey = await stripe.ephemeralKeys.create(
+            { customer: customerId },
+            { apiVersion: '2026-02-25.clover' },
+        );
+
+        const descriptionMap: Record<string, string> = {
+            DEPOSIT: `Refundable deposit for ${listing.title}`,
+            FULL_PAYMENT: `Full payment for ${listing.title}`,
+            COMMISSION: `Auction buyer fee — ${listing.title}`,
+        };
+
+        // Create a pending transaction record first (we'll store the PI id after)
+        const transaction = await this.prisma.transaction.create({
+            data: {
+                listingId,
+                userId,
+                amount,
+                type: type as any,
+                status: 'PENDING',
+                description: descriptionMap[type] ?? `Payment for ${listing.title}`,
+            },
+        });
+
+        // Create Payment Intent
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: Math.round(amount * 100),
+            currency,
+            customer: customerId,
+            automatic_payment_methods: { enabled: true },
+            metadata: {
+                transactionId: transaction.id,
+                listingId,
+                userId,
+                type,
+            },
+        });
+
+        // Store Payment Intent ID for reconciliation
+        await this.prisma.transaction.update({
+            where: { id: transaction.id },
+            data: { stripePaymentId: paymentIntent.id },
+        });
+
+        return {
+            clientSecret: paymentIntent.client_secret,
+            ephemeralKey: ephemeralKey.secret,
+            customerId,
+            transactionId: transaction.id,
+            publishableKey: this.config.get<string>('STRIPE_PUBLISHABLE_KEY') ?? '',
+        };
+    }
+
     async getSessionStatus(sessionId: string) {
         const stripe = await this.getStripe();
         const session = await stripe.checkout.sessions.retrieve(sessionId);
@@ -321,9 +412,28 @@ export class PaymentsService {
 
                 // 3. Handle Specific Types
                 if (type === 'FULL_PAYMENT') {
-                    await this.prisma.listing.update({
+                    const buyerId: string | undefined = session.metadata?.userId;
+                    const listing = await this.prisma.listing.findUnique({
                         where: { id: listingId },
-                        data: { status: 'SOLD' },
+                        select: { sellerId: true, price: true },
+                    });
+                    await this.prisma.$transaction(async (tx) => {
+                        await tx.listing.update({
+                            where: { id: listingId },
+                            data: { status: 'SOLD' },
+                        });
+                        // Create Sale record so earnings dashboard reflects this purchase
+                        const alreadyRecorded = await tx.sale.findFirst({ where: { listingId } });
+                        if (!alreadyRecorded && listing?.sellerId) {
+                            await tx.sale.create({
+                                data: {
+                                    listingId,
+                                    sellerId: listing.sellerId,
+                                    buyerId: buyerId ?? null,
+                                    soldPrice: listing.price ?? 0,
+                                },
+                            });
+                        }
                     });
                 }
 
@@ -351,6 +461,63 @@ export class PaymentsService {
 
                 // Auction buyer fee paid — mark auction and record transaction ID
                 if (type === 'COMMISSION') {
+                    const auction = await this.prisma.auction.findFirst({
+                        where: { listingId, status: 'ENDED', deletedAt: null },
+                    });
+                    if (auction) {
+                        await this.prisma.auction.update({
+                            where: { id: auction.id },
+                            data: {
+                                buyerFeePaid: true,
+                                buyerFeeTransactionId: transactionId,
+                            },
+                        });
+                    }
+                }
+                break;
+            }
+
+            // ── Payment Sheet (native SDK) ──────────────────────────
+            case 'payment_intent.succeeded': {
+                const pi = event.data.object;
+                const { transactionId, listingId, type } = pi.metadata ?? {};
+
+                if (transactionId) {
+                    await this.prisma.transaction.update({
+                        where: { id: transactionId },
+                        data: {
+                            status: 'COMPLETED',
+                            stripePaymentId: pi.id,
+                        },
+                    });
+                }
+
+                if (type === 'FULL_PAYMENT' && listingId) {
+                    const buyerId: string | undefined = pi.metadata?.userId;
+                    const listing = await this.prisma.listing.findUnique({
+                        where: { id: listingId },
+                        select: { sellerId: true, price: true },
+                    });
+                    await this.prisma.$transaction(async (tx) => {
+                        await tx.listing.update({
+                            where: { id: listingId },
+                            data: { status: 'SOLD' },
+                        });
+                        const alreadyRecorded = await tx.sale.findFirst({ where: { listingId } });
+                        if (!alreadyRecorded && listing?.sellerId) {
+                            await tx.sale.create({
+                                data: {
+                                    listingId,
+                                    sellerId: listing.sellerId,
+                                    buyerId: buyerId ?? null,
+                                    soldPrice: listing.price ?? 0,
+                                },
+                            });
+                        }
+                    });
+                }
+
+                if (type === 'COMMISSION' && listingId) {
                     const auction = await this.prisma.auction.findFirst({
                         where: { listingId, status: 'ENDED', deletedAt: null },
                     });

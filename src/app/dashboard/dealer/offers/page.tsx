@@ -3,11 +3,12 @@
 import * as React from "react"
 import { Button } from "@/components/ui/Button"
 import {
-    Loader2, Trophy, XCircle, Clock, ArrowUpDown, Tag, Mail
+    Loader2, Trophy, XCircle, Clock, Tag, Mail, CheckCircle
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
+import { recordSale } from "@/lib/listingApi"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 
@@ -18,6 +19,8 @@ export default function DealerOffersPage() {
     const [actionLoading, setActionLoading] = React.useState<Record<string, boolean>>({})
     const [counteringOfferId, setCounteringOfferId] = React.useState<string | null>(null)
     const [counterAmount, setCounterAmount] = React.useState<number | undefined>(undefined)
+    const [markingSold, setMarkingSold] = React.useState<string | null>(null)
+    const [toast, setToast] = React.useState<string | null>(null)
 
     React.useEffect(() => {
         if (!authLoading && user) {
@@ -34,6 +37,20 @@ export default function DealerOffersPage() {
             setOffers([])
         } finally {
             setLoading(false)
+        }
+    }
+
+    async function handleMarkSold(offer: any) {
+        setMarkingSold(offer.id)
+        try {
+            const soldPrice = Number(offer.counterAmount ?? offer.amount)
+            await recordSale(offer.listingId, { soldPrice, buyerId: offer.buyerId })
+            setToast("Sale recorded — listing marked as sold")
+            setOffers(prev => prev.filter(o => o.id !== offer.id))
+        } catch (err: any) {
+            setToast(err.message || "Failed to record sale")
+        } finally {
+            setMarkingSold(null)
         }
     }
 
@@ -70,8 +87,19 @@ export default function DealerOffersPage() {
     const acceptedCount = offers.filter(o => o.status === "ACCEPTED").length
     const totalOffers = offers.length
 
+    React.useEffect(() => {
+        if (!toast) return
+        const t = setTimeout(() => setToast(null), 3500)
+        return () => clearTimeout(t)
+    }, [toast])
+
     return (
         <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
+            {toast && (
+                <div className="fixed bottom-6 right-6 z-50 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-xl font-bold text-sm animate-in fade-in slide-in-from-bottom-2">
+                    {toast}
+                </div>
+            )}
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
@@ -253,7 +281,21 @@ export default function DealerOffersPage() {
                                                                     </Button>
                                                                 </div>
                                                             )}
-                                                            {!isPending && (
+                                                            {!isPending && offer.status === 'ACCEPTED' && (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    disabled={markingSold === offer.id}
+                                                                    onClick={() => handleMarkSold(offer)}
+                                                                    className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-black text-[9px] uppercase tracking-widest h-9 px-4 border border-emerald-500/20 rounded-xl transition-all gap-1.5"
+                                                                >
+                                                                    {markingSold === offer.id
+                                                                        ? <Loader2 size={12} className="animate-spin" />
+                                                                        : <CheckCircle size={12} />}
+                                                                    Mark as Sold
+                                                                </Button>
+                                                            )}
+                                                            {!isPending && offer.status !== 'ACCEPTED' && (
                                                                 <span className="text-[10px] text-gray-600 uppercase tracking-widest font-black italic">
                                                                     Decision Finalized
                                                                 </span>
