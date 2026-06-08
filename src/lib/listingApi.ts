@@ -907,7 +907,7 @@ export async function getMyOfferForListing(listingId: string): Promise<LatestOff
 /**
  * Seller: Record a final sale for a listing
  */
-export async function recordSale(listingId: string, data: { soldPrice: number; buyerId?: string; buyerName?: string }): Promise<Listing> {
+export async function recordSale(listingId: string, data: { soldPrice: number; buyerId?: string; buyerName?: string; buyerEmail?: string }): Promise<Listing> {
     const res = await apiClient<{ data: Listing }>(`/listings/${listingId}/sold`, {
         method: 'PATCH',
         body: JSON.stringify(data),
@@ -923,6 +923,8 @@ export interface SaleRecord {
     listingId: string
     sellerId: string
     buyerId: string | null
+    buyerName: string | null
+    buyerEmail: string | null
     listedPrice: string | number
     soldPrice: string | number
     createdAt: string

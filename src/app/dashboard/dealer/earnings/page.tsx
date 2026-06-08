@@ -200,9 +200,13 @@ export default function DealerEarningsPage() {
                                                         </div>
                                                         <div className="min-w-0">
                                                             <p className="text-sm font-black text-white truncate uppercase tracking-tight">
-                                                                {sale.buyer ? `${sale.buyer.firstName} ${sale.buyer.lastName || ""}` : "Direct Buyer"}
+                                                                {sale.buyer
+                                                                    ? `${sale.buyer.firstName} ${sale.buyer.lastName || ""}`.trim()
+                                                                    : (sale as any).buyerName || "Direct Buyer"}
                                                             </p>
-                                                            <p className="text-[11px] text-gray-500 font-medium truncate">{sale.buyer?.email || "No email recorded"}</p>
+                                                            <p className="text-[11px] text-gray-500 font-medium truncate">
+                                                                {sale.buyer?.email || (sale as any).buyerEmail || "No email recorded"}
+                                                            </p>
                                                         </div>
                                                     </div>
                                                 </td>

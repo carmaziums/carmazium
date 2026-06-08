@@ -196,11 +196,13 @@ export default function EarningsPage() {
                                                         </div>
                                                         <div className="min-w-0">
                                                             <p className="text-sm font-bold text-gray-200 truncate">
-                                                                {sale.buyer ? `${sale.buyer.firstName} ${sale.buyer.lastName || ""}` : "Private Buyer"}
+                                                                {sale.buyer
+                                                                    ? `${sale.buyer.firstName} ${sale.buyer.lastName || ""}`.trim()
+                                                                    : (sale as any).buyerName || "Private Buyer"}
                                                             </p>
-                                                            {sale.buyer?.email && (
-                                                                <p className="text-[10px] text-gray-500 truncate">{sale.buyer.email}</p>
-                                                            )}
+                                                            <p className="text-[10px] text-gray-500 truncate">
+                                                                {sale.buyer?.email || (sale as any).buyerEmail || "No email recorded"}
+                                                            </p>
                                                         </div>
                                                     </div>
                                                 </td>

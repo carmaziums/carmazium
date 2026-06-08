@@ -4,7 +4,8 @@ import * as React from "react"
 import { Button } from "@/components/ui/Button"
 import {
     Loader2, AlertTriangle, Tag, CheckCircle, XCircle,
-    Clock, ChevronRight, Car, MessageSquare, RefreshCw, X
+    Clock, ChevronRight, Car, MessageSquare, RefreshCw, X,
+    DollarSign, User, Mail
 } from "lucide-react"
 import { getOffersForListing, getMyListings, respondToOffer, recordSale, type Offer, type Listing } from "@/lib/listingApi"
 import { createChatRoom } from "@/lib/chatApi"
@@ -41,6 +42,139 @@ function formatGBP(val: string | number) {
     return `£${Number(val).toLocaleString('en-GB')}`
 }
 
+// ─── Mark as Sold Modal ───────────────────────────────────────────────────────
+
+function MarkAsSoldModal({
+    offer,
+    listing,
+    onConfirm,
+    onClose,
+    confirming,
+}: {
+    offer: Offer
+    listing: Listing
+    onConfirm: (data: { soldPrice: number; buyerName: string; buyerEmail: string }) => void
+    onClose: () => void
+    confirming: boolean
+}) {
+    const agreedPrice = Number(offer.counterAmount ?? offer.amount)
+    const [soldPrice, setSoldPrice] = React.useState(agreedPrice)
+    const [buyerName, setBuyerName] = React.useState(
+        [offer.buyer?.firstName, offer.buyer?.lastName].filter(Boolean).join(' ')
+    )
+    const [buyerEmail, setBuyerEmail] = React.useState(offer.buyer?.email ?? '')
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+            <div className="bg-slate-900 border border-white/10 rounded-2xl p-8 w-full max-w-md shadow-2xl">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 className="text-xl font-black font-heading uppercase tracking-tight text-white">Confirm Sale</h2>
+                        <p className="text-xs text-gray-500 mt-0.5">This will mark the listing as sold and record it in your earnings.</p>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="text-gray-400 hover:text-white transition-colors ml-4 shrink-0"
+                        disabled={confirming}
+                    >
+                        <X size={20} />
+                    </button>
+                </div>
+
+                {/* Vehicle preview */}
+                <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10 mb-6">
+                    {listing.images?.[0] ? (
+                        <div className="relative w-16 h-12 rounded-lg overflow-hidden shrink-0">
+                            <Image src={listing.images[0]} alt={listing.title} fill className="object-cover" />
+                        </div>
+                    ) : (
+                        <div className="w-16 h-12 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center shrink-0">
+                            <Car size={18} className="text-gray-600" />
+                        </div>
+                    )}
+                    <div className="min-w-0">
+                        <p className="font-bold text-white text-sm truncate">{listing.title}</p>
+                        <p className="text-xs text-gray-400">Agreed offer: <span className="text-primary font-bold">{formatGBP(agreedPrice)}</span></p>
+                    </div>
+                </div>
+
+                {/* Form fields */}
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5">
+                            Final Sale Price
+                        </label>
+                        <div className="relative">
+                            <DollarSign size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="number"
+                                min={0}
+                                className="w-full bg-slate-800 border border-white/20 text-white rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors"
+                                value={soldPrice}
+                                onChange={e => setSoldPrice(Number(e.target.value))}
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5">
+                            Buyer Name
+                        </label>
+                        <div className="relative">
+                            <User size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="text"
+                                className="w-full bg-slate-800 border border-white/20 text-white rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors placeholder:text-gray-600"
+                                placeholder="Buyer's full name"
+                                value={buyerName}
+                                onChange={e => setBuyerName(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5">
+                            Buyer Email <span className="text-gray-600 normal-case font-medium">(optional)</span>
+                        </label>
+                        <div className="relative">
+                            <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="email"
+                                className="w-full bg-slate-800 border border-white/20 text-white rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors placeholder:text-gray-600"
+                                placeholder="buyer@example.com"
+                                value={buyerEmail}
+                                onChange={e => setBuyerEmail(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3 mt-6">
+                    <button
+                        onClick={onClose}
+                        disabled={confirming}
+                        className="flex-1 py-2.5 rounded-xl border border-white/15 text-gray-400 hover:text-white hover:border-white/30 text-sm font-bold transition-colors disabled:opacity-50"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={() => onConfirm({ soldPrice, buyerName, buyerEmail })}
+                        disabled={confirming || soldPrice <= 0}
+                        className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-[0_0_20px_rgba(52,211,153,0.2)]"
+                    >
+                        {confirming
+                            ? <><Loader2 size={14} className="animate-spin" /> Recording…</>
+                            : <><CheckCircle size={14} /> Confirm Sale</>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    )
+}
+
 // ─── Offer Row ────────────────────────────────────────────────────────────────
 
 function OfferRow({
@@ -48,19 +182,17 @@ function OfferRow({
     listingId,
     onRespond,
     onMessage,
-    onMarkSold,
+    onOpenSaleModal,
     startingChat,
     responding,
-    markingSold,
 }: {
     offer: Offer
     listingId: string
     onRespond: (id: string, status: 'ACCEPTED' | 'REJECTED' | 'COUNTERED', amount?: number) => void
     onMessage: (buyerId: string) => void
-    onMarkSold: (offerId: string, soldPrice: number, buyerId: string) => void
+    onOpenSaleModal: (offer: Offer) => void
     startingChat: string | null
     responding: string | null
-    markingSold: string | null
 }) {
     const buyer = offer.buyer
     const isPending = offer.status === 'PENDING'
@@ -89,6 +221,9 @@ function OfferRow({
                         : formatGBP(offer.amount)
                     }
                 </p>
+                {offer.counterAmount && (
+                    <p className="text-xs text-blue-400 mt-0.5">Counter: {formatGBP(offer.counterAmount)}</p>
+                )}
                 {offer.message && (
                     <div className="mt-2 flex items-start gap-1.5 text-xs text-gray-400">
                         <MessageSquare size={11} className="mt-0.5 shrink-0 text-gray-500" />
@@ -165,10 +300,10 @@ function OfferRow({
                     </Button>
                 </div>
             )}
-            
+
             {/* Accepted offer actions */}
             {offer.status === 'ACCEPTED' && (
-                <div className="flex gap-2 shrink-0">
+                <div className="flex flex-wrap gap-2 shrink-0">
                     <Button
                         size="sm"
                         variant="outline"
@@ -181,11 +316,9 @@ function OfferRow({
                     <Button
                         size="sm"
                         className="bg-emerald-600 hover:bg-emerald-500 gap-1 shadow-[0_0_12px_rgba(52,211,153,0.25)]"
-                        disabled={markingSold === offer.id}
-                        onClick={() => onMarkSold(offer.id, Number(offer.counterAmount ?? offer.amount), offer.buyerId)}
+                        onClick={() => onOpenSaleModal(offer)}
                     >
-                        {markingSold === offer.id ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle size={13} />}
-                        Mark as Sold
+                        <CheckCircle size={13} /> Mark as Sold
                     </Button>
                     <Button
                         size="sm"
@@ -217,9 +350,11 @@ export default function SellerOffersPage() {
     const [error, setError] = React.useState<string | null>(null)
     const [responding, setResponding] = React.useState<string | null>(null)
     const [startingChat, setStartingChat] = React.useState<string | null>(null)
-    const [markingSold, setMarkingSold] = React.useState<string | null>(null)
     const [expanded, setExpanded] = React.useState<Set<string>>(new Set())
     const [toast, setToast] = React.useState<string | null>(null)
+    // Sale modal state
+    const [saleModal, setSaleModal] = React.useState<{ offer: Offer; listing: Listing } | null>(null)
+    const [confirmingSale, setConfirmingSale] = React.useState(false)
     const router = useRouter()
 
     // Load all seller's listings, then eagerly fetch all offers
@@ -258,7 +393,7 @@ export default function SellerOffersPage() {
 
     // Load offers for a listing when expanded
     const loadOffersFor = async (listingId: string) => {
-        if (offers[listingId]) return // already loaded
+        if (offers[listingId]) return
         setLoadingOffers(prev => ({ ...prev, [listingId]: true }))
         try {
             const data = await getOffersForListing(listingId)
@@ -287,11 +422,10 @@ export default function SellerOffersPage() {
         setResponding(offerId)
         try {
             await respondToOffer(offerId, status, counterAmount)
-            // Refresh offers for this listing
             const updated = await getOffersForListing(listingId)
             setOffers(prev => ({ ...prev, [listingId]: updated }))
             if (status === 'ACCEPTED') {
-                setToast('✓ Offer accepted! The listing stays active — mark it as Sold from your Listings page when the deal is complete.')
+                setToast('✓ Offer accepted! Contact the buyer, then use "Mark as Sold" once the deal is complete.')
             } else if (status === 'COUNTERED') {
                 setToast('✓ Counter offer sent!')
             } else {
@@ -306,30 +440,38 @@ export default function SellerOffersPage() {
         }
     }
 
-    const handleMarkSold = async (listingId: string, offerId: string, soldPrice: number, buyerId: string) => {
-        setMarkingSold(offerId)
+    const handleConfirmSale = async (data: { soldPrice: number; buyerName: string; buyerEmail: string }) => {
+        if (!saleModal) return
+        setConfirmingSale(true)
         try {
-            await recordSale(listingId, { soldPrice, buyerId })
-            setToast("Listing marked as sold")
-            setListings(prev => prev.filter(l => l.id !== listingId))
+            await recordSale(saleModal.listing.id, {
+                soldPrice: data.soldPrice,
+                buyerId: saleModal.offer.buyerId,
+                buyerName: data.buyerName || undefined,
+                buyerEmail: data.buyerEmail || undefined,
+            })
+            setToast('✓ Sale recorded! Your earnings have been updated.')
+            setTimeout(() => setToast(null), 5000)
+            setListings(prev => prev.filter(l => l.id !== saleModal.listing.id))
+            setSaleModal(null)
         } catch (err: any) {
-            setToast(err.message || "Failed to mark as sold")
+            setToast(err.message || 'Failed to record sale')
+            setTimeout(() => setToast(null), 4000)
         } finally {
-            setMarkingSold(null)
+            setConfirmingSale(false)
         }
     }
 
     const handleMessageBuyer = async (buyerId: string, listingId: string) => {
-        setStartingChat(buyerId);
+        setStartingChat(buyerId)
         try {
-            const room = await createChatRoom(buyerId, listingId);
-            router.push(`/dashboard/seller/messages?room=${room.id}`);
+            const room = await createChatRoom(buyerId, listingId)
+            router.push(`/dashboard/seller/messages?room=${room.id}`)
         } catch (err: any) {
-            console.error("Failed to start chat:", err);
-            setToast(`Error: ${err.message || "Failed to start chat"}`);
-            setTimeout(() => setToast(null), 4000);
+            setToast(`Error: ${err.message || 'Failed to start chat'}`)
+            setTimeout(() => setToast(null), 4000)
         } finally {
-            setStartingChat(null);
+            setStartingChat(null)
         }
     }
 
@@ -344,6 +486,17 @@ export default function SellerOffersPage() {
                             <div className="fixed bottom-6 right-6 z-50 bg-slate-800 border border-white/10 text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-medium animate-in slide-in-from-bottom-4">
                                 {toast}
                             </div>
+                        )}
+
+                        {/* Sale Modal */}
+                        {saleModal && (
+                            <MarkAsSoldModal
+                                offer={saleModal.offer}
+                                listing={saleModal.listing}
+                                onConfirm={handleConfirmSale}
+                                onClose={() => !confirmingSale && setSaleModal(null)}
+                                confirming={confirmingSale}
+                            />
                         )}
 
                         {/* Header */}
@@ -433,10 +586,9 @@ export default function SellerOffersPage() {
                                                                 listingId={listing.id}
                                                                 onRespond={(id, status, amount) => handleRespond(id, listing.id, status, amount)}
                                                                 onMessage={(buyerId) => handleMessageBuyer(buyerId, listing.id)}
-                                                                onMarkSold={(offerId, soldPrice, buyerId) => handleMarkSold(listing.id, offerId, soldPrice, buyerId)}
+                                                                onOpenSaleModal={(o) => setSaleModal({ offer: o, listing })}
                                                                 startingChat={startingChat}
                                                                 responding={responding}
-                                                                markingSold={markingSold}
                                                             />
                                                         ))}
                                                     </div>
