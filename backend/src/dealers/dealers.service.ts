@@ -183,6 +183,9 @@ export class DealersService {
                 } as any,
             });
 
+            // Sync KYC fields back into DealerProfile so Settings page is pre-filled
+            await this.syncProfileFromKyc(profile.id, updatedFields);
+
             // Alert admins of resubmission
             await this.notifyAdminsOfKycSubmission(profile.companyName);
             return updatedKyc;
@@ -209,9 +212,41 @@ export class DealersService {
                 } as any,
             });
 
+            // Sync KYC fields back into DealerProfile so Settings page is pre-filled
+            await this.syncProfileFromKyc(profile.id, updatedFields);
+
             // Alert admins of first submission
             await this.notifyAdminsOfKycSubmission(profile.companyName);
             return newKyc;
+        }
+    }
+
+    /** Sync the relevant KYC fields into DealerProfile so the Settings page is pre-filled */
+    private async syncProfileFromKyc(profileId: string, kycFields: Record<string, any>) {
+        const updates: Record<string, any> = {};
+
+        if (kycFields.companyHouseName) updates.companyName = kycFields.companyHouseName;
+        if (kycFields.companyRegistrationNumber) updates.registrationNumber = kycFields.companyRegistrationNumber;
+        if (kycFields.businessRegisteredAddress) updates.businessAddress = kycFields.businessRegisteredAddress;
+        if (kycFields.businessWebsite) updates.website = kycFields.businessWebsite;
+
+        // vatNumber has a @unique constraint — only update if non-empty and different from placeholder
+        if (kycFields.vatNumber && !kycFields.vatNumber.startsWith('PENDING-')) {
+            updates.vatNumber = kycFields.vatNumber;
+        }
+
+        if (Object.keys(updates).length === 0) return;
+
+        try {
+            await this.prisma.dealerProfile.update({ where: { id: profileId }, data: updates });
+        } catch {
+            // If the vatNumber conflicts with another profile (duplicate), retry without it
+            if (updates.vatNumber) {
+                delete updates.vatNumber;
+                if (Object.keys(updates).length > 0) {
+                    await this.prisma.dealerProfile.update({ where: { id: profileId }, data: updates }).catch(() => {});
+                }
+            }
         }
     }
 

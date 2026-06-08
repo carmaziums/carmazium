@@ -42,15 +42,18 @@ export default function DealerSettingsPage() {
         try {
             const res = await apiClient<{ data: any }>('/users/me')
             const d = res?.data?.dealerProfile
+            const kyc = d?.kyc
             if (d) {
                 setForm(f => ({
                     ...f,
-                    companyName: d.companyName ?? "",
-                    vatNumber: d.vatNumber ?? "",
-                    registrationNumber: d.registrationNumber ?? "",
-                    businessAddress: d.businessAddress ?? "",
+                    // Prefer DealerProfile value; fall back to matching KYC field for
+                    // dealers who submitted KYC before the auto-sync was added
+                    companyName: d.companyName && !d.companyName.startsWith('PENDING-') ? d.companyName : (kyc?.companyHouseName ?? d.companyName ?? ""),
+                    vatNumber: d.vatNumber && !d.vatNumber.startsWith('PENDING-') ? d.vatNumber : (kyc?.vatNumber ?? ""),
+                    registrationNumber: d.registrationNumber || kyc?.companyRegistrationNumber || "",
+                    businessAddress: d.businessAddress || kyc?.businessRegisteredAddress || "",
                     phone: d.phone ?? "",
-                    website: d.website ?? "",
+                    website: d.website || kyc?.businessWebsite || "",
                     description: d.description ?? "",
                     logo: d.logo ?? "",
                 }))
