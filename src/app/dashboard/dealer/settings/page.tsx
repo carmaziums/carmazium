@@ -4,8 +4,8 @@ import * as React from "react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import {
-    Settings, Building2, MapPin, Phone, Globe, Clock,
-    Loader2, Save, CheckCircle, Bell, CreditCard
+    Settings, Building2, MapPin, Phone, Globe,
+    Loader2, Save, Bell
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
@@ -113,7 +113,6 @@ export default function DealerSettingsPage() {
     const tabs = [
         { key: "profile", label: "Dealership Profile", icon: Building2 },
         { key: "notifications", label: "Notifications", icon: Bell },
-        { key: "payments", label: "Payouts", icon: CreditCard },
     ]
 
     return (
@@ -122,9 +121,9 @@ export default function DealerSettingsPage() {
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
                 <main className="flex-1 space-y-6 min-w-0">
-                    <PageHeader 
-                        title={DEALER_ROUTE_CONFIG[8].title} 
-                        subHeader={DEALER_ROUTE_CONFIG[8].subHeader}
+                    <PageHeader
+                        title={DEALER_ROUTE_CONFIG[10].title}
+                        subHeader={DEALER_ROUTE_CONFIG[10].subHeader}
                     />
 
                     {/* Tab Selector */}
@@ -284,21 +283,6 @@ export default function DealerSettingsPage() {
                                 </div>
                             )}
 
-                            {activeTab === "payments" && (
-                                <div className="bg-white/5 border border-white/5 rounded-2xl p-8">
-                                    <h3 className="font-black uppercase tracking-tight mb-4">Payout Method</h3>
-                                    <div className="flex items-center justify-center py-12 text-center">
-                                        <div>
-                                            <CreditCard className="h-12 w-12 text-gray-700 mx-auto mb-3" />
-                                            <p className="text-gray-500 font-bold">No payout method configured</p>
-                                            <p className="text-gray-600 text-sm mt-1">Connect a bank account to receive payments</p>
-                                            <Button className="mt-4 gap-2" shape="default">
-                                                <CreditCard size={16} /> Connect Bank Account
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
                         </>
                     )}
                 </main>
