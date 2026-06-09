@@ -10,30 +10,38 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl || 'https://missing-url.supabase.co', supabaseAnonKey || 'missing-key');
 
 /**
- * Get the current access token from the Supabase session
- * Always prioritizes the fresh Supabase session token to avoid stale tokens
- * @returns The access token or null if not authenticated
+ * Get the current access token from the Supabase session.
+ *
+ * IMPORTANT: Do NOT read from localStorage.authToken here. That key is written
+ * by AuthContext on every auth event and is shared across all browser tabs,
+ * meaning a second tab logging in as a different account would overwrite it and
+ * cause every tab to send the wrong user's Bearer token to the backend.
+ *
+ * The Supabase SDK is the authoritative source — getSession() returns the token
+ * for the user who authenticated in this SDK instance.
  */
 export async function getAccessToken(): Promise<string | null> {
     if (typeof window === 'undefined') return null;
 
-    // 1. Check local 'authToken'
-    const localToken = localStorage.getItem('authToken');
-    if (localToken) return localToken;
-
-    // 2. Try to manually parse the Supabase session token to circumvent SDK deadlocks
+    // Primary: use the Supabase SDK — handles refresh automatically and is
+    // correctly scoped to the currently authenticated user.
     try {
-        // Project ID from URL
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) return session.access_token;
+    } catch (e) {
+        console.warn('supabase.auth.getSession() failed, falling back:', e);
+    }
+
+    // Fallback: parse directly from the SDK's own localStorage key.
+    // This key is managed by Supabase and is user-specific (last logged-in user).
+    try {
         const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
         const match = url.match(/https:\/\/([^.]+)\.supabase\.co/);
-        if (match && match[1]) {
-            const projectId = match[1];
-            const sbToken = localStorage.getItem(`sb-${projectId}-auth-token`);
+        if (match?.[1]) {
+            const sbToken = localStorage.getItem(`sb-${match[1]}-auth-token`);
             if (sbToken) {
                 const parsed = JSON.parse(sbToken);
-                if (parsed?.access_token) {
-                    return parsed.access_token;
-                }
+                if (parsed?.access_token) return parsed.access_token;
             }
         }
     } catch (e) {

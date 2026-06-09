@@ -89,12 +89,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const token = session?.access_token || null;
             setUser(session?.user ?? null);
             if (token) {
-                localStorage.setItem('authToken', token);
-
                 // If it's a password recovery flow, skip backend session bridge
                 // Recovery tokens are restricted and will fail backend validation until password is reset
-                if (typeof window !== 'undefined' && 
-                   (window.location.hash.includes('type=recovery') || 
+                if (typeof window !== 'undefined' &&
+                   (window.location.hash.includes('type=recovery') ||
                     window.location.href.includes('reset-password'))) {
                     setLoading(false);
                     return;
@@ -113,10 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const token = session?.access_token ?? null;
             setUser(session?.user ?? null);
 
-            if (token) {
-                localStorage.setItem('authToken', token);
-            } else if (event === 'SIGNED_OUT') {
-                localStorage.removeItem('authToken');
+            if (!token && event === 'SIGNED_OUT') {
                 bridgedTokenRef.current = null;
                 setProfile(null);
                 setLoading(false);
@@ -163,6 +158,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Best-effort — proceed with sign-out even if the backend call fails
         }
         await supabase.auth.signOut()
+        // Clean up any legacy authToken key that older sessions may have written
         localStorage.removeItem('authToken')
         bridgedTokenRef.current = null
         setUser(null)

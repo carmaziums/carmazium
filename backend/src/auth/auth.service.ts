@@ -292,7 +292,8 @@ export class AuthService {
                     localUser = await this.prisma.user.upsert({
                             where: { email: emailNorm },
                             update: {
-                                id: data.user.id,
+                                // NEVER update `id` — overwriting the PK would orphan all
+                                // existing listings, sales, and offers for this user.
                                 firstName: meta.first_name ?? meta.firstName ?? undefined,
                                 lastName: meta.last_name ?? meta.lastName ?? undefined,
                                 ...(role && { role }),
