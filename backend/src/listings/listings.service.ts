@@ -893,25 +893,27 @@ export class ListingsService {
             throw new BadRequestException('This listing is already marked as sold');
         }
 
-        // Use a transaction to update status and create sale record
-        return await this.prisma.$transaction(async (tx) => {
-            const updated = await tx.listing.update({
+        const effectiveSellerId = listing.sellerId || userId;
+
+        // Atomically set listing SOLD and upsert the Sale record
+        const updated = await this.prisma.$transaction(async (tx) => {
+            const updatedListing = await tx.listing.update({
                 where: { id },
                 data: { status: 'SOLD' },
             });
 
-            // Upsert the Sale record — idempotent against any prior auto-creation
             await tx.sale.upsert({
                 where: { listingId: id },
                 create: {
                     listingId: id,
-                    sellerId: listing.sellerId || userId,
+                    sellerId: effectiveSellerId,
                     buyerId: dto.buyerId ?? null,
                     buyerName: dto.buyerName ?? null,
                     buyerEmail: dto.buyerEmail ?? null,
                     soldPrice: dto.soldPrice,
                 },
                 update: {
+                    sellerId: effectiveSellerId,
                     buyerId: dto.buyerId ?? null,
                     buyerName: dto.buyerName ?? null,
                     buyerEmail: dto.buyerEmail ?? null,
@@ -919,13 +921,18 @@ export class ListingsService {
                 },
             });
 
-            // Increment seller sales count
-            if (listing.sellerId) {
-                await this.sellersService.incrementSales(listing.sellerId);
-            }
-
-            return updated;
+            return updatedListing;
         });
+
+        // Increment seller profile stats outside the transaction — a failure here
+        // should never roll back the sale that was just committed.
+        if (effectiveSellerId) {
+            this.sellersService.incrementSales(effectiveSellerId).catch((err) => {
+                console.error(`recordSale: incrementSales failed for ${effectiveSellerId}:`, err?.message);
+            });
+        }
+
+        return updated;
     }
 
     /**

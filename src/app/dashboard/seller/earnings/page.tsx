@@ -207,21 +207,25 @@ export default function EarningsPage() {
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-5 text-right font-medium text-gray-400 text-sm">
-                                                    {formatPrice(sale.listedPrice)}
+                                                    {formatPrice((sale as any).listing?.price ?? sale.listedPrice ?? 0)}
                                                 </td>
                                                 <td className="px-6 py-5 text-right">
                                                     <p className="font-black text-white text-base">{formatPrice(sale.soldPrice)}</p>
-                                                    {Number(sale.soldPrice) > Number(sale.listedPrice) ? (
-                                                        <span className="text-[10px] text-emerald-400 font-bold flex items-center justify-end gap-1">
-                                                            <ArrowUpRight size={10} /> +{formatPrice(Number(sale.soldPrice) - Number(sale.listedPrice))}
-                                                        </span>
-                                                    ) : Number(sale.soldPrice) < Number(sale.listedPrice) ? (
-                                                        <span className="text-[10px] text-red-400 font-bold flex items-center justify-end gap-1">
-                                                            <ArrowDownRight size={10} /> -{formatPrice(Number(sale.listedPrice) - Number(sale.soldPrice))}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Asking Price</span>
-                                                    )}
+                                                    {(() => {
+                                                        const listed = Number((sale as any).listing?.price ?? sale.listedPrice ?? 0)
+                                                        const sold = Number(sale.soldPrice)
+                                                        if (sold > listed && listed > 0) return (
+                                                            <span className="text-[10px] text-emerald-400 font-bold flex items-center justify-end gap-1">
+                                                                <ArrowUpRight size={10} /> +{formatPrice(sold - listed)}
+                                                            </span>
+                                                        )
+                                                        if (sold < listed && listed > 0) return (
+                                                            <span className="text-[10px] text-red-400 font-bold flex items-center justify-end gap-1">
+                                                                <ArrowDownRight size={10} /> -{formatPrice(listed - sold)}
+                                                            </span>
+                                                        )
+                                                        return <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Asking Price</span>
+                                                    })()}
                                                 </td>
                                                 <td className="px-6 py-5 text-right">
                                                     <div className="inline-flex flex-col items-end">
