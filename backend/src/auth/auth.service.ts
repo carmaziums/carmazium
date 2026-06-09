@@ -52,14 +52,25 @@ export class AuthService {
         const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
         const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-        if (!supabaseUrl || !supabaseKey) {
-            this.logger.warn('Supabase URL or key not configured — Supabase token verification will fail');
+        // Validate the URL before passing to createClient — an invalid/empty
+        // string causes @supabase/supabase-js to throw at construction time
+        // and crash the whole NestJS process on startup.
+        let validatedUrl = 'https://placeholder.supabase.co';
+        if (supabaseUrl) {
+            try {
+                new URL(supabaseUrl);
+                validatedUrl = supabaseUrl;
+            } catch {
+                this.logger.error(
+                    `SUPABASE_URL "${supabaseUrl}" is malformed — falling back to placeholder. ` +
+                    'Copy backend/.env.example → backend/.env and fill in the correct value.',
+                );
+            }
+        } else {
+            this.logger.warn('SUPABASE_URL not set — Supabase token verification will fail. See backend/.env.example.');
         }
 
-        this.supabase = createClient(
-            supabaseUrl || 'https://placeholder.supabase.co',
-            supabaseKey || 'placeholder-key',
-        );
+        this.supabase = createClient(validatedUrl, supabaseKey || 'placeholder-key');
     }
 
     async register(dto: RegisterDto) {

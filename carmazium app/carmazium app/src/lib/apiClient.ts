@@ -65,7 +65,20 @@ export async function apiClient<T>(
     headers,
   };
 
-  const response = await fetch(`${API_URL}${endpoint}`, config);
+  // 10-second timeout — prevents initializeAuth from hanging indefinitely
+  // when the backend is unreachable (e.g. local dev server is down).
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10_000);
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${endpoint}`, { ...config, signal: controller.signal });
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    if (err?.name === 'AbortError') throw new Error('REQUEST_TIMEOUT');
+    throw err;
+  }
+  clearTimeout(timeoutId);
 
   if (!response.ok) {
     const rawBody = await response.text().catch(() => '');

@@ -129,7 +129,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const msg = error instanceof Error ? error.message : '';
       // NO_SESSION = user is on VerifyEmail screen, no real Supabase session yet
       // AUTH_REDIRECT = session expired/invalid — both are expected, not bugs
-      if (msg !== 'NO_SESSION' && msg !== 'AUTH_REDIRECT') {
+      if (msg !== 'NO_SESSION' && msg !== 'AUTH_REDIRECT' && msg !== 'REQUEST_TIMEOUT') {
         console.error('Failed to fetch rooms:', error);
       }
     } finally {
