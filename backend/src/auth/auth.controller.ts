@@ -147,6 +147,12 @@ export class AuthController {
             throw new UnauthorizedException('Invalid Supabase token or user not found in backend');
         }
 
+        // Regenerate the session when a different user is logging in — prevents
+        // session fixation where User A's sid cookie gets reused for User B.
+        if (req.session?.userId && req.session.userId !== user.id) {
+            await new Promise<void>((resolve) => req.session.regenerate(() => resolve()));
+        }
+
         // Create the backend session
         if (req.session) {
             req.session.userId = user.id;

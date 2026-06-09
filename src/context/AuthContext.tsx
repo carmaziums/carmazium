@@ -155,8 +155,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     const signOut = async () => {
+        // Destroy the backend session first so the sid cookie is invalidated.
+        // Must happen before supabase.auth.signOut() while the token is still valid.
+        try {
+            await apiClient('/auth/logout', { method: 'POST' });
+        } catch {
+            // Best-effort — proceed with sign-out even if the backend call fails
+        }
         await supabase.auth.signOut()
         localStorage.removeItem('authToken')
+        bridgedTokenRef.current = null
         setUser(null)
         setProfile(null)
     }

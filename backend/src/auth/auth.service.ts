@@ -235,14 +235,23 @@ export class AuthService {
 
             const emailNorm = email.toLowerCase().trim();
 
-            // Look up the local user by Supabase ID first (most reliable), then email
-            let localUser = await this.prisma.user.findFirst({
-                    where: {
-                        OR: [
-                            { id: data.user.id },
-                            { email: emailNorm },
-                        ]
-                    },
+            // Look up the local user by Supabase ID first (exact match), then fall
+            // back to email. Using two separate findUnique calls avoids the
+            // findFirst + OR pattern which can return the wrong row when both
+            // conditions match different users (non-deterministic DB ordering).
+            let localUser = await this.prisma.user.findUnique({
+                where: { id: data.user.id },
+                include: {
+                    dealerProfile: true,
+                    contractorProfile: true,
+                    financePartnerProfile: true,
+                    insurancePartnerProfile: true,
+                },
+            });
+
+            if (!localUser) {
+                localUser = await this.prisma.user.findUnique({
+                    where: { email: emailNorm },
                     include: {
                         dealerProfile: true,
                         contractorProfile: true,
@@ -250,6 +259,7 @@ export class AuthService {
                         insurancePartnerProfile: true,
                     },
                 });
+            }
 
             const isEmailConfirmed = !!data.user.email_confirmed_at;
 
