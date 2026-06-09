@@ -26,11 +26,11 @@ ENV NODE_ENV=production
 ENV PORT=8080
 
 # Copy package files and install production deps only.
-# --ignore-scripts prevents postinstall (npx prisma generate) from running
-# here — the Prisma client is already generated in the builder stage and
-# copied below, so regenerating would fail (prisma CLI is a devDependency).
+# NODE_ENV=production is already set above — postinstall checks this and
+# skips `prisma generate` automatically (Prisma client is already built
+# in Stage 1 and copied below; prisma CLI is a devDependency anyway).
 COPY package*.json ./
-RUN npm ci --omit=dev --ignore-scripts
+RUN npm ci --omit=dev
 
 # Copy Prisma schema + generated client from builder
 COPY --from=builder /app/prisma ./prisma
