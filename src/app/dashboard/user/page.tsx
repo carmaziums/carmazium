@@ -69,13 +69,16 @@ import {
     withdrawOffer,
     respondToCounterOffer,
     getSellerPerformance,
-    formatPrice, 
-    type UnifiedDashboardData, 
+    getWatchlist,
+    removeFromWatchlist,
+    formatPrice,
+    type UnifiedDashboardData,
     type EarningsResponse,
     type SaleRecord,
     type Listing,
     type Offer,
-    type PerformanceStats
+    type PerformanceStats,
+    type WatchlistItem
 } from "@/lib/listingApi"
 import { createChatRoom, type ChatRoom } from "@/lib/chatApi"
 
@@ -314,27 +317,127 @@ function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | n
 // ─────────────────────────────────────────────────────────────────────────────
 
 function WatchlistTab() {
+    const [items, setItems] = React.useState<WatchlistItem[]>([])
+    const [loading, setLoading] = React.useState(true)
+    const [removing, setRemoving] = React.useState<string | null>(null)
+    const [page, setPage] = React.useState(1)
+    const [totalPages, setTotalPages] = React.useState(1)
+
+    const fetchWatchlist = React.useCallback(async () => {
+        try {
+            setLoading(true)
+            const res = await getWatchlist(page, 12)
+            setItems(res.data || [])
+            setTotalPages(res.pagination?.totalPages || 1)
+        } catch (err) {
+            console.error('Failed to fetch watchlist:', err)
+        } finally {
+            setLoading(false)
+        }
+    }, [page])
+
+    React.useEffect(() => { fetchWatchlist() }, [fetchWatchlist])
+
+    const handleRemove = async (listingId: string) => {
+        try {
+            setRemoving(listingId)
+            await removeFromWatchlist(listingId)
+            setItems(prev => prev.filter(i => i.listingId !== listingId))
+        } catch (err: any) {
+            alert('Failed to remove: ' + err.message)
+        } finally {
+            setRemoving(null)
+        }
+    }
+
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-black font-heading uppercase tracking-tight">My Watchlist</h2>
-            </div>
-            
-            <div className="glass-card p-20 text-center border-white/10 bg-white/5 rounded-2xl border-dashed">
-                <div className="w-20 h-20 bg-pink-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-pink-500/20">
-                    <Heart size={40} className="text-pink-400/50" />
-                </div>
-                <h3 className="text-xl font-black text-white uppercase mb-2">Your Watchlist is Empty</h3>
-                <p className="text-gray-400 text-sm max-w-md mx-auto mb-8">
-                    Save the vehicles you're interested in by clicking the heart icon on any listing. 
-                    We'll notify you if the price drops or if it's about to be sold.
-                </p>
-                <Link href="/buy">
-                    <Button className="shadow-neon px-8 h-12 font-black uppercase tracking-widest">
-                        Browse Listings
+                <Link href="/buy-cars">
+                    <Button variant="outline" size="sm" className="h-9 gap-2">
+                        Browse More
                     </Button>
                 </Link>
             </div>
+
+            {loading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="bg-white/5 rounded-2xl h-64 animate-pulse border border-white/10" />
+                    ))}
+                </div>
+            ) : items.length === 0 ? (
+                <div className="glass-card p-20 text-center border-white/10 bg-white/5 rounded-2xl border-dashed">
+                    <div className="w-20 h-20 bg-pink-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-pink-500/20">
+                        <Heart size={40} className="text-pink-400/50" />
+                    </div>
+                    <h3 className="text-xl font-black text-white uppercase mb-2">Your Watchlist is Empty</h3>
+                    <p className="text-gray-400 text-sm max-w-md mx-auto mb-8">
+                        Save the vehicles you're interested in by clicking the heart icon on any listing.
+                    </p>
+                    <Link href="/buy-cars">
+                        <Button className="shadow-neon px-8 h-12 font-black uppercase tracking-widest">
+                            Browse Listings
+                        </Button>
+                    </Link>
+                </div>
+            ) : (
+                <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {items.map((item) => (
+                            <div key={item.id} className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:border-primary/30 transition-all group">
+                                <div className="relative h-44 bg-slate-800">
+                                    {item.listing.images?.[0] ? (
+                                        <Image src={item.listing.images[0]} alt={item.listing.title} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-gray-600"><Car size={32} /></div>
+                                    )}
+                                    {item.listing.status !== 'ACTIVE' && (
+                                        <div className="absolute top-2 left-2 bg-red-500/90 text-white text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg">
+                                            {item.listing.status === 'SOLD' ? 'Sold' : 'Unavailable'}
+                                        </div>
+                                    )}
+                                    <button
+                                        onClick={() => handleRemove(item.listingId)}
+                                        disabled={removing === item.listingId}
+                                        className="absolute top-2 right-2 w-8 h-8 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center text-pink-400 hover:bg-red-500/80 hover:text-white transition-all"
+                                        title="Remove from watchlist"
+                                    >
+                                        {removing === item.listingId
+                                            ? <Loader2 size={14} className="animate-spin" />
+                                            : <Heart size={14} fill="currentColor" />}
+                                    </button>
+                                </div>
+                                <div className="p-4">
+                                    <p className="font-black text-white text-sm uppercase tracking-tight truncate group-hover:text-primary transition-colors">
+                                        {item.listing.title}
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-0.5">
+                                        {[item.listing.year, item.listing.mileage ? `${item.listing.mileage.toLocaleString()} mi` : null].filter(Boolean).join(' · ')}
+                                    </p>
+                                    <div className="flex items-center justify-between mt-3">
+                                        <span className="text-primary font-black text-base">{formatPrice(Number(item.listing.price))}</span>
+                                        <Link href={`/buy-cars/${item.listing.slug}`}>
+                                            <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                                                View <ChevronRight size={12} />
+                                            </Button>
+                                        </Link>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {totalPages > 1 && (
+                        <div className="flex justify-center gap-2">
+                            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Previous</Button>
+                            <span className="text-sm text-gray-400 flex items-center px-2">Page {page} of {totalPages}</span>
+                            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next</Button>
+                        </div>
+                    )}
+                </>
+            )}
         </div>
     )
 }
