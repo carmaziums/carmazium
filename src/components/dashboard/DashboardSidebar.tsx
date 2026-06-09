@@ -80,7 +80,20 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
         ? initialUserName
         : (profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "User"))
 
-    const displayType = initialUserType || profile?.role || (role.charAt(0).toUpperCase() + role.slice(1)) + " Account"
+    const formatRole = (raw: string | undefined): string => {
+        const key = raw?.toUpperCase().replace(/\s*ACCOUNT\s*/i, '').trim()
+        switch (key) {
+            case 'BUYER':
+            case 'SELLER': return 'Buyer/Seller Account'
+            case 'DEALER': return 'Dealer Account'
+            case 'ADMIN': return 'Admin Account'
+            case 'CONTRACTOR': return 'Service Provider'
+            case 'FINANCE_PARTNER': return 'Finance Partner'
+            case 'INSURANCE_PARTNER': return 'Insurance Partner'
+            default: return raw || (role.charAt(0).toUpperCase() + role.slice(1) + ' Account')
+        }
+    }
+    const displayType = formatRole(initialUserType || profile?.role)
 
     type LinkObj = { href: string; label: string; icon: React.ComponentType<{ size?: number; className?: string }>; badge?: number }
 
