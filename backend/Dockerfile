@@ -25,9 +25,12 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8080
 
-# Copy package files and install production deps only
+# Copy package files and install production deps only.
+# --ignore-scripts prevents postinstall (npx prisma generate) from running
+# here — the Prisma client is already generated in the builder stage and
+# copied below, so regenerating would fail (prisma CLI is a devDependency).
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --ignore-scripts
 
 # Copy Prisma schema + generated client from builder
 COPY --from=builder /app/prisma ./prisma
