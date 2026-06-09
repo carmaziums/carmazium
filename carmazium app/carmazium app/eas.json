@@ -1,0 +1,76 @@
+{
+  "cli": {
+    "version": ">= 13.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "APP_ENV": "development",
+        "EXPO_PUBLIC_API_URL": "https://carmazium-hjoh9w.fly.dev",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://bwtnzmevjlowwronylxm.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3dG56bWV2amxvd3dyb255bHhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkwNzU0ODYsImV4cCI6MjA2NDY1MTQ4Nn0.afLqKj5aWzeVulSBWbmVypA9Zs2Z3uCUkWgUJn7mE0o",
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_live_51SCdEd8rAGPNUbOXb0oOcVdPeNpLV4ktAiej1pc8zMxn2YKAcWZOtymIYBvMbmr6P36uzRVQTjEBQdUZdqmfXbC7004ZlbIrGS",
+        "EXPO_PUBLIC_SENTRY_DSN": "FILL_IN_SENTRY_DSN"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "channel": "preview",
+      "ios": {
+        "resourceClass": "m-medium",
+        "simulator": false
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "APP_ENV": "preview",
+        "EXPO_PUBLIC_API_URL": "https://carmazium-hjoh9w.fly.dev",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://bwtnzmevjlowwronylxm.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3dG56bWV2amxvd3dyb255bHhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkwNzU0ODYsImV4cCI6MjA2NDY1MTQ4Nn0.afLqKj5aWzeVulSBWbmVypA9Zs2Z3uCUkWgUJn7mE0o",
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_live_51SCdEd8rAGPNUbOXb0oOcVdPeNpLV4ktAiej1pc8zMxn2YKAcWZOtymIYBvMbmr6P36uzRVQTjEBQdUZdqmfXbC7004ZlbIrGS",
+        "EXPO_PUBLIC_SENTRY_DSN": "FILL_IN_SENTRY_DSN"
+      }
+    },
+    "production": {
+      "channel": "production",
+      "autoIncrement": true,
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "APP_ENV": "production",
+        "EXPO_PUBLIC_API_URL": "https://carmazium-hjoh9w.fly.dev",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://bwtnzmevjlowwronylxm.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3dG56bWV2amxvd3dyb255bHhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkwNzU0ODYsImV4cCI6MjA2NDY1MTQ4Nn0.afLqKj5aWzeVulSBWbmVypA9Zs2Z3uCUkWgUJn7mE0o",
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_live_51SCdEd8rAGPNUbOXb0oOcVdPeNpLV4ktAiej1pc8zMxn2YKAcWZOtymIYBvMbmr6P36uzRVQTjEBQdUZdqmfXbC7004ZlbIrGS",
+        "EXPO_PUBLIC_SENTRY_DSN": "FILL_IN_SENTRY_DSN"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "FILL_IN_YOUR_APPLE_ID_EMAIL",
+        "ascAppId": "FILL_IN_APP_STORE_CONNECT_APP_ID",
+        "appleTeamId": "FILL_IN_APPLE_TEAM_ID"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./google-service-account.json",
+        "track": "internal"
+      }
+    }
+  }
+}

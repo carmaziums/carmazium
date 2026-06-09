@@ -1,0 +1,90 @@
+{
+  "expo": {
+    "name": "Carmazium",
+    "slug": "carmazium",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0A0A0C",
+    "icon": "./assets/images/icon.png",
+    "scheme": "carmazium",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/FILL_IN_EAS_PROJECT_ID",
+      "enabled": true,
+      "fallbackToCacheTimeout": 0,
+      "checkAutomatically": "ON_LOAD"
+    },
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0A0C"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "uk.carmazium.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Camera access for vehicle photo uploads",
+        "NSPhotoLibraryUsageDescription": "Photo library access for vehicle photos",
+        "NSLocationWhenInUseUsageDescription": "Location access to show vehicles near you"
+      }
+    },
+    "android": {
+      "package": "uk.carmazium.app",
+      "minSdkVersion": 31,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#0A0A0C"
+      },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "carmazium"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
+    },
+    "web": {},
+    "plugins": [
+      [
+        "expo-font",
+        {
+          "fonts": []
+        }
+      ],
+      "expo-secure-store",
+      "expo-updates",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#DC1F26",
+          "sounds": [],
+          "androidMode": "default",
+          "androidCollapsedTitle": "Carmazium"
+        }
+      ],
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.uk.carmazium.app",
+          "enableGooglePay": true
+        }
+      ],
+      "@sentry/react-native"
+    ]
+  }
+}

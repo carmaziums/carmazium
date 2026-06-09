@@ -1,0 +1,1010 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  Dimensions, StatusBar, TextInput, ActivityIndicator,
+  Share, Alert,
+} from 'react-native';
+// expo-image: caching/recycling for the hero auction photo (large, full-bleed,
+// shown on a screen users keep open while live-bidding).
+import { Image } from 'expo-image';
+import { Ionicons } from '@/components/BrandIcon';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { MainStackParamList } from '../../navigation/MainStackNavigator';
+import { FontFamily } from '../../constants/typography';
+import { useAuthStore } from '../../store/authStore';
+import {
+  getAuction, placeBid,
+  type AuctionDetail, type BidBroadcastPayload, type AuctionEndPayload,
+} from '../../lib/auctionApi';
+import { createChatRoom } from '../../lib/chatApi';
+import { io } from 'socket.io-client';
+import { getAccessToken } from '../../lib/supabase';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type Props = NativeStackScreenProps<MainStackParamList, 'LiveAuctionDetailed'>;
+
+interface BidEntry {
+  id: string;
+  initials: string;
+  amount: number;
+  time: string;
+  isNew?: boolean;
+}
+
+const { width: SW } = Dimensions.get('window');
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function fmt(n: number) {
+  return `£${n.toLocaleString('en-GB')}`;
+}
+
+function fmtCountdown(totalSecs: number) {
+  if (totalSecs <= 0) return '00:00:00';
+  const h = Math.floor(totalSecs / 3600);
+  const m = Math.floor((totalSecs % 3600) / 60);
+  const s = totalSecs % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
+
+export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
+  const { listing } = route.params;
+  const listingObj = listing as any;
+  const insets = useSafeAreaInsets();
+  const { user: currentUser } = useAuthStore();
+
+  // ── Auction state ──
+  const [auction, setAuction] = useState<AuctionDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [connected, setConnected] = useState(false);
+
+  // ── Bid state ──
+  const [currentBid, setCurrentBid] = useState<number>(listingObj.currentBid ?? listingObj.startingBid ?? 0);
+  const [bidHistory, setBidHistory] = useState<BidEntry[]>([]);
+  const [isWinning, setIsWinning] = useState(false);
+  const [bidAmount, setBidAmount] = useState('');
+  const [bidLoading, setBidLoading] = useState(false);
+  const [bidError, setBidError] = useState<string | null>(null);
+
+  // ── Auction lifecycle ──
+  const [endedPayload, setEndedPayload] = useState<AuctionEndPayload | null>(null);
+  const [endTime, setEndTime] = useState<Date | null>(listingObj.endsAt ? new Date(listingObj.endsAt) : null);
+  const [startTime, setStartTime] = useState<Date | null>(null);
+  const [watchers, setWatchers] = useState<number>(listingObj.viewers ?? 0);
+  const [antiSnipeActive, setAntiSnipeActive] = useState(false);
+  const [antiSnipeToast, setAntiSnipeToast] = useState(false);
+  const [connectingChat, setConnectingChat] = useState(false);
+
+  // ── UI state ──
+  const [activeTab, setActiveTab] = useState<'details' | 'bids' | 'seller'>('details');
+  const [secondsLeft, setSecondsLeft] = useState(0);
+
+  const socketRef = useRef<any>(null);
+  const auctionId: string | null = listingObj.auctionId ?? null;
+
+  // ─── Load auction ─────────────────────────────────────────────────────────
+
+  const loadAuction = useCallback(() => {
+    if (!auctionId) { setLoading(false); return; }
+    setLoadError(null);
+    setLoading(true);
+    getAuction(auctionId)
+      .then(data => {
+        setAuction(data);
+        const et = new Date(data.endTime);
+        const st = new Date(data.startTime);
+        setEndTime(et);
+        setStartTime(st);
+        const bids = data.listing.bids ?? [];
+        const topBid = bids[0] ? Number(bids[0].amount) : Number(data.startingBid);
+        setCurrentBid(topBid);
+        setIsWinning(!!currentUser && bids[0]?.bidderId === currentUser.id);
+        setBidHistory(bids.map(b => ({
+          id: b.id,
+          initials: `${b.bidder?.firstName?.[0] ?? '?'}${b.bidder?.lastName?.[0] ?? ''}`.toUpperCase(),
+          amount: Number(b.amount),
+          time: new Date(b.timestamp).toLocaleTimeString('en-GB'),
+        })));
+        if (data.status === 'ENDED') {
+          const wb = bids[0] ? Number(bids[0].amount) : null;
+          setEndedPayload({
+            auctionId: data.id,
+            winnerId: data.winnerId ?? null,
+            winningBidAmount: data.winningBidAmount ? Number(data.winningBidAmount) : wb,
+            reserveMet: wb !== null && wb >= Number(data.reservePrice),
+          });
+        }
+        setAntiSnipeActive(et.getTime() - Date.now() <= 3 * 60 * 1000 && data.status === 'ACTIVE');
+      })
+      .catch(() => setLoadError('Failed to load auction. Please try again.'))
+      .finally(() => setLoading(false));
+  }, [auctionId, currentUser]);
+
+  useEffect(() => { loadAuction(); }, [loadAuction]);
+
+  // ─── Socket ───────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!auctionId) return;
+    let socket: any = null;
+
+    (async () => {
+      const token = await getAccessToken();
+      socket = io(`${API_URL}/auctions`, {
+        ...(token && { auth: { token } }),
+        transports: ['websocket'],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 2000,
+      });
+      socketRef.current = socket;
+
+      socket.on('connect', () => {
+        setConnected(true);
+        socket.emit('auction:join', { auctionId });
+      });
+      socket.on('disconnect', () => setConnected(false));
+      socket.on('reconnect', () => socket.emit('auction:join', { auctionId }));
+
+      socket.on('auction:viewers', (d: { count: number }) => setWatchers(d.count));
+
+      socket.on('bid:new', (payload: BidBroadcastPayload) => {
+        if (payload.auctionId !== auctionId) return;
+        setCurrentBid(payload.amount);
+        setIsWinning(!!currentUser && payload.bidderId === currentUser.id);
+        setBidHistory(prev => [
+          { id: payload.bidId, initials: payload.bidderInitials || '??', amount: payload.amount, time: new Date(payload.timestamp).toLocaleTimeString('en-GB'), isNew: true },
+          ...prev.map(b => ({ ...b, isNew: false })),
+        ]);
+        if (payload.newEndTime) {
+          const newEnd = new Date(payload.newEndTime);
+          setEndTime(newEnd);
+          setAuction(p => p ? { ...p, endTime: payload.newEndTime! } : p);
+          setAntiSnipeActive(true);
+          setAntiSnipeToast(true);
+          setTimeout(() => setAntiSnipeToast(false), 4000);
+        }
+        setBidError(null);
+      });
+
+      socket.on('auction:ended', (payload: AuctionEndPayload) => {
+        if (payload.auctionId !== auctionId) return;
+        setEndedPayload(payload);
+        setAuction(p => p ? { ...p, status: 'ENDED', winnerId: payload.winnerId, winningBidAmount: payload.winningBidAmount } : p);
+      });
+
+      socket.on('auction:started', (d: { auctionId: string }) => {
+        if (d.auctionId !== auctionId) return;
+        setAuction(p => p ? { ...p, status: 'ACTIVE' } : p);
+      });
+    })();
+
+    return () => { socket?.disconnect(); };
+  }, [auctionId, currentUser]);
+
+  // ─── Anti-snipe timer ─────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!endTime || auction?.status !== 'ACTIVE') return;
+    const ms = endTime.getTime() - Date.now() - 3 * 60 * 1000;
+    if (ms <= 0) { setAntiSnipeActive(true); return; }
+    const t = setTimeout(() => setAntiSnipeActive(true), ms);
+    return () => clearTimeout(t);
+  }, [endTime, auction?.status]);
+
+  // ─── Countdown ────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const tick = () => {
+      const target = auction?.status === 'ACTIVE' ? endTime : auction?.status === 'SCHEDULED' ? startTime : null;
+      if (target) setSecondsLeft(Math.max(0, Math.floor((target.getTime() - Date.now()) / 1000)));
+    };
+    tick();
+    const t = setInterval(tick, 1000);
+    return () => clearInterval(t);
+  }, [endTime, startTime, auction?.status]);
+
+  // ─── Bid handling ─────────────────────────────────────────────────────────
+
+  const handleBid = useCallback(async (amount: number) => {
+    if (!auction || !currentUser) return;
+    const parsed = Number(amount);
+    if (!parsed || parsed <= 0) { setBidError('Enter a valid bid amount.'); return; }
+    if (parsed <= currentBid) { setBidError(`Bid must exceed current bid of ${fmt(currentBid)}.`); return; }
+    const minNext = currentBid + Number(auction.minIncrement);
+    if (parsed < minNext) { setBidError(`Minimum next bid is ${fmt(minNext)}.`); return; }
+    setBidLoading(true);
+    setBidError(null);
+    try {
+      await placeBid(auction.listingId, parsed);
+      setBidAmount('');
+    } catch (err: any) {
+      setBidError(err.message ?? 'Failed to place bid.');
+    } finally {
+      setBidLoading(false);
+    }
+  }, [auction, currentUser, currentBid]);
+
+  // ─── Derived values ───────────────────────────────────────────────────────
+
+  const status = auction?.status ?? (listingObj.isLive ? 'ACTIVE' : 'SCHEDULED');
+  const isActive = status === 'ACTIVE';
+  const isScheduled = status === 'SCHEDULED';
+  const isEnded = status === 'ENDED';
+  const isCancelled = status === 'CANCELLED';
+  const isSeller = !!currentUser && auction?.listing?.sellerId === currentUser.id;
+  const userWon = isEnded && !!(endedPayload?.winnerId === currentUser?.id || (auction?.winnerId && auction.winnerId === currentUser?.id));
+  const reservePrice = auction ? Number(auction.reservePrice) : 0;
+  const reserveMet = currentBid > 0 && reservePrice > 0 && currentBid >= reservePrice;
+  const minIncrement = auction ? Number(auction.minIncrement) : 100;
+  const quickBids = [minIncrement, minIncrement * 2, minIncrement * 5, minIncrement * 10];
+  const image = String(
+    (auction && auction.listing && auction.listing.images && auction.listing.images[0])
+    || (listing.images && listing.images[0])
+    || ''
+  );
+  const title = String(
+    (auction && auction.listing && auction.listing.title)
+    || `${listing.year || ''} ${listing.make || ''} ${listing.model || ''}`.trim()
+    || 'Vehicle'
+  );
+  const _s = auction && auction.listing && auction.listing.seller ? auction.listing.seller : null;
+  const _company = String((_s && _s.dealerProfile && _s.dealerProfile.companyName) || '');
+  const _first = String((_s && _s.firstName) || '');
+  const _last = String((_s && _s.lastName) || '');
+  const sellerName = _company || (`${_first} ${_last}`.trim()) || 'Private Seller';
+  const sellerInitials = _company
+    ? _company.slice(0, 2).toUpperCase()
+    : `${_first[0] || '?'}${_last[0] || ''}`.toUpperCase();
+
+  // ─── Loading / Error ──────────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <View style={[s.container, { alignItems: 'center', justifyContent: 'center' }]}>
+        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <ActivityIndicator color="#DC1F26" size="large" />
+        <Text style={[s.muted, { marginTop: 12 }]}>Loading auction…</Text>
+      </View>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <View style={[s.container, { alignItems: 'center', justifyContent: 'center', gap: 12 }]}>
+        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <Ionicons name="hammer-outline" size={40} color="#404050" />
+        <Text style={s.muted}>{loadError}</Text>
+        <TouchableOpacity style={s.retryBtn} onPress={loadAuction}>
+          <Text style={s.retryBtnText}>Try Again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // ─── Render ───────────────────────────────────────────────────────────────
+
+  return (
+    <View style={s.container}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+
+      {/* Anti-snipe floating toast */}
+      {antiSnipeToast && (
+        <View style={[s.antiSnipeToast, { top: insets.top + 60 }]}>
+          <Ionicons name="flash" size={13} color="#000" />
+          <Text style={s.antiSnipeToastText}>Anti-Snipe — Auction extended 3 min!</Text>
+        </View>
+      )}
+
+      {/* Header */}
+      <View style={[s.header, { paddingTop: insets.top + 10 }]}>
+        <TouchableOpacity style={s.iconBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+          <Ionicons name="chevron-back" size={20} color="#FFF" />
+        </TouchableOpacity>
+
+        <View style={s.headerCenter}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+            {isActive && (
+              <View style={s.livePill}>
+                <View style={s.liveDot} />
+                <Text style={s.livePillText}>LIVE</Text>
+              </View>
+            )}
+            {isScheduled && (
+              <View style={[s.statusPill, { backgroundColor: 'rgba(59,130,246,0.2)', borderColor: 'rgba(59,130,246,0.3)' }]}>
+                <Text style={[s.statusPillText, { color: '#60A5FA' }]}>SCHEDULED</Text>
+              </View>
+            )}
+            {isEnded && (
+              <View style={[s.statusPill]}>
+                <Text style={s.statusPillText}>ENDED</Text>
+              </View>
+            )}
+            {isCancelled && (
+              <View style={[s.statusPill, { backgroundColor: 'rgba(220,31,38,0.1)', borderColor: 'rgba(220,31,38,0.2)' }]}>
+                <Text style={[s.statusPillText, { color: '#DC1F26' }]}>CANCELLED</Text>
+              </View>
+            )}
+            {antiSnipeActive && isActive && (
+              <View style={[s.statusPill, { backgroundColor: 'rgba(245,158,11,0.2)', borderColor: 'rgba(245,158,11,0.3)' }]}>
+                <Ionicons name="flash" size={8} color="#F59E0B" />
+                <Text style={[s.statusPillText, { color: '#F59E0B' }]}>ANTI-SNIPE</Text>
+              </View>
+            )}
+          </View>
+          <Text style={s.headerTitle} numberOfLines={1}>{title}</Text>
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={s.watcherChip}>
+            <Ionicons name="eye-outline" size={11} color="#DC1F26" />
+            <Text style={s.watcherText}>{watchers}</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={[s.connDot, { backgroundColor: connected ? '#10B981' : '#DC1F26' }]} />
+          </View>
+          <TouchableOpacity
+            style={s.iconBtn}
+            onPress={() => Share.share({ message: `Check out this auction: ${title}` })}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="share-social-outline" size={17} color="#FFF" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Status banners */}
+      {isCancelled && (
+        <View style={[s.banner, s.bannerRed]}>
+          <Ionicons name="ban-outline" size={14} color="#DC1F26" />
+          <Text style={[s.bannerText, { color: '#DC1F26' }]}>This auction has been cancelled by the seller.</Text>
+        </View>
+      )}
+      {isSeller && !isCancelled && (
+        <View style={[s.banner, s.bannerBlue]}>
+          <Ionicons name="information-circle-outline" size={14} color="#60A5FA" />
+          <Text style={[s.bannerText, { color: '#93C5FD' }]}>
+            <Text style={{ fontFamily: FontFamily.bold }}>This is your auction. </Text>
+            {isActive ? 'Bids appear in real time.' : isScheduled ? 'Will start automatically.' : 'Your auction has ended.'}
+          </Text>
+        </View>
+      )}
+      {isScheduled && !isSeller && startTime && (
+        <View style={[s.banner, s.bannerBlue]}>
+          <Ionicons name="calendar-outline" size={14} color="#60A5FA" />
+          <Text style={[s.bannerText, { color: '#93C5FD' }]}>
+            This auction hasn't started yet — opens automatically at{' '}
+            <Text style={{ fontFamily: FontFamily.bold }}>{fmtDate(startTime.toISOString())}</Text>.
+          </Text>
+        </View>
+      )}
+      {!connected && isActive && (
+        <View style={[s.banner, s.bannerAmber]}>
+          <Ionicons name="wifi-outline" size={14} color="#F59E0B" />
+          <Text style={[s.bannerText, { color: '#FCD34D' }]}>Connection lost — bids may not update in real time.</Text>
+        </View>
+      )}
+      {isEnded && (
+        <View style={[s.banner, userWon ? s.bannerGreen : s.bannerDark]}>
+          {userWon ? (
+            <>
+              <Ionicons name="trophy" size={16} color="#10B981" />
+              <View style={{ flex: 1 }}>
+                <Text style={[s.bannerText, { color: '#10B981', fontFamily: FontFamily.bold }]}>You won this auction!</Text>
+                <Text style={[s.bannerText, { color: '#6EE7B7', fontSize: 11 }]}>
+                  Winning bid: {fmt(Number(endedPayload?.winningBidAmount ?? 0))}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={s.bannerBtn}
+                disabled={connectingChat}
+                onPress={async () => {
+                  const sellerId = auction?.listing?.sellerId;
+                  if (!sellerId) return;
+                  setConnectingChat(true);
+                  try {
+                    const room = await createChatRoom(sellerId, auction?.listingId);
+                    navigation.navigate('Chat' as any, { roomId: room.id });
+                  } catch {
+                    navigation.navigate('Messages' as any);
+                  } finally {
+                    setConnectingChat(false);
+                  }
+                }}
+              >
+                {connectingChat
+                  ? <ActivityIndicator size="small" color="#FFF" />
+                  : <Text style={s.bannerBtnText}>Message Seller</Text>
+                }
+              </TouchableOpacity>
+            </>
+          ) : endedPayload?.reserveMet === false ? (
+            <>
+              <Ionicons name="alert-circle-outline" size={14} color="#F59E0B" />
+              <Text style={[s.bannerText, { color: '#A0A0AB' }]}>
+                Auction ended — reserve price was not met. No sale completed.
+              </Text>
+            </>
+          ) : endedPayload?.winnerId ? (
+            <>
+              <Ionicons name="hammer-outline" size={14} color="#606070" />
+              <Text style={[s.bannerText, { color: '#A0A0AB' }]}>
+                Auction ended. Winning bid: <Text style={{ color: '#FFFFFF', fontFamily: FontFamily.bold }}>{fmt(Number(endedPayload?.winningBidAmount ?? 0))}</Text>
+              </Text>
+            </>
+          ) : (
+            <>
+              <Ionicons name="hammer-outline" size={14} color="#606070" />
+              <Text style={[s.bannerText, { color: '#A0A0AB' }]}>Auction ended with no bids placed.</Text>
+            </>
+          )}
+        </View>
+      )}
+
+      {/* Main scroll */}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+
+        {/* Hero image */}
+        <View style={s.heroWrap}>
+          <Image source={{ uri: image || 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=900' }} style={s.heroImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+          <LinearGradient colors={['transparent', 'rgba(10,10,12,0.9)']} style={[StyleSheet.absoluteFillObject, { top: '40%' }]} />
+
+          {/* Image overlays */}
+          <View style={s.heroTopLeft}>
+            {isActive && (
+              <View style={s.livePill}>
+                <View style={s.liveDot} />
+                <Text style={s.livePillText}>LIVE</Text>
+              </View>
+            )}
+            {isScheduled && (
+              <View style={[s.livePill, { backgroundColor: 'rgba(59,130,246,0.9)' }]}>
+                <Text style={s.livePillText}>UPCOMING</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={s.heroTopRight}>
+            {isActive && isWinning && !isSeller && (
+              <View style={s.winningBadge}>
+                <Ionicons name="checkmark-circle" size={11} color="#10B981" />
+                <Text style={s.winningBadgeText}>WINNING</Text>
+              </View>
+            )}
+            {isActive && !isWinning && currentUser && !isSeller && bidHistory.length > 0 && (
+              <View style={s.outbidBadge}>
+                <Ionicons name="alert-circle" size={11} color="#DC1F26" />
+                <Text style={s.outbidBadgeText}>OUTBID</Text>
+              </View>
+            )}
+            {isActive && endTime && (
+              <View style={s.timerBox}>
+                <Text style={s.timerBoxLabel}>ENDS IN</Text>
+                <Text style={s.timerBoxValue}>{fmtCountdown(secondsLeft)}</Text>
+              </View>
+            )}
+            {isScheduled && startTime && (
+              <View style={[s.timerBox, { borderColor: 'rgba(59,130,246,0.3)' }]}>
+                <Text style={[s.timerBoxLabel, { color: '#93C5FD' }]}>STARTS IN</Text>
+                <Text style={[s.timerBoxValue, { color: '#60A5FA' }]}>{fmtCountdown(secondsLeft)}</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={s.heroBottom}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.heroBidLabel}>{isEnded ? 'FINAL BID' : isScheduled ? 'STARTING BID' : 'CURRENT BID'}</Text>
+              <Text style={s.heroBid}>{fmt(currentBid)}</Text>
+              {reserveMet && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                  <Ionicons name="shield-checkmark" size={11} color="#10B981" />
+                  <Text style={{ fontFamily: FontFamily.bold, fontSize: 10, color: '#10B981' }}>Reserve Met</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
+
+        {/* Anti-snipe alert */}
+        {antiSnipeActive && isActive && (
+          <View style={s.antiSnipeBar}>
+            <Ionicons name="flash" size={13} color="#F59E0B" />
+            <Text style={s.antiSnipeBarText}>
+              Anti-Snipe Active — any bid in the final 3 minutes extends the auction by 3 minutes
+            </Text>
+          </View>
+        )}
+
+        {/* Tabs */}
+        <View style={s.tabs}>
+          {(['details', 'bids', 'seller'] as const).map(tab => (
+            <TouchableOpacity
+              key={tab}
+              style={[s.tab, activeTab === tab && s.tabActive]}
+              onPress={() => setActiveTab(tab)}
+              activeOpacity={0.7}
+            >
+              <Text style={[s.tabText, activeTab === tab && s.tabTextActive]}>
+                {tab === 'bids' ? `BIDS (${bidHistory.length})` : tab.toUpperCase()}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* ── Tab: DETAILS ── */}
+        {activeTab === 'details' && (
+          <View style={{ gap: 16 }}>
+            {/* 4 hero stats */}
+            <View style={s.statsRow}>
+              {[
+                { l: 'YEAR', v: auction?.listing?.year ?? listing.year },
+                { l: 'MILEAGE', v: auction?.listing?.mileage ? `${Number(auction.listing.mileage).toLocaleString()} mi` : `${(listing.mileage ?? 0).toLocaleString()} mi` },
+                { l: 'FUEL', v: (auction?.listing?.fuelType ?? listing.fuelType ?? '—').replace(/_/g, ' ') },
+                { l: 'GEARBOX', v: (auction?.listing?.transmission ?? listing.transmission ?? '—').replace(/_/g, ' ') },
+              ].map(stat => (
+                <View key={stat.l} style={s.statBox}>
+                  <Text style={s.statLabel}>{stat.l}</Text>
+                  <Text style={s.statValue}>{String(stat.v ?? '—')}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Description */}
+            {(auction?.listing?.description ?? listing.description) ? (
+              <View style={s.card}>
+                <Text style={s.cardSectionTitle}>Description</Text>
+                <Text style={s.descText}>{auction?.listing?.description ?? listing.description}</Text>
+              </View>
+            ) : null}
+
+            {/* Write-off warning */}
+            {(auction?.listing as any)?.writeOffCategory && (auction?.listing as any).writeOffCategory !== 'NONE' && (
+              <View style={[s.banner, s.bannerAmber]}>
+                <Ionicons name="warning-outline" size={14} color="#F59E0B" />
+                <Text style={[s.bannerText, { color: '#FCD34D' }]}>
+                  <Text style={{ fontFamily: FontFamily.bold }}>{(auction?.listing as any).writeOffCategory.replace(/_/g, ' ')} Write-off</Text> — Review condition carefully before bidding.
+                </Text>
+              </View>
+            )}
+
+            {/* Specifications */}
+            <View style={s.card}>
+              <Text style={s.cardSectionTitle}>Specifications</Text>
+              <View style={s.specsSection}>
+                <Text style={s.specGroup}>Overview</Text>
+                {[
+                  ['Make', auction?.listing?.make ?? listing.make],
+                  ['Model', auction?.listing?.model ?? listing.model],
+                  ['Year', auction?.listing?.year ?? listing.year],
+                  ['Body Type', (auction?.listing as any)?.bodyType?.replace(/_/g, ' ')],
+                  ['Colour', (auction?.listing as any)?.color ?? listing.colour],
+                  ['Mileage', auction?.listing?.mileage ? `${Number(auction.listing.mileage).toLocaleString()} mi` : null],
+                  ['Registration', (auction?.listing as any)?.vrm],
+                  ['Reg. Date', (auction?.listing as any)?.monthOfFirstRegistration],
+                  ['Location', auction?.listing?.location ?? listing.location],
+                ].filter(([, v]) => v).map(([k, v]) => (
+                  <View key={k as string} style={s.specRow}>
+                    <Text style={s.specKey}>{k}</Text>
+                    <Text style={s.specVal}>{String(v)}</Text>
+                  </View>
+                ))}
+              </View>
+              <View style={[s.specsSection, { marginTop: 16 }]}>
+                <Text style={s.specGroup}>Performance</Text>
+                {[
+                  ['Fuel Type', (auction?.listing?.fuelType ?? listing.fuelType)?.replace(/_/g, ' ')],
+                  ['Transmission', (auction?.listing?.transmission ?? listing.transmission)?.replace(/_/g, ' ')],
+                  ['Engine', (auction?.listing as any)?.engineSize ? `${((auction!.listing as any).engineSize / 1000).toFixed(1)}L (${(auction!.listing as any).engineSize}cc)` : null],
+                  ['Power', (auction?.listing as any)?.bhp ? `${(auction!.listing as any).bhp} bhp` : (listing.bhp ? `${listing.bhp} bhp` : null)],
+                  ['Doors', (auction?.listing as any)?.doors],
+                  ['Seats', (auction?.listing as any)?.seats],
+                ].filter(([, v]) => v).map(([k, v]) => (
+                  <View key={k as string} style={s.specRow}>
+                    <Text style={s.specKey}>{k}</Text>
+                    <Text style={s.specVal}>{String(v)}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* MOT & Tax */}
+              {((auction?.listing as any)?.motStatus || (auction?.listing as any)?.taxStatus) && (
+                <View style={[s.specsSection, { marginTop: 16 }]}>
+                  <Text style={s.specGroup}>MOT & Tax</Text>
+                  {[
+                    ['MOT Status', (auction?.listing as any)?.motStatus],
+                    ['MOT Expiry', (auction?.listing as any)?.motExpiryDate],
+                    ['Tax Status', (auction?.listing as any)?.taxStatus],
+                    ['Tax Due', (auction?.listing as any)?.taxDueDate],
+                  ].filter(([, v]) => v).map(([k, v]) => (
+                    <View key={k as string} style={s.specRow}>
+                      <Text style={s.specKey}>{k}</Text>
+                      <Text style={[s.specVal, (v === 'Valid' || v === 'Taxed') && { color: '#10B981' }]}>{String(v)}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            {/* Features */}
+            {Array.isArray((auction?.listing as any)?.features) && (auction!.listing as any).features.length > 0 && (
+              <View style={s.card}>
+                <Text style={s.cardSectionTitle}>Features & Options</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {((auction!.listing as any).features as string[]).map((f: string) => (
+                    <View key={f} style={s.featureChip}>
+                      <Ionicons name="checkmark-circle" size={10} color="#10B981" />
+                      <Text style={s.featureChipText}>{f}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Auction details */}
+            {auction && (
+              <View style={[s.card, { borderColor: 'rgba(220,31,38,0.2)', backgroundColor: 'rgba(220,31,38,0.04)' }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                  <Ionicons name="hammer-outline" size={13} color="#DC1F26" />
+                  <Text style={[s.cardSectionTitle, { color: '#DC1F26', marginBottom: 0 }]}>Auction Details</Text>
+                </View>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 0 }}>
+                  {[
+                    ['Starting Bid', fmt(Number(auction.startingBid))],
+                    ['Reserve Price', fmt(Number(auction.reservePrice))],
+                    ['Min Increment', fmt(Number(auction.minIncrement))],
+                    ['Starts', fmtDate(auction.startTime)],
+                    ['Ends', fmtDate(auction.endTime)],
+                  ].map(([k, v]) => (
+                    <View key={k} style={{ width: '50%', paddingBottom: 10, paddingRight: 8 }}>
+                      <Text style={s.specKey}>{k}</Text>
+                      <Text style={[s.specVal, { fontFamily: FontFamily.bold, color: '#FFFFFF' }]}>{v}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Trust note */}
+            <View style={[s.banner, s.bannerDark]}>
+              <Ionicons name="information-circle-outline" size={12} color="#606070" />
+              <Text style={[s.bannerText, { color: '#606070', fontSize: 10 }]}>
+                All transactions are arranged directly between buyer and seller. A chat opens automatically when the auction ends with the winner.
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* ── Tab: BIDS ── */}
+        {activeTab === 'bids' && (
+          <View style={s.card}>
+            {bidHistory.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: 40, gap: 8 }}>
+                <Ionicons name="hammer-outline" size={28} color="#404050" />
+                <Text style={s.muted}>No bids yet — be the first.</Text>
+              </View>
+            ) : (
+              <>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' }}>
+                  <Text style={s.specKey}>BIDDER</Text>
+                  <Text style={s.specKey}>AMOUNT</Text>
+                </View>
+                {bidHistory.map((bid, i) => (
+                  <View key={bid.id} style={[s.bidRow, i === bidHistory.length - 1 && { borderBottomWidth: 0 }]}>
+                    <View style={[s.bidAvatar, i === 0 && { backgroundColor: 'rgba(220,31,38,0.2)', borderColor: '#DC1F26' }]}>
+                      <Text style={[s.bidAvatarText, i === 0 && { color: '#DC1F26' }]}>{bid.initials}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.bidInitials}>{bid.initials}</Text>
+                      {i === 0 && (
+                        <View style={s.leaderChip}><Text style={s.leaderChipText}>LEADER</Text></View>
+                      )}
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={s.bidAmt}>{fmt(bid.amount)}</Text>
+                      <Text style={s.bidTime}>{bid.time}</Text>
+                    </View>
+                  </View>
+                ))}
+              </>
+            )}
+          </View>
+        )}
+
+        {/* ── Tab: SELLER ── */}
+        {activeTab === 'seller' && (
+          <View style={s.card}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+              <View style={s.sellerAvatar}>
+                <Text style={s.sellerAvatarText}>{sellerInitials}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.sellerName}>{sellerName}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                  <Ionicons name="shield-checkmark" size={11} color="#10B981" />
+                  <Text style={{ fontFamily: FontFamily.bold, fontSize: 11, color: '#10B981' }}>Verified Seller</Text>
+                </View>
+                <Text style={[s.muted, { marginTop: 8, lineHeight: 18 }]}>
+                  Win the auction and a direct chat with this seller opens automatically to arrange the deal.
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Spacer for sticky bid console */}
+        <View style={{ height: 180 }} />
+      </ScrollView>
+
+      {/* ── Sticky Bid Console ── */}
+      <View style={[s.bidConsole, { paddingBottom: insets.bottom || 16 }]}>
+        {isCancelled ? (
+          <View style={s.bidStateBox}>
+            <Ionicons name="ban-outline" size={20} color="#606070" />
+            <Text style={s.bidStateText}>Auction Cancelled</Text>
+          </View>
+        ) : isEnded ? (
+          <View style={s.bidStateBox}>
+            <Ionicons name="hammer-outline" size={20} color="#606070" />
+            <Text style={s.bidStateText}>{userWon ? 'You Won! 🏆' : 'Auction Ended'}</Text>
+            {userWon && (
+              <TouchableOpacity
+                style={[s.bidBtn, { backgroundColor: '#10B981', marginTop: 8 }]}
+                disabled={connectingChat}
+                onPress={async () => {
+                  const sellerId = auction?.listing?.sellerId;
+                  if (!sellerId) return;
+                  setConnectingChat(true);
+                  try {
+                    const room = await createChatRoom(sellerId, auction?.listingId);
+                    navigation.navigate('Chat' as any, { roomId: room.id });
+                  } catch {
+                    navigation.navigate('Messages' as any);
+                  } finally { setConnectingChat(false); }
+                }}
+              >
+                {connectingChat
+                  ? <ActivityIndicator color="#FFF" size="small" />
+                  : <>
+                      <Ionicons name="chatbubble-outline" size={15} color="#FFF" />
+                      <Text style={s.bidBtnText}>Message Seller</Text>
+                    </>
+                }
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : isScheduled ? (
+          <View style={s.bidStateBox}>
+            <Ionicons name="calendar-outline" size={20} color="#3B82F6" />
+            <Text style={[s.bidStateText, { color: '#60A5FA' }]}>Bidding Opens Soon</Text>
+            {startTime && <Text style={s.muted}>{fmtDate(startTime.toISOString())}</Text>}
+          </View>
+        ) : isSeller ? (
+          <View style={s.bidStateBox}>
+            <Ionicons name="information-circle-outline" size={20} color="#3B82F6" />
+            <Text style={[s.bidStateText, { color: '#60A5FA' }]}>This is your auction</Text>
+            <Text style={[s.muted, { textAlign: 'center' }]}>You cannot bid on your own listing.</Text>
+          </View>
+        ) : !currentUser ? (
+          <View style={s.bidStateBox}>
+            <Text style={s.muted}>Sign in to place bids in live auctions.</Text>
+            <TouchableOpacity
+              style={[s.bidBtn, { marginTop: 8 }]}
+              onPress={() => navigation.navigate('Login' as any)}
+              activeOpacity={0.8}
+            >
+              <Text style={s.bidBtnText}>Sign In to Bid</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={{ gap: 10 }}>
+            {/* Current bid info */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <View>
+                <Text style={s.specKey}>CURRENT BID</Text>
+                <Text style={s.currentBidVal}>{fmt(currentBid)}</Text>
+              </View>
+              <Text style={s.minNextBid}>Min next: <Text style={{ color: '#FFF', fontFamily: FontFamily.bold }}>{fmt(currentBid + minIncrement)}</Text></Text>
+            </View>
+
+            {/* Quick bid buttons */}
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {quickBids.map(inc => (
+                <TouchableOpacity
+                  key={inc}
+                  style={s.quickBidBtn}
+                  onPress={() => handleBid(currentBid + inc)}
+                  disabled={bidLoading}
+                  activeOpacity={0.7}
+                >
+                  <Text style={s.quickBidLabel}>+{inc >= 1000 ? `£${inc / 1000}k` : `£${inc}`}</Text>
+                  <Text style={s.quickBidAmt}>{fmt(currentBid + inc)}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Custom + bid button */}
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={s.customBidWrap}>
+                <Text style={s.customBidCurrency}>£</Text>
+                <TextInput
+                  style={s.customBidInput}
+                  value={bidAmount}
+                  onChangeText={t => { setBidAmount(t); setBidError(null); }}
+                  placeholder="Custom amount"
+                  placeholderTextColor="#404050"
+                  keyboardType="number-pad"
+                  onSubmitEditing={() => bidAmount && handleBid(Number(bidAmount))}
+                />
+              </View>
+              <TouchableOpacity
+                style={[s.bidBtn, bidLoading && { opacity: 0.6 }]}
+                onPress={() => handleBid(Number(bidAmount) || currentBid + minIncrement)}
+                disabled={bidLoading}
+                activeOpacity={0.8}
+              >
+                {bidLoading
+                  ? <ActivityIndicator color="#FFF" size="small" />
+                  : <>
+                      <Ionicons name="hammer-outline" size={15} color="#FFF" />
+                      <Text style={s.bidBtnText}>BID</Text>
+                    </>
+                }
+              </TouchableOpacity>
+            </View>
+
+            {bidError && (
+              <View style={[s.banner, s.bannerRed, { marginTop: -4 }]}>
+                <Ionicons name="alert-circle-outline" size={12} color="#DC1F26" />
+                <Text style={[s.bannerText, { color: '#FCA5A5' }]}>{bidError}</Text>
+              </View>
+            )}
+
+            {/* Buyer fee notice */}
+            <View style={s.feeNotice}>
+              <View>
+                <Text style={s.feeNoticeLabel}>BUYER FEE</Text>
+                <Text style={s.feeNoticeHint}>One-time fee if you win</Text>
+              </View>
+              <Text style={s.feeNoticeAmt}>£125</Text>
+            </View>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+};
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#0A0A0C' },
+  scroll: { paddingHorizontal: 14, paddingTop: 8 },
+  muted: { fontFamily: FontFamily.regular, fontSize: 12, color: '#606070' },
+
+  // Header
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingBottom: 10, backgroundColor: '#0A0A0C', zIndex: 10 },
+  iconBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' },
+  headerCenter: { flex: 1, alignItems: 'center', paddingHorizontal: 8 },
+  headerTitle: { fontFamily: FontFamily.bold, fontSize: 13, color: '#FFFFFF', maxWidth: SW - 160 },
+  watcherChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  watcherText: { fontFamily: FontFamily.bold, fontSize: 11, color: '#FFFFFF' },
+  connDot: { width: 8, height: 8, borderRadius: 4 },
+
+  // Status pills
+  livePill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#DC1F26', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  liveDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#FFF' },
+  livePillText: { fontFamily: FontFamily.bold, fontSize: 8, color: '#FFF', letterSpacing: 1 },
+  statusPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(255,255,255,0.06)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  statusPillText: { fontFamily: FontFamily.bold, fontSize: 8, color: '#A0A0AB', letterSpacing: 0.8 },
+
+  // Banners
+  banner: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingHorizontal: 14, paddingVertical: 10 },
+  bannerRed: { backgroundColor: 'rgba(220,31,38,0.08)', borderBottomWidth: 1, borderBottomColor: 'rgba(220,31,38,0.15)' },
+  bannerBlue: { backgroundColor: 'rgba(59,130,246,0.08)', borderBottomWidth: 1, borderBottomColor: 'rgba(59,130,246,0.15)' },
+  bannerGreen: { backgroundColor: 'rgba(16,185,129,0.08)', borderBottomWidth: 1, borderBottomColor: 'rgba(16,185,129,0.15)' },
+  bannerAmber: { backgroundColor: 'rgba(245,158,11,0.08)', borderBottomWidth: 1, borderBottomColor: 'rgba(245,158,11,0.15)' },
+  bannerDark: { backgroundColor: 'rgba(255,255,255,0.02)', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
+  bannerText: { fontFamily: FontFamily.regular, fontSize: 12, lineHeight: 18, flex: 1 },
+  bannerBtn: { backgroundColor: '#DC1F26', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, alignSelf: 'center' },
+  bannerBtnText: { fontFamily: FontFamily.bold, fontSize: 11, color: '#FFF' },
+
+  // Anti-snipe
+  antiSnipeToast: { position: 'absolute', alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F59E0B', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 24, zIndex: 100, shadowColor: '#F59E0B', shadowOpacity: 0.5, shadowRadius: 12, elevation: 20 },
+  antiSnipeToastText: { fontFamily: FontFamily.bold, fontSize: 12, color: '#000' },
+  antiSnipeBar: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(245,158,11,0.08)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.2)', borderRadius: 10, padding: 10, marginBottom: 12 },
+  antiSnipeBarText: { fontFamily: FontFamily.bold, fontSize: 11, color: '#F59E0B', flex: 1 },
+
+  // Hero image
+  heroWrap: { height: 240, borderRadius: 16, overflow: 'hidden', marginBottom: 14, position: 'relative', backgroundColor: '#111115' },
+  heroImg: { width: '100%', height: '100%' },
+  heroTopLeft: { position: 'absolute', top: 12, left: 12, flexDirection: 'row', gap: 6, zIndex: 2 },
+  heroTopRight: { position: 'absolute', top: 12, right: 12, gap: 6, alignItems: 'flex-end', zIndex: 2 },
+  heroBottom: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 14, zIndex: 2 },
+  heroBidLabel: { fontFamily: FontFamily.bold, fontSize: 9, color: 'rgba(255,255,255,0.5)', letterSpacing: 1.5, marginBottom: 4 },
+  heroBid: { fontFamily: FontFamily.extraBold, fontSize: 32, color: '#FFFFFF' },
+  winningBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(16,185,129,0.2)', borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  winningBadgeText: { fontFamily: FontFamily.bold, fontSize: 9, color: '#10B981' },
+  outbidBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(220,31,38,0.2)', borderWidth: 1, borderColor: 'rgba(220,31,38,0.3)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  outbidBadgeText: { fontFamily: FontFamily.bold, fontSize: 9, color: '#DC1F26' },
+  timerBox: { backgroundColor: 'rgba(10,10,12,0.8)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' },
+  timerBoxLabel: { fontFamily: FontFamily.bold, fontSize: 7, color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, marginBottom: 2 },
+  timerBoxValue: { fontFamily: FontFamily.extraBold, fontSize: 16, color: '#FFFFFF' },
+
+  // Tabs
+  tabs: { flexDirection: 'row', backgroundColor: '#111116', borderRadius: 10, marginBottom: 14, padding: 3 },
+  tab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 8 },
+  tabActive: { backgroundColor: '#DC1F26' },
+  tabText: { fontFamily: FontFamily.bold, fontSize: 10, color: '#606070', letterSpacing: 0.8 },
+  tabTextActive: { color: '#FFFFFF' },
+
+  // Card
+  card: { backgroundColor: '#111116', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', padding: 14, marginBottom: 0 },
+  cardSectionTitle: { fontFamily: FontFamily.bold, fontSize: 11, color: '#FFFFFF', letterSpacing: 1, marginBottom: 12, borderLeftWidth: 2, borderLeftColor: '#DC1F26', paddingLeft: 8 },
+
+  // Stats row
+  statsRow: { flexDirection: 'row', gap: 8, marginBottom: 0 },
+  statBox: { flex: 1, backgroundColor: '#111116', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', padding: 10, alignItems: 'center' },
+  statLabel: { fontFamily: FontFamily.bold, fontSize: 8, color: '#606070', letterSpacing: 1, marginBottom: 4 },
+  statValue: { fontFamily: FontFamily.bold, fontSize: 12, color: '#FFFFFF', textAlign: 'center' },
+
+  // Specs
+  specsSection: {},
+  specGroup: { fontFamily: FontFamily.bold, fontSize: 9, color: '#606070', letterSpacing: 1.5, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)', marginBottom: 8 },
+  specRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 },
+  specKey: { fontFamily: FontFamily.regular, fontSize: 11, color: '#606070', flexShrink: 0 },
+  specVal: { fontFamily: FontFamily.medium, fontSize: 11, color: '#C0C0CB', textAlign: 'right', flex: 1, marginLeft: 12 },
+  descText: { fontFamily: FontFamily.regular, fontSize: 13, color: '#A0A0AB', lineHeight: 20 },
+
+  // Features
+  featureChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(16,185,129,0.08)', borderWidth: 1, borderColor: 'rgba(16,185,129,0.2)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20 },
+  featureChipText: { fontFamily: FontFamily.medium, fontSize: 10, color: '#6EE7B7' },
+
+  // Bids tab
+  bidRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)', gap: 10 },
+  bidAvatar: { width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' },
+  bidAvatarText: { fontFamily: FontFamily.bold, fontSize: 9, color: '#A0A0AB' },
+  bidInitials: { fontFamily: FontFamily.bold, fontSize: 12, color: '#FFFFFF' },
+  bidAmt: { fontFamily: FontFamily.bold, fontSize: 14, color: '#FFFFFF' },
+  bidTime: { fontFamily: FontFamily.regular, fontSize: 9, color: '#606070' },
+  leaderChip: { backgroundColor: 'rgba(220,31,38,0.2)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, alignSelf: 'flex-start', marginTop: 2 },
+  leaderChipText: { fontFamily: FontFamily.bold, fontSize: 7, color: '#DC1F26', letterSpacing: 0.8 },
+
+  // Seller tab
+  sellerAvatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(220,31,38,0.1)', borderWidth: 1, borderColor: 'rgba(220,31,38,0.2)', alignItems: 'center', justifyContent: 'center' },
+  sellerAvatarText: { fontFamily: FontFamily.bold, fontSize: 16, color: '#DC1F26' },
+  sellerName: { fontFamily: FontFamily.bold, fontSize: 15, color: '#FFFFFF' },
+
+  // Bid console
+  bidConsole: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#0D0D11', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)', paddingHorizontal: 14, paddingTop: 12 },
+  bidStateBox: { alignItems: 'center', paddingVertical: 12, gap: 6 },
+  bidStateText: { fontFamily: FontFamily.bold, fontSize: 14, color: '#FFFFFF' },
+  currentBidVal: { fontFamily: FontFamily.extraBold, fontSize: 22, color: '#FFFFFF' },
+  minNextBid: { fontFamily: FontFamily.regular, fontSize: 11, color: '#606070' },
+  quickBidBtn: { flex: 1, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', paddingVertical: 8, alignItems: 'center', gap: 2 },
+  quickBidLabel: { fontFamily: FontFamily.bold, fontSize: 9, color: '#606070' },
+  quickBidAmt: { fontFamily: FontFamily.bold, fontSize: 12, color: '#FFFFFF' },
+  customBidWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', paddingHorizontal: 12 },
+  customBidCurrency: { fontFamily: FontFamily.bold, fontSize: 14, color: '#606070', marginRight: 4 },
+  customBidInput: { flex: 1, fontFamily: FontFamily.bold, fontSize: 16, color: '#FFFFFF', paddingVertical: 10 },
+  bidBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#DC1F26', borderRadius: 10, paddingHorizontal: 20, paddingVertical: 12 },
+  bidBtnText: { fontFamily: FontFamily.bold, fontSize: 13, color: '#FFFFFF', letterSpacing: 0.8 },
+  feeNotice: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(245,158,11,0.06)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.15)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
+  feeNoticeLabel: { fontFamily: FontFamily.bold, fontSize: 9, color: '#F59E0B', letterSpacing: 1 },
+  feeNoticeHint: { fontFamily: FontFamily.regular, fontSize: 10, color: '#606070', marginTop: 1 },
+  feeNoticeAmt: { fontFamily: FontFamily.extraBold, fontSize: 20, color: '#F59E0B' },
+
+  // Error/retry
+  retryBtn: { backgroundColor: '#DC1F26', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10 },
+  retryBtnText: { fontFamily: FontFamily.bold, fontSize: 13, color: '#FFF' },
+});
