@@ -799,6 +799,9 @@ export interface PerformanceStats {
         views: number
         date: string
     }>
+    avgResponseHours: number | null
+    sellerRating: number | null
+    totalReviews: number
 }
 
 /**

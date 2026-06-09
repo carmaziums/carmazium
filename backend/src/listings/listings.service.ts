@@ -1084,7 +1084,7 @@ export class ListingsService {
         const sellerId = await this.resolveOwnerId(userId);
         const baseWhere = { sellerId, deletedAt: null };
 
-        const [totalListings, soldCount, viewsAggregate, recentListings, salesAggregate] = await Promise.all([
+        const [totalListings, soldCount, viewsAggregate, recentListings, salesAggregate, sellerProfile, reviewAggregate, respondedOffers] = await Promise.all([
             this.prisma.listing.count({ where: baseWhere }),
             this.prisma.listing.count({ where: { ...baseWhere, status: 'SOLD' } }),
             this.prisma.listing.aggregate({
@@ -1101,12 +1101,47 @@ export class ListingsService {
                 where: { sellerId },
                 _sum: { soldPrice: true },
             }),
+            this.prisma.sellerProfile.findUnique({
+                where: { userId: sellerId },
+                select: { reliabilityScore: true, avgResponseHours: true },
+            }),
+            this.prisma.sellerReview.aggregate({
+                where: { sellerProfile: { userId: sellerId } },
+                _avg: { rating: true },
+                _count: { id: true },
+            }),
+            // Offers where the seller actually responded — used to compute avg response time
+            this.prisma.offer.findMany({
+                where: {
+                    listing: { sellerId, deletedAt: null },
+                    status: { in: ['ACCEPTED', 'REJECTED', 'COUNTERED'] },
+                },
+                select: { createdAt: true, updatedAt: true },
+                orderBy: { updatedAt: 'desc' },
+                take: 100,
+            }),
         ]);
 
         const totalViews = viewsAggregate._sum.viewCount || 0;
         const conversionRate = totalViews > 0
             ? ((soldCount / totalViews) * 100).toFixed(1)
             : '0.0';
+
+        // Prefer stored avgResponseHours; calculate live from offer latency as fallback
+        let avgResponseHours: number | null = sellerProfile?.avgResponseHours ?? null;
+        if (avgResponseHours === null && respondedOffers.length > 0) {
+            const totalMs = respondedOffers.reduce(
+                (sum, o) => sum + (o.updatedAt.getTime() - o.createdAt.getTime()), 0
+            );
+            avgResponseHours = parseFloat(
+                (totalMs / respondedOffers.length / (1000 * 60 * 60)).toFixed(1)
+            );
+        }
+
+        const sellerRating = reviewAggregate._avg.rating != null
+            ? parseFloat(reviewAggregate._avg.rating.toFixed(1))
+            : null;
+        const totalReviews = reviewAggregate._count.id ?? 0;
 
         return {
             totalRevenue: Number(salesAggregate._sum.soldPrice || 0),
@@ -1119,6 +1154,9 @@ export class ListingsService {
                 views: l.viewCount,
                 date: l.createdAt,
             })),
+            avgResponseHours,
+            sellerRating,
+            totalReviews,
         };
     }
 

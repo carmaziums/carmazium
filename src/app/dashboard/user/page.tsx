@@ -1120,8 +1120,22 @@ function StatsTab() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <MetricCard label="Conversion Rate" value={`${performance?.conversionRate || 0}%`} icon={Target} color="text-amber-400" bg="bg-amber-500/10" border="border-amber-500/20" loading={loading} />
                 <MetricCard label="Active Listings" value={performance?.totalListings || 0} icon={Car} color="text-primary" bg="bg-primary/10" border="border-primary/20" loading={loading} />
-                <MetricCard label="Avg Response Time" value="4.2h" icon={Clock} color="text-blue-400" bg="bg-blue-500/10" border="border-blue-500/20" loading={loading} />
-                <MetricCard label="Seller Rating" value="4.9/5" icon={ShieldCheck} color="text-emerald-400" bg="bg-emerald-500/10" border="border-emerald-500/20" loading={loading} />
+                <MetricCard
+                    label="Avg Response Time"
+                    value={performance?.avgResponseHours != null
+                        ? performance.avgResponseHours < 1
+                            ? `${Math.round(performance.avgResponseHours * 60)}m`
+                            : `${performance.avgResponseHours}h`
+                        : '—'}
+                    icon={Clock} color="text-blue-400" bg="bg-blue-500/10" border="border-blue-500/20" loading={loading}
+                />
+                <MetricCard
+                    label={`Seller Rating${performance?.totalReviews ? ` (${performance.totalReviews})` : ''}`}
+                    value={performance?.sellerRating != null
+                        ? `${performance.sellerRating}/5`
+                        : performance?.totalReviews === 0 ? 'No reviews' : '—'}
+                    icon={ShieldCheck} color="text-emerald-400" bg="bg-emerald-500/10" border="border-emerald-500/20" loading={loading}
+                />
             </div>
 
             <div className="glass-card p-8 border border-white/5 bg-white/5 rounded-2xl">
