@@ -41,6 +41,7 @@ const navigationRef = React.createRef<NavigationContainerRef<any>>();
 
 export default function App() {
   const initializeAuth = useAuthStore((state) => state.initializeAuth);
+  const reinitializeAuth = useAuthStore.getState().initializeAuth;
 
   // ── OTA Updates ────────────────────────────────────────────────
   useEffect(() => {
@@ -118,17 +119,26 @@ export default function App() {
       const refreshToken = params.get('refresh_token');
       const type = params.get('type');
 
-      if (accessToken && refreshToken && type === 'recovery') {
+      if (accessToken && refreshToken) {
         try {
           await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
           });
-          setTimeout(() => {
-            (navigationRef.current as any)?.navigate('Auth', { screen: 'ResetPassword' });
-          }, 300);
+
+          if (type === 'recovery') {
+            // Password reset link
+            setTimeout(() => {
+              (navigationRef.current as any)?.navigate('Auth', { screen: 'ResetPassword' });
+            }, 300);
+          } else {
+            // Email verification link (type === 'signup' or 'email_change') —
+            // re-run initializeAuth so the store transitions from
+            // pendingEmailVerification → isAuthenticated properly.
+            await reinitializeAuth();
+          }
         } catch (err) {
-          console.warn('Failed to set session from reset link:', err);
+          console.warn('Failed to set session from email link:', err);
         }
       }
     };

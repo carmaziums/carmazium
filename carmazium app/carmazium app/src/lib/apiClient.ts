@@ -36,11 +36,23 @@ function normalizeErrorMessage(body: any, status: number, statusText: string): s
   return statusText || `HTTP ${status}`;
 }
 
+// Endpoints that are always public (no Bearer token required)
+const PUBLIC_ENDPOINTS = ['/auth/supabase-session', '/users/sync', '/auth/logout'];
+
 export async function apiClient<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
   const token = await getAccessToken();
+
+  // If there's no session and this isn't a public endpoint, bail out early
+  // rather than firing an unauthenticated request that will return 401.
+  // This prevents ChatContext from triggering AUTH_REDIRECT when a newly
+  // signed-up user is still on the VerifyEmail screen.
+  const isPublic = PUBLIC_ENDPOINTS.some((p) => endpoint.startsWith(p));
+  if (!token && !isPublic) {
+    throw new Error('NO_SESSION');
+  }
 
   const headers = {
     'Content-Type': 'application/json',

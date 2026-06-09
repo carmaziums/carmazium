@@ -34,6 +34,7 @@ interface UserProfileResponse {
 interface AuthState {
   isAuthenticated: boolean;
   hasCompletedOnboarding: boolean;
+  pendingEmailVerification: boolean;
   user: User | null;
   isLoading: boolean;
   role: 'buyer' | 'seller' | 'dealer';
@@ -50,6 +51,7 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
   hasCompletedOnboarding: false,
+  pendingEmailVerification: false,
   user: null,
   isLoading: false,
   role: 'buyer' as 'buyer' | 'seller' | 'dealer',
@@ -84,6 +86,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           const mappedRole = profile.role === 'DEALER' ? 'dealer' : profile.role === 'SELLER' ? 'seller' : 'buyer';
           set({
             isAuthenticated: true,
+            pendingEmailVerification: false,
             role: mappedRole,
             user: {
               id: profile.id,
@@ -107,7 +110,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           set({ hasCompletedOnboarding });
         }
       } else {
-        set({ isAuthenticated: false, user: null });
+        set({ isAuthenticated: false, pendingEmailVerification: false, user: null });
       }
     } catch (err) {
       console.warn('Failed to initialize auth state:', err);
@@ -143,7 +146,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const response = await apiClient<UserProfileResponse>('/users/me');
       if (response.success && response.data) {
         const profile = response.data;
-        const mappedRole = (profile.role === 'DEALER') ? 'dealer' : 'buyer';
+        const mappedRole = profile.role === 'DEALER' ? 'dealer' : profile.role === 'SELLER' ? 'seller' : 'buyer';
         set({
           isAuthenticated: true,
           role: mappedRole,
@@ -255,14 +258,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           });
         }
       } else {
-        // If email verification is mandatory and session is not immediately returned
+        // Email verification is required — Supabase won't return a session
+        // until the user clicks the link. Do NOT set isAuthenticated: true
+        // here; doing so causes ChatContext to fire API calls with no token,
+        // producing 401 → AUTH_REDIRECT errors in the dev overlay.
+        // Instead, route the user to the VerifyEmail screen and wait.
         set({
-          isAuthenticated: true,
+          isAuthenticated: false,
+          pendingEmailVerification: true,
           hasCompletedOnboarding: false,
-          // Defensively pin to 'buyer': new accounts are always BUYER (see role
-          // comment above), and this also wipes out any stale 'dealer' value
-          // left over from the local preview toggle so the freshly-created
-          // account never appears as a dealer before its first full profile sync.
           role: 'buyer',
           user: {
             id: user.id,
@@ -302,6 +306,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } finally {
       set({
         isAuthenticated: false,
+        pendingEmailVerification: false,
         user: null,
         role: 'buyer',
         hasCompletedOnboarding: false,
