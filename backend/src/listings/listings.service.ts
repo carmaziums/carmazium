@@ -305,7 +305,7 @@ export class ListingsService {
             fuelType, fuelTypes, transmission, transmissions, bodyType,
             color, minDoors, minSeats,
             minEngine, maxEngine, maxCo2,
-            condition, ulezCompliant, euroStandard,
+            conditions, ulezCompliant, euroStandard,
             vehicleType,
             minBhp, maxBhp,
             sellerType, location, listingType,
@@ -347,7 +347,7 @@ export class ListingsService {
         if (transmissions?.length) where.transmission = { in: transmissions };
         else if (transmission) where.transmission = transmission;
         if (bodyType) where.bodyType = bodyType;
-        if (condition) where.condition = condition;
+        if (conditions?.length) where.condition = { in: conditions };
         if (euroStandard) where.euroStandard = euroStandard;
         if (vehicleType) where.vehicleType = vehicleType;
 

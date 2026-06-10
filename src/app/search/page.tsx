@@ -99,7 +99,7 @@ interface FilterState {
     minEngine: string
     maxEngine: string
     maxCo2: string
-    condition: VehicleConditionValue | ''
+    conditions: VehicleConditionValue[]
     ulezCompliant: 'yes' | 'no' | ''
     euroStandard: EuroStandardValue | ''
     vehicleType: string
@@ -121,7 +121,7 @@ const INITIAL_FILTERS: FilterState = {
     bodyType: '', color: '',
     minDoors: '', minSeats: '',
     minEngine: '', maxEngine: '', maxCo2: '',
-    condition: '', ulezCompliant: '', euroStandard: '',
+    conditions: [], ulezCompliant: '', euroStandard: '',
     vehicleType: 'CAR',
     minBhp: '', maxBhp: '',
     sellerType: '', location: '', listingType: '',
@@ -243,7 +243,8 @@ function SearchPageContent() {
             bodyType: p('bodyType'), color: p('color'),
             minDoors: p('minDoors'), minSeats: p('minSeats'),
             minEngine: p('minEngine'), maxEngine: p('maxEngine'), maxCo2: p('maxCo2'),
-            condition: (p('condition') as VehicleConditionValue) || '',
+            conditions: (searchParams.get('conditions')?.split(',').filter(Boolean) as VehicleConditionValue[])
+                || (p('condition') ? [p('condition') as VehicleConditionValue] : []),
             ulezCompliant: (p('ulezCompliant') as 'yes' | 'no') || '',
             euroStandard: (p('euroStandard') as EuroStandardValue) || '',
             vehicleType: p('vehicleType') || 'CAR',
@@ -308,7 +309,7 @@ function SearchPageContent() {
         if (appliedFilters.minSeats) count++
         if (appliedFilters.minEngine || appliedFilters.maxEngine) count++
         if (appliedFilters.maxCo2) count++
-        if (appliedFilters.condition) count++
+        if (appliedFilters.conditions.length) count++
         if (appliedFilters.ulezCompliant) count++
         if (appliedFilters.euroStandard) count++
         if (appliedFilters.vehicleType && appliedFilters.vehicleType !== 'CAR') count++
@@ -342,7 +343,7 @@ function SearchPageContent() {
         if (state.minEngine) f.minEngine = parseInt(state.minEngine)
         if (state.maxEngine) f.maxEngine = parseInt(state.maxEngine)
         if (state.maxCo2) f.maxCo2 = parseInt(state.maxCo2)
-        if (state.condition) f.condition = state.condition
+        if (state.conditions.length) f.conditions = state.conditions
         if (state.ulezCompliant) f.ulezCompliant = state.ulezCompliant === 'yes'
         if (state.euroStandard) f.euroStandard = state.euroStandard
         if (state.vehicleType) f.vehicleType = state.vehicleType
@@ -734,13 +735,19 @@ function SearchPageContent() {
                             <FilterSection title="Condition">
                                 <div className="space-y-1">
                                     {CONDITION_OPTIONS.map(opt => {
-                                        const isActive = filters.condition === opt.value
+                                        const isActive = filters.conditions.includes(opt.value)
                                         const isCat = opt.value.startsWith('CAT')
                                         return (
                                             <button key={opt.value} type="button"
-                                                onClick={() => set('condition', filters.condition === opt.value ? '' : opt.value)}
-                                                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all cursor-pointer ${isActive ? 'bg-primary/15 text-primary border border-primary/30' : isCat ? 'text-amber-500/70 hover:bg-amber-500/10 border border-transparent' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200 border border-transparent'}`}
+                                                onClick={() => set('conditions', isActive
+                                                    ? filters.conditions.filter(c => c !== opt.value)
+                                                    : [...filters.conditions, opt.value]
+                                                )}
+                                                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all cursor-pointer flex items-center gap-2 ${isActive ? 'bg-primary/15 text-primary border border-primary/30' : isCat ? 'text-amber-500/70 hover:bg-amber-500/10 border border-transparent' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200 border border-transparent'}`}
                                             >
+                                                <span className={`w-4 h-4 shrink-0 rounded border flex items-center justify-center ${isActive ? 'bg-primary border-primary' : 'border-white/20'}`}>
+                                                    {isActive && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                                                </span>
                                                 {opt.label}
                                             </button>
                                         )
@@ -930,7 +937,10 @@ function SearchPageContent() {
                             {appliedFilters.fuelTypes.map(f => <FilterTag key={f} label={f} onRemove={() => clearFilter({ fuelTypes: appliedFilters.fuelTypes.filter(x => x !== f) })} />)}
                             {appliedFilters.transmissions.map(t => <FilterTag key={t} label={t} onRemove={() => clearFilter({ transmissions: appliedFilters.transmissions.filter(x => x !== t) })} />)}
                             {appliedFilters.color && <FilterTag label={`Colour: ${appliedFilters.color}`} onRemove={() => clearFilter({ color: '' })} />}
-                            {appliedFilters.condition && <FilterTag label={`Condition: ${appliedFilters.condition}`} onRemove={() => clearFilter({ condition: '' })} />}
+                            {appliedFilters.conditions.map(c => {
+                                const label = CONDITION_OPTIONS.find(o => o.value === c)?.label ?? c
+                                return <FilterTag key={c} label={`Condition: ${label}`} onRemove={() => clearFilter({ conditions: appliedFilters.conditions.filter(x => x !== c) })} />
+                            })}
                             {appliedFilters.ulezCompliant && <FilterTag label={appliedFilters.ulezCompliant === 'yes' ? 'ULEZ Compliant' : 'Non-ULEZ'} onRemove={() => clearFilter({ ulezCompliant: '' })} />}
                             {appliedFilters.euroStandard && <FilterTag label={appliedFilters.euroStandard.replace('_', ' ')} onRemove={() => clearFilter({ euroStandard: '' })} />}
                             {(appliedFilters.minBhp || appliedFilters.maxBhp) && <FilterTag label={`BHP: ${appliedFilters.minBhp || '0'}–${appliedFilters.maxBhp || '∞'}`} onRemove={() => clearFilter({ minBhp: '', maxBhp: '' })} />}

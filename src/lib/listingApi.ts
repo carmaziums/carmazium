@@ -244,6 +244,7 @@ export interface ListingFilters {
     maxEngine?: number
     maxCo2?: number
     condition?: VehicleConditionValue
+    conditions?: VehicleConditionValue[]
     ulezCompliant?: boolean
     euroStandard?: EuroStandardValue
     vehicleType?: string
@@ -283,7 +284,8 @@ export async function getListings(filters?: ListingFilters): Promise<ListingsRes
         if (filters.color) params.append('color', filters.color)
         if (filters.minDoors !== undefined) params.append('minDoors', filters.minDoors.toString())
         if (filters.minSeats !== undefined) params.append('minSeats', filters.minSeats.toString())
-        if (filters.condition) params.append('condition', filters.condition)
+        if (filters.conditions?.length) params.append('conditions', filters.conditions.join(','))
+        else if (filters.condition) params.append('condition', filters.condition)
         if (filters.ulezCompliant !== undefined) params.append('ulezCompliant', filters.ulezCompliant.toString())
         if (filters.euroStandard) params.append('euroStandard', filters.euroStandard)
         if (filters.vehicleType) params.append('vehicleType', filters.vehicleType)

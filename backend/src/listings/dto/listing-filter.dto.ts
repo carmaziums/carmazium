@@ -148,10 +148,12 @@ export class ListingFilterDto {
     maxCo2?: number;
 
     // ─── Condition & Compliance ───────────────────────────────────────────────
-    @ApiPropertyOptional({ description: 'Filter by vehicle condition', enum: VehicleCondition })
-    @IsEnum(VehicleCondition)
+    @ApiPropertyOptional({ description: 'Filter by one or more vehicle conditions', enum: VehicleCondition, isArray: true })
+    @Transform(({ value }) => (Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : undefined))
+    @IsArray()
+    @IsEnum(VehicleCondition, { each: true })
     @IsOptional()
-    condition?: VehicleCondition;
+    conditions?: VehicleCondition[];
 
     @ApiPropertyOptional({ description: 'Filter by ULEZ / CAZ compliance', example: true })
     @Transform(({ value }) => value === 'true' ? true : value === 'false' ? false : value)
