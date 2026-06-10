@@ -1053,8 +1053,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             setDvlaLoading(true); setDvlaError(null); setDvlaSuccess(false)
                                             try {
                                                 const r = await dvlaLookup(formData.vrm)
-                                                // Core vehicle fields
-                                                if (r.make) set("make", r.make)
+                                                // Core vehicle fields — normalize make/model to canonical casing
+                                                if (r.make) {
+                                                    const canonical = CAR_MAKES.find(m => m.toLowerCase() === r.make!.toLowerCase())
+                                                    set("make", canonical ?? r.make)
+                                                }
                                                 if (r.model) set("model", r.model)
                                                 
                                                 if (r.primaryColour) set("primaryColour", r.primaryColour)
@@ -1236,14 +1239,17 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-gray-400">Make *</label>
                                     {(() => {
-                                        const isCustomMake = formData.make !== "" && !CAR_MAKES.includes(formData.make)
-                                        const selectValue = CAR_MAKES.includes(formData.make) ? formData.make : (isCustomMake ? "__other__" : "")
+                                        // Case-insensitive match — DVLA returns uppercase (e.g. "TOYOTA")
+                                        const matchedMake = CAR_MAKES.find(m => m.toLowerCase() === formData.make.trim().toLowerCase())
+                                        const isCustomMake = formData.make.trim() !== "" && !matchedMake
+                                        const selectValue = matchedMake ?? (isCustomMake ? "__other__" : "")
                                         return (
                                             <>
                                                 <select
                                                     value={selectValue}
                                                     onChange={(e) => {
                                                         if (e.target.value === "__other__") { set("make", ""); set("model", ""); set("variant", "") }
+                                                        // Store canonical casing from CAR_MAKES
                                                         else { set("make", e.target.value); set("model", ""); set("variant", "") }
                                                     }}
                                                     className="w-full h-10 rounded-md border bg-slate-900/50 px-3 text-base md:text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary border-white/10"
@@ -1252,7 +1258,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                     {CAR_MAKES.map(m => <option key={m} value={m}>{m}</option>)}
                                                     <option value="__other__">Other (type below)</option>
                                                 </select>
-                                                {(selectValue === "__other__" || isCustomMake) && (
+                                                {isCustomMake && (
                                                     <Input placeholder="e.g. BMW" value={formData.make}
                                                         onChange={(e) => { set("make", e.target.value); set("model", ""); set("variant", "") }} className={inputCls} />
                                                 )}
@@ -1263,6 +1269,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-gray-400">Model *</label>
                                     {(() => {
+                                        // getModelsForMake is already case-insensitive
                                         const models = getModelsForMake(formData.make)
                                         if (models.length === 0) {
                                             return (
@@ -1270,8 +1277,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                     onChange={(e) => { set("model", e.target.value); set("variant", "") }} className={inputCls} />
                                             )
                                         }
-                                        const isCustomModel = formData.model !== "" && !models.includes(formData.model)
-                                        const selectValue = models.includes(formData.model) ? formData.model : (isCustomModel ? "__other__" : "")
+                                        const matchedModel = models.find(m => m.toLowerCase() === formData.model.trim().toLowerCase())
+                                        const isCustomModel = formData.model.trim() !== "" && !matchedModel
+                                        const selectValue = matchedModel ?? (isCustomModel ? "__other__" : "")
                                         return (
                                             <>
                                                 <select
@@ -1286,7 +1294,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                     {models.map(m => <option key={m} value={m}>{m}</option>)}
                                                     <option value="__other__">Other (type below)</option>
                                                 </select>
-                                                {(selectValue === "__other__" || isCustomModel) && (
+                                                {isCustomModel && (
                                                     <Input placeholder="e.g. M4 Competition" value={formData.model}
                                                         onChange={(e) => { set("model", e.target.value); set("variant", "") }} className={inputCls} />
                                                 )}
@@ -1317,8 +1325,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                         onChange={(e) => set("variant", e.target.value)} className={inputCls} />
                                                 )
                                             }
-                                            const isCustom = formData.variant !== "" && !knownVariants.includes(formData.variant)
-                                            const selectValue = knownVariants.includes(formData.variant) ? formData.variant : (isCustom ? "__other__" : "")
+                                            const matchedVariant = knownVariants.find(v => v.toLowerCase() === formData.variant.trim().toLowerCase())
+                                            const isCustom = formData.variant.trim() !== "" && !matchedVariant
+                                            const selectValue = matchedVariant ?? (isCustom ? "__other__" : "")
                                             return (
                                                 <>
                                                     <select
@@ -1333,7 +1342,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                         {knownVariants.map(v => <option key={v} value={v}>{v}</option>)}
                                                         <option value="__other__">Other (type below)</option>
                                                     </select>
-                                                    {(selectValue === "__other__" || isCustom) && (
+                                                    {isCustom && (
                                                         <Input placeholder="Type your variant / trim" value={formData.variant}
                                                             onChange={(e) => set("variant", e.target.value)} className={inputCls} />
                                                     )}
