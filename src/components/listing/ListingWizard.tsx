@@ -237,7 +237,7 @@ function HpiBaitSection({ isUnlocked, onUnlock }: { isUnlocked: boolean, onUnloc
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }) {
-    const { user, loading: authLoading } = useAuth()
+    const { user, profile, loading: authLoading } = useAuth()
     const router = useRouter()
 
     const [currentStep, setCurrentStep] = React.useState(1)
@@ -402,6 +402,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
     const isAuthenticated = !!user
     const isEmailVerified = !!user?.email_confirmed_at
+    const isVerifiedDealer = profile?.role === 'DEALER' && !!profile?.dealerProfile?.isVerified
 
     const set = <K extends keyof FormData>(key: K, val: FormData[K]) =>
         setFormData(prev => ({ ...prev, [key]: val }))
@@ -917,33 +918,48 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 onClick={() => {
                                     if (!isAuthenticated) { setShowLoginModal(true); return }
                                     if (!isEmailVerified) { router.push("/auth/onboarding"); return }
+                                    if (!isVerifiedDealer) return
                                     set("listingType", "AUCTION")
                                     set("badgeTier", "FREE")
                                     setSellingMethod("list")
                                     set("status", "ACTIVE")
                                 }}
-                                className="relative cursor-pointer group"
+                                className={`relative group ${isVerifiedDealer ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
                             >
-                                <div className="relative dealer-glass-card p-8 border-orange-500/20 hover:border-orange-500/50 transition-all duration-300 overflow-hidden hover:shadow-[0_10px_40px_rgba(249,115,22,0.15)] rounded-2xl bg-[#0A0A0C]/80 h-full flex flex-col">
+                                <div className={`relative dealer-glass-card p-8 transition-all duration-300 overflow-hidden rounded-2xl bg-[#0A0A0C]/80 h-full flex flex-col ${isVerifiedDealer ? 'border-orange-500/20 hover:border-orange-500/50 hover:shadow-[0_10px_40px_rgba(249,115,22,0.15)]' : 'border-white/5'}`}>
                                     <div className="absolute top-0 right-0 w-40 h-40 bg-orange-500/10 rounded-full blur-3xl -z-10 group-hover:bg-orange-500/20 transition-colors" />
                                     <div className="absolute top-3 right-3 z-10">
-                                        <span className="flex items-center gap-1 bg-orange-500/20 border border-orange-500/40 text-orange-400 text-[10px] font-bold px-2.5 py-1 rounded-full">
-                                            <span className="w-1.5 h-1.5 bg-orange-400 rounded-full animate-pulse" /> LIVE BIDDING
-                                        </span>
+                                        {isVerifiedDealer ? (
+                                            <span className="flex items-center gap-1 bg-orange-500/20 border border-orange-500/40 text-orange-400 text-[10px] font-bold px-2.5 py-1 rounded-full">
+                                                <span className="w-1.5 h-1.5 bg-orange-400 rounded-full animate-pulse" /> LIVE BIDDING
+                                            </span>
+                                        ) : (
+                                            <span className="flex items-center gap-1 bg-slate-800 border border-white/10 text-gray-500 text-[10px] font-bold px-2.5 py-1 rounded-full">
+                                                <Lock size={9} /> VERIFIED DEALERS ONLY
+                                            </span>
+                                        )}
                                     </div>
-                                    <div className="w-16 h-16 bg-gradient-to-br from-orange-900/40 to-slate-900 rounded-2xl flex items-center justify-center mb-6 border border-orange-500/20 group-hover:border-orange-500/50 group-hover:shadow-[0_0_30px_rgba(249,115,22,0.2)] transition-all">
-                                        <Gavel className="text-orange-400 w-8 h-8" />
+                                    <div className={`w-16 h-16 bg-gradient-to-br rounded-2xl flex items-center justify-center mb-6 border transition-all ${isVerifiedDealer ? 'from-orange-900/40 to-slate-900 border-orange-500/20 group-hover:border-orange-500/50 group-hover:shadow-[0_0_30px_rgba(249,115,22,0.2)]' : 'from-slate-800 to-slate-900 border-white/5'}`}>
+                                        <Gavel className={`w-8 h-8 ${isVerifiedDealer ? 'text-orange-400' : 'text-gray-600'}`} />
                                     </div>
                                     <h2 className="text-2xl font-bold mb-2 font-heading">Auction</h2>
-                                    <p className="text-gray-400 mb-6 text-sm">Let buyers bid in real-time. 6-hour live auctions with anti-snipe protection.</p>
+                                    <p className="text-gray-400 mb-4 text-sm">Let buyers bid in real-time. Live auctions with anti-snipe protection.</p>
+                                    {/* Verified dealer notice */}
+                                    <div className={`flex items-start gap-2 mb-5 px-3 py-2.5 rounded-lg border text-xs ${isVerifiedDealer ? 'bg-orange-500/5 border-orange-500/20 text-orange-300/80' : 'bg-amber-500/5 border-amber-500/20 text-amber-400/80'}`}>
+                                        <Lock size={12} className="shrink-0 mt-0.5" />
+                                        <span>Only <strong>verified dealers</strong> can list vehicles for auction.</span>
+                                    </div>
                                     <ul className="space-y-2.5 mb-6 text-gray-300 flex-1">
-                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Real-time live bidding</li>
-                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Anti-snipe protection</li>
-                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Set your reserve price</li>
-                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Connect with winner via chat</li>
+                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className={`shrink-0 ${isVerifiedDealer ? 'text-orange-400' : 'text-gray-600'}`} /> Real-time live bidding</li>
+                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className={`shrink-0 ${isVerifiedDealer ? 'text-orange-400' : 'text-gray-600'}`} /> Anti-snipe protection</li>
+                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className={`shrink-0 ${isVerifiedDealer ? 'text-orange-400' : 'text-gray-600'}`} /> Set your reserve price</li>
+                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className={`shrink-0 ${isVerifiedDealer ? 'text-orange-400' : 'text-gray-600'}`} /> Connect with winner via chat</li>
                                     </ul>
-                                    <Button className="w-full py-4 bg-orange-600 hover:bg-orange-500 border-0 group-hover:shadow-[0_0_20px_rgba(249,115,22,0.4)]">
-                                        List for Auction <Gavel className="ml-2 h-4 w-4" />
+                                    <Button
+                                        disabled={!isVerifiedDealer}
+                                        className={`w-full py-4 border-0 ${isVerifiedDealer ? 'bg-orange-600 hover:bg-orange-500 group-hover:shadow-[0_0_20px_rgba(249,115,22,0.4)]' : 'bg-slate-700 text-gray-500 cursor-not-allowed'}`}
+                                    >
+                                        {isVerifiedDealer ? <><span>List for Auction</span><Gavel className="ml-2 h-4 w-4" /></> : <><Lock className="mr-2 h-4 w-4" /><span>Verified Dealers Only</span></>}
                                     </Button>
                                 </div>
                             </div>
