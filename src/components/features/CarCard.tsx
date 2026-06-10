@@ -44,14 +44,24 @@ interface CarCardProps {
     isFeatured?: boolean
     badgeTier?: string | null
     status?: string | null
+    bannerLabel?: string | null
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
+const BANNER_COLORS: Record<string, string> = {
+    'Special Offer':       'bg-red-600',
+    'Limited Time Offer':  'bg-rose-600',
+    "Manager's Special":   'bg-amber-600',
+    'Below Market Value':  'bg-emerald-600',
+    'Weekend Deal':        'bg-violet-600',
+}
+const DEFAULT_BANNER_COLOR = 'bg-primary'
+
 export function CarCard({
     title, price, priceMin, priceMax, image, href = "#",
     year, mileage, fuelType, bodyType, location, distanceMi,
-    sellerId, sellerScore, isFeatured = false, badgeTier, status
+    sellerId, sellerScore, isFeatured = false, badgeTier, status, bannerLabel
 }: CarCardProps) {
     const ref = useRef<HTMLDivElement>(null)
 
@@ -150,6 +160,17 @@ export function CarCard({
                         />
                     </Link>
                 </motion.div>
+
+                {/* Banner Label Ribbon */}
+                {bannerLabel && status !== 'SOLD' && (
+                    <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-none">
+                        <div className={`w-full px-3 py-1.5 flex items-center justify-center gap-1.5 ${BANNER_COLORS[bannerLabel] ?? DEFAULT_BANNER_COLOR}`}>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-white drop-shadow-sm">
+                                {bannerLabel}
+                            </span>
+                        </div>
+                    </div>
+                )}
 
                 {/* SOLD Stamp Overlay */}
                 {status === 'SOLD' && (

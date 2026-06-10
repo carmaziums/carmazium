@@ -1012,6 +1012,7 @@ function SearchPageContent() {
                                         isFeatured={true}
                                         badgeTier={listing.badgeTier}
                                         status={listing.status}
+                                        bannerLabel={listing.bannerLabel}
                                     />
                                 ))}
                             </div>
@@ -1043,6 +1044,7 @@ function SearchPageContent() {
                                     isFeatured={listing.isFeatured}
                                     badgeTier={listing.badgeTier}
                                     status={listing.status}
+                                    bannerLabel={listing.bannerLabel}
                                 />
                             ))}
                         </div>

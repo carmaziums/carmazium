@@ -259,6 +259,7 @@ export class ListingsService {
                 zeroTo60Mph: createListingDto.zeroTo60Mph ?? null,
                 combinedMpg: createListingDto.combinedMpg ?? null,
                 extraUrbanMpg: createListingDto.extraUrbanMpg ?? null,
+                bannerLabel: createListingDto.bannerLabel ?? null,
             },
         });
 
@@ -646,6 +647,7 @@ export class ListingsService {
         if (updateListingDto.zeroTo60Mph !== undefined) updateData.zeroTo60Mph = updateListingDto.zeroTo60Mph;
         if (updateListingDto.combinedMpg !== undefined) updateData.combinedMpg = updateListingDto.combinedMpg;
         if (updateListingDto.extraUrbanMpg !== undefined) updateData.extraUrbanMpg = updateListingDto.extraUrbanMpg;
+        if (updateListingDto.bannerLabel !== undefined) updateData.bannerLabel = updateListingDto.bannerLabel;
 
         // Update the listing
         const updatedListing = await this.prisma.listing.update({

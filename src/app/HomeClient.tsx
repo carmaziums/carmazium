@@ -297,6 +297,7 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
                   isFeatured={true}
                   badgeTier={listing.badgeTier}
                   status={listing.status}
+                  bannerLabel={listing.bannerLabel}
                 />
               </motion.div>
             ))}

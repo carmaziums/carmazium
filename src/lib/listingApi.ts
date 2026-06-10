@@ -67,6 +67,7 @@ export interface CreateListingRequest {
     zeroTo60Mph?: number
     combinedMpg?: number
     extraUrbanMpg?: number
+    bannerLabel?: string
 }
 
 export interface CreateListingResponse {
@@ -180,6 +181,7 @@ export interface Listing {
     zeroTo60Mph: number | null
     combinedMpg: number | null
     extraUrbanMpg: number | null
+    bannerLabel: string | null
     sellerId: string | null
     isFeatured: boolean
     featuredUntil: string | null

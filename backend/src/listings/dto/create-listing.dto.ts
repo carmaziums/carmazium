@@ -422,4 +422,9 @@ export class CreateListingDto {
     @Min(0)
     @IsOptional()
     extraUrbanMpg?: number;
+
+    @ApiProperty({ description: 'Attention label shown as a ribbon on the vehicle card', example: 'Below Market Value', required: false })
+    @IsString()
+    @IsOptional()
+    bannerLabel?: string;
 }

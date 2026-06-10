@@ -94,6 +94,7 @@ interface FormData {
     priceMin: string      // Lower bound — minimum the seller will accept
     priceAsking: string   // Asking price — displayed publicly on the listing
     badgeTier: 'FREE' | 'BASIC' | 'STANDARD' | 'PREMIUM'
+    bannerLabel: string
     status: "DRAFT" | "ACTIVE"
     listingType: "CLASSIFIED" | "AUCTION"
 }
@@ -114,6 +115,19 @@ const STEPS = [
     { id: 4, icon: CheckCircle, title: "Review" },
 ]
 
+const BANNER_LABELS = [
+    { value: 'Special Offer',       color: 'bg-primary/90' },
+    { value: 'Limited Time Offer',  color: 'bg-rose-600/90' },
+    { value: 'Manager\'s Special',  color: 'bg-amber-600/90' },
+    { value: 'Below Market Value',  color: 'bg-emerald-600/90' },
+    { value: 'Weekend Deal',        color: 'bg-violet-600/90' },
+    { value: '5% Discount',         color: 'bg-emerald-600/90' },
+    { value: '10% Discount',        color: 'bg-emerald-600/90' },
+    { value: '15% Discount',        color: 'bg-emerald-600/90' },
+    { value: 'Save £500',           color: 'bg-emerald-600/90' },
+    { value: 'Save £1,000',         color: 'bg-emerald-600/90' },
+] as const
+
 const INITIAL_FORM: FormData = {
     vehicleType: "CAR", vrm: "", vin: "", make: "", model: "", year: "", bodyType: "", location: "",
     mileage: "", fuelType: "", transmission: "", color: "",
@@ -130,7 +144,7 @@ const INITIAL_FORM: FormData = {
     primaryColour: "",
     dateOfLastV5CIssued: "",
     images: [],
-    priceMin: "", priceAsking: "", badgeTier: 'FREE', status: "DRAFT", listingType: "CLASSIFIED",
+    priceMin: "", priceAsking: "", badgeTier: 'FREE', bannerLabel: "", status: "DRAFT", listingType: "CLASSIFIED",
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -579,6 +593,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 zeroTo60Mph: formData.zeroTo60Mph ? parseFloat(formData.zeroTo60Mph) : undefined,
                 combinedMpg: formData.combinedMpg ? parseFloat(formData.combinedMpg) : undefined,
                 extraUrbanMpg: formData.extraUrbanMpg ? parseFloat(formData.extraUrbanMpg) : undefined,
+                bannerLabel: formData.bannerLabel || undefined,
             }
 
             if (editId) {
@@ -2130,6 +2145,43 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </button>
                                 </div>
 
+                            </div>
+
+                            {/* ── Attention Label ─────────────────────────────────── */}
+                            <div className="border border-white/5 bg-slate-900/40 rounded-xl p-5 space-y-4">
+                                <div>
+                                    <h3 className="text-sm font-bold uppercase text-gray-400 tracking-wider flex items-center gap-2">
+                                        <Sparkles size={14} className="text-amber-400" /> Attention Label
+                                        <span className="text-[10px] text-gray-600 normal-case font-normal">(optional)</span>
+                                    </h3>
+                                    <p className="text-xs text-gray-500 mt-1">Add a promotional ribbon to your listing card to grab buyer attention.</p>
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                    {BANNER_LABELS.map(({ value, color }) => {
+                                        const active = formData.bannerLabel === value
+                                        return (
+                                            <button key={value} type="button"
+                                                onClick={() => set("bannerLabel", active ? "" : value)}
+                                                className={`relative flex items-center gap-2 px-3 py-2.5 rounded-lg border text-xs font-semibold transition-all text-left ${active ? 'border-primary bg-primary/10 text-white' : 'border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20 hover:text-gray-200'}`}
+                                            >
+                                                <span className={`w-2.5 h-2.5 rounded-sm shrink-0 ${color}`} />
+                                                {value}
+                                                {active && <CheckCircle size={12} className="text-primary ml-auto shrink-0" />}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                                {formData.bannerLabel && (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-gray-400">Preview:</span>
+                                        <span className={`text-[10px] font-bold uppercase tracking-wider text-white px-2.5 py-1 rounded-md ${BANNER_LABELS.find(b => b.value === formData.bannerLabel)?.color ?? 'bg-primary/90'}`}>
+                                            {formData.bannerLabel}
+                                        </span>
+                                        <button type="button" onClick={() => set("bannerLabel", "")} className="text-gray-600 hover:text-gray-400 transition-colors ml-1">
+                                            <X size={12} />
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

@@ -625,6 +625,8 @@ model Listing {
   zeroTo60Mph              Float?    // 0-60 mph time in seconds
   combinedMpg              Float?    // Combined fuel economy MPG
   extraUrbanMpg            Float?    // Extra urban MPG
+  // Attention attribute — buyer-facing label shown as a ribbon on the vehicle card
+  bannerLabel              String?
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
