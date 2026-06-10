@@ -22,6 +22,7 @@ import { uploadImage } from "@/lib/supabase"
 import { dvlaLookup } from "@/lib/dvlaApi"
 import { aiGenerateDescription } from "@/lib/aiApi"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
+import { CAR_MAKES, getModelsForMake, getVariantsForModel } from "@/lib/carData"
 import { useAuth } from "@/context/AuthContext"
 import { VehicleDamageMapper, type DamageRecord } from "./VehicleDamageMapper"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -1234,11 +1235,64 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-gray-400">Make *</label>
-                                    <Input placeholder="e.g. BMW" value={formData.make} onChange={(e) => set("make", e.target.value)} className={inputCls} />
+                                    {(() => {
+                                        const isCustomMake = formData.make !== "" && !CAR_MAKES.includes(formData.make)
+                                        const selectValue = CAR_MAKES.includes(formData.make) ? formData.make : (isCustomMake ? "__other__" : "")
+                                        return (
+                                            <>
+                                                <select
+                                                    value={selectValue}
+                                                    onChange={(e) => {
+                                                        if (e.target.value === "__other__") { set("make", ""); set("model", ""); set("variant", "") }
+                                                        else { set("make", e.target.value); set("model", ""); set("variant", "") }
+                                                    }}
+                                                    className="w-full h-10 rounded-md border bg-slate-900/50 px-3 text-base md:text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary border-white/10"
+                                                >
+                                                    <option value="">Select make</option>
+                                                    {CAR_MAKES.map(m => <option key={m} value={m}>{m}</option>)}
+                                                    <option value="__other__">Other (type below)</option>
+                                                </select>
+                                                {(selectValue === "__other__" || isCustomMake) && (
+                                                    <Input placeholder="e.g. BMW" value={formData.make}
+                                                        onChange={(e) => { set("make", e.target.value); set("model", ""); set("variant", "") }} className={inputCls} />
+                                                )}
+                                            </>
+                                        )
+                                    })()}
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-gray-400">Model *</label>
-                                    <Input placeholder="e.g. M4 Competition" value={formData.model} onChange={(e) => set("model", e.target.value)} className={inputCls} />
+                                    {(() => {
+                                        const models = getModelsForMake(formData.make)
+                                        if (models.length === 0) {
+                                            return (
+                                                <Input placeholder="e.g. M4 Competition" value={formData.model}
+                                                    onChange={(e) => { set("model", e.target.value); set("variant", "") }} className={inputCls} />
+                                            )
+                                        }
+                                        const isCustomModel = formData.model !== "" && !models.includes(formData.model)
+                                        const selectValue = models.includes(formData.model) ? formData.model : (isCustomModel ? "__other__" : "")
+                                        return (
+                                            <>
+                                                <select
+                                                    value={selectValue}
+                                                    onChange={(e) => {
+                                                        if (e.target.value === "__other__") { set("model", ""); set("variant", "") }
+                                                        else { set("model", e.target.value); set("variant", "") }
+                                                    }}
+                                                    className="w-full h-10 rounded-md border bg-slate-900/50 px-3 text-base md:text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary border-white/10"
+                                                >
+                                                    <option value="">Select model</option>
+                                                    {models.map(m => <option key={m} value={m}>{m}</option>)}
+                                                    <option value="__other__">Other (type below)</option>
+                                                </select>
+                                                {(selectValue === "__other__" || isCustomModel) && (
+                                                    <Input placeholder="e.g. M4 Competition" value={formData.model}
+                                                        onChange={(e) => { set("model", e.target.value); set("variant", "") }} className={inputCls} />
+                                                )}
+                                            </>
+                                        )
+                                    })()}
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-gray-400">Year *</label>
@@ -1255,8 +1309,37 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     {/* Variant/Trim */}
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold uppercase text-gray-400">Variant / Trim</label>
-                                        <Input placeholder="e.g. M Sport, GT Line, S-Line" value={formData.variant}
-                                            onChange={(e) => set("variant", e.target.value)} className={inputCls} />
+                                        {(() => {
+                                            const knownVariants = getVariantsForModel(formData.make, formData.model)
+                                            if (knownVariants.length === 0) {
+                                                return (
+                                                    <Input placeholder="e.g. M Sport, GT Line, S-Line" value={formData.variant}
+                                                        onChange={(e) => set("variant", e.target.value)} className={inputCls} />
+                                                )
+                                            }
+                                            const isCustom = formData.variant !== "" && !knownVariants.includes(formData.variant)
+                                            const selectValue = knownVariants.includes(formData.variant) ? formData.variant : (isCustom ? "__other__" : "")
+                                            return (
+                                                <>
+                                                    <select
+                                                        value={selectValue}
+                                                        onChange={(e) => {
+                                                            if (e.target.value === "__other__") { set("variant", "") }
+                                                            else { set("variant", e.target.value) }
+                                                        }}
+                                                        className="w-full h-10 rounded-md border bg-slate-900/50 px-3 text-base md:text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary border-white/10"
+                                                    >
+                                                        <option value="">Select variant / trim</option>
+                                                        {knownVariants.map(v => <option key={v} value={v}>{v}</option>)}
+                                                        <option value="__other__">Other (type below)</option>
+                                                    </select>
+                                                    {(selectValue === "__other__" || isCustom) && (
+                                                        <Input placeholder="Type your variant / trim" value={formData.variant}
+                                                            onChange={(e) => set("variant", e.target.value)} className={inputCls} />
+                                                    )}
+                                                </>
+                                            )
+                                        })()}
                                     </div>
                                     {/* Drive Type */}
                                     <div className="space-y-2">
