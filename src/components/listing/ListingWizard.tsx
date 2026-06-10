@@ -2084,6 +2084,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Anyone can bid</li>
                                             <li className="flex items-center gap-1.5 text-gray-600"><X size={12} /> No trust badges</li>
                                         </ul>
+                                        <div className="flex items-start gap-1.5 mt-3 pt-3 border-t border-white/5">
+                                            <Lock size={10} className="text-amber-500/70 shrink-0 mt-0.5" />
+                                            <p className="text-[10px] text-amber-500/70 leading-tight">Only verified dealers can list for auction</p>
+                                        </div>
                                     </button>
 
                                     {/* Basic */}
