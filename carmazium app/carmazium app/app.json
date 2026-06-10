@@ -12,7 +12,7 @@
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/FILL_IN_EAS_PROJECT_ID",
+      "url": "https://u.expo.dev/f0ab914b-3433-4816-80a2-0a94e6c6a066",
       "enabled": true,
       "fallbackToCacheTimeout": 0,
       "checkAutomatically": "ON_LOAD"
@@ -58,6 +58,11 @@
       ]
     },
     "web": {},
+    "extra": {
+      "eas": {
+        "projectId": "f0ab914b-3433-4816-80a2-0a94e6c6a066"
+      }
+    },
     "plugins": [
       [
         "expo-font",
