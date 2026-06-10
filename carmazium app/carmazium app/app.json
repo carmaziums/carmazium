@@ -90,6 +90,7 @@
         }
       ],
       "@sentry/react-native"
-    ]
+    ],
+    "owner": "pizn-01s-team"
   }
 }
