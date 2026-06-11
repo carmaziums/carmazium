@@ -37,7 +37,10 @@ import {
     Target,
     AlertTriangle,
     RefreshCw,
-    Heart
+    Heart,
+    CreditCard,
+    ExternalLink,
+    BadgeCheck
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
@@ -72,13 +75,16 @@ import {
     getWatchlist,
     removeFromWatchlist,
     formatPrice,
+    startStripeConnectOnboarding,
+    getStripeConnectStatus,
     type UnifiedDashboardData,
     type EarningsResponse,
     type SaleRecord,
     type Listing,
     type Offer,
     type PerformanceStats,
-    type WatchlistItem
+    type WatchlistItem,
+    type StripeConnectStatus
 } from "@/lib/listingApi"
 import { createChatRoom, type ChatRoom } from "@/lib/chatApi"
 
@@ -1371,6 +1377,39 @@ function SettingsTab({ profile }: { profile: any }) {
     const [newPassword, setNewPassword] = React.useState("")
     const [confirmPassword, setConfirmPassword] = React.useState("")
     const [status, setStatus] = React.useState<{ type: 'idle' | 'loading' | 'success' | 'error', message?: string }>({ type: 'idle' })
+    const [connectStatus, setConnectStatus] = React.useState<StripeConnectStatus | null>(null)
+    const [connectLoading, setConnectLoading] = React.useState(false)
+    const [connectError, setConnectError] = React.useState("")
+
+    React.useEffect(() => {
+        getStripeConnectStatus().then(setConnectStatus).catch(() => {})
+    }, [])
+
+    React.useEffect(() => {
+        if (typeof window === 'undefined') return
+        const params = new URLSearchParams(window.location.search)
+        if (params.get('stripe_connect')) {
+            getStripeConnectStatus().then(setConnectStatus).catch(() => {})
+            window.history.replaceState({}, '', window.location.pathname)
+        }
+    }, [])
+
+    const handleConnectStripe = async () => {
+        setConnectLoading(true)
+        setConnectError("")
+        try {
+            const origin = window.location.origin
+            const { url } = await startStripeConnectOnboarding(
+                `${origin}/dashboard?tab=settings&stripe_connect=return`,
+                `${origin}/dashboard?tab=settings&stripe_connect=refresh`,
+            )
+            window.location.href = url
+        } catch (err: any) {
+            setConnectError(err.message || "Failed to start Stripe Connect onboarding.")
+        } finally {
+            setConnectLoading(false)
+        }
+    }
 
     const handleResetPassword = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -1463,14 +1502,57 @@ function SettingsTab({ profile }: { profile: any }) {
                         </div>
                     )}
 
-                    <Button 
-                        type="submit" 
-                        className="w-full md:w-auto px-10 h-12 shadow-neon font-black uppercase tracking-widest text-xs" 
+                    <Button
+                        type="submit"
+                        className="w-full md:w-auto px-10 h-12 shadow-neon font-black uppercase tracking-widest text-xs"
                         disabled={status.type === 'loading'}
                     >
                         {status.type === 'loading' ? <Loader2 size={18} className="animate-spin" /> : 'Update Password'}
                     </Button>
                 </form>
+            </div>
+
+            {/* Payouts */}
+            <div className="glass-card p-8 border border-white/5 bg-white/5 rounded-2xl">
+                <h3 className="text-xl font-black font-heading uppercase tracking-tight flex items-center gap-2 mb-2">
+                    <CreditCard className="text-primary" size={24} /> Payouts
+                </h3>
+                <p className="text-sm text-gray-400 mb-6">
+                    Connect a bank account to receive your £100 seller bonus after a successful auction handover is verified.
+                </p>
+
+                {connectStatus?.onboardingComplete ? (
+                    <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                        <BadgeCheck size={20} className="text-emerald-400 shrink-0" />
+                        <div>
+                            <p className="text-sm font-bold text-emerald-300">Bank account connected</p>
+                            <p className="text-xs text-gray-400 mt-0.5">Payouts are enabled. Your bonuses will transfer automatically after handover approval.</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        {connectStatus?.connected && !connectStatus?.onboardingComplete && (
+                            <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                                <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                                <p className="text-xs text-amber-300">Your Stripe account was created but onboarding is incomplete. Click below to finish.</p>
+                            </div>
+                        )}
+                        {connectError && (
+                            <p className="text-xs text-red-400 flex items-center gap-1"><AlertCircle size={13} /> {connectError}</p>
+                        )}
+                        <Button
+                            onClick={handleConnectStripe}
+                            disabled={connectLoading}
+                            className="gap-2 shadow-neon"
+                        >
+                            {connectLoading
+                                ? <><Loader2 size={16} className="animate-spin" /> Redirecting...</>
+                                : <><ExternalLink size={16} /> Connect Bank Account</>
+                            }
+                        </Button>
+                        <p className="text-xs text-gray-500">You will be taken to Stripe's secure onboarding — this takes about 2 minutes.</p>
+                    </div>
+                )}
             </div>
         </div>
     )

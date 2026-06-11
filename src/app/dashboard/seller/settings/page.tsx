@@ -3,9 +3,9 @@
 import * as React from "react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
-import { updateProfile } from "@/lib/listingApi"
+import { updateProfile, startStripeConnectOnboarding, getStripeConnectStatus, type StripeConnectStatus } from "@/lib/listingApi"
 import { uploadImage } from "@/lib/supabase"
-import { Loader2, Check, AlertCircle, Camera } from "lucide-react"
+import { Loader2, Check, AlertCircle, Camera, BadgeCheck, CreditCard, ExternalLink, AlertTriangle } from "lucide-react"
 
 export default function SellerSettingsPage() {
     const { user, profile, loading: authLoading } = useAuth()
@@ -18,7 +18,24 @@ export default function SellerSettingsPage() {
     const [saving, setSaving] = React.useState(false)
     const [uploadingImage, setUploadingImage] = React.useState(false)
     const [saveStatus, setSaveStatus] = React.useState<"idle" | "success" | "error">("idle")
+    const [connectStatus, setConnectStatus] = React.useState<StripeConnectStatus | null>(null)
+    const [connectLoading, setConnectLoading] = React.useState(false)
+    const [connectError, setConnectError] = React.useState("")
     const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+    React.useEffect(() => {
+        getStripeConnectStatus().then(setConnectStatus).catch(() => {})
+    }, [])
+
+    // When Stripe redirects back, re-fetch status and clean the URL
+    React.useEffect(() => {
+        if (typeof window === 'undefined') return
+        const params = new URLSearchParams(window.location.search)
+        if (params.get('stripe_connect')) {
+            getStripeConnectStatus().then(setConnectStatus).catch(() => {})
+            window.history.replaceState({}, '', window.location.pathname)
+        }
+    }, [])
 
     React.useEffect(() => {
         if (profile) {
@@ -40,6 +57,23 @@ export default function SellerSettingsPage() {
         if (email) return email[0].toUpperCase()
         return "?"
     }, [firstName, lastName, email])
+
+    const handleConnectStripe = async () => {
+        setConnectLoading(true)
+        setConnectError("")
+        try {
+            const origin = window.location.origin
+            const { url } = await startStripeConnectOnboarding(
+                `${origin}/dashboard/seller/settings?stripe_connect=return`,
+                `${origin}/dashboard/seller/settings?stripe_connect=refresh`,
+            )
+            window.location.href = url
+        } catch (err: any) {
+            setConnectError(err.message || "Failed to start Stripe Connect onboarding.")
+        } finally {
+            setConnectLoading(false)
+        }
+    }
 
     const handleSave = async () => {
         try {
@@ -174,6 +208,49 @@ export default function SellerSettingsPage() {
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    {/* Payouts */}
+                    <div className="glass-card p-8 border border-white/5 bg-white/5 rounded-2xl">
+                        <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                            <CreditCard className="text-primary" size={20} /> Payouts
+                        </h3>
+                        <p className="text-sm text-gray-400 mb-6">
+                            Connect a bank account to receive your £100 seller bonus after a successful auction handover is verified.
+                        </p>
+
+                        {connectStatus?.onboardingComplete ? (
+                            <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                                <BadgeCheck size={20} className="text-emerald-400 shrink-0" />
+                                <div>
+                                    <p className="text-sm font-bold text-emerald-300">Bank account connected</p>
+                                    <p className="text-xs text-gray-400 mt-0.5">Payouts are enabled. Your bonuses will transfer automatically after handover approval.</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {connectStatus?.connected && !connectStatus?.onboardingComplete && (
+                                    <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                                        <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                                        <p className="text-xs text-amber-300">Your Stripe account was started but onboarding is incomplete. Click below to finish.</p>
+                                    </div>
+                                )}
+                                {connectError && (
+                                    <p className="text-xs text-red-400 flex items-center gap-1"><AlertCircle size={13} /> {connectError}</p>
+                                )}
+                                <button
+                                    onClick={handleConnectStripe}
+                                    disabled={connectLoading}
+                                    className="flex items-center gap-2 bg-primary text-white font-bold py-3 px-6 rounded shadow-neon hover:bg-red-600 transition-colors disabled:opacity-50"
+                                >
+                                    {connectLoading
+                                        ? <><Loader2 size={16} className="animate-spin" /> Redirecting...</>
+                                        : <><ExternalLink size={16} /> Connect Bank Account</>
+                                    }
+                                </button>
+                                <p className="text-xs text-gray-500">You will be taken to Stripe's secure onboarding — this takes about 2 minutes.</p>
+                            </div>
+                        )}
                     </div>
                 </main>
             </div>

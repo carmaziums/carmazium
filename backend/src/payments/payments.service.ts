@@ -579,4 +579,17 @@ export class PaymentsService {
             data: { status: 'REFUNDED' as any },
         });
     }
+
+    /**
+     * Transfer the seller payout (£100) to their connected Stripe Express account.
+     * Called by AdminService after superadmin approves handover proof.
+     */
+    async issueSellerPayout(stripeConnectAccountId: string, amountPence = 10000): Promise<void> {
+        const stripe = await this.getStripe();
+        await stripe.transfers.create({
+            amount: amountPence,
+            currency: 'gbp',
+            destination: stripeConnectAccountId,
+        });
+    }
 }

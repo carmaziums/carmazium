@@ -198,16 +198,34 @@ export class AdminService {
 
         const sellerId = auction.listing?.sellerId;
         if (sellerId) {
+            // Issue £100 payout to seller's connected Stripe account
+            const seller = await this.prisma.user.findUnique({
+                where: { id: sellerId },
+                select: {
+                    email: true,
+                    firstName: true,
+                    stripeConnectAccountId: true,
+                    stripeConnectOnboardingComplete: true,
+                },
+            });
+
+            if (seller?.stripeConnectAccountId && seller?.stripeConnectOnboardingComplete) {
+                await this.paymentsService.issueSellerPayout(seller.stripeConnectAccountId).catch(err =>
+                    console.error(`Stripe payout failed for auction ${auctionId}:`, err),
+                );
+            }
+
             this.notificationsGateway.sendNotification(sellerId, {
                 type: 'HANDOVER_APPROVED',
                 title: 'Handover verified',
-                message: `Your handover proof for "${auction.listing.title}" has been approved. Your £100 seller bonus has been released.`,
+                message: seller?.stripeConnectOnboardingComplete
+                    ? `Your handover proof for "${auction.listing.title}" has been approved. Your £100 bonus is on its way to your bank account.`
+                    : `Your handover proof for "${auction.listing.title}" has been approved. Connect your bank account in Settings to receive your £100 bonus.`,
                 entityType: 'AUCTION',
                 entityId: auctionId,
                 link: '/dashboard/seller/auctions',
             });
 
-            const seller = await this.prisma.user.findUnique({ where: { id: sellerId }, select: { email: true, firstName: true } });
             if (seller?.email) {
                 this.emailService.sendHandoverApprovedEmail(seller.email, seller.firstName || 'there', auction.listing.title).catch(console.error);
             }

@@ -1103,3 +1103,26 @@ export async function getDamageRecords(listingId: string): Promise<any[]> {
     })
     return data.data
 }
+
+// ─── Stripe Connect ──────────────────────────────────────────────────────────
+
+export interface StripeConnectStatus {
+    connected: boolean
+    onboardingComplete: boolean
+    accountId?: string
+    chargesEnabled?: boolean
+    payoutsEnabled?: boolean
+}
+
+export async function startStripeConnectOnboarding(returnUrl: string, refreshUrl: string): Promise<{ url: string }> {
+    const res = await apiClient<{ data: { url: string } }>('/users/stripe-connect/onboard', {
+        method: 'POST',
+        body: JSON.stringify({ returnUrl, refreshUrl }),
+    })
+    return res.data
+}
+
+export async function getStripeConnectStatus(): Promise<StripeConnectStatus> {
+    const res = await apiClient<{ data: StripeConnectStatus }>('/users/stripe-connect/status')
+    return res.data
+}

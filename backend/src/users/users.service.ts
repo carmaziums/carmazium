@@ -3,6 +3,7 @@ import {
     NotFoundException,
     BadRequestException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole } from '@prisma/client';
 import { EmailService } from '../email/email.service';
@@ -17,7 +18,15 @@ export class UsersService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly emailService: EmailService,
+        private readonly config: ConfigService,
     ) { }
+
+    private async getStripe() {
+        const Stripe = (await import('stripe')).default;
+        return new Stripe(this.config.get<string>('STRIPE_SECRET_KEY')!, {
+            apiVersion: '2026-02-25.clover' as any,
+        });
+    }
 
     /**
      * Find a user by their primary ID (UUID).
@@ -303,5 +312,79 @@ export class UsersService {
         ]);
 
         return { verified: true, address: verification.address, verifiedAt: now };
+    }
+
+    /**
+     * Create (or retrieve) a Stripe Express account for the user and return
+     * a one-time onboarding link.
+     */
+    async createConnectOnboardingLink(userId: string, returnUrl: string, refreshUrl: string) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, email: true, stripeConnectAccountId: true },
+        });
+        if (!user) throw new NotFoundException('User not found');
+
+        const stripe = await this.getStripe();
+
+        // Create Express account on first call; reuse on subsequent calls
+        let accountId = user.stripeConnectAccountId;
+        if (!accountId) {
+            const account = await stripe.accounts.create({
+                type: 'express',
+                country: 'GB',
+                email: user.email,
+                capabilities: { transfers: { requested: true } },
+            });
+            accountId = account.id;
+            await this.prisma.user.update({
+                where: { id: userId },
+                data: { stripeConnectAccountId: accountId },
+            });
+        }
+
+        const link = await stripe.accountLinks.create({
+            account: accountId,
+            return_url: returnUrl,
+            refresh_url: refreshUrl,
+            type: 'account_onboarding',
+        });
+
+        return { url: link.url };
+    }
+
+    /**
+     * Check whether the user's Stripe Connect account has completed onboarding.
+     */
+    async getConnectStatus(userId: string) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { stripeConnectAccountId: true, stripeConnectOnboardingComplete: true },
+        });
+        if (!user) throw new NotFoundException('User not found');
+
+        if (!user.stripeConnectAccountId) {
+            return { connected: false, onboardingComplete: false };
+        }
+
+        const stripe = await this.getStripe();
+        const account = await stripe.accounts.retrieve(user.stripeConnectAccountId);
+        const complete = !!(account.charges_enabled && account.payouts_enabled);
+
+        // Persist completion state so other services can check without hitting Stripe
+        if (complete && !user.stripeConnectOnboardingComplete) {
+            await this.prisma.user.update({
+                where: { id: userId },
+                data: { stripeConnectOnboardingComplete: true },
+            });
+        }
+
+        return {
+            connected: true,
+            onboardingComplete: complete,
+            accountId: user.stripeConnectAccountId,
+            chargesEnabled: account.charges_enabled,
+            payoutsEnabled: account.payouts_enabled,
+        };
     }
 }

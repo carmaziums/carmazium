@@ -150,4 +150,40 @@ export class UsersController {
             data: user,
         };
     }
+
+    /**
+     * Create (or re-open) a Stripe Connect Express onboarding session.
+     * Returns a one-time URL that redirects the user through Stripe's hosted onboarding flow.
+     */
+    @Post('stripe-connect/onboard')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Start Stripe Connect Express onboarding' })
+    async stripeConnectOnboard(
+        @CurrentUser() user: any,
+        @Body('returnUrl') returnUrl: string,
+        @Body('refreshUrl') refreshUrl: string,
+    ) {
+        if (!returnUrl || !refreshUrl) {
+            throw new BadRequestException('returnUrl and refreshUrl are required');
+        }
+        return {
+            success: true,
+            data: await this.usersService.createConnectOnboardingLink(user.id, returnUrl, refreshUrl),
+        };
+    }
+
+    /**
+     * Return the current Stripe Connect status for the authenticated user.
+     */
+    @Get('stripe-connect/status')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Get Stripe Connect onboarding status' })
+    async stripeConnectStatus(@CurrentUser() user: any) {
+        return {
+            success: true,
+            data: await this.usersService.getConnectStatus(user.id),
+        };
+    }
 }
