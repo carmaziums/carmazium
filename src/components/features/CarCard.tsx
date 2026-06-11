@@ -55,6 +55,11 @@ const BANNER_COLORS: Record<string, string> = {
     "Manager's Special":   'bg-amber-600',
     'Below Market Value':  'bg-emerald-600',
     'Weekend Deal':        'bg-violet-600',
+    '5% Discount':         'bg-emerald-600',
+    '10% Discount':        'bg-emerald-600',
+    '15% Discount':        'bg-emerald-600',
+    'Save £500':           'bg-emerald-600',
+    'Save £1,000':         'bg-emerald-600',
 }
 const DEFAULT_BANNER_COLOR = 'bg-primary'
 
