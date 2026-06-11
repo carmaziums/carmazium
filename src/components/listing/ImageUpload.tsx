@@ -107,7 +107,6 @@ export function ImageUpload({
 
         if (fileArray.length > remainingSlots) {
             const err = `You can only upload ${remainingSlots} more image(s). Maximum is ${maxImages}.`
-            console.error('[Upload Validation Error]', err)
             alert(err)
             return
         }
@@ -119,9 +118,7 @@ export function ImageUpload({
         })
 
         if (validationErrors.length > 0) {
-            const errString = validationErrors.join('\n')
-            console.error('[Upload Validation Error]', errString)
-            alert(errString)
+            alert(validationErrors.join('\n'))
             return
         }
 
@@ -130,39 +127,38 @@ export function ImageUpload({
         let failedCount = 0
         let lastFailError = ''
 
-        for (let i = 0; i < fileArray.length; i++) {
-            const file = fileArray[i]
-            setUploadProgress(Math.round(((i) / fileArray.length) * 100))
+        try {
+            for (let i = 0; i < fileArray.length; i++) {
+                const file = fileArray[i]
+                setUploadProgress(Math.round((i / fileArray.length) * 100))
 
-            try {
-                const publicUrl = await uploadImage(file, 'listings')
-                newImages.push({ url: publicUrl, category: activeTab })
-            } catch (error) {
-                failedCount++
-                lastFailError = error instanceof Error ? error.message : 'Unknown error'
-                console.error(`Upload failed for ${file.name}:`, error)
-                // Continue uploading remaining files instead of stopping
+                try {
+                    const publicUrl = await uploadImage(file, 'listings')
+                    newImages.push({ url: publicUrl, category: activeTab })
+                } catch (error) {
+                    failedCount++
+                    lastFailError = error instanceof Error ? error.message : 'Unknown error'
+                    console.error(`Upload failed for ${file.name}:`, error)
+                }
+
+                setUploadProgress(Math.round(((i + 1) / fileArray.length) * 100))
             }
 
-            setUploadProgress(Math.round(((i + 1) / fileArray.length) * 100))
-        }
-
-        // Save any images that uploaded successfully
-        if (newImages.length > 0) {
-            setImages(prev => [...prev, ...newImages])
-        }
-
-        // Notify user of partial or full failure
-        if (failedCount > 0) {
             if (newImages.length > 0) {
-                alert(`${newImages.length} image(s) uploaded successfully, but ${failedCount} failed.\n\nError: ${lastFailError}\n\nYou can try uploading the failed images again.`)
-            } else {
-                alert(`Upload failed: ${lastFailError}`)
+                setImages(prev => [...prev, ...newImages])
             }
-        }
 
-        setUploading(false)
-        setUploadProgress(0)
+            if (failedCount > 0) {
+                if (newImages.length > 0) {
+                    alert(`${newImages.length} image(s) uploaded, but ${failedCount} failed.\n\nError: ${lastFailError}`)
+                } else {
+                    alert(`Upload failed: ${lastFailError}`)
+                }
+            }
+        } finally {
+            setUploading(false)
+            setUploadProgress(0)
+        }
     }
 
     const handleDrag = (e: React.DragEvent) => {

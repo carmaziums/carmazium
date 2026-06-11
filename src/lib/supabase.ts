@@ -116,11 +116,11 @@ async function directUploadToSupabase(
             'Authorization': authHeader,
             'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
             'Content-Type': file.type || 'application/octet-stream',
-            'x-upsert': 'true', // Allow overwrite to avoid 400 on duplicate names
+            'x-upsert': 'true',
             'Cache-Control': 'max-age=3600',
         },
         body: file,
-        signal: AbortSignal.timeout(30000), // Prevent silent network hangs
+        signal: AbortSignal.timeout(15000),
     });
 
     if (!response.ok) {
@@ -162,12 +162,10 @@ export async function uploadImage(
     const fileName = folder ? `${folder.replace(/\/+$/, '')}/${baseName}` : baseName;
 
     let lastError: Error | null = null;
-    const maxDirectAttempts = 3;
 
-    for (let directAttempt = 0; directAttempt < maxDirectAttempts; directAttempt++) {
+    for (let attempt = 0; attempt < 2; attempt++) {
         try {
             const publicUrl = await directUploadToSupabase(file, bucket, fileName);
-            console.log(`[Upload] REST upload succeeded on attempt ${directAttempt + 1}.`);
             return publicUrl;
         } catch (err) {
             lastError = err instanceof Error ? err : new Error(String(err));
@@ -175,18 +173,15 @@ export async function uploadImage(
             const perm = isPermanentError(lastError);
             if (perm.permanent) throw new Error(perm.message);
 
-            if (directAttempt < maxDirectAttempts - 1) {
-                console.warn(`[Upload] Attempt ${directAttempt + 1} failed, retrying: ${lastError.message}`);
-                await new Promise(r => setTimeout(r, 2000 * (directAttempt + 1)));
+            if (attempt === 0) {
+                console.warn(`[Upload] Attempt 1 failed, retrying: ${lastError.message}`);
+                await new Promise(r => setTimeout(r, 1500));
             }
         }
     }
 
-    // All strategies exhausted
     throw new Error(
-        'Unable to upload file after multiple attempts. ' +
-        'This may be caused by a slow or unstable connection. ' +
-        'Please try again in a moment, or try uploading a smaller file. (' + lastError?.message + ')'
+        'Upload failed after 2 attempts. Check your connection and try again. (' + lastError?.message + ')'
     );
 }
 
