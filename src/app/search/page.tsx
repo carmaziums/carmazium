@@ -512,7 +512,7 @@ function SearchPageContent() {
                 {/* ── Sidebar ──────────────────────────────────────────────────── */}
                 <aside className={`
                     fixed inset-x-0 bottom-0 z-[60] lg:z-10 flex flex-col h-[85vh] bg-slate-900 border-t border-white/10 rounded-t-3xl shadow-2xl transition-transform duration-300
-                    lg:static lg:w-72 lg:flex-shrink-0 lg:glass-card lg:border lg:rounded-2xl lg:shadow-none lg:translate-y-0 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:flex lg:flex-col lg:overflow-hidden lg:p-0
+                    lg:static lg:w-72 lg:flex-shrink-0 lg:glass-card lg:border lg:rounded-2xl lg:shadow-none lg:translate-y-0 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:flex lg:flex-col lg:overflow-visible lg:p-0
                     ${isFilterOpen ? 'translate-y-0' : 'translate-y-full lg:translate-y-0'}
                 `}>
                     <div className="flex justify-between items-center p-6 pb-4 border-b border-white/10 lg:px-6 lg:pt-6 lg:pb-4 lg:border-b lg:border-white/5 shrink-0">
@@ -599,20 +599,29 @@ function SearchPageContent() {
                                             {CAR_MAKES.map(m => <option key={m} value={m} />)}
                                         </datalist>
                                     </div>
-                                    {/* Model — dropdown when make is known, text input otherwise */}
+                                    {/* Model — inline scrollable list when make is known, text input otherwise */}
                                     {(() => {
                                         const models = getModelsForMake(filters.make)
                                         return models.length > 0 ? (
-                                            <select
-                                                value={filters.model}
-                                                onChange={(e) => set('model', e.target.value)}
-                                                className="h-9 w-full rounded-md border border-white/10 bg-slate-800 px-3 text-sm text-white focus:border-primary focus:outline-none cursor-pointer"
-                                            >
-                                                <option value="">All {filters.make} models</option>
+                                            <div className="max-h-44 overflow-y-auto rounded-md border border-white/10 bg-slate-800/60 space-y-0.5 p-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => set('model', '')}
+                                                    className={`w-full text-left px-3 py-2 rounded text-sm transition-all ${!filters.model ? 'bg-primary/15 text-primary font-semibold' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'}`}
+                                                >
+                                                    All {filters.make} models
+                                                </button>
                                                 {models.map(m => (
-                                                    <option key={m} value={m}>{m}</option>
+                                                    <button
+                                                        key={m}
+                                                        type="button"
+                                                        onClick={() => set('model', m)}
+                                                        className={`w-full text-left px-3 py-2 rounded text-sm transition-all ${filters.model === m ? 'bg-primary/15 text-primary font-semibold' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'}`}
+                                                    >
+                                                        {m}
+                                                    </button>
                                                 ))}
-                                            </select>
+                                            </div>
                                         ) : (
                                             <Input
                                                 placeholder="Model (e.g. M4)"
@@ -773,11 +782,18 @@ function SearchPageContent() {
                                     </div>
                                     <div>
                                         <p className="text-xs text-gray-500 mb-1.5">Euro Standard</p>
-                                        <select value={filters.euroStandard} onChange={(e) => set('euroStandard', e.target.value as EuroStandardValue | '')}
-                                            className="w-full h-9 border border-white/10 rounded px-3 text-sm text-white outline-none bg-slate-800 cursor-pointer focus:border-primary">
-                                            <option value="">Any</option>
-                                            {EURO_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                                        </select>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {([{ value: '' as EuroStandardValue | '', label: 'Any' }, ...EURO_OPTIONS]).map(o => (
+                                                <button
+                                                    key={o.value}
+                                                    type="button"
+                                                    onClick={() => set('euroStandard', o.value as EuroStandardValue | '')}
+                                                    className={`px-3 py-1.5 rounded-md border text-xs font-semibold transition-all cursor-pointer ${filters.euroStandard === o.value ? 'border-primary bg-primary/15 text-primary' : 'border-white/10 text-gray-400 hover:border-white/20 hover:text-gray-300'}`}
+                                                >
+                                                    {o.label}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             </FilterSection>
