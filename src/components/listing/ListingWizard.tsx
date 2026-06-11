@@ -90,6 +90,7 @@ interface FormData {
     dateOfLastV5CIssued: string
     // Step 2 — Media
     images: string[]
+    videoUrls: string[]
     // Step 3 — Pricing (3-tier seller evaluation)
     priceMin: string      // Lower bound — minimum the seller will accept
     priceAsking: string   // Asking price — displayed publicly on the listing
@@ -144,6 +145,7 @@ const INITIAL_FORM: FormData = {
     primaryColour: "",
     dateOfLastV5CIssued: "",
     images: [],
+    videoUrls: [],
     priceMin: "", priceAsking: "", badgeTier: 'FREE', bannerLabel: "", status: "DRAFT", listingType: "CLASSIFIED",
 }
 
@@ -287,6 +289,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const editId = searchParams.get('editId')
     const editSlug = searchParams.get('editSlug')
     const [editLoading, setEditLoading] = React.useState(false)
+    const [videoUrlInput, setVideoUrlInput] = React.useState("")
+    const [videoUrlError, setVideoUrlError] = React.useState("")
 
     // Pre-fill form when editing an existing listing
     React.useEffect(() => {
@@ -327,6 +331,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     wheelplan: l.wheelplan || '',
                     typeApproval: l.typeApproval || '',
                     images: l.images || [],
+                    videoUrls: l.videoUrls || [],
                     priceMin: l.priceMin ? String(l.priceMin) : '',
                     priceAsking: l.price ? String(l.price) : '',
                     status: l.status === 'ACTIVE' ? 'ACTIVE' : 'DRAFT',
@@ -594,6 +599,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 combinedMpg: formData.combinedMpg ? parseFloat(formData.combinedMpg) : undefined,
                 extraUrbanMpg: formData.extraUrbanMpg ? parseFloat(formData.extraUrbanMpg) : undefined,
                 bannerLabel: formData.bannerLabel || undefined,
+                videoUrls: formData.videoUrls.length > 0 ? formData.videoUrls : undefined,
             }
 
             if (editId) {
@@ -1545,6 +1551,68 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     existingRecords={damageRecords}
                                     onComplete={(records) => setDamageRecords(records)}
                                 />
+                            </div>
+
+                            {/* Video Embeds */}
+                            <div className="pt-8 border-t border-white/5">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="p-2 bg-primary/10 rounded-lg border border-primary/20">
+                                        <Camera className="text-primary w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-white">Video Links</h3>
+                                        <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">YouTube, Instagram, Facebook or X — up to 5</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2 mb-3">
+                                    <Input
+                                        placeholder="Paste a YouTube, Instagram, Facebook or X video URL"
+                                        value={videoUrlInput}
+                                        onChange={e => { setVideoUrlInput(e.target.value); setVideoUrlError("") }}
+                                        className="bg-white/5 border-white/10 text-white placeholder:text-gray-600 flex-1"
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 shrink-0"
+                                        onClick={() => {
+                                            const url = videoUrlInput.trim()
+                                            if (!url) return
+                                            if (formData.videoUrls.length >= 5) { setVideoUrlError("Maximum 5 video links allowed."); return }
+                                            const isValid = /^https?:\/\/(www\.)?(youtube\.com|youtu\.be|instagram\.com|facebook\.com|fb\.watch|x\.com|twitter\.com)/.test(url)
+                                            if (!isValid) { setVideoUrlError("Only YouTube, Instagram, Facebook or X links are accepted."); return }
+                                            if (formData.videoUrls.includes(url)) { setVideoUrlError("This URL has already been added."); return }
+                                            set("videoUrls", [...formData.videoUrls, url])
+                                            setVideoUrlInput("")
+                                        }}
+                                    >
+                                        Add
+                                    </Button>
+                                </div>
+                                {videoUrlError && <p className="text-xs text-red-400 mb-3">{videoUrlError}</p>}
+                                {formData.videoUrls.length > 0 && (
+                                    <div className="space-y-2">
+                                        {formData.videoUrls.map((url, idx) => {
+                                            const platform = url.includes('youtube.com') || url.includes('youtu.be') ? 'YouTube'
+                                                : url.includes('instagram.com') ? 'Instagram'
+                                                : url.includes('facebook.com') || url.includes('fb.watch') ? 'Facebook'
+                                                : 'X'
+                                            return (
+                                                <div key={idx} className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-lg px-3 py-2">
+                                                    <span className="text-[10px] font-black uppercase tracking-wider text-primary shrink-0">{platform}</span>
+                                                    <span className="text-xs text-gray-400 truncate flex-1">{url}</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => set("videoUrls", formData.videoUrls.filter((_, i) => i !== idx))}
+                                                        className="text-gray-500 hover:text-red-400 transition-colors shrink-0"
+                                                    >
+                                                        <X size={14} />
+                                                    </button>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

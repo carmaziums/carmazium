@@ -184,6 +184,12 @@ export class CreateListingDto {
     @IsOptional()
     images: string[];
 
+    @ApiProperty({ description: 'Array of video URLs (YouTube, Instagram, Facebook, X)', type: [String], required: false })
+    @IsArray()
+    @IsString({ each: true })
+    @IsOptional()
+    videoUrls?: string[];
+
     @ApiProperty({ description: 'Type of listing', enum: ListingType, example: ListingType.CLASSIFIED })
     @IsEnum(ListingType)
     listingType: ListingType;

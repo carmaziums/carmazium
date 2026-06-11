@@ -11,6 +11,7 @@ import {
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
+import { publishListing, createListingCheckoutSession } from "@/lib/listingApi"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 import { BulkImportModal } from "@/components/dealer/BulkImportModal"
@@ -31,8 +32,7 @@ export default function DealerInventoryPage() {
     const [statusFilter, setStatusFilter] = React.useState("ALL")
     const [isBulkImportOpen, setIsBulkImportOpen] = React.useState(false)
     const [activeDropdown, setActiveDropdown] = React.useState<string | null>(null)
-
-
+    const [publishing, setPublishing] = React.useState<string | null>(null)
 
     React.useEffect(() => {
         if (!authLoading && user) {
@@ -56,17 +56,20 @@ export default function DealerInventoryPage() {
         }
     }
 
-    async function publishListing(id: string) {
+    async function handlePublish(listing: any) {
         try {
-            await apiClient(`/listings/${id}/status`, { 
-                method: 'PATCH',
-                body: JSON.stringify({ status: 'ACTIVE' })
-            });
-            // Refresh listings
-            fetchListings(searchQuery);
-        } catch (err) {
-            console.error('Failed to publish listing:', err);
-            alert('Failed to publish listing. Please try again.');
+            setPublishing(listing.id)
+            const result = await publishListing(listing.id)
+            if (result.activated) {
+                fetchListings(searchQuery)
+            } else if (result.requiresPayment) {
+                const checkout = await createListingCheckoutSession(listing.id, listing.badgeTier || 'BASIC')
+                window.location.href = checkout.url
+            }
+        } catch (err: any) {
+            alert('Failed to publish: ' + err.message)
+        } finally {
+            setPublishing(null)
         }
     }
 
@@ -255,14 +258,18 @@ export default function DealerInventoryPage() {
                                                 <td className="px-8 py-6 text-right">
                                                     <div className="flex items-center justify-end gap-2 opactiy-0 group-hover:opacity-100 transition-opacity">
                                                         {listing.status === 'DRAFT' && (
-                                                            <Button 
-                                                                variant="ghost" 
-                                                                size="sm" 
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
                                                                 title="Publish Listing"
-                                                                onClick={() => publishListing(listing.id)}
+                                                                onClick={() => handlePublish(listing)}
+                                                                disabled={publishing === listing.id}
                                                                 className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20"
                                                             >
-                                                                <CheckCircle2 size={16} />
+                                                                {publishing === listing.id
+                                                                    ? <Loader2 size={16} className="animate-spin" />
+                                                                    : <CheckCircle2 size={16} />
+                                                                }
                                                             </Button>
                                                         )}
 

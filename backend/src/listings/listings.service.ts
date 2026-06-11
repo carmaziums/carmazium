@@ -196,6 +196,7 @@ export class ListingsService {
                 priceMin: createListingDto.priceMin ?? null,
                 priceMax: createListingDto.priceMax ?? null,
                 images: originalImages,
+                videoUrls: createListingDto.videoUrls ?? [],
                 type: listingType,
                 status: listingStatus,
                 description: createListingDto.description ?? null,
@@ -598,6 +599,7 @@ export class ListingsService {
         if (updateListingDto.priceMax !== undefined) updateData.priceMax = updateListingDto.priceMax ?? null;
         if (updateListingDto.description !== undefined) updateData.description = updateListingDto.description;
         if (updateListingDto.images) updateData.images = updateListingDto.images;
+        if (updateListingDto.videoUrls !== undefined) updateData.videoUrls = updateListingDto.videoUrls;
         if (updateListingDto.make) updateData.make = updateListingDto.make;
         if (updateListingDto.model) updateData.model = updateListingDto.model;
         if (updateListingDto.year) updateData.year = updateListingDto.year;

@@ -563,6 +563,7 @@ model Listing {
   description String?
   price       Decimal       @db.Decimal(12, 2)
   images      String[] // Array of Supabase URLs
+  videoUrls   String[] // Optional video embed URLs (YouTube, Instagram, Facebook, X)
   slug        String        @unique
   viewCount   Int           @default(0)
   vehicleType VehicleType   @default(CAR)

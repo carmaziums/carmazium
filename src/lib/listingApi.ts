@@ -68,6 +68,7 @@ export interface CreateListingRequest {
     combinedMpg?: number
     extraUrbanMpg?: number
     bannerLabel?: string
+    videoUrls?: string[]
 }
 
 export interface CreateListingResponse {
@@ -136,6 +137,7 @@ export interface Listing {
     description: string | null
     price: string | number
     images: string[]
+    videoUrls?: string[]
     make: string | null
     model: string | null
     year: number | null

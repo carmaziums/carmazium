@@ -194,6 +194,23 @@ function OfferModal({
     )
 }
 
+function getYouTubeEmbedId(url: string): string | null {
+    try {
+        const u = new URL(url)
+        if (u.hostname.includes('youtu.be')) return u.pathname.slice(1).split('?')[0]
+        if (u.hostname.includes('youtube.com')) return u.searchParams.get('v')
+        return null
+    } catch { return null }
+}
+
+function getVideoPlatform(url: string): 'youtube' | 'instagram' | 'facebook' | 'x' | 'other' {
+    if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube'
+    if (url.includes('instagram.com')) return 'instagram'
+    if (url.includes('facebook.com') || url.includes('fb.watch')) return 'facebook'
+    if (url.includes('x.com') || url.includes('twitter.com')) return 'x'
+    return 'other'
+}
+
 function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = React.use(params)
     const router = useRouter()
@@ -733,6 +750,51 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                         {isDescExpanded ? "View Less" : "View More"}
                                     </button>
                                 )}
+                            </div>
+                        )}
+
+                        {/* Video Embeds */}
+                        {listing.videoUrls && listing.videoUrls.length > 0 && (
+                            <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-8">
+                                <h3 className="text-xl font-bold text-white mb-6 border-l-4 border-primary pl-4">Videos</h3>
+                                <div className="space-y-4">
+                                    {(listing.videoUrls as string[]).map((url, idx) => {
+                                        const platform = getVideoPlatform(url)
+                                        const ytId = platform === 'youtube' ? getYouTubeEmbedId(url) : null
+                                        if (ytId) {
+                                            return (
+                                                <div key={idx} className="aspect-video rounded-xl overflow-hidden bg-black">
+                                                    <iframe
+                                                        src={`https://www.youtube.com/embed/${ytId}`}
+                                                        title={`Video ${idx + 1}`}
+                                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                        allowFullScreen
+                                                        className="w-full h-full"
+                                                    />
+                                                </div>
+                                            )
+                                        }
+                                        const platformLabel = platform === 'instagram' ? 'Instagram' : platform === 'facebook' ? 'Facebook' : platform === 'x' ? 'X (Twitter)' : 'External Video'
+                                        return (
+                                            <a
+                                                key={idx}
+                                                href={url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:border-primary/40 hover:bg-primary/5 transition-all group"
+                                            >
+                                                <div className="p-2.5 rounded-lg bg-primary/10 border border-primary/20 shrink-0">
+                                                    <Camera size={20} className="text-primary" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-xs font-black uppercase tracking-wider text-primary mb-0.5">{platformLabel}</p>
+                                                    <p className="text-sm text-gray-400 truncate">{url}</p>
+                                                </div>
+                                                <ArrowLeft size={16} className="text-gray-500 rotate-180 shrink-0 group-hover:text-primary transition-colors" />
+                                            </a>
+                                        )
+                                    })}
+                                </div>
                             </div>
                         )}
 
