@@ -29,7 +29,10 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { getDealerKyc, submitDealerKyc, DealerKycData } from "@/lib/dealerApi";
 import { uploadImage } from "@/lib/supabase";
+import { apiClient } from "@/lib/apiClient";
 import { useRouter } from "next/navigation";
+
+export const KYC_SKIP_KEY = 'kyc_skipped_v1';
 
 // ─── File Upload Component ─────────────────────────────────────────────────────
 
@@ -241,6 +244,7 @@ export function KycOverlayForm() {
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [switchingRole, setSwitchingRole] = useState(false);
   const [kycData, setKycData] = useState<DealerKycData | null>(null);
   const [activeStep, setActiveStep] = useState(1);
   const [errorMsg, setErrorMsg] = useState("");
@@ -337,6 +341,34 @@ export function KycOverlayForm() {
       router.push("/");
     } catch (err) {
       console.error("Sign out failed:", err);
+    }
+  };
+
+  // Option A — skip KYC for now; go to a limited dealer dashboard
+  const handleSkip = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(KYC_SKIP_KEY, '1');
+    }
+    router.push('/dashboard/dealer/settings');
+  };
+
+  // Option B — switch role to BUYER immediately
+  const handleSwitchToBuyer = async () => {
+    setSwitchingRole(true);
+    try {
+      await apiClient('/users/elevate', {
+        method: 'POST',
+        body: JSON.stringify({ newRole: 'BUYER' }),
+      });
+      await refreshProfile();
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(KYC_SKIP_KEY);
+      }
+      router.push('/dashboard');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to switch role. Please try again.');
+    } finally {
+      setSwitchingRole(false);
     }
   };
 
@@ -451,7 +483,13 @@ export function KycOverlayForm() {
         <div className="dealer-glass-card max-w-xl w-full p-8 md:p-10 border border-white/5 relative overflow-hidden flex flex-col items-center text-center">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 via-primary to-amber-500 animate-pulse" />
 
-          <div className="absolute top-4 right-4 z-20">
+          <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+            <button
+              onClick={handleSkip}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 text-xs font-bold text-slate-400 transition-colors"
+            >
+              Skip for now
+            </button>
             <button
               onClick={handleSignOut}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 text-xs font-bold text-slate-300 transition-colors"
@@ -497,8 +535,6 @@ export function KycOverlayForm() {
                 setKycData(kyc);
                 await refreshProfile();
                 if (kyc?.status === "APPROVED") {
-                  // Profile is refreshed (isVerified = true); push to dashboard so
-                  // the layout guard re-evaluates and unmounts this overlay.
                   router.push("/dashboard/dealer");
                 } else {
                   setLoading(false);
@@ -508,6 +544,14 @@ export function KycOverlayForm() {
             >
               <Loader2 className="animate-spin" size={14} />
               Check Status Now
+            </button>
+            <button
+              onClick={handleSwitchToBuyer}
+              disabled={switchingRole}
+              className="flex items-center justify-center gap-2 px-6 py-3 rounded-lg border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 font-bold text-xs uppercase tracking-widest transition-all cursor-pointer disabled:opacity-50"
+            >
+              {switchingRole ? <Loader2 className="animate-spin" size={14} /> : <User size={14} />}
+              Become a Buyer / Seller
             </button>
           </div>
         </div>
@@ -538,13 +582,29 @@ export function KycOverlayForm() {
             </div>
           </div>
 
-          <button
-            onClick={handleSignOut}
-            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg border border-white/5 bg-slate-900/60 hover:bg-slate-900/80 text-xs font-bold text-slate-300 transition-colors shrink-0"
-          >
-            <LogOut size={13} />
-            <span className="hidden xs:inline sm:inline">Sign Out</span>
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleSkip}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-lg border border-white/5 bg-slate-900/60 hover:bg-slate-900/80 text-xs font-bold text-slate-400 transition-colors"
+            >
+              Skip for now
+            </button>
+            <button
+              onClick={handleSwitchToBuyer}
+              disabled={switchingRole}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-lg border border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20 text-xs font-bold text-blue-300 transition-colors disabled:opacity-50"
+            >
+              {switchingRole ? <Loader2 className="animate-spin" size={12} /> : <User size={12} />}
+              Buyer / Seller
+            </button>
+            <button
+              onClick={handleSignOut}
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg border border-white/5 bg-slate-900/60 hover:bg-slate-900/80 text-xs font-bold text-slate-300 transition-colors"
+            >
+              <LogOut size={13} />
+              <span className="hidden xs:inline sm:inline">Sign Out</span>
+            </button>
+          </div>
         </div>
 
         {/* Info Box if Rejected */}

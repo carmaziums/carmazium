@@ -2,12 +2,15 @@
 
 import React from "react"
 import { useAuth } from "@/context/AuthContext"
-import { KycOverlayForm } from "@/components/dashboard/KycOverlayForm"
-import { Loader2 } from "lucide-react"
+import { KycOverlayForm, KYC_SKIP_KEY } from "@/components/dashboard/KycOverlayForm"
+import { Loader2, AlertTriangle, ArrowRight } from "lucide-react"
+import Link from "next/link"
 
 /**
  * Dealer Dashboard Layout
  * Wraps all /dashboard/dealer/* pages and blocks access if unverified.
+ * Unverified dealers can "Skip for now" — they get a limited-mode banner
+ * and can change their account type from the Settings page.
  */
 export default function DealerDashboardLayout({
     children,
@@ -15,6 +18,14 @@ export default function DealerDashboardLayout({
     children: React.ReactNode
 }) {
     const { user, profile, loading } = useAuth()
+    const [skipped, setSkipped] = React.useState(false)
+
+    // Read skip flag client-side after hydration
+    React.useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setSkipped(localStorage.getItem(KYC_SKIP_KEY) === '1')
+        }
+    }, [])
 
     if (loading) {
         return (
@@ -28,17 +39,34 @@ export default function DealerDashboardLayout({
     }
 
     const isEmailVerified = !!user?.email_confirmed_at
-    // Staff members have dealerStaff records — they bypass KYC (their employer already verified)
     const isStaffMember = !!((profile as any)?.dealerStaffMemberships?.length)
     const isVerifiedDealer = !!profile?.dealerProfile?.isVerified || isStaffMember
 
-    // Block dashboard access with KYC overlay ONLY after they verify their email
-    if (isEmailVerified && !isVerifiedDealer) {
+    // Show KYC overlay unless: verified, staff member, or user explicitly skipped
+    if (isEmailVerified && !isVerifiedDealer && !skipped) {
         return <KycOverlayForm />
     }
 
     return (
         <>
+            {/* Limited-mode banner shown when user skipped KYC */}
+            {skipped && !isVerifiedDealer && (
+                <div className="w-full bg-amber-500/10 border-b border-amber-500/20 px-4 py-2.5 flex items-center justify-between gap-4 text-xs">
+                    <div className="flex items-center gap-2 text-amber-300">
+                        <AlertTriangle size={13} className="shrink-0" />
+                        <span>
+                            <strong>Limited access</strong> — KYC verification is pending.
+                            Most dealer features are unavailable until you complete verification.
+                        </span>
+                    </div>
+                    <Link
+                        href="/dashboard/dealer/settings"
+                        className="flex items-center gap-1 text-amber-300 font-bold hover:text-amber-200 whitespace-nowrap transition-colors shrink-0"
+                    >
+                        Manage Account <ArrowRight size={12} />
+                    </Link>
+                </div>
+            )}
             {children}
         </>
     )

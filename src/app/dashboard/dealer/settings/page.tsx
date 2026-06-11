@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import {
     Settings, Building2, MapPin, Phone, Globe,
-    Loader2, Save, Bell
+    Loader2, Save, Bell, UserCog, AlertTriangle
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
@@ -13,11 +13,16 @@ import { apiClient } from "@/lib/apiClient"
 import { uploadImage } from "@/lib/supabase"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
+import { KYC_SKIP_KEY } from "@/components/dashboard/KycOverlayForm"
+import { useRouter } from "next/navigation"
 
 export default function DealerSettingsPage() {
-    const { user, profile, loading: authLoading } = useAuth()
+    const { user, profile, loading: authLoading, refreshProfile } = useAuth()
+    const router = useRouter()
     const [loading, setLoading] = React.useState(true)
     const [saving, setSaving] = React.useState(false)
+    const [switchingRole, setSwitchingRole] = React.useState(false)
+    const [roleError, setRoleError] = React.useState("")
     const [activeTab, setActiveTab] = React.useState("profile")
     const [form, setForm] = React.useState({
         companyName: "",
@@ -113,9 +118,30 @@ export default function DealerSettingsPage() {
         }
     }
 
+    async function handleSwitchRole(newRole: 'BUYER' | 'SELLER') {
+        setSwitchingRole(true)
+        setRoleError("")
+        try {
+            await apiClient('/users/elevate', {
+                method: 'POST',
+                body: JSON.stringify({ newRole }),
+            })
+            await refreshProfile()
+            if (typeof window !== 'undefined') {
+                localStorage.removeItem(KYC_SKIP_KEY)
+            }
+            router.push('/dashboard')
+        } catch (err: any) {
+            setRoleError(err.message || 'Failed to switch account type. Please try again.')
+        } finally {
+            setSwitchingRole(false)
+        }
+    }
+
     const tabs = [
         { key: "profile", label: "Dealership Profile", icon: Building2 },
         { key: "notifications", label: "Notifications", icon: Bell },
+        { key: "account", label: "Account Type", icon: UserCog },
     ]
 
     return (
@@ -281,6 +307,46 @@ export default function DealerSettingsPage() {
                                                     <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all" />
                                                 </label>
                                             </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === "account" && (
+                                <div className="bg-white/5 border border-white/5 rounded-2xl p-8 space-y-6">
+                                    <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/20">
+                                        <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                                        <div>
+                                            <p className="text-sm font-bold text-amber-300 mb-1">Change Account Type</p>
+                                            <p className="text-xs text-gray-400 leading-relaxed">
+                                                Switching your account type will remove your dealer profile and move you to the standard buyer/seller dashboard.
+                                                This action cannot be undone without re-registering as a dealer.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {roleError && (
+                                        <p className="text-xs text-red-400 font-semibold">{roleError}</p>
+                                    )}
+
+                                    <div className="grid sm:grid-cols-2 gap-4">
+                                        {(['BUYER', 'SELLER'] as const).map(role => (
+                                            <button
+                                                key={role}
+                                                onClick={() => handleSwitchRole(role)}
+                                                disabled={switchingRole}
+                                                className="flex flex-col items-start gap-2 p-5 rounded-xl border border-white/10 bg-white/5 hover:border-primary/40 hover:bg-primary/5 transition-all text-left disabled:opacity-50"
+                                            >
+                                                <p className="text-sm font-black text-white uppercase tracking-wide">
+                                                    {switchingRole ? <Loader2 size={14} className="animate-spin inline mr-1" /> : null}
+                                                    Become a {role.charAt(0) + role.slice(1).toLowerCase()}
+                                                </p>
+                                                <p className="text-xs text-gray-400">
+                                                    {role === 'BUYER'
+                                                        ? 'Browse and purchase vehicles. No listing permissions.'
+                                                        : 'List and sell vehicles without dealer features.'}
+                                                </p>
+                                            </button>
                                         ))}
                                     </div>
                                 </div>
