@@ -23,7 +23,7 @@ interface TierFeature {
 
 const TIER_FEATURES: TierFeature[] = [
     { label: "Listing live on marketplace",   basic: true,     standard: true,    premium: true },
-    { label: "Photo uploads",                 basic: "Up to 5", standard: "Up to 15", premium: "Unlimited" },
+    { label: "Photo uploads",                 basic: "Up to 20", standard: "Up to 50", premium: "Up to 100" },
     { label: "Offer & negotiation system",    basic: true,     standard: true,    premium: true },
     { label: "Chat with buyers",              basic: true,     standard: true,    premium: true },
     { label: "DVLA auto-fill (VRM lookup)",   basic: true,     standard: true,    premium: true },
@@ -31,7 +31,7 @@ const TIER_FEATURES: TierFeature[] = [
     { label: "Priority search placement",     basic: false,    standard: false,   premium: true },
     { label: "HPI Verified badge",            basic: "Add-on", standard: "Add-on", premium: "Included" },
     { label: "Featured boost eligibility",    basic: false,    standard: true,    premium: true },
-    { label: "Listing duration",              basic: "30 days", standard: "30 days", premium: "90 days" },
+    { label: "Listing duration",              basic: "30 days", standard: "30 days", premium: "Until sold" },
 ]
 
 const FAQS = [
@@ -116,12 +116,12 @@ export default function PricingPage() {
                             <div className="flex items-end gap-2 mb-1">
                                 <span className="text-5xl font-black text-white">Free</span>
                             </div>
-                            <p className="text-gray-500 text-sm">6-hour live open auction</p>
+                            <p className="text-gray-500 text-sm">5-hour live open auction</p>
                         </div>
                         <ul className="space-y-3 mb-8 flex-1">
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Live bidding marketplace</li>
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Open to all buyers</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> 6-hour auction duration</li>
+                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> 5-hour auction duration</li>
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Anti-snipe protection</li>
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Real-time bid feed</li>
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Post-auction seller chat</li>
@@ -147,7 +147,7 @@ export default function PricingPage() {
                         </div>
                         <ul className="space-y-3 mb-8 flex-1">
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Public marketplace listing</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Up to 5 photos</li>
+                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Up to 20 photos</li>
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Offer & negotiation system</li>
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Direct buyer chat</li>
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> DVLA auto-fill</li>
@@ -171,7 +171,7 @@ export default function PricingPage() {
                         </div>
                         <ul className="space-y-3 mb-8 flex-1">
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Everything in Basic</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Up to 15 photos</li>
+                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Up to 50 photos</li>
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Performance analytics</li>
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Featured boost eligible</li>
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> 30-day listing duration</li>
@@ -196,16 +196,16 @@ export default function PricingPage() {
                                 <span className="text-5xl font-black text-white">£{PRICING.listing.premium.price}</span>
                                 <span className="text-gray-500 text-sm mb-1.5">one-off</span>
                             </div>
-                            <p className="text-gray-500 text-sm">90-day listing, maximum exposure</p>
+                            <p className="text-gray-500 text-sm">Advertise until sold, maximum exposure</p>
                         </div>
                         <ul className="space-y-3 mb-8 flex-1">
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Everything in Standard</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Unlimited photos</li>
+                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Up to 100 photos</li>
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Priority search placement</li>
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> HPI Verified badge included</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> 90-day listing duration</li>
+                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Advertise until sold</li>
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Featured boost eligible</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Seller performance analytics</li>
+                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Analytics: views, enquiries, offers & earnings</li>
                         </ul>
                         <Link href="/sell" className="block w-full py-3 rounded-xl bg-primary hover:bg-red-600 text-center text-sm font-bold text-white transition-all shadow-neon">
                             Get Premium

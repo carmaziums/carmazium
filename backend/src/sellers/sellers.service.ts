@@ -139,6 +139,17 @@ export class SellersService {
                 ? sellerProfile.reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount
                 : 0;
 
+        // Positive = 4–5 stars, Neutral = 3, Negative = 1–2
+        const positiveCount = sellerProfile.reviews.filter(r => r.rating >= 4).length;
+        const neutralCount  = sellerProfile.reviews.filter(r => r.rating === 3).length;
+        const negativeCount = sellerProfile.reviews.filter(r => r.rating <= 2).length;
+
+        // Star distribution (1–5)
+        const starCounts = [1, 2, 3, 4, 5].map(star => ({
+            star,
+            count: sellerProfile.reviews.filter(r => r.rating === star).length,
+        }));
+
         const { reviews: _, ...profileWithoutReviews } = sellerProfile;
 
         return {
@@ -155,6 +166,10 @@ export class SellersService {
             user: profileWithoutReviews.user,
             reviewCount,
             averageRating: Math.round(averageRating * 10) / 10,
+            positiveCount,
+            neutralCount,
+            negativeCount,
+            starCounts,
         };
     }
 

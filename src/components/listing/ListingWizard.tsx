@@ -1520,11 +1520,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
                             <div className="space-y-4">
                                 <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Photos *</h2>
-                                <p className="text-sm text-gray-400">Aim for at least 20 photos for the best results. Organize them by selecting the relevant category below.</p>
+                                <p className="text-sm text-gray-400">Upload up to 100 photos. Aim for at least 20 for the best results, and organise them by selecting the relevant category below.</p>
                                 <ImageUpload
                                     onImagesChange={(imgs) => set("images", imgs)}
                                     onDamageImageCountChange={setDamageImageCount}
-                                    maxImages={50}
+                                    maxImages={100}
                                     existingImages={formData.images}
                                 />
                             </div>

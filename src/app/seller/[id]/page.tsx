@@ -8,7 +8,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import Image from "next/image"
-import { Star, ShieldCheck, Car, MessageCircle, TrendingUp, Clock, ChevronRight, AlertCircle } from "lucide-react"
+import { Star, ShieldCheck, Car, MessageCircle, TrendingUp, Clock, ChevronRight, AlertCircle, BadgeCheck } from "lucide-react"
 import type { Metadata } from "next"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -38,6 +38,10 @@ interface SellerData {
     user: SellerUser
     reviewCount: number
     averageRating: number
+    positiveCount: number
+    neutralCount: number
+    negativeCount: number
+    starCounts: { star: number; count: number }[]
 }
 
 interface Listing {
@@ -201,7 +205,7 @@ export default async function SellerProfilePage({ params }: { params: Promise<{ 
 
     if (!sellerData) notFound()
 
-    const { profile, user, reviewCount, averageRating } = sellerData
+    const { profile, user, reviewCount, averageRating, positiveCount, neutralCount, negativeCount, starCounts } = sellerData
     // Use the live active count from the listings endpoint, fallback to DB field
     const { data: listings, total: listingsPageTotal } = listingsResult
     const totalListings = activeListingCount || listingsPageTotal || profile.totalListings
@@ -335,9 +339,49 @@ export default async function SellerProfilePage({ params }: { params: Promise<{ 
 
                         {/* Reviews */}
                         <section>
-                            <div className="mb-5 flex items-center justify-between">
-                                <h2 className="text-lg font-bold">Reviews <span className="text-gray-500 text-base font-normal">({totalReviews})</span></h2>
-                            </div>
+                            <h2 className="text-lg font-bold mb-5">
+                                All Feedback <span className="text-gray-500 font-normal">({totalReviews})</span>
+                            </h2>
+
+                            {totalReviews > 0 && (
+                                <div className="rounded-2xl border border-white/5 bg-white/2 p-6 mb-6 space-y-5">
+                                    {/* Positive / Neutral / Negative summary */}
+                                    <div>
+                                        <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-3">Summary</p>
+                                        <div className="grid grid-cols-3 gap-3">
+                                            {[
+                                                { label: "Positive", count: positiveCount, color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20" },
+                                                { label: "Neutral",  count: neutralCount,  color: "text-yellow-400",  bg: "bg-yellow-500/10 border-yellow-500/20" },
+                                                { label: "Negative", count: negativeCount, color: "text-red-400",     bg: "bg-red-500/10 border-red-500/20" },
+                                            ].map(({ label, count, color, bg }) => (
+                                                <div key={label} className={`rounded-xl border ${bg} px-4 py-3 text-center`}>
+                                                    <p className={`text-2xl font-black ${color}`}>{count}</p>
+                                                    <p className="text-xs text-gray-400 mt-0.5">{label}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Star distribution bars */}
+                                    <div>
+                                        <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-3">Rating Breakdown</p>
+                                        <div className="space-y-2">
+                                            {[...starCounts].reverse().map(({ star, count }) => {
+                                                const pct = reviewCount > 0 ? Math.round((count / reviewCount) * 100) : 0
+                                                return (
+                                                    <div key={star} className="flex items-center gap-3 text-xs">
+                                                        <span className="w-12 text-right text-gray-400 shrink-0">{star} star{star !== 1 ? 's' : ''}</span>
+                                                        <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
+                                                            <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${pct}%` }} />
+                                                        </div>
+                                                        <span className="w-8 text-gray-500 shrink-0">{count}</span>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             {reviews.length === 0 ? (
                                 <EmptyState icon={<Star size={32} className="text-gray-600" />} message="No reviews yet" />
@@ -374,7 +418,7 @@ function ListingCard({ listing }: { listing: Listing }) {
     const img = listing.images?.[0] || "/placeholder-car.jpg"
     return (
         <Link
-            href={`/vehicle/${listing.slug}`}
+            href={`/buy-cars/${listing.slug}`}
             className="group block overflow-hidden rounded-xl border border-white/5 bg-white/2 transition-colors hover:border-primary/30 hover:bg-white/5"
         >
             <div className="relative h-36 overflow-hidden bg-slate-800">
@@ -399,6 +443,7 @@ function ListingCard({ listing }: { listing: Listing }) {
 
 function ReviewCard({ review }: { review: Review }) {
     const name = [review.reviewer.firstName, review.reviewer.lastName].filter(Boolean).join(" ") || "Anonymous"
+    const isVerified = !!review.listingId
     return (
         <div className="rounded-xl border border-white/5 bg-white/2 p-5">
             <div className="flex items-start justify-between gap-3">
@@ -411,8 +456,15 @@ function ReviewCard({ review }: { review: Review }) {
                         </div>
                     )}
                     <div>
-                        <p className="text-sm font-semibold">{name}</p>
-                        <p className="text-[11px] text-gray-500">{timeAgo(review.createdAt)}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-semibold">{name}</p>
+                            {isVerified && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                                    <BadgeCheck size={10} /> Verified purchase
+                                </span>
+                            )}
+                        </div>
+                        <p className="text-[11px] text-gray-500 mt-0.5">{timeAgo(review.createdAt)}</p>
                     </div>
                 </div>
                 <StarRating rating={review.rating} size={12} />
