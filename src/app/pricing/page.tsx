@@ -3,7 +3,7 @@ import Link from "next/link"
 import {
     CheckCircle, XCircle, Zap, Shield, Star, Camera,
     Tag, BarChart3, BadgeCheck, ArrowRight, HelpCircle,
-    Sparkles, MessageSquare, ChevronDown, Gavel, Clock, Users,
+    Sparkles, MessageSquare, ChevronDown, Gavel, Clock, Users, Lock,
 } from "lucide-react"
 import { PRICING } from "@/lib/pricingConfig"
 
@@ -126,6 +126,10 @@ export default function PricingPage() {
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Real-time bid feed</li>
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Post-auction seller chat</li>
                         </ul>
+                        <div className="flex items-start gap-2 mb-4 px-3 py-2.5 rounded-lg border bg-amber-500/5 border-amber-500/20">
+                            <Lock size={12} className="text-amber-500/70 shrink-0 mt-0.5" />
+                            <p className="text-[11px] text-amber-400/80 leading-snug">Only <strong className="text-amber-300">verified dealers</strong> can list vehicles for auction.</p>
+                        </div>
                         <Link href="/sell" className="block w-full py-3 rounded-xl border border-orange-500/40 bg-orange-500/10 text-center text-sm font-bold text-orange-300 hover:bg-orange-500/20 transition-all">
                             Start Auction
                         </Link>
