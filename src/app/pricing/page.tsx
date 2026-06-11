@@ -116,12 +116,12 @@ export default function PricingPage() {
                             <div className="flex items-end gap-2 mb-1">
                                 <span className="text-5xl font-black text-white">Free</span>
                             </div>
-                            <p className="text-gray-500 text-sm">6-hour live open auction</p>
+                            <p className="text-gray-500 text-sm">24-hour live open auction</p>
                         </div>
                         <ul className="space-y-3 mb-8 flex-1">
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Live bidding marketplace</li>
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Open to all buyers</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> 6-hour auction duration</li>
+                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> 24-hour auction duration</li>
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Anti-snipe protection</li>
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Real-time bid feed</li>
                             <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Post-auction seller chat</li>
