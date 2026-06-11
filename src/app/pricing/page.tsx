@@ -128,7 +128,7 @@ export default function PricingPage() {
                         </ul>
                         <div className="flex items-start gap-2 mb-4 px-3 py-2.5 rounded-lg border bg-amber-500/5 border-amber-500/20">
                             <Lock size={12} className="text-amber-500/70 shrink-0 mt-0.5" />
-                            <p className="text-[11px] text-amber-400/80 leading-snug">Only <strong className="text-amber-300">verified dealers</strong> can list vehicles for auction.</p>
+                            <p className="text-[11px] text-amber-400/80 leading-snug">Only <strong className="text-amber-300">verified dealers</strong> can bid on or buy auction vehicles.</p>
                         </div>
                         <Link href="/sell" className="block w-full py-3 rounded-xl border border-orange-500/40 bg-orange-500/10 text-center text-sm font-bold text-orange-300 hover:bg-orange-500/20 transition-all">
                             Start Auction
