@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Camera, X, Upload, Loader2, GripVertical, Star, Info, CheckCircle2 } from "lucide-react"
+import { Camera, X, Upload, Loader2, GripVertical, Star, Info, CheckCircle2, AlertCircle } from "lucide-react"
 import Image from "next/image"
 import { uploadImage, deleteImage } from "@/lib/supabase"
 
@@ -56,6 +56,7 @@ export function ImageUpload({
     const fileInputRef = React.useRef<HTMLInputElement>(null)
 
     // Reorder drag state
+    const [uploadError, setUploadError] = React.useState<string | null>(null)
     const [reorderDragIdx, setReorderDragIdx] = React.useState<number | null>(null)
     const [reorderOverIdx, setReorderOverIdx] = React.useState<number | null>(null)
 
@@ -123,6 +124,7 @@ export function ImageUpload({
         }
 
         setUploading(true)
+        setUploadError(null)
         const newImages: CategorizedImage[] = []
         let failedCount = 0
         let lastFailError = ''
@@ -149,11 +151,10 @@ export function ImageUpload({
             }
 
             if (failedCount > 0) {
-                if (newImages.length > 0) {
-                    alert(`${newImages.length} image(s) uploaded, but ${failedCount} failed.\n\nError: ${lastFailError}`)
-                } else {
-                    alert(`Upload failed: ${lastFailError}`)
-                }
+                const msg = newImages.length > 0
+                    ? `${newImages.length} uploaded, ${failedCount} failed — ${lastFailError}`
+                    : lastFailError
+                setUploadError(msg)
             }
         } finally {
             setUploading(false)
@@ -372,6 +373,20 @@ export function ImageUpload({
                     </>
                 )}
             </div>
+
+            {/* UPLOAD ERROR */}
+            {uploadError && (
+                <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-red-500/30 bg-red-500/10 text-red-300 text-sm">
+                    <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-400" />
+                    <div className="flex-1 min-w-0">
+                        <p className="font-bold text-red-300 text-xs uppercase tracking-wide mb-0.5">Upload failed</p>
+                        <p className="text-xs text-red-200/80 break-words">{uploadError}</p>
+                    </div>
+                    <button type="button" onClick={() => setUploadError(null)} className="shrink-0 text-red-400 hover:text-red-200">
+                        <X size={14} />
+                    </button>
+                </div>
+            )}
 
             {/* IMAGE PREVIEW GRID */}
             {images.length > 0 && (

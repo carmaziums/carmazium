@@ -105,32 +105,46 @@ async function directUploadToSupabase(
 ): Promise<string> {
     const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/${bucket}/${fileName}`;
 
-    // Prefer the authenticated user's access token to avoid 403 RLS issues.
-    // Fallback to the ANON key only if not authenticated.
-    const token = await getAccessToken();
-    const authHeader = token ? `Bearer ${token}` : `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`;
+    // getAccessToken() calls supabase.auth.getSession() which is a network call
+    // with no built-in timeout — race it against a 3 s ceiling so a hung auth
+    // server never freezes the whole upload.
+    const token = await Promise.race([
+        getAccessToken(),
+        new Promise<null>(resolve => setTimeout(() => resolve(null), 3000)),
+    ]);
+    const authHeader = token
+        ? `Bearer ${token}`
+        : `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`;
 
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-            'Authorization': authHeader,
-            'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            'Content-Type': file.type || 'application/octet-stream',
-            'x-upsert': 'true',
-            'Cache-Control': 'max-age=3600',
-        },
-        body: file,
-        signal: AbortSignal.timeout(15000),
-    });
+    // AbortSignal.timeout() was added in Chrome 103 / Safari 16 / Firefox 100.
+    // Use a manual AbortController as a polyfill for older browsers.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(new Error('Upload timed out after 15 s')), 15000);
+
+    let response: Response;
+    try {
+        response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': authHeader,
+                'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+                'Content-Type': file.type || 'application/octet-stream',
+                'x-upsert': 'true',
+                'Cache-Control': 'max-age=3600',
+            },
+            body: file,
+            signal: controller.signal,
+        });
+    } finally {
+        clearTimeout(timer);
+    }
 
     if (!response.ok) {
         const errorBody = await response.text().catch(() => '');
-        throw new Error(`Direct upload failed (${response.status}): ${errorBody || response.statusText}`);
+        throw new Error(`Upload failed (${response.status}): ${errorBody || response.statusText}`);
     }
 
-    // Build public URL
-    const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${bucket}/${fileName}`;
-    return publicUrl;
+    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${bucket}/${fileName}`;
 }
 
 /**
