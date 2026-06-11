@@ -2,6 +2,7 @@ import {
     Injectable,
     NotFoundException,
     BadRequestException,
+    ForbiddenException,
     forwardRef,
     Inject,
 } from '@nestjs/common';
@@ -49,6 +50,15 @@ export class BidsService {
         // Prevent seller from bidding on their own auction
         if (listing.sellerId === bidderId) {
             throw new BadRequestException('You cannot bid on your own auction');
+        }
+
+        // Only verified dealers may bid
+        const dealerProfile = await this.prisma.dealerProfile.findUnique({
+            where: { userId: bidderId },
+            select: { isVerified: true },
+        });
+        if (!dealerProfile?.isVerified) {
+            throw new ForbiddenException('Only verified dealers can bid on auctions');
         }
 
         const minIncrement = Number(auction.minIncrement);

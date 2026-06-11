@@ -54,15 +54,6 @@ export class AuctionsService {
             throw new ForbiddenException('You do not own this listing');
         }
 
-        // Only verified dealers can create auctions
-        const dealerProfile = await this.prisma.dealerProfile.findUnique({
-            where: { userId },
-            select: { isVerified: true },
-        });
-        if (!dealerProfile?.isVerified) {
-            throw new ForbiddenException('Only verified dealers can list vehicles for auction');
-        }
-
         if (listing.status === 'SOLD') {
             throw new BadRequestException('This listing has already been sold');
         }
