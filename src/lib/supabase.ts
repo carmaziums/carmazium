@@ -23,29 +23,36 @@ export const supabase = createClient(supabaseUrl || 'https://missing-url.supabas
 export async function getAccessToken(): Promise<string | null> {
     if (typeof window === 'undefined') return null;
 
-    // Primary: use the Supabase SDK — handles refresh automatically and is
-    // correctly scoped to the currently authenticated user.
-    try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) return session.access_token;
-    } catch (e) {
-        console.warn('supabase.auth.getSession() failed, falling back:', e);
-    }
-
-    // Fallback: parse directly from the SDK's own localStorage key.
-    // This key is managed by Supabase and is user-specific (last logged-in user).
+    // Fast path: read the token synchronously from localStorage.
+    // If it's still fresh (> 60 s before expiry) we skip the network call entirely.
     try {
         const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
         const match = url.match(/https:\/\/([^.]+)\.supabase\.co/);
         if (match?.[1]) {
-            const sbToken = localStorage.getItem(`sb-${match[1]}-auth-token`);
-            if (sbToken) {
-                const parsed = JSON.parse(sbToken);
-                if (parsed?.access_token) return parsed.access_token;
+            const raw = localStorage.getItem(`sb-${match[1]}-auth-token`);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                const expiresAt: number = parsed?.expires_at ?? 0;
+                if (parsed?.access_token && Date.now() / 1000 < expiresAt - 60) {
+                    return parsed.access_token;
+                }
             }
         }
+    } catch { /* ignore */ }
+
+    // Slow path: ask the SDK to refresh the session.
+    // Race against a 4 s ceiling — supabase.auth.getSession() makes a network
+    // request and can hang indefinitely if the auth server is unreachable.
+    try {
+        const result = await Promise.race([
+            supabase.auth.getSession(),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
+        ]);
+        if (result && 'data' in result) {
+            if (result.data.session?.access_token) return result.data.session.access_token;
+        }
     } catch (e) {
-        console.warn('Silent read of supabase token failed:', e);
+        console.warn('getAccessToken: getSession() failed:', e);
     }
 
     return null;
@@ -105,13 +112,7 @@ async function directUploadToSupabase(
 ): Promise<string> {
     const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/${bucket}/${fileName}`;
 
-    // getAccessToken() calls supabase.auth.getSession() which is a network call
-    // with no built-in timeout — race it against a 3 s ceiling so a hung auth
-    // server never freezes the whole upload.
-    const token = await Promise.race([
-        getAccessToken(),
-        new Promise<null>(resolve => setTimeout(() => resolve(null), 3000)),
-    ]);
+    const token = await getAccessToken();
     const authHeader = token
         ? `Bearer ${token}`
         : `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`;

@@ -73,13 +73,29 @@ export async function apiClient<T>(
         ...options.headers,
     };
 
+    // Use a manual AbortController for a 30 s timeout — compatible with all
+    // browsers (AbortSignal.timeout is not available in Safari < 16).
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(new Error('Request timed out after 30 s')), 30000);
+
     const config = {
         ...options,
         headers,
         credentials: 'include' as RequestCredentials,
+        signal: controller.signal,
     };
 
-    const response = await fetch(`${API_URL}${endpoint}`, config);
+    let response: Response;
+    try {
+        response = await fetch(`${API_URL}${endpoint}`, config);
+    } catch (err: any) {
+        const msg = err?.message || String(err);
+        throw new Error(msg.includes('aborted') || msg.includes('timed out')
+            ? 'Request timed out — the server took too long to respond. Please try again.'
+            : msg);
+    } finally {
+        clearTimeout(timer);
+    }
 
     if (!response.ok) {
         const rawBody = await response.text().catch(() => '');
