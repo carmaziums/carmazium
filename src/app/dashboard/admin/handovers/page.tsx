@@ -41,8 +41,11 @@ export default function AdminHandoversPage() {
 
     React.useEffect(() => { fetchHandovers() }, [fetchHandovers])
 
-    const handleApprove = async (auctionId: string) => {
-        if (!confirm('Approve this handover? The £100 seller bonus will be marked as released.')) return
+    const handleApprove = async (auctionId: string, sellerConnected: boolean) => {
+        const payoutNote = sellerConnected
+            ? 'The £100 seller bonus will be transferred to their connected bank account via Stripe.'
+            : '⚠️ The seller has NOT connected a bank account — the handover will be approved but NO payout will be sent. They will need to connect their account later (if supported) or be paid manually.'
+        if (!confirm(`Approve this handover?\n\n${payoutNote}`)) return
         try {
             setProcessing(auctionId)
             await approveHandover(auctionId)
@@ -166,6 +169,19 @@ export default function AdminHandoversPage() {
                                                 <div className={`w-2 h-2 rounded-full ${h.buyerFeePaid ? 'bg-emerald-400' : 'bg-gray-500'}`} />
                                                 <span className="text-gray-400">Buyer fee {h.buyerFeePaid ? 'paid' : 'not yet paid'}</span>
                                             </div>
+                                            <div className="flex items-center gap-2 text-xs mt-1">
+                                                {h.listing?.seller?.stripeConnectOnboardingComplete ? (
+                                                    <>
+                                                        <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                                                        <span className="text-gray-400">Seller bank account <strong className="text-emerald-300">connected</strong> — payout will fire automatically</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <div className="w-2 h-2 rounded-full bg-amber-400" />
+                                                        <span className="text-amber-300">Seller bank account <strong>not connected</strong> — payout will NOT be sent</span>
+                                                    </>
+                                                )}
+                                            </div>
                                             {h.handoverSubmittedAt && (
                                                 <div className="flex items-center gap-2 text-xs text-gray-400">
                                                     <Clock size={12} />
@@ -193,12 +209,12 @@ export default function AdminHandoversPage() {
                                     {/* Actions */}
                                     <div className="px-5 pb-5 flex items-center gap-3">
                                         <Button
-                                            onClick={() => handleApprove(h.id)}
+                                            onClick={() => handleApprove(h.id, !!h.listing?.seller?.stripeConnectOnboardingComplete)}
                                             disabled={processing === h.id}
                                             className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2"
                                         >
                                             {processing === h.id ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
-                                            Approve & Release £100
+                                            {h.listing?.seller?.stripeConnectOnboardingComplete ? 'Approve & Pay £100' : 'Approve (No Payout)'}
                                         </Button>
                                         <Button
                                             onClick={() => handleDeny(h.id)}

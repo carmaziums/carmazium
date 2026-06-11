@@ -173,7 +173,15 @@ export class AdminService {
                         make: true,
                         model: true,
                         year: true,
-                        seller: { select: { id: true, email: true, firstName: true, lastName: true } },
+                        seller: {
+                            select: {
+                                id: true,
+                                email: true,
+                                firstName: true,
+                                lastName: true,
+                                stripeConnectOnboardingComplete: true,
+                            },
+                        },
                     },
                 },
                 winner: { select: { id: true, firstName: true, lastName: true, email: true } },
@@ -187,6 +195,10 @@ export class AdminService {
             include: { listing: { select: { sellerId: true, title: true } } },
         });
         if (!auction) throw new NotFoundException('Auction not found');
+        // Idempotency guard — prevents double-payout if called more than once
+        if (auction.sellerBonusReleased) {
+            return auction;
+        }
 
         const updated = await this.prisma.auction.update({
             where: { id: auctionId },
