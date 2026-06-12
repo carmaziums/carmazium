@@ -182,4 +182,22 @@ export class AuthController {
     ) {
         return await this.authService.resetPassword(user.id, resetPasswordDto);
     }
+
+    /**
+     * Send/resend a verification email via Resend (bypasses Supabase's
+     * rate-limited built-in mailer). Safe to call multiple times.
+     */
+    @Post('send-verification')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Send verification email via Resend' })
+    @ApiResponse({ status: 200, description: 'Verification email sent' })
+    async sendVerification(
+        @Body('email') email: string,
+        @Body('redirectTo') redirectTo: string,
+    ) {
+        if (!email) throw new UnauthorizedException('Email is required');
+        const safeRedirect = redirectTo || `${process.env.FRONTEND_URL || 'https://carmazium.vercel.app'}/auth/callback?redirect_to=/auth/onboarding`;
+        await this.authService.sendVerificationEmail(email, safeRedirect);
+        return { success: true, message: 'Verification email sent' };
+    }
 }

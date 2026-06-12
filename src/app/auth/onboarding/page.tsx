@@ -1,11 +1,10 @@
 "use client"
 
 import { Button } from "@/components/ui/Button"
-import { CheckCircle, Loader2, Mail, MapPin, Heart, ArrowRight, Car, Zap, Gauge } from "lucide-react"
+import { CheckCircle, Loader2, Mail, MapPin, Heart, ArrowRight, Car, Zap, Gauge, RefreshCw, LayoutDashboard } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
-import { supabase } from "@/lib/supabase"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Input } from "@/components/ui/Input"
 import { BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { updateProfile } from "@/lib/listingApi"
@@ -31,6 +30,8 @@ export default function OnboardingPage() {
     const router = useRouter()
     const [resending, setResending] = useState(false)
     const [resendSuccess, setResendSuccess] = useState(false)
+    const [resendCooldown, setResendCooldown] = useState(0)
+    const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null)
     const [isVerified, setIsVerified] = useState(false)
 
     // Post-verification steps
@@ -54,18 +55,41 @@ export default function OnboardingPage() {
         return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     }
 
+    const startCooldown = (seconds = 60) => {
+        setResendCooldown(seconds)
+        if (cooldownRef.current) clearInterval(cooldownRef.current)
+        cooldownRef.current = setInterval(() => {
+            setResendCooldown(prev => {
+                if (prev <= 1) { clearInterval(cooldownRef.current!); return 0 }
+                return prev - 1
+            })
+        }, 1000)
+    }
+
+    useEffect(() => () => { if (cooldownRef.current) clearInterval(cooldownRef.current) }, [])
+
     const handleResendEmail = async () => {
-        if (!user?.email) return
+        if (!user?.email || resendCooldown > 0) return
         setResending(true)
         setResendSuccess(false)
         try {
-            const { error } = await supabase.auth.resend({
-                type: 'signup',
-                email: user.email,
-                options: { emailRedirectTo: `${getBaseUrl()}/auth/callback?redirect_to=/auth/onboarding` }
+            const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev').replace(/\/$/, '')
+            const res = await fetch(`${apiBase}/auth/send-verification`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: user.email,
+                    redirectTo: `${getBaseUrl()}/auth/callback?redirect_to=/auth/onboarding`,
+                }),
             })
-            if (error) alert(`Failed to resend email: ${error.message}`)
-            else { setResendSuccess(true); setTimeout(() => setResendSuccess(false), 5000) }
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}))
+                alert(`Failed to resend email: ${data?.message || res.statusText}`)
+            } else {
+                setResendSuccess(true)
+                startCooldown(60)
+                setTimeout(() => setResendSuccess(false), 6000)
+            }
         } catch (err: any) {
             alert(`Failed to resend email: ${err.message}`)
         } finally {
@@ -146,25 +170,80 @@ export default function OnboardingPage() {
 
                     {/* ── Step 1: Verify Email ── */}
                     {step === 'verify' && (
-                        <div className="text-center space-y-5">
-                            <div className="inline-block p-3 bg-primary/20 rounded-full mb-2">
-                                <Mail className="text-primary h-8 w-8" />
+                        <div className="text-center space-y-6">
+                            {/* Icon */}
+                            <div className="relative inline-flex items-center justify-center">
+                                <div className="w-20 h-20 rounded-full bg-primary/10 border border-primary/25 flex items-center justify-center">
+                                    <Mail className="text-primary h-9 w-9" />
+                                </div>
+                                <span className="absolute -top-1 -right-1 flex h-5 w-5">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-50" />
+                                    <span className="relative inline-flex rounded-full h-5 w-5 bg-primary items-center justify-center">
+                                        <span className="text-white text-[9px] font-black">1</span>
+                                    </span>
+                                </span>
                             </div>
-                            <h1 className="text-2xl font-bold font-heading text-white">Check your inbox</h1>
-                            <p className="text-gray-400 text-sm">
-                                We've sent a verification link to <strong className="text-white">{user?.email}</strong>. Click the link to continue.
-                            </p>
+
+                            <div>
+                                <h1 className="text-2xl font-black font-heading text-white tracking-tight">Check your inbox</h1>
+                                <p className="text-gray-400 text-sm mt-2 leading-relaxed">
+                                    We've sent a verification link to
+                                </p>
+                                <p className="text-white font-semibold text-sm mt-0.5">{user?.email}</p>
+                            </div>
+
+                            {/* Steps hint */}
+                            <div className="bg-slate-900/60 border border-white/5 rounded-xl p-4 text-left space-y-2">
+                                {[
+                                    'Open the email from CarMazium',
+                                    'Click the "Verify My Email" button',
+                                    'You\'ll be brought back here automatically',
+                                ].map((step, i) => (
+                                    <div key={i} className="flex items-center gap-3">
+                                        <div className="w-5 h-5 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center shrink-0">
+                                            <span className="text-primary text-[10px] font-black">{i + 1}</span>
+                                        </div>
+                                        <span className="text-gray-300 text-xs">{step}</span>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Success banner */}
                             {resendSuccess && (
-                                <div className="p-3 bg-emerald-500/20 border border-emerald-500/50 rounded-lg text-emerald-200 text-sm">
-                                    Verification email sent! Check your inbox.
+                                <div className="flex items-center gap-2 p-3 bg-emerald-500/15 border border-emerald-500/40 rounded-xl text-emerald-300 text-sm">
+                                    <CheckCircle size={16} className="shrink-0" />
+                                    Email sent! Check your inbox (and spam folder).
                                 </div>
                             )}
-                            <Button size="lg" className="w-full" onClick={() => router.push('/dashboard')} variant="outline">
-                                Go to Dashboard anyway
+
+                            {/* Primary: Resend */}
+                            <Button
+                                size="lg"
+                                className="w-full gap-2"
+                                onClick={handleResendEmail}
+                                disabled={resending || resendCooldown > 0}
+                            >
+                                {resending ? (
+                                    <><Loader2 className="animate-spin h-4 w-4" /> Sending…</>
+                                ) : resendCooldown > 0 ? (
+                                    <><RefreshCw size={16} /> Resend in {resendCooldown}s</>
+                                ) : (
+                                    <><RefreshCw size={16} /> Resend Verification Email</>
+                                )}
                             </Button>
-                            <Button variant="ghost" className="w-full text-gray-400 hover:text-white" onClick={handleResendEmail} disabled={resending}>
-                                {resending ? <><Loader2 className="animate-spin h-4 w-4 mr-2 inline" />Sending...</> : 'Resend Email'}
+
+                            {/* Secondary: skip to dashboard */}
+                            <Button
+                                variant="outline"
+                                className="w-full gap-2 border-white/10 text-gray-400 hover:text-white"
+                                onClick={() => router.push('/dashboard')}
+                            >
+                                <LayoutDashboard size={15} /> Go to Dashboard anyway
                             </Button>
+
+                            <p className="text-[11px] text-gray-600">
+                                Wrong email? <button onClick={() => router.push('/auth/signup')} className="text-primary hover:underline">Sign up again</button>
+                            </p>
                         </div>
                     )}
 

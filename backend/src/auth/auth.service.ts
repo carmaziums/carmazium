@@ -5,6 +5,7 @@ import {
     Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { EmailService } from '../email/email.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { UserRole } from '@prisma/client';
@@ -48,7 +49,10 @@ export class AuthService {
         }
     }
 
-    constructor(private readonly prisma: PrismaService) {
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly emailService: EmailService,
+    ) {
         const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
         const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -349,5 +353,100 @@ export class AuthService {
             this.logger.error(`Supabase token verification error: ${err?.message}`, err?.stack);
             return null;
         }
+    }
+
+    /**
+     * Generate a Supabase verification link via admin API and deliver it
+     * through Resend so new users reliably receive their confirmation email.
+     */
+    async sendVerificationEmail(email: string, redirectTo: string): Promise<void> {
+        const { data, error } = await this.supabase.auth.admin.generateLink({
+            type: 'signup',
+            email,
+            options: { redirectTo },
+        });
+
+        if (error || !data?.properties?.action_link) {
+            this.logger.error(`Failed to generate verification link for ${email}: ${error?.message}`);
+            throw new Error(error?.message || 'Failed to generate verification link');
+        }
+
+        const verificationUrl = data.properties.action_link;
+        const firstName = data.user?.user_metadata?.first_name || data.user?.user_metadata?.firstName;
+        const name = firstName || email.split('@')[0];
+
+        await this.emailService.sendBrandedEmail({
+            to: email,
+            subject: `${name}, please verify your CarMazium email`,
+            bodyHtml: `
+                <!-- Icon -->
+                <div style="text-align: center; margin-bottom: 28px;">
+                    <div style="display: inline-block; width: 64px; height: 64px; background: rgba(237,28,36,0.1); border: 1px solid rgba(237,28,36,0.25); border-radius: 50%;">
+                        <div style="line-height: 64px; font-size: 28px;">✉️</div>
+                    </div>
+                </div>
+
+                <!-- Heading -->
+                <h1 style="margin: 0 0 8px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 28px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em; text-align: center;">
+                    Confirm your email
+                </h1>
+                <p style="margin: 0 0 32px; font-size: 15px; color: #94a3b8; line-height: 1.6; text-align: center;">
+                    Hi <strong style="color: #ffffff;">${name}</strong> — one quick step to activate your account.
+                </p>
+
+                <!-- Divider -->
+                <div style="height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent); margin: 0 0 32px;"></div>
+
+                <!-- What happens next -->
+                <p style="margin: 0 0 16px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #64748b;">
+                    What you get after verifying
+                </p>
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 36px;">
+                    <tr>
+                        <td width="28" valign="top" style="padding: 6px 0;">
+                            <div style="width: 20px; height: 20px; background: rgba(237,28,36,0.1); border: 1px solid rgba(237,28,36,0.2); border-radius: 6px; text-align: center; line-height: 20px; font-size: 11px; color: #ed1c24;">✓</div>
+                        </td>
+                        <td style="padding: 6px 0 6px 12px; color: #cbd5e1; font-size: 14px; line-height: 1.5;">Full access to buy, sell, and auction vehicles</td>
+                    </tr>
+                    <tr>
+                        <td width="28" valign="top" style="padding: 6px 0;">
+                            <div style="width: 20px; height: 20px; background: rgba(237,28,36,0.1); border: 1px solid rgba(237,28,36,0.2); border-radius: 6px; text-align: center; line-height: 20px; font-size: 11px; color: #ed1c24;">✓</div>
+                        </td>
+                        <td style="padding: 6px 0 6px 12px; color: #cbd5e1; font-size: 14px; line-height: 1.5;">Instant HPI checks and vehicle history reports</td>
+                    </tr>
+                    <tr>
+                        <td width="28" valign="top" style="padding: 6px 0;">
+                            <div style="width: 20px; height: 20px; background: rgba(237,28,36,0.1); border: 1px solid rgba(237,28,36,0.2); border-radius: 6px; text-align: center; line-height: 20px; font-size: 11px; color: #ed1c24;">✓</div>
+                        </td>
+                        <td style="padding: 6px 0 6px 12px; color: #cbd5e1; font-size: 14px; line-height: 1.5;">Real-time messaging with buyers and sellers</td>
+                    </tr>
+                </table>
+
+                <!-- CTA -->
+                <div style="text-align: center; margin: 0 0 28px;">
+                    <a href="${verificationUrl}" target="_blank"
+                       style="display: inline-block; padding: 18px 56px; background: linear-gradient(135deg, #ed1c24, #c41920); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 8px 25px rgba(237,28,36,0.4);">
+                        Verify My Email →
+                    </a>
+                </div>
+
+                <!-- Fallback link -->
+                <p style="margin: 0 0 8px; font-size: 12px; color: #475569; text-align: center; line-height: 1.6;">
+                    Button not working? Copy and paste this link into your browser:
+                </p>
+                <p style="margin: 0 0 28px; font-size: 11px; color: #3b82f6; text-align: center; word-break: break-all; line-height: 1.6;">
+                    ${verificationUrl}
+                </p>
+
+                <!-- Security note -->
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; text-align: center;">
+                    <p style="margin: 0; font-size: 12px; color: #475569; line-height: 1.6;">
+                        This link expires in <strong style="color: #64748b;">24 hours</strong>. If you didn't create a CarMazium account, you can safely ignore this email.
+                    </p>
+                </div>
+            `,
+        });
+
+        this.logger.log(`Verification email sent via Resend to ${email}`);
     }
 }

@@ -98,7 +98,23 @@ export default function SignupPage() {
                 }
             }
 
-            // 3. Redirect to Onboarding
+            // 3. Send verification email via Resend (bypasses Supabase rate-limited mailer)
+            if (authData.user) {
+                try {
+                    await fetch(`${API_URL.replace(/\/$/, '')}/auth/send-verification`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: formData.email,
+                            redirectTo: `${baseUrl}/auth/callback?redirect_to=/auth/onboarding`,
+                        }),
+                    })
+                } catch (e) {
+                    console.error('Failed to send verification via Resend, Supabase fallback active', e)
+                }
+            }
+
+            // 4. Redirect to Onboarding
             router.push('/auth/onboarding')
         } catch (err: any) {
             setError(err.message || 'An error occurred during signup')

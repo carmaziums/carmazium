@@ -349,7 +349,7 @@ export function KycOverlayForm() {
     if (typeof window !== 'undefined') {
       localStorage.setItem(KYC_SKIP_KEY, '1');
     }
-    router.push('/dashboard/dealer/settings');
+    router.push('/dashboard/dealer');
   };
 
   // Option B — switch role to BUYER immediately
