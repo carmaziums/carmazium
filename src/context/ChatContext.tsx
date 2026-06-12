@@ -96,10 +96,31 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
             socket.on('message:new', (message: ChatMessage) => {
                 messageCallbacks.current.forEach(cb => cb(message))
-                // Update unread count for messages from others
+                // Update unread count + room list preview for messages from others
                 if (message.senderId !== user.id) {
                     setUnreadCount(prev => prev + 1)
                 }
+                // Optimistically move the affected room to the top with updated last-message preview
+                setRooms(prev => {
+                    const idx = prev.findIndex(r => r.id === message.chatRoomId)
+                    if (idx === -1) return prev
+                    const updated = {
+                        ...prev[idx],
+                        lastMessage: {
+                            id: message.id,
+                            content: message.content,
+                            senderId: message.senderId,
+                            isRead: false,
+                            createdAt: message.createdAt,
+                        },
+                        unreadCount: message.senderId !== user.id
+                            ? prev[idx].unreadCount + 1
+                            : prev[idx].unreadCount,
+                        updatedAt: message.createdAt,
+                    }
+                    const rest = prev.filter((_, i) => i !== idx)
+                    return [updated, ...rest]
+                })
             })
 
             socket.on('user:typing', (data: any) => {

@@ -238,7 +238,7 @@ function FileUploadField({
 
 // ─── Main KYC Overlay Component ────────────────────────────────────────────────
 
-export function KycOverlayForm() {
+export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
   const { profile, signOut, refreshProfile } = useAuth();
   const router = useRouter();
 
@@ -344,12 +344,12 @@ export function KycOverlayForm() {
     }
   };
 
-  // Option A — skip KYC for now; go to a limited dealer dashboard
+  // Option A — skip KYC for now; show locked dealer dashboard
   const handleSkip = () => {
     if (typeof window !== 'undefined') {
       localStorage.setItem(KYC_SKIP_KEY, '1');
     }
-    router.push('/dashboard/dealer');
+    onSkip?.();
   };
 
   // Option B — switch role to BUYER immediately

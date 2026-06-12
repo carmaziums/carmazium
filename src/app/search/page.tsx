@@ -267,6 +267,26 @@ function SearchPageContent() {
     const lastQs = React.useRef(currentQs)
     const didInitialHydrate = React.useRef(false)
 
+    // Ref holding latest state for the unmount-save without re-subscribing effects
+    const searchCacheRef = React.useRef({ listings, totalCount, currentPage, filters: appliedFilters })
+    React.useEffect(() => {
+        searchCacheRef.current = { listings, totalCount, currentPage, filters: appliedFilters }
+    }, [listings, totalCount, currentPage, appliedFilters])
+
+    // Save state to sessionStorage on unmount (navigation away from search page)
+    React.useEffect(() => {
+        return () => {
+            if (searchCacheRef.current.listings.length === 0) return
+            try {
+                sessionStorage.setItem('search_listings_cache', JSON.stringify({
+                    qs: window.location.search,
+                    scrollY: window.scrollY,
+                    ...searchCacheRef.current,
+                }))
+            } catch { /* quota exceeded or SSR */ }
+        }
+    }, [])
+
     // Effect moved down after fetchListings definition
 
     const set = <K extends keyof FilterState>(key: K, val: FilterState[K]) =>
@@ -387,13 +407,34 @@ function SearchPageContent() {
     React.useEffect(() => {
         if (!didInitialHydrate.current) {
             didInitialHydrate.current = true
+
+            // Restore from sessionStorage when the user navigates back
+            try {
+                const raw = sessionStorage.getItem('search_listings_cache')
+                if (raw) {
+                    const cache = JSON.parse(raw)
+                    if (cache.qs === window.location.search) {
+                        sessionStorage.removeItem('search_listings_cache')
+                        setListings(cache.listings)
+                        setTotalCount(cache.totalCount)
+                        setCurrentPage(cache.currentPage)
+                        setAppliedFilters(cache.filters)
+                        setFilters(cache.filters)
+                        setLoading(false)
+                        requestAnimationFrame(() => window.scrollTo(0, cache.scrollY ?? 0))
+                        return
+                    }
+                    sessionStorage.removeItem('search_listings_cache')
+                }
+            } catch { /* ignore parse errors */ }
+
             const fromUrl = hydrateFromUrl()
             setFilters(fromUrl)
             setAppliedFilters(fromUrl)
             fetchListings(fromUrl)
             return
         }
-        
+
         // Handle external navigations (e.g. from chatbot)
         if (lastQs.current !== currentQs) {
             lastQs.current = currentQs

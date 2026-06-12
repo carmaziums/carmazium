@@ -185,21 +185,23 @@ export class UsersService {
             throw new NotFoundException('User not found');
         }
 
-        if (user.role !== UserRole.DEALER) {
-            throw new BadRequestException(
-                'Only users with the DEALER role can have a dealer profile',
-            );
-        }
-
         // On create, companyName is required — fall back to a placeholder so the
         // upsert doesn't fail when a dealer saves partial info before KYC.
         const existing = await this.prisma.dealerProfile.findUnique({ where: { userId: user.id } });
 
         if (existing) {
+            // Allow update if a profile already exists (handles OAuth role-sync edge cases)
             return this.prisma.dealerProfile.update({
                 where: { userId: user.id },
                 data,
             });
+        }
+
+        // Enforce DEALER role only when creating a new dealer profile
+        if (user.role !== UserRole.DEALER) {
+            throw new BadRequestException(
+                'Only users with the DEALER role can have a dealer profile',
+            );
         }
 
         return this.prisma.dealerProfile.create({

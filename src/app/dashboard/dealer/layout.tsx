@@ -45,7 +45,7 @@ export default function DealerDashboardLayout({
 
     // Show KYC overlay unless: verified, staff member, or user explicitly skipped
     if (isEmailVerified && !isVerifiedDealer && !skipped) {
-        return <KycOverlayForm />
+        return <KycOverlayForm onSkip={() => setSkipped(true)} />
     }
 
     // Show locked dashboard when user skipped — dealer features require KYC

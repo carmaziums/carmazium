@@ -647,6 +647,55 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             </div>
                                         )}
 
+                                        {/* ── Video Links ──────────────────────────────────── */}
+                                        {(auction.listing as any).videoUrls?.length > 0 && (
+                                            <div>
+                                                <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-3 border-l-2 border-primary pl-2.5">Videos</h4>
+                                                <div className="space-y-3">
+                                                    {((auction.listing as any).videoUrls as string[]).map((url: string, i: number) => {
+                                                        let ytEmbedUrl = ""
+                                                        const shortMatch = url.match(/youtu\.be\/([^?&]+)/)
+                                                        if (shortMatch) ytEmbedUrl = `https://www.youtube.com/embed/${shortMatch[1]}`
+                                                        if (!ytEmbedUrl) {
+                                                            try {
+                                                                const u = new URL(url)
+                                                                const v = u.searchParams.get('v')
+                                                                if (v) ytEmbedUrl = `https://www.youtube.com/embed/${v}`
+                                                                const shortsMatch = url.match(/\/shorts\/([^?&]+)/)
+                                                                if (shortsMatch) ytEmbedUrl = `https://www.youtube.com/embed/${shortsMatch[1]}`
+                                                            } catch { /* invalid URL */ }
+                                                        }
+                                                        const platform = url.includes('youtube.com') || url.includes('youtu.be') ? 'YouTube'
+                                                            : url.includes('instagram.com') ? 'Instagram'
+                                                            : url.includes('facebook.com') || url.includes('fb.watch') ? 'Facebook'
+                                                            : 'X'
+                                                        if (ytEmbedUrl) {
+                                                            return (
+                                                                <div key={i} className="rounded-xl overflow-hidden border border-white/10 bg-black">
+                                                                    <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                                                                        <iframe
+                                                                            src={ytEmbedUrl}
+                                                                            title={`Video ${i + 1}`}
+                                                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                                            allowFullScreen
+                                                                            className="absolute inset-0 w-full h-full"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            )
+                                                        }
+                                                        return (
+                                                            <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                                                                className="flex items-center gap-2 p-3 rounded-lg bg-slate-900/50 border border-white/10 hover:border-white/20 transition-colors">
+                                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-500/20 text-orange-300 border border-orange-500/20 shrink-0">{platform}</span>
+                                                                <span className="text-xs text-blue-400 truncate flex-1 hover:text-blue-300">{url}</span>
+                                                            </a>
+                                                        )
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {/* ── Write-off warning ────────────────────────────── */}
                                         {auction.listing.writeOffCategory && auction.listing.writeOffCategory !== "NONE" && (
                                             <div className="flex items-start gap-2.5 p-3 bg-amber-500/8 border border-amber-500/25 rounded-xl text-amber-400 text-xs">

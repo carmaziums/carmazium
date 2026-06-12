@@ -23,7 +23,7 @@ export default function AboutPage() {
         <div className="min-h-screen bg-slate-900 pb-20 overflow-x-hidden">
 
             {/* Cinematic Hero Section */}
-            <section className="relative h-[80vh] flex items-center justify-center overflow-hidden">
+            <section className="relative h-[80vh] flex items-center justify-center overflow-hidden select-none">
                 <div className="absolute inset-0 w-full h-full">
                     {/* Reusing hero video or similar cinematic visual */}
                     <div className="absolute inset-0 bg-slate-900/40 z-10" />

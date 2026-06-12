@@ -522,6 +522,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             router.push("/auth/onboarding")
             return
         }
+        set("listingType", "CLASSIFIED")
         setSellingMethod("list")
         set("status", "ACTIVE")
     }

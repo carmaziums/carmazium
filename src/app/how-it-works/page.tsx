@@ -1,14 +1,22 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Search, ShieldCheck, CreditCard, Calculator, Gavel, Banknote, Clock, Users, TrendingUp, Handshake, Truck, Umbrella, FileText, ArrowRight, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import Link from "next/link"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 
 export default function HowItWorksPage() {
   const [activeTab, setActiveTab] = useState<'buyer' | 'seller'>('buyer')
+  const router = useRouter()
+
+  // Pre-warm the target pages so clicking the CTA buttons is instant
+  useEffect(() => {
+    router.prefetch('/search')
+    router.prefetch('/sell')
+  }, [router])
 
   const buyerSteps = [
     {

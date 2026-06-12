@@ -36,6 +36,7 @@ export default function DealerSettingsPage() {
     })
     const [uploadingLogo, setUploadingLogo] = React.useState(false)
     const [saveStatus, setSaveStatus] = React.useState<'idle' | 'success' | 'error'>('idle')
+    const [saveError, setSaveError] = React.useState("")
 
     React.useEffect(() => {
         if (!authLoading && user) {
@@ -90,8 +91,9 @@ export default function DealerSettingsPage() {
             })
             setSaveStatus('success')
             setTimeout(() => setSaveStatus('idle'), 4000)
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to save profile:', err)
+            setSaveError(err?.message || 'Failed to save. Please try again.')
             setSaveStatus('error')
             setTimeout(() => setSaveStatus('idle'), 4000)
         } finally {
@@ -294,7 +296,7 @@ export default function DealerSettingsPage() {
                                         {saveStatus === 'error' && (
                                             <div className="flex items-center gap-2 p-3 bg-red-500/15 border border-red-500/40 rounded-xl text-red-300 text-sm">
                                                 <XCircle size={15} className="shrink-0" />
-                                                Failed to save. Please try again.
+                                                {saveError || 'Failed to save. Please try again.'}
                                             </div>
                                         )}
                                         <div className="flex justify-end">

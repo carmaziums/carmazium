@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import {
     Car, Search, Filter, PlusCircle, MoreVertical,
-    Loader2, Upload, TrendingUp, ShieldCheck, Trash2, Eye, RefreshCcw, Pencil, AlertTriangle
+    Loader2, Upload, TrendingUp, ShieldCheck, Trash2, Eye, RefreshCcw, Pencil, AlertTriangle,
+    Star, Zap, X, BadgeCheck, Shield
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
@@ -36,6 +37,7 @@ export default function DealerInventoryPage() {
     const [activeDropdown, setActiveDropdown] = React.useState<string | null>(null)
     const [publishing, setPublishing] = React.useState<string | null>(null)
     const [publishBlockedId, setPublishBlockedId] = React.useState<string | null>(null)
+    const [planSelectListing, setPlanSelectListing] = React.useState<any | null>(null)
 
     React.useEffect(() => {
         if (!authLoading && user) {
@@ -66,13 +68,23 @@ export default function DealerInventoryPage() {
             return
         }
         setPublishBlockedId(null)
+        // Show plan selection modal
+        setPlanSelectListing(listing)
+    }
+
+    async function handlePlanConfirm(tier: 'FREE' | 'BASIC' | 'STANDARD' | 'PREMIUM') {
+        if (!planSelectListing) return
+        const listing = planSelectListing
+        setPlanSelectListing(null)
         try {
             setPublishing(listing.id)
-            const result = await publishListing(listing.id)
-            if (result.activated) {
+            if (tier === 'FREE') {
+                // Free tier: publish directly without payment
+                await publishListing(listing.id)
                 fetchListings(searchQuery)
-            } else if (result.requiresPayment) {
-                const checkout = await createListingCheckoutSession(listing.id, listing.badgeTier || 'BASIC')
+            } else {
+                // Paid tier: update badge and redirect to Stripe
+                const checkout = await createListingCheckoutSession(listing.id, tier)
                 window.location.href = checkout.url
             }
         } catch (err: any) {
@@ -372,11 +384,81 @@ export default function DealerInventoryPage() {
                 </main>
             </div>
             
-            <BulkImportModal 
-                isOpen={isBulkImportOpen} 
-                onClose={() => setIsBulkImportOpen(false)} 
-                onComplete={() => fetchListings()} 
+            <BulkImportModal
+                isOpen={isBulkImportOpen}
+                onClose={() => setIsBulkImportOpen(false)}
+                onComplete={() => fetchListings()}
             />
+
+            {/* ─── Plan Selection Modal ────────────────────────────────────── */}
+            {planSelectListing && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+                    <div className="relative w-full max-w-lg bg-[#0A0A0C] border border-white/10 rounded-2xl p-6 shadow-2xl">
+                        <button
+                            onClick={() => setPlanSelectListing(null)}
+                            className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-white/10 text-gray-500 hover:text-white transition-colors"
+                        >
+                            <X size={18} />
+                        </button>
+
+                        <h2 className="text-lg font-black text-white font-heading uppercase tracking-tight mb-1">
+                            Choose a Listing Plan
+                        </h2>
+                        <p className="text-xs text-gray-500 mb-5">
+                            Select a tier for <span className="text-gray-300 font-semibold">{planSelectListing.title || `${planSelectListing.make} ${planSelectListing.model}`}</span>
+                        </p>
+
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                            {/* FREE */}
+                            <button
+                                onClick={() => handlePlanConfirm('FREE')}
+                                className="flex flex-col p-4 rounded-xl border border-white/10 bg-white/[0.02] hover:border-white/25 hover:bg-white/5 transition-all text-left"
+                            >
+                                <p className="text-white font-bold text-sm mb-1">Free</p>
+                                <p className="text-2xl font-black text-white mb-3">£0</p>
+                                <ul className="space-y-1 text-[11px] text-gray-400">
+                                    <li className="flex items-center gap-1.5"><CheckCircle2 size={11} className="text-emerald-400" /> Basic listing</li>
+                                    <li className="flex items-center gap-1.5"><CheckCircle2 size={11} className="text-emerald-400" /> Offer system</li>
+                                    <li className="flex items-center gap-1.5 text-gray-600"><X size={11} /> No trust badges</li>
+                                </ul>
+                            </button>
+
+                            {/* STANDARD */}
+                            <button
+                                onClick={() => handlePlanConfirm('STANDARD')}
+                                className="relative flex flex-col p-4 rounded-xl border border-blue-500/30 bg-blue-500/5 hover:border-blue-500/60 hover:bg-blue-500/10 transition-all text-left"
+                            >
+                                <p className="text-blue-400 font-bold text-sm mb-1 flex items-center gap-1"><Shield size={12} /> Standard</p>
+                                <p className="text-2xl font-black text-white mb-3">£10</p>
+                                <ul className="space-y-1 text-[11px] text-gray-400">
+                                    <li className="flex items-center gap-1.5"><BadgeCheck size={11} className="text-blue-400" /> VIN Report badge</li>
+                                    <li className="flex items-center gap-1.5"><BadgeCheck size={11} className="text-blue-400" /> Verified Seller badge</li>
+                                    <li className="flex items-center gap-1.5 text-gray-600"><X size={11} /> No featured boost</li>
+                                </ul>
+                            </button>
+                        </div>
+
+                        {/* PREMIUM */}
+                        <button
+                            onClick={() => handlePlanConfirm('PREMIUM')}
+                            className="relative w-full flex items-center gap-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 hover:border-amber-500/60 hover:bg-amber-500/10 transition-all text-left"
+                        >
+                            <span className="absolute -top-2.5 left-4 text-[10px] bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold px-3 py-0.5 rounded-full flex items-center gap-1">
+                                <Star size={9} /> Best Value
+                            </span>
+                            <div className="flex-1">
+                                <p className="text-amber-400 font-bold text-sm flex items-center gap-1"><Star size={12} /> Premium</p>
+                                <p className="text-lg font-black text-white">£25</p>
+                            </div>
+                            <ul className="space-y-1 text-[11px] text-gray-400">
+                                <li className="flex items-center gap-1.5"><Zap size={11} className="text-amber-400" /> Featured boost (28 days)</li>
+                                <li className="flex items-center gap-1.5"><Zap size={11} className="text-amber-400" /> Priority in search results</li>
+                                <li className="flex items-center gap-1.5"><Zap size={11} className="text-amber-400" /> Featured badge</li>
+                            </ul>
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
