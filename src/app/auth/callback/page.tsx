@@ -34,6 +34,7 @@ function AuthCallbackContent() {
 
     const run = async () => {
       const redirectTo = searchParams?.get("redirect_to") || "/auth/onboarding"
+      const roleFromUrl = searchParams?.get("role") || undefined
       const code = searchParams?.get("code")
       const error = searchParams?.get("error")
       const errorDescription = searchParams?.get("error_description")
@@ -84,7 +85,7 @@ function AuthCallbackContent() {
               if (isRecovery) {
                 router.replace("/auth/reset-password")
               } else {
-                await syncBackendAndRedirect(existingSession.user, existingSession.access_token, redirectTo)
+                await syncBackendAndRedirect(existingSession.user, existingSession.access_token, redirectTo, roleFromUrl)
               }
               return
             }
@@ -98,7 +99,7 @@ function AuthCallbackContent() {
               if (cancelled) return
               router.replace("/auth/reset-password")
             } else {
-              await syncBackendAndRedirect(data.user, data.session.access_token, redirectTo)
+              await syncBackendAndRedirect(data.user, data.session.access_token, redirectTo, roleFromUrl)
             }
           }
         } catch (exchangeErr: any) {
@@ -110,7 +111,7 @@ function AuthCallbackContent() {
               if (isRecovery) {
                 router.replace("/auth/reset-password")
               } else {
-                await syncBackendAndRedirect(rescuedSession.user, rescuedSession.access_token, redirectTo)
+                await syncBackendAndRedirect(rescuedSession.user, rescuedSession.access_token, redirectTo, roleFromUrl)
               }
               return
             }
@@ -141,7 +142,7 @@ function AuthCallbackContent() {
             return
           }
           if (data.user && data.session) {
-            await syncBackendAndRedirect(data.user, data.session.access_token, redirectTo)
+            await syncBackendAndRedirect(data.user, data.session.access_token, redirectTo, roleFromUrl)
             return
           }
         } catch (err: any) {
@@ -149,7 +150,7 @@ function AuthCallbackContent() {
             // AuthContext beat us — rescue whatever session it created
             const { data: { session: rescuedSess } } = await supabase.auth.getSession()
             if (rescuedSess?.user && !cancelled) {
-              await syncBackendAndRedirect(rescuedSess.user, rescuedSess.access_token, redirectTo)
+              await syncBackendAndRedirect(rescuedSess.user, rescuedSess.access_token, redirectTo, roleFromUrl)
               return
             }
             if (!cancelled) router.replace(redirectTo)
@@ -170,7 +171,7 @@ function AuthCallbackContent() {
         
         if (session?.user && !cancelled) {
             // Still sync the backend even for fallback session recovery
-            await syncBackendAndRedirect(session.user, session.access_token, redirectTo)
+            await syncBackendAndRedirect(session.user, session.access_token, redirectTo, roleFromUrl)
             return
         }
       } catch (e) {
@@ -192,7 +193,8 @@ function AuthCallbackContent() {
     async function syncBackendAndRedirect(
       user: { id: string; email?: string; user_metadata?: Record<string, unknown> },
       accessToken: string,
-      redirectTo: string
+      redirectTo: string,
+      roleOverride?: string
     ) {
       if (cancelled) return
       const apiBase = API_URL.replace(/\/$/, "")
@@ -222,7 +224,7 @@ function AuthCallbackContent() {
           email: user.email,
           firstName: resolvedFirstName,
           lastName: resolvedLastName,
-          role: meta.role,
+          role: meta.role || roleOverride,
         }),
         signal: syncController.signal,
       }).then(() => clearTimeout(syncTimeout)).catch((e) => {

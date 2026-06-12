@@ -300,10 +300,14 @@ export class AuthService {
             if (!localUser) {
                 try {
                     const meta = (data.user.user_metadata || {}) as Record<string, string>;
-                    const role =
+                    // Only treat role as explicitly set when it's actually in Supabase metadata.
+                    // For OAuth providers (Google, etc.) meta.role is undefined — we must NOT
+                    // overwrite a role that /users/sync already set correctly (e.g. DEALER).
+                    const metaRole =
                         meta?.role && Object.values(UserRole).includes(meta.role as UserRole)
                             ? (meta.role as UserRole)
-                            : UserRole.BUYER;
+                            : undefined;
+                    const createRole = metaRole ?? UserRole.BUYER;
                     // Resolve name across our signup metadata AND Google/Apple OAuth keys
                     const fullNameFallback = (meta.full_name || meta.name || '').trim();
                     const resolvedFirst =
@@ -317,17 +321,19 @@ export class AuthService {
                             update: {
                                 // NEVER update `id` — overwriting the PK would orphan all
                                 // existing listings, sales, and offers for this user.
-                                // Only overwrite name if we have a value (don't blank out existing names)
+                                // Only overwrite name if we have a value (don't blank out existing names).
+                                // Only overwrite role if explicitly present in Supabase metadata —
+                                // avoids stomping over a role set by /users/sync for OAuth users.
                                 ...(resolvedFirst && { firstName: resolvedFirst }),
                                 ...(resolvedLast && { lastName: resolvedLast }),
-                                ...(role && { role }),
+                                ...(metaRole && { role: metaRole }),
                             },
                             create: {
                                 id: data.user.id,
                                 email: emailNorm,
                                 firstName: resolvedFirst,
                                 lastName: resolvedLast,
-                                role,
+                                role: createRole,
                                 passwordHash: 'SUPABASE_EXTERNAL_AUTH',
                                 isEmailVerified: isEmailConfirmed,
                             },

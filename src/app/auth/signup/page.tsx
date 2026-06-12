@@ -275,7 +275,8 @@ export default function SignupPage() {
                             setGoogleLoading(true)
                             setError(null)
                             try {
-                                const redirectTo = `${getBaseUrl()}/auth/callback?redirect_to=/auth/onboarding`
+                                const roleParam = formData.role ? `&role=${formData.role}` : ''
+                                const redirectTo = `${getBaseUrl()}/auth/callback?redirect_to=/auth/onboarding${roleParam}`
                                 const { error: oauthError } = await supabase.auth.signInWithOAuth({
                                     provider: 'google',
                                     options: { redirectTo },
