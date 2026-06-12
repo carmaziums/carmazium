@@ -98,24 +98,25 @@ export default function SignupPage() {
                 }
             }
 
-            // 3. Send verification email via Resend (bypasses Supabase rate-limited mailer)
-            if (authData.user) {
-                try {
-                    await fetch(`${API_URL.replace(/\/$/, '')}/auth/send-verification`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            email: formData.email,
-                            redirectTo: `${baseUrl}/auth/callback?redirect_to=/auth/onboarding`,
-                        }),
-                    })
-                } catch (e) {
-                    console.error('Failed to send verification via Resend, Supabase fallback active', e)
-                }
+            // 3. Stash email so onboarding page can show it even before the session exists
+            if (typeof window !== 'undefined') {
+                sessionStorage.setItem('pending_verification_email', formData.email)
             }
 
-            // 4. Redirect to Onboarding
+            // 4. Redirect immediately — don't block on verification email send
             router.push('/auth/onboarding')
+
+            // 5. Send verification email via Resend in the background
+            if (authData.user) {
+                fetch(`${API_URL.replace(/\/$/, '')}/auth/send-verification`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: formData.email,
+                        redirectTo: `${baseUrl}/auth/callback?redirect_to=/auth/onboarding`,
+                    }),
+                }).catch(e => console.error('Failed to send verification via Resend, Supabase fallback active', e))
+            }
         } catch (err: any) {
             setError(err.message || 'An error occurred during signup')
         } finally {

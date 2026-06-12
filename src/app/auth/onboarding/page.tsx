@@ -33,6 +33,8 @@ export default function OnboardingPage() {
     const [resendCooldown, setResendCooldown] = useState(0)
     const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null)
     const [isVerified, setIsVerified] = useState(false)
+    // Fallback email shown on verify step when user session doesn't exist yet
+    const [pendingEmail, setPendingEmail] = useState<string | null>(null)
 
     // Post-verification steps
     const [step, setStep] = useState<'verify' | 'location' | 'preferences' | 'done'>('verify')
@@ -42,11 +44,22 @@ export default function OnboardingPage() {
     const [selectedBudget, setSelectedBudget] = useState('')
     const [saving, setSaving] = useState(false)
 
+    // Read stashed email from signup flow
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setPendingEmail(sessionStorage.getItem('pending_verification_email'))
+        }
+    }, [])
+
     useEffect(() => {
         if (user) {
             const verified = !!user.email_confirmed_at
             setIsVerified(verified)
-            if (verified && step === 'verify') setStep('location')
+            if (verified && step === 'verify') {
+                // Clear stashed email once verified
+                if (typeof window !== 'undefined') sessionStorage.removeItem('pending_verification_email')
+                setStep('location')
+            }
         }
     }, [user])
 
@@ -69,7 +82,8 @@ export default function OnboardingPage() {
     useEffect(() => () => { if (cooldownRef.current) clearInterval(cooldownRef.current) }, [])
 
     const handleResendEmail = async () => {
-        if (!user?.email || resendCooldown > 0) return
+        const emailToUse = user?.email || pendingEmail
+        if (!emailToUse || resendCooldown > 0) return
         setResending(true)
         setResendSuccess(false)
         try {
@@ -78,7 +92,7 @@ export default function OnboardingPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    email: user.email,
+                    email: emailToUse,
                     redirectTo: `${getBaseUrl()}/auth/callback?redirect_to=/auth/onboarding`,
                 }),
             })
@@ -189,7 +203,9 @@ export default function OnboardingPage() {
                                 <p className="text-gray-400 text-sm mt-2 leading-relaxed">
                                     We've sent a verification link to
                                 </p>
-                                <p className="text-white font-semibold text-sm mt-0.5">{user?.email}</p>
+                                <p className="text-white font-semibold text-sm mt-0.5">
+                                    {user?.email || pendingEmail || 'your email address'}
+                                </p>
                             </div>
 
                             {/* Steps hint */}
