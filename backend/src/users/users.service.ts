@@ -167,11 +167,14 @@ export class UsersService {
     async updateDealerProfile(
         userId: string,
         data: {
-            companyName: string;
-            vatNumber: string;
+            companyName?: string;
+            vatNumber?: string;
             registrationNumber?: string;
             businessAddress?: string;
             phone?: string;
+            website?: string;
+            description?: string;
+            logo?: string;
         },
     ) {
         const user = await this.prisma.user.findUnique({
@@ -188,12 +191,28 @@ export class UsersService {
             );
         }
 
-        return this.prisma.dealerProfile.upsert({
-            where: { userId: user.id },
-            update: data,
-            create: {
-                ...data,
+        // On create, companyName is required — fall back to a placeholder so the
+        // upsert doesn't fail when a dealer saves partial info before KYC.
+        const existing = await this.prisma.dealerProfile.findUnique({ where: { userId: user.id } });
+
+        if (existing) {
+            return this.prisma.dealerProfile.update({
+                where: { userId: user.id },
+                data,
+            });
+        }
+
+        return this.prisma.dealerProfile.create({
+            data: {
                 userId: user.id,
+                companyName: data.companyName || `${user.firstName || 'Dealer'}'s Dealership`,
+                vatNumber: data.vatNumber || `PENDING-${user.id.slice(0, 8)}`,
+                registrationNumber: data.registrationNumber,
+                businessAddress: data.businessAddress,
+                phone: data.phone,
+                website: data.website,
+                description: data.description,
+                logo: data.logo,
             },
         });
     }

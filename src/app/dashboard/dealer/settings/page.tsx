@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import {
     Settings, Building2, MapPin, Phone, Globe,
-    Loader2, Save, Bell, UserCog, AlertTriangle
+    Loader2, Save, Bell, UserCog, AlertTriangle, CheckCircle, XCircle
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
@@ -35,6 +35,7 @@ export default function DealerSettingsPage() {
         logo: "",
     })
     const [uploadingLogo, setUploadingLogo] = React.useState(false)
+    const [saveStatus, setSaveStatus] = React.useState<'idle' | 'success' | 'error'>('idle')
 
     React.useEffect(() => {
         if (!authLoading && user) {
@@ -72,6 +73,7 @@ export default function DealerSettingsPage() {
 
     async function handleSave() {
         setSaving(true)
+        setSaveStatus('idle')
         try {
             await apiClient('/users/dealer-profile', {
                 method: 'PATCH',
@@ -86,8 +88,12 @@ export default function DealerSettingsPage() {
                     logo: form.logo,
                 }),
             })
+            setSaveStatus('success')
+            setTimeout(() => setSaveStatus('idle'), 4000)
         } catch (err) {
             console.error('Failed to save profile:', err)
+            setSaveStatus('error')
+            setTimeout(() => setSaveStatus('idle'), 4000)
         } finally {
             setSaving(false)
         }
@@ -278,11 +284,25 @@ export default function DealerSettingsPage() {
                                         />
                                     </div>
 
-                                    <div className="flex justify-end pt-4 border-t border-white/5">
-                                        <Button className="gap-2 h-10 shadow-neon" shape="default" onClick={handleSave} disabled={saving}>
-                                            {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} 
-                                            {saving ? "Saving..." : "Save Changes"}
-                                        </Button>
+                                    <div className="pt-4 border-t border-white/5 space-y-3">
+                                        {saveStatus === 'success' && (
+                                            <div className="flex items-center gap-2 p-3 bg-emerald-500/15 border border-emerald-500/40 rounded-xl text-emerald-300 text-sm">
+                                                <CheckCircle size={15} className="shrink-0" />
+                                                Profile saved successfully.
+                                            </div>
+                                        )}
+                                        {saveStatus === 'error' && (
+                                            <div className="flex items-center gap-2 p-3 bg-red-500/15 border border-red-500/40 rounded-xl text-red-300 text-sm">
+                                                <XCircle size={15} className="shrink-0" />
+                                                Failed to save. Please try again.
+                                            </div>
+                                        )}
+                                        <div className="flex justify-end">
+                                            <Button className="gap-2 h-10 shadow-neon" shape="default" onClick={handleSave} disabled={saving}>
+                                                {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                                                {saving ? "Saving..." : "Save Changes"}
+                                            </Button>
+                                        </div>
                                     </div>
                                 </div>
                             )}

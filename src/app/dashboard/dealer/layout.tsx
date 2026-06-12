@@ -4,7 +4,7 @@ import React from "react"
 import { useAuth } from "@/context/AuthContext"
 import { KycOverlayForm, KYC_SKIP_KEY } from "@/components/dashboard/KycOverlayForm"
 import { Loader2, AlertTriangle, ArrowRight } from "lucide-react"
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 /**
  * Dealer Dashboard Layout
@@ -18,6 +18,7 @@ export default function DealerDashboardLayout({
     children: React.ReactNode
 }) {
     const { user, profile, loading } = useAuth()
+    const router = useRouter()
     const [skipped, setSkipped] = React.useState(false)
 
     // Read skip flag client-side after hydration
@@ -59,12 +60,16 @@ export default function DealerDashboardLayout({
                             Most dealer features are unavailable until you complete verification.
                         </span>
                     </div>
-                    <Link
-                        href="/dashboard/dealer/settings"
+                    <button
+                        onClick={() => {
+                            if (typeof window !== 'undefined') localStorage.removeItem(KYC_SKIP_KEY)
+                            setSkipped(false)
+                            router.push('/dashboard/dealer')
+                        }}
                         className="flex items-center gap-1 text-amber-300 font-bold hover:text-amber-200 whitespace-nowrap transition-colors shrink-0"
                     >
-                        Manage Account <ArrowRight size={12} />
-                    </Link>
+                        Complete KYC <ArrowRight size={12} />
+                    </button>
                 </div>
             )}
             {children}
