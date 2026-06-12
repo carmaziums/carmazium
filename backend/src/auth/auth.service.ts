@@ -304,20 +304,29 @@ export class AuthService {
                         meta?.role && Object.values(UserRole).includes(meta.role as UserRole)
                             ? (meta.role as UserRole)
                             : UserRole.BUYER;
+                    // Resolve name across our signup metadata AND Google/Apple OAuth keys
+                    const fullNameFallback = (meta.full_name || meta.name || '').trim();
+                    const resolvedFirst =
+                        meta.first_name ?? meta.firstName ?? meta.given_name ??
+                        (fullNameFallback ? fullNameFallback.split(' ')[0] : undefined) ?? null;
+                    const resolvedLast =
+                        meta.last_name ?? meta.lastName ?? meta.family_name ??
+                        (fullNameFallback.includes(' ') ? fullNameFallback.split(' ').slice(1).join(' ') : undefined) ?? null;
                     localUser = await this.prisma.user.upsert({
                             where: { email: emailNorm },
                             update: {
                                 // NEVER update `id` — overwriting the PK would orphan all
                                 // existing listings, sales, and offers for this user.
-                                firstName: meta.first_name ?? meta.firstName ?? undefined,
-                                lastName: meta.last_name ?? meta.lastName ?? undefined,
+                                // Only overwrite name if we have a value (don't blank out existing names)
+                                ...(resolvedFirst && { firstName: resolvedFirst }),
+                                ...(resolvedLast && { lastName: resolvedLast }),
                                 ...(role && { role }),
                             },
                             create: {
                                 id: data.user.id,
                                 email: emailNorm,
-                                firstName: meta.first_name ?? meta.firstName ?? null,
-                                lastName: meta.last_name ?? meta.lastName ?? null,
+                                firstName: resolvedFirst,
+                                lastName: resolvedLast,
                                 role,
                                 passwordHash: 'SUPABASE_EXTERNAL_AUTH',
                                 isEmailVerified: isEmailConfirmed,

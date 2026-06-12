@@ -198,6 +198,15 @@ function AuthCallbackContent() {
       const apiBase = API_URL.replace(/\/$/, "")
       const meta = (user.user_metadata || {}) as Record<string, string>
 
+      // Resolve first/last name across our signup metadata AND Google/Apple OAuth metadata
+      const fullNameFallback = (meta.full_name || meta.name || '').trim()
+      const resolvedFirstName =
+        meta.first_name ?? meta.firstName ?? meta.given_name ??
+        (fullNameFallback ? fullNameFallback.split(' ')[0] : undefined)
+      const resolvedLastName =
+        meta.last_name ?? meta.lastName ?? meta.family_name ??
+        (fullNameFallback.includes(' ') ? fullNameFallback.split(' ').slice(1).join(' ') : undefined)
+
       // Redirect immediately — don't block on backend sync
       router.replace(redirectTo)
 
@@ -211,8 +220,8 @@ function AuthCallbackContent() {
         body: JSON.stringify({
           id: user.id,
           email: user.email,
-          firstName: meta.first_name ?? meta.firstName,
-          lastName: meta.last_name ?? meta.lastName,
+          firstName: resolvedFirstName,
+          lastName: resolvedLastName,
           role: meta.role,
         }),
         signal: syncController.signal,

@@ -242,8 +242,9 @@ export class UsersService {
         const user = await this.prisma.user.upsert({
             where: { email },
             update: {
-                firstName: data.firstName,
-                lastName: data.lastName,
+                // Only overwrite existing name if we have a non-empty value coming in
+                ...(data.firstName && { firstName: data.firstName }),
+                ...(data.lastName && { lastName: data.lastName }),
                 ...(role !== undefined && { role }),
             },
             create: {
