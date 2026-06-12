@@ -2,11 +2,12 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import {
     Car, Search, Filter, PlusCircle, MoreVertical,
-    Loader2, Upload, TrendingUp, ShieldCheck, Trash2, Eye, RefreshCcw, Pencil
+    Loader2, Upload, TrendingUp, ShieldCheck, Trash2, Eye, RefreshCcw, Pencil, AlertTriangle
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
@@ -26,6 +27,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function DealerInventoryPage() {
     const { user, profile, loading: authLoading } = useAuth()
+    const router = useRouter()
     const [listings, setListings] = React.useState<any[]>([])
     const [loading, setLoading] = React.useState(true)
     const [searchQuery, setSearchQuery] = React.useState("")
@@ -33,6 +35,7 @@ export default function DealerInventoryPage() {
     const [isBulkImportOpen, setIsBulkImportOpen] = React.useState(false)
     const [activeDropdown, setActiveDropdown] = React.useState<string | null>(null)
     const [publishing, setPublishing] = React.useState<string | null>(null)
+    const [publishBlockedId, setPublishBlockedId] = React.useState<string | null>(null)
 
     React.useEffect(() => {
         if (!authLoading && user) {
@@ -57,6 +60,12 @@ export default function DealerInventoryPage() {
     }
 
     async function handlePublish(listing: any) {
+        // Gate: listing must have at least one photo before going live
+        if (!listing.images || listing.images.length === 0) {
+            setPublishBlockedId(listing.id)
+            return
+        }
+        setPublishBlockedId(null)
         try {
             setPublishing(listing.id)
             const result = await publishListing(listing.id)
@@ -256,12 +265,20 @@ export default function DealerInventoryPage() {
                                                     </div>
                                                 </td>
                                                 <td className="px-8 py-6 text-right">
-                                                    <div className="flex items-center justify-end gap-2 opactiy-0 group-hover:opacity-100 transition-opacity">
+                                                    <div className="flex flex-col items-end gap-2">
+                                                    {/* Incomplete listing warning */}
+                                                    {publishBlockedId === listing.id && (
+                                                        <div className="flex items-center gap-1.5 text-amber-400 text-[10px] font-bold bg-amber-500/10 border border-amber-500/20 rounded-lg px-2.5 py-1.5 max-w-[180px] text-left">
+                                                            <AlertTriangle size={11} className="shrink-0" />
+                                                            <span>Add photos first. <button onClick={() => router.push(`/dashboard/dealer/add-listing?editId=${listing.id}&editSlug=${listing.slug}`)} className="underline hover:text-amber-300">Complete listing</button></span>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         {listing.status === 'DRAFT' && (
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
-                                                                title="Publish Listing"
+                                                                title={(!listing.images || listing.images.length === 0) ? "Add photos before publishing" : "Publish Listing"}
                                                                 onClick={() => handlePublish(listing)}
                                                                 disabled={publishing === listing.id}
                                                                 className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20"
@@ -342,6 +359,7 @@ export default function DealerInventoryPage() {
                                                                 </button>
                                                             </div>
                                                         </div>
+                                                    </div>
                                                     </div>
                                                 </td>
                                             </tr>

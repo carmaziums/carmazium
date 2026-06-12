@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/Textarea"
 import {
     Search, Loader2, BadgeCheck, Camera, Upload, X,
     CheckCircle, ArrowRight, Sparkles, Car, MapPin,
-    LocateFixed, PoundSterling, AlertTriangle, Zap, Gavel, List
+    LocateFixed, PoundSterling, AlertTriangle, Zap, Gavel, List, Play
 } from "lucide-react"
 import Image from "next/image"
 import { ImageUpload } from "@/components/listing/ImageUpload"
@@ -52,6 +52,9 @@ export function DealerQuickList() {
     const [submitError, setSubmitError] = React.useState<string | null>(null)
     const [publishAs, setPublishAs] = React.useState<"ACTIVE" | "DRAFT">("ACTIVE")
     const [listingType, setListingType] = React.useState<"CLASSIFIED" | "AUCTION">("CLASSIFIED")
+    const [videoUrls, setVideoUrls] = React.useState<string[]>([])
+    const [videoUrlInput, setVideoUrlInput] = React.useState("")
+    const [videoUrlError, setVideoUrlError] = React.useState("")
 
     // ─── Load existing listing when editing ───────────────────────────────────
     React.useEffect(() => {
@@ -67,6 +70,7 @@ export function DealerQuickList() {
                 setLocation(l.location || '')
                 setDescription(l.description || '')
                 setImages(l.images || [])
+                setVideoUrls(l.videoUrls || [])
                 setCondition(l.condition || '')
                 setPublishAs(l.status === 'ACTIVE' ? 'ACTIVE' : 'DRAFT')
                 // Reconstruct dvlaData from listing fields so sections appear
@@ -218,6 +222,7 @@ export function DealerQuickList() {
                 location: location || undefined,
                 condition: condition as any || undefined,
                 isImported: false,
+                videoUrls: videoUrls.length > 0 ? videoUrls : undefined,
             }
 
             if (editId) {
@@ -509,6 +514,63 @@ export function DealerQuickList() {
                         onChange={(e) => setDescription(e.target.value)}
                         className="bg-slate-900/50 border-white/10 text-white min-h-[100px] placeholder:text-gray-600 focus:border-primary"
                     />
+                </section>
+            )}
+
+            {/* ── SECTION 5: Video Links ──────────────────────────────────── */}
+            {dvlaData && (
+                <section className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '250ms' }}>
+                    <h2 className="text-sm font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary text-[10px] font-black">5</span>
+                        Video Links
+                        <span className="text-[10px] text-gray-600 normal-case font-normal">Optional · up to 5</span>
+                    </h2>
+                    <div className="flex gap-2">
+                        <Input
+                            placeholder="Paste a YouTube, Instagram, Facebook or X video URL"
+                            value={videoUrlInput}
+                            onChange={e => { setVideoUrlInput(e.target.value); setVideoUrlError("") }}
+                            className="bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 flex-1"
+                        />
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 shrink-0"
+                            onClick={() => {
+                                const url = videoUrlInput.trim()
+                                if (!url) return
+                                if (videoUrls.length >= 5) { setVideoUrlError("Maximum 5 video links allowed."); return }
+                                const isValid = /^https?:\/\/(www\.)?(youtube\.com|youtu\.be|instagram\.com|facebook\.com|fb\.watch|x\.com|twitter\.com)/.test(url)
+                                if (!isValid) { setVideoUrlError("Only YouTube, Instagram, Facebook or X links are accepted."); return }
+                                if (videoUrls.includes(url)) { setVideoUrlError("This URL has already been added."); return }
+                                setVideoUrls([...videoUrls, url])
+                                setVideoUrlInput("")
+                            }}
+                        >
+                            <Play size={14} className="mr-1" /> Add
+                        </Button>
+                    </div>
+                    {videoUrlError && <p className="text-xs text-red-400">{videoUrlError}</p>}
+                    {videoUrls.length > 0 && (
+                        <div className="space-y-2">
+                            {videoUrls.map((url, idx) => {
+                                const platform = url.includes('youtube.com') || url.includes('youtu.be') ? 'YouTube'
+                                    : url.includes('instagram.com') ? 'Instagram'
+                                    : url.includes('facebook.com') || url.includes('fb.watch') ? 'Facebook'
+                                    : 'X / Twitter'
+                                return (
+                                    <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-slate-900/50 border border-white/5">
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-500/20 text-orange-300 border border-orange-500/20 shrink-0">{platform}</span>
+                                        <span className="text-xs text-blue-400 truncate flex-1">{url}</span>
+                                        <button type="button" onClick={() => setVideoUrls(videoUrls.filter((_, i) => i !== idx))} className="text-gray-500 hover:text-red-400 transition-colors shrink-0">
+                                            <X size={14} />
+                                        </button>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )}
                 </section>
             )}
 

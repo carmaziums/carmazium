@@ -2426,18 +2426,51 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             {/* Videos */}
                             {formData.videoUrls && formData.videoUrls.length > 0 && (
                                 <SummarySection title={`Videos (${formData.videoUrls.length})`} onEdit={() => goToStep(2)}>
-                                    <div className="space-y-2">
+                                    <div className="space-y-4">
                                         {formData.videoUrls.map((url, i) => {
+                                            // Extract YouTube embed URL
+                                            let ytEmbedUrl: string | null = null
+                                            const shortMatch = url.match(/youtu\.be\/([^?&]+)/)
+                                            if (shortMatch) ytEmbedUrl = `https://www.youtube.com/embed/${shortMatch[1]}`
+                                            if (!ytEmbedUrl) {
+                                                try {
+                                                    const u = new URL(url)
+                                                    const v = u.searchParams.get('v')
+                                                    if (v) ytEmbedUrl = `https://www.youtube.com/embed/${v}`
+                                                    const shortsMatch = url.match(/\/shorts\/([^?&]+)/)
+                                                    if (shortsMatch) ytEmbedUrl = `https://www.youtube.com/embed/${shortsMatch[1]}`
+                                                } catch { /* invalid URL */ }
+                                            }
+
                                             let platform = 'Video'
                                             if (url.includes('youtube.com') || url.includes('youtu.be')) platform = 'YouTube'
                                             else if (url.includes('instagram.com')) platform = 'Instagram'
                                             else if (url.includes('facebook.com') || url.includes('fb.watch')) platform = 'Facebook'
                                             else if (url.includes('twitter.com') || url.includes('x.com')) platform = 'X / Twitter'
+
+                                            if (ytEmbedUrl) {
+                                                return (
+                                                    <div key={i} className="rounded-xl overflow-hidden border border-white/10 bg-black">
+                                                        <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                                                            <iframe
+                                                                src={ytEmbedUrl}
+                                                                title={`Video ${i + 1}`}
+                                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                                allowFullScreen
+                                                                className="absolute inset-0 w-full h-full"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )
+                                            }
+
                                             return (
-                                                <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-slate-900/50 border border-white/5">
+                                                <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                                                    className="flex items-center gap-2 p-3 rounded-lg bg-slate-900/50 border border-white/10 hover:border-white/20 transition-colors group">
                                                     <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-500/20 text-orange-300 border border-orange-500/20 shrink-0">{platform}</span>
-                                                    <span className="text-xs text-blue-400 truncate">{url}</span>
-                                                </div>
+                                                    <span className="text-xs text-blue-400 truncate flex-1 group-hover:text-blue-300">{url}</span>
+                                                    <ArrowRight size={12} className="text-gray-500 shrink-0" />
+                                                </a>
                                             )
                                         })}
                                     </div>
