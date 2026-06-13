@@ -26,10 +26,10 @@ function MessagesContent() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user])
 
-    // Once rooms are loaded, auto-select the room specified via ?room= query param
+    // Auto-select the room specified via ?room= query param.
+    // Runs whenever rooms updates (including after upsertRoom from the vehicle page).
     React.useEffect(() => {
-        if (!targetRoomId || rooms.length === 0) return
-        // Only auto-select once (don't repeatedly override manual selections)
+        if (!targetRoomId) return
         if (selectedRoom?.id === targetRoomId) return
         const match = rooms.find(r => r.id === targetRoomId)
         if (match) setSelectedRoom(match)

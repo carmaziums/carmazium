@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext"
 import { KycOverlayForm, KYC_SKIP_KEY } from "@/components/dashboard/KycOverlayForm"
 import { Loader2, Lock, ShieldCheck, ArrowRight } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { apiClient } from "@/lib/apiClient"
 
 /**
  * Dealer Dashboard Layout
@@ -17,9 +18,29 @@ export default function DealerDashboardLayout({
 }: {
     children: React.ReactNode
 }) {
-    const { user, profile, loading } = useAuth()
+    const { user, profile, loading, refreshProfile } = useAuth()
     const router = useRouter()
     const [skipped, setSkipped] = React.useState(false)
+    const [switchingRole, setSwitchingRole] = React.useState(false)
+
+    const handleSwitchToBuyer = async () => {
+        setSwitchingRole(true)
+        try {
+            await apiClient('/users/elevate', {
+                method: 'POST',
+                body: JSON.stringify({ newRole: 'BUYER' }),
+            })
+            if (typeof window !== 'undefined') {
+                localStorage.removeItem(KYC_SKIP_KEY)
+            }
+            await refreshProfile()
+            router.push('/dashboard')
+        } catch (err: any) {
+            console.error('Failed to switch role:', err)
+        } finally {
+            setSwitchingRole(false)
+        }
+    }
 
     // Read skip flag client-side after hydration
     React.useEffect(() => {
@@ -104,10 +125,11 @@ export default function DealerDashboardLayout({
                 <p className="text-xs text-gray-600 mt-6">
                     Changed your mind?{' '}
                     <button
-                        onClick={() => router.push('/dashboard/user')}
-                        className="text-gray-500 hover:text-gray-300 underline transition-colors"
+                        onClick={handleSwitchToBuyer}
+                        disabled={switchingRole}
+                        className="text-gray-500 hover:text-gray-300 underline transition-colors disabled:opacity-50"
                     >
-                        Go to buyer dashboard
+                        {switchingRole ? 'Switching...' : 'Go to buyer dashboard'}
                     </button>
                 </p>
             </div>

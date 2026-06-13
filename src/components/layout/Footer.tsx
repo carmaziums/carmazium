@@ -45,16 +45,18 @@ export function Footer() {
                     {/* Contact Column */}
                     <div className="space-y-4">
                         <h3 className="text-xl font-bold font-heading uppercase tracking-wide">Contact Us</h3>
-                        <ul className="space-y-2 text-gray-400">
-                            <li className="hover:text-primary cursor-pointer transition-colors flex items-center gap-3">
+                        <ul className="space-y-3 text-gray-400">
+                            <li className="flex items-center gap-3 hover:text-primary transition-colors">
                                 <Mail size={18} className="text-primary shrink-0" /> support@carmazium.co.uk
                             </li>
-                            <li className="hover:text-primary cursor-pointer transition-colors flex items-center gap-3">
-                                <Phone size={18} className="text-primary shrink-0" /> 0800 123 4567
+                            <li className="flex items-center gap-3 hover:text-primary transition-colors">
+                                <Phone size={18} className="text-primary shrink-0" /> +44 2034 757619
                             </li>
-                            <li className="hover:text-primary cursor-pointer transition-colors flex items-center gap-3">
-                                <MapPin size={18} className="text-primary shrink-0" /> London, UK
+                            <li className="flex items-start gap-3">
+                                <MapPin size={18} className="text-primary shrink-0 mt-0.5" />
+                                <span>181-187 Hunters Rd, Lozells,<br />Birmingham, B19 1ES,<br />United Kingdom</span>
                             </li>
+                            <li className="text-xs text-gray-500 pl-7">Mon – Fri, 9am – 6pm GMT</li>
                         </ul>
                     </div>
 

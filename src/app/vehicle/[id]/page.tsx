@@ -19,6 +19,7 @@ import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 import { EnquireModal } from "@/components/listing/EnquireModal"
 import { getListingBySlug, makeOffer, getMyOfferForListing, respondToCounterOffer, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, formatPrice, type Listing, type LatestOffer } from "@/lib/listingApi"
 import { createChatRoom } from "@/lib/chatApi"
+import { useChat } from "@/context/ChatContext"
 import { useRouter } from "next/navigation"
 
 // ─── Offer Status Chip ───────────────────────────────────────────────────────
@@ -431,6 +432,7 @@ function BidModal({
 export default function VehicleDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = React.use(params)
     const { user } = useAuth()
+    const { upsertRoom } = useChat()
 
     const [listing, setListing] = React.useState<Listing | null>(null)
     const [loading, setLoading] = React.useState(true)
@@ -469,6 +471,10 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
         try {
             setEnquiring(true)
             const room = await createChatRoom(listing.sellerId, listing.id)
+            // Pre-populate the room in ChatContext so the messages page can auto-select
+            // it immediately with the correct seller name and listing title, without
+            // waiting for a full refreshRooms() round-trip.
+            upsertRoom(room)
             router.push(`/dashboard/buyer/messages?room=${room.id}`)
         } catch (err: any) {
             console.error('Failed to create chat room:', err)

@@ -31,6 +31,7 @@ interface ChatContextType {
     startTyping: (roomId: string) => void
     stopTyping: (roomId: string) => void
     markAsRead: (roomId: string) => void
+    upsertRoom: (room: ChatRoom) => void
 
     // Event subscriptions
     onNewMessage: (callback: (message: ChatMessage) => void) => () => void
@@ -194,6 +195,18 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         socketRef.current?.emit('typing:stop', { roomId })
     }, [])
 
+    const upsertRoom = useCallback((room: ChatRoom) => {
+        setRooms(prev => {
+            const idx = prev.findIndex(r => r.id === room.id)
+            if (idx !== -1) {
+                const next = [...prev]
+                next[idx] = room
+                return next
+            }
+            return [room, ...prev]
+        })
+    }, [])
+
     const markAsRead = useCallback((roomId: string) => {
         socketRef.current?.emit('message:read', { roomId })
         // Zero out this room's badge and subtract its exact count from the global total
@@ -242,6 +255,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         startTyping,
         stopTyping,
         markAsRead,
+        upsertRoom,
         onNewMessage,
         onTyping,
         onMessagesRead,
