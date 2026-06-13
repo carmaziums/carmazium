@@ -45,8 +45,9 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                 setLoading(true)
                 const response = await getChatMessages(room.id)
                 setMessages(response.data)
-                // Mark as read when opening
+                // Mark as read via REST (persists to DB) and via context (clears badge immediately)
                 await markMessagesAsRead(room.id)
+                markAsRead(room.id)
             } catch (error) {
                 console.error("Failed to fetch messages:", error)
             } finally {
@@ -54,16 +55,20 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
             }
         }
         fetchMessages()
-    }, [room.id])
+    }, [room.id, markAsRead])
 
     // Scroll to bottom on new messages — instant on first load, smooth only if near bottom
+    // Guard against loading=true: the container shows a spinner then, so scrollHeight is tiny
+    // and isInitialLoad would be consumed before any messages are in the DOM.
     React.useEffect(() => {
-        if (!messagesContainerRef.current) return
+        if (loading || !messagesContainerRef.current) return
         if (isInitialLoad.current) {
             // Snap to bottom instantly when the conversation first loads
             messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
             isInitialLoad.current = false
-        } else if (isNearBottom()) {
+            return
+        }
+        if (isNearBottom()) {
             // Only smooth-scroll container when near bottom
             messagesContainerRef.current.scrollTo({
                 top: messagesContainerRef.current.scrollHeight,
@@ -71,7 +76,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
             })
         }
         // If the user has scrolled up to read older messages, don't interrupt them
-    }, [messages])
+    }, [messages, loading])
 
     // Subscribe to new messages (with deduplication and optimistic replacement)
     React.useEffect(() => {

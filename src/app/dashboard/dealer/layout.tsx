@@ -104,7 +104,7 @@ export default function DealerDashboardLayout({
                 <p className="text-xs text-gray-600 mt-6">
                     Changed your mind?{' '}
                     <button
-                        onClick={() => router.push('/dashboard')}
+                        onClick={() => router.push('/dashboard/user')}
                         className="text-gray-500 hover:text-gray-300 underline transition-colors"
                     >
                         Go to buyer dashboard

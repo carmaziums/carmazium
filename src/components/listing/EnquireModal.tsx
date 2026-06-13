@@ -10,9 +10,11 @@ interface EnquireModalProps {
     dealerProfileId: string
     isOpen: boolean
     onClose: () => void
+    sellerName?: string
+    carTitle?: string
 }
 
-export function EnquireModal({ listingId, dealerProfileId, isOpen, onClose }: EnquireModalProps) {
+export function EnquireModal({ listingId, dealerProfileId, isOpen, onClose, sellerName, carTitle }: EnquireModalProps) {
     const [status, setStatus] = React.useState<"idle" | "loading" | "success" | "error">("idle")
     const [errorMsg, setErrorMsg] = React.useState("")
     const [formData, setFormData] = React.useState({
@@ -69,8 +71,13 @@ export function EnquireModal({ listingId, dealerProfileId, isOpen, onClose }: En
                     <MessageSquare size={32} />
                 </div>
                 
-                <h2 className="text-2xl font-bold font-heading mb-2 text-white text-center tracking-tight">Contact Seller</h2>
-                <p className="text-gray-400 mb-6 text-center text-sm">Send an enquiry about this vehicle.</p>
+                <h2 className="text-2xl font-bold font-heading mb-2 text-white text-center tracking-tight">
+                    {sellerName ? `Contact ${sellerName}` : 'Contact Seller'}
+                </h2>
+                {carTitle && (
+                    <p className="text-xs text-primary font-semibold text-center mb-1 truncate px-4">{carTitle}</p>
+                )}
+                <p className="text-gray-400 mb-6 text-center text-sm">Send an enquiry and the seller will get back to you.</p>
 
                 {status === "success" ? (
                     <div className="flex flex-col items-center justify-center py-8 text-center animate-in fade-in zoom-in duration-300">

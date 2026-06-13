@@ -38,6 +38,7 @@ export default function DealerInventoryPage() {
     const [publishing, setPublishing] = React.useState<string | null>(null)
     const [publishBlockedId, setPublishBlockedId] = React.useState<string | null>(null)
     const [planSelectListing, setPlanSelectListing] = React.useState<any | null>(null)
+    const [detailsBlockedId, setDetailsBlockedId] = React.useState<string | null>(null)
 
     React.useEffect(() => {
         if (!authLoading && user) {
@@ -62,12 +63,22 @@ export default function DealerInventoryPage() {
     }
 
     async function handlePublish(listing: any) {
-        // Gate: listing must have at least one photo before going live
+        // Gate 1: listing must have at least one photo before going live
         if (!listing.images || listing.images.length === 0) {
             setPublishBlockedId(listing.id)
             return
         }
         setPublishBlockedId(null)
+
+        // Gate 2: bulk-imported listings are missing fields DVLA can't provide.
+        // Require the dealer to complete the form before selecting a plan.
+        const missingDetails = !listing.transmission || !listing.bodyType || !listing.description?.trim()
+        if (missingDetails) {
+            setDetailsBlockedId(listing.id)
+            return
+        }
+        setDetailsBlockedId(null)
+
         // Show plan selection modal
         setPlanSelectListing(listing)
     }
@@ -283,6 +294,12 @@ export default function DealerInventoryPage() {
                                                         <div className="flex items-center gap-1.5 text-amber-400 text-[10px] font-bold bg-amber-500/10 border border-amber-500/20 rounded-lg px-2.5 py-1.5 max-w-[180px] text-left">
                                                             <AlertTriangle size={11} className="shrink-0" />
                                                             <span>Add photos first. <button onClick={() => router.push(`/dashboard/dealer/add-listing?editId=${listing.id}&editSlug=${listing.slug}`)} className="underline hover:text-amber-300">Complete listing</button></span>
+                                                        </div>
+                                                    )}
+                                                    {detailsBlockedId === listing.id && (
+                                                        <div className="flex items-center gap-1.5 text-blue-400 text-[10px] font-bold bg-blue-500/10 border border-blue-500/20 rounded-lg px-2.5 py-1.5 max-w-[180px] text-left">
+                                                            <AlertTriangle size={11} className="shrink-0" />
+                                                            <span>Missing details. <button onClick={() => router.push(`/dashboard/dealer/add-listing?editId=${listing.id}&editSlug=${listing.slug}`)} className="underline hover:text-blue-300">Complete listing</button></span>
                                                         </div>
                                                     )}
                                                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">

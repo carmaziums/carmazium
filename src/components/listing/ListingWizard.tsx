@@ -522,6 +522,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             router.push("/auth/onboarding")
             return
         }
+        if (profile?.role === 'DEALER' && !isVerifiedDealer) {
+            alert("Your dealer account is pending KYC verification. Complete verification to start listing vehicles.")
+            router.push('/dashboard/dealer')
+            return
+        }
         set("listingType", "CLASSIFIED")
         setSellingMethod("list")
         set("status", "ACTIVE")
@@ -940,6 +945,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 onClick={() => {
                                     if (!isAuthenticated) { setShowLoginModal(true); return }
                                     if (!isEmailVerified) { router.push("/auth/onboarding"); return }
+                                    if (profile?.role === 'DEALER' && !isVerifiedDealer) {
+                                        alert("Your dealer account is pending KYC verification. Complete verification to start listing vehicles.")
+                                        router.push('/dashboard/dealer')
+                                        return
+                                    }
                                     set("listingType", "AUCTION")
                                     set("badgeTier", "FREE")
                                     setSellingMethod("list")

@@ -855,6 +855,12 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                     dealerProfileId={listing.seller.dealerProfile.id}
                     isOpen={showEnquireModal}
                     onClose={() => setShowEnquireModal(false)}
+                    sellerName={
+                        (listing.seller.dealerProfile as any)?.companyName ||
+                        `${listing.seller.firstName || ''} ${listing.seller.lastName || ''}`.trim() ||
+                        undefined
+                    }
+                    carTitle={listing.title}
                 />
             )}
 

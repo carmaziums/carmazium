@@ -196,8 +196,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
     const markAsRead = useCallback((roomId: string) => {
         socketRef.current?.emit('message:read', { roomId })
-        // Optimistically decrement unread count
-        setUnreadCount(prev => Math.max(0, prev - 1))
+        // Zero out this room's badge and subtract its exact count from the global total
+        setRooms(prev => {
+            const idx = prev.findIndex(r => r.id === roomId)
+            if (idx === -1) return prev
+            const roomUnread = prev[idx].unreadCount
+            if (roomUnread === 0) return prev
+            setUnreadCount(c => Math.max(0, c - roomUnread))
+            const next = [...prev]
+            next[idx] = { ...next[idx], unreadCount: 0 }
+            return next
+        })
     }, [])
 
     // Event subscriptions
