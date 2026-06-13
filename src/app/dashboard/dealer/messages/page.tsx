@@ -18,6 +18,7 @@ function MessagesContent() {
     const searchParams = useSearchParams()
     const targetRoomId = searchParams.get("room")
     const [selectedRoom, setSelectedRoom] = React.useState<ChatRoom | null>(null)
+    const autoSelectedRef = React.useRef(false)
 
     React.useEffect(() => {
         if (!user) return
@@ -25,12 +26,17 @@ function MessagesContent() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user])
 
+    // Auto-select from ?room= exactly once — selectedRoom intentionally excluded
+    // from deps to prevent manual clicks being overridden by this effect.
     React.useEffect(() => {
-        if (!targetRoomId || rooms.length === 0) return
-        if (selectedRoom?.id === targetRoomId) return
+        if (!targetRoomId || autoSelectedRef.current) return
         const match = rooms.find(r => r.id === targetRoomId)
-        if (match) setSelectedRoom(match)
-    }, [rooms, targetRoomId, selectedRoom])
+        if (match) {
+            setSelectedRoom(match)
+            autoSelectedRef.current = true
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [rooms, targetRoomId])
 
     if (loading) {
         return (

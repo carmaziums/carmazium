@@ -17,23 +17,28 @@ function MessagesContent() {
     const searchParams = useSearchParams()
     const targetRoomId = searchParams.get("room")
     const [selectedRoom, setSelectedRoom] = React.useState<ChatRoom | null>(null)
+    // Guard: auto-select from ?room= only once so manual clicks are never overridden
+    const autoSelectedRef = React.useRef(false)
 
-    // On mount (or when a ?room= param is present), refresh the room list
-    // so a newly-created room appears without a manual page reload
+    // On mount refresh the room list so newly-created rooms appear immediately
     React.useEffect(() => {
         if (!user) return
         refreshRooms()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user])
 
-    // Auto-select the room specified via ?room= query param.
-    // Runs whenever rooms updates (including after upsertRoom from the vehicle page).
+    // Auto-select the room from ?room= param exactly once.
+    // Intentionally excludes selectedRoom from deps — including it caused every
+    // manual room-click to re-trigger this effect and snap back to the URL room.
     React.useEffect(() => {
-        if (!targetRoomId) return
-        if (selectedRoom?.id === targetRoomId) return
+        if (!targetRoomId || autoSelectedRef.current) return
         const match = rooms.find(r => r.id === targetRoomId)
-        if (match) setSelectedRoom(match)
-    }, [rooms, targetRoomId, selectedRoom])
+        if (match) {
+            setSelectedRoom(match)
+            autoSelectedRef.current = true
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [rooms, targetRoomId])
 
     if (loading) {
         return (
