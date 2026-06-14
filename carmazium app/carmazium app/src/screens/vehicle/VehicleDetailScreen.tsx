@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Dimensions,
   StatusBar,
-  FlatList,
   Alert,
   Modal,
   TextInput,
@@ -19,6 +18,14 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  runOnJS,
+  clamp,
+} from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { formatPrice, formatMileage, CarListing } from '../../data/listings';
 import { Colors } from '../../constants/colors';
@@ -37,8 +44,23 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { listing } = route.params;
   const insets = useSafeAreaInsets();
   const [activeImage, setActiveImage] = useState(0);
-  const flatListRef = useRef<FlatList>(null);
   const { isSaved, save, unsave } = useWatchlistStore();
+
+  // ── Gallery gesture values ──────────────────────────────────────────────────
+  const translateX = useSharedValue(0);
+  const savedTranslateX = useSharedValue(0);
+  const totalImages = listing.images.length;
+
+  // ── Full-screen viewer state + gesture values ───────────────────────────────
+  const [fullscreenVisible, setFullscreenVisible] = useState(false);
+  const [fullscreenIndex, setFullscreenIndex] = useState(0);
+  const pinchScale = useSharedValue(1);
+  const pinchFocalX = useSharedValue(0);
+  const pinchFocalY = useSharedValue(0);
+  const panX = useSharedValue(0);
+  const panY = useSharedValue(0);
+  const savedPanX = useSharedValue(0);
+  const savedPanY = useSharedValue(0);
   const saved = isSaved(listing.id);
 
   // Dynamic States for Make an Offer
@@ -87,7 +109,9 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const handleThumbnailPress = (index: number) => {
     setActiveImage(index);
-    flatListRef.current?.scrollToIndex({ index, animated: true });
+    const target = -index * SCREEN_WIDTH;
+    translateX.value = withSpring(target, { damping: 20, stiffness: 200 });
+    savedTranslateX.value = target;
   };
 
   const adjustOffer = (amount: number) => {
@@ -187,6 +211,74 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     return principal * (monthlyRate * Math.pow(1 + monthlyRate, termMonths)) / (Math.pow(1 + monthlyRate, termMonths) - 1);
   };
 
+  // ── Gallery pan gesture ─────────────────────────────────────────────────────
+  const galleryPanGesture = Gesture.Pan()
+    .onUpdate((e) => {
+      translateX.value = savedTranslateX.value + e.translationX;
+    })
+    .onEnd((e) => {
+      const threshold = SCREEN_WIDTH * 0.3;
+      let newIndex = activeImage;
+      if (e.translationX < -threshold && activeImage < totalImages - 1) {
+        newIndex = activeImage + 1;
+      } else if (e.translationX > threshold && activeImage > 0) {
+        newIndex = activeImage - 1;
+      }
+      const target = -newIndex * SCREEN_WIDTH;
+      translateX.value = withSpring(target, { damping: 20, stiffness: 200 });
+      savedTranslateX.value = target;
+      runOnJS(setActiveImage)(newIndex);
+    });
+
+  const galleryAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
+
+  // ── Full-screen pinch + pan gesture ────────────────────────────────────────
+  const pinchGesture = Gesture.Pinch()
+    .onUpdate((e) => {
+      pinchScale.value = clamp(e.scale, 0.5, 4);
+    })
+    .onEnd(() => {
+      if (pinchScale.value < 1) {
+        pinchScale.value = withSpring(1, { damping: 20, stiffness: 200 });
+        panX.value = withSpring(0, { damping: 20, stiffness: 200 });
+        panY.value = withSpring(0, { damping: 20, stiffness: 200 });
+        savedPanX.value = 0;
+        savedPanY.value = 0;
+      }
+    });
+
+  const fullscreenPanGesture = Gesture.Pan()
+    .onUpdate((e) => {
+      panX.value = savedPanX.value + e.translationX;
+      panY.value = savedPanY.value + e.translationY;
+    })
+    .onEnd(() => {
+      savedPanX.value = panX.value;
+      savedPanY.value = panY.value;
+    });
+
+  const combinedFullscreenGesture = Gesture.Simultaneous(pinchGesture, fullscreenPanGesture);
+
+  const fullscreenAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: pinchScale.value },
+      { translateX: panX.value },
+      { translateY: panY.value },
+    ],
+  }));
+
+  const openFullscreen = (index: number) => {
+    setFullscreenIndex(index);
+    pinchScale.value = 1;
+    panX.value = 0;
+    panY.value = 0;
+    savedPanX.value = 0;
+    savedPanY.value = 0;
+    setFullscreenVisible(true);
+  };
+
   // Render horizontal thumbnail selector bar under main gallery image
   const renderThumbnails = () => {
     const maxThumbnails = 5;
@@ -235,28 +327,48 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Gallery Section */}
+        {/* Gallery Section — spring-snap gesture gallery */}
         <View style={styles.galleryContainer}>
-          <FlatList
-            ref={flatListRef}
-            data={listing.images}
-            keyExtractor={(_, idx) => String(idx)}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            getItemLayout={(_, index) => ({
-              length: SCREEN_WIDTH,
-              offset: SCREEN_WIDTH * index,
-              index,
-            })}
-            onMomentumScrollEnd={(e) => {
-              const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-              setActiveImage(index);
-            }}
-            renderItem={({ item }) => (
-              <Image source={{ uri: item }} style={styles.galleryImage} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-            )}
-          />
+          <GestureDetector gesture={galleryPanGesture}>
+            <Animated.View style={[styles.galleryStrip, galleryAnimatedStyle]}>
+              {listing.images.map((img, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  activeOpacity={0.95}
+                  onPress={() => openFullscreen(idx)}
+                  style={styles.galleryImageWrap}
+                >
+                  <Image
+                    source={{ uri: img }}
+                    style={styles.galleryImage}
+                    contentFit="cover"
+                    transition={200}
+                    cachePolicy="memory-disk"
+                    placeholderContentFit="cover"
+                  />
+                </TouchableOpacity>
+              ))}
+            </Animated.View>
+          </GestureDetector>
+
+          {/* Page dot indicator */}
+          {totalImages > 1 && (
+            <View style={styles.pageDots}>
+              {listing.images.map((_, idx) => (
+                <View
+                  key={idx}
+                  style={[styles.pageDot, activeImage === idx && styles.pageDotActive]}
+                />
+              ))}
+            </View>
+          )}
+
+          {/* Photo counter */}
+          <View style={styles.photoCounter}>
+            <Text style={styles.photoCounterText}>
+              {activeImage + 1}/{totalImages}
+            </Text>
+          </View>
 
           {/* Floating Header Actions */}
           <View style={[styles.floatingHeader, { top: insets.top + 8 }]}>
@@ -502,7 +614,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </TouchableOpacity>
           </View>
 
-          {/* Expandable Finance Calculator */}
+          {/* Expandable Finance Calculator — Coming Soon */}
           <TouchableOpacity
             style={styles.financeCard}
             activeOpacity={0.85}
@@ -513,86 +625,72 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </View>
             <View style={styles.financeTextContent}>
               <Text style={styles.financeTitle}>
-                Finance from £{Math.round(calcMonthlyPayment()).toLocaleString('en-GB')}/mo
+                Finance Calculator
               </Text>
               <Text style={styles.financeSubtext}>
-                9.9% APR representative · tap to calculate
+                9.9% APR representative · tap to expand
               </Text>
+            </View>
+            {/* Coming Soon badge */}
+            <View style={styles.comingSoonBadge}>
+              <Text style={styles.comingSoonText}>Coming Soon</Text>
             </View>
             <Ionicons
               name={financeExpanded ? 'chevron-up' : 'chevron-down'}
               size={16}
               color={Colors.textMuted}
+              style={{ marginLeft: 8 }}
             />
           </TouchableOpacity>
 
           {financeExpanded && (
             <View style={styles.financeCalcBody}>
-              {/* Deposit Row */}
-              <View style={styles.calcRow}>
+              {/* Coming Soon overlay message */}
+              <View style={styles.financeComingSoonBox}>
+                <Ionicons name="time-outline" size={20} color={Colors.textMuted} />
+                <Text style={styles.financeComingSoonLabel}>Finance Calculator Coming Soon</Text>
+                <Text style={styles.financeComingSoonSub}>
+                  Finance options will be available here. Contact the seller directly to discuss finance.
+                </Text>
+              </View>
+
+              {/* Deposit Row — inert preview */}
+              <View style={[styles.calcRow, { opacity: 0.4 }]}>
                 <Text style={styles.calcLabel}>DEPOSIT</Text>
                 <Text style={styles.calcValue}>
                   {depositPct}% — £{Math.round(listing.price * depositPct / 100).toLocaleString('en-GB')}
                 </Text>
               </View>
-              <View style={styles.depositStepsRow}>
+              <View style={[styles.depositStepsRow, { opacity: 0.4 }]}>
                 {[0, 10, 20, 30, 40, 50].map(pct => (
-                  <TouchableOpacity
+                  <View
                     key={pct}
                     style={[styles.depositStep, depositPct === pct && styles.depositStepActive]}
-                    onPress={() => setDepositPct(pct)}
                   >
                     <Text style={[styles.depositStepText, depositPct === pct && styles.depositStepTextActive]}>
                       {pct}%
                     </Text>
-                  </TouchableOpacity>
+                  </View>
                 ))}
               </View>
 
-              {/* Term Row */}
-              <View style={[styles.calcRow, { marginTop: 14 }]}>
+              {/* Term Row — inert preview */}
+              <View style={[styles.calcRow, { marginTop: 14, opacity: 0.4 }]}>
                 <Text style={styles.calcLabel}>TERM</Text>
                 <Text style={styles.calcValue}>{termMonths} months</Text>
               </View>
-              <View style={styles.depositStepsRow}>
+              <View style={[styles.depositStepsRow, { opacity: 0.4 }]}>
                 {[12, 24, 36, 48, 60].map(t => (
-                  <TouchableOpacity
+                  <View
                     key={t}
                     style={[styles.depositStep, termMonths === t && styles.depositStepActive]}
-                    onPress={() => setTermMonths(t)}
                   >
                     <Text style={[styles.depositStepText, termMonths === t && styles.depositStepTextActive]}>
                       {t}m
                     </Text>
-                  </TouchableOpacity>
+                  </View>
                 ))}
               </View>
-
-              {/* Result */}
-              <View style={styles.calcResult}>
-                <Text style={styles.calcResultLabel}>MONTHLY PAYMENT</Text>
-                <Text style={styles.calcResultValue}>
-                  £{Math.round(calcMonthlyPayment()).toLocaleString('en-GB')}
-                </Text>
-                <Text style={styles.calcResultSub}>9.9% APR · {termMonths} months · representative example</Text>
-              </View>
-
-              <TouchableOpacity
-                style={styles.financeApplyBtn}
-                activeOpacity={0.8}
-                onPress={() => {
-                  Alert.alert(
-                    'Finance Enquiry',
-                    'Message the seller directly to discuss finance options. You can also apply on carmazium.vercel.app.',
-                    [
-                      { text: 'Message Seller', onPress: () => setChatVisible(true) },
-                      { text: 'Close', style: 'cancel' },
-                    ]
-                  );
-                }}
-              >
-                <Text style={styles.financeApplyBtnText}>ENQUIRE ABOUT FINANCE</Text>
-              </TouchableOpacity>
             </View>
           )}
 
@@ -877,6 +975,46 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
         </View>
       </Modal>
+
+      {/* FULLSCREEN PHOTO VIEWER (pinch-to-zoom) */}
+      <Modal
+        visible={fullscreenVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFullscreenVisible(false)}
+      >
+        <View style={styles.fullscreenBackdrop}>
+          {/* Close button */}
+          <TouchableOpacity
+            style={[styles.fullscreenCloseBtn, { top: insets.top + 12 }]}
+            onPress={() => setFullscreenVisible(false)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="close" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          {/* Photo counter */}
+          <View style={[styles.fullscreenCounter, { top: insets.top + 14 }]}>
+            <Text style={styles.fullscreenCounterText}>
+              {fullscreenIndex + 1}/{totalImages}
+            </Text>
+          </View>
+
+          {/* Zoomable image */}
+          <GestureDetector gesture={combinedFullscreenGesture}>
+            <Animated.View style={[styles.fullscreenImageWrap, fullscreenAnimatedStyle]}>
+              <Image
+                source={{ uri: listing.images[fullscreenIndex] }}
+                style={styles.fullscreenImage}
+                contentFit="contain"
+                transition={200}
+                cachePolicy="memory-disk"
+                placeholderContentFit="cover"
+              />
+            </Animated.View>
+          </GestureDetector>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -892,16 +1030,61 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 20,
   },
-  // Gallery
+  // Gallery — spring-snap strip
   galleryContainer: {
     width: SCREEN_WIDTH,
     height: GALLERY_HEIGHT,
-    backgroundColor: '#000000',
+    backgroundColor: Colors.bgTertiary,
+    overflow: 'hidden',
     position: 'relative',
+  },
+  galleryStrip: {
+    flexDirection: 'row',
+    width: '100%',
+  },
+  galleryImageWrap: {
+    width: SCREEN_WIDTH,
+    height: GALLERY_HEIGHT,
   },
   galleryImage: {
     width: SCREEN_WIDTH,
     height: GALLERY_HEIGHT,
+  },
+  pageDots: {
+    position: 'absolute',
+    bottom: 8,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 5,
+    zIndex: 91,
+  },
+  pageDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.35)',
+  },
+  pageDotActive: {
+    backgroundColor: '#FFFFFF',
+    width: 18,
+    borderRadius: 3,
+  },
+  photoCounter: {
+    position: 'absolute',
+    top: 8,
+    right: 16,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    zIndex: 92,
+  },
+  photoCounterText: {
+    fontFamily: FontFamily.mono,
+    fontSize: 12,
+    color: '#FFFFFF',
   },
   floatingHeader: {
     position: 'absolute',
@@ -1604,4 +1787,87 @@ const styles = StyleSheet.create({
   hpiCheckText: { flex: 1 },
   hpiCheckLabel: { fontFamily: FontFamily.semiBold, fontSize: 13, color: '#FFFFFF', marginBottom: 2 },
   hpiCheckDetail: { fontFamily: FontFamily.regular, fontSize: 11, color: '#A0A0AB', lineHeight: 16 },
+
+  // Finance Coming Soon
+  comingSoonBadge: {
+    backgroundColor: 'rgba(245,158,11,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.30)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginRight: 4,
+  },
+  comingSoonText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 9,
+    color: Colors.warning,
+    letterSpacing: 0.3,
+  },
+  financeComingSoonBox: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    padding: 20,
+    marginBottom: 16,
+    gap: 8,
+  },
+  financeComingSoonLabel: {
+    fontFamily: FontFamily.bold,
+    fontSize: 13,
+    color: Colors.textSecondary,
+    marginTop: 4,
+  },
+  financeComingSoonSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: 12,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+
+  // Fullscreen photo viewer
+  fullscreenBackdrop: {
+    flex: 1,
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullscreenCloseBtn: {
+    position: 'absolute',
+    left: 20,
+    zIndex: 99,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fullscreenCounter: {
+    position: 'absolute',
+    right: 20,
+    zIndex: 99,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  fullscreenCounterText: {
+    fontFamily: FontFamily.mono,
+    fontSize: 13,
+    color: '#FFFFFF',
+  },
+  fullscreenImageWrap: {
+    width: SCREEN_WIDTH,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullscreenImage: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_WIDTH,
+  },
 });
