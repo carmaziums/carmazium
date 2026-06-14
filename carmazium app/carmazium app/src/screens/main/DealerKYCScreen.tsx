@@ -19,6 +19,8 @@ import { apiClient } from '../../lib/apiClient';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { ErrorBanner } from '../../components/ui/ErrorBanner';
+import { haptics } from '../../lib/haptics';
 
 // ─── Inline form-field helper ────────────────────────────────────────────────
 
@@ -85,6 +87,45 @@ const SectionLabel: React.FC<{ title: string }> = ({ title }) => (
   <Text style={styles.sectionEyebrow}>{title}</Text>
 );
 
+// ─── Pending state view ───────────────────────────────────────────────────────
+
+const PendingView: React.FC = () => (
+  <View style={styles.pendingContainer}>
+    <View style={styles.pendingIconCircle}>
+      <Ionicons name="shield-outline" size={36} color={Colors.warning} />
+    </View>
+    <Text style={styles.pendingHeading}>Verification in progress</Text>
+    <Text style={styles.pendingBody}>
+      Your documents are under review. We'll notify you once verified.
+    </Text>
+    <View style={styles.pendingInfoRow}>
+      <Ionicons name="time-outline" size={14} color={Colors.warning} />
+      <Text style={styles.pendingInfoText}>Typically reviewed within 2–3 business days</Text>
+    </View>
+  </View>
+);
+
+// ─── Loading skeleton ─────────────────────────────────────────────────────────
+
+const KycSkeleton: React.FC = () => (
+  <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
+    {/* status + info card area */}
+    <View style={{ marginBottom: 20, height: 60, borderRadius: 14, backgroundColor: '#18181E', opacity: 0.5 }} />
+    <View style={{ marginBottom: 28, height: 80, borderRadius: 14, backgroundColor: '#18181E', opacity: 0.5 }} />
+    {/* section label */}
+    <View style={{ width: '40%', height: 12, borderRadius: 6, backgroundColor: '#18181E', opacity: 0.5, marginBottom: 16 }} />
+    {/* fields */}
+    {[52, 52, 52, 80].map((h, i) => (
+      <View key={i} style={{ marginBottom: 16, height: h, borderRadius: 12, backgroundColor: '#18181E', opacity: 0.5 }} />
+    ))}
+    {/* section label */}
+    <View style={{ width: '40%', height: 12, borderRadius: 6, backgroundColor: '#18181E', opacity: 0.5, marginBottom: 16 }} />
+    {[52, 52].map((h, i) => (
+      <View key={i} style={{ marginBottom: 16, height: h, borderRadius: 12, backgroundColor: '#18181E', opacity: 0.5 }} />
+    ))}
+  </View>
+);
+
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
 export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
@@ -93,6 +134,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
   const [existingKyc, setExistingKyc] = useState<any>(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     companyHouseName: '',
@@ -162,6 +204,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
     }
 
     setSubmitting(true);
+    setSubmitError(null);
     try {
       const payload: any = { ...form };
       if (!payload.tradingAddress) delete payload.tradingAddress;
@@ -173,14 +216,11 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
       });
 
       if (res.success) {
-        setExistingKyc(res.data);
-        Alert.alert(
-          'Submitted',
-          "Your KYC application has been submitted. We'll review it within 2-3 business days."
-        );
+        haptics.success();
+        setExistingKyc(res.data ?? { status: 'PENDING' });
       }
     } catch (err: any) {
-      Alert.alert('Submission Failed', err.message || 'Please try again.');
+      setSubmitError(err.message || 'Submission failed. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -189,21 +229,39 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
   // ── Loading state ───────────────────────────────────────────────────────────
   if (initialLoading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={styles.container}>
         <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-        <ActivityIndicator size="large" color="#DC1F26" />
-        <Text style={styles.loadingText}>Checking verification status...</Text>
+        <LinearGradient
+          colors={['rgba(220,31,38,0.03)', 'rgba(0,0,0,0)', '#0A0A0C']}
+          style={StyleSheet.absoluteFillObject}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0.5 }}
+        />
+        <View style={{ height: insets.top }} />
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => navigation?.goBack()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Business Verification</Text>
+          <View style={{ width: 38 }} />
+        </View>
+        <KycSkeleton />
       </View>
     );
   }
 
   const kycStatus: string | null = existingKyc?.status ?? null;
   const isApproved = kycStatus === 'APPROVED';
+  const isPending = kycStatus === 'PENDING' || kycStatus === 'UNDER_REVIEW';
 
   // ── Status banner config ────────────────────────────────────────────────────
   const getBannerConfig = () => {
     if (!kycStatus) return null;
-    if (kycStatus === 'PENDING')
+    if (isPending)
       return {
         bg: 'rgba(245,158,11,0.12)',
         border: 'rgba(245,158,11,0.25)',
@@ -262,16 +320,13 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
         <View style={{ width: 38 }} />
       </View>
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      {/* PENDING STATE — replaces the form when under review */}
+      {isPending ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
         >
-          {/* STATUS BANNER */}
+          {/* Status banner */}
           {bannerConfig && (
             <View
               style={[
@@ -290,171 +345,217 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
               </Text>
             </View>
           )}
-
-          {/* INFO CARD */}
-          <View style={styles.infoCard}>
-            <LinearGradient
-              colors={['rgba(59,130,246,0.08)', 'rgba(59,130,246,0.02)']}
-              style={StyleSheet.absoluteFillObject}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            />
-            <View style={styles.infoCardHeader}>
-              <View style={styles.infoIconWrap}>
-                <Ionicons name="shield-outline" size={20} color="#3B82F6" />
+          <PendingView />
+          <View style={{ height: 60 }} />
+        </ScrollView>
+      ) : (
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* STATUS BANNER (approved / rejected) */}
+            {bannerConfig && (
+              <View
+                style={[
+                  styles.statusBanner,
+                  { backgroundColor: bannerConfig.bg, borderColor: bannerConfig.border },
+                ]}
+              >
+                <Ionicons
+                  name={bannerConfig.icon}
+                  size={18}
+                  color={bannerConfig.text}
+                  style={{ marginRight: 10 }}
+                />
+                <Text style={[styles.statusBannerText, { color: bannerConfig.text }]}>
+                  {bannerConfig.message}
+                </Text>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.infoCardTitle}>Business KYC Verification</Text>
-                <Text style={styles.infoCardDesc}>
-                  Complete this form to get your dealership verified. Approval unlocks full
-                  platform features.
-                </Text>
-                <Text style={styles.infoCardAmber}>
-                  £1 bank transfer is required to confirm your banking details.
-                </Text>
+            )}
+
+            {/* INFO CARD */}
+            <View style={styles.infoCard}>
+              <LinearGradient
+                colors={['rgba(59,130,246,0.08)', 'rgba(59,130,246,0.02)']}
+                style={StyleSheet.absoluteFillObject}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              />
+              <View style={styles.infoCardHeader}>
+                <View style={styles.infoIconWrap}>
+                  <Ionicons name="shield-outline" size={20} color="#3B82F6" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.infoCardTitle}>Business KYC Verification</Text>
+                  <Text style={styles.infoCardDesc}>
+                    Complete this form to get your dealership verified. Approval unlocks full
+                    platform features.
+                  </Text>
+                  <Text style={styles.infoCardAmber}>
+                    £1 bank transfer is required to confirm your banking details.
+                  </Text>
+                </View>
               </View>
             </View>
-          </View>
 
-          {/* ── SECTION 1: COMPANY DETAILS ──────────────────────────────── */}
-          <SectionLabel title="COMPANY DETAILS" />
+            {/* ── SECTION 1: COMPANY DETAILS ──────────────────────────────── */}
+            <SectionLabel title="COMPANY DETAILS" />
 
-          <FormField
-            label="Company House Name"
-            value={form.companyHouseName}
-            onChange={setField('companyHouseName')}
-            placeholder="e.g. Knightsbridge Motors Ltd"
-          />
-          <FormField
-            label="Registration Number"
-            value={form.companyRegistrationNumber}
-            onChange={setField('companyRegistrationNumber')}
-            placeholder="e.g. 12345678"
-          />
-          <FormField
-            label="VAT Number"
-            value={form.vatNumber}
-            onChange={setField('vatNumber')}
-            placeholder="e.g. GB123456789"
-          />
-          <FormField
-            label="Registered Address"
-            value={form.businessRegisteredAddress}
-            onChange={setField('businessRegisteredAddress')}
-            placeholder="Full registered address"
-            multiline
-          />
-          <FormField
-            label="Trading Address"
-            value={form.tradingAddress}
-            onChange={setField('tradingAddress')}
-            placeholder="If different from registered"
-            optional
-            multiline
-          />
-          <FormField
-            label="Website"
-            value={form.businessWebsite}
-            onChange={setField('businessWebsite')}
-            placeholder="https://yoursite.co.uk"
-            keyboardType="url"
-          />
-          <FormField
-            label="Google Reviews Link"
-            value={form.googleReviewsLink}
-            onChange={setField('googleReviewsLink')}
-            placeholder="https://g.page/..."
-            optional
-            keyboardType="url"
-          />
-
-          {/* ── SECTION 2: REPRESENTATIVE ───────────────────────────────── */}
-          <SectionLabel title="REPRESENTATIVE" />
-
-          <FormField
-            label="Full Name"
-            value={form.representativeName}
-            onChange={setField('representativeName')}
-            placeholder="e.g. James Wilson"
-          />
-          <FormField
-            label="Job Title"
-            value={form.representativePosition}
-            onChange={setField('representativePosition')}
-            placeholder="e.g. Managing Director"
-          />
-          <FormField
-            label="Person of Significant Control"
-            value={form.personOfSignificantControl}
-            onChange={setField('personOfSignificantControl')}
-            placeholder="Full name of PSC"
-          />
-
-          {/* ── SECTION 3: DIRECTOR ─────────────────────────────────────── */}
-          <SectionLabel title="DIRECTOR" />
-
-          <FormField
-            label="Director Name"
-            value={form.directorName}
-            onChange={setField('directorName')}
-            placeholder="e.g. James Wilson"
-          />
-
-          {/* ── SECTION 4: PAYMENT VERIFICATION ────────────────────────── */}
-          <SectionLabel title="PAYMENT VERIFICATION" />
-
-          <View style={styles.paymentInfoBox}>
-            <Ionicons
-              name="information-circle-outline"
-              size={16}
-              color="#F59E0B"
-              style={{ marginRight: 10, marginTop: 1, flexShrink: 0 }}
+            <FormField
+              label="Company House Name"
+              value={form.companyHouseName}
+              onChange={setField('companyHouseName')}
+              placeholder="e.g. Knightsbridge Motors Ltd"
             />
-            <Text style={styles.paymentInfoText}>
-              Make a £1 bank transfer to{' '}
-              <Text style={{ color: '#FFFFFF', fontFamily: FontFamily.bold }}>
-                CARMAZIUM TRADING LTD
+            <FormField
+              label="Registration Number"
+              value={form.companyRegistrationNumber}
+              onChange={setField('companyRegistrationNumber')}
+              placeholder="e.g. 12345678"
+            />
+            <FormField
+              label="VAT Number"
+              value={form.vatNumber}
+              onChange={setField('vatNumber')}
+              placeholder="e.g. GB123456789"
+            />
+            <FormField
+              label="Registered Address"
+              value={form.businessRegisteredAddress}
+              onChange={setField('businessRegisteredAddress')}
+              placeholder="Full registered address"
+              multiline
+            />
+            <FormField
+              label="Trading Address"
+              value={form.tradingAddress}
+              onChange={setField('tradingAddress')}
+              placeholder="If different from registered"
+              optional
+              multiline
+            />
+            <FormField
+              label="Website"
+              value={form.businessWebsite}
+              onChange={setField('businessWebsite')}
+              placeholder="https://yoursite.co.uk"
+              keyboardType="url"
+            />
+            <FormField
+              label="Google Reviews Link"
+              value={form.googleReviewsLink}
+              onChange={setField('googleReviewsLink')}
+              placeholder="https://g.page/..."
+              optional
+              keyboardType="url"
+            />
+
+            {/* ── SECTION 2: REPRESENTATIVE ───────────────────────────────── */}
+            <SectionLabel title="REPRESENTATIVE" />
+
+            <FormField
+              label="Full Name"
+              value={form.representativeName}
+              onChange={setField('representativeName')}
+              placeholder="e.g. James Wilson"
+            />
+            <FormField
+              label="Job Title"
+              value={form.representativePosition}
+              onChange={setField('representativePosition')}
+              placeholder="e.g. Managing Director"
+            />
+            <FormField
+              label="Person of Significant Control"
+              value={form.personOfSignificantControl}
+              onChange={setField('personOfSignificantControl')}
+              placeholder="Full name of PSC"
+            />
+
+            {/* ── SECTION 3: DIRECTOR ─────────────────────────────────────── */}
+            <SectionLabel title="DIRECTOR" />
+
+            <FormField
+              label="Director Name"
+              value={form.directorName}
+              onChange={setField('directorName')}
+              placeholder="e.g. James Wilson"
+            />
+
+            {/* ── SECTION 4: PAYMENT VERIFICATION ────────────────────────── */}
+            <SectionLabel title="PAYMENT VERIFICATION" />
+
+            <View style={styles.paymentInfoBox}>
+              <Ionicons
+                name="information-circle-outline"
+                size={16}
+                color="#F59E0B"
+                style={{ marginRight: 10, marginTop: 1, flexShrink: 0 }}
+              />
+              <Text style={styles.paymentInfoText}>
+                Make a £1 bank transfer to{' '}
+                <Text style={{ color: '#FFFFFF', fontFamily: FontFamily.bold }}>
+                  CARMAZIUM TRADING LTD
+                </Text>
+                {', Sort: 20-34-56, Acc: 12345678, using your company name as reference. Then enter the reference below.'}
               </Text>
-              {', Sort: 20-34-56, Acc: 12345678, using your company name as reference. Then enter the reference below.'}
-            </Text>
-          </View>
+            </View>
 
-          <FormField
-            label="Payment Reference"
-            value={form.paymentReference}
-            onChange={setField('paymentReference')}
-            placeholder="Your company name as used in transfer"
-          />
+            <FormField
+              label="Payment Reference"
+              value={form.paymentReference}
+              onChange={setField('paymentReference')}
+              placeholder="Your company name as used in transfer"
+            />
 
-          {/* ── SUBMIT ──────────────────────────────────────────────────── */}
-          <View style={styles.submitWrapper}>
-            {isApproved ? (
-              <PrimaryCTA
-                label="APPLICATION APPROVED"
-                onPress={() => {}}
-                disabled
-                style={{ backgroundColor: '#22C55E' }}
-              />
-            ) : (
-              <PrimaryCTA
-                label="SUBMIT APPLICATION"
-                onPress={handleSubmit}
-                isLoading={submitting}
-                disabled={
-                  submitting ||
-                  !form.companyHouseName.trim() ||
-                  !form.representativeName.trim() ||
-                  !form.vatNumber.trim() ||
-                  !form.paymentReference.trim()
-                }
-              />
+            {/* ── INLINE ERROR BANNER ──────────────────────────────────────── */}
+            {submitError && (
+              <View style={{ marginBottom: 16 }}>
+                <ErrorBanner
+                  message={submitError}
+                  onRetry={() => {
+                    setSubmitError(null);
+                    handleSubmit();
+                  }}
+                />
+              </View>
             )}
-          </View>
 
-          {/* Bottom spacer for tab bar */}
-          <View style={{ height: 110 }} />
-        </ScrollView>
-      </KeyboardAvoidingView>
+            {/* ── SUBMIT ──────────────────────────────────────────────────── */}
+            <View style={styles.submitWrapper}>
+              {isApproved ? (
+                <PrimaryCTA
+                  label="APPLICATION APPROVED"
+                  onPress={() => {}}
+                  disabled
+                  style={{ backgroundColor: '#22C55E' }}
+                />
+              ) : (
+                <PrimaryCTA
+                  label="SUBMIT APPLICATION"
+                  onPress={handleSubmit}
+                  isLoading={submitting}
+                  disabled={
+                    submitting ||
+                    !form.companyHouseName.trim() ||
+                    !form.representativeName.trim() ||
+                    !form.vatNumber.trim() ||
+                    !form.paymentReference.trim()
+                  }
+                />
+              )}
+            </View>
+
+            {/* Bottom spacer for tab bar */}
+            <View style={{ height: 110 }} />
+          </ScrollView>
+        </KeyboardAvoidingView>
+      )}
     </View>
   );
 };
@@ -463,20 +564,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0A0A0C',
-  },
-
-  // Loading
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: '#0A0A0C',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingText: {
-    color: '#A0A0AB',
-    fontFamily: FontFamily.medium,
-    fontSize: 13,
-    marginTop: 12,
   },
 
   // Header
@@ -602,5 +689,55 @@ const styles = StyleSheet.create({
   // Submit
   submitWrapper: {
     marginTop: 8,
+  },
+
+  // Pending view
+  pendingContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  pendingIconCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: 'rgba(245,158,11,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  pendingHeading: {
+    fontFamily: FontFamily.bold,
+    fontSize: 22,
+    color: Colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  pendingBody: {
+    fontFamily: FontFamily.regular,
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+    paddingHorizontal: 10,
+  },
+  pendingInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(245,158,11,0.06)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.15)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  pendingInfoText: {
+    fontFamily: FontFamily.medium,
+    fontSize: 12,
+    color: Colors.warning,
   },
 });
