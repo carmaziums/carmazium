@@ -329,7 +329,6 @@ export default function SellerSettingsPage() {
                                 {bankSaveStatus === "error" && <span className="text-red-400 text-sm flex items-center gap-1"><AlertCircle size={14} /> Failed to save</span>}
                             </div>
                         </div>
-                    </div>
                 </main>
             </div>
         </div>
