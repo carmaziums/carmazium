@@ -40,7 +40,9 @@ import {
     Heart,
     CreditCard,
     ExternalLink,
-    BadgeCheck
+    BadgeCheck,
+    Landmark,
+    Check
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
@@ -77,6 +79,7 @@ import {
     formatPrice,
     startStripeConnectOnboarding,
     getStripeConnectStatus,
+    updateBankDetails,
     type UnifiedDashboardData,
     type EarningsResponse,
     type SaleRecord,
@@ -1380,10 +1383,37 @@ function SettingsTab({ profile }: { profile: any }) {
     const [connectStatus, setConnectStatus] = React.useState<StripeConnectStatus | null>(null)
     const [connectLoading, setConnectLoading] = React.useState(false)
     const [connectError, setConnectError] = React.useState("")
+    const [bankName, setBankName] = React.useState("")
+    const [bankSortCode, setBankSortCode] = React.useState("")
+    const [bankAccountNumber, setBankAccountNumber] = React.useState("")
+    const [savingBank, setSavingBank] = React.useState(false)
+    const [bankSaveStatus, setBankSaveStatus] = React.useState<"idle" | "success" | "error">("idle")
+
+    React.useEffect(() => {
+        if (profile) {
+            setBankName(profile.bankAccountName || "")
+            setBankSortCode(profile.bankSortCode || "")
+            setBankAccountNumber(profile.bankAccountNumber || "")
+        }
+    }, [profile])
 
     React.useEffect(() => {
         getStripeConnectStatus().then(setConnectStatus).catch(() => {})
     }, [])
+
+    const handleSaveBank = async () => {
+        try {
+            setSavingBank(true)
+            setBankSaveStatus("idle")
+            await updateBankDetails({ bankAccountName: bankName, bankSortCode, bankAccountNumber })
+            setBankSaveStatus("success")
+            setTimeout(() => setBankSaveStatus("idle"), 3000)
+        } catch {
+            setBankSaveStatus("error")
+        } finally {
+            setSavingBank(false)
+        }
+    }
 
     React.useEffect(() => {
         if (typeof window === 'undefined') return
@@ -1553,6 +1583,61 @@ function SettingsTab({ profile }: { profile: any }) {
                         <p className="text-xs text-gray-500">You will be taken to Stripe's secure onboarding — this takes about 2 minutes.</p>
                     </div>
                 )}
+            </div>
+
+            {/* Bank Account Details — always visible as fallback payout method */}
+            <div className="glass-card p-8 border border-white/5 bg-white/5 rounded-2xl">
+                <h3 className="text-xl font-black font-heading uppercase tracking-tight flex items-center gap-2 mb-2">
+                    <Landmark className="text-amber-400" size={24} /> Bank Account Details
+                </h3>
+                <p className="text-sm text-gray-400 mb-6">
+                    Provide your UK bank details as a fallback. Carmazium can manually transfer your £100 bonus if Stripe Connect isn&apos;t available.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2 md:col-span-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Account Holder Name</label>
+                        <Input
+                            type="text"
+                            value={bankName}
+                            onChange={e => setBankName(e.target.value)}
+                            placeholder="e.g. John Smith"
+                            className="bg-white/5 border-white/10 focus:border-amber-400 text-white h-12"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sort Code</label>
+                        <Input
+                            type="text"
+                            value={bankSortCode}
+                            onChange={e => setBankSortCode(e.target.value)}
+                            placeholder="e.g. 00-00-00"
+                            maxLength={8}
+                            className="bg-white/5 border-white/10 focus:border-amber-400 text-white h-12 font-mono"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Account Number</label>
+                        <Input
+                            type="text"
+                            value={bankAccountNumber}
+                            onChange={e => setBankAccountNumber(e.target.value)}
+                            placeholder="e.g. 12345678"
+                            maxLength={8}
+                            className="bg-white/5 border-white/10 focus:border-amber-400 text-white h-12 font-mono"
+                        />
+                    </div>
+                </div>
+                <div className="mt-6 flex items-center gap-4">
+                    <Button
+                        onClick={handleSaveBank}
+                        disabled={savingBank || !bankName || !bankSortCode || !bankAccountNumber}
+                        className="bg-amber-500 hover:bg-amber-400 text-black font-black px-8 h-11 shadow-none border-0"
+                    >
+                        {savingBank ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : "Save Bank Details"}
+                    </Button>
+                    {bankSaveStatus === "success" && <span className="text-emerald-400 text-sm flex items-center gap-1"><Check size={14} /> Saved</span>}
+                    {bankSaveStatus === "error" && <span className="text-red-400 text-sm flex items-center gap-1"><AlertCircle size={14} /> Failed to save</span>}
+                </div>
             </div>
         </div>
     )
