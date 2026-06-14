@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed mobile-app-parity-mobile-04-PLAN.md
-last_updated: "2026-06-14T20:03:00.645Z"
-last_activity: 2026-06-15 — mobile-app-parity Plan 4 complete (DealerAnalytics gifted-charts, SellerPerformance gifted-charts, all dealer/seller screens skeleton+empty+refresh, DealerLeads Message Lead wired via ChatScreen)
+stopped_at: Completed mobile-app-parity-mobile-05-PLAN.md
+last_updated: "2026-06-14T20:31:26.252Z"
+last_activity: 2026-06-15 — mobile-app-parity Plan 5 complete (AboutScreen+PricingScreen, buyer screen polish, PrimaryCTA haptics, tab-bar spring, card image/typography)
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 16
-  completed_plans: 13
-  percent: 81
+  completed_plans: 14
+  percent: 88
 ---
 
 # State: Carmazium Mobile App
@@ -19,11 +19,11 @@ progress:
 ## Current Position
 
 Phase: mobile-app-parity (Mobile App Feature Parity & UI Polish)
-Plan: 4 of 6 complete in current phase
+Plan: 5 of 6 complete in current phase
 Status: In Progress
-Last activity: 2026-06-15 — mobile-app-parity Plan 4 complete (DealerAnalytics gifted-charts, SellerPerformance gifted-charts, all dealer/seller screens skeleton+empty+refresh, DealerLeads Message Lead wired via ChatScreen)
+Last activity: 2026-06-15 — mobile-app-parity Plan 5 complete (AboutScreen+PricingScreen, buyer screen polish, PrimaryCTA haptics, tab-bar spring, card image/typography)
 
-Progress: [████████░░] 81%
+Progress: [█████████░] 88%
 
 ## Project Reference
 
@@ -126,8 +126,20 @@ None yet.
 - DealerPurchasesScreen.tsx: Shared Skeleton; shared EmptyState; RefreshControl accent; ErrorBanner on fetch failure
 - DealerTeamScreen.tsx: ActivityIndicator → 3×Skeleton; shared EmptyState; RefreshControl accent; summaryCount uses FontFamily.mono
 
+### mobile-app-parity Plan 5 — Complete
+
+- AboutScreen.tsx + PricingScreen.tsx: Static info screens with brand styling registered in MainStackNavigator; GlobalDrawer wired to stackScreen (no more Alert.alert stubs for About/Pricing)
+- BuyerOffersScreen.tsx: RefreshControl (accent), ErrorBanner, haptics.medium on withdraw/counter actions
+- BuyerBidsScreen.tsx: RefreshControl (accent), ErrorBanner, skeleton rows, EmptyState with CTA
+- BuyerPurchaseHistoryScreen.tsx: RefreshControl (accent), ErrorBanner, useCallback-based fetchData
+- PrimaryCTA.tsx: haptics.light() fires on pressIn — every CTA across app gives immediate tap haptic
+- TabNavigator.tsx: AnimatedTabIcon component with Reanimated withSequence(withSpring(1.2), withSpring(1.0)) on tab focus
+- VehicleCard.tsx: imageContainer gets backgroundColor Colors.bgTertiary (dark placeholder, no white flash); priceText → FontFamily.mono
+- HorizontalVehicleCard.tsx: imageContainer hardcoded #18181E replaced with Colors.bgTertiary token; priceText → FontFamily.mono
+- SellerAuctionsScreen.tsx + SellerListingsScreen.tsx: ActivityIndicator replaced with Skeleton rows + shared EmptyState component
+
 ## Session Continuity
 
-Last session: 2026-06-14T20:03:00.630Z
-Stopped at: Completed mobile-app-parity-mobile-04-PLAN.md
+Last session: 2026-06-14T20:31:26.234Z
+Stopped at: Completed mobile-app-parity-mobile-05-PLAN.md
 Resume file: None
