@@ -20,6 +20,7 @@ import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Logo } from '../../components/Logo';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { Skeleton } from '../../components/ui/Skeleton';
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -95,12 +96,12 @@ const KpiCard: React.FC<{
       <Ionicons name={icon as any} size={14} color={tone} />
     </View>
     {loading ? (
-      <View style={styles.skeletonValue} />
+      <Skeleton w={80} h={28} r={6} />
     ) : (
       <Text style={styles.kpiValue}>{value}</Text>
     )}
     {loading ? (
-      <View style={styles.skeletonDelta} />
+      <Skeleton w={56} h={10} r={4} />
     ) : (
       <Text style={[styles.kpiDelta, { color: tone }]}>{sublabel}</Text>
     )}
