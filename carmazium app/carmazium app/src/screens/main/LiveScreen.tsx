@@ -21,6 +21,8 @@ import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { getActiveAuctions, getScheduledAuctions, AuctionDetail } from '../../lib/auctionApi';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
@@ -204,8 +206,8 @@ export const LiveScreen: React.FC = () => {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
-            tintColor="#DC1F26"
-            colors={['#DC1F26']}
+            tintColor={Colors.accent}
+            colors={[Colors.accent]}
           />
         }
       >
@@ -230,15 +232,39 @@ export const LiveScreen: React.FC = () => {
         <Text style={styles.sectionTitle}>LIVE NOW</Text>
 
         {isLoading ? (
-          <View style={styles.emptyUpcoming}>
-            <Ionicons name="hourglass-outline" size={28} color="#5C5C6B" />
-            <Text style={styles.emptyUpcomingText}>Loading live auctions…</Text>
+          <View style={{ gap: 16, marginBottom: 8 }}>
+            {[0, 1].map((i) => (
+              <View key={i} style={[styles.auctionCard, { overflow: 'hidden' }]}>
+                {/* Image block skeleton */}
+                <Skeleton w={SCREEN_WIDTH - 48} h={196} r={0} />
+                {/* Stats row skeleton */}
+                <View style={{ flexDirection: 'row', paddingHorizontal: 18, paddingTop: 16, paddingBottom: 14, gap: 12 }}>
+                  <View style={{ flex: 1, gap: 8 }}>
+                    <Skeleton w={80} h={10} r={5} />
+                    <Skeleton w={120} h={24} r={6} />
+                    <Skeleton w={100} h={10} r={5} />
+                  </View>
+                  <View style={{ alignItems: 'flex-end', gap: 8 }}>
+                    <Skeleton w={60} h={10} r={5} />
+                    <Skeleton w={100} h={26} r={6} />
+                    <Skeleton w={70} h={10} r={5} />
+                  </View>
+                </View>
+                {/* Button skeleton */}
+                <View style={{ marginHorizontal: 16, marginBottom: 14 }}>
+                  <Skeleton w={SCREEN_WIDTH - 80} h={50} r={13} />
+                </View>
+              </View>
+            ))}
           </View>
         ) : activeList.length === 0 ? (
-          <View style={styles.emptyUpcoming}>
-            <MaterialCommunityIcons name="gavel" size={28} color="#5C5C6B" />
-            <Text style={styles.emptyUpcomingText}>No live auctions right now — check back soon</Text>
-          </View>
+          <EmptyState
+            icon="flame-outline"
+            title="No live auctions right now"
+            subtitle="Check back soon — new lots go live throughout the day."
+            ctaLabel="Browse listings"
+            onCtaPress={() => navigation.navigate('Tabs' as any, { screen: 'Search' } as any)}
+          />
         ) : null}
 
         {activeList.map((auction) => {
@@ -669,7 +695,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   statsPrice: {
-    fontFamily: FontFamily.extraBold,
+    fontFamily: FontFamily.mono,
     fontSize: 24,
     color: '#FFFFFF',
     marginBottom: 3,
@@ -714,13 +740,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   digitText: {
-    fontFamily: FontFamily.bold,
+    fontFamily: FontFamily.mono,
     fontSize: 13,
     color: '#FFFFFF',
     letterSpacing: 0,
   },
   timerColon: {
-    fontFamily: FontFamily.bold,
+    fontFamily: FontFamily.mono,
     fontSize: 14,
     color: '#FFFFFF',
     paddingBottom: 1,
