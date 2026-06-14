@@ -7,12 +7,14 @@ import { Textarea } from "@/components/ui/Textarea"
 import {
     Search, Loader2, BadgeCheck, Upload, X,
     CheckCircle, ArrowRight, Sparkles, Info,
-    LocateFixed, AlertTriangle, Zap, Gavel, List, Play
+    LocateFixed, AlertTriangle, Zap, Gavel, List, Play,
+    Star, Shield, BadgeCheck as BadgeCheckIcon,
 } from "lucide-react"
 import Image from "next/image"
 import { ImageUpload } from "@/components/listing/ImageUpload"
 import {
-    createListing, type CreateListingRequest,
+    createListing, publishListing, createListingCheckoutSession,
+    type CreateListingRequest,
     type BodyTypeValue, type EuroStandardValue, type VehicleTypeValue,
 } from "@/lib/listingApi"
 import { apiClient } from "@/lib/apiClient"
@@ -30,6 +32,8 @@ export function DealerQuickList() {
     const searchParams = useSearchParams()
     const editId = searchParams.get('editId')
     const editSlug = searchParams.get('editSlug')
+    // When coming from inventory "Complete listing" we want to trigger publish after save
+    const returnPublish = searchParams.get('returnPublish') === 'true'
 
     // ─── State ────────────────────────────────────────────────────────────────
     const [vrm, setVrm] = React.useState("")
@@ -57,6 +61,9 @@ export function DealerQuickList() {
     const [videoUrls, setVideoUrls] = React.useState<string[]>([])
     const [videoUrlInput, setVideoUrlInput] = React.useState("")
     const [videoUrlError, setVideoUrlError] = React.useState("")
+    // Plan-selection modal (shown after saving in "complete listing" edit flow)
+    const [showPlanModal, setShowPlanModal] = React.useState(false)
+    const [planPublishing, setPlanPublishing] = React.useState(false)
 
     // ─── Load existing listing when editing ───────────────────────────────────
     React.useEffect(() => {
@@ -76,6 +83,9 @@ export function DealerQuickList() {
                 setCondition(l.condition || '')
                 setTransmission(l.transmission || '')
                 setBodyType((l.bodyType as BodyTypeValue) || '')
+                // Preserve the original listing type so we never silently overwrite
+                // an AUCTION listing as CLASSIFIED (l.type is the DB field name)
+                setListingType(l.type === 'AUCTION' ? 'AUCTION' : 'CLASSIFIED')
                 setPublishAs(l.status === 'ACTIVE' ? 'ACTIVE' : 'DRAFT')
                 // Reconstruct dvlaData from listing fields so sections appear
                 setDvlaData({
@@ -99,7 +109,7 @@ export function DealerQuickList() {
             })
             .catch(err => setDvlaError('Failed to load listing: ' + err.message))
             .finally(() => setEditLoading(false))
-    }, [editId])
+    }, [editId, editSlug])
 
     // ─── DVLA Lookup ──────────────────────────────────────────────────────────
     const handleLookup = async () => {
@@ -236,19 +246,47 @@ export function DealerQuickList() {
             }
 
             if (editId) {
-                // PATCH existing listing
+                // Always save as DRAFT in edit mode — publishing goes through the
+                // plan-selection modal so the dealer picks a tier and payment is
+                // properly gated. Sending status:ACTIVE directly would bypass Stripe.
                 await apiClient(`/listings/${editId}`, {
                     method: 'PATCH',
-                    body: JSON.stringify(payload),
+                    body: JSON.stringify({ ...payload, status: 'DRAFT' }),
                 })
+                // If the dealer arrived from the inventory "Complete listing" button,
+                // show the plan-selection modal now so they can publish in one shot
+                // without having to go back and click the green tick a second time.
+                if (returnPublish) {
+                    setShowPlanModal(true)
+                } else {
+                    router.push('/dashboard/dealer/inventory')
+                }
             } else {
                 await createListing(payload)
+                router.push('/dashboard/dealer/inventory')
             }
-            router.push("/dashboard/dealer/inventory")
         } catch (error: any) {
             setSubmitError(error.message || "Failed to save listing.")
         } finally {
             setIsSubmitting(false)
+        }
+    }
+
+    // ─── Plan selection confirm (only in returnPublish edit flow) ─────────────
+    const handlePlanConfirm = async (tier: 'FREE' | 'STANDARD' | 'PREMIUM') => {
+        if (!editId) return
+        setPlanPublishing(true)
+        try {
+            if (tier === 'FREE') {
+                await publishListing(editId)
+                router.push('/dashboard/dealer/inventory')
+            } else {
+                const checkout = await createListingCheckoutSession(editId, tier)
+                window.location.href = checkout.url
+            }
+        } catch (err: any) {
+            alert('Failed to publish: ' + (err.message || 'Please try again.'))
+            setPlanPublishing(false)
         }
     }
 
@@ -671,29 +709,31 @@ export function DealerQuickList() {
                         </div>
                     )}
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 p-5 bg-[#0A0A0C] border border-white/5 rounded-2xl">
-                        {/* Publish toggle */}
-                        <div className="flex gap-2 p-1 bg-slate-800 rounded-xl border border-white/5">
-                            <button
-                                type="button"
-                                onClick={() => setPublishAs("ACTIVE")}
-                                className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${publishAs === "ACTIVE"
-                                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.15)]"
-                                    : "text-gray-500 hover:text-gray-300"
-                                    }`}
-                            >
-                                Publish Live
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setPublishAs("DRAFT")}
-                                className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${publishAs === "DRAFT"
-                                    ? "bg-gray-500/20 text-gray-300 border border-gray-500/30"
-                                    : "text-gray-500 hover:text-gray-300"
-                                    }`}
-                            >
-                                Save Draft
-                            </button>
-                        </div>
+                        {/* Publish toggle — hidden in edit mode (publishing goes through plan modal) */}
+                        {!editId && (
+                            <div className="flex gap-2 p-1 bg-slate-800 rounded-xl border border-white/5">
+                                <button
+                                    type="button"
+                                    onClick={() => setPublishAs("ACTIVE")}
+                                    className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${publishAs === "ACTIVE"
+                                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.15)]"
+                                        : "text-gray-500 hover:text-gray-300"
+                                        }`}
+                                >
+                                    Publish Live
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setPublishAs("DRAFT")}
+                                    className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${publishAs === "DRAFT"
+                                        ? "bg-gray-500/20 text-gray-300 border border-gray-500/30"
+                                        : "text-gray-500 hover:text-gray-300"
+                                        }`}
+                                >
+                                    Save Draft
+                                </button>
+                            </div>
+                        )}
 
                         <div className="flex-1" />
 
@@ -705,12 +745,97 @@ export function DealerQuickList() {
                         >
                             {isSubmitting ? (
                                 <><Loader2 size={20} className="animate-spin" /> {editId ? 'Saving...' : 'Creating...'}</>
+                            ) : editId && returnPublish ? (
+                                <>Save & Choose Plan <ArrowRight size={20} /></>
+                            ) : editId ? (
+                                <>Save Changes <ArrowRight size={20} /></>
+                            ) : publishAs === "ACTIVE" ? (
+                                <>Publish Listing <ArrowRight size={20} /></>
                             ) : (
-                                <>{editId ? 'Save Changes' : publishAs === "ACTIVE" ? "Publish Listing" : "Save as Draft"} <ArrowRight size={20} /></>
+                                <>Save as Draft <ArrowRight size={20} /></>
                             )}
                         </Button>
                     </div>
                 </section>
+            )}
+
+            {/* ── Plan-selection modal (shown after saving completed bulk-import listing) */}
+            {showPlanModal && editId && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+                    <div className="relative w-full max-w-lg bg-[#0A0A0C] border border-white/10 rounded-2xl p-6 shadow-2xl">
+                        <button
+                            onClick={() => { setShowPlanModal(false); router.push('/dashboard/dealer/inventory') }}
+                            className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-white/10 text-gray-500 hover:text-white transition-colors"
+                        >
+                            <X size={18} />
+                        </button>
+
+                        <h2 className="text-lg font-black text-white font-heading uppercase tracking-tight mb-1">
+                            Choose a Listing Plan
+                        </h2>
+                        <p className="text-xs text-gray-500 mb-5">
+                            Details saved. Select a tier to go live — you can always upgrade later.
+                        </p>
+
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                            {/* FREE */}
+                            <button
+                                onClick={() => handlePlanConfirm('FREE')}
+                                disabled={planPublishing}
+                                className="flex flex-col p-4 rounded-xl border border-white/10 bg-white/[0.02] hover:border-white/25 hover:bg-white/5 transition-all text-left disabled:opacity-50"
+                            >
+                                <p className="text-white font-bold text-sm mb-1">Free</p>
+                                <p className="text-2xl font-black text-white mb-3">£0</p>
+                                <ul className="space-y-1 text-[11px] text-gray-400">
+                                    <li className="flex items-center gap-1.5"><CheckCircle size={11} className="text-emerald-400" /> Basic listing</li>
+                                    <li className="flex items-center gap-1.5"><CheckCircle size={11} className="text-emerald-400" /> Offer system</li>
+                                    <li className="flex items-center gap-1.5 text-gray-600"><X size={11} /> No trust badges</li>
+                                </ul>
+                            </button>
+
+                            {/* STANDARD */}
+                            <button
+                                onClick={() => handlePlanConfirm('STANDARD')}
+                                disabled={planPublishing}
+                                className="relative flex flex-col p-4 rounded-xl border border-blue-500/30 bg-blue-500/5 hover:border-blue-500/60 hover:bg-blue-500/10 transition-all text-left disabled:opacity-50"
+                            >
+                                <p className="text-blue-400 font-bold text-sm mb-1 flex items-center gap-1"><Shield size={12} /> Standard</p>
+                                <p className="text-2xl font-black text-white mb-3">£10</p>
+                                <ul className="space-y-1 text-[11px] text-gray-400">
+                                    <li className="flex items-center gap-1.5"><BadgeCheckIcon size={11} className="text-blue-400" /> VIN Report badge</li>
+                                    <li className="flex items-center gap-1.5"><BadgeCheckIcon size={11} className="text-blue-400" /> Verified Seller badge</li>
+                                    <li className="flex items-center gap-1.5 text-gray-600"><X size={11} /> No featured boost</li>
+                                </ul>
+                            </button>
+                        </div>
+
+                        {/* PREMIUM */}
+                        <button
+                            onClick={() => handlePlanConfirm('PREMIUM')}
+                            disabled={planPublishing}
+                            className="relative w-full flex items-center gap-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 hover:border-amber-500/60 hover:bg-amber-500/10 transition-all text-left disabled:opacity-50"
+                        >
+                            <span className="absolute -top-2.5 left-4 text-[10px] bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold px-3 py-0.5 rounded-full flex items-center gap-1">
+                                <Star size={9} /> Best Value
+                            </span>
+                            <div className="flex-1">
+                                <p className="text-amber-400 font-bold text-sm flex items-center gap-1"><Star size={12} /> Premium</p>
+                                <p className="text-lg font-black text-white">£25</p>
+                            </div>
+                            <ul className="space-y-1 text-[11px] text-gray-400">
+                                <li className="flex items-center gap-1.5"><Zap size={11} className="text-amber-400" /> Featured boost (28 days)</li>
+                                <li className="flex items-center gap-1.5"><Zap size={11} className="text-amber-400" /> Priority in search results</li>
+                                <li className="flex items-center gap-1.5"><Zap size={11} className="text-amber-400" /> Featured badge</li>
+                            </ul>
+                        </button>
+
+                        {planPublishing && (
+                            <div className="mt-4 flex items-center justify-center gap-2 text-gray-400 text-sm">
+                                <Loader2 size={16} className="animate-spin" /> Publishing…
+                            </div>
+                        )}
+                    </div>
+                </div>
             )}
         </div>
     )
