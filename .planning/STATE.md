@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed mobile-app-parity-mobile-03-PLAN.md
-last_updated: "2026-06-14T19:44:11.150Z"
-last_activity: 2026-06-15 — mobile-app-parity Plan 3 complete (SellCarFlowScreen validation gating, DealerKYCScreen pending state + ErrorBanner, VehicleDetailScreen spring-snap gallery + pinch-to-zoom + finance Coming Soon)
+stopped_at: Completed mobile-app-parity-mobile-04-PLAN.md
+last_updated: "2026-06-14T20:03:00.645Z"
+last_activity: 2026-06-15 — mobile-app-parity Plan 4 complete (DealerAnalytics gifted-charts, SellerPerformance gifted-charts, all dealer/seller screens skeleton+empty+refresh, DealerLeads Message Lead wired via ChatScreen)
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 16
-  completed_plans: 12
-  percent: 75
+  completed_plans: 13
+  percent: 81
 ---
 
 # State: Carmazium Mobile App
@@ -19,11 +19,11 @@ progress:
 ## Current Position
 
 Phase: mobile-app-parity (Mobile App Feature Parity & UI Polish)
-Plan: 3 of 6 complete in current phase
+Plan: 4 of 6 complete in current phase
 Status: In Progress
-Last activity: 2026-06-15 — mobile-app-parity Plan 3 complete (SellCarFlowScreen validation gating, DealerKYCScreen pending state + ErrorBanner, VehicleDetailScreen spring-snap gallery + pinch-to-zoom + finance Coming Soon)
+Last activity: 2026-06-15 — mobile-app-parity Plan 4 complete (DealerAnalytics gifted-charts, SellerPerformance gifted-charts, all dealer/seller screens skeleton+empty+refresh, DealerLeads Message Lead wired via ChatScreen)
 
-Progress: [████████░░] 75%
+Progress: [████████░░] 81%
 
 ## Project Reference
 
@@ -115,8 +115,19 @@ None yet.
 - DealerKYCScreen.tsx: KYC submission wired to POST /dealers/kyc (already wired); replaced Alert.alert success with haptics.success() + PendingView; pending view shows when status is PENDING/UNDER_REVIEW; inline ErrorBanner replaces Alert.alert API error; skeleton-style loading rows on initial load
 - VehicleDetailScreen.tsx: FlatList gallery replaced with Reanimated.View strip + Gesture.Pan spring-snap (damping:20, stiffness:200, 30% threshold); page dots + mono photo counter; fullscreen Modal with Gesture.Simultaneous(Pinch, Pan), scale clamped 1-4, springs back below 1; finance section labeled Coming Soon with no API calls, interactive rows made inert Views
 
+### mobile-app-parity Plan 4 — Complete
+
+- DealerAnalyticsScreen.tsx: Hand-rolled SparkLine removed; BarChart (revenue, 6-month) + LineChart (units sold trend) + LeadFunnel BarChart via react-native-gifted-charts; toBarData/toLineData/toLeadBarData helpers with Math.max zero-crash guards; AnalyticsSkeleton + EmptyState + RefreshControl
+- SellerPerformanceScreen.tsx: Hand-rolled View bar segments removed; LineChart (revenue trend) + BarChart (views over time); buildRevenueData/buildViewsData fallback to single-point arrays from totals; shared Skeleton (PerformanceSkeleton) + EmptyState + RefreshControl; GET /listings/performance endpoint
+- SellerDashboardScreen.tsx: RefreshControl added (was missing); stat row shows 3×Skeleton tiles during loading (not dash placeholders); fetchData extracted from useEffect for refresh support
+- DealerLeadsScreen.tsx: ActivityIndicator → 4×Skeleton lead-row blocks; Message Lead wired via createChatRoom(buyerId, listingId) → navigate('ChatScreen', {threadId}); haptics.light() on press; buyerId+listingId in Lead interface; aiScore display deferred
+- DealerInventoryScreen.tsx: ActivityIndicator → 4×Skeleton; EmptyState for empty filtered list; ErrorBanner on fetch failure; RefreshControl accent token; listingPrice uses FontFamily.mono
+- DealerOffersScreen.tsx: Shared Skeleton component for loading; shared EmptyState; RefreshControl accent; ErrorBanner on fetch failure
+- DealerPurchasesScreen.tsx: Shared Skeleton; shared EmptyState; RefreshControl accent; ErrorBanner on fetch failure
+- DealerTeamScreen.tsx: ActivityIndicator → 3×Skeleton; shared EmptyState; RefreshControl accent; summaryCount uses FontFamily.mono
+
 ## Session Continuity
 
-Last session: 2026-06-14T19:44:11.145Z
-Stopped at: Completed mobile-app-parity-mobile-03-PLAN.md
+Last session: 2026-06-14T20:03:00.630Z
+Stopped at: Completed mobile-app-parity-mobile-04-PLAN.md
 Resume file: None
