@@ -415,7 +415,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   setConnectingChat(true);
                   try {
                     const room = await createChatRoom(sellerId, auction?.listingId);
-                    navigation.navigate('Chat' as any, { roomId: room.id });
+                    navigation.navigate('ChatScreen' as any, { threadId: room.id });
                   } catch {
                     navigation.navigate('Messages' as any);
                   } finally {
@@ -767,7 +767,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   setConnectingChat(true);
                   try {
                     const room = await createChatRoom(sellerId, auction?.listingId);
-                    navigation.navigate('Chat' as any, { roomId: room.id });
+                    navigation.navigate('ChatScreen' as any, { threadId: room.id });
                   } catch {
                     navigation.navigate('Messages' as any);
                   } finally { setConnectingChat(false); }
