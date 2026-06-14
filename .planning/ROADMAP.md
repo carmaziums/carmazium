@@ -254,3 +254,14 @@ Plans:
 | 6. Offers, Purchase, and Auction Win Completion | 0/TBD | Not started | - |
 | 7. Mazium AI Search, Map Near Me, and Vehicle Compare | 0/TBD | Not started | - |
 | 8. App Store Preparation and Submission | 0/TBD | Not started | - |
+
+## Mobile App Parity Phase Progress
+
+| Plan | Description | Status | Completed |
+|------|-------------|--------|-----------|
+| mobile-01 | Shared infrastructure: Skeleton, EmptyState, ErrorBanner, haptics, packages, gesture-handler, chat nav fix, notifications toast | Complete | 2026-06-15 |
+| mobile-02 | Auction room polish: live bidding UI, anti-snipe countdown, bid flash, win celebration | Not started | - |
+| mobile-03 | Photo gallery: gesture-handler swipe, pinch-to-zoom, blurhash placeholders | Not started | - |
+| mobile-04 | Seller/dealer analytics charts with gifted-charts | Not started | - |
+| mobile-05 | Haptics pass + form validation + tab bar spring animations | Not started | - |
+| mobile-06 | Remaining screens: DVLA wizard, KYC, marketing screens, Stripe checkout | Not started | - |
