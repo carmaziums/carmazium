@@ -486,6 +486,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     return fieldError(key) ? Colors.error : Colors.success;
   };
 
+  // Step 1 has invalid touched fields?
+  const step1HasErrors = (): boolean => {
+    return !!fieldError('mileage') || !!fieldError('title');
+  };
+
   // Step 3 has invalid touched fields?
   const step3HasErrors = (): boolean => {
     return !!fieldError('priceAsking') || !!fieldError('priceMin');
@@ -1635,10 +1640,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         )}
         {step < totalSteps ? (
           <TouchableOpacity
-            style={[s.nextBtn, (step === 3 && step3HasErrors()) ? { opacity: 0.5 } : {}]}
+            style={[s.nextBtn, ((step === 1 && step1HasErrors()) || (step === 3 && step3HasErrors())) ? { opacity: 0.5 } : {}]}
             onPress={handleNext}
             activeOpacity={0.8}
-            disabled={step === 3 && step3HasErrors()}
+            disabled={(step === 1 && step1HasErrors()) || (step === 3 && step3HasErrors())}
           >
             <Text style={s.nextBtnText}>
               {step === 1 ? 'NEXT · MEDIA'
