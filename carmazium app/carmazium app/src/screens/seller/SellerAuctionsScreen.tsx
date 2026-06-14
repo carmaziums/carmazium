@@ -19,6 +19,8 @@ import { apiClient } from '../../lib/apiClient';
 import { getListingById } from '../../lib/listingsApi';
 import { Colors } from '../../constants/colors';
 import { FontFamily } from '../../constants/typography';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 // ─────────────────────────── Types ───────────────────────────
 
@@ -209,28 +211,28 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
       {/* Content */}
       {loading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator color={Colors.accent} size="large" />
+        <View style={styles.skeletonList}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <View key={`sk-${i}`} style={styles.skeletonRow}>
+              <Skeleton w={64} h={56} r={10} />
+              <View style={styles.skeletonInfo}>
+                <Skeleton w={140} h={14} r={6} />
+                <Skeleton w={80} h={16} r={6} />
+                <Skeleton w={60} h={12} r={5} />
+              </View>
+              <View style={styles.skeletonRight}>
+                <Skeleton w={48} h={20} r={10} />
+                <Skeleton w={22} h={22} r={6} />
+              </View>
+            </View>
+          ))}
         </View>
       ) : displayed.length === 0 ? (
-        <View style={styles.emptyState}>
-          <MaterialCommunityIcons name="gavel" size={40} color={Colors.textMuted} />
-          <Text style={styles.emptyTitle}>No auctions yet</Text>
-          <Text style={styles.emptySub}>
-            {activeTab === 'ALL'
-              ? 'Create an auction listing to start selling by auction.'
-              : `No ${activeTab.toLowerCase()} auctions.`}
-          </Text>
-          {activeTab === 'ALL' && (
-            <TouchableOpacity
-              style={styles.emptyCtaBtn}
-              onPress={() => navigation?.navigate('SellCars')}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.emptyCtaText}>Create Auction Listing</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        <EmptyState
+          icon="hammer-outline"
+          title="No auctions yet"
+          subtitle="Your live and scheduled auctions will appear here."
+        />
       ) : (
         <FlatList
           data={displayed}
@@ -327,37 +329,29 @@ const styles = StyleSheet.create({
   list: {
     paddingHorizontal: 20,
   },
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+  skeletonList: {
+    paddingHorizontal: 20,
     gap: 10,
-    paddingHorizontal: 40,
   },
-  emptyTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: 17,
-    color: '#FFFFFF',
-  },
-  emptySub: {
-    fontFamily: FontFamily.regular,
-    fontSize: 13,
-    color: Colors.textMuted,
-    textAlign: 'center',
-  },
-  emptyCtaBtn: {
-    marginTop: 8,
-    height: 44,
-    paddingHorizontal: 28,
-    borderRadius: 12,
-    backgroundColor: Colors.accent,
+  skeletonRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#111115',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderLeftWidth: 3,
+    borderColor: 'rgba(255,255,255,0.06)',
+    borderLeftColor: 'rgba(255,255,255,0.10)',
+    padding: 12,
+    gap: 12,
   },
-  emptyCtaText: {
-    fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
+  skeletonInfo: {
+    flex: 1,
+    gap: 6,
+  },
+  skeletonRight: {
+    alignItems: 'flex-end',
+    gap: 6,
   },
   card: {
     flexDirection: 'row',

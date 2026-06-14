@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   ActivityIndicator,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -16,6 +17,7 @@ import { apiClient } from '../../lib/apiClient';
 import { getListingById } from '../../lib/listingsApi';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { ErrorBanner } from '../../components/ui/ErrorBanner';
 
 // ─────────────────────────── types ───────────────────────────────
 
@@ -56,19 +58,30 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
 
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [tappingId, setTappingId] = useState<string | null>(null);
 
   const totalSpent = history.reduce((sum, h) => sum + h.price, 0);
 
   // ── fetch ──────────────────────────────────────────────────────
-  useEffect(() => {
-    apiClient<BuyerDashResponse>('/dashboard/buyer')
-      .then(res => {
-        if (res.success) setHistory(res.data?.history || []);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+  const fetchData = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    setError(null);
+    try {
+      const res = await apiClient<BuyerDashResponse>('/dashboard/buyer');
+      if (res.success) setHistory(res.data?.history || []);
+    } catch {
+      setError('Could not load purchase history. Please try again.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   // ── navigate to vehicle ──────────────────────────────────────
   const handleViewVehicle = async (item: HistoryItem) => {
@@ -211,13 +224,25 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => fetchData(true)}
+            tintColor={Colors.accent}
+            colors={[Colors.accent]}
+          />
+        }
       >
+        {error && !loading && (
+          <ErrorBanner message={error} onRetry={() => fetchData()} />
+        )}
+
         {/* Totals bar — only when there's data */}
         {!loading && history.length > 0 && renderTotalsBar()}
 
         {loading
           ? renderSkeletons()
-          : history.length === 0
+          : history.length === 0 && !error
           ? renderEmptyState()
           : history.map(renderHistoryCard)}
 

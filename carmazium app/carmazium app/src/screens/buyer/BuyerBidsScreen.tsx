@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   ActivityIndicator,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -16,6 +17,8 @@ import { apiClient } from '../../lib/apiClient';
 import { getListingById } from '../../lib/listingsApi';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { ErrorBanner } from '../../components/ui/ErrorBanner';
+import { haptics } from '../../lib/haptics';
 
 // ─────────────────────────── types ───────────────────────────────
 
@@ -111,17 +114,28 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
 
   const [bids, setBids] = useState<Bid[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [tappingId, setTappingId] = useState<string | null>(null);
 
   // ── fetch ──────────────────────────────────────────────────────
-  useEffect(() => {
-    apiClient<BuyerDashResponse>('/dashboard/buyer')
-      .then(res => {
-        if (res.success) setBids(res.data?.bids || []);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+  const fetchData = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    setError(null);
+    try {
+      const res = await apiClient<BuyerDashResponse>('/dashboard/buyer');
+      if (res.success) setBids(res.data?.bids || []);
+    } catch {
+      setError('Could not load bids. Please try again.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   // ── navigate to auction ──────────────────────────────────────
   const handleViewAuction = async (bid: Bid) => {
@@ -169,6 +183,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
     const isWon = bid.auctionStatus === 'ENDED' && bid.isWinner;
 
     const handlePayFee = () => {
+      haptics.success();
       navigation?.navigate('AuctionComplete', {
         listingId: bid.listing?.id ?? bid.listingId,
         auctionId: bid.auctionId ?? '',
@@ -300,10 +315,22 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => fetchData(true)}
+            tintColor={Colors.accent}
+            colors={[Colors.accent]}
+          />
+        }
       >
+        {error && !loading && (
+          <ErrorBanner message={error} onRetry={() => fetchData()} />
+        )}
+
         {loading
           ? renderSkeletons()
-          : bids.length === 0
+          : bids.length === 0 && !error
           ? renderEmptyState()
           : bids.map(renderBidCard)}
 

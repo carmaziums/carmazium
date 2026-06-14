@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -14,6 +15,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { ErrorBanner } from '../../components/ui/ErrorBanner';
+import { haptics } from '../../lib/haptics';
 
 // ─────────────────────────── interfaces ───────────────────────────
 
@@ -111,9 +114,13 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
 
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    setError(null);
     try {
       const [res] = await Promise.allSettled([
         apiClient<MyOffersResponse>('/offers/my'),
@@ -121,11 +128,14 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
       if (res.status === 'fulfilled' && res.value?.success) {
         const raw = res.value.data;
         setOffers(Array.isArray(raw) ? raw : []);
+      } else if (res.status === 'rejected') {
+        setError('Could not load offers. Please try again.');
       }
     } catch {
-      // silently fail — show empty
+      setError('Could not load offers. Please try again.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
@@ -148,6 +158,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
             setActionLoading(offer.id);
             try {
               await apiClient(`/offers/${offer.id}/withdraw`, { method: 'PATCH' });
+              haptics.medium();
               await fetchData();
             } catch (err: any) {
               Alert.alert('Action Failed', err?.message ?? 'Something went wrong.');
@@ -181,9 +192,11 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
                 body: JSON.stringify({ status }),
               });
               if (status === 'ACCEPTED') {
+                haptics.success();
                 // Navigate directly to payment flow — the agreed price is the counter amount
                 navigateToPurchase(offer, offer.counterAmount ?? offer.amount);
               } else {
+                haptics.medium();
                 await fetchData();
               }
             } catch (err: any) {
@@ -404,10 +417,22 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => fetchData(true)}
+            tintColor={Colors.accent}
+            colors={[Colors.accent]}
+          />
+        }
       >
+        {error && !loading && (
+          <ErrorBanner message={error} onRetry={() => fetchData()} />
+        )}
+
         {loading
           ? renderSkeleton()
-          : offers.length === 0
+          : offers.length === 0 && !error
           ? renderEmptyState()
           : offers.map(renderOfferCard)}
 

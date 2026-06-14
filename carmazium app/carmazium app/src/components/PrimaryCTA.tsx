@@ -17,6 +17,7 @@ import Animated, {
 import Svg, { Path } from 'react-native-svg';
 import { Colors } from '../constants/colors';
 import { FontFamily, FontSize, LetterSpacing } from '../constants/typography';
+import { haptics } from '../lib/haptics';
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -55,6 +56,7 @@ export const PrimaryCTA: React.FC<PrimaryCTAProps> = ({
   }));
 
   const handlePressIn = () => {
+    haptics.light();
     scale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
   };
 

@@ -23,6 +23,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 // ─────────────────────────── types ────────────────────────────────
 
@@ -307,17 +309,33 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
   // ─── render helpers ───────────────────────────────────────────
 
-  const renderEmpty = () => (
-    <View style={styles.emptyState}>
-      <Ionicons name="car-outline" size={40} color={Colors.textMuted} />
-      <Text style={styles.emptyTitle}>No listings found</Text>
-      <Text style={styles.emptySub}>
-        {activeTab === 'ACTIVE' && 'You have no active listings right now.'}
-        {activeTab === 'DRAFT' && 'You have no draft listings saved.'}
-        {activeTab === 'SOLD' && 'No vehicles marked as sold yet.'}
-        {activeTab === 'ALL' && 'Create your first listing to get started.'}
-      </Text>
+  const renderSkeletonRows = () => (
+    <View style={styles.skeletonList}>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <View key={`sk-${i}`} style={styles.skeletonRow}>
+          <Skeleton w={64} h={56} r={10} />
+          <View style={styles.skeletonInfo}>
+            <Skeleton w={140} h={14} r={6} />
+            <Skeleton w={80} h={16} r={6} />
+            <Skeleton w={60} h={12} r={5} />
+          </View>
+          <View style={styles.skeletonRight}>
+            <Skeleton w={48} h={20} r={10} />
+            <Skeleton w={28} h={28} r={8} />
+          </View>
+        </View>
+      ))}
     </View>
+  );
+
+  const renderEmpty = () => (
+    <EmptyState
+      icon="pricetags-outline"
+      title="No listings yet"
+      subtitle="List your first vehicle to start selling."
+      ctaLabel="Sell a car"
+      onCtaPress={() => navigation?.navigate('SellCarFlow')}
+    />
   );
 
   const renderCard = ({ item }: { item: ApiListing }) => {
@@ -546,9 +564,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
       {/* ── List ── */}
       {loading ? (
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator color={Colors.accent} size="large" />
-        </View>
+        renderSkeletonRows()
       ) : (
         <FlatList
           data={displayed}
@@ -685,6 +701,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  skeletonList: {
+    paddingHorizontal: 20,
+    gap: 10,
+  },
+  skeletonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#111115',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    borderLeftWidth: 3,
+    borderLeftColor: 'rgba(255,255,255,0.10)',
+    padding: 12,
+    gap: 12,
+  },
+  skeletonInfo: {
+    flex: 1,
+    gap: 6,
+  },
+  skeletonRight: {
+    alignItems: 'flex-end',
+    gap: 6,
+  },
 
   // ── card ──
   card: {
@@ -770,27 +810,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.textMuted,
   },
 
-  // ── empty state ──
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-    gap: 12,
-  },
-  emptyTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.md,
-    color: '#FFFFFF',
-  },
-  emptySub: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.sm,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: 32,
-  },
 
   // ── action sheet ──
   sheetOverlay: {
