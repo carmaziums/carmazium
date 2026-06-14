@@ -13,18 +13,27 @@ import {
   RefreshControl,
   Alert,
   Linking,
+  Dimensions,
 } from 'react-native';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 import { Image } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontFamily } from '../../constants/typography';
+import { Colors } from '../../constants/colors';
 import { apiClient } from '../../lib/apiClient';
+import { createChatRoom } from '../../lib/chatApi';
+import { haptics } from '../../lib/haptics';
+import { Skeleton } from '../../components/ui/Skeleton';
 
 type FilterTab = 'All' | 'Hot' | 'Warm' | 'New';
 
 interface Lead {
   id: string;
+  buyerId?: string;
+  listingId?: string;
   name: string;
   initials: string;
   email?: string;
@@ -83,6 +92,8 @@ const formatPrice = (n?: number | null): string | undefined =>
 
 const mapApiLead = (l: any): Lead => ({
   id: l.id,
+  buyerId: l.buyerId || l.buyer?.id || undefined,
+  listingId: l.listing?.id || l.listingId || undefined,
   name: l.buyerName || 'Unknown',
   initials: getLeadInitials(l.buyerName || 'Unknown'),
   email: l.buyerEmail || undefined,
@@ -106,9 +117,28 @@ const LeadDetail: React.FC<{
   onUpdateStatus: (id: string, status: string) => void;
   onSaveNotes: (id: string, notes: string) => void;
   busy: boolean;
-}> = ({ lead, onBack, onUpdateStatus, onSaveNotes, busy }) => {
+  navigation?: any;
+}> = ({ lead, onBack, onUpdateStatus, onSaveNotes, busy, navigation }) => {
   const insets = useSafeAreaInsets();
   const [notesDraft, setNotesDraft] = useState(lead.notes);
+  const [messagingBusy, setMessagingBusy] = useState(false);
+
+  const handleMessageLead = async () => {
+    if (!lead.buyerId) {
+      Alert.alert('Cannot message', 'No buyer account linked to this lead.');
+      return;
+    }
+    haptics.light();
+    setMessagingBusy(true);
+    try {
+      const room = await createChatRoom(lead.buyerId, lead.listingId);
+      navigation?.navigate('ChatScreen' as any, { threadId: room.id });
+    } catch {
+      Alert.alert('Error', 'Could not open chat. Please try again.');
+    } finally {
+      setMessagingBusy(false);
+    }
+  };
 
   useEffect(() => { setNotesDraft(lead.notes); }, [lead.id, lead.notes]);
 
@@ -212,6 +242,25 @@ const LeadDetail: React.FC<{
               <Text style={styles.emptyMutedText}>No contact details on file for this lead.</Text>
             )}
           </View>
+
+          {/* Message Lead CTA */}
+          {lead.buyerId ? (
+            <TouchableOpacity
+              style={[styles.messageCTA, messagingBusy && { opacity: 0.6 }]}
+              onPress={handleMessageLead}
+              disabled={messagingBusy}
+              activeOpacity={0.8}
+            >
+              {messagingBusy ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Ionicons name="chatbubble-ellipses-outline" size={15} color="#FFFFFF" />
+                  <Text style={styles.messageCTAText}>Message Lead</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          ) : null}
 
           {/* Notes */}
           <Text style={styles.sectionLabel}>NOTES</Text>
@@ -332,6 +381,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
         onUpdateStatus={handleUpdateLeadStatus}
         onSaveNotes={handleSaveNotes}
         busy={updatingId === selectedLead.id}
+        navigation={navigation}
       />
     );
   }
@@ -411,8 +461,10 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
       </ScrollView>
 
       {loading && leads.length === 0 ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color="#DC1F26" />
+        <View style={{ paddingHorizontal: 16, paddingTop: 8, gap: 10 }}>
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} w={SCREEN_WIDTH - 32} h={84} r={20} />
+          ))}
         </View>
       ) : filteredLeads.length === 0 ? (
         renderEmptyState()
@@ -688,6 +740,14 @@ const styles = StyleSheet.create({
   },
   saveNotesBtnText: {
      fontFamily: FontFamily.bold, fontSize: 13, color: '#FFFFFF',
+  },
+  messageCTA: {
+     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 20,
+     height: 46, borderRadius: 14, backgroundColor: '#111116',
+     borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
+  },
+  messageCTAText: {
+     fontFamily: FontFamily.bold, fontSize: 14, color: '#FFFFFF',
   },
 
   statusBarWrap: {

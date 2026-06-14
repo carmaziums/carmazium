@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   FlatList,
   Modal,
+  RefreshControl,
   StatusBar,
   StyleSheet,
   Text,
@@ -18,6 +20,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiClient } from '../../lib/apiClient';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { Colors } from '../../constants/colors';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { EmptyState } from '../../components/ui/EmptyState';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 import { FontFamily, FontSize } from '../../constants/typography';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -183,6 +189,7 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
 
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<InviteRole>('SALES_AGENT');
@@ -190,7 +197,8 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
   const [removeLoading, setRemoveLoading] = useState<string | null>(null);
 
   // ── Fetch staff ─────────────────────────────────────────────────────────────
-  const fetchStaff = async () => {
+  const fetchStaff = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
     try {
       const res = await apiClient<{ success: boolean; data: StaffMember[] }>('/dealers/staff');
       if (res.success) setStaff(Array.isArray(res.data) ? res.data : []);
@@ -198,6 +206,7 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
       /* silently fail */
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -259,9 +268,11 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
   // ── Render empty state ──────────────────────────────────────────────────────
   const renderEmpty = () => (
     <View style={styles.emptyState}>
-      <Ionicons name="people-outline" size={36} color="#5C5C6B" />
-      <Text style={styles.emptyTitle}>No team members yet</Text>
-      <Text style={styles.emptySub}>Invite staff to manage your dealership</Text>
+      <EmptyState
+        icon="people-outline"
+        title="No team members yet"
+        subtitle="Invite staff to manage your dealership"
+      />
     </View>
   );
 
@@ -313,8 +324,10 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
 
       {/* Staff list */}
       {loading ? (
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color="#DC1F26" />
+        <View style={{ paddingHorizontal: 16, paddingTop: 12, gap: 10 }}>
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} w={SCREEN_WIDTH - 32} h={72} r={18} />
+          ))}
         </View>
       ) : (
         <FlatList
@@ -327,6 +340,14 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
           ListEmptyComponent={renderEmpty}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => fetchStaff(true)}
+              tintColor={Colors.accent}
+              colors={[Colors.accent]}
+            />
+          }
           renderItem={({ item }) => (
             <StaffCard
               member={item}
@@ -504,6 +525,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   summaryCount: {
+    fontFamily: FontFamily.mono,
     color: '#FFFFFF',
     fontSize: 15,
   },

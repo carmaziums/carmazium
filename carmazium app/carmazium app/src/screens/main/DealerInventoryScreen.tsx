@@ -16,7 +16,11 @@ import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Colors } from '../../constants/colors';
 import { apiClient } from '../../lib/apiClient';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { ErrorBanner } from '../../components/ui/ErrorBanner';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -280,13 +284,17 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
 
   const fetchListings = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
+    setFetchError(false);
     try {
       const res = await apiClient<{ success: boolean; data: any[] }>('/listings/my?page=1&limit=50');
       if (res.success) setListings((res.data || []).map(mapApiListing));
-    } catch { /* keep previous data */ }
+    } catch {
+      setFetchError(true);
+    }
     finally { setLoading(false); setRefreshing(false); }
   };
 
@@ -394,17 +402,32 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
       </View>
 
       {/* ── Listing cards ─────────────────────────────────────────────────── */}
-      {loading && listings.length === 0 ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color="#DC1F26" />
+      {fetchError ? (
+        <View style={{ marginHorizontal: 16, marginTop: 20 }}>
+          <ErrorBanner message="Could not load inventory. Check your connection." onRetry={() => fetchListings()} />
+        </View>
+      ) : loading && listings.length === 0 ? (
+        <View style={{ paddingHorizontal: 16, paddingTop: 8, gap: 12 }}>
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} w={SCREEN_WIDTH - 32} h={76} r={18} />
+          ))}
         </View>
       ) : (
       <ScrollView
         style={styles.listScroll}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 110 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchListings(true)} tintColor="#DC1F26" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchListings(true)} tintColor={Colors.accent} colors={[Colors.accent]} />}
       >
+        {filtered.length === 0 ? (
+          <View style={{ marginTop: 40 }}>
+            <EmptyState
+              icon="car-outline"
+              title={activeFilter === 'All' ? 'No listings yet' : `No ${activeFilter.toLowerCase()} listings`}
+              subtitle={activeFilter === 'All' ? 'Add your first vehicle to start selling.' : `Switch filters or add more listings.`}
+            />
+          </View>
+        ) : null}
         {filtered.map((listing) => {
           const s = STATUS_STYLE[listing.status];
           return (
@@ -646,7 +669,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   listingPrice: {
-    fontFamily: FontFamily.bold,
+    fontFamily: FontFamily.mono,
     fontSize: 14,
     color: '#FFFFFF',
   },

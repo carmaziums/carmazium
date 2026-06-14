@@ -9,7 +9,12 @@ import {
   Image,
   Alert,
   Animated,
+  RefreshControl,
+  Dimensions,
 } from 'react-native';
+import { Skeleton } from '../../components/ui/Skeleton';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -166,44 +171,45 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
   const [listings, setListings] = useState<ApiListing[]>([]);
   const [recentOffers, setRecentOffers] = useState<IncomingOffer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchData = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    try {
+      const [statsRes, listingsRes, dashRes] = await Promise.allSettled([
+        apiClient<StatsResponse>('/listings/stats'),
+        apiClient<MyListingsResponse>('/listings/my?page=1&limit=5'),
+        apiClient<SellerDashResponse>('/dashboard/seller'),
+      ]);
+
+      if (statsRes.status === 'fulfilled' && statsRes.value?.success) {
+        setStats(statsRes.value.data);
+      }
+      if (listingsRes.status === 'fulfilled' && listingsRes.value?.success) {
+        setListings(Array.isArray(listingsRes.value.data) ? listingsRes.value.data : []);
+      }
+      if (dashRes.status === 'fulfilled' && dashRes.value?.success) {
+        const dashData = dashRes.value.data;
+        const offers = dashData?.offers;
+        setRecentOffers(Array.isArray(offers) ? offers.slice(0, 3) : []);
+        // Merge offer count + saves from dashboard into stats
+        setStats(prev => ({
+          ...prev,
+          offersReceived: dashData?.offerCount ?? prev.offersReceived,
+          savedCount: dashData?.savedCount ?? 0,
+        }));
+      }
+    } catch {
+      // silently fail — show zeros
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    let mounted = true;
-    const fetchData = async () => {
-      try {
-        const [statsRes, listingsRes, dashRes] = await Promise.allSettled([
-          apiClient<StatsResponse>('/listings/stats'),
-          apiClient<MyListingsResponse>('/listings/my?page=1&limit=5'),
-          apiClient<SellerDashResponse>('/dashboard/seller'),
-        ]);
-
-        if (!mounted) return;
-
-        if (statsRes.status === 'fulfilled' && statsRes.value?.success) {
-          setStats(statsRes.value.data);
-        }
-        if (listingsRes.status === 'fulfilled' && listingsRes.value?.success) {
-          setListings(Array.isArray(listingsRes.value.data) ? listingsRes.value.data : []);
-        }
-        if (dashRes.status === 'fulfilled' && dashRes.value?.success) {
-          const dashData = dashRes.value.data;
-          const offers = dashData?.offers;
-          setRecentOffers(Array.isArray(offers) ? offers.slice(0, 3) : []);
-          // Merge offer count + saves from dashboard into stats
-          setStats(prev => ({
-            ...prev,
-            offersReceived: dashData?.offerCount ?? prev.offersReceived,
-            savedCount: dashData?.savedCount ?? 0,
-          }));
-        }
-      } catch {
-        // silently fail — show zeros
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
     fetchData();
-    return () => { mounted = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const heroListing = listings[0] ?? null;
@@ -255,6 +261,14 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => fetchData(true)}
+            tintColor={Colors.accent}
+            colors={[Colors.accent]}
+          />
+        }
       >
 
         {/* ── 1. Hero listing card ── */}
@@ -308,37 +322,45 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
         ) : null}
 
         {/* ── 2. Stats row ── */}
-        <View style={styles.statsRow}>
-          {/* Views */}
-          <View style={[styles.statCard, styles.statCardViews]}>
-            <Ionicons name="eye-outline" size={15} color={Colors.textMuted} />
-            <Text style={styles.statValue}>
-              {loading ? '–' : stats.totalViews.toLocaleString('en-GB')}
-            </Text>
-            <Text style={styles.statLabel}>VIEWS</Text>
-            <Text style={[styles.statDelta, { color: Colors.textMuted }]}>total</Text>
+        {loading ? (
+          <View style={styles.statsRow}>
+            <Skeleton w={(SCREEN_WIDTH - 48 - 24) / 3} h={90} r={16} />
+            <Skeleton w={(SCREEN_WIDTH - 48 - 24) / 3} h={90} r={16} />
+            <Skeleton w={(SCREEN_WIDTH - 48 - 24) / 3} h={90} r={16} />
           </View>
+        ) : (
+          <View style={styles.statsRow}>
+            {/* Views */}
+            <View style={[styles.statCard, styles.statCardViews]}>
+              <Ionicons name="eye-outline" size={15} color={Colors.textMuted} />
+              <Text style={styles.statValue}>
+                {stats.totalViews.toLocaleString('en-GB')}
+              </Text>
+              <Text style={styles.statLabel}>VIEWS</Text>
+              <Text style={[styles.statDelta, { color: Colors.textMuted }]}>total</Text>
+            </View>
 
-          {/* Saves */}
-          <View style={[styles.statCard, styles.statCardSaves]}>
-            <Ionicons name="heart-outline" size={15} color={Colors.accent} />
-            <Text style={styles.statValue}>
-              {loading ? '–' : stats.savedCount.toLocaleString('en-GB')}
-            </Text>
-            <Text style={styles.statLabel}>SAVES</Text>
-            <Text style={[styles.statDelta, { color: Colors.textMuted }]}>watching</Text>
-          </View>
+            {/* Saves */}
+            <View style={[styles.statCard, styles.statCardSaves]}>
+              <Ionicons name="heart-outline" size={15} color={Colors.accent} />
+              <Text style={styles.statValue}>
+                {stats.savedCount.toLocaleString('en-GB')}
+              </Text>
+              <Text style={styles.statLabel}>SAVES</Text>
+              <Text style={[styles.statDelta, { color: Colors.textMuted }]}>watching</Text>
+            </View>
 
-          {/* Offers */}
-          <View style={[styles.statCard, styles.statCardOffers]}>
-            <Ionicons name="pricetag-outline" size={15} color="#F59E0B" />
-            <Text style={[styles.statValue, { color: '#F59E0B' }]}>
-              {loading ? '–' : stats.offersReceived}
-            </Text>
-            <Text style={[styles.statLabel, { color: '#F59E0B' }]}>OFFERS</Text>
-            <Text style={[styles.statDelta, { color: '#F59E0B' }]}>received</Text>
+            {/* Offers */}
+            <View style={[styles.statCard, styles.statCardOffers]}>
+              <Ionicons name="pricetag-outline" size={15} color="#F59E0B" />
+              <Text style={[styles.statValue, { color: '#F59E0B' }]}>
+                {stats.offersReceived}
+              </Text>
+              <Text style={[styles.statLabel, { color: '#F59E0B' }]}>OFFERS</Text>
+              <Text style={[styles.statDelta, { color: '#F59E0B' }]}>received</Text>
+            </View>
           </View>
-        </View>
+        )}
 
         {/* ── 3. Quick nav row ── */}
         <View style={{ flexDirection: 'row', gap: 10, marginBottom: 4 }}>

@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
+  Dimensions,
   FlatList,
   KeyboardAvoidingView,
   Modal,
   Platform,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -22,6 +24,11 @@ import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { ErrorBanner } from '../../components/ui/ErrorBanner';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
@@ -123,11 +130,15 @@ export const DealerOffersScreen: React.FC = () => {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [counterModalOffer, setCounterModalOffer] = useState<Offer | null>(null);
   const [counterAmount, setCounterAmount] = useState('');
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    setFetchError(false);
     try {
       const [offersRes, countRes] = await Promise.allSettled([
         apiClient<ReceivedOffersResponse>('/offers/received'),
@@ -142,15 +153,18 @@ export const DealerOffersScreen: React.FC = () => {
         setPendingCount(countRes.value.data?.count ?? 0);
       }
     } catch {
-      // silently fail — show empty
+      setFetchError(true);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const handleRetry = () => fetchData();
 
   // ─────────────── actions ────────────────
 
@@ -225,18 +239,21 @@ export const DealerOffersScreen: React.FC = () => {
 
   // ─────────────── render helpers ─────────────────────
 
-  const renderSkeleton = () =>
-    Array.from({ length: 3 }).map((_, i) => (
-      <View key={`sk-${i}`} style={styles.skeletonCard} />
-    ));
+  const renderSkeleton = () => (
+    <View style={{ gap: 12 }}>
+      {Array.from({ length: 3 }).map((_, i) => (
+        <Skeleton key={`sk-${i}`} w={SCREEN_WIDTH - 32} h={110} r={18} />
+      ))}
+    </View>
+  );
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Ionicons name="pricetag-outline" size={40} color={Colors.textMuted} />
-      <Text style={styles.emptyTitle}>No offers yet</Text>
-      <Text style={styles.emptySub}>
-        Offers from buyers on your dealership listings will appear here
-      </Text>
+      <EmptyState
+        icon="pricetag-outline"
+        title="No offers yet"
+        subtitle="Offers from buyers on your dealership listings will appear here"
+      />
     </View>
   );
 
@@ -371,7 +388,11 @@ export const DealerOffersScreen: React.FC = () => {
       </View>
 
       {/* ── Content ── */}
-      {loading ? (
+      {fetchError ? (
+        <View style={{ marginHorizontal: 16, marginTop: 20 }}>
+          <ErrorBanner message="Could not load offers. Check your connection." onRetry={handleRetry} />
+        </View>
+      ) : loading ? (
         <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           {renderSkeleton()}
           <View style={{ height: 40 }} />
@@ -388,6 +409,14 @@ export const DealerOffersScreen: React.FC = () => {
           ListFooterComponent={<View style={{ height: 40 }} />}
           contentContainerStyle={[styles.scrollContent, offers.length === 0 && { flexGrow: 1 }]}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => fetchData(true)}
+              tintColor={Colors.accent}
+              colors={[Colors.accent]}
+            />
+          }
         />
       )}
 

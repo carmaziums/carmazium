@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
+  Dimensions,
   FlatList,
   Linking,
   Modal,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -20,6 +22,11 @@ import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { ErrorBanner } from '../../components/ui/ErrorBanner';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
@@ -106,20 +113,25 @@ export const DealerPurchasesScreen: React.FC = () => {
 
   const [purchases, setPurchases] = useState<PurchaseItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
   const [summaryItem, setSummaryItem] = useState<PurchaseItem | null>(null);
 
   const totalSpent = purchases.reduce((sum, p) => sum + p.purchasePrice, 0);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    setFetchError(false);
     try {
       const res = await apiClient<PurchasesResponse>('/dealers/purchases?page=1&limit=100');
       if (res?.success) {
         setPurchases(Array.isArray(res.data) ? res.data : []);
       }
     } catch {
-      // silently fail — show empty
+      setFetchError(true);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
@@ -139,18 +151,21 @@ export const DealerPurchasesScreen: React.FC = () => {
 
   // ─────────────── render helpers ─────────────────────
 
-  const renderSkeletons = () =>
-    Array.from({ length: 3 }).map((_, i) => (
-      <View key={`sk-${i}`} style={styles.skeletonCard} />
-    ));
+  const renderSkeletons = () => (
+    <View style={{ gap: 12 }}>
+      {Array.from({ length: 3 }).map((_, i) => (
+        <Skeleton key={`sk-${i}`} w={SCREEN_WIDTH - 32} h={90} r={18} />
+      ))}
+    </View>
+  );
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Ionicons name="receipt-outline" size={36} color={Colors.textMuted} />
-      <Text style={styles.emptyTitle}>No purchases yet</Text>
-      <Text style={styles.emptySub}>
-        Vehicles your dealership buys will show up here with their delivery status
-      </Text>
+      <EmptyState
+        icon="receipt-outline"
+        title="No purchases yet"
+        subtitle="Vehicles your dealership buys will show up here with their delivery status"
+      />
     </View>
   );
 
@@ -249,7 +264,11 @@ export const DealerPurchasesScreen: React.FC = () => {
       </View>
 
       {/* ── Content ── */}
-      {loading ? (
+      {fetchError ? (
+        <View style={{ marginHorizontal: 16, marginTop: 20 }}>
+          <ErrorBanner message="Could not load purchases. Check your connection." onRetry={() => fetchData()} />
+        </View>
+      ) : loading ? (
         <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           {renderSkeletons()}
           <View style={{ height: 110 }} />
@@ -267,6 +286,14 @@ export const DealerPurchasesScreen: React.FC = () => {
           ListFooterComponent={<View style={{ height: 110 }} />}
           contentContainerStyle={[styles.scrollContent, purchases.length === 0 && { flexGrow: 1 }]}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => fetchData(true)}
+              tintColor={Colors.accent}
+              colors={[Colors.accent]}
+            />
+          }
         />
       )}
 
