@@ -52,13 +52,13 @@ export class BidsService {
             throw new BadRequestException('You cannot bid on your own auction');
         }
 
-        // Dealers must be verified to bid; buyers/sellers (no dealer profile) can bid freely
+        // Only verified dealers can bid — buyers, sellers, and unverified dealers are all blocked
         const dealerProfile = await this.prisma.dealerProfile.findUnique({
             where: { userId: bidderId },
             select: { isVerified: true },
         });
-        if (dealerProfile && !dealerProfile.isVerified) {
-            throw new ForbiddenException('Your dealer account must be verified before you can place bids.');
+        if (!dealerProfile || !dealerProfile.isVerified) {
+            throw new ForbiddenException('Only verified dealers can place bids on auctions.');
         }
 
         const minIncrement = Number(auction.minIncrement);
