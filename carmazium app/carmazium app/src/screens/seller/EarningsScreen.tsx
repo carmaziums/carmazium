@@ -189,6 +189,14 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => fetchData(true)}
+            tintColor={Colors.accent}
+            colors={[Colors.accent]}
+          />
+        }
       >
         {/* ── Summary card ── */}
         <View style={styles.summaryCard}>
@@ -196,7 +204,7 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
           <View style={styles.summaryCol}>
             <Text style={styles.summaryLabel}>TOTAL REVENUE</Text>
             {loading ? (
-              <View style={styles.skeletonRevenue} />
+              <Skeleton w={120} h={36} r={6} />
             ) : (
               <Text style={styles.summaryRevenue}>
                 {formatPrice(totalRevenue)}
@@ -211,7 +219,7 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
           <View style={[styles.summaryCol, styles.summaryColRight]}>
             <Text style={styles.summaryLabel}>TOTAL SALES</Text>
             {loading ? (
-              <View style={styles.skeletonSalesCount} />
+              <Skeleton w={48} h={32} r={6} />
             ) : (
               <Text style={styles.summarySalesCount}>{totalSales}</Text>
             )}

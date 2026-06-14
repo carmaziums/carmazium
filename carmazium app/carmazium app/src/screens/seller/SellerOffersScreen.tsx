@@ -4,6 +4,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -18,6 +19,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 // ─────────────────────────── interfaces ───────────────────────────
 
@@ -121,11 +124,13 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
   const [offers, setOffers] = useState<Offer[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [counterModalOffer, setCounterModalOffer] = useState<Offer | null>(null);
   const [counterAmount, setCounterAmount] = useState('');
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
     try {
       const [dashRes, countRes] = await Promise.allSettled([
         apiClient<SellerDashboardResponse>('/dashboard/seller'),
@@ -143,6 +148,7 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
       // silently fail — show empty
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
@@ -224,17 +230,26 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
 
   const renderSkeleton = () =>
     Array.from({ length: 3 }).map((_, i) => (
-      <View key={`sk-${i}`} style={styles.skeletonCard} />
+      <View key={`sk-${i}`} style={styles.skeletonCard}>
+        <View style={styles.skeletonCardTop}>
+          <Skeleton w={36} h={36} r={18} />
+          <View style={styles.skeletonCardCenter}>
+            <Skeleton w={120} h={14} r={6} />
+            <Skeleton w={60} h={18} r={8} />
+          </View>
+          <Skeleton w={30} h={12} r={5} />
+        </View>
+        <Skeleton w={140} h={24} r={6} />
+        <Skeleton w={180} h={12} r={5} />
+      </View>
     ));
 
   const renderEmptyState = () => (
-    <View style={styles.emptyState}>
-      <Ionicons name="pricetag-outline" size={40} color={Colors.textMuted} />
-      <Text style={styles.emptyTitle}>No pending offers</Text>
-      <Text style={styles.emptySub}>
-        Offers from buyers on your listings will appear here
-      </Text>
-    </View>
+    <EmptyState
+      icon="mail-open-outline"
+      title="No offers received"
+      subtitle="Offers from buyers on your listings will appear here."
+    />
   );
 
   const renderOfferCard = (offer: Offer) => {
@@ -372,6 +387,14 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => fetchData(true)}
+            tintColor={Colors.accent}
+            colors={[Colors.accent]}
+          />
+        }
       >
         {loading
           ? renderSkeleton()
@@ -503,32 +526,21 @@ const styles = StyleSheet.create({
 
   // ── Skeleton ──
   skeletonCard: {
-    height: 160,
     borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.04)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.04)',
+    padding: 16,
+    gap: 12,
   },
-
-  // ── Empty state ──
-  emptyState: {
+  skeletonCardTop: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 72,
     gap: 10,
   },
-  emptyTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.base,
-    color: Colors.textPrimary,
-    marginTop: 4,
-  },
-  emptySub: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.sm,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: 32,
+  skeletonCardCenter: {
+    flex: 1,
+    gap: 6,
   },
 
   // ── Offer card ──
