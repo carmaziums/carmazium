@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed mobile-app-parity-mobile-05-PLAN.md
-last_updated: "2026-06-14T20:31:26.252Z"
-last_activity: 2026-06-15 — mobile-app-parity Plan 5 complete (AboutScreen+PricingScreen, buyer screen polish, PrimaryCTA haptics, tab-bar spring, card image/typography)
+stopped_at: Completed mobile-app-parity-mobile-06-PLAN.md
+last_updated: "2026-06-14T20:43:47.423Z"
+last_activity: 2026-06-15 — mobile-app-parity Plan 6 complete (10 screens: Skeleton+EmptyState+accent RefreshControl+mono coverage closure)
 progress:
   total_phases: 8
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 16
-  completed_plans: 14
-  percent: 88
+  completed_plans: 15
+  percent: 94
 ---
 
 # State: Carmazium Mobile App
@@ -19,11 +19,11 @@ progress:
 ## Current Position
 
 Phase: mobile-app-parity (Mobile App Feature Parity & UI Polish)
-Plan: 5 of 6 complete in current phase
+Plan: 6 of 6 complete — phase COMPLETE
 Status: In Progress
-Last activity: 2026-06-15 — mobile-app-parity Plan 5 complete (AboutScreen+PricingScreen, buyer screen polish, PrimaryCTA haptics, tab-bar spring, card image/typography)
+Last activity: 2026-06-15 — mobile-app-parity Plan 6 complete (10 screens: Skeleton+EmptyState+accent RefreshControl+mono coverage closure)
 
-Progress: [█████████░] 88%
+Progress: [█████████░] 94%
 
 ## Project Reference
 
@@ -126,6 +126,19 @@ None yet.
 - DealerPurchasesScreen.tsx: Shared Skeleton; shared EmptyState; RefreshControl accent; ErrorBanner on fetch failure
 - DealerTeamScreen.tsx: ActivityIndicator → 3×Skeleton; shared EmptyState; RefreshControl accent; summaryCount uses FontFamily.mono
 
+### mobile-app-parity Plan 6 — Complete
+
+- EarningsScreen: RefreshControl with tintColor=Colors.accent added to ScrollView; shared Skeleton replaces plain-View loading in summary card
+- SellerOffersScreen: shared Skeleton+EmptyState (mail-open-outline) added; refreshing state + RefreshControl with accent tint added (was missing)
+- BuyerDashboardScreen: shared Skeleton import added; KpiCard skeletonValue/skeletonDelta plain Views replaced with Skeleton(w=80,h=28) and Skeleton(w=56,h=10); RefreshControl already accent-tinted
+- MessagesScreen: shared Skeleton shape-matched rows shown during isLoading; shared EmptyState (chatbubbles-outline); RefreshControl added wrapping refreshRooms()
+- SearchScreen: Skeleton result-card rows replace ActivityIndicator on load; shared EmptyState (search-outline) replaces emoji empty state; RefreshControl already accent-tinted
+- SavedScreen: shared Skeleton grid cards replace ActivityIndicator; shared EmptyState (heart-outline) with "Browse listings" CTA; RefreshControl added; cardPrice+listPrice switched to FontFamily.mono
+- NotificationsScreen: shape-matched Skeleton rows replace plain-View skeleton; shared EmptyState (notifications-outline); RefreshControl already accent-tinted
+- AlertsScreen: Skeleton rows replace ActivityIndicator; shared EmptyState (alert-circle-outline); RefreshControl already accent-tinted
+- SellerListingsScreen + SellerAuctionsScreen: already fully compliant from Plan 05 — no changes needed
+- tsc --noEmit passes with zero errors
+
 ### mobile-app-parity Plan 5 — Complete
 
 - AboutScreen.tsx + PricingScreen.tsx: Static info screens with brand styling registered in MainStackNavigator; GlobalDrawer wired to stackScreen (no more Alert.alert stubs for About/Pricing)
@@ -140,6 +153,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-14T20:31:26.234Z
-Stopped at: Completed mobile-app-parity-mobile-05-PLAN.md
+Last session: 2026-06-14T20:43:47.413Z
+Stopped at: Completed mobile-app-parity-mobile-06-PLAN.md
 Resume file: None
