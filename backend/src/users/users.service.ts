@@ -356,7 +356,10 @@ export class UsersService {
                 type: 'express',
                 country: 'GB',
                 email: user.email,
-                capabilities: { transfers: { requested: true } },
+                capabilities: {
+                    card_payments: { requested: true },
+                    transfers: { requested: true },
+                },
             });
             accountId = account.id;
             await this.prisma.user.update({
