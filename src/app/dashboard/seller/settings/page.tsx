@@ -275,15 +275,14 @@ export default function SellerSettingsPage() {
                         )}
                     </div>
 
-                    {/* Bank Account Details (manual payout fallback) */}
-                    {!connectStatus?.onboardingComplete && (
-                        <div className="glass-card p-8 border border-white/5 bg-white/5 rounded-2xl">
-                            <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
-                                <Landmark className="text-amber-400" size={20} /> Bank Account Details
-                            </h3>
-                            <p className="text-sm text-gray-400 mb-6">
-                                Alternatively, provide your UK bank details so Carmazium can manually transfer your £100 bonus if Stripe Connect isn&apos;t set up.
-                            </p>
+                    {/* Bank Account Details (manual payout fallback — always visible) */}
+                    <div className="glass-card p-8 border border-white/5 bg-white/5 rounded-2xl">
+                        <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                            <Landmark className="text-amber-400" size={20} /> Bank Account Details
+                        </h3>
+                        <p className="text-sm text-gray-400 mb-6">
+                            Provide your UK bank details as a fallback. Carmazium can manually transfer your £100 bonus if Stripe Connect isn&apos;t available.
+                        </p>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-1 md:col-span-2">
                                     <label className="text-sm text-gray-400">Account Holder Name</label>
@@ -330,7 +329,7 @@ export default function SellerSettingsPage() {
                                 {bankSaveStatus === "error" && <span className="text-red-400 text-sm flex items-center gap-1"><AlertCircle size={14} /> Failed to save</span>}
                             </div>
                         </div>
-                    )}
+                    </div>
                 </main>
             </div>
         </div>

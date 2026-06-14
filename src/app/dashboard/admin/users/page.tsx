@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Users, Loader2, ArrowLeft, MoreHorizontal, ShieldAlert, BadgeCheck, Ban, LockKeyhole, LockKeyholeOpen, ShieldCheck, X } from "lucide-react"
+import { Users, Loader2, ArrowLeft, MoreHorizontal, ShieldAlert, BadgeCheck, Ban, LockKeyhole, LockKeyholeOpen, ShieldCheck, X, Landmark, CreditCard, AlertCircle } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { getAdminUsers, updateUserRole, banUser, unbanUser, lockUser, unlockUser } from "@/lib/adminApi"
@@ -137,6 +137,7 @@ export default function AdminUsersPage() {
                                         <th className="px-6 py-4">User</th>
                                         <th className="px-6 py-4">Role</th>
                                         <th className="px-6 py-4">Status</th>
+                                        <th className="px-6 py-4">Payout</th>
                                         <th className="px-6 py-4">Joined</th>
                                         <th className="px-6 py-4 text-right">Actions</th>
                                     </tr>
@@ -192,6 +193,31 @@ export default function AdminUsersPage() {
                                                     }`}>
                                                         {isBanned ? 'BANNED' : isLocked ? 'LOCKED' : 'ACTIVE'}
                                                     </span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {u.role === 'SELLER' ? (
+                                                        u.stripeConnectOnboardingComplete ? (
+                                                            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                                                <CreditCard size={10} /> Stripe
+                                                            </span>
+                                                        ) : u.bankAccountNumber ? (
+                                                            <div className="space-y-1">
+                                                                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                                                    <Landmark size={10} /> Bank Transfer
+                                                                </span>
+                                                                <div className="text-[10px] text-gray-400 font-mono">
+                                                                    <div>{u.bankAccountName}</div>
+                                                                    <div>Sort: {u.bankSortCode} · ****{u.bankAccountNumber.slice(-4)}</div>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                                                <AlertCircle size={10} /> Not set
+                                                            </span>
+                                                        )
+                                                    ) : (
+                                                        <span className="text-[10px] text-gray-600">—</span>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4 text-xs text-gray-400">
                                                     {new Date(u.createdAt).toLocaleDateString()}
