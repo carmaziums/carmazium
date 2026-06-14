@@ -551,16 +551,17 @@ export class PaymentsService {
             // covering the case where they close the tab before our return_url fires.
             case 'account.updated': {
                 const account = event.data.object as any;
-                const isComplete = !!(account.charges_enabled && account.payouts_enabled);
-                if (isComplete) {
-                    await this.prisma.user.updateMany({
-                        where: {
-                            stripeConnectAccountId: account.id,
-                            stripeConnectOnboardingComplete: false,
-                        },
-                        data: { stripeConnectOnboardingComplete: true },
-                    });
-                }
+                const isComplete = !!(
+                    account.details_submitted &&
+                    account.charges_enabled &&
+                    account.payouts_enabled &&
+                    (!account.requirements?.currently_due || account.requirements.currently_due.length === 0)
+                );
+                // Update in both directions — Stripe can re-add requirements after the fact
+                await this.prisma.user.updateMany({
+                    where: { stripeConnectAccountId: account.id },
+                    data: { stripeConnectOnboardingComplete: isComplete },
+                });
                 break;
             }
         }

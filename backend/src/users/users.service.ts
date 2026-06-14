@@ -394,13 +394,28 @@ export class UsersService {
 
         const stripe = await this.getStripe();
         const account = await stripe.accounts.retrieve(user.stripeConnectAccountId);
-        const complete = !!(account.charges_enabled && account.payouts_enabled);
+        // details_submitted is the authoritative flag — it becomes true only after
+        // the seller actually completes Stripe's onboarding wizard. charges_enabled
+        // and payouts_enabled can be true in test mode immediately after account
+        // creation, before the seller has submitted anything.
+        const complete = !!(
+            account.details_submitted &&
+            account.charges_enabled &&
+            account.payouts_enabled &&
+            (!account.requirements?.currently_due || account.requirements.currently_due.length === 0)
+        );
 
         // Persist completion state so other services can check without hitting Stripe
         if (complete && !user.stripeConnectOnboardingComplete) {
             await this.prisma.user.update({
                 where: { id: userId },
                 data: { stripeConnectOnboardingComplete: true },
+            });
+        } else if (!complete && user.stripeConnectOnboardingComplete) {
+            // Requirements were added back (e.g. Stripe requested more info) — mark incomplete
+            await this.prisma.user.update({
+                where: { id: userId },
+                data: { stripeConnectOnboardingComplete: false },
             });
         }
 
@@ -410,6 +425,7 @@ export class UsersService {
             accountId: user.stripeConnectAccountId,
             chargesEnabled: account.charges_enabled,
             payoutsEnabled: account.payouts_enabled,
+            detailsSubmitted: account.details_submitted,
         };
     }
 
