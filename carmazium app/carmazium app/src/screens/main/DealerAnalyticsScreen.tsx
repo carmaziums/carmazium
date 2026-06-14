@@ -8,7 +8,7 @@ import {
   StatusBar,
   Dimensions,
   Animated,
-  ActivityIndicator,
+  RefreshControl,
   StyleProp,
   ViewStyle,
   TextStyle,
@@ -17,8 +17,12 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BarChart, LineChart } from 'react-native-gifted-charts';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Colors } from '../../constants/colors';
 import { apiClient } from '../../lib/apiClient';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_GAP = 12;
@@ -108,78 +112,27 @@ const renderTrend = (
   );
 };
 
-// ─── Sparkline drawn as connected dots ──────────────────────────────────────
-const SparkLine: React.FC<{ data: number[]; width: number; height: number }> = ({
-  data, width, height,
-}) => {
-  const pts = data.map((v, i) => ({
-    x: (i / (data.length - 1)) * width,
-    y: height - v * height,
+// ─── Gifted-charts data mapping helpers ────────────────────────────────────
+const toBarData = (points: RevenueTrendPoint[]): { value: number; label: string; frontColor: string }[] =>
+  points.map((p, i) => ({
+    value: Math.max(p.revenue, 0),
+    label: monthLabel(p.month),
+    frontColor: i === points.length - 1 ? Colors.accent : Colors.accentSubtle.replace('0.15', '0.45'),
   }));
 
-  return (
-    <View style={{ width, height, overflow: 'hidden' }}>
-      {/* Area fill rows */}
-      {pts.slice(0, -1).map((pt, i) => {
-        const next = pts[i + 1];
-        const segW = next.x - pt.x;
-        const topY = Math.min(pt.y, next.y);
-        const botH = height - topY;
-        return (
-          <View
-            key={`area-${i}`}
-            style={{
-              position: 'absolute',
-              left: pt.x,
-              top: topY,
-              width: segW,
-              height: botH,
-              backgroundColor: 'rgba(220,31,38,0.08)',
-            }}
-          />
-        );
-      })}
+const toLineData = (points: RevenueTrendPoint[]): { value: number; label: string }[] =>
+  points.map(p => ({ value: Math.max(p.unitsSold, 0), label: monthLabel(p.month) }));
 
-      {/* Line segments */}
-      {pts.slice(0, -1).map((pt, i) => {
-        const next = pts[i + 1];
-        const dx = next.x - pt.x;
-        const dy = next.y - pt.y;
-        const len = Math.sqrt(dx * dx + dy * dy);
-        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-        return (
-          <View
-            key={`line-${i}`}
-            style={{
-              position: 'absolute',
-              left: pt.x,
-              top: pt.y - 1,
-              width: len,
-              height: 2,
-              backgroundColor: '#DC1F26',
-              transformOrigin: 'left center',
-              transform: [{ rotate: `${angle}deg` }],
-            }}
-          />
-        );
-      })}
-
-      {/* End dot */}
-      <View
-        style={{
-          position: 'absolute',
-          left: pts[pts.length - 1].x - 4,
-          top: pts[pts.length - 1].y - 4,
-          width: 8,
-          height: 8,
-          borderRadius: 4,
-          backgroundColor: '#DC1F26',
-          borderWidth: 2,
-          borderColor: '#FFFFFF',
-        }}
-      />
-    </View>
-  );
+const toLeadBarData = (lf: LeadFunnel): { value: number; label: string; frontColor: string }[] => {
+  const entries: { key: keyof LeadFunnel; label: string; color: string }[] = [
+    { key: 'NEW', label: 'New', color: '#3B82F6' },
+    { key: 'CONTACTED', label: 'Ctd', color: '#F59E0B' },
+    { key: 'QUALIFIED', label: 'Qual', color: '#A78BFA' },
+    { key: 'NEGOTIATING', label: 'Neg', color: '#EC4899' },
+    { key: 'WON', label: 'Won', color: Colors.success },
+    { key: 'LOST', label: 'Lost', color: '#606070' },
+  ];
+  return entries.map(e => ({ value: Math.max(lf[e.key], 0), label: e.label, frontColor: e.color }));
 };
 
 // ─── Circular gauge ─────────────────────────────────────────────────────────
@@ -237,6 +190,22 @@ const CircularGauge: React.FC<{ value: number; size: number }> = ({ value, size 
   );
 };
 
+// ─── Skeleton rows for loading state ────────────────────────────────────────
+const AnalyticsSkeleton: React.FC = () => (
+  <View style={{ paddingHorizontal: 24, gap: 14 }}>
+    <Skeleton w={SCREEN_WIDTH - 48} h={160} r={20} />
+    <View style={{ flexDirection: 'row', gap: 12 }}>
+      <Skeleton w={HALF_CARD} h={90} r={18} />
+      <Skeleton w={HALF_CARD} h={90} r={18} />
+    </View>
+    <View style={{ flexDirection: 'row', gap: 12 }}>
+      <Skeleton w={HALF_CARD} h={90} r={18} />
+      <Skeleton w={HALF_CARD} h={90} r={18} />
+    </View>
+    <Skeleton w={SCREEN_WIDTH - 48} h={120} r={20} />
+  </View>
+);
+
 // ─── Main Component ─────────────────────────────────────────────────────────
 export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -247,21 +216,25 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
 
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
+  const doFetch = (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
     const { range, from, to } = periodToQuery(period);
     const params = new URLSearchParams({ range });
     if (from) params.set('from', from);
     if (to) params.set('to', to);
 
     apiClient<{ success: boolean; data: AnalyticsData }>(`/dealers/analytics?${params.toString()}`)
-      .then(res => { if (!cancelled && res.success) setAnalytics(res.data); })
+      .then(res => { if (res.success) setAnalytics(res.data); })
       .catch(() => {})
-      .finally(() => { if (!cancelled) setLoading(false); });
+      .finally(() => { setLoading(false); setRefreshing(false); });
+  };
 
-    return () => { cancelled = true; };
+  useEffect(() => {
+    doFetch();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period]);
 
   const switchPeriod = (p: Period) => {
@@ -274,13 +247,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
 
   const kpis = analytics?.kpis;
   const revenueTrend = analytics?.revenueTrend ?? [];
-  const sparkData = (() => {
-    if (revenueTrend.length < 2) return [];
-    const max = Math.max(...revenueTrend.map(r => r.revenue), 1);
-    return revenueTrend.map(r => Math.max(0.04, r.revenue / max));
-  })();
   const chartW = SCREEN_WIDTH - 64;
-  const chartH = 80;
 
   const PERIODS: Period[] = ['7D', '30D', '90D', 'YTD', 'ALL'];
 
@@ -425,10 +392,24 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
   };
 
   // ── Main Analytics View ──────────────────────────────────────────────────
-  const renderAnalyticsView = () => (
+  const renderAnalyticsView = () => {
+    const barData = revenueTrend.length > 0 ? toBarData(revenueTrend.slice(-6)) : [];
+    const lineData = revenueTrend.length > 0 ? toLineData(revenueTrend.slice(-6)) : [];
+    const leadFunnelData = analytics?.leadFunnel ? toLeadBarData(analytics.leadFunnel) : [];
+    const hasData = !!analytics && (revenueTrend.length > 0 || (kpis?.totalUnitsSold ?? 0) > 0);
+
+    return (
     <ScrollView
       showsVerticalScrollIndicator={false}
       contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 12 }]}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => doFetch(true)}
+          tintColor={Colors.accent}
+          colors={[Colors.accent]}
+        />
+      }
     >
       {/* Header */}
       <View style={styles.header}>
@@ -462,201 +443,244 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
         ))}
       </View>
 
-      {/* Revenue chart card */}
-      <Animated.View style={[styles.revenueCard, { opacity: fadeAnim }]}>
-        <LinearGradient
-          colors={['rgba(220,31,38,0.04)', 'rgba(0,0,0,0)']}
-          style={StyleSheet.absoluteFillObject}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        />
-        <View style={styles.revenueTop}>
-          <View>
-            <Text style={styles.revLabel}>REVENUE · {period}</Text>
-            <Text style={styles.revValue}>
-              {loading ? '–' : formatGBP(kpis?.totalRevenue ?? 0)}
-            </Text>
-            {!loading && kpis && renderTrend(kpis.totalRevenueTrend, styles.revChangeText, styles.revChange, 12)}
-          </View>
-        </View>
-
-        {/* Chart */}
-        <View style={styles.chartArea}>
-          {sparkData.length > 1 ? (
-            <SparkLine data={sparkData} width={chartW} height={chartH} />
-          ) : (
-            <View style={{ height: chartH, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontFamily: FontFamily.regular, fontSize: 12, color: '#606070' }}>
-                {loading ? 'Loading revenue trend…' : 'Not enough sales yet to chart a trend'}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Chart gradient overlay */}
-        <LinearGradient
-          colors={['transparent', 'rgba(17,17,22,0.6)']}
-          style={styles.chartFade}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          pointerEvents="none"
-        />
-      </Animated.View>
-
-      {/* Stats grid */}
-      <Animated.View style={[styles.statsGrid, { opacity: fadeAnim }]}>
-        {/* Cars Sold */}
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>CARS SOLD</Text>
-          <Text style={styles.statValue}>
-            {loading ? '–' : String(kpis?.totalUnitsSold ?? 0)}
-          </Text>
-          {!loading && kpis && renderTrend(kpis.totalUnitsSoldTrend, styles.statChangeGreen, styles.statChange, 11)}
-        </View>
-
-        {/* Avg Sell Time */}
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>AVG SELL TIME</Text>
-          <Text style={styles.statValue}>
-            {loading ? '–' : `${kpis?.avgDaysToSell ?? 0}d`}
-          </Text>
-          {!loading && kpis && renderTrend(kpis.avgDaysToSellTrend, styles.statChangeGreen, styles.statChange, 11)}
-        </View>
-
-        {/* Avg Views per Listing */}
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>AVG VIEWS / LISTING</Text>
-          <Text style={styles.statValue}>
-            {loading ? '–' : String(kpis?.avgViewsPerListing ?? 0)}
-          </Text>
-          {!loading && kpis && renderTrend(kpis.avgViewsPerListingTrend, styles.statChangeGreen, styles.statChange, 11)}
-        </View>
-
-        {/* Listings Live */}
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>LISTINGS LIVE</Text>
-          <Text style={styles.statValue}>
-            {loading ? '–' : String(analytics?.inventoryHealth.ACTIVE ?? 0)}
-          </Text>
-          <View style={styles.statChange}>
-            <Ionicons
-              name={(analytics?.inventoryHealth.staleCount ?? 0) > 0 ? 'alert-circle' : 'checkmark-circle'}
-              size={11}
-              color={(analytics?.inventoryHealth.staleCount ?? 0) > 0 ? '#F59E0B' : '#22C55E'}
-            />
-            <Text style={[styles.statChangeGreen, { color: (analytics?.inventoryHealth.staleCount ?? 0) > 0 ? '#F59E0B' : '#22C55E' }]}>
-              {' '}{(analytics?.inventoryHealth.staleCount ?? 0) > 0 ? `${analytics?.inventoryHealth.staleCount} stale 60d+` : 'All listings fresh'}
-            </Text>
-          </View>
-        </View>
-      </Animated.View>
-
-      {/* Top Performers */}
-      <Text style={styles.sectionLabel}>TOP PERFORMERS</Text>
-      <View style={styles.topSection}>
-        {loading ? (
-          <View style={{ paddingVertical: 28, alignItems: 'center' }}>
-            <ActivityIndicator color="#DC1F26" />
-          </View>
-        ) : (analytics?.topVehicles ?? []).length === 0 ? (
-          <View style={{ paddingVertical: 28, paddingHorizontal: 12, alignItems: 'center' }}>
-            <Text style={{ fontFamily: FontFamily.regular, fontSize: 12, color: '#606070', textAlign: 'center' }}>
-              No listings yet — your top performers will appear here once your cars start getting views.
-            </Text>
-          </View>
-        ) : (
-          (analytics?.topVehicles ?? []).slice(0, 5).map((car, i, arr) => (
-            <View key={car.id}>
-              <View style={styles.perfRow}>
-                <View style={[styles.rankBadge, i === 0 && styles.rankBadgeRed]}>
-                  <Text style={styles.rankText}>#{i + 1}</Text>
-                </View>
-                {car.image ? (
-                  <Image source={{ uri: car.image }} style={styles.perfThumb} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-                ) : (
-                  <View style={[styles.perfThumb, { alignItems: 'center', justifyContent: 'center' }]}>
-                    <Ionicons name="car-sport-outline" size={18} color="#606070" />
-                  </View>
-                )}
-                <View style={styles.perfInfo}>
-                  <Text style={styles.perfTitle} numberOfLines={1}>{car.title}</Text>
-                  <Text style={styles.perfSub}>
-                    {car.daysListed}d listed · {car.views.toLocaleString('en-GB')} views · {car.offerCount} offer{car.offerCount === 1 ? '' : 's'}
-                  </Text>
-                </View>
-                <Text style={styles.perfPrice}>{formatGBP(car.price)}</Text>
-              </View>
-              {i < arr.length - 1 && <View style={styles.perfDivider} />}
-            </View>
-          ))
-        )}
-      </View>
-
-      {/* Conversion deep dive CTA */}
-      <TouchableOpacity
-        style={styles.convCTA}
-        onPress={() => setSubView('conversion')}
-        activeOpacity={0.85}
-      >
-        <LinearGradient
-          colors={['rgba(34,197,94,0.10)', 'rgba(34,197,94,0.04)']}
-          style={StyleSheet.absoluteFillObject}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        />
-        <View style={styles.convCTALeft}>
-          <Text style={styles.convCTALabel}>LEAD CONVERSION RATE</Text>
-          <Text style={styles.convCTAValue}>
-            {loading ? '–' : `${kpis?.leadConversionRate ?? 0}%`}
-            {!loading && kpis && (
-              <Text style={styles.convCTABench}>
-                {'  '}{kpis.leadConversionRateTrend > 0 ? '+' : ''}{kpis.leadConversionRateTrend}% vs prev period
-              </Text>
-            )}
-          </Text>
-        </View>
-        <View style={styles.convCTARight}>
-          <Text style={styles.convCTALink}>Deep dive</Text>
-          <Ionicons name="chevron-forward" size={14} color="#22C55E" />
-        </View>
-      </TouchableOpacity>
-
-      {/* Monthly breakdown */}
-      <Text style={styles.sectionLabel}>MONTHLY BREAKDOWN</Text>
-      {revenueTrend.length === 0 ? (
-        <View style={[styles.monthCard, { justifyContent: 'center', paddingVertical: 36 }]}>
-          <Text style={{ fontFamily: FontFamily.regular, fontSize: 12, color: '#606070' }}>
-            {loading ? 'Loading monthly trend…' : 'No completed sales yet — monthly trends will appear here once you start selling.'}
-          </Text>
+      {/* Skeleton while loading */}
+      {loading ? (
+        <AnalyticsSkeleton />
+      ) : !hasData ? (
+        <View style={{ marginHorizontal: 24, marginTop: 40 }}>
+          <EmptyState
+            icon="bar-chart-outline"
+            title="No analytics data yet"
+            subtitle="Start listing and selling cars to see your performance charts here."
+          />
         </View>
       ) : (
-        <View style={styles.monthCard}>
-          {revenueTrend.slice(-6).map((m, i, arr) => {
-            const maxRev = Math.max(...arr.map(x => x.revenue), 1);
-            const barH = Math.max(4, (m.revenue / maxRev) * 60);
-            const isLast = i === arr.length - 1;
-            return (
-              <View key={m.month} style={styles.monthCol}>
-                <Text style={styles.monthRev}>{formatGBP(m.revenue)}</Text>
-                <View style={styles.monthBarTrack}>
-                  <View
-                    style={[
-                      styles.monthBarFill,
-                      { height: barH, backgroundColor: isLast ? '#DC1F26' : 'rgba(220,31,38,0.35)' },
-                    ]}
-                  />
-                </View>
-                <Text style={styles.monthSold}>{m.unitsSold}</Text>
-                <Text style={styles.monthName}>{monthLabel(m.month)}</Text>
+        <>
+          {/* Revenue BarChart card */}
+          <Animated.View style={[styles.revenueCard, { opacity: fadeAnim }]}>
+            <LinearGradient
+              colors={['rgba(220,31,38,0.04)', 'rgba(0,0,0,0)']}
+              style={StyleSheet.absoluteFillObject}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            />
+            <View style={styles.revenueTop}>
+              <View>
+                <Text style={styles.revLabel}>REVENUE · {period}</Text>
+                <Text style={styles.revValue}>
+                  {formatGBP(kpis?.totalRevenue ?? 0)}
+                </Text>
+                {kpis && renderTrend(kpis.totalRevenueTrend, styles.revChangeText, styles.revChange, 12)}
               </View>
-            );
-          })}
-        </View>
-      )}
+            </View>
 
-      <View style={{ height: 100 }} />
+            {/* Gifted-charts BarChart */}
+            <View style={styles.chartArea}>
+              {barData.length > 0 ? (
+                <BarChart
+                  data={barData}
+                  width={chartW - 8}
+                  height={90}
+                  barWidth={Math.max(10, Math.floor((chartW - 60) / Math.max(barData.length, 1)) - 4)}
+                  barBorderRadius={4}
+                  hideRules
+                  hideYAxisText
+                  xAxisColor="transparent"
+                  yAxisColor="transparent"
+                  xAxisLabelTextStyle={{ fontFamily: FontFamily.mono, fontSize: 8, color: Colors.textMuted }}
+                  noOfSections={3}
+                  maxValue={Math.max(...barData.map(d => d.value), 1)}
+                  isAnimated
+                />
+              ) : (
+                <View style={{ height: 90, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontFamily: FontFamily.regular, fontSize: 12, color: Colors.textMuted }}>
+                    Not enough sales yet to chart a trend
+                  </Text>
+                </View>
+              )}
+            </View>
+          </Animated.View>
+
+          {/* Units Sold LineChart card */}
+          {lineData.length > 1 && (
+            <Animated.View style={[styles.revenueCard, { opacity: fadeAnim, marginTop: 0 }]}>
+              <View style={styles.revenueTop}>
+                <View>
+                  <Text style={styles.revLabel}>UNITS SOLD TREND</Text>
+                  <Text style={[styles.revValue, { fontSize: 24 }]}>
+                    {kpis?.totalUnitsSold ?? 0}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.chartArea}>
+                <LineChart
+                  data={lineData}
+                  width={chartW - 8}
+                  height={90}
+                  color={Colors.accentGlow}
+                  thickness={2}
+                  areaChart
+                  startFillColor={Colors.accent}
+                  startOpacity={0.18}
+                  endFillColor={Colors.accent}
+                  endOpacity={0.02}
+                  dataPointsColor={Colors.white}
+                  dataPointsRadius={3}
+                  hideRules
+                  hideYAxisText
+                  xAxisColor="transparent"
+                  yAxisColor="transparent"
+                  xAxisLabelTextStyle={{ fontFamily: FontFamily.mono, fontSize: 8, color: Colors.textMuted }}
+                  isAnimated
+                />
+              </View>
+            </Animated.View>
+          )}
+
+          {/* Stats grid */}
+          <Animated.View style={[styles.statsGrid, { opacity: fadeAnim }]}>
+            {/* Cars Sold */}
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>CARS SOLD</Text>
+              <Text style={styles.statValue}>
+                {String(kpis?.totalUnitsSold ?? 0)}
+              </Text>
+              {kpis && renderTrend(kpis.totalUnitsSoldTrend, styles.statChangeGreen, styles.statChange, 11)}
+            </View>
+
+            {/* Avg Sell Time */}
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>AVG SELL TIME</Text>
+              <Text style={styles.statValue}>
+                {`${kpis?.avgDaysToSell ?? 0}d`}
+              </Text>
+              {kpis && renderTrend(kpis.avgDaysToSellTrend, styles.statChangeGreen, styles.statChange, 11)}
+            </View>
+
+            {/* Avg Views per Listing */}
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>AVG VIEWS / LISTING</Text>
+              <Text style={styles.statValue}>
+                {String(kpis?.avgViewsPerListing ?? 0)}
+              </Text>
+              {kpis && renderTrend(kpis.avgViewsPerListingTrend, styles.statChangeGreen, styles.statChange, 11)}
+            </View>
+
+            {/* Listings Live */}
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>LISTINGS LIVE</Text>
+              <Text style={styles.statValue}>
+                {String(analytics?.inventoryHealth.ACTIVE ?? 0)}
+              </Text>
+              <View style={styles.statChange}>
+                <Ionicons
+                  name={(analytics?.inventoryHealth.staleCount ?? 0) > 0 ? 'alert-circle' : 'checkmark-circle'}
+                  size={11}
+                  color={(analytics?.inventoryHealth.staleCount ?? 0) > 0 ? Colors.warning : Colors.success}
+                />
+                <Text style={[styles.statChangeGreen, { color: (analytics?.inventoryHealth.staleCount ?? 0) > 0 ? Colors.warning : Colors.success }]}>
+                  {' '}{(analytics?.inventoryHealth.staleCount ?? 0) > 0 ? `${analytics?.inventoryHealth.staleCount} stale 60d+` : 'All listings fresh'}
+                </Text>
+              </View>
+            </View>
+          </Animated.View>
+
+          {/* Lead Funnel BarChart */}
+          {leadFunnelData.length > 0 && (
+            <>
+              <Text style={styles.sectionLabel}>LEAD FUNNEL</Text>
+              <View style={[styles.monthCard, { flexDirection: 'column', alignItems: 'flex-start', paddingTop: 20 }]}>
+                <BarChart
+                  data={leadFunnelData}
+                  width={chartW - 8}
+                  height={100}
+                  barWidth={Math.floor((chartW - 60) / 6) - 4}
+                  barBorderRadius={4}
+                  hideRules
+                  hideYAxisText
+                  xAxisColor="transparent"
+                  yAxisColor="transparent"
+                  xAxisLabelTextStyle={{ fontFamily: FontFamily.mono, fontSize: 8, color: Colors.textMuted }}
+                  maxValue={Math.max(...leadFunnelData.map(d => d.value), 1)}
+                  isAnimated
+                />
+              </View>
+            </>
+          )}
+
+          {/* Top Performers */}
+          <Text style={styles.sectionLabel}>TOP PERFORMERS</Text>
+          <View style={styles.topSection}>
+            {(analytics?.topVehicles ?? []).length === 0 ? (
+              <View style={{ paddingVertical: 28, paddingHorizontal: 12, alignItems: 'center' }}>
+                <Text style={{ fontFamily: FontFamily.regular, fontSize: 12, color: Colors.textMuted, textAlign: 'center' }}>
+                  No listings yet — your top performers will appear here once your cars start getting views.
+                </Text>
+              </View>
+            ) : (
+              (analytics?.topVehicles ?? []).slice(0, 5).map((car, i, arr) => (
+                <View key={car.id}>
+                  <View style={styles.perfRow}>
+                    <View style={[styles.rankBadge, i === 0 && styles.rankBadgeRed]}>
+                      <Text style={styles.rankText}>#{i + 1}</Text>
+                    </View>
+                    {car.image ? (
+                      <Image source={{ uri: car.image }} style={styles.perfThumb} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+                    ) : (
+                      <View style={[styles.perfThumb, { alignItems: 'center', justifyContent: 'center' }]}>
+                        <Ionicons name="car-sport-outline" size={18} color={Colors.textMuted} />
+                      </View>
+                    )}
+                    <View style={styles.perfInfo}>
+                      <Text style={styles.perfTitle} numberOfLines={1}>{car.title}</Text>
+                      <Text style={styles.perfSub}>
+                        {car.daysListed}d listed · {car.views.toLocaleString('en-GB')} views · {car.offerCount} offer{car.offerCount === 1 ? '' : 's'}
+                      </Text>
+                    </View>
+                    <Text style={styles.perfPrice}>{formatGBP(car.price)}</Text>
+                  </View>
+                  {i < arr.length - 1 && <View style={styles.perfDivider} />}
+                </View>
+              ))
+            )}
+          </View>
+
+          {/* Conversion deep dive CTA */}
+          <TouchableOpacity
+            style={styles.convCTA}
+            onPress={() => setSubView('conversion')}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={['rgba(34,197,94,0.10)', 'rgba(34,197,94,0.04)']}
+              style={StyleSheet.absoluteFillObject}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            />
+            <View style={styles.convCTALeft}>
+              <Text style={styles.convCTALabel}>LEAD CONVERSION RATE</Text>
+              <Text style={styles.convCTAValue}>
+                {`${kpis?.leadConversionRate ?? 0}%`}
+                {kpis && (
+                  <Text style={styles.convCTABench}>
+                    {'  '}{kpis.leadConversionRateTrend > 0 ? '+' : ''}{kpis.leadConversionRateTrend}% vs prev period
+                  </Text>
+                )}
+              </Text>
+            </View>
+            <View style={styles.convCTARight}>
+              <Text style={styles.convCTALink}>Deep dive</Text>
+              <Ionicons name="chevron-forward" size={14} color={Colors.success} />
+            </View>
+          </TouchableOpacity>
+
+          <View style={{ height: 100 }} />
+        </>
+      )}
     </ScrollView>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -779,10 +803,10 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   revValue: {
-    fontFamily: FontFamily.extraBold,
-    fontSize: 34,
+    fontFamily: FontFamily.mono,
+    fontSize: 30,
     color: '#FFFFFF',
-    letterSpacing: -1.5,
+    letterSpacing: -1,
     marginBottom: 6,
   },
   revChange: {
@@ -830,10 +854,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   statValue: {
-    fontFamily: FontFamily.extraBold,
-    fontSize: 28,
+    fontFamily: FontFamily.mono,
+    fontSize: 26,
     color: '#FFFFFF',
-    letterSpacing: -1,
+    letterSpacing: -0.5,
     marginBottom: 6,
   },
   statChange: {
@@ -946,7 +970,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   convCTAValue: {
-    fontFamily: FontFamily.extraBold,
+    fontFamily: FontFamily.mono,
     fontSize: 20,
     color: '#22C55E',
     letterSpacing: -0.5,
