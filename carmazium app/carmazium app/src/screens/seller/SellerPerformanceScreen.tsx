@@ -1,19 +1,26 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BarChart, LineChart } from 'react-native-gifted-charts';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { FontFamily } from '../../constants/typography';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { EmptyState } from '../../components/ui/EmptyState';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CHART_W = SCREEN_WIDTH - 64;
 
 // ─────────────────────────── interfaces ───────────────────────────
 
@@ -30,20 +37,66 @@ interface SellerPerformanceData {
   totalListings: number;
   conversionRate: number;
   recentListingViews: RecentListingView[];
+  // Optional trend arrays the backend may return
+  revenueTrend?: Array<{ month: string; revenue: number }>;
+  viewsTrend?: Array<{ month: string; views: number }>;
 }
 
 // ─────────────────────────── helpers ──────────────────────────────
 
 const formatCurrency = (n: number): string => {
   if (n >= 1_000_000) return `£${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `£${(n / 1_000).toFixed(1)}k`;
-  return `£${n.toLocaleString('en-GB')}`;
+  if (n >= 1_000) return `£${Math.round(n).toLocaleString('en-GB')}`;
+  return `£${Math.round(n)}`;
 };
 
-const formatViews = (n: number): string => {
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
-  return `${n}`;
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const monthLabel = (ym: string): string => {
+  const month = parseInt(ym.split('-')[1] ?? '', 10);
+  return MONTH_NAMES[month - 1] ?? ym;
 };
+
+// Build gifted-charts data arrays from API response.
+// Falls back to synthesising a single-point array from the total so charts
+// always have something to render (rather than crashing on empty arrays).
+const buildRevenueData = (d: SellerPerformanceData): { value: number; label: string }[] => {
+  if (d.revenueTrend && d.revenueTrend.length > 0) {
+    return d.revenueTrend.map(p => ({ value: Math.max(p.revenue, 0), label: monthLabel(p.month) }));
+  }
+  // Synthesise from totalRevenue so the chart renders something meaningful
+  return [{ value: Math.max(d.totalRevenue, 0), label: 'Total' }];
+};
+
+const buildViewsData = (d: SellerPerformanceData): { value: number; label: string; frontColor: string }[] => {
+  if (d.viewsTrend && d.viewsTrend.length > 0) {
+    return d.viewsTrend.map(p => ({ value: Math.max(p.views, 0), label: monthLabel(p.month), frontColor: Colors.accentGlow }));
+  }
+  // Fall back to recentListingViews if available
+  if (d.recentListingViews && d.recentListingViews.length > 0) {
+    return d.recentListingViews.slice(0, 8).map((item, i) => ({
+      value: Math.max(item.views, 0),
+      label: item.title.split(' ')[0] ?? String(i + 1),
+      frontColor: i === 0 ? Colors.accent : 'rgba(220,31,38,0.4)',
+    }));
+  }
+  return [{ value: Math.max(d.totalViews, 0), label: 'Total', frontColor: Colors.accent }];
+};
+
+// ─────────────────── skeleton ─────────────────────────────────────
+
+const PerformanceSkeleton: React.FC = () => (
+  <View style={{ paddingHorizontal: 20, gap: 14 }}>
+    {/* KPI grid */}
+    <View style={styles.statsGrid}>
+      {[0, 1, 2, 3].map((i) => (
+        <Skeleton key={i} w={(SCREEN_WIDTH - 50) / 2} h={90} r={16} />
+      ))}
+    </View>
+    {/* Chart placeholders */}
+    <Skeleton w={SCREEN_WIDTH - 40} h={160} r={18} />
+    <Skeleton w={SCREEN_WIDTH - 40} h={140} r={18} />
+  </View>
+);
 
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
@@ -51,17 +104,20 @@ export const SellerPerformanceScreen: React.FC<{ navigation?: any }> = ({ naviga
   const insets = useSafeAreaInsets();
   const [data, setData] = useState<SellerPerformanceData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
     try {
       const res = await apiClient<{ success: boolean; data: SellerPerformanceData }>('/listings/performance');
       if (res?.success && res.data) {
         setData(res.data);
       }
     } catch {
-      // silently fail — empty state covers it
+      // silently fail — EmptyState covers missing data
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
@@ -69,54 +125,11 @@ export const SellerPerformanceScreen: React.FC<{ navigation?: any }> = ({ naviga
     fetchData();
   }, [fetchData]);
 
-  const renderSkeleton = () => (
-    <View style={{ paddingHorizontal: 20 }}>
-      <View style={styles.statsGrid}>
-        {[0, 1, 2, 3].map((i) => (
-          <View key={i} style={[styles.statCard, styles.skeletonBlock]} />
-        ))}
-      </View>
-      <View style={[styles.skeletonBlock, { height: 180, borderRadius: 16, marginTop: 24 }]} />
-    </View>
-  );
-
-  const renderEmptyState = () => (
-    <View style={styles.emptyWrap}>
-      <Ionicons name="bar-chart-outline" size={40} color={Colors.textMuted} />
-      <Text style={styles.emptyTitle}>No performance data yet</Text>
-      <Text style={styles.emptySub}>Once your listings start getting views, your stats will appear here.</Text>
-    </View>
-  );
-
-  const renderViewsChart = () => {
-    if (!data || data.recentListingViews.length === 0) return null;
-    const maxViews = Math.max(...data.recentListingViews.map((l) => l.views), 1);
-
-    return (
-      <View>
-        <Text style={styles.sectionLabel}>RECENT LISTING VIEWS</Text>
-        <View style={styles.chartCard}>
-          {data.recentListingViews.map((item, i) => (
-            <View key={item.id} style={styles.viewRow}>
-              <Text style={styles.viewRowLabel} numberOfLines={1}>{item.title}</Text>
-              <View style={styles.viewTrack}>
-                <View
-                  style={[
-                    styles.viewFill,
-                    {
-                      width: `${Math.max(6, (item.views / maxViews) * 100)}%`,
-                      backgroundColor: i === 0 ? Colors.accent : 'rgba(220,31,38,0.35)',
-                    },
-                  ]}
-                />
-              </View>
-              <Text style={styles.viewRowValue}>{formatViews(item.views)}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-    );
-  };
+  const revenueData = data ? buildRevenueData(data) : [];
+  const viewsData = data ? buildViewsData(data) : [];
+  const hasData = data !== null;
+  const hasRevenueTrend = revenueData.length > 1;
+  const hasViewsTrend = viewsData.length > 1;
 
   return (
     <View style={styles.container}>
@@ -139,50 +152,135 @@ export const SellerPerformanceScreen: React.FC<{ navigation?: any }> = ({ naviga
       </View>
 
       <ScrollView
-        contentContainerStyle={{ paddingBottom: insets.bottom + 32, paddingTop: 8 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 40, paddingTop: 8 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => fetchData(true)}
+            tintColor={Colors.accent}
+            colors={[Colors.accent]}
+          />
+        }
       >
         {loading ? (
-          renderSkeleton()
-        ) : !data ? (
-          renderEmptyState()
+          <PerformanceSkeleton />
+        ) : !hasData ? (
+          <View style={{ marginHorizontal: 20, marginTop: 40 }}>
+            <EmptyState
+              icon="bar-chart-outline"
+              title="No performance data yet"
+              subtitle="Publish a listing and start getting views to see your stats here."
+            />
+          </View>
         ) : (
           <View style={{ paddingHorizontal: 20 }}>
+            {/* ── KPI grid ── */}
             <View style={styles.statsGrid}>
               <View style={styles.statCard}>
                 <View style={[styles.statIconWrap, { backgroundColor: 'rgba(34,197,94,0.12)' }]}>
                   <Ionicons name="cash-outline" size={16} color={Colors.success} />
                 </View>
-                <Text style={styles.statValue}>{formatCurrency(data.totalRevenue)}</Text>
+                <Text style={styles.statValue}>{formatCurrency(data!.totalRevenue)}</Text>
                 <Text style={styles.statLabel}>TOTAL REVENUE</Text>
               </View>
               <View style={styles.statCard}>
                 <View style={[styles.statIconWrap, { backgroundColor: 'rgba(59,130,246,0.12)' }]}>
                   <Ionicons name="eye-outline" size={16} color="#3B82F6" />
                 </View>
-                <Text style={styles.statValue}>{formatViews(data.totalViews)}</Text>
+                <Text style={styles.statValue}>{data!.totalViews.toLocaleString('en-GB')}</Text>
                 <Text style={styles.statLabel}>TOTAL VIEWS</Text>
               </View>
               <View style={styles.statCard}>
                 <View style={[styles.statIconWrap, { backgroundColor: 'rgba(245,158,11,0.12)' }]}>
                   <Ionicons name="car-sport-outline" size={16} color={Colors.warning} />
                 </View>
-                <Text style={styles.statValue}>{data.totalListings}</Text>
+                <Text style={styles.statValue}>{String(data!.totalListings)}</Text>
                 <Text style={styles.statLabel}>LISTINGS</Text>
               </View>
               <View style={styles.statCard}>
                 <View style={[styles.statIconWrap, { backgroundColor: 'rgba(220,31,38,0.12)' }]}>
                   <Ionicons name="trending-up-outline" size={16} color={Colors.accent} />
                 </View>
-                <Text style={styles.statValue}>{data.conversionRate.toFixed(1)}%</Text>
+                <Text style={styles.statValue}>{data!.conversionRate.toFixed(1)}%</Text>
                 <Text style={styles.statLabel}>CONVERSION</Text>
               </View>
             </View>
 
-            {renderViewsChart()}
+            {/* ── Revenue trend LineChart ── */}
+            {hasRevenueTrend && (
+              <>
+                <Text style={styles.sectionLabel}>REVENUE TREND</Text>
+                <View style={styles.chartCard}>
+                  <LineChart
+                    data={revenueData}
+                    width={CHART_W}
+                    height={100}
+                    color={Colors.accent}
+                    thickness={2}
+                    areaChart
+                    startFillColor={Colors.accent}
+                    startOpacity={0.18}
+                    endFillColor={Colors.accent}
+                    endOpacity={0.02}
+                    dataPointsColor={Colors.white}
+                    dataPointsRadius={3}
+                    hideRules
+                    hideYAxisText
+                    xAxisColor="transparent"
+                    yAxisColor="transparent"
+                    xAxisLabelTextStyle={{ fontFamily: FontFamily.mono, fontSize: 8, color: Colors.textMuted }}
+                    isAnimated
+                  />
+                </View>
+              </>
+            )}
 
-            {data.recentListingViews.length === 0 && (
-              <Text style={styles.sectionEmptyText}>No recent listing view activity to show.</Text>
+            {/* ── Views over time BarChart ── */}
+            {hasViewsTrend && (
+              <>
+                <Text style={styles.sectionLabel}>VIEWS OVER TIME</Text>
+                <View style={styles.chartCard}>
+                  <BarChart
+                    data={viewsData}
+                    width={CHART_W}
+                    height={90}
+                    barWidth={Math.max(10, Math.floor((CHART_W - 60) / Math.max(viewsData.length, 1)) - 4)}
+                    barBorderRadius={4}
+                    hideRules
+                    hideYAxisText
+                    xAxisColor="transparent"
+                    yAxisColor="transparent"
+                    xAxisLabelTextStyle={{ fontFamily: FontFamily.mono, fontSize: 8, color: Colors.textMuted }}
+                    noOfSections={3}
+                    maxValue={Math.max(...viewsData.map(d => d.value), 1)}
+                    isAnimated
+                  />
+                </View>
+              </>
+            )}
+
+            {/* ── Conversion KPI tile (no chart needed per plan) ── */}
+            <Text style={styles.sectionLabel}>CONVERSION RATE</Text>
+            <View style={styles.convCard}>
+              <View style={[styles.convIconWrap, { backgroundColor: 'rgba(220,31,38,0.12)' }]}>
+                <Ionicons name="analytics-outline" size={22} color={Colors.accent} />
+              </View>
+              <View style={{ flex: 1, marginLeft: 16 }}>
+                <Text style={styles.convValue}>{data!.conversionRate.toFixed(1)}%</Text>
+                <Text style={styles.convLabel}>of listing views convert to an enquiry or offer</Text>
+              </View>
+            </View>
+
+            {/* ── No chart fallback for single-point data ── */}
+            {!hasRevenueTrend && !hasViewsTrend && (
+              <View style={{ marginTop: 12 }}>
+                <EmptyState
+                  icon="trending-up-outline"
+                  title="Not enough data for trend charts"
+                  subtitle="Trend charts appear once you have listings with multiple months of activity."
+                />
+              </View>
             )}
           </View>
         )}
@@ -215,7 +313,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 15,
-    fontFamily: FontFamily.semiBold,
+    fontFamily: FontFamily.bold,
     color: Colors.textPrimary,
   },
 
@@ -224,6 +322,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 10,
     marginTop: 8,
+    marginBottom: 8,
   },
   statCard: {
     width: '47%',
@@ -243,12 +342,12 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 19,
-    fontFamily: FontFamily.bold,
+    fontFamily: FontFamily.mono,
     color: Colors.textPrimary,
   },
   statLabel: {
     fontSize: 9,
-    fontFamily: FontFamily.semiBold,
+    fontFamily: FontFamily.bold,
     color: Colors.textMuted,
     letterSpacing: 0.5,
     marginTop: 4,
@@ -259,14 +358,8 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bold,
     color: Colors.textMuted,
     letterSpacing: 1,
-    marginTop: 28,
-    marginBottom: 12,
-  },
-  sectionEmptyText: {
-    fontSize: 12,
-    fontFamily: FontFamily.regular,
-    color: Colors.textMuted,
-    marginTop: 20,
+    marginTop: 24,
+    marginBottom: 10,
   },
 
   chartCard: {
@@ -274,60 +367,38 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.glassBorder,
     borderRadius: 16,
-    padding: 16,
-    gap: 14,
-  },
-  viewRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  viewRowLabel: {
-    width: 96,
-    fontSize: 11,
-    fontFamily: FontFamily.medium,
-    color: Colors.textSecondary,
-  },
-  viewTrack: {
-    flex: 1,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    paddingHorizontal: 12,
+    paddingTop: 16,
+    paddingBottom: 8,
     overflow: 'hidden',
   },
-  viewFill: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  viewRowValue: {
-    width: 36,
-    textAlign: 'right',
-    fontSize: 11,
-    fontFamily: FontFamily.semiBold,
-    color: Colors.textPrimary,
-  },
 
-  skeletonBlock: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+  convCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.glassBg,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
+    borderRadius: 16,
+    padding: 20,
   },
-
-  emptyWrap: {
+  convIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 100,
-    paddingHorizontal: 40,
-    gap: 10,
   },
-  emptyTitle: {
-    fontSize: 14,
-    fontFamily: FontFamily.semiBold,
+  convValue: {
+    fontSize: 28,
+    fontFamily: FontFamily.mono,
     color: Colors.textPrimary,
+    marginBottom: 2,
   },
-  emptySub: {
-    fontSize: 12,
+  convLabel: {
+    fontSize: 11,
     fontFamily: FontFamily.regular,
     color: Colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 16,
   },
 });
