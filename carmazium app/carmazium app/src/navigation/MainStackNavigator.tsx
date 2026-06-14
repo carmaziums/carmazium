@@ -22,6 +22,8 @@ import { DealerPurchasesScreen } from '../screens/main/DealerPurchasesScreen';
 import { ServicesScreen } from '../screens/main/ServicesScreen';
 import { TermsScreen } from '../screens/main/TermsScreen';
 import { HowItWorksScreen } from '../screens/main/HowItWorksScreen';
+import { AboutScreen } from '../screens/main/AboutScreen';
+import { PricingScreen } from '../screens/main/PricingScreen';
 import { AuctionCompleteScreen } from '../screens/main/AuctionCompleteScreen';
 import { NotificationSettingsScreen } from '../screens/main/NotificationSettingsScreen';
 import { NotificationsScreen } from '../screens/main/NotificationsScreen';
@@ -67,6 +69,8 @@ export type MainStackParamList = {
   Services: undefined;
   Terms: undefined;
   HowItWorks: undefined;
+  About: undefined;
+  Pricing: undefined;
   AuctionComplete: {
     listingId: string;
     auctionId: string;
@@ -191,6 +195,8 @@ export const MainStackNavigator: React.FC = () => {
       <Stack.Screen name="Services" component={ServicesScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="Terms" component={TermsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="HowItWorks" component={HowItWorksScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="About" component={AboutScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="Pricing" component={PricingScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen
         name="AuctionComplete"
         component={AuctionCompleteScreen}

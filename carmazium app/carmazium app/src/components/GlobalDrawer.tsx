@@ -66,8 +66,8 @@ const ITEMS: MenuItem[] = [
   { id: 'services', label: 'Services',   icon: 'construct-outline',         iconLib: 'ion', stackScreen: 'Services' },
   { id: 'settings', label: 'Settings',   icon: 'settings-outline',          iconLib: 'ion', stackScreen: 'Settings' },
   { id: 'notif-settings', label: 'Notification settings', icon: 'notifications-circle-outline', iconLib: 'ion', stackScreen: 'NotificationSettings' },
-  { id: 'pricing',  label: 'Pricing',    icon: 'pricetag-outline',          iconLib: 'ion', action: 'alert', alertTitle: 'Pricing Plans',   alertMsg: 'Premium dealer and private seller plans coming soon — priority listings, AI insights and more.' },
-  { id: 'about',    label: 'About',      icon: 'information-circle-outline', iconLib: 'ion', action: 'alert', alertTitle: 'About Carmazium', alertMsg: "Carmazium is the UK's premium automotive marketplace — connecting buyers with curated, verified vehicle listings and live auction experiences." },
+  { id: 'pricing',  label: 'Pricing',    icon: 'pricetag-outline',          iconLib: 'ion', stackScreen: 'Pricing' },
+  { id: 'about',    label: 'About',      icon: 'information-circle-outline', iconLib: 'ion', stackScreen: 'About' },
   { id: 'terms',    label: 'Terms & Conditions', icon: 'document-text-outline', iconLib: 'ion', stackScreen: 'Terms' },
 ];
 
