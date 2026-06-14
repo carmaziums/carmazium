@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { Textarea } from "@/components/ui/Textarea"
 import {
-    Search, Loader2, BadgeCheck, Camera, Upload, X,
-    CheckCircle, ArrowRight, Sparkles, Car, MapPin,
-    LocateFixed, PoundSterling, AlertTriangle, Zap, Gavel, List, Play
+    Search, Loader2, BadgeCheck, Upload, X,
+    CheckCircle, ArrowRight, Sparkles, Info,
+    LocateFixed, AlertTriangle, Zap, Gavel, List, Play
 } from "lucide-react"
 import Image from "next/image"
 import { ImageUpload } from "@/components/listing/ImageUpload"
@@ -45,6 +45,8 @@ export function DealerQuickList() {
     const [description, setDescription] = React.useState("")
     const [images, setImages] = React.useState<string[]>([])
     const [condition, setCondition] = React.useState("")
+    const [transmission, setTransmission] = React.useState("")
+    const [bodyType, setBodyType] = React.useState<BodyTypeValue | "">("")
     const [editLoading, setEditLoading] = React.useState(false)
 
     const [isGeneratingDesc, setIsGeneratingDesc] = React.useState(false)
@@ -72,6 +74,8 @@ export function DealerQuickList() {
                 setImages(l.images || [])
                 setVideoUrls(l.videoUrls || [])
                 setCondition(l.condition || '')
+                setTransmission(l.transmission || '')
+                setBodyType((l.bodyType as BodyTypeValue) || '')
                 setPublishAs(l.status === 'ACTIVE' ? 'ACTIVE' : 'DRAFT')
                 // Reconstruct dvlaData from listing fields so sections appear
                 setDvlaData({
@@ -169,7 +173,11 @@ export function DealerQuickList() {
     }
 
     // ─── Submit ───────────────────────────────────────────────────────────────
-    const canSubmit = !!(vrm && dvlaData && price && images.length > 0)
+    const canSubmit = !!(
+        vrm && dvlaData && price && images.length > 0 &&
+        // In edit mode all three publish-gate fields must be filled before saving
+        (!editId || (transmission && bodyType && description.trim()))
+    )
 
     const handleSubmit = async () => {
         if (!user || !dvlaData) return
@@ -205,6 +213,8 @@ export function DealerQuickList() {
                 make: dvlaData.make || undefined,
                 model: resolvedModel || undefined,
                 description: description || undefined,
+                transmission: transmission as any || undefined,
+                bodyType: bodyType as BodyTypeValue || undefined,
                 fuelType: dvlaData.fuelType as any || undefined,
                 color: dvlaData.colour || undefined,
                 engineSize: dvlaData.engineSize || undefined,
@@ -267,6 +277,19 @@ export function DealerQuickList() {
                     </div>
                 </div>
             </div>
+
+            {/* ── Edit-mode completion banner ──────────────────────────────── */}
+            {editId && (
+                <div className="flex items-start gap-3 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-200 text-sm">
+                    <Info size={16} className="shrink-0 mt-0.5 text-blue-400" />
+                    <div>
+                        <p className="font-bold text-blue-300 mb-0.5">Complete your listing to publish</p>
+                        <p className="text-xs text-blue-200/70">
+                            DVLA data and your import details are pre-filled. Select <strong>Body Type</strong> and <strong>Transmission</strong>, then add a <strong>Description</strong> — these three are required to go live.
+                        </p>
+                    </div>
+                </div>
+            )}
 
             {/* ── Listing Type Selector ─────────────────────────────────────── */}
             {!editId && (
@@ -438,7 +461,7 @@ export function DealerQuickList() {
                         </div>
                     </div>
 
-                    {/* Condition (single row of pills) */}
+                    {/* Condition */}
                     <div className="space-y-2">
                         <label className="text-xs font-bold uppercase text-gray-400">Condition</label>
                         <div className="flex flex-wrap gap-2">
@@ -453,6 +476,68 @@ export function DealerQuickList() {
                                         }`}
                                 >
                                     {c}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Transmission */}
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold uppercase text-gray-400 flex items-center gap-1">
+                            Transmission
+                            {editId && <span className="text-primary">*</span>}
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                            {[
+                                { value: 'MANUAL', label: 'Manual' },
+                                { value: 'AUTOMATIC', label: 'Automatic' },
+                                { value: 'SEMI_AUTOMATIC', label: 'Semi-Auto' },
+                                { value: 'CVT', label: 'CVT' },
+                            ].map(({ value, label }) => (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    onClick={() => setTransmission(value)}
+                                    className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all ${transmission === value
+                                        ? "border-primary bg-primary/10 text-white shadow-[0_0_12px_rgba(237,28,36,0.15)]"
+                                        : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"
+                                        }`}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Body Type */}
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold uppercase text-gray-400 flex items-center gap-1">
+                            Body Type
+                            {editId && <span className="text-primary">*</span>}
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                            {[
+                                { value: 'HATCHBACK', label: 'Hatchback' },
+                                { value: 'SEDAN', label: 'Saloon' },
+                                { value: 'ESTATE', label: 'Estate' },
+                                { value: 'SUV', label: 'SUV' },
+                                { value: 'CROSSOVER', label: 'Crossover' },
+                                { value: 'COUPE', label: 'Coupé' },
+                                { value: 'CONVERTIBLE', label: 'Convertible' },
+                                { value: 'MPV', label: 'MPV' },
+                                { value: 'VAN', label: 'Van' },
+                                { value: 'PICKUP_TRUCK', label: 'Pickup' },
+                            ].map(({ value, label }) => (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    onClick={() => setBodyType(value as BodyTypeValue)}
+                                    className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all ${bodyType === value
+                                        ? "border-primary bg-primary/10 text-white shadow-[0_0_12px_rgba(237,28,36,0.15)]"
+                                        : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"
+                                        }`}
+                                >
+                                    {label}
                                 </button>
                             ))}
                         </div>
@@ -494,7 +579,10 @@ export function DealerQuickList() {
                         <h2 className="text-sm font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
                             <span className="w-6 h-6 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary text-[10px] font-black">4</span>
                             Description
-                            <span className="text-[10px] text-gray-600 normal-case font-normal">Optional</span>
+                            {editId
+                                ? <span className="text-primary text-[10px] font-black">* Required to publish</span>
+                                : <span className="text-[10px] text-gray-600 normal-case font-normal">Optional</span>
+                            }
                         </h2>
                         <Button
                             type="button"
