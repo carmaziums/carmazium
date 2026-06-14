@@ -16,6 +16,8 @@ import { Colors } from '../../constants/colors';
 import { FontFamily } from '../../constants/typography';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
@@ -314,19 +316,24 @@ export const SearchScreen: React.FC = () => {
 
       {/* ── Results ── */}
       {loading && listings.length === 0 ? (
-        <View style={s.loadingCenter}>
-          <ActivityIndicator size="large" color={Colors.accent} />
-          <Text style={s.loadingText}>Finding the best cars...</Text>
+        <View style={s.skeletonList}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <View key={`sk-${i}`} style={s.skeletonCard}>
+              <Skeleton w={92} h={72} r={10} />
+              <View style={s.skeletonInfo}>
+                <Skeleton w={160} h={14} r={6} />
+                <Skeleton w={100} h={12} r={5} />
+                <Skeleton w={80} h={18} r={6} />
+              </View>
+            </View>
+          ))}
         </View>
       ) : listings.length === 0 ? (
-        <View style={s.emptyCenter}>
-          <Text style={s.emptyEmoji}>🔍</Text>
-          <Text style={s.emptyTitle}>No cars found</Text>
-          <Text style={s.emptySub}>Try adjusting your filters or search term</Text>
-          <TouchableOpacity style={s.resetBtn} onPress={resetFilters}>
-            <Text style={s.resetBtnText}>Reset filters</Text>
-          </TouchableOpacity>
-        </View>
+        <EmptyState
+          icon="search-outline"
+          title="No results"
+          subtitle="Try a different make, model, or filter."
+        />
       ) : (
         <FlatList
           data={listings}
@@ -571,16 +578,11 @@ const s = StyleSheet.create({
   sortOptionText: { fontFamily: FontFamily.medium, fontSize: 13, color: '#FFFFFF' },
 
   listContent: { paddingHorizontal: 24 },
-  loadingCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14 },
-  loadingText: { fontFamily: FontFamily.regular, fontSize: 13, color: '#606070' },
-  emptyCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, gap: 10 },
-  emptyEmoji: { fontSize: 44, marginBottom: 8 },
-  emptyTitle: { fontFamily: FontFamily.bold, fontSize: 18, color: '#FFFFFF' },
-  emptySub: { fontFamily: FontFamily.regular, fontSize: 14, color: '#606070', textAlign: 'center', lineHeight: 20 },
-  resetBtn: { marginTop: 18, paddingHorizontal: 22, paddingVertical: 12, backgroundColor: Colors.accent, borderRadius: 12 },
-  resetBtnText: { fontFamily: FontFamily.bold, fontSize: 13, color: '#FFF' },
   loadMoreWrap: { alignItems: 'center', paddingVertical: 20 },
   endText: { textAlign: 'center', fontFamily: FontFamily.regular, fontSize: 11, color: '#404050', paddingVertical: 20 },
+  skeletonList: { paddingHorizontal: 24, gap: 14 },
+  skeletonCard: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#111115', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', padding: 14 },
+  skeletonInfo: { flex: 1, gap: 6 },
 
   // Filter modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },

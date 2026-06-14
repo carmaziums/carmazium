@@ -23,6 +23,8 @@ import {
   notifStyle,
   notifTimeAgo,
 } from '../../lib/notificationsApi';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 // ─────────────────────────── helpers ──────────────────────────────────────────
 
@@ -121,23 +123,25 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
 
   const renderSkeleton = () =>
     Array.from({ length: 5 }).map((_, i) => (
-      <View key={`sk-${i}`} style={styles.skeleton} />
+      <View key={`sk-${i}`} style={styles.skeletonRow}>
+        <Skeleton w={44} h={44} r={13} />
+        <View style={styles.skeletonContent}>
+          <View style={styles.skeletonTitleRow}>
+            <Skeleton w={160} h={13} r={6} />
+            <Skeleton w={30} h={10} r={5} />
+          </View>
+          <Skeleton w={220} h={12} r={5} />
+          <Skeleton w={180} h={12} r={5} />
+        </View>
+      </View>
     ));
 
   const renderEmpty = () => (
-    <View style={styles.emptyState}>
-      <View style={styles.emptyIconWrap}>
-        <Ionicons
-          name="notifications-outline"
-          size={36}
-          color={Colors.textMuted}
-        />
-      </View>
-      <Text style={styles.emptyTitle}>All caught up</Text>
-      <Text style={styles.emptySub}>
-        Activity on your listings, bids, and offers will appear here.
-      </Text>
-    </View>
+    <EmptyState
+      icon="notifications-outline"
+      title="You're all caught up"
+      subtitle="New notifications will show up here."
+    />
   );
 
   const renderRow = (n: AppNotification, isLast: boolean) => {
@@ -363,43 +367,25 @@ const styles = StyleSheet.create({
   },
 
   // ── Skeleton ──
-  skeleton: {
-    height: 80,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    marginBottom: Spacing.itemGap,
-  },
-
-  // ── Empty ──
-  emptyState: {
+  skeletonRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 80,
-    paddingBottom: 40,
-  },
-  emptyIconWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    gap: 14,
+    backgroundColor: '#111115',
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.06)',
+    padding: 14,
+    marginBottom: Spacing.itemGap,
+  },
+  skeletonContent: {
+    flex: 1,
+    gap: 6,
+  },
+  skeletonTitleRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-  emptyTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.xl,
-    color: '#FFFFFF',
-    marginBottom: 10,
-  },
-  emptySub: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.sm,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 22,
-    paddingHorizontal: 32,
+    justifyContent: 'space-between',
   },
 
   // ── Groups ──

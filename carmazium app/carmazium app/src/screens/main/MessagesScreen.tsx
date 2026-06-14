@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  RefreshControl,
   TouchableOpacity,
   TextInput,
   StatusBar,
@@ -19,6 +20,8 @@ import { ChatRoom, ChatUser } from '../../lib/chatApi';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
@@ -59,6 +62,24 @@ const getInitials = (name: string) => {
     .slice(0, 2);
 };
 
+const renderSkeletonRows = () => (
+  <View style={styles.skeletonList}>
+    {Array.from({ length: 5 }).map((_, i) => (
+      <View key={`sk-${i}`} style={[styles.threadCard, styles.threadCardSpacing, styles.skeletonRow]}>
+        <Skeleton w={48} h={48} r={14} />
+        <View style={styles.skeletonMeta}>
+          <View style={styles.skeletonTitleRow}>
+            <Skeleton w={140} h={14} r={6} />
+            <Skeleton w={36} h={10} r={5} />
+          </View>
+          <Skeleton w={100} h={12} r={5} />
+          <Skeleton w={180} h={12} r={5} />
+        </View>
+      </View>
+    ))}
+  </View>
+);
+
 export const MessagesScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
@@ -67,11 +88,21 @@ export const MessagesScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'offers' | 'archived'>('all');
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
   // Re-fetch rooms when focusing the messages tab
   useEffect(() => {
     refreshRooms();
   }, [refreshRooms]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refreshRooms();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   // Tab filtering logic
   const filteredRooms = rooms.filter((r) => {
@@ -121,8 +152,9 @@ export const MessagesScreen: React.FC = () => {
         style={StyleSheet.absoluteFillObject}
       />
 
-      <FlatList
-        data={filteredRooms}
+      {isLoading && rooms.length === 0 ? renderSkeletonRows() : null}
+    <FlatList
+        data={isLoading && rooms.length === 0 ? [] : filteredRooms}
         keyExtractor={(room) => room.id}
         // Virtualized list — only mounts rows near the viewport, which keeps
         // scrolling smooth as a user's conversation history grows over time
@@ -286,15 +318,21 @@ export const MessagesScreen: React.FC = () => {
           </>
         }
         ListEmptyComponent={
-          <View style={[styles.emptyState, styles.threadCardSpacing]}>
-            <View style={styles.emptyIconBg}>
-              <Ionicons name="chatbubbles-outline" size={32} color="#5C5C6B" />
-            </View>
-            <Text style={styles.emptyTitle}>No messages found</Text>
-            <Text style={styles.emptySubtitle}>
-              {searchQuery ? 'Try adjusting your search query' : 'Conversations with sellers and dealers will appear here.'}
-            </Text>
-          </View>
+          !isLoading ? (
+            <EmptyState
+              icon="chatbubbles-outline"
+              title="No messages yet"
+              subtitle={searchQuery ? 'Try adjusting your search query.' : 'Your conversations with buyers and sellers will appear here.'}
+            />
+          ) : null
+        }
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={Colors.accent}
+            colors={[Colors.accent]}
+          />
         }
         ListFooterComponent={<View style={{ height: 100 }} />}
         contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 16 }]}
@@ -527,30 +565,20 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#FFFFFF',
   },
-  // Empty State
-  emptyState: {
+  // Skeleton
+  skeletonList: {
+    paddingTop: 8,
+  },
+  skeletonRow: {
+    gap: 16,
+  },
+  skeletonMeta: {
+    flex: 1,
+    gap: 6,
+  },
+  skeletonTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 80,
-  },
-  emptyIconBg: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: 16,
-    color: '#FFFFFF',
-    marginBottom: 6,
-  },
-  emptySubtitle: {
-    fontFamily: FontFamily.regular,
-    fontSize: 13,
-    color: '#5C5C6B',
-    textAlign: 'center',
   },
 });

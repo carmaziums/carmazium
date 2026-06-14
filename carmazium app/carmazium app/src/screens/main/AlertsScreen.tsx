@@ -3,6 +3,8 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   StatusBar, ActivityIndicator, RefreshControl,
 } from 'react-native';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -183,16 +185,24 @@ export const AlertsScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       ) : loading ? (
-        <View style={s.centerState}>
-          <ActivityIndicator size="large" color={Colors.accent} />
-          <Text style={s.centerHint}>Loading notifications...</Text>
+        <View style={s.skeletonList}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <View key={`sk-${i}`} style={s.skeletonRow}>
+              <Skeleton w={42} h={42} r={12} />
+              <View style={s.skeletonContent}>
+                <Skeleton w={160} h={14} r={6} />
+                <Skeleton w={220} h={12} r={5} />
+                <Skeleton w={60} h={10} r={5} />
+              </View>
+            </View>
+          ))}
         </View>
       ) : notifications.length === 0 ? (
-        <View style={s.centerState}>
-          <Ionicons name="notifications-outline" size={44} color="#303038" />
-          <Text style={s.centerTitle}>All caught up</Text>
-          <Text style={s.centerHint}>No notifications yet. We'll alert you about bids, offers, and messages.</Text>
-        </View>
+        <EmptyState
+          icon="alert-circle-outline"
+          title="No alerts"
+          subtitle="Price drops and auction reminders will appear here."
+        />
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -284,4 +294,7 @@ const s = StyleSheet.create({
   centerHint: { fontFamily: FontFamily.regular, fontSize: 13, color: '#606070', textAlign: 'center', lineHeight: 20 },
   signInBtn: { backgroundColor: Colors.accent, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, marginTop: 8 },
   signInBtnText: { fontFamily: FontFamily.bold, fontSize: 14, color: '#FFF' },
+  skeletonList: { paddingHorizontal: 18, paddingTop: 8, gap: 8 },
+  skeletonRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#111116', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', padding: 14 },
+  skeletonContent: { flex: 1, gap: 6 },
 });

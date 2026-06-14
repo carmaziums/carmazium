@@ -5,9 +5,9 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  RefreshControl,
   StatusBar,
   Dimensions,
-  ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
@@ -20,6 +20,8 @@ import { Colors } from '../../constants/colors';
 import { CarListing, formatPrice } from '../../data/listings';
 import { useWatchlistStore } from '../../store/watchlistStore';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 const { width } = Dimensions.get('window');
 
@@ -34,12 +36,22 @@ export const SavedScreen: React.FC = () => {
 
   const [viewMode,   setViewMode]   = useState<ViewMode>('grid');
   const [activeTab,  setActiveTab]  = useState('All');
+  const [refreshing, setRefreshing] = useState(false);
 
   const { savedListings, isLoading, toggle, isSaved, hydrateFromApi } = useWatchlistStore();
 
   useEffect(() => {
     hydrateFromApi();
   }, []);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await hydrateFromApi();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [hydrateFromApi]);
 
   const handleCardPress = useCallback(
     (listing: CarListing) => {
@@ -60,19 +72,29 @@ export const SavedScreen: React.FC = () => {
   // ─── Empty State ───────────────────────────────────────────────────────────
 
   const renderEmptyState = () => (
-    <View style={styles.emptyState}>
-      <Ionicons name="heart-outline" size={48} color={Colors.textMuted} />
-      <Text style={styles.emptyTitle}>No saved cars yet</Text>
-      <Text style={styles.emptySubtitle}>
-        Tap the heart on any listing to save it here for quick access.
-      </Text>
-      <TouchableOpacity
-        style={styles.emptyCta}
-        activeOpacity={0.85}
-        onPress={() => navigation.navigate('Search' as any)}
-      >
-        <Text style={styles.emptyCtaText}>Browse listings</Text>
-      </TouchableOpacity>
+    <EmptyState
+      icon="heart-outline"
+      title="Nothing saved yet"
+      subtitle="Tap the heart on any listing to save it here."
+      ctaLabel="Browse listings"
+      onCtaPress={() => navigation.navigate('Search' as any)}
+    />
+  );
+
+  // ─── Skeleton ──────────────────────────────────────────────────────────────
+
+  const renderSkeleton = () => (
+    <View style={styles.skeletonGrid}>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <View key={`sk-${i}`} style={styles.skeletonCard}>
+          <Skeleton w={(width - 40 - 16) / 2} h={116} r={0} />
+          <View style={styles.skeletonInfo}>
+            <Skeleton w={60} h={10} r={4} />
+            <Skeleton w={90} h={13} r={5} />
+            <Skeleton w={70} h={14} r={6} />
+          </View>
+        </View>
+      ))}
     </View>
   );
 
@@ -259,14 +281,25 @@ export const SavedScreen: React.FC = () => {
       )}
 
       {/* Content */}
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.accent} />
-        </View>
+      {isLoading && savedListings.length === 0 ? (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
+        >
+          {renderSkeleton()}
+        </ScrollView>
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={Colors.accent}
+              colors={[Colors.accent]}
+            />
+          }
         >
           {viewMode === 'grid' ? renderGridView() : renderListView()}
         </ScrollView>
@@ -351,46 +384,23 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
 
-  // Loading
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+  // Skeleton
+  skeletonGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
   },
-
-  // Empty State
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 80,
-    paddingHorizontal: 32,
+  skeletonCard: {
+    width: (width - 40 - 16) / 2,
+    backgroundColor: '#111116',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    overflow: 'hidden',
   },
-  emptyTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: 20,
-    color: '#FFFFFF',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontFamily: FontFamily.regular,
-    fontSize: 14,
-    color: '#A0A0AB',
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 28,
-  },
-  emptyCta: {
-    backgroundColor: Colors.accent,
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 12,
-  },
-  emptyCtaText: {
-    fontFamily: FontFamily.bold,
-    fontSize: 15,
-    color: '#FFFFFF',
+  skeletonInfo: {
+    padding: 14,
+    gap: 6,
   },
 
   // Grid View
@@ -452,7 +462,7 @@ const styles = StyleSheet.create({
     marginBottom: 7,
   },
   cardPrice: {
-    fontFamily: FontFamily.bold,
+    fontFamily: FontFamily.mono,
     fontSize: 14,
     color: '#FFFFFF',
   },
@@ -521,7 +531,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   listPrice: {
-    fontFamily: FontFamily.bold,
+    fontFamily: FontFamily.mono,
     fontSize: 15,
     color: '#FFFFFF',
   },
