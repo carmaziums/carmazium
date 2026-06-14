@@ -707,6 +707,8 @@ model Auction {
   handoverSubmittedAt    DateTime?
   sellerBonusReleased    Boolean   @default(false)
   sellerBonusReleasedAt  DateTime?
+  stripePayoutTransferId String?   // Set when Stripe transfer succeeds
+  stripePayoutError      String?   // Set if Stripe transfer fails — needs manual action
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt

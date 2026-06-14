@@ -545,6 +545,24 @@ export class PaymentsService {
                 }
                 break;
             }
+
+            // Mark seller's Connect onboarding complete as soon as Stripe confirms it.
+            // This fires when the seller finishes Stripe's hosted onboarding flow,
+            // covering the case where they close the tab before our return_url fires.
+            case 'account.updated': {
+                const account = event.data.object as any;
+                const isComplete = !!(account.charges_enabled && account.payouts_enabled);
+                if (isComplete) {
+                    await this.prisma.user.updateMany({
+                        where: {
+                            stripeConnectAccountId: account.id,
+                            stripeConnectOnboardingComplete: false,
+                        },
+                        data: { stripeConnectOnboardingComplete: true },
+                    });
+                }
+                break;
+            }
         }
 
         return { received: true };
@@ -584,12 +602,13 @@ export class PaymentsService {
      * Transfer the seller payout (£100) to their connected Stripe Express account.
      * Called by AdminService after superadmin approves handover proof.
      */
-    async issueSellerPayout(stripeConnectAccountId: string, amountPence = 10000): Promise<void> {
+    async issueSellerPayout(stripeConnectAccountId: string, amountPence = 10000): Promise<string> {
         const stripe = await this.getStripe();
-        await stripe.transfers.create({
+        const transfer = await stripe.transfers.create({
             amount: amountPence,
             currency: 'gbp',
             destination: stripeConnectAccountId,
         });
+        return transfer.id;
     }
 }

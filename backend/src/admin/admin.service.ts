@@ -225,16 +225,48 @@ export class AdminService {
                 },
             });
 
+            let payoutSucceeded = false;
             if (seller?.stripeConnectAccountId && seller?.stripeConnectOnboardingComplete) {
-                await this.paymentsService.issueSellerPayout(seller.stripeConnectAccountId).catch(err =>
-                    console.error(`Stripe payout failed for auction ${auctionId}:`, err),
-                );
+                try {
+                    const transferId = await this.paymentsService.issueSellerPayout(
+                        seller.stripeConnectAccountId,
+                    );
+                    // Record transfer ID for audit trail
+                    await this.prisma.auction.update({
+                        where: { id: auctionId },
+                        data: { stripePayoutTransferId: transferId },
+                    });
+                    payoutSucceeded = true;
+                } catch (err: any) {
+                    const errMsg = err?.message || 'Unknown Stripe error';
+                    console.error(`[Admin] Stripe payout failed for auction ${auctionId}:`, errMsg);
+                    // Persist error so admins can see it in the handovers view
+                    await this.prisma.auction.update({
+                        where: { id: auctionId },
+                        data: { stripePayoutError: errMsg },
+                    });
+                    // Notify every admin so they can manually transfer
+                    const admins = await this.prisma.user.findMany({
+                        where: { role: 'ADMIN', deletedAt: null },
+                        select: { id: true },
+                    });
+                    for (const admin of admins) {
+                        this.notificationsGateway.sendNotification(admin.id, {
+                            type: 'PAYOUT_FAILED',
+                            title: '⚠️ Payout failed — manual action needed',
+                            message: `Auto-transfer of £100 to seller for "${auction.listing.title}" failed: ${errMsg}. Please pay manually.`,
+                            entityType: 'AUCTION',
+                            entityId: auctionId,
+                            link: '/dashboard/admin/handovers',
+                        });
+                    }
+                }
             }
 
             this.notificationsGateway.sendNotification(sellerId, {
                 type: 'HANDOVER_APPROVED',
                 title: 'Handover verified',
-                message: seller?.stripeConnectOnboardingComplete
+                message: payoutSucceeded
                     ? `Your handover proof for "${auction.listing.title}" has been approved. Your £100 bonus is on its way to your bank account.`
                     : `Your handover proof for "${auction.listing.title}" has been approved. Connect your bank account in Settings to receive your £100 bonus.`,
                 entityType: 'AUCTION',
