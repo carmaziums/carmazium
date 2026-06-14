@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -13,6 +14,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 // ─────────────────────────── interfaces ───────────────────────────
 
@@ -70,8 +73,10 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalSales, setTotalSales] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
     try {
       const [res] = await Promise.allSettled([
         apiClient<EarningsResponse>('/listings/earnings'),
@@ -86,6 +91,7 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
       // silently fail — show zeros
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
@@ -97,17 +103,26 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
 
   const renderSkeleton = () =>
     Array.from({ length: 3 }).map((_, i) => (
-      <View key={`sk-${i}`} style={styles.skeletonRow} />
+      <View key={`sk-${i}`} style={styles.skeletonRowWrap}>
+        <Skeleton w={36} h={36} r={18} />
+        <View style={styles.skeletonRowContent}>
+          <Skeleton w={140} h={14} r={6} />
+          <Skeleton w={80} h={12} r={5} />
+          <Skeleton w={60} h={10} r={5} />
+        </View>
+        <View style={styles.skeletonRowRight}>
+          <Skeleton w={70} h={16} r={6} />
+          <Skeleton w={50} h={10} r={5} />
+        </View>
+      </View>
     ));
 
   const renderEmptyState = () => (
-    <View style={styles.emptyState}>
-      <Ionicons name="trending-up" size={40} color={Colors.textMuted} />
-      <Text style={styles.emptyTitle}>No sales yet</Text>
-      <Text style={styles.emptySub}>
-        Your completed sales will appear here with revenue details
-      </Text>
-    </View>
+    <EmptyState
+      icon="cash-outline"
+      title="No earnings yet"
+      subtitle="Your completed sales and payouts will show here."
+    />
   );
 
   const renderSaleRow = (sale: SaleRecord) => {
@@ -342,6 +357,24 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.04)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.04)',
+  },
+  skeletonRowWrap: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 12,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.04)',
+    padding: 14,
+  },
+  skeletonRowContent: {
+    flex: 1,
+    gap: 6,
+  },
+  skeletonRowRight: {
+    alignItems: 'flex-end' as const,
+    gap: 6,
   },
 
   // ── Empty state ──

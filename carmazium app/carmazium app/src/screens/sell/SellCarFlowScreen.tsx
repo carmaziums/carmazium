@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  StatusBar, Image, TextInput, ActivityIndicator, Alert,
+  StatusBar, TextInput, ActivityIndicator, Alert,
   Switch, Dimensions, Platform,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FontFamily } from '../../constants/typography';
+import { FontFamily, FontSize } from '../../constants/typography';
+import { Colors } from '../../constants/colors';
 import { apiClient } from '../../lib/apiClient';
 import { supabase } from '../../lib/supabase';
 
@@ -451,6 +453,44 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [editMode] = useState<boolean>(!!(route?.params?.listingId));
   const [editListingId] = useState<string | null>(route?.params?.listingId ?? null);
 
+  // ── Inline validation (Step 1 user-entered fields, Step 3 pricing) ──
+  // Touched tracks whether user has interacted with a field (blur or change after focus)
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const fieldTouched = (key: string) => () => setTouched(prev => ({ ...prev, [key]: true }));
+
+  // Validation rules — returns null (valid) or an error string (invalid)
+  const fieldError = (key: string): string | null => {
+    if (!touched[key]) return null;
+    if (key === 'priceAsking') {
+      const v = parseFloat(priceAsking.replace(/[^0-9.]/g, ''));
+      if (!priceAsking.trim() || isNaN(v) || v <= 0) return 'Enter a valid asking price (e.g. 12500)';
+    }
+    if (key === 'priceMin') {
+      if (!priceMin.trim()) return null; // optional field
+      const v = parseFloat(priceMin.replace(/[^0-9.]/g, ''));
+      if (isNaN(v) || v < 0) return 'Enter a valid price or leave blank';
+    }
+    if (key === 'mileage') {
+      const v = parseInt(mileage.replace(/[^0-9]/g, ''), 10);
+      if (!mileage.trim() || isNaN(v) || v < 0) return 'Enter a non-negative mileage';
+    }
+    if (key === 'title') {
+      if (!title.trim()) return 'Listing title is required';
+    }
+    return null;
+  };
+
+  // Border color helper
+  const fieldBorderColor = (key: string): string => {
+    if (!touched[key]) return Colors.inputBorder;
+    return fieldError(key) ? Colors.error : Colors.success;
+  };
+
+  // Step 3 has invalid touched fields?
+  const step3HasErrors = (): boolean => {
+    return !!fieldError('priceAsking') || !!fieldError('priceMin');
+  };
+
   const allImages = [...exteriorImages, ...interiorImages, ...damageImages];
 
   // ─── DVLA Lookup ─────────────────────────────────────────────────────────────
@@ -677,6 +717,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // ─── Navigation ───────────────────────────────────────────────────────────────
 
   function handleNext() {
+    // Touch pricing fields on step 3 so errors become visible before validateStep runs
+    if (step === 3) {
+      setTouched(prev => ({ ...prev, priceAsking: true, priceMin: priceMin.trim() ? true : prev.priceMin }));
+    }
     if (!validateStep(step)) return;
     if (step < totalSteps) setStep((step + 1) as Step);
   }
@@ -877,7 +921,18 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         <SectionBox title="Technical Specs">
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <View style={{ flex: 1 }}>
-              <FieldInput label="MILEAGE *" value={mileage} onChange={setMileage} placeholder="e.g. 45000" keyboardType="number-pad" required />
+              <SL label="MILEAGE" required />
+              <TextInput
+                style={[s.input, { borderColor: fieldBorderColor('mileage') }]}
+                value={mileage}
+                onChangeText={v => { setMileage(v); if (touched.mileage) setTouched(prev => ({ ...prev, mileage: true })); }}
+                onBlur={fieldTouched('mileage')}
+                placeholder="e.g. 45000"
+                placeholderTextColor="#404050"
+                keyboardType="number-pad"
+                autoCorrect={false}
+              />
+              {fieldError('mileage') ? <Text style={s.inlineError}>{fieldError('mileage')}</Text> : null}
             </View>
             <View style={{ flex: 1 }}>
               <FieldInput label="COLOUR" value={colour} onChange={setColour} placeholder="e.g. Silver" />
@@ -945,13 +1000,19 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
         {/* Listing Title & Description */}
         <SectionBox title="Listing Title & Description">
-          <FieldInput
-            label="LISTING TITLE *"
-            value={title}
-            onChange={setTitle}
-            placeholder="e.g. BMW M4 Competition 2021"
-            required
-          />
+          <View style={{ marginBottom: 16 }}>
+            <SL label="LISTING TITLE" required />
+            <TextInput
+              style={[s.input, { borderColor: fieldBorderColor('title') }]}
+              value={title}
+              onChangeText={v => { setTitle(v); if (touched.title) setTouched(prev => ({ ...prev, title: true })); }}
+              onBlur={fieldTouched('title')}
+              placeholder="e.g. BMW M4 Competition 2021"
+              placeholderTextColor="#404050"
+              autoCorrect={false}
+            />
+            {fieldError('title') ? <Text style={s.inlineError}>{fieldError('title')}</Text> : null}
+          </View>
           <View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <SL label="DESCRIPTION" />
@@ -1125,7 +1186,13 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 <View style={s.photoGrid}>
                   {tabImages.map((uri, i) => (
                     <View key={uri} style={s.photoThumb}>
-                      <Image source={{ uri }} style={s.photoThumbImg} />
+                      <ExpoImage
+                        source={{ uri }}
+                        style={s.photoThumbImg}
+                        contentFit="cover"
+                        transition={200}
+                        placeholderContentFit="cover"
+                      />
                       {i === 0 && <View style={s.coverBadge}><Text style={s.coverBadgeText}>COVER</Text></View>}
                       <TouchableOpacity style={s.photoRemoveBtn} onPress={() => removePhoto(photoTab, uri)}>
                         <Ionicons name="close" size={10} color="#FFF" />
@@ -1175,32 +1242,36 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             <View style={{ flex: 1 }}>
               <SL label="LOWER (MIN)" />
               <Text style={s.fieldHint}>Floor price — not visible to buyers</Text>
-              <View style={s.priceInputWrap}>
+              <View style={[s.priceInputWrap, touched.priceMin ? { borderColor: fieldBorderColor('priceMin') } : {}]}>
                 <Text style={s.priceCurrency}>£</Text>
                 <TextInput
                   style={s.priceInput}
                   value={priceMin}
-                  onChangeText={setPriceMin}
+                  onChangeText={v => { setPriceMin(v); if (touched.priceMin) setTouched(prev => ({ ...prev, priceMin: true })); }}
+                  onBlur={fieldTouched('priceMin')}
                   placeholder="0"
                   placeholderTextColor="#404050"
                   keyboardType="number-pad"
                 />
               </View>
+              {fieldError('priceMin') ? <Text style={s.inlineError}>{fieldError('priceMin')}</Text> : null}
             </View>
             <View style={{ flex: 1 }}>
               <SL label="ASKING PRICE *" required />
               <Text style={s.fieldHintRed}>Displayed on listing — required</Text>
-              <View style={[s.priceInputWrap, s.priceInputWrapActive]}>
+              <View style={[s.priceInputWrap, s.priceInputWrapActive, touched.priceAsking ? { borderColor: fieldBorderColor('priceAsking') } : {}]}>
                 <Text style={[s.priceCurrency, { color: '#DC1F26' }]}>£</Text>
                 <TextInput
                   style={s.priceInput}
                   value={priceAsking}
-                  onChangeText={setPriceAsking}
+                  onChangeText={v => { setPriceAsking(v); if (touched.priceAsking) setTouched(prev => ({ ...prev, priceAsking: true })); }}
+                  onBlur={fieldTouched('priceAsking')}
                   placeholder="0"
                   placeholderTextColor="#404050"
                   keyboardType="number-pad"
                 />
               </View>
+              {fieldError('priceAsking') ? <Text style={s.inlineError}>{fieldError('priceAsking')}</Text> : null}
             </View>
           </View>
 
@@ -1430,7 +1501,13 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           {allImages.length > 0 ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
               {allImages.map((uri, i) => (
-                <Image key={i} source={{ uri }} style={{ width: 80, height: 60, borderRadius: 8 }} />
+                <ExpoImage
+                  key={i}
+                  source={{ uri }}
+                  style={{ width: 80, height: 60, borderRadius: 8, backgroundColor: Colors.bgTertiary }}
+                  contentFit="cover"
+                  transition={200}
+                />
               ))}
             </ScrollView>
           ) : (
@@ -1557,7 +1634,12 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           </TouchableOpacity>
         )}
         {step < totalSteps ? (
-          <TouchableOpacity style={s.nextBtn} onPress={handleNext} activeOpacity={0.8}>
+          <TouchableOpacity
+            style={[s.nextBtn, (step === 3 && step3HasErrors()) ? { opacity: 0.5 } : {}]}
+            onPress={handleNext}
+            activeOpacity={0.8}
+            disabled={step === 3 && step3HasErrors()}
+          >
             <Text style={s.nextBtnText}>
               {step === 1 ? 'NEXT · MEDIA'
                 : step === 2 ? 'NEXT · PRICING'
@@ -1626,6 +1708,7 @@ const s = StyleSheet.create({
 
   // Input
   input: { backgroundColor: '#1A1A22', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', paddingHorizontal: 14, paddingVertical: 12, fontFamily: FontFamily.medium, fontSize: 14, color: '#FFFFFF', marginBottom: 0 },
+  inlineError: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.error, marginTop: 4 },
 
   // DVLA
   vrmRow: { flexDirection: 'row', gap: 8, alignItems: 'stretch' },
