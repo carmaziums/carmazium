@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed mobile-app-parity-mobile-02-PLAN.md
-last_updated: "2026-06-14T19:29:35.002Z"
-last_activity: 2026-06-15 — mobile-app-parity Plan 2 complete (AuctionDetailScreen skeleton+pulse+flash+winner-nav, AuctionCompleteScreen confetti+count-up, LiveScreen skeleton+EmptyState)
+stopped_at: Completed mobile-app-parity-mobile-03-PLAN.md
+last_updated: "2026-06-14T19:44:11.150Z"
+last_activity: 2026-06-15 — mobile-app-parity Plan 3 complete (SellCarFlowScreen validation gating, DealerKYCScreen pending state + ErrorBanner, VehicleDetailScreen spring-snap gallery + pinch-to-zoom + finance Coming Soon)
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 16
-  completed_plans: 11
-  percent: 69
+  completed_plans: 12
+  percent: 75
 ---
 
 # State: Carmazium Mobile App
@@ -19,11 +19,11 @@ progress:
 ## Current Position
 
 Phase: mobile-app-parity (Mobile App Feature Parity & UI Polish)
-Plan: 2 of 6 complete in current phase
+Plan: 3 of 6 complete in current phase
 Status: In Progress
-Last activity: 2026-06-15 — mobile-app-parity Plan 2 complete (AuctionDetailScreen skeleton+pulse+flash+winner-nav, AuctionCompleteScreen confetti+count-up, LiveScreen skeleton+EmptyState)
+Last activity: 2026-06-15 — mobile-app-parity Plan 3 complete (SellCarFlowScreen validation gating, DealerKYCScreen pending state + ErrorBanner, VehicleDetailScreen spring-snap gallery + pinch-to-zoom + finance Coming Soon)
 
-Progress: [███████░░░] 69%
+Progress: [████████░░] 75%
 
 ## Project Reference
 
@@ -109,8 +109,14 @@ None yet.
 - EarningsScreen.tsx: Added missing skeletonRowWrap/skeletonRowContent/skeletonRowRight style keys (TS fix)
 - SellCarFlowScreen.tsx: Replaced invalid placeholder={{ backgroundColor }} with placeholderContentFit (TS fix)
 
+### mobile-app-parity Plan 3 — Complete
+
+- SellCarFlowScreen.tsx: Added step1HasErrors() gating step 1 continue button (mileage+title touched-invalid); expo-image + inline validation already implemented in Plan 02; DVLA untouched
+- DealerKYCScreen.tsx: KYC submission wired to POST /dealers/kyc (already wired); replaced Alert.alert success with haptics.success() + PendingView; pending view shows when status is PENDING/UNDER_REVIEW; inline ErrorBanner replaces Alert.alert API error; skeleton-style loading rows on initial load
+- VehicleDetailScreen.tsx: FlatList gallery replaced with Reanimated.View strip + Gesture.Pan spring-snap (damping:20, stiffness:200, 30% threshold); page dots + mono photo counter; fullscreen Modal with Gesture.Simultaneous(Pinch, Pan), scale clamped 1-4, springs back below 1; finance section labeled Coming Soon with no API calls, interactive rows made inert Views
+
 ## Session Continuity
 
-Last session: 2026-06-14T19:29:34.995Z
-Stopped at: Completed mobile-app-parity-mobile-02-PLAN.md
+Last session: 2026-06-14T19:44:11.145Z
+Stopped at: Completed mobile-app-parity-mobile-03-PLAN.md
 Resume file: None
