@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -154,6 +155,7 @@ export default function App() {
   }
 
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <StripeProvider
       publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ''}
       merchantIdentifier="merchant.uk.carmazium.app"
@@ -196,5 +198,6 @@ export default function App() {
       </NavigationContainer>
     </SafeAreaProvider>
     </StripeProvider>
+    </GestureHandlerRootView>
   );
 }
