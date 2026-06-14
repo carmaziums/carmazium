@@ -1,0 +1,35 @@
+# Exclude local dev artifacts — EAS installs its own node_modules on the build server
+node_modules/
+
+# OS and editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Local env files (secrets go in eas.json env or EAS dashboard)
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Test / coverage output
+coverage/
+__tests__/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+
+# Planning / docs (not needed in the build)
+.planning/
+Downloads/
+DEVELOPER_SETUP.md

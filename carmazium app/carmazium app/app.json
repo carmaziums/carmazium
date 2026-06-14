@@ -36,7 +36,6 @@
     },
     "android": {
       "package": "uk.carmazium.app",
-      "minSdkVersion": 31,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0A0A0C"
