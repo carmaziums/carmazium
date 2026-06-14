@@ -3,9 +3,9 @@
 import * as React from "react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
-import { updateProfile, startStripeConnectOnboarding, getStripeConnectStatus, type StripeConnectStatus } from "@/lib/listingApi"
+import { updateProfile, startStripeConnectOnboarding, getStripeConnectStatus, updateBankDetails, type StripeConnectStatus } from "@/lib/listingApi"
 import { uploadImage } from "@/lib/supabase"
-import { Loader2, Check, AlertCircle, Camera, BadgeCheck, CreditCard, ExternalLink, AlertTriangle } from "lucide-react"
+import { Loader2, Check, AlertCircle, Camera, BadgeCheck, CreditCard, ExternalLink, AlertTriangle, Landmark } from "lucide-react"
 
 export default function SellerSettingsPage() {
     const { user, profile, loading: authLoading } = useAuth()
@@ -21,6 +21,11 @@ export default function SellerSettingsPage() {
     const [connectStatus, setConnectStatus] = React.useState<StripeConnectStatus | null>(null)
     const [connectLoading, setConnectLoading] = React.useState(false)
     const [connectError, setConnectError] = React.useState("")
+    const [bankName, setBankName] = React.useState("")
+    const [bankSortCode, setBankSortCode] = React.useState("")
+    const [bankAccountNumber, setBankAccountNumber] = React.useState("")
+    const [savingBank, setSavingBank] = React.useState(false)
+    const [bankSaveStatus, setBankSaveStatus] = React.useState<"idle" | "success" | "error">("idle")
     const fileInputRef = React.useRef<HTMLInputElement>(null)
 
     React.useEffect(() => {
@@ -45,6 +50,9 @@ export default function SellerSettingsPage() {
             setProfileImage(profile.profileImage || "")
             if (typeof (profile as any).notifyOnSale === 'boolean') setNotifyOnSale((profile as any).notifyOnSale)
             if (typeof (profile as any).showPublicProfile === 'boolean') setShowPublicProfile((profile as any).showPublicProfile)
+            setBankName((profile as any).bankAccountName || "")
+            setBankSortCode((profile as any).bankSortCode || "")
+            setBankAccountNumber((profile as any).bankAccountNumber || "")
         } else if (user) {
             setEmail(user.email || "")
             setProfileImage("")
@@ -72,6 +80,20 @@ export default function SellerSettingsPage() {
             setConnectError(err.message || "Failed to start Stripe Connect onboarding.")
         } finally {
             setConnectLoading(false)
+        }
+    }
+
+    const handleSaveBank = async () => {
+        try {
+            setSavingBank(true)
+            setBankSaveStatus("idle")
+            await updateBankDetails({ bankAccountName: bankName, bankSortCode, bankAccountNumber })
+            setBankSaveStatus("success")
+            setTimeout(() => setBankSaveStatus("idle"), 3000)
+        } catch {
+            setBankSaveStatus("error")
+        } finally {
+            setSavingBank(false)
         }
     }
 
@@ -252,6 +274,63 @@ export default function SellerSettingsPage() {
                             </div>
                         )}
                     </div>
+
+                    {/* Bank Account Details (manual payout fallback) */}
+                    {!connectStatus?.onboardingComplete && (
+                        <div className="glass-card p-8 border border-white/5 bg-white/5 rounded-2xl">
+                            <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                                <Landmark className="text-amber-400" size={20} /> Bank Account Details
+                            </h3>
+                            <p className="text-sm text-gray-400 mb-6">
+                                Alternatively, provide your UK bank details so Carmazium can manually transfer your £100 bonus if Stripe Connect isn&apos;t set up.
+                            </p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1 md:col-span-2">
+                                    <label className="text-sm text-gray-400">Account Holder Name</label>
+                                    <input
+                                        type="text"
+                                        value={bankName}
+                                        onChange={e => setBankName(e.target.value)}
+                                        placeholder="e.g. John Smith"
+                                        className="w-full bg-slate-800 border border-white/10 rounded px-4 py-2 text-white focus:border-amber-400 outline-none transition-colors"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-sm text-gray-400">Sort Code</label>
+                                    <input
+                                        type="text"
+                                        value={bankSortCode}
+                                        onChange={e => setBankSortCode(e.target.value)}
+                                        placeholder="e.g. 00-00-00"
+                                        maxLength={8}
+                                        className="w-full bg-slate-800 border border-white/10 rounded px-4 py-2 text-white focus:border-amber-400 outline-none transition-colors font-mono"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-sm text-gray-400">Account Number</label>
+                                    <input
+                                        type="text"
+                                        value={bankAccountNumber}
+                                        onChange={e => setBankAccountNumber(e.target.value)}
+                                        placeholder="e.g. 12345678"
+                                        maxLength={8}
+                                        className="w-full bg-slate-800 border border-white/10 rounded px-4 py-2 text-white focus:border-amber-400 outline-none transition-colors font-mono"
+                                    />
+                                </div>
+                            </div>
+                            <div className="mt-4 flex items-center gap-4">
+                                <button
+                                    onClick={handleSaveBank}
+                                    disabled={savingBank || !bankName || !bankSortCode || !bankAccountNumber}
+                                    className="bg-amber-500 hover:bg-amber-400 text-black font-bold py-2.5 px-6 rounded transition-colors disabled:opacity-50 flex items-center gap-2 text-sm"
+                                >
+                                    {savingBank ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : "Save Bank Details"}
+                                </button>
+                                {bankSaveStatus === "success" && <span className="text-emerald-400 text-sm flex items-center gap-1"><Check size={14} /> Saved</span>}
+                                {bankSaveStatus === "error" && <span className="text-red-400 text-sm flex items-center gap-1"><AlertCircle size={14} /> Failed to save</span>}
+                            </div>
+                        </div>
+                    )}
                 </main>
             </div>
         </div>

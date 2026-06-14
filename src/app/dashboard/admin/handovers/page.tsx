@@ -41,10 +41,12 @@ export default function AdminHandoversPage() {
 
     React.useEffect(() => { fetchHandovers() }, [fetchHandovers])
 
-    const handleApprove = async (auctionId: string, sellerConnected: boolean) => {
+    const handleApprove = async (auctionId: string, sellerConnected: boolean, hasBankDetails?: boolean) => {
         const payoutNote = sellerConnected
-            ? 'The £100 seller bonus will be transferred to their connected bank account via Stripe.'
-            : '⚠️ The seller has NOT connected a bank account — the handover will be approved but NO payout will be sent. They will need to connect their account later (if supported) or be paid manually.'
+            ? 'The £100 seller bonus will be transferred automatically via Stripe.'
+            : hasBankDetails
+                ? '⚠️ Stripe not connected. You will need to manually transfer £100 to the bank details shown. Approve to mark the handover as complete.'
+                : '⚠️ The seller has no payout method set up. Approve to complete the handover — follow up with the seller to arrange payment separately.'
         if (!confirm(`Approve this handover?\n\n${payoutNote}`)) return
         try {
             setProcessing(auctionId)
@@ -169,17 +171,31 @@ export default function AdminHandoversPage() {
                                                 <div className={`w-2 h-2 rounded-full ${h.buyerFeePaid ? 'bg-emerald-400' : 'bg-gray-500'}`} />
                                                 <span className="text-gray-400">Buyer fee {h.buyerFeePaid ? 'paid' : 'not yet paid'}</span>
                                             </div>
-                                            <div className="flex items-center gap-2 text-xs mt-1">
-                                                {h.listing?.seller?.stripeConnectOnboardingComplete ? (
-                                                    <>
-                                                        <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                                                        <span className="text-gray-400">Seller bank account <strong className="text-emerald-300">connected</strong> — payout will fire automatically</span>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <div className="w-2 h-2 rounded-full bg-amber-400" />
-                                                        <span className="text-amber-300">Seller bank account <strong>not connected</strong> — payout will NOT be sent</span>
-                                                    </>
+                                            <div className="flex flex-col gap-1.5 mt-1">
+                                                <div className="flex items-center gap-2 text-xs">
+                                                    {h.listing?.seller?.stripeConnectOnboardingComplete ? (
+                                                        <>
+                                                            <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                                                            <span className="text-gray-400">Seller Stripe account <strong className="text-emerald-300">connected</strong> — payout fires automatically</span>
+                                                        </>
+                                                    ) : h.listing?.seller?.bankAccountNumber ? (
+                                                        <>
+                                                            <div className="w-2 h-2 rounded-full bg-blue-400 shrink-0" />
+                                                            <span className="text-blue-300">Manual bank transfer required — see details below</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <div className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                                                            <span className="text-amber-300">No payout method — seller must add bank details in Settings</span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                                {!h.listing?.seller?.stripeConnectOnboardingComplete && h.listing?.seller?.bankAccountNumber && (
+                                                    <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs font-mono text-blue-200 space-y-1">
+                                                        <p><span className="text-gray-500">Name:</span> {h.listing.seller.bankAccountName || '—'}</p>
+                                                        <p><span className="text-gray-500">Sort Code:</span> {h.listing.seller.bankSortCode || '—'}</p>
+                                                        <p><span className="text-gray-500">Account:</span> {h.listing.seller.bankAccountNumber}</p>
+                                                    </div>
                                                 )}
                                             </div>
                                             {h.handoverSubmittedAt && (
@@ -209,12 +225,16 @@ export default function AdminHandoversPage() {
                                     {/* Actions */}
                                     <div className="px-5 pb-5 flex items-center gap-3">
                                         <Button
-                                            onClick={() => handleApprove(h.id, !!h.listing?.seller?.stripeConnectOnboardingComplete)}
+                                            onClick={() => handleApprove(h.id, !!h.listing?.seller?.stripeConnectOnboardingComplete, !!h.listing?.seller?.bankAccountNumber)}
                                             disabled={processing === h.id}
                                             className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2"
                                         >
                                             {processing === h.id ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
-                                            {h.listing?.seller?.stripeConnectOnboardingComplete ? 'Approve & Pay £100' : 'Approve (No Payout)'}
+                                            {h.listing?.seller?.stripeConnectOnboardingComplete
+                                                ? 'Approve & Pay £100'
+                                                : h.listing?.seller?.bankAccountNumber
+                                                    ? 'Approve (Manual Transfer)'
+                                                    : 'Approve (No Payout)'}
                                         </Button>
                                         <Button
                                             onClick={() => handleDeny(h.id)}

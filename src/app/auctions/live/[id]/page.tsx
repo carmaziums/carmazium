@@ -451,11 +451,12 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             </Link>
                                             <Button
                                                 variant="outline"
-                                                className="w-full border-white/10 text-slate-400 font-bold text-xs h-9 flex items-center gap-1.5"
-                                                disabled={connectingChat}
+                                                className="w-full border-white/10 text-slate-400 font-bold text-xs h-9 flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                                                disabled={connectingChat || !auction.buyerFeePaid}
+                                                title={!auction.buyerFeePaid ? 'Pay the £125 fee first to unlock messaging' : undefined}
                                                 onClick={async () => {
                                                     const sellerId = auction.listing.sellerId
-                                                    if (!sellerId) return
+                                                    if (!sellerId || !auction.buyerFeePaid) return
                                                     setConnectingChat(true)
                                                     try {
                                                         const room = await createChatRoom(sellerId, auction.listingId)
@@ -467,7 +468,8 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                     }
                                                 }}
                                             >
-                                                <MessageSquare size={13} /> Message Seller
+                                                <MessageSquare size={13} />
+                                                {auction.buyerFeePaid ? 'Message Seller' : 'Pay Fee to Chat'}
                                             </Button>
                                         </div>
                                     </div>

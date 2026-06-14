@@ -22,7 +22,7 @@ import {
 } from "@/lib/auctionApi"
 import { apiClient } from "@/lib/apiClient"
 import { uploadImage } from "@/lib/supabase"
-import type { Listing } from "@/lib/listingApi"
+import { getStripeConnectStatus, type StripeConnectStatus, type Listing } from "@/lib/listingApi"
 
 const STATUS_STYLES: Record<string, string> = {
     SCHEDULED: "bg-blue-500/10 text-blue-400 border-blue-500/20",
@@ -86,11 +86,16 @@ function SellerAuctionsPage() {
     const [successMsg, setSuccessMsg] = React.useState<string | null>(null)
     const [resultsAuction, setResultsAuction] = React.useState<Auction | null>(null)
     const [connectingChat, setConnectingChat] = React.useState(false)
+    const [payoutStatus, setPayoutStatus] = React.useState<StripeConnectStatus | null>(null)
 
     React.useEffect(() => {
         const id = setInterval(() => setTick(t => t + 1), 1000)
         return () => clearInterval(id)
     }, [])
+
+    React.useEffect(() => {
+        if (user) getStripeConnectStatus().then(setPayoutStatus).catch(() => {})
+    }, [user])
 
     async function fetchAuctions() {
         setLoading(true)
@@ -604,6 +609,20 @@ function SellerAuctionsPage() {
                                     <p className="text-xs text-gray-400">Upload proof to receive your £100 seller bonus</p>
                                 </div>
                             </div>
+
+                            {payoutStatus !== null && !payoutStatus.onboardingComplete && (
+                                <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                                    <AlertCircle size={15} className="text-amber-400 shrink-0 mt-0.5" />
+                                    <div className="text-xs text-amber-300">
+                                        <p className="font-bold mb-0.5">Payout method not set up</p>
+                                        <p className="text-amber-300/70">
+                                            Connect your bank account in{" "}
+                                            <a href="/dashboard/seller/settings" className="underline hover:text-amber-200">Settings → Payouts</a>
+                                            {" "}to receive your £100 automatically after handover approval.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
 
                             {endedWithWinner.map(auction => {
                                 const isDone = handoverDone.has(auction.id)

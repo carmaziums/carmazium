@@ -79,6 +79,7 @@ export interface Auction {
     minIncrement: string | number;
     winnerId: string | null;
     winningBidAmount: string | number | null;
+    buyerFeePaid: boolean;
     handoverProofUrl: string | null;
     handoverSubmittedAt: string | null;
     sellerBonusReleased: boolean;

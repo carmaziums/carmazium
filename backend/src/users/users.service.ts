@@ -409,4 +409,33 @@ export class UsersService {
             payoutsEnabled: account.payouts_enabled,
         };
     }
+
+    async updateBankDetails(
+        userId: string,
+        dto: {
+            bankAccountName?: string;
+            bankSortCode?: string;
+            bankAccountNumber?: string;
+            payoutPreference?: string;
+        },
+    ) {
+        const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+        if (!user) throw new NotFoundException('User not found');
+
+        return this.prisma.user.update({
+            where: { id: userId },
+            data: {
+                ...(dto.bankAccountName !== undefined && { bankAccountName: dto.bankAccountName }),
+                ...(dto.bankSortCode !== undefined && { bankSortCode: dto.bankSortCode }),
+                ...(dto.bankAccountNumber !== undefined && { bankAccountNumber: dto.bankAccountNumber }),
+                ...(dto.payoutPreference !== undefined && { payoutPreference: dto.payoutPreference }),
+            },
+            select: {
+                bankAccountName: true,
+                bankSortCode: true,
+                bankAccountNumber: true,
+                payoutPreference: true,
+            },
+        });
+    }
 }

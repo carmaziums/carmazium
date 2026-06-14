@@ -167,9 +167,37 @@ export class UsersController {
         if (!returnUrl || !refreshUrl) {
             throw new BadRequestException('returnUrl and refreshUrl are required');
         }
+        try {
+            return {
+                success: true,
+                data: await this.usersService.createConnectOnboardingLink(user.id, returnUrl, refreshUrl),
+            };
+        } catch (err: any) {
+            throw new BadRequestException(
+                err?.message || 'Failed to start Stripe Connect onboarding. Please try again.',
+            );
+        }
+    }
+
+    /**
+     * Save bank account details for manual payout fallback.
+     */
+    @Patch('me/bank-details')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Update bank account details for manual payout' })
+    async updateBankDetails(
+        @CurrentUser() user: any,
+        @Body() body: {
+            bankAccountName?: string;
+            bankSortCode?: string;
+            bankAccountNumber?: string;
+            payoutPreference?: string;
+        },
+    ) {
         return {
             success: true,
-            data: await this.usersService.createConnectOnboardingLink(user.id, returnUrl, refreshUrl),
+            data: await this.usersService.updateBankDetails(user.id, body),
         };
     }
 

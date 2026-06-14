@@ -37,6 +37,27 @@ export class ChatService {
             return existingRoom;
         }
 
+        // Gate auction rooms: the winner must have paid the £125 fee before chatting
+        if (listingId) {
+            const listing = await this.prisma.listing.findUnique({
+                where: { id: listingId },
+                select: {
+                    sellerId: true,
+                    type: true,
+                    auction: { select: { winnerId: true, buyerFeePaid: true } },
+                },
+            });
+
+            if (listing?.type === 'AUCTION' && listing.auction?.winnerId) {
+                const isWinner = listing.auction.winnerId === userId;
+                if (isWinner && !listing.auction.buyerFeePaid) {
+                    throw new ForbiddenException(
+                        'You must pay the £125 completion fee before messaging the seller.',
+                    );
+                }
+            }
+        }
+
         // Create new room
         return this.prisma.chatRoom.create({
             data: {

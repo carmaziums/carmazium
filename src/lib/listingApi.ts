@@ -1126,3 +1126,18 @@ export async function getStripeConnectStatus(): Promise<StripeConnectStatus> {
     const res = await apiClient<{ data: StripeConnectStatus }>('/users/stripe-connect/status')
     return res.data
 }
+
+export interface BankDetails {
+    bankAccountName: string
+    bankSortCode: string
+    bankAccountNumber: string
+    payoutPreference: string
+}
+
+export async function updateBankDetails(data: Partial<BankDetails>): Promise<BankDetails> {
+    const res = await apiClient<{ data: BankDetails }>('/users/me/bank-details', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+    })
+    return res.data
+}

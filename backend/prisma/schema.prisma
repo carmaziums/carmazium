@@ -261,6 +261,10 @@ model User {
   stripeCustomerId               String?   @unique
   stripeConnectAccountId         String?   @unique
   stripeConnectOnboardingComplete Boolean  @default(false)
+  bankAccountName               String?
+  bankSortCode                  String?
+  bankAccountNumber             String?
+  payoutPreference              String?   @default("STRIPE")
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   deletedAt        DateTime?
