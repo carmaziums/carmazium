@@ -174,6 +174,7 @@ const styles = StyleSheet.create({
   imageContainer: {
     position: 'relative',
     overflow: 'hidden',
+    backgroundColor: Colors.bgTertiary,
   },
   image: {
     width: '100%',
@@ -244,7 +245,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.12)',
   },
   priceText: {
-    fontFamily: FontFamily.bold,
+    fontFamily: FontFamily.mono,
     fontSize: FontSize.base,
     color: Colors.white,
     letterSpacing: 0.3,

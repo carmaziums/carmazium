@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     height: 90,
     borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: '#18181E',
+    backgroundColor: Colors.bgTertiary,
   },
   image: {
     width: '100%',
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   priceText: {
-    fontFamily: FontFamily.bold,
+    fontFamily: FontFamily.mono,
     fontSize: FontSize.base,
     color: '#FFFFFF',
   },

@@ -1,6 +1,12 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, StyleSheet } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSequence,
+  withSpring,
+} from 'react-native-reanimated';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/colors';
@@ -39,6 +45,60 @@ const TAB_CONFIG: {
   { name: 'Profile', icon: 'person-outline', iconActive: 'person', label: 'PROFILE', iconType: 'ionicons' },
 ];
 
+// ─── Animated tab icon: spring-scales (1.0 → 1.2 → 1.0) on focus ─────────────
+interface AnimatedTabIconProps {
+  focused: boolean;
+  iconName: string;
+  iconType: 'ionicons' | 'material-community';
+  color: string;
+  size: number;
+  onPress?: () => void;
+}
+
+const AnimatedTabIcon: React.FC<AnimatedTabIconProps> = ({
+  focused,
+  iconName,
+  iconType,
+  color,
+  size,
+  onPress,
+}) => {
+  const scale = useSharedValue(1);
+
+  useEffect(() => {
+    if (focused) {
+      scale.value = withSequence(
+        withSpring(1.2, { damping: 12, stiffness: 200 }),
+        withSpring(1.0, { damping: 12, stiffness: 200 }),
+      );
+    }
+  }, [focused]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <Animated.View style={animatedStyle}>
+      {iconType === 'material-community' ? (
+        <MaterialCommunityIcons
+          name={iconName as any}
+          size={size}
+          color={color}
+          onPress={onPress}
+        />
+      ) : (
+        <Ionicons
+          name={iconName as any}
+          size={size}
+          color={color}
+          onPress={onPress}
+        />
+      )}
+    </Animated.View>
+  );
+};
+
 const CustomTabBar = ({ state, descriptors, navigation }: any) => {
   const insets = useSafeAreaInsets();
 
@@ -69,21 +129,14 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
                 <View style={styles.activeDot} />
               )}
               <View style={styles.iconWrapper}>
-                {config.iconType === 'material-community' ? (
-                  <MaterialCommunityIcons
-                    name={isFocused ? (config.iconActive as any) : (config.icon as any)}
-                    size={22}
-                    color={isFocused ? Colors.accent : Colors.tabInactive}
-                    onPress={onPress}
-                  />
-                ) : (
-                  <Ionicons
-                    name={isFocused ? (config.iconActive as any) : (config.icon as any)}
-                    size={20}
-                    color={isFocused ? Colors.accent : Colors.tabInactive}
-                    onPress={onPress}
-                  />
-                )}
+                <AnimatedTabIcon
+                  focused={isFocused}
+                  iconName={isFocused ? config.iconActive : config.icon}
+                  iconType={config.iconType}
+                  color={isFocused ? Colors.accent : Colors.tabInactive}
+                  size={config.iconType === 'material-community' ? 22 : 20}
+                  onPress={onPress}
+                />
               </View>
               <Text
                 style={[
