@@ -244,7 +244,7 @@ export default function AboutPage() {
                             <p>Sellers on CarMazium can provide DVLA-verified vehicle data (auto-filled from the registration plate), service history, HPI reports, and a detailed damage map. Buyers can review all documentation before making contact. We always recommend arranging an independent inspection before completing any purchase.</p>
                         </AccordionItem>
                         <AccordionItem title="How do the live auctions work?">
-                            <p>Our live auctions run for 6 hours with real-time competitive bidding and anti-snipe protection. Once an auction closes, the winning bidder and seller are connected directly via our in-platform chat to agree terms and arrange payment between themselves. CarMazium does not process or hold auction sale funds.</p>
+                            <p>Our live auctions run for 24 hours with real-time competitive bidding and anti-snipe protection. Once an auction closes, the winning bidder and seller are connected directly via our in-platform chat to agree terms and arrange payment between themselves. CarMazium does not process or hold auction sale funds.</p>
                         </AccordionItem>
                         <AccordionItem title="Can I sell my car on CarMazium?">
                             <p>Yes. Simply create your listing — DVLA data is auto-filled from your registration plate. Upload photos, set your price or auction reserve, and go live. All buyer enquiries, offers, and bids come directly to you. You agree terms and handle payment with the buyer directly, without CarMazium being involved in the transaction.</p>

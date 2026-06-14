@@ -39,7 +39,7 @@ export class AuctionsService {
             throw new BadRequestException('Start time cannot be in the past');
         }
 
-        // Compute endTime server-side — always startTime + 6 hours
+        // Compute endTime server-side — always startTime + 24 hours
         const endTime = new Date(startTime.getTime() + AUCTION_DURATION_MS);
 
         const listing = await this.prisma.listing.findUnique({
