@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: in-progress
-stopped_at: Completed mobile-app-parity-mobile-01-PLAN.md
-last_updated: "2026-06-15T00:25:00Z"
-last_activity: 2026-06-15 — mobile-app-parity Plan 1 complete (shared UI primitives, haptics, gesture-handler, chat nav fix, /notifications toast)
+status: executing
+stopped_at: Completed mobile-app-parity-mobile-02-PLAN.md
+last_updated: "2026-06-14T19:29:35.002Z"
+last_activity: 2026-06-15 — mobile-app-parity Plan 2 complete (AuctionDetailScreen skeleton+pulse+flash+winner-nav, AuctionCompleteScreen confetti+count-up, LiveScreen skeleton+EmptyState)
 progress:
   total_phases: 8
   completed_phases: 1
-  total_plans: 10
-  completed_plans: 10
-  percent: 17
+  total_plans: 16
+  completed_plans: 11
+  percent: 69
 ---
 
 # State: Carmazium Mobile App
@@ -19,11 +19,11 @@ progress:
 ## Current Position
 
 Phase: mobile-app-parity (Mobile App Feature Parity & UI Polish)
-Plan: 1 of 6 complete in current phase
+Plan: 2 of 6 complete in current phase
 Status: In Progress
-Last activity: 2026-06-15 — mobile-app-parity Plan 1 complete (shared UI primitives, haptics, gesture-handler root, chat nav fix, /notifications toast)
+Last activity: 2026-06-15 — mobile-app-parity Plan 2 complete (AuctionDetailScreen skeleton+pulse+flash+winner-nav, AuctionCompleteScreen confetti+count-up, LiveScreen skeleton+EmptyState)
 
-Progress: [██████░░░░] 60%
+Progress: [███████░░░] 69%
 
 ## Project Reference
 
@@ -101,8 +101,16 @@ None yet.
 - AuctionDetailScreen.tsx: fixed navigate('Chat',{roomId}) → navigate('ChatScreen',{threadId}) at two sites
 - GlobalToastProvider.tsx: singleton /notifications Socket.IO subscription, shows toast on notification:new/notification events
 
+### mobile-app-parity Plan 2 — Complete
+
+- AuctionDetailScreen.tsx: AuctionDetailSkeleton (hero+title+bid rows), countdown Reanimated pulse (interpolateColor bgTertiary→accentDark), bid flash green overlay (withSequence), winner navigation on auction:ended (haptics.success + navigate AuctionComplete with full params), FontFamily.mono on all prices/countdowns
+- AuctionCompleteScreen.tsx: ConfettiCannon (150 particles, autoStart, brand colors), requestAnimationFrame count-up (ease-out-quad, 1400ms) to hammerPrice, haptics.success on mount, FontFamily.mono on hammerPrice/summaryValue/summaryTotalValue, Stripe logic untouched
+- LiveScreen.tsx: Skeleton auction card stack (image+stats+button) during loading, EmptyState (flame-outline, CTA to Browse listings) when no live auctions, RefreshControl tintColor=Colors.accent, statsPrice/digitText/timerColon use FontFamily.mono
+- EarningsScreen.tsx: Added missing skeletonRowWrap/skeletonRowContent/skeletonRowRight style keys (TS fix)
+- SellCarFlowScreen.tsx: Replaced invalid placeholder={{ backgroundColor }} with placeholderContentFit (TS fix)
+
 ## Session Continuity
 
-Last session: 2026-06-15T00:25:00Z
-Stopped at: Completed mobile-app-parity-mobile-01-PLAN.md
+Last session: 2026-06-14T19:29:34.995Z
+Stopped at: Completed mobile-app-parity-mobile-02-PLAN.md
 Resume file: None
