@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   TextInput,
+  Dimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@/components/BrandIcon';
@@ -19,6 +20,10 @@ import { Colors } from '../../constants/colors';
 import { useStripe } from '@stripe/stripe-react-native';
 import { createPaymentSheet } from '../../lib/paymentsApi';
 import { apiClient } from '../../lib/apiClient';
+import ConfettiCannon from 'react-native-confetti-cannon';
+import { haptics } from '../../lib/haptics';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ─────────────────────────────── types ────────────────────────────────
 
@@ -64,6 +69,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
 }) => {
   const insets = useSafeAreaInsets();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
+  const confettiRef = useRef<any>(null);
 
   // Nav params
   const params: AuctionCompleteParams = route?.params ?? {
@@ -104,6 +110,48 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
     );
     return () => clearInterval(timer);
   }, []);
+
+  // ── Count-up price animation (JS-driven, updates React state) ─────────────
+  const [displayPrice, setDisplayPrice] = useState(0);
+  const animFrameRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!hammerPrice || hammerPrice <= 0) {
+      setDisplayPrice(hammerPrice);
+      return;
+    }
+
+    // Haptic on mount
+    haptics.success();
+
+    const duration = 1400; // ms
+    const startTime = Date.now();
+    const startValue = 0;
+    const endValue = hammerPrice;
+
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease-out quad
+      const easedProgress = 1 - (1 - progress) * (1 - progress);
+      const current = Math.round(startValue + (endValue - startValue) * easedProgress);
+      setDisplayPrice(current);
+
+      if (progress < 1) {
+        animFrameRef.current = requestAnimationFrame(animate);
+      } else {
+        setDisplayPrice(endValue);
+      }
+    };
+
+    animFrameRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animFrameRef.current !== null) {
+        cancelAnimationFrame(animFrameRef.current);
+      }
+    };
+  }, [hammerPrice]);
 
   const [paying, setPaying] = useState(false);
   const [paid, setPaid] = useState(false);
@@ -397,6 +445,18 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
         end={{ x: 1, y: 0.5 }}
       />
 
+      {/* Confetti cannon — absolutely positioned, pointerEvents=none so it doesn't block touches */}
+      <ConfettiCannon
+        ref={confettiRef}
+        count={150}
+        origin={{ x: SCREEN_WIDTH / 2, y: -20 }}
+        fadeOut
+        autoStart
+        explosionSpeed={350}
+        fallSpeed={2800}
+        colors={[Colors.accent, Colors.accentGlow, Colors.white, '#F59E0B']}
+      />
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
@@ -427,10 +487,10 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
           <Text style={styles.heroTitle} numberOfLines={2}>{listingTitle}</Text>
         </View>
 
-        {/* Hammer Price */}
+        {/* Hammer Price — animated count-up */}
         <View style={styles.hammerBox}>
           <Text style={styles.hammerLabel}>HAMMER PRICE</Text>
-          <Text style={styles.hammerPrice}>{fmt(hammerPrice)}</Text>
+          <Text style={styles.hammerPrice}>{fmt(displayPrice)}</Text>
           <Text style={styles.hammerMeta}>
             {[bidCount != null && `${bidCount} bid${bidCount !== 1 ? 's' : ''}`, lotNumber && `LOT ${lotNumber}`]
               .filter(Boolean)
@@ -619,7 +679,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   hammerPrice: {
-    fontFamily: FontFamily.black,
+    // Mono font for price — per spec (was FontFamily.black)
+    fontFamily: FontFamily.mono,
     fontSize: 42,
     color: '#FFFFFF',
     letterSpacing: -1,
@@ -647,7 +708,7 @@ const styles = StyleSheet.create({
   timerLeft: { flexDirection: 'row', alignItems: 'center' },
   timerTitle: { fontFamily: FontFamily.bold, fontSize: 12, color: '#F59E0B', marginBottom: 2 },
   timerTitleUrgent: { color: '#EF4444' },
-  timerValue: { fontFamily: FontFamily.extraBold, fontSize: 22, color: '#FFFFFF', letterSpacing: 1 },
+  timerValue: { fontFamily: FontFamily.mono, fontSize: 22, color: '#FFFFFF', letterSpacing: 1 },
   timerValueUrgent: { color: '#EF4444' },
   timerRight: { alignItems: 'flex-end' },
   timerRightText: { fontFamily: FontFamily.regular, fontSize: 11, color: '#A0A0AB' },
@@ -672,7 +733,8 @@ const styles = StyleSheet.create({
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
   summaryLabel: { fontFamily: FontFamily.regular, fontSize: 14, color: '#A0A0AB' },
   summaryLabelNote: { fontFamily: FontFamily.regular, fontSize: 11, color: '#606070', marginTop: 2 },
-  summaryValue: { fontFamily: FontFamily.bold, fontSize: 14, color: '#FFFFFF' },
+  // Mono font for price values in summary
+  summaryValue: { fontFamily: FontFamily.mono, fontSize: 14, color: '#FFFFFF' },
   summaryDivider: {
     height: 1,
     backgroundColor: 'rgba(255,255,255,0.06)',
@@ -685,7 +747,8 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 1,
   },
-  summaryTotalValue: { fontFamily: FontFamily.bold, fontSize: 20, color: '#FFFFFF' },
+  // Mono font for total price
+  summaryTotalValue: { fontFamily: FontFamily.mono, fontSize: 20, color: '#FFFFFF' },
   summaryTotalNote: {
     fontFamily: FontFamily.regular,
     fontSize: 12,
