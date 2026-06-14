@@ -11,8 +11,18 @@ import { Ionicons } from '@/components/BrandIcon';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  withSequence,
+  cancelAnimation,
+  interpolateColor,
+} from 'react-native-reanimated';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { FontFamily } from '../../constants/typography';
+import { Colors } from '../../constants/colors';
 import { useAuthStore } from '../../store/authStore';
 import {
   getAuction, placeBid,
@@ -21,6 +31,8 @@ import {
 import { createChatRoom } from '../../lib/chatApi';
 import { io } from 'socket.io-client';
 import { getAccessToken } from '../../lib/supabase';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { haptics } from '../../lib/haptics';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -54,6 +66,38 @@ function fmtCountdown(totalSecs: number) {
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
+
+// ─── Skeleton Loading View ────────────────────────────────────────────────────
+
+const AuctionDetailSkeleton: React.FC = () => (
+  <View style={s.container}>
+    <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    {/* Hero image skeleton */}
+    <View style={[s.heroWrap, { marginHorizontal: 0, borderRadius: 0, marginBottom: 0, height: 240 }]}>
+      <Skeleton w={SW} h={240} r={0} />
+    </View>
+    <View style={{ paddingHorizontal: 14, paddingTop: 16, gap: 12 }}>
+      {/* Title skeletons */}
+      <Skeleton w={200} h={28} r={8} />
+      <Skeleton w={140} h={20} r={8} />
+      {/* Bid row skeletons */}
+      <View style={{ gap: 10, marginTop: 8 }}>
+        {[0, 1, 2].map(i => (
+          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Skeleton w={30} h={30} r={15} />
+            <View style={{ gap: 6 }}>
+              <Skeleton w={80} h={14} r={6} />
+              <Skeleton w={60} h={12} r={6} />
+            </View>
+            <View style={{ flex: 1, alignItems: 'flex-end' }}>
+              <Skeleton w={70} h={18} r={6} />
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  </View>
+);
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -90,8 +134,40 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [activeTab, setActiveTab] = useState<'details' | 'bids' | 'seller'>('details');
   const [secondsLeft, setSecondsLeft] = useState(0);
 
+  // ── Animations ──
+  // Countdown pulse (red background when <= 5 minutes)
+  const pulse = useSharedValue(0);
+  // Bid flash (green overlay on bid feed when own bid accepted)
+  const bidFlash = useSharedValue(0);
+
   const socketRef = useRef<any>(null);
   const auctionId: string | null = listingObj.auctionId ?? null;
+
+  // ─── Countdown pulse effect ───────────────────────────────────────────────
+
+  const isUnder5Min = secondsLeft > 0 && secondsLeft <= 5 * 60;
+
+  useEffect(() => {
+    const status = auction?.status ?? (listingObj.isLive ? 'ACTIVE' : 'SCHEDULED');
+    if (isUnder5Min && status === 'ACTIVE') {
+      pulse.value = withRepeat(withTiming(1, { duration: 800 }), -1, true);
+    } else {
+      cancelAnimation(pulse);
+      pulse.value = withTiming(0, { duration: 300 });
+    }
+  }, [isUnder5Min, auction?.status]);
+
+  const pulseAnimStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(
+      pulse.value,
+      [0, 1],
+      [Colors.bgTertiary, Colors.accentDark],
+    ),
+  }));
+
+  const bidFlashAnimStyle = useAnimatedStyle(() => ({
+    opacity: bidFlash.value * 0.35,
+  }));
 
   // ─── Load auction ─────────────────────────────────────────────────────────
 
@@ -167,6 +243,14 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           { id: payload.bidId, initials: payload.bidderInitials || '??', amount: payload.amount, time: new Date(payload.timestamp).toLocaleTimeString('en-GB'), isNew: true },
           ...prev.map(b => ({ ...b, isNew: false })),
         ]);
+        // Bid flash + haptic for own bids
+        if (currentUser && payload.bidderId === currentUser.id) {
+          bidFlash.value = withSequence(
+            withTiming(1, { duration: 120 }),
+            withTiming(0, { duration: 400 }),
+          );
+          haptics.medium();
+        }
         if (payload.newEndTime) {
           const newEnd = new Date(payload.newEndTime);
           setEndTime(newEnd);
@@ -182,6 +266,31 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         if (payload.auctionId !== auctionId) return;
         setEndedPayload(payload);
         setAuction(p => p ? { ...p, status: 'ENDED', winnerId: payload.winnerId, winningBidAmount: payload.winningBidAmount } : p);
+
+        // Route winners to AuctionComplete screen
+        if (payload.winnerId && currentUser && payload.winnerId === currentUser.id) {
+          haptics.success();
+          const _auction = auction;
+          navigation.navigate('AuctionComplete' as any, {
+            listingId: _auction?.listingId ?? listingObj.id ?? '',
+            auctionId: payload.auctionId,
+            hammerPrice: payload.winningBidAmount ?? currentBid,
+            buyerFee: 125,
+            bidCount: bidHistory.length,
+            listingTitle: String(
+              (_auction?.listing?.title) ||
+              `${listingObj.year || ''} ${listingObj.make || ''} ${listingObj.model || ''}`.trim() ||
+              'Vehicle',
+            ),
+            listingImage: String(
+              (_auction?.listing?.images?.[0]) ||
+              (listingObj.images?.[0]) ||
+              '',
+            ) || undefined,
+            lotNumber: undefined,
+            paymentDeadline: undefined,
+          });
+        }
       });
 
       socket.on('auction:started', (d: { auctionId: string }) => {
@@ -271,13 +380,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // ─── Loading / Error ──────────────────────────────────────────────────────
 
   if (loading) {
-    return (
-      <View style={[s.container, { alignItems: 'center', justifyContent: 'center' }]}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-        <ActivityIndicator color="#DC1F26" size="large" />
-        <Text style={[s.muted, { marginTop: 12 }]}>Loading auction…</Text>
-      </View>
-    );
+    return <AuctionDetailSkeleton />;
   }
 
   if (loadError) {
@@ -488,16 +591,23 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <Text style={s.outbidBadgeText}>OUTBID</Text>
               </View>
             )}
+            {/* Countdown timer with animated pulse background */}
             {isActive && endTime && (
-              <View style={s.timerBox}>
+              <Animated.View style={[s.timerBox, pulseAnimStyle]}>
                 <Text style={s.timerBoxLabel}>ENDS IN</Text>
-                <Text style={s.timerBoxValue}>{fmtCountdown(secondsLeft)}</Text>
-              </View>
+                <Text style={[
+                  s.timerBoxValue,
+                  { fontFamily: FontFamily.mono },
+                  isUnder5Min && { color: Colors.accentGlow },
+                ]}>
+                  {fmtCountdown(secondsLeft)}
+                </Text>
+              </Animated.View>
             )}
             {isScheduled && startTime && (
               <View style={[s.timerBox, { borderColor: 'rgba(59,130,246,0.3)' }]}>
                 <Text style={[s.timerBoxLabel, { color: '#93C5FD' }]}>STARTS IN</Text>
-                <Text style={[s.timerBoxValue, { color: '#60A5FA' }]}>{fmtCountdown(secondsLeft)}</Text>
+                <Text style={[s.timerBoxValue, { color: '#60A5FA', fontFamily: FontFamily.mono }]}>{fmtCountdown(secondsLeft)}</Text>
               </View>
             )}
           </View>
@@ -505,7 +615,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           <View style={s.heroBottom}>
             <View style={{ flex: 1 }}>
               <Text style={s.heroBidLabel}>{isEnded ? 'FINAL BID' : isScheduled ? 'STARTING BID' : 'CURRENT BID'}</Text>
-              <Text style={s.heroBid}>{fmt(currentBid)}</Text>
+              <Text style={[s.heroBid, { fontFamily: FontFamily.mono }]}>{fmt(currentBid)}</Text>
               {reserveMet && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
                   <Ionicons name="shield-checkmark" size={11} color="#10B981" />
@@ -668,7 +778,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   ].map(([k, v]) => (
                     <View key={k} style={{ width: '50%', paddingBottom: 10, paddingRight: 8 }}>
                       <Text style={s.specKey}>{k}</Text>
-                      <Text style={[s.specVal, { fontFamily: FontFamily.bold, color: '#FFFFFF' }]}>{v}</Text>
+                      <Text style={[s.specVal, { fontFamily: FontFamily.mono, color: '#FFFFFF' }]}>{v}</Text>
                     </View>
                   ))}
                 </View>
@@ -688,36 +798,47 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         {/* ── Tab: BIDS ── */}
         {activeTab === 'bids' && (
           <View style={s.card}>
-            {bidHistory.length === 0 ? (
-              <View style={{ alignItems: 'center', paddingVertical: 40, gap: 8 }}>
-                <Ionicons name="hammer-outline" size={28} color="#404050" />
-                <Text style={s.muted}>No bids yet — be the first.</Text>
-              </View>
-            ) : (
-              <>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' }}>
-                  <Text style={s.specKey}>BIDDER</Text>
-                  <Text style={s.specKey}>AMOUNT</Text>
+            {/* Bid flash overlay on top row */}
+            <View style={{ position: 'relative' }}>
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  StyleSheet.absoluteFillObject,
+                  { backgroundColor: Colors.success, borderRadius: 10, zIndex: 10 },
+                  bidFlashAnimStyle,
+                ]}
+              />
+              {bidHistory.length === 0 ? (
+                <View style={{ alignItems: 'center', paddingVertical: 40, gap: 8 }}>
+                  <Ionicons name="hammer-outline" size={28} color="#404050" />
+                  <Text style={s.muted}>No bids yet — be the first.</Text>
                 </View>
-                {bidHistory.map((bid, i) => (
-                  <View key={bid.id} style={[s.bidRow, i === bidHistory.length - 1 && { borderBottomWidth: 0 }]}>
-                    <View style={[s.bidAvatar, i === 0 && { backgroundColor: 'rgba(220,31,38,0.2)', borderColor: '#DC1F26' }]}>
-                      <Text style={[s.bidAvatarText, i === 0 && { color: '#DC1F26' }]}>{bid.initials}</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.bidInitials}>{bid.initials}</Text>
-                      {i === 0 && (
-                        <View style={s.leaderChip}><Text style={s.leaderChipText}>LEADER</Text></View>
-                      )}
-                    </View>
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={s.bidAmt}>{fmt(bid.amount)}</Text>
-                      <Text style={s.bidTime}>{bid.time}</Text>
-                    </View>
+              ) : (
+                <>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' }}>
+                    <Text style={s.specKey}>BIDDER</Text>
+                    <Text style={s.specKey}>AMOUNT</Text>
                   </View>
-                ))}
-              </>
-            )}
+                  {bidHistory.map((bid, i) => (
+                    <View key={bid.id} style={[s.bidRow, i === bidHistory.length - 1 && { borderBottomWidth: 0 }]}>
+                      <View style={[s.bidAvatar, i === 0 && { backgroundColor: 'rgba(220,31,38,0.2)', borderColor: '#DC1F26' }]}>
+                        <Text style={[s.bidAvatarText, i === 0 && { color: '#DC1F26' }]}>{bid.initials}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.bidInitials}>{bid.initials}</Text>
+                        {i === 0 && (
+                          <View style={s.leaderChip}><Text style={s.leaderChipText}>LEADER</Text></View>
+                        )}
+                      </View>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={[s.bidAmt, { fontFamily: FontFamily.mono }]}>{fmt(bid.amount)}</Text>
+                        <Text style={s.bidTime}>{bid.time}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </>
+              )}
+            </View>
           </View>
         )}
 
@@ -756,7 +877,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         ) : isEnded ? (
           <View style={s.bidStateBox}>
             <Ionicons name="hammer-outline" size={20} color="#606070" />
-            <Text style={s.bidStateText}>{userWon ? 'You Won! 🏆' : 'Auction Ended'}</Text>
+            <Text style={s.bidStateText}>{userWon ? 'You Won!' : 'Auction Ended'}</Text>
             {userWon && (
               <TouchableOpacity
                 style={[s.bidBtn, { backgroundColor: '#10B981', marginTop: 8 }]}
@@ -812,9 +933,9 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
               <View>
                 <Text style={s.specKey}>CURRENT BID</Text>
-                <Text style={s.currentBidVal}>{fmt(currentBid)}</Text>
+                <Text style={[s.currentBidVal, { fontFamily: FontFamily.mono }]}>{fmt(currentBid)}</Text>
               </View>
-              <Text style={s.minNextBid}>Min next: <Text style={{ color: '#FFF', fontFamily: FontFamily.bold }}>{fmt(currentBid + minIncrement)}</Text></Text>
+              <Text style={s.minNextBid}>Min next: <Text style={{ color: '#FFF', fontFamily: FontFamily.mono }}>{fmt(currentBid + minIncrement)}</Text></Text>
             </View>
 
             {/* Quick bid buttons */}
@@ -828,7 +949,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   activeOpacity={0.7}
                 >
                   <Text style={s.quickBidLabel}>+{inc >= 1000 ? `£${inc / 1000}k` : `£${inc}`}</Text>
-                  <Text style={s.quickBidAmt}>{fmt(currentBid + inc)}</Text>
+                  <Text style={[s.quickBidAmt, { fontFamily: FontFamily.mono }]}>{fmt(currentBid + inc)}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -876,7 +997,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <Text style={s.feeNoticeLabel}>BUYER FEE</Text>
                 <Text style={s.feeNoticeHint}>One-time fee if you win</Text>
               </View>
-              <Text style={s.feeNoticeAmt}>£125</Text>
+              <Text style={[s.feeNoticeAmt, { fontFamily: FontFamily.mono }]}>£125</Text>
             </View>
           </View>
         )}
@@ -939,7 +1060,7 @@ const s = StyleSheet.create({
   outbidBadgeText: { fontFamily: FontFamily.bold, fontSize: 9, color: '#DC1F26' },
   timerBox: { backgroundColor: 'rgba(10,10,12,0.8)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' },
   timerBoxLabel: { fontFamily: FontFamily.bold, fontSize: 7, color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, marginBottom: 2 },
-  timerBoxValue: { fontFamily: FontFamily.extraBold, fontSize: 16, color: '#FFFFFF' },
+  timerBoxValue: { fontFamily: FontFamily.mono, fontSize: 16, color: '#FFFFFF' },
 
   // Tabs
   tabs: { flexDirection: 'row', backgroundColor: '#111116', borderRadius: 10, marginBottom: 14, padding: 3 },
@@ -975,7 +1096,7 @@ const s = StyleSheet.create({
   bidAvatar: { width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' },
   bidAvatarText: { fontFamily: FontFamily.bold, fontSize: 9, color: '#A0A0AB' },
   bidInitials: { fontFamily: FontFamily.bold, fontSize: 12, color: '#FFFFFF' },
-  bidAmt: { fontFamily: FontFamily.bold, fontSize: 14, color: '#FFFFFF' },
+  bidAmt: { fontFamily: FontFamily.mono, fontSize: 14, color: '#FFFFFF' },
   bidTime: { fontFamily: FontFamily.regular, fontSize: 9, color: '#606070' },
   leaderChip: { backgroundColor: 'rgba(220,31,38,0.2)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, alignSelf: 'flex-start', marginTop: 2 },
   leaderChipText: { fontFamily: FontFamily.bold, fontSize: 7, color: '#DC1F26', letterSpacing: 0.8 },
@@ -989,20 +1110,20 @@ const s = StyleSheet.create({
   bidConsole: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#0D0D11', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)', paddingHorizontal: 14, paddingTop: 12 },
   bidStateBox: { alignItems: 'center', paddingVertical: 12, gap: 6 },
   bidStateText: { fontFamily: FontFamily.bold, fontSize: 14, color: '#FFFFFF' },
-  currentBidVal: { fontFamily: FontFamily.extraBold, fontSize: 22, color: '#FFFFFF' },
+  currentBidVal: { fontFamily: FontFamily.mono, fontSize: 22, color: '#FFFFFF' },
   minNextBid: { fontFamily: FontFamily.regular, fontSize: 11, color: '#606070' },
   quickBidBtn: { flex: 1, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', paddingVertical: 8, alignItems: 'center', gap: 2 },
   quickBidLabel: { fontFamily: FontFamily.bold, fontSize: 9, color: '#606070' },
-  quickBidAmt: { fontFamily: FontFamily.bold, fontSize: 12, color: '#FFFFFF' },
+  quickBidAmt: { fontFamily: FontFamily.mono, fontSize: 12, color: '#FFFFFF' },
   customBidWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', paddingHorizontal: 12 },
   customBidCurrency: { fontFamily: FontFamily.bold, fontSize: 14, color: '#606070', marginRight: 4 },
-  customBidInput: { flex: 1, fontFamily: FontFamily.bold, fontSize: 16, color: '#FFFFFF', paddingVertical: 10 },
+  customBidInput: { flex: 1, fontFamily: FontFamily.mono, fontSize: 16, color: '#FFFFFF', paddingVertical: 10 },
   bidBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#DC1F26', borderRadius: 10, paddingHorizontal: 20, paddingVertical: 12 },
   bidBtnText: { fontFamily: FontFamily.bold, fontSize: 13, color: '#FFFFFF', letterSpacing: 0.8 },
   feeNotice: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(245,158,11,0.06)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.15)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
   feeNoticeLabel: { fontFamily: FontFamily.bold, fontSize: 9, color: '#F59E0B', letterSpacing: 1 },
   feeNoticeHint: { fontFamily: FontFamily.regular, fontSize: 10, color: '#606070', marginTop: 1 },
-  feeNoticeAmt: { fontFamily: FontFamily.extraBold, fontSize: 20, color: '#F59E0B' },
+  feeNoticeAmt: { fontFamily: FontFamily.mono, fontSize: 20, color: '#F59E0B' },
 
   // Error/retry
   retryBtn: { backgroundColor: '#DC1F26', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10 },
