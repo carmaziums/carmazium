@@ -8,7 +8,7 @@ import {
     Search, Loader2, BadgeCheck, Upload, X,
     CheckCircle, ArrowRight, Sparkles, Info,
     LocateFixed, AlertTriangle, Zap, Gavel, List, Play,
-    Star, Shield, BadgeCheck as BadgeCheckIcon,
+    Star, Shield, BadgeCheck as BadgeCheckIcon, ChevronRight,
 } from "lucide-react"
 import Image from "next/image"
 import { ImageUpload } from "@/components/listing/ImageUpload"
@@ -24,6 +24,10 @@ import { useAuth } from "@/context/AuthContext"
 import { DamageAnalysisTool } from "@/components/listing/DamageAnalysisTool"
 import { useRouter, useSearchParams } from "next/navigation"
 
+// ─── Required fields for publish completeness (must match inventory page) ────
+// Condition is required here too so the form enforces it before save.
+const EDIT_REQUIRED = ['transmission', 'bodyType', 'description', 'condition', 'images'] as const
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function DealerQuickList() {
@@ -36,34 +40,37 @@ export function DealerQuickList() {
     const returnPublish = searchParams.get('returnPublish') === 'true'
 
     // ─── State ────────────────────────────────────────────────────────────────
-    const [vrm, setVrm] = React.useState("")
-    const [dvlaLoading, setDvlaLoading] = React.useState(false)
-    const [dvlaError, setDvlaError] = React.useState<string | null>(null)
-    const [dvlaData, setDvlaData] = React.useState<any>(null)
+    const [vrm,             setVrm]             = React.useState("")
+    const [dvlaLoading,     setDvlaLoading]     = React.useState(false)
+    const [dvlaError,       setDvlaError]       = React.useState<string | null>(null)
+    const [dvlaData,        setDvlaData]        = React.useState<any>(null)
 
-    const [model, setModel] = React.useState("")
-    const [price, setPrice] = React.useState("")
-    const [mileage, setMileage] = React.useState("")
-    const [location, setLocation] = React.useState("")
-    const [geoLoading, setGeoLoading] = React.useState(false)
-    const [description, setDescription] = React.useState("")
-    const [images, setImages] = React.useState<string[]>([])
-    const [condition, setCondition] = React.useState("")
-    const [transmission, setTransmission] = React.useState("")
-    const [bodyType, setBodyType] = React.useState<BodyTypeValue | "">("")
-    const [editLoading, setEditLoading] = React.useState(false)
+    const [model,           setModel]           = React.useState("")
+    const [price,           setPrice]           = React.useState("")
+    const [mileage,         setMileage]         = React.useState("")
+    const [location,        setLocation]        = React.useState("")
+    const [geoLoading,      setGeoLoading]      = React.useState(false)
+    const [description,     setDescription]     = React.useState("")
+    const [images,          setImages]          = React.useState<string[]>([])
+    const [condition,       setCondition]       = React.useState("")
+    const [transmission,    setTransmission]    = React.useState("")
+    const [bodyType,        setBodyType]        = React.useState<BodyTypeValue | "">("")
+    // New fields for better buyer trust
+    const [serviceHistory,  setServiceHistory]  = React.useState("")
+    const [owners,          setOwners]          = React.useState("")
+    const [editLoading,     setEditLoading]     = React.useState(false)
 
     const [isGeneratingDesc, setIsGeneratingDesc] = React.useState(false)
-    const [isSubmitting, setIsSubmitting] = React.useState(false)
-    const [submitError, setSubmitError] = React.useState<string | null>(null)
-    const [publishAs, setPublishAs] = React.useState<"ACTIVE" | "DRAFT">("ACTIVE")
-    const [listingType, setListingType] = React.useState<"CLASSIFIED" | "AUCTION">("CLASSIFIED")
-    const [videoUrls, setVideoUrls] = React.useState<string[]>([])
-    const [videoUrlInput, setVideoUrlInput] = React.useState("")
-    const [videoUrlError, setVideoUrlError] = React.useState("")
+    const [isSubmitting,     setIsSubmitting]     = React.useState(false)
+    const [submitError,      setSubmitError]      = React.useState<string | null>(null)
+    const [publishAs,        setPublishAs]        = React.useState<"ACTIVE" | "DRAFT">("ACTIVE")
+    const [listingType,      setListingType]      = React.useState<"CLASSIFIED" | "AUCTION">("CLASSIFIED")
+    const [videoUrls,        setVideoUrls]        = React.useState<string[]>([])
+    const [videoUrlInput,    setVideoUrlInput]    = React.useState("")
+    const [videoUrlError,    setVideoUrlError]    = React.useState("")
     // Plan-selection modal (shown after saving in "complete listing" edit flow)
-    const [showPlanModal, setShowPlanModal] = React.useState(false)
-    const [planPublishing, setPlanPublishing] = React.useState(false)
+    const [showPlanModal,    setShowPlanModal]    = React.useState(false)
+    const [planPublishing,   setPlanPublishing]   = React.useState(false)
 
     // ─── Load existing listing when editing ───────────────────────────────────
     React.useEffect(() => {
@@ -83,11 +90,13 @@ export function DealerQuickList() {
                 setCondition(l.condition || '')
                 setTransmission(l.transmission || '')
                 setBodyType((l.bodyType as BodyTypeValue) || '')
+                setServiceHistory(l.serviceHistory || '')
+                setOwners(l.owners || '')
                 // Preserve the original listing type so we never silently overwrite
-                // an AUCTION listing as CLASSIFIED (l.type is the DB field name)
+                // an AUCTION listing as CLASSIFIED
                 setListingType(l.type === 'AUCTION' ? 'AUCTION' : 'CLASSIFIED')
                 setPublishAs(l.status === 'ACTIVE' ? 'ACTIVE' : 'DRAFT')
-                // Reconstruct dvlaData from listing fields so sections appear
+                // Reconstruct dvlaData from listing fields so DVLA section appears
                 setDvlaData({
                     make: l.make,
                     model: l.model,
@@ -121,10 +130,8 @@ export function DealerQuickList() {
         try {
             const r = await dvlaLookup(vrm.trim())
             setDvlaData(r)
-            // Pre-fill model if DVLA/MOT returned one
             if (r.model) setModel(r.model)
 
-            // Auto-fill mileage from latest MOT odometer if available
             if (r.motHistory?.length) {
                 const latest = r.motHistory.find((m: any) => m.odometerValue)
                 if (latest?.odometerValue) setMileage(latest.odometerValue)
@@ -142,19 +149,23 @@ export function DealerQuickList() {
         setIsGeneratingDesc(true)
         try {
             const result = await aiGenerateDescription({
-                make: dvlaData.make,
-                model: model || dvlaData.model,
-                year: dvlaData.year ? String(dvlaData.year) : undefined,
-                fuelType: dvlaData.fuelType,
-                color: dvlaData.colour || dvlaData.primaryColour || dvlaData.color,
-                engineSize: dvlaData.engineSize ? String(dvlaData.engineSize) : undefined,
+                make:           dvlaData.make,
+                model:          model || dvlaData.model,
+                year:           dvlaData.year ? String(dvlaData.year) : undefined,
+                fuelType:       dvlaData.fuelType,
+                color:          dvlaData.colour || dvlaData.primaryColour || dvlaData.color,
+                engineSize:     dvlaData.engineSize ? String(dvlaData.engineSize) : undefined,
                 mileage,
                 condition,
+                // Also pass dealer-entered fields so the AI produces richer copy
+                transmission:   transmission || undefined,
+                bodyType:       bodyType || undefined,
+                serviceHistory: serviceHistory || undefined,
+                owners:         owners || undefined,
             })
             setDescription(result.text)
         } catch (error) {
             console.error("AI Generation failed:", error)
-            // Silently fail — dealer can write manually
         } finally {
             setIsGeneratingDesc(false)
         }
@@ -183,10 +194,10 @@ export function DealerQuickList() {
     }
 
     // ─── Submit ───────────────────────────────────────────────────────────────
+    // In edit mode all five required fields must be filled before the Save button activates.
     const canSubmit = !!(
         vrm && dvlaData && price && images.length > 0 &&
-        // In edit mode all three publish-gate fields must be filled before saving
-        (!editId || (transmission && bodyType && description.trim()))
+        (!editId || (transmission && bodyType && description.trim() && condition))
     )
 
     const handleSubmit = async () => {
@@ -198,7 +209,6 @@ export function DealerQuickList() {
             const priceNum = parseFloat(price)
             const resolvedModel = model || dvlaData.model || ''
 
-            // Infer ULEZ from DVLA data
             let ulez = false
             const ft = (dvlaData.fuelType || "").toUpperCase()
             const es = (dvlaData.euroStandard || "").toUpperCase()
@@ -208,54 +218,53 @@ export function DealerQuickList() {
 
             const titleParts = [dvlaData.make, resolvedModel, dvlaData.year].filter(Boolean)
             const payload: CreateListingRequest = {
-                title: titleParts.join(' ') || vrm,
-                price: priceNum,
-                priceMin: priceNum,
-                priceMax: priceNum,
-                mileage: parseInt(mileage) || 0,
-                year: dvlaData.year || new Date().getFullYear(),
-                vrm: vrm.toUpperCase(),
+                title:        titleParts.join(' ') || vrm,
+                price:        priceNum,
+                priceMin:     priceNum,
+                priceMax:     priceNum,
+                mileage:      parseInt(mileage) || 0,
+                year:         dvlaData.year || new Date().getFullYear(),
+                vrm:          vrm.toUpperCase(),
                 images,
                 listingType,
-                status: publishAs,
-                badgeTier: "FREE",
-                vehicleType: "CAR" as VehicleTypeValue,
-                make: dvlaData.make || undefined,
-                model: resolvedModel || undefined,
-                description: description || undefined,
+                status:       publishAs,
+                badgeTier:    "FREE",
+                vehicleType:  "CAR" as VehicleTypeValue,
+                make:         dvlaData.make || undefined,
+                model:        resolvedModel || undefined,
+                description:  description || undefined,
                 transmission: transmission as any || undefined,
-                bodyType: bodyType as BodyTypeValue || undefined,
-                fuelType: dvlaData.fuelType as any || undefined,
-                color: dvlaData.colour || undefined,
-                engineSize: dvlaData.engineSize || undefined,
+                bodyType:     bodyType as BodyTypeValue || undefined,
+                fuelType:     dvlaData.fuelType as any || undefined,
+                color:        dvlaData.colour || undefined,
+                engineSize:   dvlaData.engineSize || undefined,
                 co2Emissions: dvlaData.co2Emissions || undefined,
                 euroStandard: (dvlaData.euroStandard as EuroStandardValue) || undefined,
-                motStatus: dvlaData.motStatus || undefined,
-                taxStatus: dvlaData.taxStatus || undefined,
+                motStatus:    dvlaData.motStatus || undefined,
+                taxStatus:    dvlaData.taxStatus || undefined,
                 motExpiryDate: dvlaData.motExpiryDate || undefined,
-                taxDueDate: dvlaData.taxDueDate || undefined,
+                taxDueDate:   dvlaData.taxDueDate || undefined,
                 monthOfFirstRegistration: dvlaData.monthOfFirstRegistration || undefined,
-                wheelplan: dvlaData.wheelplan || undefined,
+                wheelplan:    dvlaData.wheelplan || undefined,
                 typeApproval: dvlaData.typeApproval || undefined,
                 markedForExport: dvlaData.markedForExport ?? undefined,
                 ulezCompliant: ulez,
-                location: location || undefined,
-                condition: condition as any || undefined,
-                isImported: false,
-                videoUrls: videoUrls.length > 0 ? videoUrls : undefined,
+                location:     location || undefined,
+                condition:    condition as any || undefined,
+                isImported:   false,
+                videoUrls:    videoUrls.length > 0 ? videoUrls : undefined,
+                // Extended trust fields
+                serviceHistory: serviceHistory || undefined,
+                owners:         owners || undefined,
             }
 
             if (editId) {
                 // Always save as DRAFT in edit mode — publishing goes through the
-                // plan-selection modal so the dealer picks a tier and payment is
-                // properly gated. Sending status:ACTIVE directly would bypass Stripe.
+                // plan-selection modal so the dealer picks a tier and payment is gated.
                 await apiClient(`/listings/${editId}`, {
                     method: 'PATCH',
                     body: JSON.stringify({ ...payload, status: 'DRAFT' }),
                 })
-                // If the dealer arrived from the inventory "Complete listing" button,
-                // show the plan-selection modal now so they can publish in one shot
-                // without having to go back and click the green tick a second time.
                 if (returnPublish) {
                     setShowPlanModal(true)
                 } else {
@@ -272,7 +281,7 @@ export function DealerQuickList() {
         }
     }
 
-    // ─── Plan selection confirm (only in returnPublish edit flow) ─────────────
+    // ─── Plan selection confirm (returnPublish edit flow) ─────────────────────
     const handlePlanConfirm = async (tier: 'FREE' | 'STANDARD' | 'PREMIUM') => {
         if (!editId) return
         setPlanPublishing(true)
@@ -297,6 +306,15 @@ export function DealerQuickList() {
         </div>
     )
 
+    // In edit mode: show which of the 5 required fields still need filling
+    const editMissingFields = editId ? [
+        !transmission    && 'Transmission',
+        !bodyType        && 'Body Type',
+        !description.trim() && 'Description',
+        !condition       && 'Condition',
+        images.length === 0 && 'Photos (at least 1)',
+    ].filter(Boolean) as string[] : []
+
     return (
         <div className="p-6 md:p-10 space-y-8">
             {/* Header */}
@@ -307,24 +325,33 @@ export function DealerQuickList() {
                     </div>
                     <div>
                         <h1 className="text-2xl md:text-3xl font-black font-heading text-white tracking-tight">
-                            {editId ? 'Edit Listing' : 'Quick List'}
+                            {editId ? 'Complete Listing' : 'Quick List'}
                         </h1>
                         <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">
-                            {editId ? 'Update vehicle details and save changes' : 'VRM → Auto-fill → Photos → Publish'}
+                            {editId ? 'Fill in the remaining details to publish your vehicle' : 'VRM → Auto-fill → Photos → Publish'}
                         </p>
                     </div>
                 </div>
             </div>
 
-            {/* ── Edit-mode completion banner ──────────────────────────────── */}
+            {/* ── Edit-mode required-fields banner ─────────────────────────── */}
             {editId && (
-                <div className="flex items-start gap-3 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-200 text-sm">
-                    <Info size={16} className="shrink-0 mt-0.5 text-blue-400" />
+                <div className={`flex items-start gap-3 p-4 rounded-xl border text-sm ${editMissingFields.length === 0 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-200' : 'bg-blue-500/10 border-blue-500/20 text-blue-200'}`}>
+                    <Info size={16} className={`shrink-0 mt-0.5 ${editMissingFields.length === 0 ? 'text-emerald-400' : 'text-blue-400'}`} />
                     <div>
-                        <p className="font-bold text-blue-300 mb-0.5">Complete your listing to publish</p>
-                        <p className="text-xs text-blue-200/70">
-                            DVLA data and your import details are pre-filled. Select <strong>Body Type</strong> and <strong>Transmission</strong>, then add a <strong>Description</strong> — these three are required to go live.
-                        </p>
+                        {editMissingFields.length === 0 ? (
+                            <>
+                                <p className="font-bold text-emerald-300 mb-0.5">All required fields complete</p>
+                                <p className="text-xs text-emerald-200/70">Click "Save & Choose Plan" to go live.</p>
+                            </>
+                        ) : (
+                            <>
+                                <p className="font-bold text-blue-300 mb-0.5">Complete these fields to publish ({editMissingFields.length} remaining)</p>
+                                <p className="text-xs text-blue-200/70">
+                                    Still needed: <span className="text-blue-300 font-semibold">{editMissingFields.join(', ')}</span>
+                                </p>
+                            </>
+                        )}
                     </div>
                 </div>
             )}
@@ -394,14 +421,14 @@ export function DealerQuickList() {
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-6 gap-y-3 text-sm">
                             {[
-                                { label: "Make", value: dvlaData.make },
-                                { label: "Model", value: model || dvlaData.model },
-                                { label: "Year", value: dvlaData.year },
+                                { label: "Make",   value: dvlaData.make },
+                                { label: "Model",  value: model || dvlaData.model },
+                                { label: "Year",   value: dvlaData.year },
                                 { label: "Colour", value: dvlaData.colour || dvlaData.primaryColour },
-                                { label: "Fuel", value: dvlaData.fuelType },
+                                { label: "Fuel",   value: dvlaData.fuelType },
                                 { label: "Engine", value: dvlaData.engineSize ? `${dvlaData.engineSize}cc` : null },
-                                { label: "MOT", value: dvlaData.motStatus },
-                                { label: "Tax", value: dvlaData.taxStatus },
+                                { label: "MOT",    value: dvlaData.motStatus },
+                                { label: "Tax",    value: dvlaData.taxStatus },
                             ].filter(f => f.value).map(f => (
                                 <div key={f.label}>
                                     <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500 block">{f.label}</span>
@@ -409,7 +436,6 @@ export function DealerQuickList() {
                                 </div>
                             ))}
                         </div>
-                        {/* Manual model input when DVLA didn't return one */}
                         {!dvlaData.model && (
                             <div className="mt-4 pt-4 border-t border-white/5">
                                 <label className="text-xs font-bold uppercase tracking-widest text-amber-400 block mb-1.5 flex items-center gap-1">
@@ -423,7 +449,6 @@ export function DealerQuickList() {
                                 />
                             </div>
                         )}
-                        {/* Allow editing model even when DVLA returned one */}
                         {dvlaData.model && (
                             <div className="mt-4 pt-4 border-t border-white/5">
                                 <label className="text-xs font-bold uppercase tracking-widest text-gray-500 block mb-1.5">Model (editable)</label>
@@ -438,15 +463,16 @@ export function DealerQuickList() {
                 )}
             </section>
 
-            {/* ── SECTION 2: Essentials (only shown after VRM lookup) ──────── */}
+            {/* ── SECTION 2: Essentials ────────────────────────────────────── */}
             {dvlaData && (
-                <section className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <section className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <h2 className="text-sm font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
                         <span className="w-6 h-6 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary text-[10px] font-black">2</span>
                         Essentials
                     </h2>
+
+                    {/* Price / Mileage / Location */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {/* Price */}
                         <div className="space-y-2">
                             <label className="text-xs font-bold uppercase text-gray-400">Asking Price *</label>
                             <div className="relative">
@@ -461,7 +487,6 @@ export function DealerQuickList() {
                             </div>
                         </div>
 
-                        {/* Mileage */}
                         <div className="space-y-2">
                             <label className="text-xs font-bold uppercase text-gray-400">
                                 Mileage
@@ -476,7 +501,6 @@ export function DealerQuickList() {
                             />
                         </div>
 
-                        {/* Location */}
                         <div className="space-y-2">
                             <label className="text-xs font-bold uppercase text-gray-400">Dealership Location</label>
                             <div className="flex gap-2">
@@ -499,9 +523,12 @@ export function DealerQuickList() {
                         </div>
                     </div>
 
-                    {/* Condition */}
+                    {/* Condition * */}
                     <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase text-gray-400">Condition</label>
+                        <label className="text-xs font-bold uppercase text-gray-400 flex items-center gap-1">
+                            Condition
+                            {editId && <span className="text-primary">*</span>}
+                        </label>
                         <div className="flex flex-wrap gap-2">
                             {["EXCELLENT", "GOOD", "FAIR", "POOR"].map(c => (
                                 <button
@@ -511,7 +538,7 @@ export function DealerQuickList() {
                                     className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all ${condition === c
                                         ? "border-primary bg-primary/10 text-white shadow-[0_0_12px_rgba(237,28,36,0.15)]"
                                         : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"
-                                        }`}
+                                    }`}
                                 >
                                     {c}
                                 </button>
@@ -519,7 +546,7 @@ export function DealerQuickList() {
                         </div>
                     </div>
 
-                    {/* Transmission */}
+                    {/* Transmission * */}
                     <div className="space-y-2">
                         <label className="text-xs font-bold uppercase text-gray-400 flex items-center gap-1">
                             Transmission
@@ -527,10 +554,10 @@ export function DealerQuickList() {
                         </label>
                         <div className="flex flex-wrap gap-2">
                             {[
-                                { value: 'MANUAL', label: 'Manual' },
-                                { value: 'AUTOMATIC', label: 'Automatic' },
+                                { value: 'MANUAL',         label: 'Manual' },
+                                { value: 'AUTOMATIC',      label: 'Automatic' },
                                 { value: 'SEMI_AUTOMATIC', label: 'Semi-Auto' },
-                                { value: 'CVT', label: 'CVT' },
+                                { value: 'CVT',            label: 'CVT' },
                             ].map(({ value, label }) => (
                                 <button
                                     key={value}
@@ -539,7 +566,7 @@ export function DealerQuickList() {
                                     className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all ${transmission === value
                                         ? "border-primary bg-primary/10 text-white shadow-[0_0_12px_rgba(237,28,36,0.15)]"
                                         : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"
-                                        }`}
+                                    }`}
                                 >
                                     {label}
                                 </button>
@@ -547,7 +574,7 @@ export function DealerQuickList() {
                         </div>
                     </div>
 
-                    {/* Body Type */}
+                    {/* Body Type * */}
                     <div className="space-y-2">
                         <label className="text-xs font-bold uppercase text-gray-400 flex items-center gap-1">
                             Body Type
@@ -555,15 +582,15 @@ export function DealerQuickList() {
                         </label>
                         <div className="flex flex-wrap gap-2">
                             {[
-                                { value: 'HATCHBACK', label: 'Hatchback' },
-                                { value: 'SEDAN', label: 'Saloon' },
-                                { value: 'ESTATE', label: 'Estate' },
-                                { value: 'SUV', label: 'SUV' },
-                                { value: 'CROSSOVER', label: 'Crossover' },
-                                { value: 'COUPE', label: 'Coupé' },
-                                { value: 'CONVERTIBLE', label: 'Convertible' },
-                                { value: 'MPV', label: 'MPV' },
-                                { value: 'VAN', label: 'Van' },
+                                { value: 'HATCHBACK',    label: 'Hatchback' },
+                                { value: 'SEDAN',        label: 'Saloon' },
+                                { value: 'ESTATE',       label: 'Estate' },
+                                { value: 'SUV',          label: 'SUV' },
+                                { value: 'CROSSOVER',    label: 'Crossover' },
+                                { value: 'COUPE',        label: 'Coupé' },
+                                { value: 'CONVERTIBLE',  label: 'Convertible' },
+                                { value: 'MPV',          label: 'MPV' },
+                                { value: 'VAN',          label: 'Van' },
                                 { value: 'PICKUP_TRUCK', label: 'Pickup' },
                             ].map(({ value, label }) => (
                                 <button
@@ -573,9 +600,61 @@ export function DealerQuickList() {
                                     className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all ${bodyType === value
                                         ? "border-primary bg-primary/10 text-white shadow-[0_0_12px_rgba(237,28,36,0.15)]"
                                         : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"
-                                        }`}
+                                    }`}
                                 >
                                     {label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Service History */}
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold uppercase text-gray-400">
+                            Service History
+                            <span className="text-gray-600 font-normal ml-1 normal-case">— helps buyers trust the vehicle</span>
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                            {[
+                                { value: 'FULL_MAIN_DEALER',  label: 'Full Main Dealer' },
+                                { value: 'FULL_INDEPENDENT',  label: 'Full Independent' },
+                                { value: 'PARTIAL',           label: 'Partial' },
+                                { value: 'NONE',              label: 'None' },
+                                { value: 'UNKNOWN',           label: 'Unknown' },
+                            ].map(({ value, label }) => (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    onClick={() => setServiceHistory(value)}
+                                    className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all ${serviceHistory === value
+                                        ? "border-primary bg-primary/10 text-white shadow-[0_0_12px_rgba(237,28,36,0.15)]"
+                                        : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"
+                                    }`}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Number of Owners */}
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold uppercase text-gray-400">
+                            Previous Owners
+                            <span className="text-gray-600 font-normal ml-1 normal-case">— number of keepers</span>
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                            {['1', '2', '3', '4+'].map(v => (
+                                <button
+                                    key={v}
+                                    type="button"
+                                    onClick={() => setOwners(v)}
+                                    className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all ${owners === v
+                                        ? "border-primary bg-primary/10 text-white shadow-[0_0_12px_rgba(237,28,36,0.15)]"
+                                        : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"
+                                    }`}
+                                >
+                                    {v}
                                 </button>
                             ))}
                         </div>
@@ -589,6 +668,7 @@ export function DealerQuickList() {
                     <h2 className="text-sm font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
                         <span className="w-6 h-6 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary text-[10px] font-black">3</span>
                         Photos
+                        {editId && <span className="text-primary text-[10px] font-black">*</span>}
                         {images.length > 0 && <span className="text-emerald-400 text-[10px] bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">{images.length} uploaded</span>}
                     </h2>
                     <ImageUpload
@@ -597,20 +677,19 @@ export function DealerQuickList() {
                         existingImages={images}
                     />
 
-                    {/* AI Damage Assessment (Optional for Quick List) */}
                     <div className="pt-6 border-t border-white/5">
-                        <DamageAnalysisTool 
-                            images={images} 
+                        <DamageAnalysisTool
+                            images={images}
                             onComplete={(detections) => {
                                 console.log("Quick List Detections:", detections)
                                 alert(`${detections.length} damage records detected. These will be saved with the listing.`)
-                            }} 
+                            }}
                         />
                     </div>
                 </section>
             )}
 
-            {/* ── SECTION 4: Description (optional, AI-powered) ───────────── */}
+            {/* ── SECTION 4: Description ──────────────────────────────────── */}
             {dvlaData && (
                 <section className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '200ms' }}>
                     <div className="flex items-center justify-between">
@@ -638,7 +717,7 @@ export function DealerQuickList() {
                         placeholder="Leave blank or use AI Generate to auto-write a professional listing description..."
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
-                        className="bg-slate-900/50 border-white/10 text-white min-h-[100px] placeholder:text-gray-600 focus:border-primary"
+                        className="bg-slate-900/50 border-white/10 text-white min-h-[120px] placeholder:text-gray-600 focus:border-primary"
                     />
                 </section>
             )}
@@ -718,7 +797,7 @@ export function DealerQuickList() {
                                     className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${publishAs === "ACTIVE"
                                         ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.15)]"
                                         : "text-gray-500 hover:text-gray-300"
-                                        }`}
+                                    }`}
                                 >
                                     Publish Live
                                 </button>
@@ -728,7 +807,7 @@ export function DealerQuickList() {
                                     className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${publishAs === "DRAFT"
                                         ? "bg-gray-500/20 text-gray-300 border border-gray-500/30"
                                         : "text-gray-500 hover:text-gray-300"
-                                        }`}
+                                    }`}
                                 >
                                     Save Draft
                                 </button>
@@ -759,7 +838,7 @@ export function DealerQuickList() {
                 </section>
             )}
 
-            {/* ── Plan-selection modal (shown after saving completed bulk-import listing) */}
+            {/* ── Plan-selection modal (returnPublish flow) ────────────────── */}
             {showPlanModal && editId && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
                     <div className="relative w-full max-w-lg bg-[#0A0A0C] border border-white/10 rounded-2xl p-6 shadow-2xl">
