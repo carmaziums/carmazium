@@ -10,12 +10,15 @@ import {
   ScrollView,
   StatusBar,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Linking from 'expo-linking';
 import { Ionicons } from '@/components/BrandIcon';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
 import { useAuthStore } from '../../store/authStore';
+import { supabase } from '../../lib/supabase';
 import { Logo } from '../../components/Logo';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { Colors } from '../../constants/colors';
@@ -33,6 +36,30 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const passwordRef = useRef<TextInput>(null);
 
   const { login, isLoading } = useAuthStore();
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  const handleGoogleLogin = async () => {
+    setIsGoogleLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: 'carmazium://auth/callback',
+          skipBrowserRedirect: true,
+        },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        await Linking.openURL(data.url);
+      } else {
+        throw new Error('Could not get sign-in URL. Is Google enabled in Supabase?');
+      }
+    } catch (err: any) {
+      Alert.alert('Sign In Failed', err.message || 'Unable to start Google sign-in.');
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     if (!email || !password) return;
@@ -189,11 +216,16 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
             {/* Social Row */}
             <View style={styles.socialRow}>
               <TouchableOpacity
-                style={styles.socialBtn}
+                style={[styles.socialBtn, isGoogleLoading && styles.socialBtnDisabled]}
                 activeOpacity={0.8}
-                onPress={() => Alert.alert('Coming Soon', 'Google sign-in will be available in an upcoming update.')}
+                onPress={handleGoogleLogin}
+                disabled={isGoogleLoading || isLoading}
               >
-                <Ionicons name="logo-google" size={18} color="#FFFFFF" />
+                {isGoogleLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Ionicons name="logo-google" size={18} color="#FFFFFF" />
+                )}
                 <Text style={styles.socialBtnText}>GOOGLE</Text>
               </TouchableOpacity>
 
@@ -380,6 +412,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
     backgroundColor: '#111115',
+  },
+  socialBtnDisabled: {
+    opacity: 0.6,
   },
   socialBtnText: {
     fontFamily: FontFamily.bold,
