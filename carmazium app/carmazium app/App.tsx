@@ -8,7 +8,6 @@ import { StripeProvider } from '@stripe/stripe-react-native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Updates from 'expo-updates';
-import * as Sentry from '@sentry/react-native';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { GlobalToastProvider } from './src/components/GlobalToastProvider';
 import { DrawerProvider } from './src/context/DrawerContext';
@@ -22,19 +21,6 @@ import { addNotificationListeners } from './src/lib/pushNotifications';
 import { SplashScreen as AppSplashScreen } from './src/screens/loading/SplashScreen';
 
 import { GlobalAIChatBot } from './src/components/GlobalAIChatBot';
-
-// ── Sentry error monitoring ──────────────────────────────────────
-// Fill EXPO_PUBLIC_SENTRY_DSN in .env and eas.json once you create the
-// project at https://sentry.io → Settings → Projects → Client Keys (DSN)
-if (!__DEV__ && process.env.EXPO_PUBLIC_SENTRY_DSN) {
-  Sentry.init({
-    dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
-    environment: process.env.APP_ENV ?? 'production',
-    enableNativeNagger: false,
-    tracesSampleRate: 0.2,   // 20% of transactions for performance monitoring
-    enableAutoSessionTracking: true,
-  });
-}
 
 SplashScreen.preventAutoHideAsync();
 
