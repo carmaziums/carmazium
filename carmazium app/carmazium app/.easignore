@@ -1,5 +1,5 @@
-# Exclude local dev artifacts — EAS installs its own node_modules on the build server
-node_modules/
+# EAS installs its own node_modules — exclude ALL node_modules at every level
+**/node_modules/
 
 # OS and editor noise
 .DS_Store
@@ -29,7 +29,34 @@ __tests__/
 .idea/
 .vscode/
 
-# Planning / docs (not needed in the build)
+# Planning / docs
 .planning/
 Downloads/
 DEVELOPER_SETUP.md
+
+# Monorepo: exclude everything outside the mobile app (EAS archives from git root)
+backend/
+api-server/
+src/
+public/
+supabase-email-templates/
+docs/
+CarMazium Design System/
+CarMazium*/
+*.md
+*.txt
+*.log
+*.pem
+next.config.*
+next-env.d.ts
+tsconfig.json
+tsconfig.tsbuildinfo
+eslint.config.*
+postcss.config.*
+render.yaml
+package.json
+package-lock.json
+out/
+build/
+dist/
+.next/
