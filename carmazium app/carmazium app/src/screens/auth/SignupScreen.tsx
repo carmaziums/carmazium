@@ -10,12 +10,15 @@ import {
   ScrollView,
   StatusBar,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Linking from 'expo-linking';
 import { Ionicons } from '@/components/BrandIcon';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
 import { useAuthStore } from '../../store/authStore';
+import { supabase } from '../../lib/supabase';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
@@ -37,8 +40,32 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
   const passwordRef = useRef<TextInput>(null);
 
   const { signup, isLoading } = useAuthStore();
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const isFormValid = name && email && postcode && password.length >= 8 && agreeTerms;
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: 'carmazium://auth/callback',
+          skipBrowserRedirect: true,
+        },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        await Linking.openURL(data.url);
+      } else {
+        throw new Error('Could not get sign-in URL. Is Google enabled in Supabase?');
+      }
+    } catch (err: any) {
+      Alert.alert('Sign Up Failed', err.message || 'Unable to start Google sign-in.');
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
 
   const getPasswordStrength = (): { activeBars: number; label: string; color: string } => {
     const len = password.length;
@@ -286,6 +313,28 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
               />
             </View>
 
+            {/* Divider */}
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>OR CONTINUE WITH</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Google Sign-Up */}
+            <TouchableOpacity
+              style={[styles.googleBtn, isGoogleLoading && styles.googleBtnDisabled]}
+              activeOpacity={0.8}
+              onPress={handleGoogleSignIn}
+              disabled={isGoogleLoading || isLoading}
+            >
+              {isGoogleLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons name="logo-google" size={18} color="#FFFFFF" />
+              )}
+              <Text style={styles.googleBtnText}>CONTINUE WITH GOOGLE</Text>
+            </TouchableOpacity>
+
             {/* Login Link */}
             <View style={styles.loginRow}>
               <Text style={styles.loginText}>Already have an account? </Text>
@@ -451,6 +500,46 @@ const styles = StyleSheet.create({
   // CTA
   ctaWrapper: {
     marginBottom: 28,
+  },
+  // Divider
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  dividerText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 11,
+    color: '#5C5C6B',
+    letterSpacing: 1,
+  },
+  // Google button
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    height: 52,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#111115',
+    marginBottom: 24,
+  },
+  googleBtnDisabled: {
+    opacity: 0.6,
+  },
+  googleBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 13,
+    color: '#FFFFFF',
+    letterSpacing: 1,
   },
   // Login link
   loginRow: {

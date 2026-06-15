@@ -99,14 +99,19 @@ export default function App() {
     const handleDeepLink = async (url: string | null) => {
       if (!url) return;
 
-      // Supabase sends tokens in the hash fragment for recovery links
-      const fragment = url.includes('#') ? url.split('#')[1] : url.split('?')[1] || '';
-      const params = new URLSearchParams(fragment);
-      const accessToken = params.get('access_token');
-      const refreshToken = params.get('refresh_token');
-      const type = params.get('type');
+      // Parse both hash (implicit flow) and query string (PKCE flow)
+      const hashFragment = url.includes('#') ? url.split('#')[1] : '';
+      const queryFragment = url.includes('?') ? url.split('?')[1].split('#')[0] : '';
+      const hashParams = new URLSearchParams(hashFragment);
+      const queryParams = new URLSearchParams(queryFragment);
+
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+      const type = hashParams.get('type');
+      const code = queryParams.get('code'); // PKCE flow
 
       if (accessToken && refreshToken) {
+        // Implicit flow — tokens arrive in the URL hash (email links + Google OAuth)
         try {
           await supabase.auth.setSession({
             access_token: accessToken,
@@ -114,18 +119,22 @@ export default function App() {
           });
 
           if (type === 'recovery') {
-            // Password reset link
             setTimeout(() => {
               (navigationRef.current as any)?.navigate('Auth', { screen: 'ResetPassword' });
             }, 300);
           } else {
-            // Email verification link (type === 'signup' or 'email_change') —
-            // re-run initializeAuth so the store transitions from
-            // pendingEmailVerification → isAuthenticated properly.
             await reinitializeAuth();
           }
         } catch (err) {
-          console.warn('Failed to set session from email link:', err);
+          console.warn('Failed to set session from link:', err);
+        }
+      } else if (code) {
+        // PKCE flow — exchange the code for a session (fallback safety net)
+        try {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (!error) await reinitializeAuth();
+        } catch (err) {
+          console.warn('Failed to exchange OAuth code for session:', err);
         }
       }
     };
