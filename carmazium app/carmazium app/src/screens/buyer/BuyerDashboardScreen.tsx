@@ -376,7 +376,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
                   title="Auction Bids"
                   subtitle="Browse live auctions to start bidding"
                   time=""
-                  onPress={() => navigation?.navigate('Live')}
+                  onPress={() => navigation?.navigate('Tabs', { screen: 'Live' })}
                 />
                 <ActivityRow
                   icon="pricetag-outline"
@@ -437,7 +437,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
             <TouchableOpacity
               style={styles.quickTile}
               activeOpacity={0.8}
-              onPress={() => navigation?.navigate('Saved' as any)}
+              onPress={() => navigation?.navigate('Tabs', { screen: 'Saved' })}
             >
               <View style={[styles.quickIcon, { backgroundColor: 'rgba(220,31,38,0.12)' }]}>
                 <Ionicons name="heart" size={18} color={Colors.accent} />

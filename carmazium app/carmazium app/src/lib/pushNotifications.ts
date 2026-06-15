@@ -13,6 +13,7 @@ import { Platform, Alert } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
+import { getAccessToken } from './supabase';
 
 // How local notifications are presented while the app is in the foreground
 Notifications.setNotificationHandler({
@@ -85,9 +86,13 @@ export async function registerForPushNotifications(userId: string): Promise<stri
     const token = tokenData.data;
 
     // Persist token to backend
+    const accessToken = await getAccessToken();
     await fetch(`${API_URL}/users/push-token`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
       body: JSON.stringify({ userId, token, platform: Platform.OS }),
     }).catch(() => {
       // Non-fatal — token will be registered on next launch

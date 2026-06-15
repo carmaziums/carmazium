@@ -399,7 +399,7 @@ export const HomeScreen: React.FC = () => {
         <Section
           title="LIVE AUCTIONS"
           badge={liveAuctions.length > 0 ? `${liveAuctions.length} LIVE` : undefined}
-          onSeeAll={() => navigation.navigate('Live' as any)}
+          onSeeAll={() => navigation.navigate('Tabs', { screen: 'Live' })}
         >
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.hScroll}>
             {isLoading ? (
@@ -418,7 +418,7 @@ export const HomeScreen: React.FC = () => {
         {(isLoading || upcomingAuctions.length > 0) && (
           <Section
             title="UPCOMING AUCTIONS"
-            onSeeAll={() => navigation.navigate('Live' as any)}
+            onSeeAll={() => navigation.navigate('Tabs', { screen: 'Live' })}
           >
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.hScroll}>
               {isLoading ? (

@@ -640,6 +640,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // ─── Publish ─────────────────────────────────────────────────────────────────
 
   async function handlePublish() {
+    if (allImages.length === 0) {
+      Alert.alert('Photos Required', 'Please add at least one photo of the vehicle before publishing your listing.');
+      return;
+    }
     setIsPublishing(true);
     try {
       const payload: Record<string, any> = {

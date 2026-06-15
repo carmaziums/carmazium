@@ -424,8 +424,11 @@ export const SellCarsScreen: React.FC = () => {
 
   // ── Publish ────────────────────────────────────────────────────────────────
   const handlePublish = async () => {
+    if (photos.length === 0) {
+      Alert.alert('Photos Required', 'Please add at least one photo of the vehicle before publishing your listing.');
+      return;
+    }
     setIsPublishing(true);
-    const PLACEHOLDER = 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=900&q=80';
     try {
       const payload: any = {
         title: listingTitle || `${vehicleData?.year ?? ''} ${vehicleData?.make ?? ''} ${vehicleData?.model ?? ''}`.trim(),
@@ -437,9 +440,7 @@ export const SellCarsScreen: React.FC = () => {
         make: vehicleData?.make,
         model: vehicleData?.model,
         description: description || undefined,
-        images: photos.length > 0
-          ? photos.map((p) => (p.startsWith('http') ? p : PLACEHOLDER))
-          : [PLACEHOLDER],
+        images: photos.filter(p => p.startsWith('http')),
         listingType: listingType as any,
         fuelType: (vehicleData?.fuelType
           ? (fuelMap[vehicleData.fuelType] ?? 'PETROL')

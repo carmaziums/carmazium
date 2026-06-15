@@ -188,12 +188,20 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
             {/* Social Row */}
             <View style={styles.socialRow}>
-              <TouchableOpacity style={styles.socialBtn} activeOpacity={0.8}>
+              <TouchableOpacity
+                style={styles.socialBtn}
+                activeOpacity={0.8}
+                onPress={() => Alert.alert('Coming Soon', 'Google sign-in will be available in an upcoming update.')}
+              >
                 <Ionicons name="logo-google" size={18} color="#FFFFFF" />
                 <Text style={styles.socialBtnText}>GOOGLE</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.socialBtn} activeOpacity={0.8}>
+              <TouchableOpacity
+                style={styles.socialBtn}
+                activeOpacity={0.8}
+                onPress={() => Alert.alert('Coming Soon', 'Apple sign-in will be available in an upcoming update.')}
+              >
                 <Ionicons name="logo-apple" size={18} color="#FFFFFF" />
                 <Text style={styles.socialBtnText}>APPLE</Text>
               </TouchableOpacity>

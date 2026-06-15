@@ -91,7 +91,7 @@ export const AlertsScreen: React.FC = () => {
     switch (notif.type) {
       case 'AUCTION_WON':
       case 'AUCTION_ENDED':
-        if (notif.entityId) navigation.navigate('Live' as any);
+        if (notif.entityId) navigation.navigate('Tabs', { screen: 'Live' });
         break;
       case 'OFFER_RECEIVED':
       case 'OFFER_ACCEPTED':
@@ -99,10 +99,10 @@ export const AlertsScreen: React.FC = () => {
       case 'OFFER_COUNTERED':
       case 'OFFER_WITHDRAWN':
       case 'DEAL_CLOSED':
-        navigation.navigate('Account' as any);
+        navigation.navigate('Tabs', { screen: 'Profile' });
         break;
       case 'MESSAGE_RECEIVED':
-        navigation.navigate('Messages' as any);
+        navigation.navigate('Messages');
         break;
       default:
         break;

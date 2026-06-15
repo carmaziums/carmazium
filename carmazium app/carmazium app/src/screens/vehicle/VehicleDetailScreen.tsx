@@ -46,10 +46,12 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [activeImage, setActiveImage] = useState(0);
   const { isSaved, save, unsave } = useWatchlistStore();
 
+  const images = listing.images ?? [];
+
   // ── Gallery gesture values ──────────────────────────────────────────────────
   const translateX = useSharedValue(0);
   const savedTranslateX = useSharedValue(0);
-  const totalImages = listing.images.length;
+  const totalImages = images.length;
 
   // ── Full-screen viewer state + gesture values ───────────────────────────────
   const [fullscreenVisible, setFullscreenVisible] = useState(false);
@@ -282,8 +284,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // Render horizontal thumbnail selector bar under main gallery image
   const renderThumbnails = () => {
     const maxThumbnails = 5;
-    const totalImages = listing.images.length;
-    const itemsToShow = listing.images.slice(0, maxThumbnails);
+    const totalImages = images.length;
+    const itemsToShow = images.slice(0, maxThumbnails);
     const extraCount = totalImages - maxThumbnails;
 
     return (
@@ -331,7 +333,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         <View style={styles.galleryContainer}>
           <GestureDetector gesture={galleryPanGesture}>
             <Animated.View style={[styles.galleryStrip, galleryAnimatedStyle]}>
-              {listing.images.map((img, idx) => (
+              {images.map((img, idx) => (
                 <TouchableOpacity
                   key={idx}
                   activeOpacity={0.95}
@@ -354,7 +356,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {/* Page dot indicator */}
           {totalImages > 1 && (
             <View style={styles.pageDots}>
-              {listing.images.map((_, idx) => (
+              {images.map((_, idx) => (
                 <View
                   key={idx}
                   style={[styles.pageDot, activeImage === idx && styles.pageDotActive]}
@@ -1004,7 +1006,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           <GestureDetector gesture={combinedFullscreenGesture}>
             <Animated.View style={[styles.fullscreenImageWrap, fullscreenAnimatedStyle]}>
               <Image
-                source={{ uri: listing.images[fullscreenIndex] }}
+                source={{ uri: images[fullscreenIndex] }}
                 style={styles.fullscreenImage}
                 contentFit="contain"
                 transition={200}

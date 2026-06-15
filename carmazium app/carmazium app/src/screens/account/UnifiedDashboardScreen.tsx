@@ -414,7 +414,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
               tone={Colors.accent}
               label="Watchlist"
               sublabel={`${buyer.watchlistCount} saved car${buyer.watchlistCount !== 1 ? 's' : ''}`}
-              onPress={() => navigation?.navigate('Saved' as any)}
+              onPress={() => navigation?.navigate('Tabs', { screen: 'Saved' })}
             />
             {/* Live Auctions */}
             <ActivityRow
@@ -423,7 +423,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
               label="Live Auctions"
               sublabel="Bid in real-time"
               isLast
-              onPress={() => navigation?.navigate('Live' as any)}
+              onPress={() => navigation?.navigate('Tabs', { screen: 'Live' })}
             />
           </View>
         </View>

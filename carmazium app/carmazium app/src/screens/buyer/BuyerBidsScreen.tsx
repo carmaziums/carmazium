@@ -169,7 +169,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
       <TouchableOpacity
         style={styles.emptyCtaBtn}
         activeOpacity={0.85}
-        onPress={() => navigation?.navigate('Live' as any)}
+        onPress={() => navigation?.navigate('Tabs', { screen: 'Live' })}
       >
         <Text style={styles.emptyCtaBtnText}>VIEW LIVE AUCTIONS</Text>
       </TouchableOpacity>

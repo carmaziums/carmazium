@@ -126,7 +126,7 @@ export const ProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) =>
     if (type === 'saved') {
       showToast('Navigating to Watchlist', 'info');
       if (navigation) {
-        navigation.navigate('Saved');
+        navigation.navigate('Tabs', { screen: 'Saved' });
       } else {
         Alert.alert('Saved Vehicles', `You have ${savedCount} vehicle${savedCount !== 1 ? 's' : ''} saved. Navigate to the Saved tab in the footer to view them.`);
       }
