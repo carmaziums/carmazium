@@ -93,8 +93,9 @@
         "expo-build-properties",
         {
           "android": {
-            "jvmHeapSize": "4096m",
-            "enableProguardInReleaseBuilds": false
+            "jvmHeapSize": "2048m",
+            "enableProguardInReleaseBuilds": false,
+            "enableShrinkResourcesInReleaseBuilds": false
           }
         }
       ]
