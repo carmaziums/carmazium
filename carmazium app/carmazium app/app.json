@@ -88,7 +88,6 @@
           "enableGooglePay": true
         }
       ],
-      "@sentry/react-native",
       [
         "expo-build-properties",
         {
