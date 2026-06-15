@@ -88,7 +88,16 @@
           "enableGooglePay": true
         }
       ],
-      "@sentry/react-native"
+      "@sentry/react-native",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "jvmHeapSize": "4096m",
+            "enableProguardInReleaseBuilds": false
+          }
+        }
+      ]
     ],
     "owner": "pizn-01s-team"
   }
