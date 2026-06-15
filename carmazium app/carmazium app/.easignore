@@ -34,6 +34,10 @@ __tests__/
 Downloads/
 DEVELOPER_SETUP.md
 
+# Native dirs — let EAS regenerate via expo prebuild (avoids stale patches)
+**/android/
+**/ios/
+
 # Monorepo: exclude everything outside the mobile app (EAS archives from git root)
 backend/
 api-server/
