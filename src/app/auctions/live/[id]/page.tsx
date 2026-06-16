@@ -61,7 +61,7 @@ function triggerNotificationRefresh() {
 
 export default function LiveAuctionPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
     const params = React.use(paramsPromise)
-    const { user } = useAuth()
+    const { user, profile } = useAuth()
 
     const [auction, setAuction] = React.useState<Auction | null>(null)
     const [loading, setLoading] = React.useState(true)
@@ -1073,6 +1073,12 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                 <Link href="/auth/signup" className="block text-center text-xs text-slate-500 hover:text-slate-300 transition-colors">
                                     Don't have an account? <span className="text-primary underline">Sign up free</span>
                                 </Link>
+                            </div>
+                        ) : profile?.role !== 'DEALER' ? (
+                            <div className="text-center py-4 space-y-2">
+                                <Ban size={20} className="text-amber-400 mx-auto" />
+                                <p className="text-amber-300 text-xs font-bold">Dealer accounts only</p>
+                                <p className="text-slate-500 text-xs leading-relaxed">Only verified dealers can place bids on CarMazium auctions. Upgrade your account to participate.</p>
                             </div>
                         ) : (
                             <>

@@ -281,6 +281,17 @@ export class AuctionsService {
         });
     }
 
+    async sellerClose(auctionId: string, userId: string): Promise<void> {
+        const auction = await this.findOne(auctionId);
+        if (auction.listing.sellerId !== userId) {
+            throw new ForbiddenException('You do not own this auction');
+        }
+        if (auction.status !== 'ACTIVE') {
+            throw new BadRequestException('Only ACTIVE auctions can be closed early');
+        }
+        await this.closeAuction(auctionId);
+    }
+
     async remove(id: string, userId: string): Promise<Auction> {
         const auction = await this.findOne(id);
 

@@ -122,6 +122,19 @@ export class AuctionsController {
         return new StandardResponse(auction);
     }
 
+    @Post(':id/close')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Close an ACTIVE auction early (seller only) — triggers normal end logic' })
+    @ApiResponse({ status: 200, description: 'Auction closed — winner determined if reserve met' })
+    @ApiResponse({ status: 400, description: 'Auction is not currently ACTIVE' })
+    @ApiResponse({ status: 403, description: 'You do not own this auction' })
+    async closeEarly(@Param('id') id: string, @CurrentUser() user: any) {
+        await this.auctionsService.sellerClose(id, user.id);
+        return new StandardResponse({ closed: true });
+    }
+
     @Post(':id/handover-proof')
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()

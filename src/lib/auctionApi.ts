@@ -177,6 +177,10 @@ export async function cancelAuction(id: string): Promise<Auction> {
     return res.data;
 }
 
+export async function closeAuctionEarly(id: string): Promise<void> {
+    await apiClient<any>(`${API}/auctions/${id}/close`, { method: 'POST' });
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 export function getCurrentBid(auction: Auction): number {

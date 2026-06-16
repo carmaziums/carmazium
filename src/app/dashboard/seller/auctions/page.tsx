@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/Input"
 import { useAuth } from "@/context/AuthContext"
 import { useSearchParams } from "next/navigation"
 import {
-    getMyAuctions, createAuction, cancelAuction,
+    getMyAuctions, createAuction, cancelAuction, closeAuctionEarly,
     getCurrentBid, getBidCount,
     type Auction, type CreateAuctionRequest,
 } from "@/lib/auctionApi"
@@ -73,6 +73,7 @@ function SellerAuctionsPage() {
     const [showForm, setShowForm] = React.useState(false)
     const [eligibleListings, setEligibleListings] = React.useState<Listing[]>([])
     const [cancelling, setCancelling] = React.useState<string | null>(null)
+    const [closing, setClosing] = React.useState<string | null>(null)
     const [tick, setTick] = React.useState(0)
 
     // Form state
@@ -183,6 +184,20 @@ function SellerAuctionsPage() {
             alert(err.message || "Failed to cancel auction.")
         } finally {
             setCancelling(null)
+        }
+    }
+
+    async function handleClose(id: string) {
+        if (!confirm("Close this auction now? Bidding will end immediately and a winner will be determined if the reserve has been met. This cannot be undone.")) return
+        setClosing(id)
+        try {
+            await closeAuctionEarly(id)
+            setSuccessMsg("Auction closed — winner determined if reserve was met.")
+            fetchAuctions()
+        } catch (err: any) {
+            alert(err.message || "Failed to close auction.")
+        } finally {
+            setClosing(null)
         }
     }
 
@@ -542,12 +557,25 @@ function SellerAuctionsPage() {
                                                 <td className="px-6 py-4">
                                                     <div className="flex justify-end gap-2">
                                                         {auction.status === "ACTIVE" && (
-                                                            <Link
-                                                                href={`/auctions/live/${auction.id}`}
-                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold hover:bg-emerald-500/20 transition-colors"
-                                                            >
-                                                                <Eye size={13} /> View Live
-                                                            </Link>
+                                                            <>
+                                                                <Link
+                                                                    href={`/auctions/live/${auction.id}`}
+                                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold hover:bg-emerald-500/20 transition-colors"
+                                                                >
+                                                                    <Eye size={13} /> View Live
+                                                                </Link>
+                                                                <button
+                                                                    disabled={closing === auction.id}
+                                                                    onClick={() => handleClose(auction.id)}
+                                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-bold hover:bg-amber-500/20 transition-colors disabled:opacity-50"
+                                                                >
+                                                                    {closing === auction.id
+                                                                        ? <Loader2 size={13} className="animate-spin" />
+                                                                        : <Gavel size={13} />
+                                                                    }
+                                                                    Close Bids
+                                                                </button>
+                                                            </>
                                                         )}
                                                         {auction.status === "SCHEDULED" && (
                                                             <button
