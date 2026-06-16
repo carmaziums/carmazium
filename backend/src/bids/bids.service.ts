@@ -94,7 +94,7 @@ export class BidsService {
 
         // Notify the displaced highest bidder they've been outbid
         if (highestBid && highestBid.bidderId !== bidderId) {
-            await this.notificationsService.create({
+            this.notificationsService.create({
                 userId:     highestBid.bidderId,
                 type:       'OUTBID',
                 title:      "You've been outbid",
@@ -102,7 +102,7 @@ export class BidsService {
                 entityType: 'AUCTION',
                 entityId:   auction.id,
                 link:       `/auction/${auction.id}`,
-            });
+            }).catch(() => { /* notification failure must not fail the bid */ });
         }
 
         // Anti-snipe: extend auction if bid placed in the final window
