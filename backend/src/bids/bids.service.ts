@@ -52,12 +52,12 @@ export class BidsService {
             throw new BadRequestException('You cannot bid on your own auction');
         }
 
-        // Only verified dealers can bid — buyers, sellers, and unverified dealers are all blocked
-        const dealerProfile = await this.prisma.dealerProfile.findUnique({
-            where: { userId: bidderId },
-            select: { isVerified: true },
+        // Role must still be DEALER and KYC-verified — having a past dealerProfile after a role switch is not enough
+        const bidder = await this.prisma.user.findUnique({
+            where: { id: bidderId },
+            select: { role: true, firstName: true, lastName: true, dealerProfile: { select: { isVerified: true } } },
         });
-        if (!dealerProfile || !dealerProfile.isVerified) {
+        if (bidder?.role !== 'DEALER' || !bidder?.dealerProfile?.isVerified) {
             throw new ForbiddenException('Only verified dealers can place bids on auctions.');
         }
 
@@ -108,11 +108,6 @@ export class BidsService {
         // Anti-snipe: extend auction if bid placed in the final window
         const updatedAuction = await this.auctionsService.maybeExtend(auction.id, bid.timestamp);
 
-        // Fetch bidder initials for broadcast (anonymized display)
-        const bidder = await this.prisma.user.findUnique({
-            where: { id: bidderId },
-            select: { firstName: true, lastName: true },
-        });
         const initials = `${bidder?.firstName?.[0] ?? '?'}${bidder?.lastName?.[0] ?? ''}`.toUpperCase();
 
         // Broadcast to all viewers of this auction via WebSocket

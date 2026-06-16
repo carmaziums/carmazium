@@ -9,6 +9,7 @@ import { CheckCircle, ArrowRight, Home, Car, Loader2, PartyPopper, LayoutDashboa
 import { Button } from "@/components/ui/Button"
 import { getSessionStatus} from "@/lib/paymentApi"
 import type { SessionStatus } from "@/lib/paymentApi"
+import { publishListing } from "@/lib/listingApi"
 
 export default function CheckoutSuccessPage() {
     return (
@@ -38,6 +39,10 @@ function CheckoutSuccessContent() {
             try {
                 const data = await getSessionStatus(sessionId)
                 setSessionData(data)
+                // Webhook fallback: if the Stripe webhook missed/delayed, activate the listing now
+                if (data?.metadata?.type === 'LISTING_FEE' && data?.metadata?.listingId) {
+                    publishListing(data.metadata.listingId).catch(() => {})
+                }
             } catch {
                 // Silently fail — show generic success
             } finally {
