@@ -135,6 +135,25 @@ export class AuctionsController {
         return new StandardResponse({ closed: true });
     }
 
+    @Post(':id/accept-bid')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Accept a specific bid and end the auction immediately (seller only)' })
+    @ApiResponse({ status: 200, description: 'Bid accepted — auction ended with that bidder as winner' })
+    @ApiResponse({ status: 400, description: 'Auction is not ACTIVE or bidId missing' })
+    @ApiResponse({ status: 403, description: 'You do not own this auction' })
+    @ApiResponse({ status: 404, description: 'Bid not found in this auction' })
+    async acceptBid(
+        @Param('id') id: string,
+        @Body('bidId') bidId: string,
+        @CurrentUser() user: any,
+    ) {
+        if (!bidId) throw new BadRequestException('bidId is required');
+        await this.auctionsService.acceptBid(id, bidId, user.id);
+        return new StandardResponse({ accepted: true });
+    }
+
     @Post(':id/handover-proof')
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()

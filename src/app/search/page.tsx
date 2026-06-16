@@ -1070,6 +1070,7 @@ function SearchPageContent() {
                                         badgeTier={listing.badgeTier}
                                         status={listing.status}
                                         bannerLabel={listing.bannerLabel}
+                                        hasLinkedAuction={!!listing.linkedListingId}
                                     />
                                 ))}
                             </div>
@@ -1102,6 +1103,7 @@ function SearchPageContent() {
                                     badgeTier={listing.badgeTier}
                                     status={listing.status}
                                     bannerLabel={listing.bannerLabel}
+                                    hasLinkedAuction={!!listing.linkedListingId}
                                 />
                             ))}
                         </div>

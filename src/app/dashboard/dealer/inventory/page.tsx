@@ -8,12 +8,12 @@ import { Input } from "@/components/ui/Input"
 import {
     Car, Search, Filter, PlusCircle, MoreVertical,
     Loader2, Upload, TrendingUp, ShieldCheck, Trash2, Eye, RefreshCcw, Pencil, AlertTriangle,
-    Star, Zap, X, BadgeCheck, Shield, CheckCircle2, ChevronRight
+    Star, Zap, X, BadgeCheck, Shield, CheckCircle2, ChevronRight, Gavel, Tag
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
-import { publishListing, createListingCheckoutSession } from "@/lib/listingApi"
+import { publishListing, createListingCheckoutSession, alsoListRetail, alsoAuction, createListingCheckout } from "@/lib/listingApi"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 import { BulkImportModal } from "@/components/dealer/BulkImportModal"
@@ -64,6 +64,21 @@ export default function DealerInventoryPage() {
     // Plan modal
     const [planSelectListing, setPlanSelectListing] = React.useState<any | null>(null)
     const [planModalError,    setPlanModalError]    = React.useState<string[] | null>(null)
+    // Also-list-retail modal (for AUCTION listings)
+    const [alsoRetailListing, setAlsoRetailListing] = React.useState<any | null>(null)
+    const [alsoRetailPrice,   setAlsoRetailPrice]   = React.useState("")
+    const [alsoRetailTier,    setAlsoRetailTier]    = React.useState<'BASIC' | 'STANDARD' | 'PREMIUM'>('BASIC')
+    const [alsoRetailLoading, setAlsoRetailLoading] = React.useState(false)
+    const [alsoRetailError,   setAlsoRetailError]   = React.useState<string | null>(null)
+    // Also-auction modal (for CLASSIFIED listings)
+    const [alsoAuctionListing,   setAlsoAuctionListing]   = React.useState<any | null>(null)
+    const [alsoAuctionStart,     setAlsoAuctionStart]     = React.useState("")
+    const [alsoAuctionReserve,   setAlsoAuctionReserve]   = React.useState("")
+    const [alsoAuctionStartBid,  setAlsoAuctionStartBid]  = React.useState("")
+    const [alsoAuctionIncrement, setAlsoAuctionIncrement] = React.useState("100")
+    const [alsoAuctionLoading,   setAlsoAuctionLoading]   = React.useState(false)
+    const [alsoAuctionError,     setAlsoAuctionError]     = React.useState<string | null>(null)
+    const [alsoAuctionSuccess,   setAlsoAuctionSuccess]   = React.useState(false)
 
     React.useEffect(() => {
         if (!authLoading && user) fetchListings(searchQuery)
@@ -146,6 +161,45 @@ export default function DealerInventoryPage() {
         } catch (err) {
             console.error('Failed to mark sold:', err)
             alert('Failed to update listing status.')
+        }
+    }
+
+    async function handleAlsoRetailSubmit() {
+        if (!alsoRetailListing || !alsoRetailPrice) return
+        setAlsoRetailLoading(true)
+        setAlsoRetailError(null)
+        try {
+            const { linkedListingId } = await alsoListRetail(alsoRetailListing.id, parseFloat(alsoRetailPrice), alsoRetailTier)
+            const { url } = await createListingCheckout(linkedListingId, alsoRetailTier)
+            window.location.href = url
+        } catch (err: any) {
+            setAlsoRetailError(err.message ?? 'Failed to create retail listing')
+        } finally {
+            setAlsoRetailLoading(false)
+        }
+    }
+
+    async function handleAlsoAuctionSubmit() {
+        if (!alsoAuctionListing || !alsoAuctionStart || !alsoAuctionReserve || !alsoAuctionStartBid) return
+        setAlsoAuctionLoading(true)
+        setAlsoAuctionError(null)
+        try {
+            await alsoAuction(alsoAuctionListing.id, {
+                startTime: new Date(alsoAuctionStart).toISOString(),
+                reservePrice: parseFloat(alsoAuctionReserve),
+                startingBid: parseFloat(alsoAuctionStartBid),
+                minIncrement: parseFloat(alsoAuctionIncrement) || 100,
+            })
+            setAlsoAuctionSuccess(true)
+            setTimeout(() => {
+                setAlsoAuctionListing(null)
+                setAlsoAuctionSuccess(false)
+                fetchListings(searchQuery)
+            }, 2000)
+        } catch (err: any) {
+            setAlsoAuctionError(err.message ?? 'Failed to create auction')
+        } finally {
+            setAlsoAuctionLoading(false)
         }
     }
 
@@ -368,6 +422,24 @@ export default function DealerInventoryPage() {
                                                                     <Link href={`/buy-cars/${listing.slug}`} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
                                                                         <Eye size={14} /> View
                                                                     </Link>
+                                                                    {/* Dual-channel: AUCTION listing → add retail listing */}
+                                                                    {listing.type === 'AUCTION' && listing.status === 'ACTIVE' && !listing.linkedListingId && (
+                                                                        <button
+                                                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setAlsoRetailListing(listing); setAlsoRetailPrice(""); setAlsoRetailTier('BASIC'); setAlsoRetailError(null) }}
+                                                                            className="flex items-center gap-2 px-3 py-2 text-sm text-blue-400 hover:bg-blue-500/10 transition-colors w-full text-left"
+                                                                        >
+                                                                            <Tag size={14} /> Also List for Retail
+                                                                        </button>
+                                                                    )}
+                                                                    {/* Dual-channel: CLASSIFIED listing → add auction */}
+                                                                    {listing.type === 'CLASSIFIED' && listing.status === 'ACTIVE' && !listing.linkedListingId && (
+                                                                        <button
+                                                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setAlsoAuctionListing(listing); setAlsoAuctionStart(""); setAlsoAuctionReserve(""); setAlsoAuctionStartBid(""); setAlsoAuctionIncrement("100"); setAlsoAuctionError(null); setAlsoAuctionSuccess(false) }}
+                                                                            className="flex items-center gap-2 px-3 py-2 text-sm text-emerald-400 hover:bg-emerald-500/10 transition-colors w-full text-left"
+                                                                        >
+                                                                            <Gavel size={14} /> Also Put to Auction
+                                                                        </button>
+                                                                    )}
                                                                     {listing.status === 'ACTIVE' && (
                                                                         <button
                                                                             onClick={async (e) => {
@@ -426,6 +498,122 @@ export default function DealerInventoryPage() {
                 onClose={() => setIsBulkImportOpen(false)}
                 onComplete={() => fetchListings()}
             />
+
+            {/* ── Also List for Retail modal ──────────────────────────────── */}
+            {alsoRetailListing && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                    <div className="bg-[#0A0A0C] border border-white/10 rounded-2xl w-full max-w-sm p-6 space-y-5 shadow-2xl">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                                    <Tag size={16} className="text-blue-400" />
+                                </div>
+                                <div>
+                                    <p className="text-white font-bold text-sm">Also List for Retail</p>
+                                    <p className="text-slate-500 text-xs truncate max-w-[160px]">{alsoRetailListing.title}</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setAlsoRetailListing(null)} className="text-slate-500 hover:text-white transition-colors"><X size={18} /></button>
+                        </div>
+
+                        <div className="space-y-3">
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Retail Price (£)</label>
+                                <Input
+                                    type="number"
+                                    placeholder="e.g. 18500"
+                                    value={alsoRetailPrice}
+                                    onChange={e => setAlsoRetailPrice(e.target.value)}
+                                    className="bg-slate-800 border-white/10 text-white h-10"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Listing Plan</label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {([['BASIC', '£1'], ['STANDARD', '£10'], ['PREMIUM', '£25']] as const).map(([tier, price]) => (
+                                        <button
+                                            key={tier}
+                                            onClick={() => setAlsoRetailTier(tier)}
+                                            className={`py-2.5 rounded-xl border text-xs font-bold transition-all ${alsoRetailTier === tier ? 'bg-primary/15 border-primary/40 text-primary' : 'bg-slate-800/60 border-white/10 text-slate-400 hover:border-white/20'}`}
+                                        >
+                                            {tier}<br /><span className="text-[10px] font-normal">{price}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {alsoRetailError && <p className="text-red-400 text-xs">{alsoRetailError}</p>}
+
+                        <button
+                            onClick={handleAlsoRetailSubmit}
+                            disabled={alsoRetailLoading || !alsoRetailPrice}
+                            className="w-full h-10 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                            {alsoRetailLoading ? <><Loader2 size={14} className="animate-spin" /> Creating…</> : <><Tag size={14} /> Create & Pay</>}
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Also Put to Auction modal ───────────────────────────────── */}
+            {alsoAuctionListing && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                    <div className="bg-[#0A0A0C] border border-white/10 rounded-2xl w-full max-w-sm p-6 space-y-5 shadow-2xl">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                                    <Gavel size={16} className="text-emerald-400" />
+                                </div>
+                                <div>
+                                    <p className="text-white font-bold text-sm">Also Put to Auction</p>
+                                    <p className="text-slate-500 text-xs truncate max-w-[160px]">{alsoAuctionListing.title}</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setAlsoAuctionListing(null)} className="text-slate-500 hover:text-white transition-colors"><X size={18} /></button>
+                        </div>
+
+                        {alsoAuctionSuccess ? (
+                            <div className="py-4 text-center space-y-2">
+                                <CheckCircle2 size={28} className="text-emerald-400 mx-auto" />
+                                <p className="text-emerald-300 text-sm font-bold">Auction scheduled!</p>
+                                <p className="text-slate-500 text-xs">Your retail listing stays active simultaneously.</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Auction Start Time</label>
+                                    <Input type="datetime-local" value={alsoAuctionStart} onChange={e => setAlsoAuctionStart(e.target.value)} className="bg-slate-800 border-white/10 text-white h-10" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Reserve Price (£)</label>
+                                        <Input type="number" placeholder="e.g. 15000" value={alsoAuctionReserve} onChange={e => setAlsoAuctionReserve(e.target.value)} className="bg-slate-800 border-white/10 text-white h-10" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Starting Bid (£)</label>
+                                        <Input type="number" placeholder="e.g. 10000" value={alsoAuctionStartBid} onChange={e => setAlsoAuctionStartBid(e.target.value)} className="bg-slate-800 border-white/10 text-white h-10" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Min Bid Increment (£)</label>
+                                    <Input type="number" placeholder="100" value={alsoAuctionIncrement} onChange={e => setAlsoAuctionIncrement(e.target.value)} className="bg-slate-800 border-white/10 text-white h-10" />
+                                </div>
+
+                                {alsoAuctionError && <p className="text-red-400 text-xs">{alsoAuctionError}</p>}
+
+                                <button
+                                    onClick={handleAlsoAuctionSubmit}
+                                    disabled={alsoAuctionLoading || !alsoAuctionStart || !alsoAuctionReserve || !alsoAuctionStartBid}
+                                    className="w-full h-10 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                    {alsoAuctionLoading ? <><Loader2 size={14} className="animate-spin" /> Scheduling…</> : <><Gavel size={14} /> Schedule Auction</>}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* ─── Plan Selection Modal ──────────────────────────────────────── */}
             {planSelectListing && (

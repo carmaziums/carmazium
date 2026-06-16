@@ -192,6 +192,7 @@ export interface Listing {
     priceMax: string | number | null
     createdAt: string
     updatedAt: string
+    linkedListingId?: string | null
     // Latest offer on this listing (populated in detail view)
     offers?: LatestOffer[]
     // Added seller relation details
@@ -1100,6 +1101,42 @@ export async function saveDamageRecords(listingId: string, detections: any[]): P
 export async function getDamageRecords(listingId: string): Promise<any[]> {
     const data = await apiClient<{ data: any[] }>(`/damage/${listingId}`, {
         method: 'GET',
+    })
+    return data.data
+}
+
+// ─── Dual-channel (auction + retail simultaneously) ───────────────────────────
+
+export async function alsoListRetail(
+    listingId: string,
+    price: number,
+    badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM',
+): Promise<{ linkedListingId: string }> {
+    const data = await apiClient<{ data: { linkedListingId: string } }>(`/listings/${listingId}/also-list-retail`, {
+        method: 'POST',
+        body: JSON.stringify({ price, badgeTier }),
+    })
+    return data.data
+}
+
+export async function alsoAuction(
+    listingId: string,
+    dto: { startTime: string; reservePrice: number; startingBid: number; minIncrement?: number },
+): Promise<{ linkedListingId: string; auctionId: string }> {
+    const data = await apiClient<{ data: { linkedListingId: string; auctionId: string } }>(`/listings/${listingId}/also-auction`, {
+        method: 'POST',
+        body: JSON.stringify(dto),
+    })
+    return data.data
+}
+
+export async function createListingCheckout(
+    listingId: string,
+    badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM',
+): Promise<{ url: string }> {
+    const data = await apiClient<{ data: { url: string } }>(`/payments/listing-checkout`, {
+        method: 'POST',
+        body: JSON.stringify({ listingId, badgeTier }),
     })
     return data.data
 }

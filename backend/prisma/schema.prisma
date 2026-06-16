@@ -635,6 +635,11 @@ model Listing {
   // Attention attribute — buyer-facing label shown as a ribbon on the vehicle card
   bannerLabel              String?
 
+  // Cross-channel link — set when this listing is simultaneously available in both auction and retail
+  linkedListingId String?
+  linkedListing   Listing?  @relation("LinkedListing", fields: [linkedListingId], references: [id])
+  linkedListings  Listing[] @relation("LinkedListing")
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?

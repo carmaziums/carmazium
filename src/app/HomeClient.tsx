@@ -298,6 +298,7 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
                   badgeTier={listing.badgeTier}
                   status={listing.status}
                   bannerLabel={listing.bannerLabel}
+                  hasLinkedAuction={!!listing.linkedListingId}
                 />
               </motion.div>
             ))}

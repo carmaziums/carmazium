@@ -181,6 +181,13 @@ export async function closeAuctionEarly(id: string): Promise<void> {
     await apiClient<any>(`${API}/auctions/${id}/close`, { method: 'POST' });
 }
 
+export async function acceptBidEarly(auctionId: string, bidId: string): Promise<void> {
+    await apiClient<any>(`${API}/auctions/${auctionId}/accept-bid`, {
+        method: 'POST',
+        body: JSON.stringify({ bidId }),
+    });
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 export function getCurrentBid(auction: Auction): number {

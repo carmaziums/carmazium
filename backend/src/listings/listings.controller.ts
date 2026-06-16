@@ -11,6 +11,7 @@ import {
     HttpStatus,
     UseGuards,
     Res,
+    BadRequestException,
 } from '@nestjs/common';
 import { Response } from 'express';
 import {
@@ -304,6 +305,45 @@ export class ListingsController {
     ): Promise<StandardResponse<Listing>> {
         const listing = await this.listingsService.update(id, user.id, updateListingDto);
         return new StandardResponse(listing);
+    }
+
+    @Post(':id/also-list-retail')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Create a linked CLASSIFIED retail listing alongside an existing AUCTION listing' })
+    @ApiResponse({ status: 201, description: '{ linkedListingId } — pass to /payments/listing-checkout to get Stripe URL' })
+    @ApiResponse({ status: 400, description: 'Source listing must be AUCTION or already has a linked retail listing' })
+    @ApiResponse({ status: 403, description: 'You do not own this listing' })
+    async alsoListRetail(
+        @Param('id') id: string,
+        @Body('price') price: number,
+        @Body('badgeTier') badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM',
+        @CurrentUser() user: any,
+    ) {
+        if (!price || !badgeTier) throw new BadRequestException('price and badgeTier are required');
+        const result = await this.listingsService.alsoListRetail(id, user.id, { price, badgeTier });
+        return new StandardResponse(result);
+    }
+
+    @Post(':id/also-auction')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Create a linked AUCTION listing alongside an existing CLASSIFIED retail listing' })
+    @ApiResponse({ status: 201, description: '{ linkedListingId, auctionId }' })
+    @ApiResponse({ status: 400, description: 'Source listing must be CLASSIFIED or already has a linked auction listing' })
+    @ApiResponse({ status: 403, description: 'You do not own this listing' })
+    async alsoAuction(
+        @Param('id') id: string,
+        @Body('startTime') startTime: string,
+        @Body('reservePrice') reservePrice: number,
+        @Body('startingBid') startingBid: number,
+        @Body('minIncrement') minIncrement: number | undefined,
+        @CurrentUser() user: any,
+    ) {
+        const result = await this.listingsService.alsoAuction(id, user.id, { startTime, reservePrice, startingBid, minIncrement });
+        return new StandardResponse(result);
     }
 
     /**

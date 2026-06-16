@@ -5,7 +5,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui/Button"
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion"
 import { useRef } from "react"
-import { Calendar, Gauge, Fuel, Car, BadgeCheck, ShieldCheck, Star, Sparkles, MapPin } from "lucide-react"
+import { Calendar, Gauge, Fuel, Car, BadgeCheck, ShieldCheck, Star, Sparkles, MapPin, Gavel } from "lucide-react"
 import { SellerBadge } from "@/components/ui/SellerBadge"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 
@@ -45,6 +45,7 @@ interface CarCardProps {
     badgeTier?: string | null
     status?: string | null
     bannerLabel?: string | null
+    hasLinkedAuction?: boolean
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -66,7 +67,7 @@ const DEFAULT_BANNER_COLOR = 'bg-primary'
 export function CarCard({
     title, price, priceMin, priceMax, image, href = "#",
     year, mileage, fuelType, bodyType, location, distanceMi,
-    sellerId, sellerScore, isFeatured = false, badgeTier, status, bannerLabel
+    sellerId, sellerScore, isFeatured = false, badgeTier, status, bannerLabel, hasLinkedAuction
 }: CarCardProps) {
     const ref = useRef<HTMLDivElement>(null)
 
@@ -135,6 +136,15 @@ export function CarCard({
             >
                 {/* Featured Badge */}
                 {isFeatured && <FeaturedBadge />}
+
+                {/* Also at Auction badge */}
+                {hasLinkedAuction && (
+                    <div className="absolute top-3 left-3 z-30">
+                        <span className="inline-flex items-center gap-1 bg-amber-500/90 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded shadow border border-amber-400/50">
+                            <Gavel size={10} /> Also at Auction
+                        </span>
+                    </div>
+                )}
 
                 {/* Trust Badges Corner */}
                 {(badgeTier === 'STANDARD' || badgeTier === 'PREMIUM') && (

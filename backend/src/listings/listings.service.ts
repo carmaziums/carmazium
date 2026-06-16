@@ -941,6 +941,163 @@ export class ListingsService {
     }
 
     /**
+     * Create a linked CLASSIFIED retail listing alongside an existing AUCTION listing.
+     * Copies all vehicle data; the new listing starts as DRAFT pending payment.
+     * Returns the new listing's ID so the caller can initiate a Stripe checkout.
+     */
+    async alsoListRetail(
+        listingId: string,
+        userId: string,
+        dto: { price: number; badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM' },
+    ): Promise<{ linkedListingId: string }> {
+        const source = await this.findById(listingId);
+        if (source.sellerId !== userId) throw new ForbiddenException('You do not own this listing');
+        if (source.type !== 'AUCTION') throw new BadRequestException('Source listing must be of type AUCTION');
+        if ((source as any).linkedListingId) throw new BadRequestException('This listing already has a linked retail listing');
+
+        const slug = this.generateSlug(source.title);
+        const isPremium = dto.badgeTier === 'PREMIUM';
+
+        const newListing = await this.prisma.listing.create({
+            data: {
+                title: source.title,
+                price: dto.price,
+                images: source.images,
+                videoUrls: source.videoUrls,
+                type: 'CLASSIFIED',
+                status: 'DRAFT',
+                description: source.description,
+                slug,
+                make: source.make, model: source.model, year: source.year, mileage: source.mileage,
+                vrm: source.vrm, vin: source.vin,
+                fuelType: source.fuelType, transmission: source.transmission,
+                color: source.color, doors: source.doors, seats: source.seats,
+                engineSize: source.engineSize, bhp: source.bhp, bodyType: source.bodyType,
+                features: source.features ?? undefined,
+                location: source.location, latitude: source.latitude, longitude: source.longitude,
+                condition: source.condition, ulezCompliant: source.ulezCompliant,
+                euroStandard: source.euroStandard, co2Emissions: source.co2Emissions,
+                motStatus: source.motStatus, taxStatus: source.taxStatus,
+                motExpiryDate: source.motExpiryDate, taxDueDate: source.taxDueDate,
+                markedForExport: source.markedForExport,
+                monthOfFirstRegistration: source.monthOfFirstRegistration,
+                wheelplan: source.wheelplan, typeApproval: source.typeApproval,
+                variant: source.variant, driveType: source.driveType,
+                numberOfKeys: source.numberOfKeys, serviceHistory: source.serviceHistory,
+                owners: source.owners, torqueNm: source.torqueNm,
+                topSpeedMph: source.topSpeedMph, zeroTo60Mph: source.zeroTo60Mph,
+                combinedMpg: source.combinedMpg, extraUrbanMpg: source.extraUrbanMpg,
+                bannerLabel: source.bannerLabel,
+                badgeTier: dto.badgeTier,
+                isFeatured: isPremium,
+                featuredUntil: isPremium ? new Date(Date.now() + 28 * 24 * 60 * 60 * 1000) : null,
+                sellerId: userId,
+                vehicleType: source.vehicleType,
+                isImported: source.isImported,
+                stolenRecovered: source.stolenRecovered,
+                hasOutstandingFinance: source.hasOutstandingFinance,
+                isLegalRegisteredKeeper: source.isLegalRegisteredKeeper,
+                writeOffCategory: source.writeOffCategory,
+                linkedListingId: listingId,
+            } as any,
+        });
+
+        // Link the source AUCTION listing back to the new retail listing
+        await this.prisma.listing.update({
+            where: { id: listingId },
+            data: { linkedListingId: newListing.id } as any,
+        });
+
+        return { linkedListingId: newListing.id };
+    }
+
+    /**
+     * Create a linked AUCTION listing alongside an existing CLASSIFIED retail listing.
+     * Copies all vehicle data; the auction listing is FREE and goes live immediately.
+     * Returns the new auction listing ID and the Auction record ID.
+     */
+    async alsoAuction(
+        listingId: string,
+        userId: string,
+        dto: { startTime: string; reservePrice: number; startingBid: number; minIncrement?: number },
+    ): Promise<{ linkedListingId: string; auctionId: string }> {
+        const source = await this.findById(listingId);
+        if (source.sellerId !== userId) throw new ForbiddenException('You do not own this listing');
+        if (source.type !== 'CLASSIFIED') throw new BadRequestException('Source listing must be of type CLASSIFIED');
+        if ((source as any).linkedListingId) throw new BadRequestException('This listing already has a linked auction listing');
+
+        const startTime = new Date(dto.startTime);
+        if (isNaN(startTime.getTime()) || startTime.getTime() < Date.now() - 60_000) {
+            throw new BadRequestException('Invalid or past startTime');
+        }
+        const endTime = new Date(startTime.getTime() + 24 * 60 * 60 * 1000); // 24h auction
+
+        const slug = this.generateSlug(source.title);
+
+        const auctionListing = await this.prisma.listing.create({
+            data: {
+                title: source.title,
+                price: source.price,
+                images: source.images,
+                videoUrls: source.videoUrls,
+                type: 'AUCTION',
+                status: 'ACTIVE',
+                description: source.description,
+                slug,
+                make: source.make, model: source.model, year: source.year, mileage: source.mileage,
+                vrm: source.vrm, vin: source.vin,
+                fuelType: source.fuelType, transmission: source.transmission,
+                color: source.color, doors: source.doors, seats: source.seats,
+                engineSize: source.engineSize, bhp: source.bhp, bodyType: source.bodyType,
+                features: source.features ?? undefined,
+                location: source.location, latitude: source.latitude, longitude: source.longitude,
+                condition: source.condition, ulezCompliant: source.ulezCompliant,
+                euroStandard: source.euroStandard, co2Emissions: source.co2Emissions,
+                motStatus: source.motStatus, taxStatus: source.taxStatus,
+                motExpiryDate: source.motExpiryDate, taxDueDate: source.taxDueDate,
+                markedForExport: source.markedForExport,
+                monthOfFirstRegistration: source.monthOfFirstRegistration,
+                wheelplan: source.wheelplan, typeApproval: source.typeApproval,
+                variant: source.variant, driveType: source.driveType,
+                numberOfKeys: source.numberOfKeys, serviceHistory: source.serviceHistory,
+                owners: source.owners, torqueNm: source.torqueNm,
+                topSpeedMph: source.topSpeedMph, zeroTo60Mph: source.zeroTo60Mph,
+                combinedMpg: source.combinedMpg, extraUrbanMpg: source.extraUrbanMpg,
+                bannerLabel: source.bannerLabel,
+                badgeTier: 'FREE',
+                sellerId: userId,
+                vehicleType: source.vehicleType,
+                isImported: source.isImported,
+                stolenRecovered: source.stolenRecovered,
+                hasOutstandingFinance: source.hasOutstandingFinance,
+                isLegalRegisteredKeeper: source.isLegalRegisteredKeeper,
+                writeOffCategory: source.writeOffCategory,
+                linkedListingId: listingId,
+            } as any,
+        });
+
+        const auction = await this.prisma.auction.create({
+            data: {
+                listingId: auctionListing.id,
+                startTime,
+                endTime,
+                reservePrice: dto.reservePrice,
+                startingBid: dto.startingBid,
+                minIncrement: dto.minIncrement ?? 100,
+                status: 'SCHEDULED',
+            },
+        });
+
+        // Link the source CLASSIFIED listing back to the new auction listing
+        await this.prisma.listing.update({
+            where: { id: listingId },
+            data: { linkedListingId: auctionListing.id } as any,
+        });
+
+        return { linkedListingId: auctionListing.id, auctionId: auction.id };
+    }
+
+    /**
      * Soft delete a listing
      * Sets deletedAt to current timestamp
      * Includes ownership check

@@ -292,6 +292,55 @@ export class AuctionsService {
         await this.closeAuction(auctionId);
     }
 
+    async acceptBid(auctionId: string, bidId: string, sellerId: string): Promise<void> {
+        const auction = await this.findOne(auctionId);
+        if (auction.listing.sellerId !== sellerId) {
+            throw new ForbiddenException('You do not own this auction');
+        }
+        if (auction.status !== 'ACTIVE') {
+            throw new BadRequestException('Only ACTIVE auctions can have a bid accepted');
+        }
+
+        const bid = await this.prisma.bid.findUnique({ where: { id: bidId } });
+        if (!bid || bid.listingId !== auction.listingId || bid.deletedAt) {
+            throw new NotFoundException('Bid not found in this auction');
+        }
+
+        const winningAmount = Number(bid.amount);
+        const winnerId = bid.bidderId;
+        const linkedListingId = (auction.listing as any).linkedListingId as string | null;
+
+        await this.prisma.$transaction([
+            this.prisma.auction.update({
+                where: { id: auctionId },
+                data: { status: 'ENDED', winnerId, winningBidAmount: bid.amount },
+            }),
+            this.prisma.listing.update({
+                where: { id: auction.listingId },
+                data: { status: 'SOLD' },
+            }),
+            // Auto-close the linked retail listing if this auction listing had one
+            ...(linkedListingId ? [
+                this.prisma.listing.update({
+                    where: { id: linkedListingId },
+                    data: { status: 'SOLD' },
+                }),
+            ] : []),
+            this.prisma.sale.create({
+                data: { listingId: auction.listingId, sellerId, buyerId: winnerId, soldPrice: bid.amount },
+            }),
+            this.prisma.sellerProfile.upsert({
+                where: { userId: sellerId },
+                create: { userId: sellerId, totalSales: 1 },
+                update: { totalSales: { increment: 1 } },
+            }),
+        ]);
+
+        const endPayload: AuctionEndPayload = { auctionId, winnerId, winningBidAmount: winningAmount, reserveMet: true };
+        this.auctionGateway.broadcastAuctionEnd(auctionId, endPayload);
+        await this.notifyAuctionEnd(auction, winnerId, winningAmount, true);
+    }
+
     async remove(id: string, userId: string): Promise<Auction> {
         const auction = await this.findOne(id);
 
@@ -398,6 +447,7 @@ export class AuctionsService {
         if (reserveMet && topBid) {
             // Winner found
             const sellerId = auction.listing.sellerId;
+            const linkedListingId = (auction.listing as any).linkedListingId as string | null;
             await this.prisma.$transaction([
                 this.prisma.auction.update({
                     where: { id: auctionId },
@@ -411,6 +461,13 @@ export class AuctionsService {
                     where: { id: auction.listingId },
                     data: { status: 'SOLD' },
                 }),
+                // Auto-close the linked retail listing if this auction listing had one
+                ...(linkedListingId ? [
+                    this.prisma.listing.update({
+                        where: { id: linkedListingId },
+                        data: { status: 'SOLD' },
+                    }),
+                ] : []),
                 // Create Sale record so revenue appears in earnings, stats, and buyer history
                 ...(sellerId ? [
                     this.prisma.sale.create({

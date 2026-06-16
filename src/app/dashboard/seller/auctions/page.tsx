@@ -7,7 +7,7 @@ import {
     Gavel, PlusCircle, Loader2, Eye, XCircle, Clock,
     ChevronRight, AlertCircle, CheckCircle2, Calendar, X,
     Upload, Handshake, Info, CheckCircle, ImageIcon,
-    Trophy, MessageSquare, BarChart2, Users, TrendingUp,
+    Trophy, MessageSquare, BarChart2, Users, TrendingUp, Tag,
 } from "lucide-react"
 import { createChatRoom } from "@/lib/chatApi"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
@@ -22,7 +22,7 @@ import {
 } from "@/lib/auctionApi"
 import { apiClient } from "@/lib/apiClient"
 import { uploadImage } from "@/lib/supabase"
-import { getStripeConnectStatus, type StripeConnectStatus, type Listing } from "@/lib/listingApi"
+import { getStripeConnectStatus, alsoListRetail, createListingCheckout, type StripeConnectStatus, type Listing } from "@/lib/listingApi"
 
 const STATUS_STYLES: Record<string, string> = {
     SCHEDULED: "bg-blue-500/10 text-blue-400 border-blue-500/20",
@@ -88,6 +88,12 @@ function SellerAuctionsPage() {
     const [resultsAuction, setResultsAuction] = React.useState<Auction | null>(null)
     const [connectingChat, setConnectingChat] = React.useState(false)
     const [payoutStatus, setPayoutStatus] = React.useState<StripeConnectStatus | null>(null)
+    // Also-list-retail for auction listings
+    const [alsoRetailAuction, setAlsoRetailAuction] = React.useState<Auction | null>(null)
+    const [alsoRetailPrice,   setAlsoRetailPrice]   = React.useState("")
+    const [alsoRetailTier,    setAlsoRetailTier]    = React.useState<'BASIC' | 'STANDARD' | 'PREMIUM'>('BASIC')
+    const [alsoRetailLoading, setAlsoRetailLoading] = React.useState(false)
+    const [alsoRetailError,   setAlsoRetailError]   = React.useState<string | null>(null)
 
     React.useEffect(() => {
         const id = setInterval(() => setTick(t => t + 1), 1000)
@@ -198,6 +204,21 @@ function SellerAuctionsPage() {
             alert(err.message || "Failed to close auction.")
         } finally {
             setClosing(null)
+        }
+    }
+
+    async function handleAlsoRetailSubmit() {
+        if (!alsoRetailAuction || !alsoRetailPrice) return
+        setAlsoRetailLoading(true)
+        setAlsoRetailError(null)
+        try {
+            const { linkedListingId } = await alsoListRetail(alsoRetailAuction.listingId, parseFloat(alsoRetailPrice), alsoRetailTier)
+            const { url } = await createListingCheckout(linkedListingId, alsoRetailTier)
+            window.location.href = url
+        } catch (err: any) {
+            setAlsoRetailError(err.message ?? 'Failed to create retail listing')
+        } finally {
+            setAlsoRetailLoading(false)
         }
     }
 
@@ -577,6 +598,14 @@ function SellerAuctionsPage() {
                                                                 </button>
                                                             </>
                                                         )}
+                                                        {(auction.status === "ACTIVE" || auction.status === "SCHEDULED") && !(auction.listing as any).linkedListingId && (
+                                                            <button
+                                                                onClick={() => { setAlsoRetailAuction(auction); setAlsoRetailPrice(""); setAlsoRetailTier('BASIC'); setAlsoRetailError(null) }}
+                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-bold hover:bg-blue-500/20 transition-colors"
+                                                            >
+                                                                <Tag size={13} /> Also Retail
+                                                            </button>
+                                                        )}
                                                         {auction.status === "SCHEDULED" && (
                                                             <button
                                                                 disabled={cancelling === auction.id}
@@ -880,6 +909,62 @@ function SellerAuctionsPage() {
                             )}
                         </div>
                     </div>
+                </div>
+            </div>
+        )}
+        {/* ── Also List for Retail modal ──────────────────────────── */}
+        {alsoRetailAuction && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                <div className="bg-[#0A0A0C] border border-white/10 rounded-2xl w-full max-w-sm p-6 space-y-5 shadow-2xl">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                                <Tag size={16} className="text-blue-400" />
+                            </div>
+                            <div>
+                                <p className="text-white font-bold text-sm">Also List for Retail</p>
+                                <p className="text-slate-500 text-xs truncate max-w-[180px]">{alsoRetailAuction.listing?.title}</p>
+                            </div>
+                        </div>
+                        <button onClick={() => setAlsoRetailAuction(null)} className="text-slate-500 hover:text-white transition-colors"><X size={18} /></button>
+                    </div>
+
+                    <div className="space-y-3">
+                        <div>
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Retail Price (£)</label>
+                            <input
+                                type="number"
+                                placeholder="e.g. 18500"
+                                value={alsoRetailPrice}
+                                onChange={e => setAlsoRetailPrice(e.target.value)}
+                                className="w-full bg-slate-800 border border-white/10 text-white rounded-lg px-3 h-10 text-sm focus:outline-none focus:border-white/30"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Listing Plan</label>
+                            <div className="grid grid-cols-3 gap-2">
+                                {([['BASIC', '£1'], ['STANDARD', '£10'], ['PREMIUM', '£25']] as const).map(([tier, price]) => (
+                                    <button
+                                        key={tier}
+                                        onClick={() => setAlsoRetailTier(tier)}
+                                        className={`py-2.5 rounded-xl border text-xs font-bold transition-all ${alsoRetailTier === tier ? 'bg-primary/15 border-primary/40 text-primary' : 'bg-slate-800/60 border-white/10 text-slate-400 hover:border-white/20'}`}
+                                    >
+                                        {tier}<br /><span className="text-[10px] font-normal">{price}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {alsoRetailError && <p className="text-red-400 text-xs">{alsoRetailError}</p>}
+
+                    <button
+                        onClick={handleAlsoRetailSubmit}
+                        disabled={alsoRetailLoading || !alsoRetailPrice}
+                        className="w-full h-10 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                        {alsoRetailLoading ? <><Loader2 size={14} className="animate-spin" /> Creating…</> : <><Tag size={14} /> Create & Pay</>}
+                    </button>
                 </div>
             </div>
         )}
