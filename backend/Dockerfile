@@ -36,11 +36,13 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+# Copy prisma CLI so we can run migrate deploy at startup
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 
 # Copy compiled NestJS app
 COPY --from=builder /app/dist ./dist
 
 EXPOSE 8080
 
-# Start the app directly (skip prisma db push at runtime to avoid blocking startup)
-CMD ["node", "dist/main"]
+# Run pending migrations then start the app
+CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && node dist/main"]
