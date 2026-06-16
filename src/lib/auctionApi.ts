@@ -133,8 +133,10 @@ export async function getActiveAuctions(): Promise<Auction[]> {
 
 export async function getScheduledAuctions(): Promise<Auction[]> {
     const res = await apiClient<any>(`${API}/auctions/scheduled`);
-    if (Array.isArray(res)) return res;
+    // findAllScheduled is paginated: StandardResponse wraps { data: [...], total }
+    if (Array.isArray(res?.data?.data)) return res.data.data;
     if (Array.isArray(res?.data)) return res.data;
+    if (Array.isArray(res)) return res;
     return [];
 }
 
