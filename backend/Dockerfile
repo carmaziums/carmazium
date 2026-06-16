@@ -44,5 +44,4 @@ COPY --from=builder /app/dist ./dist
 
 EXPOSE 8080
 
-# Run pending migrations then start the app
-CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && node dist/main"]
+CMD ["node", "dist/main"]
