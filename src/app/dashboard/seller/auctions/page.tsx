@@ -79,6 +79,7 @@ function SellerAuctionsPage() {
     // Form state
     const [formListingId, setFormListingId] = React.useState(preselectedListingId)
     const [formStartTime, setFormStartTime] = React.useState("")
+    const [formStartImmediately, setFormStartImmediately] = React.useState(false)
     const [formReservePrice, setFormReservePrice] = React.useState("")
     const [formStartingBid, setFormStartingBid] = React.useState("")
     const [formMinIncrement, setFormMinIncrement] = React.useState("100")
@@ -149,28 +150,32 @@ function SellerAuctionsPage() {
         e.preventDefault()
         setFormError(null)
         if (!formListingId) { setFormError("Please select a listing."); return }
-        if (!formStartTime) { setFormError("Please set a start date/time."); return }
+        if (!formStartImmediately && !formStartTime) { setFormError("Please set a start date/time or choose 'Start immediately'."); return }
 
-        const startMs = new Date(formStartTime).getTime()
-        if (startMs < Date.now() + 30 * 60 * 1000) {
-            setFormError("Start time must be at least 30 minutes in the future.")
-            return
+        const resolvedStartTime = formStartImmediately ? new Date().toISOString() : new Date(formStartTime).toISOString()
+
+        if (!formStartImmediately) {
+            const startMs = new Date(formStartTime).getTime()
+            if (startMs < Date.now() + 30 * 60 * 1000) {
+                setFormError("Start time must be at least 30 minutes in the future.")
+                return
+            }
         }
 
         setSubmitting(true)
         try {
             const dto: CreateAuctionRequest = {
                 listingId: formListingId,
-                startTime: new Date(formStartTime).toISOString(),
+                startTime: resolvedStartTime,
                 reservePrice: Number(formReservePrice),
                 startingBid: Number(formStartingBid),
                 minIncrement: Number(formMinIncrement) || 100,
             }
             await createAuction(dto)
-            const endDisplay = addHours(new Date(formStartTime).toISOString(), 24)
-            setSuccessMsg(`Auction scheduled! It will run until ${endDisplay}.`)
+            const endDisplay = addHours(resolvedStartTime, 24)
+            setSuccessMsg(formStartImmediately ? `Auction is now live! It will run until ${endDisplay}.` : `Auction scheduled! It will run until ${endDisplay}.`)
             setShowForm(false)
-            setFormListingId(""); setFormStartTime(""); setFormReservePrice("")
+            setFormListingId(""); setFormStartTime(""); setFormStartImmediately(false); setFormReservePrice("")
             setFormStartingBid(""); setFormMinIncrement("100")
             fetchAuctions()
         } catch (err: any) {
@@ -323,7 +328,7 @@ function SellerAuctionsPage() {
                                 <div className="p-5 border-b border-white/5 flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <Gavel size={18} className="text-primary" />
-                                        <h2 className="font-bold text-white text-lg">Schedule New Auction</h2>
+                                        <h2 className="font-bold text-white text-lg">{formStartImmediately ? "Start Auction Now" : "Schedule New Auction"}</h2>
                                     </div>
                                     <button
                                         onClick={() => setShowForm(false)}
@@ -366,7 +371,22 @@ function SellerAuctionsPage() {
                                             )}
                                         </div>
 
-                                        {/* Start time */}
+                                        {/* Start immediately toggle */}
+                                        <div className="md:col-span-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => { setFormStartImmediately(v => !v); setFormStartTime("") }}
+                                                className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg border transition-colors ${formStartImmediately ? "bg-primary/10 border-primary/40 text-primary" : "bg-slate-800/50 border-white/10 text-gray-400 hover:border-white/20"}`}
+                                            >
+                                                <div className={`w-9 h-5 rounded-full relative transition-colors ${formStartImmediately ? "bg-primary" : "bg-slate-600"}`}>
+                                                    <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${formStartImmediately ? "translate-x-4" : "translate-x-0.5"}`} />
+                                                </div>
+                                                <span className="text-sm font-semibold">Start immediately — go live right now</span>
+                                            </button>
+                                        </div>
+
+                                        {/* Start time (hidden when starting immediately) */}
+                                        {!formStartImmediately && (
                                         <div>
                                             <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
                                                 Start Date & Time
@@ -379,6 +399,7 @@ function SellerAuctionsPage() {
                                                 className="bg-slate-800 border-white/10 text-white h-11 rounded-lg"
                                             />
                                         </div>
+                                        )}
 
                                         {/* Duration read-only */}
                                         <div>
@@ -388,9 +409,9 @@ function SellerAuctionsPage() {
                                             <div className="flex items-center gap-2 h-11 px-3 bg-slate-800/50 border border-white/5 rounded-lg text-gray-400 text-sm">
                                                 <Clock size={14} className="text-primary shrink-0" />
                                                 <span>24 hours · Open bidding</span>
-                                                {formStartTime && (
+                                                {(formStartImmediately || formStartTime) && (
                                                     <span className="ml-auto text-xs text-gray-600 shrink-0">
-                                                        ends {addHours(new Date(formStartTime).toISOString(), 24)}
+                                                        ends {addHours(formStartImmediately ? new Date().toISOString() : new Date(formStartTime).toISOString(), 24)}
                                                     </span>
                                                 )}
                                             </div>
