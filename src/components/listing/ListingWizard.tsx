@@ -146,7 +146,7 @@ const INITIAL_FORM: FormData = {
     dateOfLastV5CIssued: "",
     images: [],
     videoUrls: [],
-    priceMin: "", priceAsking: "", badgeTier: 'FREE', bannerLabel: "", status: "DRAFT", listingType: "CLASSIFIED",
+    priceMin: "", priceAsking: "", badgeTier: 'BASIC', bannerLabel: "", status: "DRAFT", listingType: "CLASSIFIED",
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -335,7 +335,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     priceMin: l.priceMin ? String(l.priceMin) : '',
                     priceAsking: l.price ? String(l.price) : '',
                     status: l.status === 'ACTIVE' ? 'ACTIVE' : 'DRAFT',
-                    badgeTier: l.badgeTier || 'FREE',
+                    badgeTier: l.badgeTier || 'BASIC',
                     // Fields missing from original prefill
                     vin: l.vin || '',
                     vehicleType: l.vehicleType || 'CAR',

@@ -166,7 +166,7 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
                     vrm: row.vrm,
                     listingType: "CLASSIFIED",
                     status: "DRAFT", // Automatically drops into Draft queue for photo uploads later!
-                    badgeTier: "FREE",
+                    badgeTier: "BASIC",
                     vehicleType: "CAR", // default assumptions
                     images: row.images.length > 0 ? row.images : [],
                     

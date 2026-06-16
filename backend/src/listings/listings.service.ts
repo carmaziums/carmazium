@@ -159,12 +159,13 @@ export class ListingsService {
 
         const listingType: ListingType = createListingDto.listingType === 'AUCTION' ? 'AUCTION' : 'CLASSIFIED';
 
-        // Badge tier — default FREE
-        const badgeTier = createListingDto.badgeTier ?? 'FREE';
+        // Auctions are free to list; all classified listings require at minimum BASIC (£1)
+        const rawBadgeTier = createListingDto.badgeTier ?? 'BASIC';
+        const badgeTier = (rawBadgeTier === 'FREE' && listingType !== 'AUCTION') ? 'BASIC' : rawBadgeTier;
         const isPremium = badgeTier === 'PREMIUM';
 
-        // Paid tiers (BASIC/STANDARD/PREMIUM) must start as DRAFT — the Stripe webhook
-        // activates them once payment completes. FREE listings can be ACTIVE immediately.
+        // Auction (FREE) listings go live immediately; all paid tiers start as DRAFT
+        // and are activated by the Stripe webhook once payment completes.
         const listingStatus: ListingStatus = badgeTier !== 'FREE'
             ? 'DRAFT'
             : createListingDto.status === 'ACTIVE' ? 'ACTIVE'

@@ -228,7 +228,7 @@ export function DealerQuickList() {
                 images,
                 listingType,
                 status:       publishAs,
-                badgeTier:    "FREE",
+                badgeTier:    listingType === "AUCTION" ? "FREE" : "BASIC",
                 vehicleType:  "CAR" as VehicleTypeValue,
                 make:         dvlaData.make || undefined,
                 model:        resolvedModel || undefined,
@@ -282,17 +282,12 @@ export function DealerQuickList() {
     }
 
     // ─── Plan selection confirm (returnPublish edit flow) ─────────────────────
-    const handlePlanConfirm = async (tier: 'FREE' | 'STANDARD' | 'PREMIUM') => {
+    const handlePlanConfirm = async (tier: 'BASIC' | 'STANDARD' | 'PREMIUM') => {
         if (!editId) return
         setPlanPublishing(true)
         try {
-            if (tier === 'FREE') {
-                await publishListing(editId)
-                router.push('/dashboard/dealer/inventory')
-            } else {
-                const checkout = await createListingCheckoutSession(editId, tier)
-                window.location.href = checkout.url
-            }
+            const checkout = await createListingCheckoutSession(editId, tier)
+            window.location.href = checkout.url
         } catch (err: any) {
             alert('Failed to publish: ' + (err.message || 'Please try again.'))
             setPlanPublishing(false)
@@ -859,12 +854,12 @@ export function DealerQuickList() {
                         <div className="grid grid-cols-2 gap-3 mb-3">
                             {/* FREE */}
                             <button
-                                onClick={() => handlePlanConfirm('FREE')}
+                                onClick={() => handlePlanConfirm('BASIC')}
                                 disabled={planPublishing}
                                 className="flex flex-col p-4 rounded-xl border border-white/10 bg-white/[0.02] hover:border-white/25 hover:bg-white/5 transition-all text-left disabled:opacity-50"
                             >
-                                <p className="text-white font-bold text-sm mb-1">Free</p>
-                                <p className="text-2xl font-black text-white mb-3">£0</p>
+                                <p className="text-white font-bold text-sm mb-1">Basic</p>
+                                <p className="text-2xl font-black text-white mb-3">£1</p>
                                 <ul className="space-y-1 text-[11px] text-gray-400">
                                     <li className="flex items-center gap-1.5"><CheckCircle size={11} className="text-emerald-400" /> Basic listing</li>
                                     <li className="flex items-center gap-1.5"><CheckCircle size={11} className="text-emerald-400" /> Offer system</li>
