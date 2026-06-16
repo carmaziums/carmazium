@@ -4,7 +4,6 @@ primary_region = 'lhr'
 [build]
 
 [deploy]
-  release_command = "npx -y prisma db push --accept-data-loss --skip-generate"
 
 [http_service]
   internal_port = 8080
@@ -13,6 +12,13 @@ primary_region = 'lhr'
   auto_start_machines = true
   min_machines_running = 1
   processes = ['app']
+
+  [[http_service.checks]]
+    grace_period = '30s'
+    interval = '15s'
+    method = 'GET'
+    path = '/health'
+    timeout = '10s'
 
 [[vm]]
   cpu_kind = 'shared'

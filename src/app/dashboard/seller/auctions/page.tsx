@@ -205,7 +205,7 @@ function SellerAuctionsPage() {
         setHandoverUploading(auctionId)
         setHandoverError(prev => ({ ...prev, [auctionId]: "" }))
         try {
-            const url = await uploadImage(file, `handover/${auctionId}`)
+            const url = await uploadImage(file, 'listings', `handover/${auctionId}`)
             await apiClient(`/auctions/${auctionId}/handover-proof`, {
                 method: "POST",
                 body: JSON.stringify({ proofUrl: url }),

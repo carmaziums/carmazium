@@ -57,7 +57,7 @@ export default function BuyerSettingsPage() {
         const file = e.target.files[0]
         try {
             setUploadingImage(true)
-            const publicUrl = await uploadImage(file, 'carmazium-images')
+            const publicUrl = await uploadImage(file, 'listings', 'profiles')
             setProfileImage(publicUrl)
             // Auto-save immediately after upload
             await updateProfile({ profileImage: publicUrl })

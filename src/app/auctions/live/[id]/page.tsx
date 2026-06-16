@@ -3,6 +3,7 @@
 import * as React from "react"
 import Image from "next/image"
 import Link from "next/link"
+import dynamic from "next/dynamic"
 import { io, Socket } from "socket.io-client"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/Button"
@@ -16,10 +17,16 @@ import {
     FileText, Wrench, Leaf, TriangleAlert,
 } from "lucide-react"
 import { CountdownTimer } from "@/components/features/CountdownTimer"
+import { ThreeDErrorBoundary } from "@/components/listing/ThreeDErrorBoundary"
 import { useAuth } from "@/context/AuthContext"
 import { getAuction, type Auction, type BidBroadcastPayload, type AuctionEndPayload } from "@/lib/auctionApi"
-import { placeBid } from "@/lib/listingApi"
+import { placeBid, getDamageRecords } from "@/lib/listingApi"
 import { getWebSocketUrl, createChatRoom } from "@/lib/chatApi"
+
+const ThreeDVehicleViewer = dynamic(
+    () => import("@/components/listing/ThreeDVehicleViewer").then(m => m.ThreeDVehicleViewer),
+    { ssr: false }
+)
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -78,6 +85,8 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const [startTime, setStartTime] = React.useState<Date | null>(null)
     const [copied, setCopied] = React.useState(false)
     const [connectingChat, setConnectingChat] = React.useState(false)
+    const [damageRecords, setDamageRecords] = React.useState<any[]>([])
+    const [selectedDamageZone, setSelectedDamageZone] = React.useState<string | null>(null)
 
     const feedRef = React.useRef<HTMLDivElement>(null)
     const socketRef = React.useRef<Socket | null>(null)
@@ -117,6 +126,12 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     }, [params.id, user])
 
     React.useEffect(() => { loadAuction() }, [loadAuction])
+
+    // Fetch damage records when auction (and its listingId) is available
+    React.useEffect(() => {
+        if (!auction?.listingId) return
+        getDamageRecords(auction.listingId).then(setDamageRecords).catch(() => {})
+    }, [auction?.listingId])
 
     // ── Socket ────────────────────────────────────────────────────────────────
     React.useEffect(() => {
@@ -805,6 +820,57 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                         <span key={f} className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-full">
                                                             <CheckCircle size={9} /> {f}
                                                         </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* ── Damage Report ───────────────────────────────── */}
+                                        {damageRecords.length > 0 && (
+                                            <div className="rounded-xl border border-amber-500/20 bg-slate-900/40 p-4">
+                                                <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-1 border-l-2 border-amber-500 pl-2.5">
+                                                    Reported Damage
+                                                </h4>
+                                                <p className="text-[10px] text-slate-500 mb-4 pl-3">
+                                                    {damageRecords.length} zone{damageRecords.length !== 1 ? "s" : ""} marked by seller — click a zone to see details
+                                                </p>
+                                                <ThreeDErrorBoundary
+                                                    fallback={
+                                                        <div className="w-full rounded-xl border border-white/8 bg-slate-950/80 flex flex-col items-center justify-center gap-2 text-center px-6 py-10">
+                                                            <TriangleAlert className="text-amber-400" size={20} />
+                                                            <p className="text-sm font-bold text-white">3D preview unavailable on this device</p>
+                                                            <p className="text-xs text-slate-500">Damage details are listed below.</p>
+                                                        </div>
+                                                    }
+                                                >
+                                                    <ThreeDVehicleViewer
+                                                        bodyType={auction.listing.bodyType ?? undefined}
+                                                        markedZones={damageRecords.map((r: any) => r.part)}
+                                                        selectedZone={selectedDamageZone}
+                                                        onZoneClick={(id) => setSelectedDamageZone(prev => prev === id ? null : id)}
+                                                    />
+                                                </ThreeDErrorBoundary>
+                                                <div className="mt-4 space-y-2">
+                                                    {damageRecords.map((record: any, i: number) => (
+                                                        <button
+                                                            key={i}
+                                                            onClick={() => setSelectedDamageZone(prev => prev === record.part ? null : record.part)}
+                                                            className={`w-full text-left flex items-start gap-3 p-3 rounded-lg border transition-colors ${selectedDamageZone === record.part ? "bg-amber-500/10 border-amber-500/30" : "bg-slate-900/50 border-white/5 hover:border-white/10"}`}
+                                                        >
+                                                            {record.imageUrl && (
+                                                                <div className="relative w-12 h-12 rounded-md overflow-hidden shrink-0 border border-white/10">
+                                                                    <Image src={record.imageUrl} alt={record.part} fill className="object-cover" sizes="48px" />
+                                                                </div>
+                                                            )}
+                                                            <div className="min-w-0">
+                                                                <p className="text-sm font-semibold text-white capitalize">
+                                                                    {record.part.replace(/-/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                                                                </p>
+                                                                <p className="text-xs text-slate-400">
+                                                                    {record.type}{record.size ? ` — ${record.size}` : ""}
+                                                                </p>
+                                                            </div>
+                                                        </button>
                                                     ))}
                                                 </div>
                                             </div>
