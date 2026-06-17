@@ -1464,7 +1464,7 @@ export class ListingsService {
 
         const badgeTier = overrides.badgeTier ?? 'BASIC';
 
-        return this.prisma.listing.create({
+        const listing = await this.prisma.listing.create({
             data: {
                 title,
                 price: overrides.price,
@@ -1493,5 +1493,17 @@ export class ListingsService {
                 importedSource: scraped.platform,
             } as any,
         });
+
+        // Re-host external CDN images to Supabase in the background so they don't expire
+        if (scraped.images.length > 0) {
+            Promise.all(scraped.images.map(img => this.rehostImage(img)))
+                .then(hostedUrls => this.prisma.listing.update({
+                    where: { id: listing.id },
+                    data: { images: hostedUrls },
+                }))
+                .catch(err => console.warn(`Import image re-host failed for listing ${listing.id}: ${err?.message}`));
+        }
+
+        return listing;
     }
 }
