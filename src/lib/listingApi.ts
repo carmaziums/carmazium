@@ -393,6 +393,17 @@ export async function deleteListing(listingId: string): Promise<void> {
 }
 
 /**
+ * Partially update a listing's fields (authenticated, must own listing)
+ */
+export async function updateListing(listingId: string, fields: Partial<Record<string, unknown>>): Promise<Listing> {
+    const data = await apiClient<{ data: Listing }>(`/listings/${listingId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(fields),
+    })
+    return data.data
+}
+
+/**
  * Update listing status (authenticated)
  */
 export async function updateListingStatus(listingId: string, status: string): Promise<Listing> {
@@ -1218,8 +1229,8 @@ export async function importFromUrl(params: {
     url: string
     price: number
     vrm: string
-    badgeTier?: string
     title?: string
+    badgeTier?: string
 }): Promise<Listing> {
     const res = await apiClient<{ data: Listing }>('/listings/import-from-url', {
         method: 'POST',
