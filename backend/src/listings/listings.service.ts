@@ -953,10 +953,26 @@ export class ListingsService {
         const source = await this.findById(listingId);
         if (source.sellerId !== userId) throw new ForbiddenException('You do not own this listing');
         if (source.type !== 'AUCTION') throw new BadRequestException('Source listing must be of type AUCTION');
-        if ((source as any).linkedListingId) throw new BadRequestException('This listing already has a linked retail listing');
+
+        // Idempotency: if a linked listing already exists, check its state
+        const existingLinkedId = (source as any).linkedListingId as string | null;
+        if (existingLinkedId) {
+            const existingLinked = await this.prisma.listing.findUnique({
+                where: { id: existingLinkedId },
+                select: { id: true, status: true },
+            });
+            if (existingLinked?.status === 'ACTIVE') {
+                // Already paid and active — return it so frontend can redirect to pay again if needed
+                return { linkedListingId: existingLinkedId };
+            }
+            // DRAFT + no completed payment — clean up the stale draft so we can start fresh
+            if (existingLinked) {
+                await this.prisma.listing.update({ where: { id: listingId }, data: { linkedListingId: null } as any });
+                await this.prisma.listing.delete({ where: { id: existingLinked.id } });
+            }
+        }
 
         const slug = this.generateSlug(source.title);
-        const isPremium = dto.badgeTier === 'PREMIUM';
 
         const newListing = await this.prisma.listing.create({
             data: {
@@ -989,8 +1005,6 @@ export class ListingsService {
                 combinedMpg: source.combinedMpg, extraUrbanMpg: source.extraUrbanMpg,
                 bannerLabel: source.bannerLabel,
                 badgeTier: dto.badgeTier,
-                isFeatured: isPremium,
-                featuredUntil: isPremium ? new Date(Date.now() + 28 * 24 * 60 * 60 * 1000) : null,
                 sellerId: userId,
                 vehicleType: source.vehicleType,
                 isImported: source.isImported,
@@ -1165,6 +1179,7 @@ export class ListingsService {
                 ],
                 include: {
                     hpiReport: true,
+                    linkedListing: { select: { id: true, status: true, badgeTier: true } },
                 },
             }),
             this.prisma.listing.count({ where }),

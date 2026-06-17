@@ -67,6 +67,17 @@ export async function getSessionStatus(sessionId: string): Promise<SessionStatus
 }
 
 /**
+ * Webhook fallback: apply the £125 auction buyer fee if the Stripe webhook was delayed.
+ */
+export async function applyAuctionFee(sessionId: string): Promise<{ applied: boolean }> {
+    const data = await apiClient<{ data: { applied: boolean } }>('/payments/apply-auction-fee', {
+        method: 'POST',
+        body: JSON.stringify({ sessionId }),
+    })
+    return data.data
+}
+
+/**
  * Fetch payment history for the current user.
  */
 export async function getPaymentHistory(): Promise<PaymentTransaction[]> {

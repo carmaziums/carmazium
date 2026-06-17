@@ -222,6 +222,7 @@ export class AuctionsService {
                                 select: { amount: true },
                             },
                             _count: { select: { bids: true } },
+                            linkedListing: { select: { id: true, status: true, badgeTier: true } },
                         },
                     },
                     winner: { select: { id: true, firstName: true, lastName: true } },

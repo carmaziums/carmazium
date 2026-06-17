@@ -423,12 +423,26 @@ export default function DealerInventoryPage() {
                                                                         <Eye size={14} /> View
                                                                     </Link>
                                                                     {/* Dual-channel: AUCTION listing → add retail listing */}
-                                                                    {listing.type === 'AUCTION' && listing.status === 'ACTIVE' && !listing.linkedListingId && (
+                                                                    {listing.type === 'AUCTION' && listing.status === 'ACTIVE' && !(listing as any).linkedListing && (
                                                                         <button
                                                                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setAlsoRetailListing(listing); setAlsoRetailPrice(""); setAlsoRetailTier('BASIC'); setAlsoRetailError(null) }}
                                                                             className="flex items-center gap-2 px-3 py-2 text-sm text-blue-400 hover:bg-blue-500/10 transition-colors w-full text-left"
                                                                         >
                                                                             <Tag size={14} /> Also List for Retail
+                                                                        </button>
+                                                                    )}
+                                                                    {/* Resume payment if retail listing was created but not paid for */}
+                                                                    {listing.type === 'AUCTION' && listing.status === 'ACTIVE' && (listing as any).linkedListing?.status === 'DRAFT' && (
+                                                                        <button
+                                                                            onClick={async (e) => {
+                                                                                e.preventDefault(); e.stopPropagation()
+                                                                                const linked = (listing as any).linkedListing
+                                                                                const { url } = await createListingCheckout(linked.id, linked.badgeTier || 'BASIC')
+                                                                                window.location.href = url
+                                                                            }}
+                                                                            className="flex items-center gap-2 px-3 py-2 text-sm text-amber-400 hover:bg-amber-500/10 transition-colors w-full text-left"
+                                                                        >
+                                                                            <Tag size={14} /> Resume Retail Payment
                                                                         </button>
                                                                     )}
                                                                     {/* Dual-channel: CLASSIFIED listing → add auction */}

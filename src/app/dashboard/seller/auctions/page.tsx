@@ -619,12 +619,24 @@ function SellerAuctionsPage() {
                                                                 </button>
                                                             </>
                                                         )}
-                                                        {(auction.status === "ACTIVE" || auction.status === "SCHEDULED") && !(auction.listing as any).linkedListingId && (
+                                                        {(auction.status === "ACTIVE" || auction.status === "SCHEDULED") && !(auction.listing as any).linkedListing && (
                                                             <button
                                                                 onClick={() => { setAlsoRetailAuction(auction); setAlsoRetailPrice(""); setAlsoRetailTier('BASIC'); setAlsoRetailError(null) }}
                                                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-bold hover:bg-blue-500/20 transition-colors"
                                                             >
                                                                 <Tag size={13} /> Also Retail
+                                                            </button>
+                                                        )}
+                                                        {(auction.status === "ACTIVE" || auction.status === "SCHEDULED") && (auction.listing as any).linkedListing?.status === 'DRAFT' && (
+                                                            <button
+                                                                onClick={async () => {
+                                                                    const linked = (auction.listing as any).linkedListing
+                                                                    const { url } = await createListingCheckout(linked.id, linked.badgeTier || 'BASIC')
+                                                                    window.location.href = url
+                                                                }}
+                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-bold hover:bg-amber-500/20 transition-colors"
+                                                            >
+                                                                <Tag size={13} /> Resume Retail Payment
                                                             </button>
                                                         )}
                                                         {auction.status === "SCHEDULED" && (

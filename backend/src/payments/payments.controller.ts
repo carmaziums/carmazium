@@ -103,6 +103,16 @@ export class PaymentsController {
         return new StandardResponse(status);
     }
 
+    @Post('apply-auction-fee')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Webhook fallback: apply auction buyer fee if webhook was delayed' })
+    async applyAuctionFee(@Body('sessionId') sessionId: string) {
+        if (!sessionId) throw new BadRequestException('sessionId is required');
+        const result = await this.paymentsService.applyAuctionFee(sessionId);
+        return new StandardResponse(result);
+    }
+
     @Get('history')
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()

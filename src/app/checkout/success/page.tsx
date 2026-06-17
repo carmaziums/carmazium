@@ -7,7 +7,7 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import { CheckCircle, ArrowRight, Home, Car, Loader2, PartyPopper, LayoutDashboard } from "lucide-react"
 import { Button } from "@/components/ui/Button"
-import { getSessionStatus} from "@/lib/paymentApi"
+import { getSessionStatus, applyAuctionFee } from "@/lib/paymentApi"
 import type { SessionStatus } from "@/lib/paymentApi"
 import { publishListing } from "@/lib/listingApi"
 
@@ -39,9 +39,12 @@ function CheckoutSuccessContent() {
             try {
                 const data = await getSessionStatus(sessionId)
                 setSessionData(data)
-                // Webhook fallback: if the Stripe webhook missed/delayed, activate the listing now
+                // Webhook fallback: activate listing or apply auction fee if webhook was delayed
                 if (data?.metadata?.type === 'LISTING_FEE' && data?.metadata?.listingId) {
                     publishListing(data.metadata.listingId).catch(() => {})
+                }
+                if (data?.metadata?.type === 'COMMISSION') {
+                    applyAuctionFee(sessionId).catch(() => {})
                 }
             } catch {
                 // Silently fail — show generic success
@@ -99,11 +102,17 @@ function CheckoutSuccessContent() {
                     transition={{ delay: 0.3 }}
                 >
                     <h1 className="text-3xl md:text-4xl font-heading font-bold text-white">
-                        {sessionData?.metadata?.type === 'LISTING_FEE' ? 'Your Listing is Live!' : 'Payment Successful!'}
+                        {sessionData?.metadata?.type === 'LISTING_FEE'
+                            ? 'Your Listing is Live!'
+                            : sessionData?.metadata?.type === 'COMMISSION'
+                            ? 'Buyer Fee Paid!'
+                            : 'Payment Successful!'}
                     </h1>
                     <p className="mt-3 text-lg" style={{ color: 'var(--text-muted)' }}>
                         {sessionData?.metadata?.type === 'LISTING_FEE'
                             ? 'Your vehicle is now published and visible to buyers.'
+                            : sessionData?.metadata?.type === 'COMMISSION'
+                            ? 'Your £125 buyer fee is confirmed. Submit your handover proof to release the seller payout.'
                             : 'Your transaction has been completed securely through Stripe.'}
                     </p>
                 </motion.div>
@@ -153,6 +162,19 @@ function CheckoutSuccessContent() {
                             <Button asChild variant="outline" className="gap-2 border-white/20 hover:bg-white/5">
                                 <Link href="/sell">
                                     <Car size={18} /> List Another
+                                </Link>
+                            </Button>
+                        </>
+                    ) : sessionData?.metadata?.type === 'COMMISSION' ? (
+                        <>
+                            <Button asChild className="gap-2 bg-gradient-to-r from-primary to-[#ff4d4d] hover:from-[#ff4d4d] hover:to-primary px-6">
+                                <Link href="/dashboard/dealer/auctions">
+                                    <LayoutDashboard size={18} /> Go to My Auctions <ArrowRight size={14} />
+                                </Link>
+                            </Button>
+                            <Button asChild variant="outline" className="gap-2 border-white/20 hover:bg-white/5">
+                                <Link href="/">
+                                    <Home size={18} /> Return Home
                                 </Link>
                             </Button>
                         </>

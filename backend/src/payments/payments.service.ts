@@ -570,6 +570,42 @@ export class PaymentsService {
     }
 
     /**
+     * Webhook fallback for the auction buyer fee (£125 COMMISSION).
+     * Called from the success page in case the webhook was delayed or missed.
+     * Verifies the Stripe session and marks buyerFeePaid if confirmed paid.
+     */
+    async applyAuctionFee(sessionId: string): Promise<{ applied: boolean }> {
+        const transaction = await this.prisma.transaction.findFirst({
+            where: { stripePaymentId: sessionId, type: 'COMMISSION' as any },
+        });
+        if (!transaction) return { applied: false };
+        if (transaction.status === 'COMPLETED') return { applied: true };
+
+        const stripe = await this.getStripe();
+        const session = await stripe.checkout.sessions.retrieve(sessionId);
+        if (session.payment_status !== 'paid') return { applied: false };
+
+        await this.prisma.transaction.update({
+            where: { id: transaction.id },
+            data: { status: 'COMPLETED' },
+        });
+
+        const listingId = session.metadata?.listingId;
+        if (listingId) {
+            const auction = await this.prisma.auction.findFirst({
+                where: { listingId, status: 'ENDED', deletedAt: null },
+            });
+            if (auction && !auction.buyerFeePaid) {
+                await this.prisma.auction.update({
+                    where: { id: auction.id },
+                    data: { buyerFeePaid: true, buyerFeeTransactionId: transaction.id },
+                });
+            }
+        }
+        return { applied: true };
+    }
+
+    /**
      * Issue a partial Stripe refund of £100 to the auction buyer (platform keeps £25).
      * Called by admin when denying a handover proof.
      */
