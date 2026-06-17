@@ -640,6 +640,10 @@ model Listing {
   linkedListing   Listing?  @relation("LinkedListing", fields: [linkedListingId], references: [id])
   linkedListings  Listing[] @relation("LinkedListing")
 
+  // Platform import — set when listing was imported from an external marketplace
+  importedFromUrl String?
+  importedSource  String? // AUTOTRADER | CARGURUS | CARWOW
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?

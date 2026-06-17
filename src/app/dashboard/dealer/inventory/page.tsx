@@ -17,6 +17,8 @@ import { publishListing, createListingCheckoutSession, alsoListRetail, alsoAucti
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 import { BulkImportModal } from "@/components/dealer/BulkImportModal"
+import { ImportListingModal } from "@/components/features/ImportListingModal"
+import { ExternalLink } from "lucide-react"
 
 // ─── Completeness helper ────────────────────────────────────────────────────
 
@@ -59,6 +61,7 @@ export default function DealerInventoryPage() {
     const [searchQuery,       setSearchQuery]       = React.useState("")
     const [statusFilter,      setStatusFilter]      = React.useState("ALL")
     const [isBulkImportOpen,  setIsBulkImportOpen]  = React.useState(false)
+    const [isImportModalOpen, setIsImportModalOpen] = React.useState(false)
     const [activeDropdown,    setActiveDropdown]    = React.useState<string | null>(null)
     const [publishing,        setPublishing]        = React.useState<string | null>(null)
     // Plan modal
@@ -228,6 +231,13 @@ export default function DealerInventoryPage() {
                         title={DEALER_ROUTE_CONFIG[1].title}
                         subHeader={DEALER_ROUTE_CONFIG[1].subHeader}
                     >
+                        <Button
+                            variant="outline"
+                            className="border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 gap-2 h-11 px-6 rounded-xl transition-all"
+                            onClick={() => setIsImportModalOpen(true)}
+                        >
+                            <ExternalLink size={16} /> Import Listing
+                        </Button>
                         <Button
                             variant="outline"
                             className="border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 gap-2 h-11 px-6 rounded-xl transition-all"
@@ -512,6 +522,13 @@ export default function DealerInventoryPage() {
                 onClose={() => setIsBulkImportOpen(false)}
                 onComplete={() => fetchListings()}
             />
+
+            {isImportModalOpen && (
+                <ImportListingModal
+                    onClose={() => setIsImportModalOpen(false)}
+                    onImported={() => { setIsImportModalOpen(false); fetchListings() }}
+                />
+            )}
 
             {/* ── Also List for Retail modal ──────────────────────────────── */}
             {alsoRetailListing && (

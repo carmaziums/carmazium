@@ -193,6 +193,8 @@ export interface Listing {
     createdAt: string
     updatedAt: string
     linkedListingId?: string | null
+    importedFromUrl?: string | null
+    importedSource?: string | null
     // Latest offer on this listing (populated in detail view)
     offers?: LatestOffer[]
     // Added seller relation details
@@ -1175,6 +1177,53 @@ export async function updateBankDetails(data: Partial<BankDetails>): Promise<Ban
     const res = await apiClient<{ data: BankDetails }>('/users/me/bank-details', {
         method: 'PATCH',
         body: JSON.stringify(data),
+    })
+    return res.data
+}
+
+// ─── Listing Import ──────────────────────────────────────────────────────────
+
+export interface ScrapedListingPreview {
+    platform: 'AUTOTRADER' | 'CARGURUS' | 'CARWOW'
+    originalUrl: string
+    title: string
+    price?: number
+    make?: string
+    model?: string
+    year?: number
+    mileage?: number
+    fuelType?: string
+    transmission?: string
+    color?: string
+    bodyType?: string
+    doors?: number
+    engineSize?: number
+    bhp?: number
+    description?: string
+    images: string[]
+    location?: string
+    vrm?: string
+    vin?: string
+}
+
+export async function previewImport(url: string): Promise<ScrapedListingPreview> {
+    const res = await apiClient<{ data: ScrapedListingPreview }>('/listings/preview-import', {
+        method: 'POST',
+        body: JSON.stringify({ url }),
+    })
+    return res.data
+}
+
+export async function importFromUrl(params: {
+    url: string
+    price: number
+    vrm: string
+    badgeTier?: string
+    title?: string
+}): Promise<Listing> {
+    const res = await apiClient<{ data: Listing }>('/listings/import-from-url', {
+        method: 'POST',
+        body: JSON.stringify(params),
     })
     return res.data
 }

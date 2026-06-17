@@ -90,6 +90,7 @@ import {
     type StripeConnectStatus
 } from "@/lib/listingApi"
 import { createChatRoom, type ChatRoom } from "@/lib/chatApi"
+import { ImportListingModal } from "@/components/features/ImportListingModal"
 
 export default function UnifiedUserDashboard() {
     return (
@@ -465,6 +466,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const [boosting, setBoosting] = React.useState<string | null>(null)
     const [saleListing, setSaleListing] = React.useState<Listing | null>(null)
     const [publishing, setPublishing] = React.useState<string | null>(null)
+    const [showImportModal, setShowImportModal] = React.useState(false)
 
     const auctionDashPath = profile?.role === 'DEALER' ? '/dashboard/dealer/auctions' : '/dashboard/seller/auctions'
 
@@ -534,13 +536,29 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {showImportModal && (
+                <ImportListingModal
+                    onClose={() => setShowImportModal(false)}
+                    onImported={() => { setShowImportModal(false); fetchListings() }}
+                />
+            )}
             <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-black font-heading uppercase tracking-tight">My Inventory</h2>
-                <Link href="/sell">
-                    <Button className="flex items-center gap-2 h-10 shadow-neon-small" size="sm">
-                        <PlusCircle size={18} /> New Listing
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-2 h-10 border-white/20 text-gray-300 hover:text-white"
+                        onClick={() => setShowImportModal(true)}
+                    >
+                        <ExternalLink size={16} /> Import Listing
                     </Button>
-                </Link>
+                    <Link href="/sell">
+                        <Button className="flex items-center gap-2 h-10 shadow-neon-small" size="sm">
+                            <PlusCircle size={18} /> New Listing
+                        </Button>
+                    </Link>
+                </div>
             </div>
 
             <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl">

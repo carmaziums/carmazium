@@ -41,6 +41,50 @@ export class ListingsController {
     constructor(private readonly listingsService: ListingsService) { }
 
     /**
+     * Preview an import from an external listing URL (CarGurus, AutoTrader, CarWow).
+     * Returns extracted fields without saving anything.
+     * IMPORTANT: must appear before @Post() so it isn't shadowed.
+     */
+    @Post('preview-import')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Preview scraped data from an external listing URL' })
+    @ApiResponse({ status: 200, description: 'Extracted listing data for user review' })
+    async previewImport(
+        @Body('url') url: string,
+    ) {
+        if (!url) throw new BadRequestException('url is required');
+        const data = await this.listingsService.previewImport(url);
+        return new StandardResponse(data);
+    }
+
+    /**
+     * Import a listing from an external listing URL (CarGurus, AutoTrader, CarWow).
+     * Creates a DRAFT CLASSIFIED listing; user must still pay to activate it.
+     */
+    @Post('import-from-url')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Import a listing from an external marketplace URL' })
+    @ApiResponse({ status: 201, description: 'DRAFT listing created from imported data' })
+    async importFromUrl(
+        @Body('url') url: string,
+        @Body('price') price: number,
+        @Body('vrm') vrm: string,
+        @Body('badgeTier') badgeTier: string,
+        @Body('title') title: string,
+        @CurrentUser() user: any,
+    ) {
+        if (!url) throw new BadRequestException('url is required');
+        if (!price) throw new BadRequestException('price is required');
+        if (!vrm) throw new BadRequestException('vrm is required');
+        const listing = await this.listingsService.importFromUrl(url, user.id, { price: Number(price), vrm, badgeTier, title });
+        return new StandardResponse(listing);
+    }
+
+    /**
      * Create a new listing
      * Requires authentication
      */

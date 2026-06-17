@@ -539,6 +539,17 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                         </span>
                                     </>
                                 )}
+                                {/* Original platform listing link */}
+                                {listing.importedFromUrl && (
+                                    <a
+                                        href={listing.importedFromUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 text-[10px] font-bold bg-slate-500/10 text-slate-300 border border-slate-500/30 px-2.5 py-1 rounded-full hover:bg-slate-500/20 transition-colors"
+                                    >
+                                        <Globe size={10} /> See on {listing.importedSource ? { AUTOTRADER: 'AutoTrader', CARGURUS: 'CarGurus', CARWOW: 'CarWow' }[listing.importedSource] ?? listing.importedSource : 'Original Platform'}
+                                    </a>
+                                )}
                             </div>
                         </div>
                         <div className="flex gap-4">

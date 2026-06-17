@@ -26,6 +26,7 @@ import {
 } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { SellersService } from '../sellers/sellers.service';
+import { ScraperService } from '../scraper/scraper.service';
 
 // ─── Enum mappers ─────────────────────────────────────────────────────────────
 
@@ -81,6 +82,7 @@ export class ListingsService {
         private readonly prisma: PrismaService,
         private readonly sellersService: SellersService,
         private readonly config: ConfigService,
+        private readonly scraper: ScraperService,
     ) { }
 
     /**
@@ -1416,5 +1418,80 @@ export class ListingsService {
             page,
             totalPages: Math.ceil(totalSales / limit),
         };
+    }
+
+    /**
+     * Scrape an external listing URL and return extracted data for user review.
+     * Nothing is saved — this is a preview-only endpoint.
+     */
+    async previewImport(url: string) {
+        return this.scraper.scrape(url);
+    }
+
+    /**
+     * Import a listing from an external platform URL.
+     * Creates a DRAFT CLASSIFIED listing owned by the requesting user.
+     * The user must still go through the normal listing payment flow to activate it.
+     */
+    async importFromUrl(
+        url: string,
+        userId: string,
+        overrides: {
+            price: number;
+            vrm: string;
+            badgeTier?: string;
+            title?: string;
+        },
+    ): Promise<Listing> {
+        const scraped = await this.scraper.scrape(url);
+
+        const title = overrides.title ?? scraped.title ?? 'Imported Listing';
+        const slug = this.generateSlug(title);
+
+        const fuelMap: Record<string, FuelType> = {
+            PETROL: 'PETROL', DIESEL: 'DIESEL', ELECTRIC: 'ELECTRIC',
+            HYBRID: 'HYBRID', PLUGIN_HYBRID: 'PLUGIN_HYBRID', LPG: 'LPG', HYDROGEN_CELL: 'HYDROGEN_CELL',
+        };
+        const transMap: Record<string, TransmissionType> = {
+            MANUAL: 'MANUAL', AUTOMATIC: 'AUTOMATIC', SEMI_AUTOMATIC: 'SEMI_AUTOMATIC', CVT: 'CVT',
+        };
+        const bodyMap: Record<string, BodyType> = {
+            SEDAN: 'SEDAN', SUV: 'SUV', HATCHBACK: 'HATCHBACK', COUPE: 'COUPE',
+            CONVERTIBLE: 'CONVERTIBLE', ESTATE: 'ESTATE', CROSSOVER: 'CROSSOVER',
+            SPORTS_CAR: 'SPORTS_CAR', MINIVAN: 'MINIVAN', PICKUP_TRUCK: 'PICKUP_TRUCK',
+            STATION_WAGON: 'STATION_WAGON', MPV: 'MPV', VAN: 'VAN',
+        };
+
+        const badgeTier = overrides.badgeTier ?? 'BASIC';
+
+        return this.prisma.listing.create({
+            data: {
+                title,
+                price: overrides.price,
+                images: scraped.images,
+                type: 'CLASSIFIED',
+                status: 'DRAFT',
+                slug,
+                description: scraped.description ?? null,
+                make: scraped.make ?? null,
+                model: scraped.model ?? null,
+                year: scraped.year ?? null,
+                mileage: scraped.mileage ?? null,
+                vrm: overrides.vrm,
+                vin: scraped.vin ?? null,
+                fuelType: scraped.fuelType ? (fuelMap[scraped.fuelType] ?? null) : null,
+                transmission: scraped.transmission ? (transMap[scraped.transmission] ?? null) : null,
+                color: scraped.color ?? null,
+                doors: scraped.doors ?? null,
+                engineSize: scraped.engineSize ?? null,
+                bhp: scraped.bhp ?? null,
+                bodyType: scraped.bodyType ? (bodyMap[scraped.bodyType] ?? null) : null,
+                location: scraped.location ?? null,
+                badgeTier,
+                sellerId: userId,
+                importedFromUrl: scraped.originalUrl,
+                importedSource: scraped.platform,
+            } as any,
+        });
     }
 }
