@@ -447,7 +447,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       >
         <KeyboardAvoidingView
           style={styles.sheetOverlayFull}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <TouchableOpacity
             style={StyleSheet.absoluteFillObject}

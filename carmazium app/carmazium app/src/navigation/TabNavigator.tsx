@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, StyleSheet } from 'react-native';
 import Animated, {
@@ -20,6 +20,13 @@ import { SavedScreen } from '../screens/main/SavedScreen';
 import { DealerProfileScreen } from '../screens/main/DealerProfileScreen';
 import { UnifiedDashboardScreen } from '../screens/account/UnifiedDashboardScreen';
 import { useAuthStore } from '../store/authStore';
+
+// Stable wrapper so the Profile tab's component prop never changes reference,
+// preventing React Navigation from unmounting + remounting the tab when role loads.
+const ProfileTabScreen: React.FC<any> = React.memo((props) => {
+  const role = useAuthStore((s) => s.role);
+  return role === 'dealer' ? <DealerProfileScreen {...props} /> : <UnifiedDashboardScreen {...props} />;
+});
 
 export type TabParamList = {
   Home: undefined;
@@ -55,14 +62,14 @@ interface AnimatedTabIconProps {
   onPress?: () => void;
 }
 
-const AnimatedTabIcon: React.FC<AnimatedTabIconProps> = ({
+const AnimatedTabIcon: React.FC<AnimatedTabIconProps> = React.memo(function AnimatedTabIcon({
   focused,
   iconName,
   iconType,
   color,
   size,
   onPress,
-}) => {
+}) {
   const scale = useSharedValue(1);
 
   useEffect(() => {
@@ -97,10 +104,29 @@ const AnimatedTabIcon: React.FC<AnimatedTabIconProps> = ({
       )}
     </Animated.View>
   );
-};
+});
 
 const CustomTabBar = ({ state, descriptors, navigation }: any) => {
   const insets = useSafeAreaInsets();
+
+  // Stable press handlers keyed by route key — prevents closure recreation on every render
+  const pressHandlers = useMemo(() => {
+    const handlers: Record<string, () => void> = {};
+    state.routes.forEach((route: any, index: number) => {
+      handlers[route.key] = () => {
+        const isFocused = state.index === index;
+        const event = navigation.emit({
+          type: 'tabPress',
+          target: route.key,
+          canPreventDefault: true,
+        });
+        if (!isFocused && !event.defaultPrevented) {
+          navigation.navigate(route.name);
+        }
+      };
+    });
+    return handlers;
+  }, [state.routes, state.index, navigation]);
 
   return (
     <View style={[styles.tabBarOuter, { paddingBottom: insets.bottom }]}>
@@ -110,17 +136,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
         {state.routes.map((route: any, index: number) => {
           const config = TAB_CONFIG.find((c) => c.name === route.name)!;
           const isFocused = state.index === index;
-
-          const onPress = () => {
-            const event = navigation.emit({
-              type: 'tabPress',
-              target: route.key,
-              canPreventDefault: true,
-            });
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
-            }
-          };
+          const onPress = pressHandlers[route.key];
 
           return (
             <View key={route.key} style={styles.tabItem}>
@@ -156,27 +172,19 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
 };
 
 export const TabNavigator: React.FC = () => {
-  const role = useAuthStore((s) => s.role);
-
   return (
     <Tab.Navigator
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
+        lazy: true,
       }}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Search" component={SearchScreen} />
       <Tab.Screen name="Live" component={LiveScreen} />
       <Tab.Screen name="Saved" component={SavedScreen} />
-      <Tab.Screen
-        name="Profile"
-        component={
-          role === 'dealer'
-            ? DealerProfileScreen
-            : UnifiedDashboardScreen
-        }
-      />
+      <Tab.Screen name="Profile" component={ProfileTabScreen} />
     </Tab.Navigator>
   );
 };

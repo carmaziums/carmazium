@@ -158,7 +158,7 @@ const LeadDetail: React.FC<{
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         {/* Header */}
         <View style={[styles.detailHeader, { paddingTop: insets.top + 14 }]}>

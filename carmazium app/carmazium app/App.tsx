@@ -49,17 +49,35 @@ export default function App() {
 
   // ── Push Notification listeners ─────────────────────────────────
   useEffect(() => {
+    const handleNotificationResponse = (response: any) => {
+      const rawData = response?.notification?.request?.content?.data as Record<string, any> | undefined;
+      if (!rawData?.screen) return;
+
+      // Params may arrive as a serialised JSON string from some push providers
+      let params: Record<string, any> = {};
+      if (rawData.params) {
+        try {
+          params = typeof rawData.params === 'string'
+            ? JSON.parse(rawData.params)
+            : rawData.params;
+        } catch {
+          // Not valid JSON — ignore params
+        }
+      }
+
+      // All authenticated screens live inside "Main" in the root stack.
+      // navigate('Main', { screen, params }) properly deep-links through the hierarchy.
+      (navigationRef.current as any)?.navigate('Main', {
+        screen: rawData.screen,
+        params,
+      });
+    };
+
     const cleanup = addNotificationListeners(
       (_notification) => {
         // Notification received while app is foregrounded — handled silently
       },
-      (response) => {
-        // User tapped a notification — navigate to relevant screen
-        const data = response.notification.request.content.data as Record<string, string>;
-        if (data?.screen) {
-          (navigationRef.current as any)?.navigate(data.screen, data.params ?? {});
-        }
-      }
+      handleNotificationResponse,
     );
     return cleanup;
   }, []);
