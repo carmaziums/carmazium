@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Linking from 'expo-linking';
-import { Ionicons } from '@/components/BrandIcon';
+import { Ionicons, GoogleIcon } from '@/components/BrandIcon';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
 import { useAuthStore } from '../../store/authStore';
@@ -28,21 +28,23 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'Signup'>;
 export const SignupScreen: React.FC<Props> = ({ navigation }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [postcode, setPostcode] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
 
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
   const emailRef = useRef<TextInput>(null);
-  const postcodeRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
+  const confirmPasswordRef = useRef<TextInput>(null);
 
   const { signup, isLoading } = useAuthStore();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-  const isFormValid = name && email && postcode && password.length >= 8 && agreeTerms;
+  const passwordsMatch = confirmPassword.length > 0 && confirmPassword === password;
+  const isFormValid = !!(name && email && password.length >= 8 && passwordsMatch && agreeTerms);
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
@@ -80,6 +82,10 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleSignup = async () => {
     if (!isFormValid) return;
+    if (password !== confirmPassword) {
+      Alert.alert('Password Mismatch', 'Passwords do not match. Please try again.');
+      return;
+    }
     try {
       await signup(email.trim(), password, name);
     } catch (err: any) {
@@ -186,37 +192,6 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
                   returnKeyType="next"
                   onFocus={() => setFocusedField('email')}
                   onBlur={() => setFocusedField(null)}
-                  onSubmitEditing={() => postcodeRef.current?.focus()}
-                />
-              </View>
-            </View>
-
-            {/* Postcode */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>POSTCODE</Text>
-              <View
-                style={[
-                  styles.inputWrapper,
-                  focusedField === 'postcode' && styles.inputFocused,
-                ]}
-              >
-                <Ionicons
-                  name="location-outline"
-                  size={20}
-                  color={focusedField === 'postcode' ? Colors.accent : Colors.textMuted}
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  ref={postcodeRef}
-                  style={styles.input}
-                  value={postcode}
-                  onChangeText={setPostcode}
-                  placeholder="W1K 7AF"
-                  placeholderTextColor={Colors.inputPlaceholder}
-                  autoCapitalize="characters"
-                  returnKeyType="next"
-                  onFocus={() => setFocusedField('postcode')}
-                  onBlur={() => setFocusedField(null)}
                   onSubmitEditing={() => passwordRef.current?.focus()}
                 />
               </View>
@@ -245,10 +220,10 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
                   placeholder="••••••••"
                   placeholderTextColor={Colors.inputPlaceholder}
                   secureTextEntry={!showPassword}
-                  returnKeyType="done"
+                  returnKeyType="next"
                   onFocus={() => setFocusedField('password')}
                   onBlur={() => setFocusedField(null)}
-                  onSubmitEditing={handleSignup}
+                  onSubmitEditing={() => confirmPasswordRef.current?.focus()}
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
@@ -283,6 +258,51 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
                   {passwordStrength.label}
                 </Text>
               ) : null}
+            </View>
+
+            {/* Confirm Password */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>CONFIRM PASSWORD</Text>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  focusedField === 'confirmPassword' && styles.inputFocused,
+                  confirmPassword.length > 0 && !passwordsMatch && styles.inputError,
+                ]}
+              >
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={20}
+                  color={focusedField === 'confirmPassword' ? Colors.accent : Colors.textMuted}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  ref={confirmPasswordRef}
+                  style={styles.input}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  placeholder="••••••••"
+                  placeholderTextColor={Colors.inputPlaceholder}
+                  secureTextEntry={!showConfirmPassword}
+                  returnKeyType="done"
+                  onFocus={() => setFocusedField('confirmPassword')}
+                  onBlur={() => setFocusedField(null)}
+                  onSubmitEditing={handleSignup}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={styles.eyeBtn}
+                >
+                  <Ionicons
+                    name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
+                    size={20}
+                    color={Colors.textMuted}
+                  />
+                </TouchableOpacity>
+              </View>
+              {confirmPassword.length > 0 && !passwordsMatch && (
+                <Text style={styles.fieldError}>Passwords do not match</Text>
+              )}
             </View>
 
             {/* Terms checkbox */}
@@ -330,7 +350,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
               {isGoogleLoading ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Ionicons name="logo-google" size={18} color="#FFFFFF" />
+                <GoogleIcon size={18} />
               )}
               <Text style={styles.googleBtnText}>CONTINUE WITH GOOGLE</Text>
             </TouchableOpacity>
@@ -432,6 +452,15 @@ const styles = StyleSheet.create({
   },
   inputFocused: {
     borderColor: Colors.accent,
+  },
+  inputError: {
+    borderColor: Colors.error,
+  },
+  fieldError: {
+    fontFamily: FontFamily.medium,
+    fontSize: 12,
+    color: Colors.error,
+    marginTop: 6,
   },
   inputIcon: {
     marginRight: 12,

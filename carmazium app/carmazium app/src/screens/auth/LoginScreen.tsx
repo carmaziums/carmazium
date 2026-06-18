@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Linking from 'expo-linking';
-import { Ionicons } from '@/components/BrandIcon';
+import { Ionicons, GoogleIcon } from '@/components/BrandIcon';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
 import { useAuthStore } from '../../store/authStore';
@@ -224,7 +224,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 {isGoogleLoading ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Ionicons name="logo-google" size={18} color="#FFFFFF" />
+                  <GoogleIcon size={18} />
                 )}
                 <Text style={styles.socialBtnText}>GOOGLE</Text>
               </TouchableOpacity>

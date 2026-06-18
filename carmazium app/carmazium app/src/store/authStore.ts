@@ -131,7 +131,34 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         password,
       });
 
+      // Supabase rejects unverified logins when email confirmation is required
+      if (error?.message?.toLowerCase().includes('email not confirmed')) {
+        set({
+          isAuthenticated: false,
+          pendingEmailVerification: true,
+          user: { id: '', email, firstName: null, lastName: null },
+        });
+        return;
+      }
+
       if (error) throw error;
+
+      // Frontend guard: block unverified users when Supabase allows optional confirmation
+      const supabaseUser = data.user;
+      if (supabaseUser && !supabaseUser.email_confirmed_at) {
+        await supabase.auth.signOut();
+        set({
+          isAuthenticated: false,
+          pendingEmailVerification: true,
+          user: {
+            id: supabaseUser.id,
+            email,
+            firstName: supabaseUser.user_metadata?.first_name || null,
+            lastName: supabaseUser.user_metadata?.last_name || null,
+          },
+        });
+        return;
+      }
 
       const session = data.session;
       if (!session) throw new Error('No session returned from Supabase');
@@ -199,6 +226,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         email,
         password,
         options: {
+          emailRedirectTo: 'carmazium://auth/callback',
           data: {
             first_name: firstName,
             last_name: lastName,
