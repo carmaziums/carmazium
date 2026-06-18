@@ -20,6 +20,7 @@ export const VerifyEmailScreen: React.FC = () => {
   const [resending, setResending] = useState(false);
   const [resent, setResent] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [notVerifiedYet, setNotVerifiedYet] = useState(false);
 
   // ── Listen for Supabase SIGNED_IN event (fired when the user clicks the
   //    verification link and the deep-link hands control back to the app).
@@ -50,9 +51,19 @@ export const VerifyEmailScreen: React.FC = () => {
   };
 
   const handleCheckNow = async () => {
+    setNotVerifiedYet(false);
     setChecking(true);
-    await initializeAuth();
-    setChecking(false);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        // No session — the user hasn't clicked the verification link yet
+        setNotVerifiedYet(true);
+        return;
+      }
+      await initializeAuth();
+    } finally {
+      setChecking(false);
+    }
   };
 
   return (
@@ -76,6 +87,15 @@ export const VerifyEmailScreen: React.FC = () => {
         <View style={styles.checkingRow}>
           <ActivityIndicator size="small" color={Colors.accent} />
           <Text style={styles.checkingText}>Checking…</Text>
+        </View>
+      )}
+
+      {notVerifiedYet && !checking && (
+        <View style={styles.notVerifiedRow}>
+          <Ionicons name="alert-circle-outline" size={16} color={Colors.warning} />
+          <Text style={styles.notVerifiedText}>
+            Email not verified yet — click the link in your inbox first.
+          </Text>
         </View>
       )}
 
@@ -168,6 +188,25 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     fontSize: FontSize.sm,
     color: Colors.textSecondary,
+  },
+  notVerifiedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(255,170,0,0.08)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,170,0,0.2)',
+  },
+  notVerifiedText: {
+    flex: 1,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: Colors.warning,
+    lineHeight: 18,
   },
   primaryBtn: {
     width: '100%',
