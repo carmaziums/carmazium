@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
+import { NavigationContainer } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -17,6 +17,7 @@ import { ChatProvider } from './src/context/ChatContext';
 import { useAuthStore } from './src/store/authStore';
 import { supabase } from './src/lib/supabase';
 import { addNotificationListeners } from './src/lib/pushNotifications';
+import { navigationRef } from './src/lib/navigationRef';
 
 import { SplashScreen as AppSplashScreen } from './src/screens/loading/SplashScreen';
 
@@ -24,7 +25,8 @@ import { GlobalAIChatBot } from './src/components/GlobalAIChatBot';
 
 SplashScreen.preventAutoHideAsync();
 
-const navigationRef = React.createRef<NavigationContainerRef<any>>();
+// navigationRef is now a module-level singleton from src/lib/navigationRef.ts
+// so it can be imported by GlobalAIChatBot and other non-screen components safely.
 
 export default function App() {
   const initializeAuth = useAuthStore((state) => state.initializeAuth);

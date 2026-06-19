@@ -5,24 +5,11 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigationState } from '@react-navigation/native';
 import { Ionicons } from '@/components/BrandIcon';
 import { FontFamily } from '../constants/typography';
 import { useAuthStore } from '../store/authStore';
 import { sendAiChatMessage, AiChatMessage } from '../lib/aiApi';
-
-// Returns the name of the deepest active screen in the nav tree
-function useActiveRouteName(): string {
-  return useNavigationState((state) => {
-    if (!state) return '';
-    const dig = (s: any): string => {
-      if (!s?.routes?.length) return '';
-      const route = s.routes[s.index ?? s.routes.length - 1];
-      return route?.state ? dig(route.state) : (route?.name ?? '');
-    };
-    return dig(state);
-  }) ?? '';
-}
+import { navigationRef } from '../lib/navigationRef';
 
 const QUICK_PROMPTS = [
   { label: 'Find cars under £15k', icon: 'pricetag-outline' },
@@ -34,7 +21,24 @@ const QUICK_PROMPTS = [
 export const GlobalAIChatBot: React.FC = () => {
   const insets = useSafeAreaInsets();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const activeRoute = useActiveRouteName();
+
+  // Track current route via module-level navigationRef — safe to call from
+  // non-screen components unlike useNavigationState which requires a screen context.
+  const [activeRoute, setActiveRoute] = useState('');
+  useEffect(() => {
+    const update = () => {
+      try {
+        if (navigationRef.isReady()) {
+          setActiveRoute(navigationRef.getCurrentRoute()?.name ?? '');
+        }
+      } catch { /* navigation not ready */ }
+    };
+    // Initial read
+    update();
+    // Subscribe to future navigation state changes
+    const unsub = navigationRef.addListener('state', update);
+    return () => unsub();
+  }, []);
 
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
@@ -57,8 +61,8 @@ export const GlobalAIChatBot: React.FC = () => {
     }
   }, [chatHistory]);
 
-  // Don't render on auction screen — the AI button overlaps the bid button
-  if (!isAuthenticated || activeRoute === 'AuctionDetail') return null;
+  // Don't render on auction screens — the AI button overlaps the live bid console
+  if (!isAuthenticated || activeRoute === 'LiveAuctionDetailed') return null;
 
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();
