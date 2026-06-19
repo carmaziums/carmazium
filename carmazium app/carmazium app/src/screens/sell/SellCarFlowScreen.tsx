@@ -1480,7 +1480,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     const minNum = parseFloat(priceMin.replace(/[^0-9.]/g, '')) || 0;
 
     return (
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 140 }]}>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 140 }]}>
         <Text style={s.reviewHeading}>Review Your Listing</Text>
 
         {/* Vehicle Identity */}

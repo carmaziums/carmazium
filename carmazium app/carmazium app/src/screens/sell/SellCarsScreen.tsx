@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -212,6 +212,7 @@ const DvlaRow: React.FC<{ label: string; value?: string | number | null; highlig
 export const SellCarsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
+  const scrollRef = useRef<ScrollView>(null);
 
   // ── Navigation ──────────────────────────────────────────────────────────────
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -261,10 +262,11 @@ export const SellCarsScreen: React.FC = () => {
   // ── Step 2 — Media ─────────────────────────────────────────────────────────
   const [photos, setPhotos] = useState<string[]>([]);
   const [activePhotoTab, setActivePhotoTab] = useState<'EXTERIOR' | 'INTERIOR' | 'DAMAGE'>('EXTERIOR');
-  const [damageRecords, setDamageRecords] = useState<Array<{ zone: string; type: string; severity: string }>>([]);
+  const [damageRecords, setDamageRecords] = useState<Array<{ zone: string; type: string; severity: string; description?: string }>>([]);
   const [activeDamageZone, setActiveDamageZone] = useState<string | null>(null);
   const [damageType, setDamageType] = useState('Scratch');
   const [damageSeverity, setDamageSeverity] = useState('Minor');
+  const [damageDescription, setDamageDescription] = useState('');
   const [customZoneInput, setCustomZoneInput] = useState('');
 
   // ── Step 3 — Pricing ───────────────────────────────────────────────────────
@@ -321,6 +323,7 @@ export const SellCarsScreen: React.FC = () => {
         }),
       });
       if (res.success && res.data) setDescription(res.data);
+      else Alert.alert('AI Error', 'Could not generate description. Please write one manually.');
     } catch {
       Alert.alert('AI Error', 'Could not generate description. Please write one manually.');
     } finally {
@@ -350,19 +353,25 @@ export const SellCarsScreen: React.FC = () => {
   const handleZoneTap = (zone: string) => {
     setActiveDamageZone(zone);
     setDamageType('Scratch');
+    setDamageDescription('');
     setDamageSeverity('Minor');
   };
 
   const confirmDamage = () => {
     if (!activeDamageZone) return;
+    const desc = damageDescription.trim();
     setDamageRecords((prev) => {
       const filtered = prev.filter((r) => r.zone !== activeDamageZone);
-      return [...filtered, { zone: activeDamageZone, type: damageType, severity: damageSeverity }];
+      return [...filtered, { zone: activeDamageZone, type: damageType, severity: damageSeverity, ...(desc ? { description: desc } : {}) }];
     });
     setActiveDamageZone(null);
+    setDamageDescription('');
   };
 
-  const clearDamageZone = () => setActiveDamageZone(null);
+  const clearDamageZone = () => {
+    setActiveDamageZone(null);
+    setDamageDescription('');
+  };
 
   // ── Manual zone entry (for damage not covered by the 10 preset hotspots) ──
   const handleAddCustomZone = () => {
@@ -408,13 +417,17 @@ export const SellCarsScreen: React.FC = () => {
       Alert.alert('Price Required', 'Please enter an asking price.');
       return false;
     }
+    if (lowerPrice && parseFloat(askingPrice) <= parseFloat(lowerPrice)) {
+      Alert.alert('Invalid Price', 'Asking price must be higher than the floor price.');
+      return false;
+    }
     return true;
   };
 
   const goNext = () => {
-    if (step === 1 && validateStep1()) setStep(2);
-    else if (step === 2 && validateStep2()) setStep(3);
-    else if (step === 3 && validateStep3()) setStep(4);
+    if (step === 1 && validateStep1()) { setStep(2); scrollRef.current?.scrollTo({ y: 0, animated: false }); }
+    else if (step === 2 && validateStep2()) { setStep(3); scrollRef.current?.scrollTo({ y: 0, animated: false }); }
+    else if (step === 3 && validateStep3()) { setStep(4); scrollRef.current?.scrollTo({ y: 0, animated: false }); }
   };
 
   const goBack = () => {
@@ -552,6 +565,7 @@ export const SellCarsScreen: React.FC = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
+          ref={scrollRef}
           style={{ flex: 1 }}
           contentContainerStyle={[st.scroll, { paddingBottom: insets.bottom + 110 }]}
           showsVerticalScrollIndicator={false}
@@ -1137,6 +1151,15 @@ export const SellCarsScreen: React.FC = () => {
                 </GlassCard>
               )}
 
+              {lowerPrice && askingPrice && parseFloat(askingPrice) <= parseFloat(lowerPrice) && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(220,31,38,0.08)', borderRadius: 10, padding: 12, marginBottom: 20 }}>
+                  <Ionicons name="alert-circle-outline" size={14} color="#DC1F26" />
+                  <Text style={{ flex: 1, fontFamily: FontFamily.medium, fontSize: 12, color: '#FCA5A5' }}>
+                    Asking price must be higher than the floor price
+                  </Text>
+                </View>
+              )}
+
               {/* B — Listing Type */}
               <Eyebrow label="LISTING TYPE" />
               <View style={st.listingTypeRow}>
@@ -1458,7 +1481,7 @@ export const SellCarsScreen: React.FC = () => {
             </View>
 
             <Eyebrow label="SEVERITY" />
-            <View style={[st.chipRow, { marginBottom: 20 }]}>
+            <View style={[st.chipRow, { marginBottom: 16 }]}>
               {['Minor', 'Moderate', 'Severe'].map((s) => (
                 <Chip
                   key={s}
@@ -1470,7 +1493,19 @@ export const SellCarsScreen: React.FC = () => {
               ))}
             </View>
 
-            <TouchableOpacity style={st.damageConfirmBtn} onPress={confirmDamage} activeOpacity={0.85}>
+            <Eyebrow label="DESCRIPTION (OPTIONAL)" style={{ marginBottom: 6 }} />
+            <TextInput
+              style={st.damageDescInput}
+              value={damageDescription}
+              onChangeText={setDamageDescription}
+              placeholder="e.g. 10cm scratch near door handle"
+              placeholderTextColor={C.grey3}
+              multiline
+              numberOfLines={2}
+              maxLength={200}
+            />
+
+            <TouchableOpacity style={[st.damageConfirmBtn, { marginTop: 16 }]} onPress={confirmDamage} activeOpacity={0.85}>
               <Text style={st.damageConfirmText}>Mark Damage</Text>
             </TouchableOpacity>
             <TouchableOpacity style={{ marginTop: 10, alignItems: 'center' }} onPress={clearDamageZone}>
@@ -2218,12 +2253,11 @@ const st = StyleSheet.create({
 
   // ── Badge grid ────────────────────────────────────────────────────────────
   badgeGrid: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: 8,
     marginBottom: 14,
   },
   badgeCard: {
-    flex: 1,
     backgroundColor: C.card,
     borderRadius: 12,
     borderWidth: 1.5,
@@ -2432,5 +2466,19 @@ const st = StyleSheet.create({
     fontFamily: FontFamily.bold,
     color: '#fff',
     letterSpacing: 0.4,
+  },
+  damageDescInput: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontFamily: FontFamily.regular,
+    fontSize: 13,
+    color: '#FFFFFF',
+    textAlignVertical: 'top',
+    minHeight: 60,
+    marginBottom: 4,
   },
 });

@@ -169,7 +169,7 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
               <Text style={styles.emptySubtitle}>Sell your car on Carmazium and reach thousands of verified buyers.</Text>
               <TouchableOpacity
                 style={styles.emptyCtaBtn}
-                onPress={() => navigation?.navigate('SellCars')}
+                onPress={() => navigation?.navigate('SellCarFlow')}
                 activeOpacity={0.85}
               >
                 <Ionicons name="add" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
@@ -287,8 +287,8 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
                 <View style={styles.liveDot} />
                 <Text style={styles.liveText}>LIVE</Text>
               </View>
-              <TouchableOpacity style={styles.editBtn} onPress={() => navigation?.navigate('SellCars')}>
-                <Ionicons name="add" size={14} color="#FFFFFF" />
+              <TouchableOpacity style={styles.editBtn} onPress={() => navigation?.navigate('SellCarFlow', { listingId: listings[0]?.id })}>
+                <Ionicons name="create-outline" size={14} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
           )}
@@ -310,7 +310,7 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
               <Text style={styles.actionTitle}>View insights</Text>
               <Text style={styles.actionSub}>Views & performance</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={() => navigation?.navigate('SellCars')}>
+            <TouchableOpacity style={styles.actionCard} onPress={() => navigation?.navigate('SellCarFlow')}>
               <Ionicons name="add-circle-outline" size={20} color="#10B981" style={styles.actionIcon} />
               <Text style={styles.actionTitle}>New listing</Text>
               <Text style={styles.actionSub}>List another car</Text>

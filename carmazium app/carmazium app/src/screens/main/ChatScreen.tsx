@@ -276,15 +276,9 @@ export const ChatScreen: React.FC = () => {
   };
 
   const handleCounterOffer = () => {
-    const text = "Counter-offer: £61,200";
+    const text = `Counter-offer: £${carPrice.toLocaleString('en-GB')}`;
     emitSendMessage(threadId, text);
     showToast('Counter-offer sent!', 'info');
-  };
-
-  const handleBookView = () => {
-    const text = "Requested viewing booking.";
-    emitSendMessage(threadId, text);
-    showToast('Viewing request sent!', 'success');
   };
 
   const handlePayDeposit = async () => {
@@ -334,6 +328,11 @@ export const ChatScreen: React.FC = () => {
 
   const carPrice = room.listing?.price ? parseFloat(String(room.listing.price)) : 0;
   const isDealer = room.otherUser.role === 'DEALER';
+
+  // Hide "Accept Offer" if this user already sent an acceptance message in this thread
+  const offerAccepted = messages.some(
+    (m) => m.senderId === user?.id && m.content.startsWith("I accept the counter-offer"),
+  );
 
   return (
     <KeyboardAvoidingView
@@ -557,32 +556,25 @@ export const ChatScreen: React.FC = () => {
       {/* Sticky action CTAs bar (hide if blocked) */}
       {!shouldBlockChat && room.listing && (
         <View style={styles.actionsBar}>
-          <TouchableOpacity 
-            style={[styles.actionBtn, styles.actionBtnOutlineRed]} 
+          <TouchableOpacity
+            style={[styles.actionBtn, styles.actionBtnOutlineRed]}
             onPress={handleCounterOffer}
             activeOpacity={0.7}
           >
             <Ionicons name="pricetag-outline" size={13} color="#DC1F26" style={{ marginRight: 4 }} />
-            <Text style={[styles.actionLabel, { color: '#DC1F26' }]}>Counter £61,200</Text>
+            <Text style={[styles.actionLabel, { color: '#DC1F26' }]}>Counter £{carPrice.toLocaleString('en-GB')}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={[styles.actionBtn, styles.actionBtnOutlineDark]} 
-            onPress={handleBookView}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="calendar-outline" size={13} color="#FFFFFF" style={{ marginRight: 4 }} />
-            <Text style={styles.actionLabel}>Book view</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.actionBtn, styles.actionBtnGreen]} 
-            onPress={handleAcceptOffer}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="checkmark-circle-outline" size={13} color="#FFFFFF" style={{ marginRight: 4 }} />
-            <Text style={styles.actionLabel}>Accept Offer</Text>
-          </TouchableOpacity>
+          {!offerAccepted && (
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.actionBtnGreen]}
+              onPress={handleAcceptOffer}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="checkmark-circle-outline" size={13} color="#FFFFFF" style={{ marginRight: 4 }} />
+              <Text style={styles.actionLabel}>Accept Offer</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
 

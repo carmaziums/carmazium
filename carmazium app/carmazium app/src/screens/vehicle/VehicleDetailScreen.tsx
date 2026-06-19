@@ -8,6 +8,7 @@ import {
   Dimensions,
   StatusBar,
   Alert,
+  Share,
   Modal,
   TextInput,
   ActivityIndicator,
@@ -33,7 +34,9 @@ import { FontFamily, FontSize } from '../../constants/typography';
 import { useWatchlistStore } from '../../store/watchlistStore';
 import { apiClient } from '../../lib/apiClient';
 import { createChatRoom } from '../../lib/chatApi';
+import { useChat } from '../../context/ChatContext';
 import { DamageMapViewer } from '../../components/DamageMapViewer';
+import { useAuthStore } from '../../store/authStore';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'VehicleDetail'>;
 
@@ -45,6 +48,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const [activeImage, setActiveImage] = useState(0);
   const { isSaved, save, unsave } = useWatchlistStore();
+  const { refreshRooms } = useChat();
 
   const images = listing.images ?? [];
 
@@ -91,6 +95,12 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [financeExpanded, setFinanceExpanded] = useState(false);
   const [depositPct, setDepositPct] = useState(10); // % of price as deposit
   const [termMonths, setTermMonths] = useState(48);
+
+  // Dealer tools panel
+  const role = useAuthStore((s) => s.role);
+  const isDealer = role === 'dealer';
+  const [dealerPanelOpen, setDealerPanelOpen] = useState(false);
+  const capEstimate = Math.round(listing.price * 0.82);
 
   const getInitials = (name: string) => {
     return name
@@ -148,6 +158,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     try {
       if (listing.seller?.id) {
         const room = await createChatRoom(listing.seller.id, listing.id);
+        // Refresh ChatContext so the new room is in the list before ChatScreen mounts
+        await refreshRooms();
         navigation.navigate('ChatScreen', { threadId: room.id });
       } else {
         setChatVisible(true);
@@ -386,7 +398,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <TouchableOpacity
                 style={styles.iconCircleBtn}
                 activeOpacity={0.7}
-                onPress={() => Alert.alert('Share', `Sharing ${listing.make} ${listing.model}...`)}
+                onPress={() => Share.share({ message: `Check out this ${listing.year} ${listing.make} ${listing.model} on Carmazium!` })}
               >
                 <Ionicons name="share-social-outline" size={18} color="#FFFFFF" />
               </TouchableOpacity>
@@ -437,7 +449,9 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               {formatPrice(listing.price)}
             </Text>
             <Text style={styles.monthlyText}>
-              or {listing.monthlyPayment || '£769/mo'}
+              {listing.monthlyPayment
+                ? `or ${listing.monthlyPayment}`
+                : `or £${Math.round(calcMonthlyPayment()).toLocaleString('en-GB')}/mo`}
             </Text>
           </View>
 
@@ -615,6 +629,60 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <Ionicons name="chevron-forward" size={18} color="#8A8A93" />
             </TouchableOpacity>
           </View>
+
+          {/* ── Dealer Tools Panel (visible only to verified dealers) ── */}
+          {isDealer && (
+            <TouchableOpacity
+              style={styles.dealerToolsCard}
+              activeOpacity={0.85}
+              onPress={() => setDealerPanelOpen((v) => !v)}
+            >
+              <View style={styles.dealerToolsHeader}>
+                <View style={styles.dealerToolsIconWrap}>
+                  <Ionicons name="briefcase-outline" size={18} color="#F59E0B" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.dealerToolsTitle}>Dealer Tools</Text>
+                  <Text style={styles.dealerToolsSub}>Trade valuation & enquiry options</Text>
+                </View>
+                <Ionicons name={dealerPanelOpen ? 'chevron-up' : 'chevron-down'} size={18} color="#F59E0B" />
+              </View>
+              {dealerPanelOpen && (
+                <View style={styles.dealerToolsBody}>
+                  {/* CAP trade value estimate */}
+                  <View style={styles.dealerStatRow}>
+                    <View style={styles.dealerStatBox}>
+                      <Text style={styles.dealerStatLabel}>CAP TRADE EST.</Text>
+                      <Text style={styles.dealerStatValue}>£{capEstimate.toLocaleString('en-GB')}</Text>
+                      <Text style={styles.dealerStatSub}>~18% below asking</Text>
+                    </View>
+                    <View style={[styles.dealerStatBox, { borderLeftWidth: 1, borderLeftColor: 'rgba(245,158,11,0.15)' }]}>
+                      <Text style={styles.dealerStatLabel}>RETAIL MARGIN</Text>
+                      <Text style={styles.dealerStatValue}>£{(listing.price - capEstimate).toLocaleString('en-GB')}</Text>
+                      <Text style={styles.dealerStatSub}>estimated upside</Text>
+                    </View>
+                  </View>
+
+                  {/* Trade offer CTA */}
+                  <TouchableOpacity
+                    style={styles.dealerTradeBtn}
+                    activeOpacity={0.85}
+                    onPress={() => Alert.alert(
+                      'Trade Enquiry',
+                      `Submit a trade offer for this ${listing.make} ${listing.model}?\n\nYour offer will be sent to the seller as a verified dealer enquiry.`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: `Offer £${capEstimate.toLocaleString('en-GB')}`, onPress: () => Alert.alert('Trade Offer Sent', 'The seller has been notified of your dealer trade enquiry.') },
+                      ]
+                    )}
+                  >
+                    <Ionicons name="pricetag-outline" size={15} color="#000" style={{ marginRight: 6 }} />
+                    <Text style={styles.dealerTradeBtnText}>SEND TRADE OFFER</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
 
           {/* Expandable Finance Calculator — Coming Soon */}
           <TouchableOpacity
@@ -1375,6 +1443,88 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   // Finance Box Banner
+  // ── Dealer Tools Panel ──
+  dealerToolsCard: {
+    borderRadius: 16,
+    backgroundColor: '#16140A',
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.25)',
+    padding: 16,
+    marginBottom: 14,
+    overflow: 'hidden',
+  },
+  dealerToolsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  dealerToolsIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: 'rgba(245,158,11,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dealerToolsTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: 14,
+    color: '#F59E0B',
+  },
+  dealerToolsSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: 11,
+    color: '#A0803A',
+    marginTop: 1,
+  },
+  dealerToolsBody: {
+    marginTop: 16,
+    gap: 12,
+  },
+  dealerStatRow: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(245,158,11,0.06)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.12)',
+    overflow: 'hidden',
+  },
+  dealerStatBox: {
+    flex: 1,
+    padding: 12,
+    gap: 2,
+  },
+  dealerStatLabel: {
+    fontFamily: FontFamily.medium,
+    fontSize: 9,
+    color: '#A0803A',
+    letterSpacing: 0.8,
+  },
+  dealerStatValue: {
+    fontFamily: FontFamily.bold,
+    fontSize: 16,
+    color: '#F59E0B',
+  },
+  dealerStatSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: 10,
+    color: '#706050',
+  },
+  dealerTradeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#F59E0B',
+  },
+  dealerTradeBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 13,
+    color: '#000000',
+    letterSpacing: 1,
+  },
+
   financeCard: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -59,7 +59,6 @@ const ITEMS: MenuItem[] = [
   { id: 'buy',      label: 'Buy Cars',   icon: 'car-outline',               iconLib: 'ion', tabName: 'Search' },
   { id: 'sell',     label: 'Sell Cars',  icon: 'storefront-outline',        iconLib: 'ion', stackScreen: 'MyListingDashboard' },
   { id: 'messages', label: 'Messages',   icon: 'chatbubble-ellipses-outline', iconLib: 'ion', stackScreen: 'Messages' },
-  { id: 'activity', label: 'Activity',   icon: 'notifications-outline',      iconLib: 'ion', tabName: 'Saved'   },
   { id: 'auctions', label: 'Auctions',   icon: 'gavel',                     iconLib: 'mci', tabName: 'Live'   },
   { id: 'compare',  label: 'Compare',    icon: 'git-compare-outline',       iconLib: 'ion', stackScreen: 'Compare' },
   { id: 'how-it-works', label: 'How it works', icon: 'compass-outline',     iconLib: 'ion', stackScreen: 'HowItWorks' },
@@ -210,6 +209,8 @@ export const GlobalDrawer: React.FC = () => {
   const user    = useAuthStore((s) => s.user);
   const logout  = useAuthStore((s) => s.logout);
   const role    = useAuthStore((s) => s.role);
+  const setRole = useAuthStore((s) => s.setRole);
+  const isActualDealer = user?.role === 'DEALER';
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
 
@@ -460,6 +461,39 @@ export const GlobalDrawer: React.FC = () => {
                   <Ionicons name="chevron-forward" size={14} color="#606070" />
                 </TouchableOpacity>
               ))}
+              {/* Allow dealer to browse as a regular buyer */}
+              <TouchableOpacity
+                style={styles.row}
+                onPress={() => { closeDrawer(); setTimeout(() => setRole('buyer'), 160); }}
+                activeOpacity={0.7}
+              >
+                <View style={styles.bar} />
+                <View style={[styles.iconWrap, styles.iconWrapGold]}>
+                  <Ionicons name="swap-horizontal-outline" size={19} color="#F59E0B" />
+                </View>
+                <Text style={styles.rowLabelDealer}>Browse as buyer</Text>
+                <Ionicons name="chevron-forward" size={14} color="#606070" />
+              </TouchableOpacity>
+            </>
+          )}
+
+          {/* Dealer account browsing in buyer mode — show switch-back banner */}
+          {isActualDealer && role !== 'dealer' && (
+            <>
+              <View style={styles.divider} />
+              <Text style={[styles.groupLabel, styles.groupLabelDealer]}>DEALER ACCOUNT</Text>
+              <TouchableOpacity
+                style={styles.row}
+                onPress={() => { closeDrawer(); setTimeout(() => setRole('dealer'), 160); }}
+                activeOpacity={0.7}
+              >
+                <View style={styles.bar} />
+                <View style={[styles.iconWrap, styles.iconWrapGold]}>
+                  <Ionicons name="briefcase-outline" size={19} color="#F59E0B" />
+                </View>
+                <Text style={styles.rowLabelDealer}>Switch to dealer mode</Text>
+                <Ionicons name="chevron-forward" size={14} color="#606070" />
+              </TouchableOpacity>
             </>
           )}
 

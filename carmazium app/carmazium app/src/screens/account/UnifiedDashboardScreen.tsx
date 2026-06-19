@@ -326,50 +326,66 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
           </View>
         </View>
 
-        {/* ── 3. SELLING section ── */}
-        <View style={styles.section}>
-          <SectionEyebrow label="SELLING ACTIVITY" />
-          <View style={styles.activityCard}>
-            {/* My Inventory */}
-            <ActivityRow
-              icon="car-outline"
-              tone={Colors.success}
-              label="My Inventory"
-              sublabel={`${seller.activeListings} active listing${seller.activeListings !== 1 ? 's' : ''}`}
-              badgeCount={seller.activeListings}
-              badgeColor={Colors.success}
-              onPress={() => navigation?.navigate('SellerDashboard')}
-            />
-            {/* Incoming Offers */}
-            <ActivityRow
-              icon="pricetag-outline"
-              tone={Colors.warning}
-              label="Incoming Offers"
-              sublabel={`${seller.incomingOffers} pending review`}
-              badgeCount={seller.incomingOffers}
-              badgeColor={Colors.warning}
-              onPress={() => navigation?.navigate('SellerOffers')}
-            />
-            {/* Earnings */}
-            <ActivityRow
-              icon="wallet-outline"
-              tone={Colors.success}
-              label="Earnings"
-              sublabel={`£${seller.totalRevenue.toLocaleString('en-GB')} total`}
-              onPress={() => navigation?.navigate('Earnings')}
-            />
-            {/* Create Listing */}
-            <ActivityRow
-              icon="add-circle-outline"
-              tone={Colors.accent}
-              label="Create new listing"
-              sublabel="List your car for free"
-              isLast
-              showChevron={false}
-              onPress={() => navigation?.navigate('SellCars')}
-            />
+        {/* ── 3. SELLING section — sellers only ── */}
+        {(isSeller || isDealer) ? (
+          <View style={styles.section}>
+            <SectionEyebrow label="SELLING ACTIVITY" />
+            <View style={styles.activityCard}>
+              <ActivityRow
+                icon="car-outline"
+                tone={Colors.success}
+                label="My Inventory"
+                sublabel={`${seller.activeListings} active listing${seller.activeListings !== 1 ? 's' : ''}`}
+                badgeCount={seller.activeListings}
+                badgeColor={Colors.success}
+                onPress={() => navigation?.navigate('SellerDashboard')}
+              />
+              <ActivityRow
+                icon="pricetag-outline"
+                tone={Colors.warning}
+                label="Incoming Offers"
+                sublabel={`${seller.incomingOffers} pending review`}
+                badgeCount={seller.incomingOffers}
+                badgeColor={Colors.warning}
+                onPress={() => navigation?.navigate('SellerOffers')}
+              />
+              <ActivityRow
+                icon="wallet-outline"
+                tone={Colors.success}
+                label="Earnings"
+                sublabel={`£${seller.totalRevenue.toLocaleString('en-GB')} total`}
+                onPress={() => navigation?.navigate('Earnings')}
+              />
+              <ActivityRow
+                icon="add-circle-outline"
+                tone={Colors.accent}
+                label="Create new listing"
+                sublabel="List your car for free"
+                isLast
+                showChevron={false}
+                onPress={() => navigation?.navigate('SellCarFlow')}
+              />
+            </View>
           </View>
-        </View>
+        ) : (
+          <View style={styles.section}>
+            <SectionEyebrow label="SELLING" />
+            <TouchableOpacity
+              style={styles.sellPromoCard}
+              activeOpacity={0.8}
+              onPress={() => navigation?.navigate('SellCarFlow')}
+            >
+              <View style={styles.sellPromoIcon}>
+                <Ionicons name="storefront-outline" size={22} color={Colors.accent} />
+              </View>
+              <View style={styles.sellPromoText}>
+                <Text style={styles.sellPromoTitle}>Start selling your car</Text>
+                <Text style={styles.sellPromoSub}>List in minutes — it's free</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* ── 4. BUYING section ── */}
         <View style={styles.section}>
@@ -777,5 +793,39 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.sm,
     color: Colors.accent,
+  },
+
+  // ── sell promo card (buyer-only) ──
+  sellPromoCard: {
+    backgroundColor: CARD_BG,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(220,31,38,0.18)',
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  sellPromoIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(220,31,38,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  sellPromoText: { flex: 1 },
+  sellPromoTitle: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: FontSize.sm,
+    color: Colors.textPrimary,
+  },
+  sellPromoSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginTop: 2,
   },
 });

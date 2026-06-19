@@ -84,9 +84,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         if (response.success && response.data) {
           const profile = response.data;
           const mappedRole = profile.role === 'DEALER' ? 'dealer' : profile.role === 'SELLER' ? 'seller' : 'buyer';
+
+          // Onboarding is complete if: the user has set a location (from any platform)
+          // OR if they explicitly completed it on this device before.
+          // Read this BEFORE setting isAuthenticated so both flip in one atomic set()
+          // and the RootNavigator never sees isAuthenticated:true + hasCompletedOnboarding:false.
+          const [storedFlag, profileLocation] = await Promise.all([
+            SecureStore.getItemAsync(ONBOARDING_KEY).catch(() => null),
+            Promise.resolve(profile.location || null),
+          ]);
+          const hasCompletedOnboarding = storedFlag === '1' || !!profileLocation;
+
           set({
             isAuthenticated: true,
             pendingEmailVerification: false,
+            hasCompletedOnboarding,
             role: mappedRole,
             user: {
               id: profile.id,
@@ -99,15 +111,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               isAddressVerified: profile.isAddressVerified || false,
             },
           });
-
-          // Onboarding is complete if: the user has set a location (from any platform)
-          // OR if they explicitly completed it on this device before
-          const [storedFlag, profileLocation] = await Promise.all([
-            SecureStore.getItemAsync(ONBOARDING_KEY).catch(() => null),
-            Promise.resolve(profile.location || null),
-          ]);
-          const hasCompletedOnboarding = storedFlag === '1' || !!profileLocation;
-          set({ hasCompletedOnboarding });
         }
       } else {
         set({ isAuthenticated: false, pendingEmailVerification: false, user: null });
@@ -174,8 +177,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (response.success && response.data) {
         const profile = response.data;
         const mappedRole = profile.role === 'DEALER' ? 'dealer' : profile.role === 'SELLER' ? 'seller' : 'buyer';
+        const [storedFlag, profileLocation] = await Promise.all([
+          SecureStore.getItemAsync(ONBOARDING_KEY).catch(() => null),
+          Promise.resolve(profile.location || null),
+        ]);
+        const hasCompletedOnboarding = storedFlag === '1' || !!profileLocation;
+
         set({
           isAuthenticated: true,
+          hasCompletedOnboarding,
           role: mappedRole,
           user: {
             id: profile.id,
@@ -187,13 +197,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             location: profile.location || null,
           },
         });
-
-        const [storedFlag, profileLocation] = await Promise.all([
-          SecureStore.getItemAsync(ONBOARDING_KEY).catch(() => null),
-          Promise.resolve(profile.location || null),
-        ]);
-        const hasCompletedOnboarding = storedFlag === '1' || !!profileLocation;
-        set({ hasCompletedOnboarding });
       }
     } catch (err) {
       // Reset role on a failed login too — see comment in initializeAuth's

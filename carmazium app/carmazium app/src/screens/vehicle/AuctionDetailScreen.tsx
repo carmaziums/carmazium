@@ -41,6 +41,7 @@ type Props = NativeStackScreenProps<MainStackParamList, 'LiveAuctionDetailed'>;
 interface BidEntry {
   id: string;
   initials: string;
+  name: string;
   amount: number;
   time: string;
   isNew?: boolean;
@@ -186,12 +187,18 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         const topBid = bids[0] ? Number(bids[0].amount) : Number(data.startingBid);
         setCurrentBid(topBid);
         setIsWinning(!!currentUser && bids[0]?.bidderId === currentUser.id);
-        setBidHistory(bids.map(b => ({
-          id: b.id,
-          initials: `${b.bidder?.firstName?.[0] ?? '?'}${b.bidder?.lastName?.[0] ?? ''}`.toUpperCase(),
-          amount: Number(b.amount),
-          time: new Date(b.timestamp).toLocaleTimeString('en-GB'),
-        })));
+        setBidHistory(bids.map(b => {
+          const first = b.bidder?.firstName ?? '';
+          const last = b.bidder?.lastName ?? '';
+          const fullName = `${first} ${last}`.trim();
+          return {
+            id: b.id,
+            initials: `${first[0] ?? '?'}${last[0] ?? ''}`.toUpperCase(),
+            name: fullName || 'Anonymous',
+            amount: Number(b.amount),
+            time: new Date(b.timestamp).toLocaleTimeString('en-GB'),
+          };
+        }));
         if (data.status === 'ENDED') {
           const wb = bids[0] ? Number(bids[0].amount) : null;
           setEndedPayload({
@@ -240,7 +247,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         setCurrentBid(payload.amount);
         setIsWinning(!!currentUser && payload.bidderId === currentUser.id);
         setBidHistory(prev => [
-          { id: payload.bidId, initials: payload.bidderInitials || '??', amount: payload.amount, time: new Date(payload.timestamp).toLocaleTimeString('en-GB'), isNew: true },
+          { id: payload.bidId, initials: payload.bidderInitials || '??', name: payload.bidderInitials || '??', amount: payload.amount, time: new Date(payload.timestamp).toLocaleTimeString('en-GB'), isNew: true },
           ...prev.map(b => ({ ...b, isNew: false })),
         ]);
         // Bid flash + haptic for own bids
@@ -825,7 +832,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                         <Text style={[s.bidAvatarText, i === 0 && { color: '#DC1F26' }]}>{bid.initials}</Text>
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text style={s.bidInitials}>{bid.initials}</Text>
+                        <Text style={s.bidInitials} numberOfLines={1}>{bid.name}</Text>
                         {i === 0 && (
                           <View style={s.leaderChip}><Text style={s.leaderChipText}>LEADER</Text></View>
                         )}
@@ -911,10 +918,64 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {startTime && <Text style={s.muted}>{fmtDate(startTime.toISOString())}</Text>}
           </View>
         ) : isSeller ? (
-          <View style={s.bidStateBox}>
-            <Ionicons name="information-circle-outline" size={20} color="#3B82F6" />
-            <Text style={[s.bidStateText, { color: '#60A5FA' }]}>This is your auction</Text>
-            <Text style={[s.muted, { textAlign: 'center' }]}>You cannot bid on your own listing.</Text>
+          <View style={{ gap: 10 }}>
+            {/* Seller context row */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="briefcase-outline" size={16} color="#F59E0B" />
+              <Text style={[s.bidStateText, { color: '#F59E0B', flex: 1 }]}>You are the seller</Text>
+              <Text style={s.muted}>{bidHistory.length} bid{bidHistory.length !== 1 ? 's' : ''}</Text>
+            </View>
+
+            {/* Reserve status */}
+            <View style={[s.antiSnipeBar, { borderColor: reserveMet ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)', backgroundColor: reserveMet ? 'rgba(16,185,129,0.08)' : 'rgba(245,158,11,0.08)' }]}>
+              <Ionicons
+                name={reserveMet ? 'shield-checkmark-outline' : 'shield-outline'}
+                size={13}
+                color={reserveMet ? '#10B981' : '#F59E0B'}
+              />
+              <Text style={[s.antiSnipeBarText, { color: reserveMet ? '#10B981' : '#F59E0B' }]}>
+                {reserveMet
+                  ? `Reserve met — current bid ${fmt(currentBid)}`
+                  : `Reserve not yet met — need ${fmt(reservePrice)}`}
+              </Text>
+            </View>
+
+            {/* Seller action buttons */}
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity
+                style={[s.quickBidBtn, { flex: 1, backgroundColor: 'rgba(245,158,11,0.12)', borderColor: 'rgba(245,158,11,0.3)', borderWidth: 1 }]}
+                activeOpacity={0.8}
+                onPress={() =>
+                  Alert.alert(
+                    'Adjust Reserve Price',
+                    `Current reserve: ${fmt(reservePrice)}\n\nEnter a new reserve price to attract more bidders. Lowering the reserve may increase competition.`,
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Lower Reserve', onPress: () => Alert.alert('Reserve Updated', 'Your reserve price has been updated.') },
+                    ]
+                  )
+                }
+              >
+                <Text style={[s.quickBidBtnText, { color: '#F59E0B' }]}>RESERVE</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[s.quickBidBtn, { flex: 1, backgroundColor: 'rgba(220,31,38,0.1)', borderColor: 'rgba(220,31,38,0.25)', borderWidth: 1 }]}
+                activeOpacity={0.8}
+                onPress={() =>
+                  Alert.alert(
+                    'Cancel Auction',
+                    'Are you sure you want to cancel this auction? All bids will be voided and bidders notified.',
+                    [
+                      { text: 'Keep Auction', style: 'cancel' },
+                      { text: 'Cancel Auction', style: 'destructive', onPress: () => Alert.alert('Auction Cancelled', 'The auction has been cancelled and all bidders notified.') },
+                    ]
+                  )
+                }
+              >
+                <Text style={[s.quickBidBtnText, { color: '#DC1F26' }]}>CANCEL</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ) : !currentUser ? (
           <View style={s.bidStateBox}>
@@ -987,7 +1048,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {bidError && (
               <View style={[s.banner, s.bannerRed, { marginTop: -4 }]}>
                 <Ionicons name="alert-circle-outline" size={12} color="#DC1F26" />
-                <Text style={[s.bannerText, { color: '#FCA5A5' }]}>{bidError}</Text>
+                <Text style={[s.bannerText, { color: '#FCA5A5' }]} numberOfLines={2} ellipsizeMode="tail">{bidError}</Text>
               </View>
             )}
 

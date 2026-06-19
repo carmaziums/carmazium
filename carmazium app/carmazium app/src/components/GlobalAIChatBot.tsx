@@ -1,159 +1,237 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Platform, Text, TextInput, ScrollView, Animated, KeyboardAvoidingView } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  View, StyleSheet, TouchableOpacity, Platform, Text,
+  TextInput, ScrollView, KeyboardAvoidingView, Modal, Pressable,
+} from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigationState } from '@react-navigation/native';
 import { Ionicons } from '@/components/BrandIcon';
 import { FontFamily } from '../constants/typography';
 import { useAuthStore } from '../store/authStore';
 import { sendAiChatMessage, AiChatMessage } from '../lib/aiApi';
 
+// Returns the name of the deepest active screen in the nav tree
+function useActiveRouteName(): string {
+  return useNavigationState((state) => {
+    if (!state) return '';
+    const dig = (s: any): string => {
+      if (!s?.routes?.length) return '';
+      const route = s.routes[s.index ?? s.routes.length - 1];
+      return route?.state ? dig(route.state) : (route?.name ?? '');
+    };
+    return dig(state);
+  }) ?? '';
+}
+
+const QUICK_PROMPTS = [
+  { label: 'Find cars under £15k', icon: 'pricetag-outline' },
+  { label: 'Best electric cars?', icon: 'flash-outline' },
+  { label: 'How does bidding work?', icon: 'hammer-outline' },
+  { label: 'Help me sell my car', icon: 'car-outline' },
+];
+
 export const GlobalAIChatBot: React.FC = () => {
   const insets = useSafeAreaInsets();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const [isHovered, setIsHovered] = useState(false);
+  const activeRoute = useActiveRouteName();
+
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
-
-  const [chatHistory, setChatHistory] = useState([
-     { id: '1', text: "Hi! I'm your CarMazium AI assistant. I can help you find cars, explain finance options, or give you instant valuations. How can I help today?", isUser: false }
-  ]);
   const [isSending, setIsSending] = useState(false);
+  const [chatHistory, setChatHistory] = useState([
+    {
+      id: '1',
+      text: "Hi! I'm MaziuM, your CarMazium AI. Ask me about cars, finance options, or valuations!",
+      isUser: false,
+    },
+  ]);
 
-  // Hide the bot if the user is not authenticated (i.e. on login, signup, onboarding)
-  if (!isAuthenticated) return null;
+  const scrollRef = useRef<ScrollView>(null);
 
-  const handlePress = () => {
-     setIsOpen(!isOpen);
-     setIsHovered(false);
+  // Auto-scroll to the newest message
+  useEffect(() => {
+    if (chatHistory.length > 1) {
+      const t = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
+      return () => clearTimeout(t);
+    }
+  }, [chatHistory]);
+
+  // Don't render on auction screen — the AI button overlaps the bid button
+  if (!isAuthenticated || activeRoute === 'AuctionDetail') return null;
+
+  const sendMessage = async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || isSending) return;
+
+    const newMsg = { id: Date.now().toString(), text: trimmed, isUser: true };
+    const updated = [...chatHistory, newMsg];
+    setChatHistory(updated);
+    setMessage('');
+    setIsSending(true);
+
+    try {
+      const conversation: AiChatMessage[] = updated.map((m) => ({
+        role: m.isUser ? 'user' : 'assistant',
+        content: m.text,
+      }));
+      const result = await sendAiChatMessage(conversation);
+      setChatHistory((prev) => [
+        ...prev,
+        { id: (Date.now() + 1).toString(), text: result.text, isUser: false },
+      ]);
+    } catch {
+      setChatHistory((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          text: "I'm having a brief moment — please try again in a second!",
+          isUser: false,
+        },
+      ]);
+    } finally {
+      setIsSending(false);
+    }
   };
 
-  const handleSend = async () => {
-     const text = message.trim();
-     if (!text || isSending) return;
-
-     const newMsg = { id: Date.now().toString(), text, isUser: true };
-     const updatedHistory = [...chatHistory, newMsg];
-     setChatHistory(updatedHistory);
-     setMessage('');
-     setIsSending(true);
-
-     try {
-        const conversation: AiChatMessage[] = updatedHistory.map((m) => ({
-           role: m.isUser ? 'user' : 'assistant',
-           content: m.text,
-        }));
-        const result = await sendAiChatMessage(conversation);
-        setChatHistory(prev => [...prev, {
-           id: (Date.now() + 1).toString(),
-           text: result.text,
-           isUser: false,
-        }]);
-     } catch {
-        setChatHistory(prev => [...prev, {
-           id: (Date.now() + 1).toString(),
-           text: "I'm having a brief moment — please try again in a second! 🔄",
-           isUser: false,
-        }]);
-     } finally {
-        setIsSending(false);
-     }
-  };
-
-  const renderChatBox = () => {
-     if (!isOpen) return null;
-     return (
-        <KeyboardAvoidingView 
-           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-           style={[styles.chatBoxContainer, { bottom: (insets.bottom || 20) + 150 }]}
-        >
-           {/* Header */}
-           <View style={styles.chatHeader}>
-              <View style={styles.chatHeaderLeft}>
-                 <View style={styles.chatAvatar}>
-                    <Text style={styles.chatAvatarText}>C</Text>
-                 </View>
-                 <View>
-                    <Text style={styles.chatTitle}>CarMazium AI</Text>
-                    <Text style={styles.chatStatus}>Always online</Text>
-                 </View>
-              </View>
-              <TouchableOpacity onPress={() => setIsOpen(false)} style={styles.closeBtn}>
-                 <Ionicons name="close" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-           </View>
-
-           {/* Messages */}
-           <ScrollView style={styles.chatScroll} contentContainerStyle={styles.chatScrollContent}>
-              {chatHistory.map(msg => (
-                 <View key={msg.id} style={[styles.msgBubble, msg.isUser ? styles.msgUser : styles.msgAI]}>
-                    <Text style={[styles.msgText, msg.isUser ? styles.msgTextUser : styles.msgTextAI]}>
-                       {msg.text}
-                    </Text>
-                 </View>
-              ))}
-              {isSending && (
-                 <View style={[styles.msgBubble, styles.msgAI]}>
-                    <Text style={[styles.msgText, styles.msgTextAI]}>Mazium AI is typing…</Text>
-                 </View>
-              )}
-           </ScrollView>
-
-           {/* Input */}
-           <View style={styles.chatInputRow}>
-              <TextInput 
-                 style={styles.chatInput}
-                 placeholder="Ask anything..."
-                 placeholderTextColor="#606070"
-                 value={message}
-                 onChangeText={setMessage}
-                 onSubmitEditing={handleSend}
-              />
-              <TouchableOpacity style={[styles.sendBtn, isSending && { opacity: 0.5 }]} onPress={handleSend} disabled={isSending}>
-                 <Ionicons name="send" size={16} color="#FFFFFF" />
-              </TouchableOpacity>
-           </View>
-        </KeyboardAvoidingView>
-     );
-  };
+  // Chat box height + margin above the tab-bar/button region
+  const chatBottom = (insets.bottom || 16) + 82;
 
   return (
-    <View style={[
-       styles.container, 
-       { bottom: (insets.bottom || 20) + 70 } // Sit above bottom tabs
-    ]} pointerEvents="box-none">
-      
-      {renderChatBox()}
-
-      <TouchableOpacity
-        activeOpacity={1}
-        onPress={handlePress}
-        onPressIn={() => setIsHovered(true)}
-        onPressOut={() => setIsHovered(false)}
-        // @ts-ignore - RN Web hover support
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        style={[
-           styles.botButton,
-           (isHovered || isOpen) ? styles.botButtonActive : styles.botButtonInactive
-        ]}
+    <>
+      {/* ── Chat modal — renders full-screen so outside tap closes the box ── */}
+      <Modal
+        visible={isOpen}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setIsOpen(false)}
       >
-        {(isHovered || isOpen) && <View style={styles.glowEffect} />}
-        <Image
-           source={{ uri: 'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?auto=format&fit=crop&w=200&q=80' }}
-           style={styles.botImage}
-           contentFit="cover"
-           cachePolicy="memory-disk"
-        />
-        <View style={styles.overlayDesign}>
-           <Text style={styles.mockFace}>C</Text>
-           <View style={styles.mockSmileRow}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          {/* Tapping this backdrop closes the chat */}
+          <Pressable style={{ flex: 1 }} onPress={() => setIsOpen(false)}>
+            {/* Stop propagation so taps inside the box don't close it */}
+            <Pressable
+              style={[styles.chatBox, { bottom: chatBottom }]}
+              onPress={() => {}}
+            >
+              {/* Header */}
+              <View style={styles.chatHeader}>
+                <View style={styles.chatHeaderLeft}>
+                  <View style={styles.chatAvatar}>
+                    <Text style={styles.chatAvatarText}>M</Text>
+                  </View>
+                  <View>
+                    <Text style={styles.chatTitle}>MaziuM AI</Text>
+                    <Text style={styles.chatStatus}>Always online</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setIsOpen(false)}
+                  style={styles.closeBtn}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="close" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Messages */}
+              <ScrollView
+                ref={scrollRef}
+                style={styles.chatScroll}
+                contentContainerStyle={styles.chatScrollContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {chatHistory.map((msg) => (
+                  <View
+                    key={msg.id}
+                    style={[styles.msgBubble, msg.isUser ? styles.msgUser : styles.msgAI]}
+                  >
+                    <Text style={[styles.msgText, msg.isUser ? styles.msgTextUser : styles.msgTextAI]}>
+                      {msg.text}
+                    </Text>
+                  </View>
+                ))}
+
+                {/* Quick prompt chips — only before the user has typed anything */}
+                {chatHistory.length === 1 && !isSending && (
+                  <View style={styles.quickPromptsWrap}>
+                    {QUICK_PROMPTS.map((p) => (
+                      <TouchableOpacity
+                        key={p.label}
+                        style={styles.quickPromptChip}
+                        onPress={() => sendMessage(p.label)}
+                        activeOpacity={0.75}
+                      >
+                        <Ionicons name={p.icon as any} size={11} color="#DC1F26" />
+                        <Text style={styles.quickPromptText}>{p.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+                {isSending && (
+                  <View style={[styles.msgBubble, styles.msgAI]}>
+                    <Text style={[styles.msgText, styles.msgTextAI]}>MaziuM is thinking…</Text>
+                  </View>
+                )}
+              </ScrollView>
+
+              {/* Input row */}
+              <View style={styles.chatInputRow}>
+                <TextInput
+                  style={styles.chatInput}
+                  placeholder="Ask anything..."
+                  placeholderTextColor="#606070"
+                  value={message}
+                  onChangeText={setMessage}
+                  onSubmitEditing={() => sendMessage(message)}
+                  returnKeyType="send"
+                />
+                <TouchableOpacity
+                  style={[styles.sendBtn, isSending && { opacity: 0.5 }]}
+                  onPress={() => sendMessage(message)}
+                  disabled={isSending}
+                >
+                  <Ionicons name="send" size={16} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ── Floating bot button ── */}
+      <View
+        style={[styles.container, { bottom: (insets.bottom || 16) + 70 }]}
+        pointerEvents="box-none"
+      >
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => setIsOpen((v) => !v)}
+          style={[styles.botButton, isOpen ? styles.botButtonActive : styles.botButtonInactive]}
+        >
+          {isOpen && <View style={styles.glowEffect} />}
+          <Image
+            source={{ uri: 'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?auto=format&fit=crop&w=200&q=80' }}
+            style={styles.botImage}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+          />
+          <View style={styles.overlayDesign}>
+            <Text style={styles.mockFace}>M</Text>
+            <View style={styles.mockSmileRow}>
               <View style={styles.mockEye} />
               <View style={styles.mockSmile} />
               <View style={styles.mockEye} />
-           </View>
-        </View>
-      </TouchableOpacity>
-    </View>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </View>
+    </>
   );
 };
 
@@ -161,85 +239,109 @@ const styles = StyleSheet.create({
   container: {
     position: 'absolute',
     right: 16,
-    zIndex: 9999, // Ensure it's above everything
+    zIndex: 9999,
     alignItems: 'flex-end',
-    justifyContent: 'flex-end',
-  },
-  
-  // Chat Box Styles
-  chatBoxContainer: {
-     position: 'absolute',
-     right: 0,
-     width: 320,
-     height: 400,
-     backgroundColor: '#111116',
-     borderRadius: 20,
-     borderWidth: 1,
-     borderColor: 'rgba(220,31,38,0.3)',
-     shadowColor: '#000',
-     shadowOffset: { width: 0, height: 10 },
-     shadowOpacity: 0.5,
-     shadowRadius: 20,
-     elevation: 10,
-     overflow: 'hidden',
-  },
-  chatHeader: {
-     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-     padding: 16, backgroundColor: '#1E1E28', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)'
-  },
-  chatHeaderLeft: {
-     flexDirection: 'row', alignItems: 'center'
-  },
-  chatAvatar: {
-     width: 32, height: 32, borderRadius: 16, backgroundColor: '#DC1F26', alignItems: 'center', justifyContent: 'center', marginRight: 12
-  },
-  chatAvatarText: {
-     fontFamily: FontFamily.black, fontSize: 16, color: '#FFFFFF'
-  },
-  chatTitle: {
-     fontFamily: FontFamily.bold, fontSize: 14, color: '#FFFFFF'
-  },
-  chatStatus: {
-     fontFamily: FontFamily.medium, fontSize: 10, color: '#10B981'
-  },
-  closeBtn: {
-     padding: 4
-  },
-  chatScroll: {
-     flex: 1, backgroundColor: '#0A0A0C'
-  },
-  chatScrollContent: {
-     padding: 16, gap: 12
-  },
-  msgBubble: {
-     maxWidth: '85%', padding: 12, borderRadius: 16
-  },
-  msgAI: {
-     alignSelf: 'flex-start', backgroundColor: '#1E1E28', borderBottomLeftRadius: 4
-  },
-  msgUser: {
-     alignSelf: 'flex-end', backgroundColor: '#DC1F26', borderBottomRightRadius: 4
-  },
-  msgText: {
-     fontFamily: FontFamily.regular, fontSize: 13, lineHeight: 18
-  },
-  msgTextAI: {
-     color: '#E0E0E0'
-  },
-  msgTextUser: {
-     color: '#FFFFFF'
-  },
-  chatInputRow: {
-     flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: '#111116', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)'
-  },
-  chatInput: {
-     flex: 1, height: 40, backgroundColor: '#1E1E28', borderRadius: 20, paddingHorizontal: 16, fontFamily: FontFamily.regular, fontSize: 13, color: '#FFFFFF'
-  },
-  sendBtn: {
-     width: 40, height: 40, borderRadius: 20, backgroundColor: '#DC1F26', alignItems: 'center', justifyContent: 'center', marginLeft: 8
   },
 
-  // Bot Button Styles
+  // Chat box (positioned inside the Modal, absolute from screen bottom)
+  chatBox: {
+    position: 'absolute',
+    right: 16,
+    width: 320,
+    height: 400,
+    backgroundColor: '#111116',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(220,31,38,0.3)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 20,
+    overflow: 'hidden',
+  },
+  chatHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    backgroundColor: '#1E1E28',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  chatHeaderLeft: { flexDirection: 'row', alignItems: 'center' },
+  chatAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#DC1F26',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  chatAvatarText: { fontFamily: FontFamily.black, fontSize: 15, color: '#FFFFFF' },
+  chatTitle: { fontFamily: FontFamily.bold, fontSize: 14, color: '#FFFFFF' },
+  chatStatus: { fontFamily: FontFamily.medium, fontSize: 10, color: '#10B981' },
+  closeBtn: { padding: 4 },
+
+  chatScroll: { flex: 1, backgroundColor: '#0A0A0C' },
+  chatScrollContent: { padding: 14, gap: 10 },
+
+  msgBubble: { maxWidth: '85%', padding: 10, borderRadius: 14 },
+  msgAI: { alignSelf: 'flex-start', backgroundColor: '#1E1E28', borderBottomLeftRadius: 4 },
+  msgUser: { alignSelf: 'flex-end', backgroundColor: '#DC1F26', borderBottomRightRadius: 4 },
+  msgText: { fontFamily: FontFamily.regular, fontSize: 13, lineHeight: 18 },
+  msgTextAI: { color: '#E0E0E0' },
+  msgTextUser: { color: '#FFFFFF' },
+
+  // Quick prompt chips
+  quickPromptsWrap: { gap: 6, marginTop: 4 },
+  quickPromptChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    backgroundColor: 'rgba(220,31,38,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(220,31,38,0.2)',
+  },
+  quickPromptText: {
+    fontFamily: FontFamily.medium,
+    fontSize: 12,
+    color: '#E0E0E0',
+  },
+
+  chatInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    backgroundColor: '#111116',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.05)',
+    gap: 8,
+  },
+  chatInput: {
+    flex: 1,
+    height: 38,
+    backgroundColor: '#1E1E28',
+    borderRadius: 19,
+    paddingHorizontal: 14,
+    fontFamily: FontFamily.regular,
+    fontSize: 13,
+    color: '#FFFFFF',
+  },
+  sendBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#DC1F26',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Bot button
   botButton: {
     width: 64,
     height: 64,
@@ -261,10 +363,9 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.05 }],
   },
   botButtonInactive: {
-    opacity: 0.4, // "just like the second image"
+    opacity: 0.45,
     shadowOpacity: 0,
     shadowRadius: 0,
-    transform: [{ scale: 1 }],
   },
   glowEffect: {
     position: 'absolute',
@@ -279,9 +380,8 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     position: 'absolute',
-    opacity: 0.2, // dim background
+    opacity: 0.2,
   },
-  // CSS Mock of the bot face for perfection without asset dependencies
   overlayDesign: {
     width: 48,
     height: 38,
@@ -292,12 +392,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 2,
   },
-  mockFace: {
-    color: '#DC1F26',
-    fontWeight: '900',
-    fontSize: 14,
-    lineHeight: 16,
-  },
+  mockFace: { color: '#DC1F26', fontWeight: '900', fontSize: 14, lineHeight: 16 },
   mockSmileRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -319,5 +414,5 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 3,
     borderBottomRightRadius: 3,
     marginBottom: 1,
-  }
+  },
 });

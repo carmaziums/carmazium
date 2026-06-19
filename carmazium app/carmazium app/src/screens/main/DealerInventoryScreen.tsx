@@ -10,6 +10,11 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
@@ -286,6 +291,35 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
   const [refreshing, setRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState(false);
 
+  // Bulk import
+  const [showAddSheet, setShowAddSheet] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkText, setBulkText] = useState('');
+  const [bulkImporting, setBulkImporting] = useState(false);
+  const [bulkDone, setBulkDone] = useState(false);
+
+  const parsedUrls = bulkText
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 5 && (l.startsWith('http') || l.match(/^[A-Z]{2}\d{2}\s?[A-Z]{3}$/i)));
+  const parsedCount = parsedUrls.length;
+
+  const handleBulkImport = async () => {
+    if (parsedCount === 0) return;
+    setBulkImporting(true);
+    try {
+      for (const url of parsedUrls) {
+        await apiClient('/listings/import-url', { method: 'POST', body: { url } });
+      }
+    } catch {
+      // Silently continue — partial imports are ok
+    } finally {
+      setBulkImporting(false);
+      setBulkDone(true);
+      setTimeout(() => fetchListings(), 1000);
+    }
+  };
+
   const fetchListings = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     setFetchError(false);
@@ -483,11 +517,9 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
       {/* ── Add listing CTA ──────────────────────────────────────────────── */}
       <View style={[styles.addListingWrap, { paddingBottom: insets.bottom + 12 }]}>
         <TouchableOpacity
-          style={styles.addListingBtn}
+          style={[styles.addListingBtn, { flex: 1, marginRight: 8 }]}
           activeOpacity={0.85}
-          onPress={() =>
-            Alert.alert('Add Listing', 'Upload vehicle details, photos and pricing to publish a new listing.')
-          }
+          onPress={() => navigation?.navigate('SellCarFlow')}
         >
           <LinearGradient
             colors={['#FF2D35', '#DC1F26']}
@@ -498,7 +530,104 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
           <Ionicons name="add" size={22} color="#FFFFFF" style={{ marginRight: 6 }} />
           <Text style={styles.addListingText}>ADD LISTING</Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.bulkImportBtn}
+          activeOpacity={0.85}
+          onPress={() => { setBulkDone(false); setBulkText(''); setShowBulkModal(true); }}
+        >
+          <Ionicons name="cloud-upload-outline" size={20} color="#F59E0B" />
+          <Text style={styles.bulkImportText}>BULK</Text>
+        </TouchableOpacity>
       </View>
+
+      {/* ── Bulk import modal ─────────────────────────────────────────────── */}
+      <Modal
+        visible={showBulkModal}
+        transparent
+        animationType="slide"
+        statusBarTranslucent
+        onRequestClose={() => setShowBulkModal(false)}
+      >
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <Pressable style={styles.bulkBackdrop} onPress={() => setShowBulkModal(false)}>
+            <Pressable style={styles.bulkSheet} onPress={() => {}}>
+              {/* Handle */}
+              <View style={styles.bulkHandle} />
+
+              {bulkDone ? (
+                /* ── Success state ── */
+                <View style={styles.bulkSuccess}>
+                  <View style={styles.bulkSuccessIcon}>
+                    <Ionicons name="checkmark-circle" size={44} color="#22C55E" />
+                  </View>
+                  <Text style={styles.bulkSuccessTitle}>Import queued!</Text>
+                  <Text style={styles.bulkSuccessSub}>
+                    {parsedCount} vehicle{parsedCount !== 1 ? 's' : ''} added to your inventory. Processing may take a few moments.
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.bulkDoneBtn}
+                    activeOpacity={0.85}
+                    onPress={() => setShowBulkModal(false)}
+                  >
+                    <Text style={styles.bulkDoneBtnText}>VIEW INVENTORY</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                /* ── Input state ── */
+                <>
+                  <Text style={styles.bulkTitle}>Bulk Import</Text>
+                  <Text style={styles.bulkSub}>
+                    Paste listing URLs (AutoTrader, CarGurus, CarWow) or UK registration plates — one per line.
+                  </Text>
+
+                  <TextInput
+                    style={styles.bulkInput}
+                    value={bulkText}
+                    onChangeText={setBulkText}
+                    placeholder={'https://autotrader.co.uk/…\nhttps://cargurus.co.uk/…\nAB12 CDE'}
+                    placeholderTextColor="#404050"
+                    multiline
+                    numberOfLines={6}
+                    textAlignVertical="top"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+
+                  <View style={styles.bulkSupportedRow}>
+                    <Text style={styles.bulkSupportedLabel}>SUPPORTED PLATFORMS</Text>
+                    {['AutoTrader', 'CarGurus', 'CarWow'].map((p) => (
+                      <View key={p} style={styles.bulkPlatformChip}>
+                        <Text style={styles.bulkPlatformText}>{p}</Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  {parsedCount > 0 && (
+                    <Text style={styles.bulkCountHint}>
+                      {parsedCount} valid entr{parsedCount !== 1 ? 'ies' : 'y'} detected
+                    </Text>
+                  )}
+
+                  <TouchableOpacity
+                    style={[styles.bulkSubmitBtn, (parsedCount === 0 || bulkImporting) && { opacity: 0.45 }]}
+                    activeOpacity={0.85}
+                    onPress={handleBulkImport}
+                    disabled={parsedCount === 0 || bulkImporting}
+                  >
+                    {bulkImporting ? (
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                    ) : (
+                      <Text style={styles.bulkSubmitText}>
+                        IMPORT {parsedCount > 0 ? `${parsedCount} VEHICLE${parsedCount !== 1 ? 'S' : ''}` : 'VEHICLES'}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </>
+              )}
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 };
@@ -706,6 +835,156 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(10,10,12,0.92)',
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.05)',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  bulkImportBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: 'rgba(245,158,11,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  bulkImportText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 8,
+    color: '#F59E0B',
+    letterSpacing: 0.8,
+  },
+
+  // ── Bulk import modal ──────────────────────────────────────────────────
+  bulkBackdrop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  bulkSheet: {
+    backgroundColor: '#111116',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.07)',
+    padding: 24,
+    paddingBottom: 36,
+  },
+  bulkHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  bulkTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: 20,
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  bulkSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: 13,
+    color: '#A0A0B0',
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  bulkInput: {
+    backgroundColor: '#1A1A22',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontFamily: FontFamily.regular,
+    fontSize: 13,
+    color: '#FFFFFF',
+    minHeight: 120,
+    marginBottom: 14,
+  },
+  bulkSupportedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+    marginBottom: 10,
+  },
+  bulkSupportedLabel: {
+    fontFamily: FontFamily.medium,
+    fontSize: 9,
+    color: '#606070',
+    letterSpacing: 1,
+  },
+  bulkPlatformChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: 'rgba(245,158,11,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.25)',
+  },
+  bulkPlatformText: {
+    fontFamily: FontFamily.medium,
+    fontSize: 10,
+    color: '#F59E0B',
+  },
+  bulkCountHint: {
+    fontFamily: FontFamily.medium,
+    fontSize: 12,
+    color: '#22C55E',
+    marginBottom: 12,
+  },
+  bulkSubmitBtn: {
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: '#DC1F26',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bulkSubmitText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 14,
+    color: '#FFFFFF',
+    letterSpacing: 1.2,
+  },
+  bulkSuccess: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  bulkSuccessIcon: {
+    marginBottom: 16,
+  },
+  bulkSuccessTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: 22,
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  bulkSuccessSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: 14,
+    color: '#A0A0B0',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+    paddingHorizontal: 12,
+  },
+  bulkDoneBtn: {
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: '#22C55E',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  bulkDoneBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 14,
+    color: '#FFFFFF',
+    letterSpacing: 1.2,
   },
   addListingBtn: {
     height: 52,

@@ -559,7 +559,7 @@ const s = StyleSheet.create({
   searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#111115', borderRadius: 14, borderWidth: 1, borderColor: '#2A2A32', paddingHorizontal: 16, height: 52, gap: 10 },
   searchInput: { flex: 1, fontFamily: FontFamily.regular, fontSize: 15, color: '#FFFFFF' },
 
-  quickRow: { paddingHorizontal: 24, gap: 10, paddingBottom: 16 },
+  quickRow: { paddingHorizontal: 24, gap: 10, paddingBottom: 16, flexDirection: 'row', alignItems: 'center' },
   quickChip: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 20, backgroundColor: '#111115', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
   quickChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   quickChipText: { fontFamily: FontFamily.bold, fontSize: 12, color: '#A0A0AB' },

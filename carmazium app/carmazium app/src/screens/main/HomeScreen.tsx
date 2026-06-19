@@ -542,12 +542,12 @@ export const HomeScreen: React.FC = () => {
           onPress={() => navigation.navigate('SellCars' as any)}
           activeOpacity={0.85}
         >
-          <View>
+          <View style={{ flex: 1, marginRight: 12 }}>
             <Text style={s.sellCtaTitle}>Sell your car</Text>
             <Text style={s.sellCtaHint}>List in minutes · Get offers from buyers</Text>
           </View>
           <View style={s.sellCtaBtn}>
-            <Text style={s.sellCtaBtnText}>START →</Text>
+            <Text style={s.sellCtaBtnText}>START</Text>
           </View>
         </TouchableOpacity>
 
@@ -604,7 +604,7 @@ const s = StyleSheet.create({
   seeAll: { fontFamily: FontFamily.bold, fontSize: 12, color: Colors.accent },
 
   // Horizontal scroll
-  hScroll: { paddingHorizontal: 24, gap: 16 },
+  hScroll: { paddingHorizontal: 24, gap: 16, flexDirection: 'row', alignItems: 'center' },
 
   // Cards shared
   auctionCard: { width: 282, backgroundColor: '#111115', borderWidth: 1, borderColor: '#2A2A32', borderRadius: 16, overflow: 'hidden' },

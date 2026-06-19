@@ -414,14 +414,13 @@ export const CompareScreen: React.FC = () => {
 
         {/* Specs Table container */}
         <View style={styles.specsTable}>
-          {/* Header Row */}
-          {!isThreeCars && (
-            <View style={styles.tableHeaderRow}>
-              <Text style={styles.tableHeaderLabel}></Text>
-              <Text style={[styles.tableHeaderCol, styles.textRed]}>A</Text>
-              <Text style={[styles.tableHeaderCol, styles.textBlue]}>B</Text>
-            </View>
-          )}
+          {/* Header Row — always shown so column labels stay visible when scrolling */}
+          <View style={styles.tableHeaderRow}>
+            <Text style={styles.tableHeaderLabel}></Text>
+            <Text style={[styles.tableHeaderCol, styles.textRed]}>A</Text>
+            <Text style={[styles.tableHeaderCol, styles.textBlue]}>B</Text>
+            {isThreeCars && <Text style={[styles.tableHeaderCol, styles.textMagenta]}>C</Text>}
+          </View>
 
           {/* Price Row */}
           <View style={styles.tableRow}>
@@ -487,6 +486,40 @@ export const CompareScreen: React.FC = () => {
             {renderCellValue(carA, 'monthly', carA ? getMonthlyPayment(carA) : '-', true, false, false)}
             {renderCellValue(carB, 'monthly', carB ? getMonthlyPayment(carB) : '-', false, true, false)}
             {isThreeCars && renderCellValue(carC, 'monthly', carC ? getMonthlyPayment(carC) : '-', false, false, true)}
+          </View>
+
+          {/* Transmission Row */}
+          <View style={styles.tableRow}>
+            <Text style={styles.rowLabel}>Gearbox</Text>
+            {isThreeCars ? (
+              <>
+                {renderCellValue(carA, 'trans', carA ? (carA.transmission === 'Automatic' ? 'Auto' : carA.transmission) : '-', false, false, false)}
+                {renderCellValue(carB, 'trans', carB ? (carB.transmission === 'Automatic' ? 'Auto' : carB.transmission) : '-', false, false, false)}
+                {renderCellValue(carC, 'trans', carC ? (carC.transmission === 'Automatic' ? 'Auto' : carC.transmission) : '-', false, false, false)}
+              </>
+            ) : (
+              <>
+                <Text style={styles.rowVal}>{carA ? (carA.transmission === 'Automatic' ? 'Auto' : carA.transmission) : '-'}</Text>
+                <Text style={styles.rowVal}>{carB ? (carB.transmission === 'Automatic' ? 'Auto' : carB.transmission) : '-'}</Text>
+              </>
+            )}
+          </View>
+
+          {/* Colour Row */}
+          <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
+            <Text style={styles.rowLabel}>Colour</Text>
+            {isThreeCars ? (
+              <>
+                {renderCellValue(carA, 'colour', carA ? (carA.colour ?? '-') : '-', false, false, false)}
+                {renderCellValue(carB, 'colour', carB ? (carB.colour ?? '-') : '-', false, false, false)}
+                {renderCellValue(carC, 'colour', carC ? (carC.colour ?? '-') : '-', false, false, false)}
+              </>
+            ) : (
+              <>
+                <Text style={styles.rowVal}>{carA ? (carA.colour ?? '-') : '-'}</Text>
+                <Text style={styles.rowVal}>{carB ? (carB.colour ?? '-') : '-'}</Text>
+              </>
+            )}
           </View>
         </View>
 

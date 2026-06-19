@@ -83,7 +83,7 @@ export const DealerProfileScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const { showToast } = useContext(GlobalToastContext);
-  const { user } = useAuthStore();
+  const { user, setRole } = useAuthStore();
   const [activeSubTab, setActiveSubTab] = useState<'today' | 'this_week'>('today');
 
   const [stats, setStats] = useState<DealerStats | null>(null);
@@ -113,9 +113,7 @@ export const DealerProfileScreen: React.FC = () => {
   const dealerDisplayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
 
   const handleViewBuyerProfile = () => {
-    // Navigate to the unified profile/account screen without changing role.
-    // Role is determined by the backend — it cannot be toggled client-side.
-    navigation.navigate('AccountProfile');
+    setRole('buyer');
   };
 
   // ─── Derived data ──────────────────────────────────────────────────────
@@ -446,7 +444,7 @@ export const DealerProfileScreen: React.FC = () => {
         <TouchableOpacity
           style={styles.addListingCTA}
           activeOpacity={0.8}
-          onPress={() => navigation.navigate('SellCars')}
+          onPress={() => navigation.navigate('SellCarFlow')}
         >
           <Ionicons name="add" size={20} color="#FFFFFF" style={{ marginRight: 6 }} />
           <Text style={styles.addListingCTAText}>ADD LISTING</Text>
