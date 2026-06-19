@@ -160,6 +160,9 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
                   isFocused ? styles.tabLabelActive : styles.tabLabelInactive,
                 ]}
                 onPress={onPress}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.6}
               >
                 {config.label}
               </Text>

@@ -121,11 +121,13 @@ export const SearchScreen: React.FC = () => {
     if (p.bodyType !== undefined) { setSelectedBody(p.bodyType); hasNew = true; }
     if (p.maxPrice != null) { setMaxPrice(Number(p.maxPrice)); hasNew = true; }
     if (p.sortBy !== undefined) { setSortId(p.sortBy); hasNew = true; }
+    if (p.make !== undefined) { setSelectedMakes([p.make]); hasNew = true; }
     if (hasNew) {
       setQuickFilter('custom');
       setQuery('');
-      setSelectedMakes([]);
+      if (!p.make) setSelectedMakes([]);
       setMinPrice(0);
+      if (!p.maxPrice) setMaxPrice(150000);
       setMinYear('Any');
       setMaxMiles('Any');
       setTransmission('');
@@ -185,12 +187,20 @@ export const SearchScreen: React.FC = () => {
   // Initial load
   useEffect(() => { fetch(true); }, []);
 
-  // Debounced re-fetch on filter/sort changes
+  // Text query: debounce to avoid hitting the API on every keystroke.
+  // All other filter/sort changes are instant (fired by the non-text useEffect below).
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => fetch(true), 350);
     return () => clearTimeout(debounceRef.current);
-  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxMiles, transmission]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
+
+  // Instant re-fetch when any filter/sort state changes (not debounced).
+  useEffect(() => {
+    fetch(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxMiles, transmission]);
 
   const onRefresh = () => { setRefreshing(true); fetch(true); };
 
@@ -280,6 +290,7 @@ export const SearchScreen: React.FC = () => {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={s.quickScroll}
         contentContainerStyle={s.quickRow}
       >
         {QUICK_FILTERS.map(f => (
@@ -578,17 +589,18 @@ const s = StyleSheet.create({
   headerTitle: { fontFamily: FontFamily.extraBold, fontSize: 22, color: '#FFFFFF' },
   iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' },
 
-  searchWrap: { paddingHorizontal: 24, marginBottom: 10 },
+  searchWrap: { paddingHorizontal: 24, marginBottom: 8 },
   searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#111115', borderRadius: 14, borderWidth: 1, borderColor: '#2A2A32', paddingHorizontal: 16, height: 52, gap: 10 },
   searchInput: { flex: 1, fontFamily: FontFamily.regular, fontSize: 15, color: '#FFFFFF' },
 
-  quickRow: { paddingHorizontal: 24, gap: 10, paddingBottom: 4, paddingTop: 4, flexDirection: 'row', alignItems: 'center' },
+  quickScroll: { flexGrow: 0, marginBottom: 6 },
+  quickRow: { paddingHorizontal: 24, gap: 10, paddingVertical: 6, flexDirection: 'row', alignItems: 'center' },
   quickChip: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
   quickChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   quickChipText: { fontFamily: FontFamily.bold, fontSize: 12, color: '#CCCCCC' },
   quickChipTextActive: { color: '#FFFFFF' },
 
-  sortRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, marginBottom: 10, marginTop: 10, position: 'relative', zIndex: 10 },
+  sortRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, marginBottom: 8, marginTop: 4, position: 'relative', zIndex: 10 },
   resultsCount: { fontFamily: FontFamily.bold, fontSize: 10, color: '#606070', letterSpacing: 1 },
   sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: '#111115', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
   sortBtnText: { fontFamily: FontFamily.bold, fontSize: 11, color: '#A0A0AB' },

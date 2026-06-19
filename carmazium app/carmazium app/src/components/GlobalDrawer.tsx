@@ -58,16 +58,10 @@ const ITEMS: MenuItem[] = [
   { id: 'home',     label: 'Home',       icon: 'home-outline',              iconLib: 'ion', tabName: 'Home'   },
   { id: 'buy',      label: 'Buy Cars',   icon: 'car-outline',               iconLib: 'ion', tabName: 'Search' },
   { id: 'sell',     label: 'Sell Cars',  icon: 'storefront-outline',        iconLib: 'ion', stackScreen: 'MyListingDashboard' },
-  { id: 'messages', label: 'Messages',   icon: 'chatbubble-ellipses-outline', iconLib: 'ion', stackScreen: 'Messages' },
   { id: 'auctions', label: 'Auctions',   icon: 'gavel',                     iconLib: 'mci', tabName: 'Live'   },
   { id: 'compare',  label: 'Compare',    icon: 'git-compare-outline',       iconLib: 'ion', stackScreen: 'Compare' },
-  { id: 'how-it-works', label: 'How it works', icon: 'compass-outline',     iconLib: 'ion', stackScreen: 'HowItWorks' },
-  { id: 'services', label: 'Services',   icon: 'construct-outline',         iconLib: 'ion', stackScreen: 'Services' },
-  { id: 'settings', label: 'Settings',   icon: 'settings-outline',          iconLib: 'ion', stackScreen: 'Settings' },
-  { id: 'notif-settings', label: 'Notification settings', icon: 'notifications-circle-outline', iconLib: 'ion', stackScreen: 'NotificationSettings' },
   { id: 'pricing',  label: 'Pricing',    icon: 'pricetag-outline',          iconLib: 'ion', stackScreen: 'Pricing' },
   { id: 'about',    label: 'About',      icon: 'information-circle-outline', iconLib: 'ion', stackScreen: 'About' },
-  { id: 'terms',    label: 'Terms & Conditions', icon: 'document-text-outline', iconLib: 'ion', stackScreen: 'Terms' },
 ];
 
 const SELLER_ITEMS: MenuItem[] = [
