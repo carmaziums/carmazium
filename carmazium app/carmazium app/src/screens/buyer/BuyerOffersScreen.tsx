@@ -28,6 +28,7 @@ interface Offer {
   status: OfferStatus;
   counterAmount?: number | null;
   listingId?: string;
+  sellerId?: string;
   createdAt?: string;
   listing?: {
     id?: string;
@@ -36,6 +37,7 @@ interface Offer {
     images?: string[];
   };
   seller?: {
+    id?: string;
     firstName?: string;
     lastName?: string;
     dealerProfile?: { companyName?: string } | null;
@@ -193,8 +195,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
               });
               if (status === 'ACCEPTED') {
                 haptics.success();
-                // Navigate directly to payment flow — the agreed price is the counter amount
-                navigateToPurchase(offer, offer.counterAmount ?? offer.amount);
+                await fetchData(); // refresh to show ACCEPTED state with Message Seller
               } else {
                 haptics.medium();
                 await fetchData();
@@ -210,19 +211,39 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
     );
   };
 
-  const navigateToPurchase = (offer: Offer, agreedAmount: number) => {
-    const sellerName =
-      offer.seller?.dealerProfile?.companyName ??
-      ([offer.seller?.firstName, offer.seller?.lastName].filter(Boolean).join(' ') || undefined);
-    navigation?.navigate('PurchaseFlow', {
-      listingId: offer.listing?.id ?? offer.listingId ?? '',
-      salePrice: agreedAmount,
-      buyerFee: 95,
-      listingTitle: offer.listing?.title ?? 'Vehicle',
-      listingImage: offer.listing?.images?.[0],
-      sellerName,
-      paymentType: 'FULL_PAYMENT',
-    });
+  const handleMessageSeller = async (offer: Offer) => {
+    const participantId = offer.sellerId ?? offer.seller?.id;
+    if (!participantId) {
+      Alert.alert('Unable to open chat', 'Seller information is not available.');
+      return;
+    }
+    setActionLoading(offer.id);
+    try {
+      const res = await apiClient<{ success: boolean; data: { id: string } }>(
+        '/chat/rooms',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            participantId,
+            listingId: offer.listing?.id ?? offer.listingId,
+          }),
+        }
+      );
+      if (res?.success && res.data?.id) {
+        haptics.success();
+        navigation?.navigate('Chat', {
+          threadId: res.data.id,
+          otherUserId: participantId,
+          listingTitle: offer.listing?.title ?? 'Your offer',
+          listingImage: offer.listing?.images?.[0],
+          listingPrice: offer.amount,
+        });
+      }
+    } catch (err: any) {
+      Alert.alert('Could not open chat', err?.message ?? 'Please try again.');
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   // ─────────────── computed ───────────────
@@ -329,17 +350,18 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
           </View>
         )}
 
-        {/* Actions: ACCEPTED — complete purchase */}
+        {/* Actions: ACCEPTED — message seller */}
         {offer.status === 'ACCEPTED' && (
           <View style={styles.actionsRow}>
             <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnAcceptCounter, { flex: 1 }]}
+              style={[styles.actionBtn, styles.actionBtnMessage, { flex: 1 }]}
               activeOpacity={0.75}
-              onPress={() => navigateToPurchase(offer, offer.amount)}
+              onPress={() => handleMessageSeller(offer)}
+              disabled={isActioning}
             >
-              <Ionicons name="lock-closed-outline" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Ionicons name="chatbubble-ellipses-outline" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
               <Text style={[styles.actionBtnText, { color: '#FFFFFF' }]}>
-                Complete Purchase
+                Message Seller
               </Text>
             </TouchableOpacity>
           </View>
@@ -671,6 +693,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.success,
     borderColor: Colors.success,
+  },
+  actionBtnMessage: {
+    flex: 1,
+    backgroundColor: '#3B82F6',
+    borderColor: '#3B82F6',
+    flexDirection: 'row',
   },
   actionBtnText: {
     fontFamily: FontFamily.bold,

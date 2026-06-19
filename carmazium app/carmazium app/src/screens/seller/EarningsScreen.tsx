@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
+  Alert,
   RefreshControl,
   ScrollView,
   StatusBar,
@@ -8,6 +9,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -74,6 +77,7 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
   const [totalSales, setTotalSales] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -98,6 +102,35 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await apiClient<string>('/listings/earnings/export', {
+        headers: { Accept: 'text/csv' },
+      });
+      const csvContent = typeof res === 'string' ? res : JSON.stringify(res);
+      const fileName = `carmazium-earnings-${new Date().toISOString().split('T')[0]}.csv`;
+      const filePath = `${FileSystem.documentDirectory}${fileName}`;
+      await FileSystem.writeAsStringAsync(filePath, csvContent, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(filePath, {
+          mimeType: 'text/csv',
+          dialogTitle: 'Export Earnings Ledger',
+          UTI: 'public.comma-separated-values-text',
+        });
+      } else {
+        Alert.alert('Exported', `Saved to: ${fileName}`);
+      }
+    } catch (err: any) {
+      Alert.alert('Export Failed', err?.message ?? 'Could not export the ledger.');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   // ─────────────── render helpers ─────────────────────
 
@@ -181,8 +214,17 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
 
         <Text style={styles.headerTitle}>Earnings</Text>
 
-        {/* Spacer to center the title */}
-        <View style={styles.headerRight} />
+        <TouchableOpacity
+          style={[styles.exportBtn, exporting && { opacity: 0.5 }]}
+          activeOpacity={0.75}
+          onPress={handleExport}
+          disabled={exporting}
+        >
+          <Ionicons name="download-outline" size={15} color="#22C55E" />
+          <Text style={styles.exportBtnText}>
+            {exporting ? 'Exporting…' : 'Export'}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -278,6 +320,22 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     width: 38,
+  },
+  exportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    backgroundColor: 'rgba(34,197,94,0.10)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(34,197,94,0.25)',
+  },
+  exportBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 11,
+    color: '#22C55E',
   },
 
   // ── Scroll ──

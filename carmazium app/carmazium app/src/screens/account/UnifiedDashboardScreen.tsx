@@ -249,8 +249,8 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
             label="Stats"
             icon="bar-chart-outline"
             accentColor="#A855F7"
-            sublabel={isSeller ? `${seller.totalViews} views` : 'Performance'}
-            onPress={() => isSeller ? nav('SellerPerformance') : nav('BuyerBids')}
+            sublabel={`${seller.totalViews > 0 ? seller.totalViews.toLocaleString('en-GB') + ' views' : 'Performance'}`}
+            onPress={() => nav('SellerPerformance')}
           />
 
           {/* Row 4: Messages + Earnings */}
