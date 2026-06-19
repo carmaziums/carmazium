@@ -10,6 +10,7 @@ import { FontFamily } from '../constants/typography';
 import { useAuthStore } from '../store/authStore';
 import { sendAiChatMessage, AiChatMessage } from '../lib/aiApi';
 import { navigationRef } from '../lib/navigationRef';
+import { CommonActions } from '@react-navigation/native';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -108,6 +109,7 @@ export const GlobalAIChatBot: React.FC = () => {
   const [quickReplies] = useState(() => getDailyQuickReplies());
   const scrollRef = useRef<ScrollView>(null);
 
+  // Scroll to bottom when new messages arrive
   useEffect(() => {
     if (chatHistory.length > 1) {
       const t = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
@@ -115,9 +117,19 @@ export const GlobalAIChatBot: React.FC = () => {
     }
   }, [chatHistory, isThinking]);
 
+  // Scroll to bottom when chat is reopened (history already exists)
+  useEffect(() => {
+    if (isOpen) {
+      const t = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 150);
+      return () => clearTimeout(t);
+    }
+  }, [isOpen]);
+
   if (!isAuthenticated || activeRoute === 'LiveAuctionDetailed') return null;
 
   // ── Navigate to Search with filterCard params ─────────────────────────────
+  // CommonActions.navigate searches the full navigator tree — more reliable than
+  // nested screen params when navigating from outside the navigator hierarchy.
   const applyFilterCard = (params: Record<string, string>) => {
     setIsOpen(false);
     setTimeout(() => {
@@ -129,10 +141,7 @@ export const GlobalAIChatBot: React.FC = () => {
         if (params.minPrice) navParams.minPrice = Number(params.minPrice);
         if (params.make) navParams.make = params.make;
         if (params.sortBy) navParams.sortBy = params.sortBy;
-        (navigationRef as any).navigate('Main', {
-          screen: 'Tabs',
-          params: { screen: 'Search', params: navParams },
-        });
+        navigationRef.dispatch(CommonActions.navigate({ name: 'Search', params: navParams }));
       } catch { /* nav not ready */ }
     }, 220);
   };
