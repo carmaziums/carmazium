@@ -231,13 +231,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
       );
       if (res?.success && res.data?.id) {
         haptics.success();
-        navigation?.navigate('Chat', {
-          threadId: res.data.id,
-          otherUserId: participantId,
-          listingTitle: offer.listing?.title ?? 'Your offer',
-          listingImage: offer.listing?.images?.[0],
-          listingPrice: offer.amount,
-        });
+        navigation?.navigate('ChatScreen', { threadId: res.data.id });
       }
     } catch (err: any) {
       Alert.alert('Could not open chat', err?.message ?? 'Please try again.');

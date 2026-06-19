@@ -47,7 +47,7 @@ const FieldLabel: React.FC<{ label: string }> = ({ label }) => (
 export const SettingsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
-  const { user, refreshUser } = useAuthStore();
+  const { user } = useAuthStore();
 
   // ── Profile state ──────────────────────────────────────────────
   const [profileEmail] = useState(user?.email ?? '');
@@ -97,7 +97,6 @@ export const SettingsScreen: React.FC = () => {
         method: 'PATCH',
         body: JSON.stringify({ phone: profilePhone }),
       });
-      await (refreshUser as any)?.();
       Alert.alert('Saved', 'Profile updated successfully.');
     } catch (err: any) {
       Alert.alert('Error', err?.message ?? 'Could not update profile.');

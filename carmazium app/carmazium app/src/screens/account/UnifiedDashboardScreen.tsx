@@ -275,9 +275,9 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
             label="Settings"
             icon="settings-outline"
             accentColor="#6B7280"
-            sublabel="Profile, verification & preferences"
+            sublabel="Profile, password, payouts & bank details"
             wide
-            onPress={() => nav('AccountProfile')}
+            onPress={() => nav('Settings')}
           />
 
         </View>

@@ -15,6 +15,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { apiClient } from '../../lib/apiClient';
+import { getAccessToken } from '../../lib/supabase';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -106,10 +107,17 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
   const handleExport = async () => {
     setExporting(true);
     try {
-      const res = await apiClient<string>('/listings/earnings/export', {
-        headers: { Accept: 'text/csv' },
+      // Use raw fetch — apiClient calls response.json() which fails on CSV text
+      const token = await getAccessToken();
+      const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev';
+      const response = await fetch(`${API_URL}/listings/earnings/export`, {
+        headers: {
+          Accept: 'text/csv',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
       });
-      const csvContent = typeof res === 'string' ? res : JSON.stringify(res);
+      if (!response.ok) throw new Error(`Server error ${response.status}`);
+      const csvContent = await response.text();
       const fileName = `carmazium-earnings-${new Date().toISOString().split('T')[0]}.csv`;
       const filePath = `${FileSystem.documentDirectory}${fileName}`;
       await FileSystem.writeAsStringAsync(filePath, csvContent, {
