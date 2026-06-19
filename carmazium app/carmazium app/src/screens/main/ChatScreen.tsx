@@ -158,11 +158,16 @@ export const ChatScreen: React.FC = () => {
     const unsubscribe = onNewMessage((message) => {
       if (message.chatRoomId === threadId) {
         setMessages((prev) => {
+          // Skip exact duplicate IDs
           if (prev.some((m) => m.id === message.id)) return prev;
-          return [...prev, message];
+          // Remove optimistic placeholder for our own messages (matched by content+sender)
+          const withoutOptimistic = prev.filter(
+            (m) => !(m.id.startsWith('opt-') && m.senderId === message.senderId && m.content === message.content)
+          );
+          return [...withoutOptimistic, message];
         });
         markAsRead(threadId);
-        markMessagesAsRead(threadId).catch((err) => console.warn('Failed to mark read:', err));
+        markMessagesAsRead(threadId).catch(() => {});
       }
     });
     return unsubscribe;
@@ -247,13 +252,30 @@ export const ChatScreen: React.FC = () => {
     const textToSend = inputVal.trim();
     setInputVal('');
 
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     stopTyping(threadId);
 
-    // Send using live socket.io connection
+    // Optimistically show the sent message immediately so the user sees it
+    // without waiting for socket confirmation.
+    const optimisticId = `opt-${Date.now()}`;
+    const optimisticMsg = {
+      id: optimisticId,
+      chatRoomId: threadId,
+      senderId: user?.id ?? '',
+      content: textToSend,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isRead: false,
+      sender: { id: user?.id ?? '', firstName: user?.firstName ?? null, lastName: user?.lastName ?? null, profileImage: user?.profileImage ?? null },
+    } as ChatMessage;
+    setMessages((prev) => [...prev, optimisticMsg]);
+
+    // Send via socket; onNewMessage will replace the optimistic entry when
+    // the server echoes it back (matched by content + sender).
     emitSendMessage(threadId, textToSend);
+
+    // Refresh rooms list so MessagesScreen shows the latest message preview.
+    refreshRooms().catch(() => {});
   };
 
   const handleTextChange = (text: string) => {

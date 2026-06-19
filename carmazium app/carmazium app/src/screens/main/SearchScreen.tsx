@@ -79,16 +79,16 @@ export const SearchScreen: React.FC = () => {
   // ── Search state ──
   const [query, setQuery] = useState('');
   const [quickFilter, setQuickFilter] = useState<string>(
-    route.params?.bodyType ? 'custom' : 'all'
+    (route.params?.bodyType || route.params?.fuelType || route.params?.maxPrice) ? 'custom' : 'all'
   );
-  const [sortId, setSortId] = useState('newest');
+  const [sortId, setSortId] = useState(route.params?.sortBy ?? 'newest');
   const [showSortMenu, setShowSortMenu] = useState(false);
 
   // ── Filter modal state ──
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedMakes, setSelectedMakes] = useState<string[]>([]);
   const [minPrice, setMinPrice] = useState(0);
-  const [maxPrice, setMaxPrice] = useState(150000);
+  const [maxPrice, setMaxPrice] = useState(route.params?.maxPrice ? Number(route.params.maxPrice) : 150000);
   const [selectedBody, setSelectedBody] = useState<string>(route.params?.bodyType ?? '');
   const [selectedFuels, setSelectedFuels] = useState<string[]>(
     route.params?.fuelType ? [route.params.fuelType] : []
@@ -110,6 +110,29 @@ export const SearchScreen: React.FC = () => {
 
   const debounceRef = useRef<any>(null);
 
+  // When navigating to this screen from Home with params (e.g. pill chips), apply
+  // new filters even if the tab was already mounted. The _t timestamp ensures this
+  // fires on repeated taps of the same pill.
+  useEffect(() => {
+    const p = route.params as any;
+    if (!p?._t) return;
+    let hasNew = false;
+    if (p.fuelType !== undefined) { setSelectedFuels([p.fuelType]); hasNew = true; }
+    if (p.bodyType !== undefined) { setSelectedBody(p.bodyType); hasNew = true; }
+    if (p.maxPrice != null) { setMaxPrice(Number(p.maxPrice)); hasNew = true; }
+    if (p.sortBy !== undefined) { setSortId(p.sortBy); hasNew = true; }
+    if (hasNew) {
+      setQuickFilter('custom');
+      setQuery('');
+      setSelectedMakes([]);
+      setMinPrice(0);
+      setMinYear('Any');
+      setMaxMiles('Any');
+      setTransmission('');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [(route.params as any)?._t]);
+
   // ── Build API params ──
 
   function buildParams(p = 1) {
@@ -129,7 +152,7 @@ export const SearchScreen: React.FC = () => {
       maxMileage: parseMi(maxMiles),
       sortBy: sortId,
       page: p,
-      limit: 15,
+      limit: 20,
     };
   }
 
@@ -148,7 +171,7 @@ export const SearchScreen: React.FC = () => {
         setPage(prev => prev + 1);
         setTotal(t);
       }
-      setHasMore(items.length === 15);
+      setHasMore(items.length === 20);
     } catch {
       // keep existing
     } finally {
@@ -555,17 +578,17 @@ const s = StyleSheet.create({
   headerTitle: { fontFamily: FontFamily.extraBold, fontSize: 22, color: '#FFFFFF' },
   iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' },
 
-  searchWrap: { paddingHorizontal: 24, marginBottom: 16 },
+  searchWrap: { paddingHorizontal: 24, marginBottom: 10 },
   searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#111115', borderRadius: 14, borderWidth: 1, borderColor: '#2A2A32', paddingHorizontal: 16, height: 52, gap: 10 },
   searchInput: { flex: 1, fontFamily: FontFamily.regular, fontSize: 15, color: '#FFFFFF' },
 
-  quickRow: { paddingHorizontal: 24, gap: 10, paddingBottom: 16, flexDirection: 'row', alignItems: 'center' },
-  quickChip: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 20, backgroundColor: '#111115', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  quickRow: { paddingHorizontal: 24, gap: 10, paddingBottom: 4, paddingTop: 4, flexDirection: 'row', alignItems: 'center' },
+  quickChip: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
   quickChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
-  quickChipText: { fontFamily: FontFamily.bold, fontSize: 12, color: '#A0A0AB' },
+  quickChipText: { fontFamily: FontFamily.bold, fontSize: 12, color: '#CCCCCC' },
   quickChipTextActive: { color: '#FFFFFF' },
 
-  sortRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, marginBottom: 16, position: 'relative', zIndex: 10 },
+  sortRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, marginBottom: 10, marginTop: 10, position: 'relative', zIndex: 10 },
   resultsCount: { fontFamily: FontFamily.bold, fontSize: 10, color: '#606070', letterSpacing: 1 },
   sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: '#111115', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
   sortBtnText: { fontFamily: FontFamily.bold, fontSize: 11, color: '#A0A0AB' },

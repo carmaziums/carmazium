@@ -134,13 +134,13 @@ const Chip: React.FC<{
       small && st.chipSmall,
       active
         ? { backgroundColor: accentColor + '22', borderColor: accentColor }
-        : { backgroundColor: C.glassChip, borderColor: C.border },
+        : { backgroundColor: 'rgba(255,255,255,0.07)', borderColor: 'rgba(255,255,255,0.18)' },
     ]}
   >
     <Text style={[
       st.chipText,
       small && st.chipTextSmall,
-      { color: active ? accentColor : C.grey2 },
+      { color: active ? accentColor : '#CCCCCC' },
     ]}>
       {label}
     </Text>

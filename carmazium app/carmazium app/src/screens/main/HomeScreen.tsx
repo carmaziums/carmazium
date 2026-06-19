@@ -239,14 +239,14 @@ const EmptyState: React.FC<{ icon: string; text: string }> = ({ icon, text }) =>
 // ─── Body type chips ──────────────────────────────────────────────────────────
 
 const BODY_TYPES = [
-  { label: 'SUV', emoji: '🚙', bodyType: 'SUV' },
-  { label: 'Saloon', emoji: '🚗', bodyType: 'SALOON' },
-  { label: 'Hatchback', emoji: '🚘', bodyType: 'HATCHBACK' },
-  { label: 'Estate', emoji: '🚐', bodyType: 'ESTATE' },
-  { label: 'Coupé', emoji: '🏎️', bodyType: 'COUPE' },
-  { label: 'Convertible', emoji: '🚗', bodyType: 'CONVERTIBLE' },
-  { label: 'Van', emoji: '🚌', bodyType: 'VAN' },
-  { label: 'Pickup', emoji: '🛻', bodyType: 'PICKUP' },
+  { label: 'SUV', icon: 'car-outline', color: '#3B82F6', bodyType: 'SUV' },
+  { label: 'Saloon', icon: 'car-outline', color: '#10B981', bodyType: 'SALOON' },
+  { label: 'Hatchback', icon: 'car-outline', color: '#A855F7', bodyType: 'HATCHBACK' },
+  { label: 'Estate', icon: 'car-outline', color: '#F59E0B', bodyType: 'ESTATE' },
+  { label: 'Coupé', icon: 'car-sports', color: Colors.accent, bodyType: 'COUPE' },
+  { label: 'Convertible', icon: 'car-sports', color: '#EC4899', bodyType: 'CONVERTIBLE' },
+  { label: 'Van', icon: 'car-outline', color: '#6366F1', bodyType: 'VAN' },
+  { label: 'Pickup', icon: 'car-outline', color: '#14B8A6', bodyType: 'PICKUP' },
 ];
 
 // ─── Home Screen ──────────────────────────────────────────────────────────────
@@ -377,16 +377,19 @@ export const HomeScreen: React.FC = () => {
           contentContainerStyle={s.quickChipsRow}
         >
           {[
-            { label: 'Live Auctions', icon: 'hammer-outline', color: Colors.accent, screen: 'Live' },
-            { label: 'Under £15k', icon: 'pricetag-outline', color: '#10B981', screen: 'Search', params: { maxPrice: '15000' } },
-            { label: 'Electric', icon: 'flash-outline', color: '#F59E0B', screen: 'Search', params: { fuelType: 'Electric' } },
-            { label: 'SUV', icon: 'car-sharp', color: '#3B82F6', screen: 'Search', params: { bodyType: 'SUV' } },
-            { label: 'New Today', icon: 'time-outline', color: '#A855F7', screen: 'Search', params: { sortBy: 'newest' } },
+            { label: 'Live Auctions', icon: 'hammer-outline', color: Colors.accent, screen: 'Live', params: undefined },
+            { label: 'Under £15k', icon: 'pricetag-outline', color: '#10B981', screen: 'Search', params: { maxPrice: 15000, _t: 0 } },
+            { label: 'Electric', icon: 'flash-outline', color: '#F59E0B', screen: 'Search', params: { fuelType: 'Electric', _t: 0 } },
+            { label: 'SUV', icon: 'car-sharp', color: '#3B82F6', screen: 'Search', params: { bodyType: 'SUV', _t: 0 } },
+            { label: 'New Today', icon: 'time-outline', color: '#A855F7', screen: 'Search', params: { sortBy: 'newest', _t: 0 } },
           ].map((chip) => (
             <TouchableOpacity
               key={chip.label}
               style={[s.quickChip, { borderColor: `${chip.color}40`, backgroundColor: `${chip.color}0D` }]}
-              onPress={() => navigation.navigate(chip.screen as any, (chip as any).params)}
+              onPress={() => {
+                const params = chip.params ? { ...chip.params, _t: Date.now() } : undefined;
+                navigation.navigate(chip.screen as any, params as any);
+              }}
               activeOpacity={0.7}
             >
               <Ionicons name={chip.icon as any} size={13} color={chip.color} />
@@ -487,10 +490,12 @@ export const HomeScreen: React.FC = () => {
               <TouchableOpacity
                 key={bt.bodyType}
                 style={s.bodyTypeCard}
-                onPress={() => navigation.navigate('Search' as any, { bodyType: bt.bodyType })}
+                onPress={() => navigation.navigate('Search' as any, { bodyType: bt.bodyType, _t: Date.now() })}
                 activeOpacity={0.8}
               >
-                <Text style={s.bodyTypeEmoji}>{bt.emoji}</Text>
+                <View style={[s.bodyTypeIconWrap, { backgroundColor: `${bt.color}18` }]}>
+                  <Ionicons name={bt.icon as any} size={22} color={bt.color} />
+                </View>
                 <Text style={s.bodyTypeLabel}>{bt.label}</Text>
               </TouchableOpacity>
             ))}
@@ -631,8 +636,8 @@ const s = StyleSheet.create({
   heartBtn: { position: 'absolute', top: 10, right: 10, width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(0,0,0,0.4)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
 
   // Body type
-  bodyTypeCard: { width: 72, height: 72, backgroundColor: '#111115', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 14, alignItems: 'center', justifyContent: 'center', gap: 4 },
-  bodyTypeEmoji: { fontSize: 22 },
+  bodyTypeCard: { width: 80, backgroundColor: '#111115', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 14, alignItems: 'center', paddingVertical: 14, gap: 8 },
+  bodyTypeIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   bodyTypeLabel: { fontFamily: FontFamily.bold, fontSize: 10, color: '#FFFFFF' },
 
   // Recent grid

@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Linking from 'expo-linking';
-import { Ionicons, GoogleIcon } from '@/components/BrandIcon';
+import { Ionicons, GoogleIcon, AppleIcon } from '@/components/BrandIcon';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
 import { useAuthStore } from '../../store/authStore';
@@ -234,7 +234,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 activeOpacity={0.8}
                 onPress={() => Alert.alert('Coming Soon', 'Apple sign-in will be available in an upcoming update.')}
               >
-                <Ionicons name="logo-apple" size={18} color="#FFFFFF" />
+                <AppleIcon size={18} color="#FFFFFF" />
                 <Text style={styles.socialBtnText}>APPLE</Text>
               </TouchableOpacity>
             </View>

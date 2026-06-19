@@ -11,11 +11,18 @@ import { useAuthStore } from '../store/authStore';
 import { sendAiChatMessage, AiChatMessage } from '../lib/aiApi';
 import { navigationRef } from '../lib/navigationRef';
 
-const QUICK_PROMPTS = [
-  { label: 'Find cars under £15k', icon: 'pricetag-outline' },
-  { label: 'Best electric cars?', icon: 'flash-outline' },
-  { label: 'How does bidding work?', icon: 'hammer-outline' },
-  { label: 'Help me sell my car', icon: 'car-outline' },
+interface QuickPrompt {
+  label: string;
+  icon: string;
+  navigateTo?: 'Search' | 'Live' | 'SellCarFlow';
+  navParams?: Record<string, any>;
+}
+
+const QUICK_PROMPTS: QuickPrompt[] = [
+  { label: 'Find cars under £15k', icon: 'pricetag-outline', navigateTo: 'Search', navParams: { maxPrice: 15000, _t: 0 } },
+  { label: 'Best electric cars?', icon: 'flash-outline', navigateTo: 'Search', navParams: { fuelType: 'Electric', _t: 0 } },
+  { label: 'How does bidding work?', icon: 'hammer-outline', navigateTo: 'Live' },
+  { label: 'Help me sell my car', icon: 'car-outline', navigateTo: 'SellCarFlow' },
 ];
 
 export const GlobalAIChatBot: React.FC = () => {
@@ -98,8 +105,35 @@ export const GlobalAIChatBot: React.FC = () => {
     }
   };
 
-  // Chat box height + margin above the tab-bar/button region
-  const chatBottom = (insets.bottom || 16) + 82;
+  // Navigate helper — usable from non-screen component via module-level ref
+  const navigateFromChat = (prompt: QuickPrompt) => {
+    if (!prompt.navigateTo) return;
+    setIsOpen(false);
+    setTimeout(() => {
+      try {
+        if (prompt.navigateTo === 'SellCarFlow') {
+          (navigationRef as any).navigate('Main', { screen: 'SellCarFlow' });
+        } else if (prompt.navigateTo === 'Live') {
+          (navigationRef as any).navigate('Main', {
+            screen: 'Tabs',
+            params: { screen: 'Live' },
+          });
+        } else {
+          (navigationRef as any).navigate('Main', {
+            screen: 'Tabs',
+            params: {
+              screen: 'Search',
+              params: prompt.navParams ? { ...prompt.navParams, _t: Date.now() } : undefined,
+            },
+          });
+        }
+      } catch { /* navigation not ready */ }
+    }, 220);
+  };
+
+  // Chat box sits above the floating button: button is at (insets.bottom + 70),
+  // button height is 64px — so chat box bottom must clear that plus a gap.
+  const chatBottom = (insets.bottom || 16) + 145;
 
   return (
     <>
@@ -167,7 +201,10 @@ export const GlobalAIChatBot: React.FC = () => {
                       <TouchableOpacity
                         key={p.label}
                         style={styles.quickPromptChip}
-                        onPress={() => sendMessage(p.label)}
+                        onPress={() => {
+                          sendMessage(p.label);
+                          navigateFromChat(p);
+                        }}
                         activeOpacity={0.75}
                       >
                         <Ionicons name={p.icon as any} size={11} color="#DC1F26" />

@@ -220,6 +220,22 @@ export const LiveScreen: React.FC = () => {
           <HamburgerButton />
         </View>
 
+        {/* ─── Auction your car CTA ───────────────────────────────── */}
+        <TouchableOpacity
+          style={styles.auctionCtaBanner}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('SellCarFlow' as any)}
+        >
+          <View style={styles.auctionCtaLeft}>
+            <MaterialCommunityIcons name="gavel" size={18} color="#F59E0B" />
+            <View>
+              <Text style={styles.auctionCtaTitle}>Auction your car</Text>
+              <Text style={styles.auctionCtaSub}>List it now — bidding starts today</Text>
+            </View>
+          </View>
+          <Ionicons name="arrow-forward" size={16} color="#F59E0B" />
+        </TouchableOpacity>
+
         {/* ─── Live Alert Banner ──────────────────────────────────── */}
         <View style={styles.alertBanner}>
           <View style={styles.alertDot} />
@@ -521,6 +537,38 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+
+  // ─── Auction CTA Banner ─────────────────────────────────────────
+  auctionCtaBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(245,158,11,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.25)',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 14,
+    gap: 10,
+  },
+  auctionCtaLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  auctionCtaTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: 14,
+    color: '#F59E0B',
+  },
+  auctionCtaSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: 11,
+    color: '#A0A0AB',
+    marginTop: 2,
   },
 
   // ─── Alert Banner ───────────────────────────────────────────────

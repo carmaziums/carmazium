@@ -49,7 +49,7 @@ const TAB_CONFIG: {
   { name: 'Search', icon: 'search-outline', iconActive: 'search', label: 'SEARCH', iconType: 'ionicons' },
   { name: 'Live', icon: 'gavel', iconActive: 'gavel', label: 'LIVE', iconType: 'material-community' },
   { name: 'Saved', icon: 'heart-outline', iconActive: 'heart', label: 'SAVED', iconType: 'ionicons' },
-  { name: 'Profile', icon: 'person-outline', iconActive: 'person', label: 'PROFILE', iconType: 'ionicons' },
+  { name: 'Profile', icon: 'grid-outline', iconActive: 'grid', label: 'DASHBOARD', iconType: 'ionicons' },
 ];
 
 // ─── Animated tab icon: spring-scales (1.0 → 1.2 → 1.0) on focus ─────────────
