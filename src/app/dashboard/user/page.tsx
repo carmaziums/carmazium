@@ -473,7 +473,8 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const fetchListings = React.useCallback(async () => {
         try {
             setLoading(true)
-            const data = await getMyListings({ page, limit: 10 })
+            // Phase 10: includeSold=true so SOLD listings appear in history and contribute to analytics
+            const data = await getMyListings({ page, limit: 10, includeSold: true })
             setListings(data.data || [])
             setTotalPages(data.pagination?.totalPages || 1)
         } catch (err) {
@@ -531,6 +532,25 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
             alert('Boost failed: ' + err.message)
         } finally {
             setBoosting(null)
+        }
+    }
+
+    const handleRelist = async (listingId: string) => {
+        try {
+            const res = await fetch(`/api/listings/${listingId}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'ACTIVE' }),
+            })
+            if (res.ok) {
+                fetchListings()
+                onRefreshStats()
+            } else {
+                const err = await res.json().catch(() => ({}))
+                alert('Failed to relist: ' + (err.message || res.statusText))
+            }
+        } catch (err: any) {
+            alert('Failed to relist: ' + err.message)
         }
     }
 
@@ -668,14 +688,22 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                             </Link>
                                                         )}
                                                         {listing.status !== 'SOLD' && (
-                                                            <button 
+                                                            <button
                                                                 onClick={() => setSaleListing(listing)}
                                                                 className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-emerald-500/10 text-emerald-400 w-full text-left"
                                                             >
                                                                 <CheckCircle2 size={14} /> Mark Sold
                                                             </button>
                                                         )}
-                                                        <button 
+                                                        {listing.status === 'SOLD' && (
+                                                            <button
+                                                                onClick={() => handleRelist(listing.id)}
+                                                                className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-blue-500/10 text-blue-400 w-full text-left font-bold"
+                                                            >
+                                                                <RefreshCw size={14} /> Relist
+                                                            </button>
+                                                        )}
+                                                        <button
                                                             onClick={() => handleDelete(listing.id)}
                                                             className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-red-500/10 text-red-400 w-full text-left"
                                                             disabled={deleting === listing.id}
