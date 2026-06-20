@@ -274,7 +274,7 @@ Plans:
 **Goal:** Ship 4 targeted web-platform fixes: owners dropdown (5 options + departed sale deceased estate), photo minimum 10/max 100 with encouragement UX, counter-offer 5-per-side limit with lock state and 48h expiry, and sold car archiving — SOLD badge in inventory and search, Relist action, SOLD overlay on detail page.
 **Requirements**: OWNERS-01, OWNERS-02, OWNERS-03, OWNERS-04, OWNERS-05, PHOTO-01, PHOTO-02, PHOTO-03, PHOTO-04, PHOTO-05, PHOTO-06, COUNTER-01, COUNTER-02, COUNTER-03, COUNTER-04, COUNTER-05, COUNTER-06, COUNTER-07, COUNTER-08, COUNTER-09, SOLD-01, SOLD-02, SOLD-03, SOLD-04, SOLD-05, SOLD-06, SOLD-07
 **Depends on:** Phase 9
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 
 Plans:
 - [ ] 10-01-PLAN.md — Wave 1: DB migration + backend guards (photo min, counter limits, expiry, departed sale fields)

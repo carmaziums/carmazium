@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 10 Plan 01 complete — schema + service logic for counter tracking, photo min, buyer re-counter
-last_updated: "2026-06-20T18:58:10.888Z"
-last_activity: 2026-06-20 — 09-mobile-production-parity Plan 4 complete (handover proof upload in SellerAuctionsScreen, cold-start notification deep-linking all 10 types in App.tsx)
+status: executing
+stopped_at: Phase 10 Plan 02 complete — owners dropdown, deceased estate, photo minimum enforcement
+last_updated: "2026-06-20T19:07:01.508Z"
+last_activity: 2026-06-20 — Phase 10 Plan 01 complete (Prisma schema migration, DTO updates, photo min guard, counter tracking, buyer re-counter, expiry check, limit notifications)
 progress:
   total_phases: 17
   completed_phases: 2
   total_plans: 18
-  completed_plans: 14
-  percent: 83
+  completed_plans: 16
+  percent: 88
 ---
 
 # State: Carmazium Mobile App
@@ -19,11 +19,11 @@ progress:
 ## Current Position
 
 Phase: 10-web-platform-quick-fixes (Web Platform Quick Fixes)
-Plan: 1 of 4 complete
+Plan: 2 of 4 complete
 Status: In Progress
-Last activity: 2026-06-20 — Phase 10 Plan 01 complete (Prisma schema migration, DTO updates, photo min guard, counter tracking, buyer re-counter, expiry check, limit notifications)
+Last activity: 2026-06-21 — Phase 10 Plan 02 complete (owners dropdown 5 options, deceased estate checkbox, photo minimum 10 enforcement, progress bar, Deceased Estate badge on detail page)
 
-Progress: [████████░░] 83%
+Progress: [█████████░] 88%
 
 ## Project Reference
 
@@ -189,8 +189,17 @@ AuctionDetailScreen.tsx quickBidBtnText style key fixed in Plan 03.
 - HorizontalVehicleCard.tsx: imageContainer hardcoded #18181E replaced with Colors.bgTertiary token; priceText → FontFamily.mono
 - SellerAuctionsScreen.tsx + SellerListingsScreen.tsx: ActivityIndicator replaced with Skeleton rows + shared EmptyState component
 
+### Phase 10 Plan 02 — Complete
+
+- ListingWizard.tsx: 3-button owners replaced with 5-option row (1/2/3/4/5+); owners added to step 1 baseValid (required)
+- isDepartedSale checkbox + departedRelationship text input added below owners; both in POST payload
+- Step 2 isStepValid: `editId ? images.length > 0 : images.length >= 10`; photo counter + amber/green progress bar in wizard
+- ImageUpload.tsx default maxImages raised from 30 to 100
+- buy-cars/[slug]/page.tsx: Deceased Estate badge (purple) in badges row; owners count row in Overview specs table
+- listingApi.ts: CreateListingRequest + Listing extended with isDepartedSale + departedRelationship fields
+
 ## Session Continuity
 
-Last session: 2026-06-20T18:58:10.862Z
-Stopped at: Phase 10 Plan 01 complete — schema + service logic for counter tracking, photo min, buyer re-counter
+Last session: 2026-06-21T00:00:00.000Z
+Stopped at: Phase 10 Plan 02 complete — owners dropdown, deceased estate, photo minimum enforcement
 Resume file: None
