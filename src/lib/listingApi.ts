@@ -853,6 +853,10 @@ export interface LatestOffer {
     buyerId: string
     counterAmount: string | number | null
     createdAt: string
+    counterAttemptsBuyer?: number
+    counterAttemptsSeller?: number
+    counterExpiresAt?: string | null
+    lastCounteredBy?: 'BUYER' | 'SELLER' | null
 }
 
 export interface Offer extends LatestOffer {

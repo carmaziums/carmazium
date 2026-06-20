@@ -913,6 +913,27 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// COUNTDOWN TIMER HELPER
+// ─────────────────────────────────────────────────────────────────────────────
+
+function CountdownTimer({ expiresAt }: { expiresAt: Date }) {
+    const [timeLeft, setTimeLeft] = React.useState('')
+    React.useEffect(() => {
+        function update() {
+            const diff = expiresAt.getTime() - Date.now()
+            if (diff <= 0) { setTimeLeft('Expired'); return }
+            const h = Math.floor(diff / 3600000)
+            const m = Math.floor((diff % 3600000) / 60000)
+            setTimeLeft(`${h}h ${m}m remaining`)
+        }
+        update()
+        const id = setInterval(update, 60000)
+        return () => clearInterval(id)
+    }, [expiresAt])
+    return <p className="text-white/40 text-xs">{timeLeft}</p>
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // BIDS TAB (Outgoing)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -934,6 +955,8 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const [accepting, setAccepting] = React.useState<string | null>(null)
     const [declining, setDeclining] = React.useState<string | null>(null)
     const [startingChat, setStartingChat] = React.useState<string | null>(null)
+    const [counterAmounts, setCounterAmounts] = React.useState<Record<string, string>>({})
+    const [buyerCountering, setBuyerCountering] = React.useState<string | null>(null)
     const router = useRouter()
     const { refreshRooms } = useChat()
 
@@ -1013,6 +1036,25 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
         }
     }
 
+    const handleBuyerCounter = async (offerId: string, amount: number) => {
+        if (!amount || amount <= 0) return
+        try {
+            setBuyerCountering(offerId)
+            await fetch(`/api/offers/${offerId}/respond-counter`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'COUNTERED', counterAmount: amount }),
+            })
+            setCounterAmounts(prev => { const next = { ...prev }; delete next[offerId]; return next })
+            await fetchData()
+            onRefreshStats()
+        } catch (err: any) {
+            alert(err.message || 'Failed to submit counter offer.')
+        } finally {
+            setBuyerCountering(null)
+        }
+    }
+
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <h2 className="text-2xl font-black font-heading uppercase tracking-tight">My Offers</h2>
@@ -1041,6 +1083,10 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                 ) : (
                                     offers.map(offer => {
                                         const thumb = offer.listing?.images?.[0] || '/assets/images/featured-sports.png'
+                                        const buyerRemaining = 5 - (offer.counterAttemptsBuyer ?? 0)
+                                        const isBuyerLocked = (offer.counterAttemptsBuyer ?? 0) >= 5
+                                        const expiresAt = offer.counterExpiresAt ? new Date(offer.counterExpiresAt) : null
+                                        const isBuyerTurn = offer.status === 'COUNTERED' && offer.lastCounteredBy === 'SELLER'
                                         return (
                                         <tr key={offer.id} className="hover:bg-white/[0.02]">
                                             <td className="px-6 py-4">
@@ -1067,35 +1113,76 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex flex-wrap items-center justify-end gap-2">
                                                     {offer.status === 'COUNTERED' && (
-                                                        <>
-                                                            <Button
-                                                                size="sm"
-                                                                variant="ghost"
-                                                                className="h-8 text-emerald-400 text-[10px] font-black"
-                                                                onClick={() => handleAcceptCounter(offer.id)}
-                                                                disabled={accepting === offer.id || declining === offer.id}
-                                                            >
-                                                                {accepting === offer.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'ACCEPT COUNTER'}
-                                                            </Button>
-                                                            <Button
-                                                                size="sm"
-                                                                variant="ghost"
-                                                                className="h-8 text-red-400 text-[10px] font-black"
-                                                                onClick={() => handleDeclineCounter(offer.id)}
-                                                                disabled={accepting === offer.id || declining === offer.id}
-                                                            >
-                                                                {declining === offer.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'DECLINE'}
-                                                            </Button>
-                                                            <Button
-                                                                size="sm"
-                                                                variant="ghost"
-                                                                className="h-8 text-blue-400 text-[10px] font-black"
-                                                                onClick={() => handleMessageSeller(offer.listing?.sellerId, offer.listing?.id)}
-                                                                disabled={startingChat === offer.listing?.id}
-                                                            >
-                                                                {startingChat === offer.listing?.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'MESSAGE'}
-                                                            </Button>
-                                                        </>
+                                                        <div className="flex flex-col items-end gap-2 w-full">
+                                                            {/* Remaining counter count */}
+                                                            {isBuyerTurn && !isBuyerLocked && (
+                                                                <p className="text-xs text-white/50">
+                                                                    {buyerRemaining} counter-offer{buyerRemaining !== 1 ? 's' : ''} remaining
+                                                                </p>
+                                                            )}
+
+                                                            {/* Locked state banner */}
+                                                            {isBuyerLocked && (
+                                                                <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-left w-full">
+                                                                    <p className="text-amber-300 text-sm font-medium mb-1">
+                                                                        Counter limit reached — awaiting seller&apos;s final decision.
+                                                                    </p>
+                                                                    {expiresAt && <CountdownTimer expiresAt={expiresAt} />}
+                                                                </div>
+                                                            )}
+
+                                                            {/* Buyer counter input (when it is buyer turn and not locked) */}
+                                                            {isBuyerTurn && !isBuyerLocked && (
+                                                                <div className="flex gap-2 w-full justify-end">
+                                                                    <input
+                                                                        type="number"
+                                                                        placeholder="Your counter (£)"
+                                                                        value={counterAmounts[offer.id] ?? ''}
+                                                                        onChange={(e) => setCounterAmounts(prev => ({ ...prev, [offer.id]: e.target.value }))}
+                                                                        className="w-36 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm"
+                                                                    />
+                                                                    <Button
+                                                                        size="sm"
+                                                                        className="h-8 bg-blue-600 hover:bg-blue-500 text-[10px] font-black"
+                                                                        onClick={() => handleBuyerCounter(offer.id, parseFloat(counterAmounts[offer.id] ?? '0'))}
+                                                                        disabled={buyerCountering === offer.id || !counterAmounts[offer.id]}
+                                                                    >
+                                                                        {buyerCountering === offer.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'COUNTER'}
+                                                                    </Button>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Standard Accept/Decline actions */}
+                                                            <div className="flex gap-2">
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    className="h-8 text-emerald-400 text-[10px] font-black"
+                                                                    onClick={() => handleAcceptCounter(offer.id)}
+                                                                    disabled={accepting === offer.id || declining === offer.id}
+                                                                >
+                                                                    {accepting === offer.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'ACCEPT COUNTER'}
+                                                                </Button>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    className="h-8 text-red-400 text-[10px] font-black"
+                                                                    onClick={() => handleDeclineCounter(offer.id)}
+                                                                    disabled={accepting === offer.id || declining === offer.id}
+                                                                >
+                                                                    {declining === offer.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'DECLINE'}
+                                                                </Button>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    className="h-8 text-blue-400 text-[10px] font-black"
+                                                                    onClick={() => handleMessageSeller(offer.listing?.sellerId, offer.listing?.id)}
+                                                                    disabled={startingChat === offer.listing?.id}
+                                                                >
+                                                                    {startingChat === offer.listing?.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'MESSAGE'}
+                                                                </Button>
+                                                            </div>
+                                                        </div>
                                                     )}
                                                     {offer.status === 'PENDING' && (
                                                         <Button size="sm" variant="ghost" className="h-8 text-red-400 text-[10px] font-black" onClick={() => handleWithdraw(offer.id)} disabled={actioning === offer.id}>WITHDRAW</Button>
