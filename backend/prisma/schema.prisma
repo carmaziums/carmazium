@@ -627,6 +627,8 @@ model Listing {
   numberOfKeys             Int?      // Number of keys included
   serviceHistory           String?   // Full Main Dealer, Full Independent, Partial, None
   owners                   String?   // Number of previous keepers: "1", "2", "3+"
+  isDepartedSale           Boolean?
+  departedRelationship     String?
   torqueNm                 Int?      // Torque in Nm
   topSpeedMph              Int?      // Top speed in mph
   zeroTo60Mph              Float?    // 0-60 mph time in seconds
@@ -1026,6 +1028,11 @@ model Offer {
 
   /// Keep this for backwards compatibility if needed, or remove it later
   counterAmount Decimal?    @db.Decimal(12, 2)
+
+  counterAttemptsBuyer  Int       @default(0)
+  counterAttemptsSeller Int       @default(0)
+  counterExpiresAt      DateTime?
+  lastCounteredBy       String?   // 'BUYER' | 'SELLER'
 
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
