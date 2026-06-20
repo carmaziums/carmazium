@@ -490,7 +490,15 @@ export default function DealerInventoryPage() {
                                                                     )}
                                                                     {listing.status === 'SOLD' && (
                                                                         <button
-                                                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); publishListing(listing.id) }}
+                                                                            onClick={async (e) => {
+                                                                                e.preventDefault(); e.stopPropagation()
+                                                                                // Phase 10: relist via status PATCH (listing was already published)
+                                                                                const res = await apiClient(`/listings/${listing.id}/status`, {
+                                                                                    method: 'PATCH',
+                                                                                    body: JSON.stringify({ status: 'ACTIVE' })
+                                                                                }).catch(() => null)
+                                                                                if (res !== null) fetchListings(searchQuery)
+                                                                            }}
                                                                             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-blue-500/10 hover:text-blue-400 transition-colors w-full text-left"
                                                                         >
                                                                             <RefreshCcw size={14} /> Relist
