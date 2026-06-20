@@ -287,7 +287,7 @@ Plans:
 **Goal:** Buyers see category badges (body type, fuel type, auction indicator) above the listing title, a prominent dealer trust panel with KYC verification and active listing count in the sidebar, Save/Share/Compare CTAs in the sidebar and a mobile sticky action bar, and proximity distance on CarCards and the listing detail sidebar — with a client-side distance filter and postcode fallback on the search page.
 **Requirements**: CAT-01, CAT-02, CAT-03, SIDE-01, SIDE-02, SIDE-03, SIDE-04, TRUST-01, TRUST-02, TRUST-03, DIST-01, DIST-02, DIST-03, DIST-04, DIST-05
 **Depends on:** Phase 10
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [ ] 11-01-PLAN.md — Wave 1: vehicleLabels.ts + LocationContext.tsx + backend listingCount
