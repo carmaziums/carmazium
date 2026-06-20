@@ -8,21 +8,7 @@ import { useRef } from "react"
 import { Calendar, Gauge, Fuel, Car, BadgeCheck, ShieldCheck, Star, Sparkles, MapPin, Gavel } from "lucide-react"
 import { SellerBadge } from "@/components/ui/SellerBadge"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
-
-// ─── Label Mapping ───────────────────────────────────────────────────────────
-
-const BODY_TYPE_LABELS: Record<string, string> = {
-    SEDAN: 'Sedan', SUV: 'SUV', HATCHBACK: 'Hatchback', COUPE: 'Coupé',
-    CONVERTIBLE: 'Convertible', ESTATE: 'Estate', CROSSOVER: 'Crossover',
-    SPORTS_CAR: 'Sports Car', MINIVAN: 'Minivan', PICKUP_TRUCK: 'Pickup',
-    STATION_WAGON: 'Wagon', MPV: 'MPV', VAN: 'Van',
-}
-
-const FUEL_TYPE_LABELS: Record<string, string> = {
-    PETROL: 'Petrol', DIESEL: 'Diesel', ELECTRIC: 'Electric',
-    HYBRID: 'Hybrid', PLUGIN_HYBRID: 'Plug-in', LPG: 'LPG',
-    HYDROGEN_CELL: 'Hydrogen',
-}
+import { BODY_TYPE_LABELS, FUEL_TYPE_LABELS } from "@/lib/vehicleLabels"
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 
