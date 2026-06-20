@@ -14,6 +14,7 @@ import {
     IsBoolean,
     Length,
     Matches,
+    MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -393,6 +394,17 @@ export class CreateListingDto {
     @IsString()
     @IsOptional()
     owners?: string;
+
+    @ApiProperty({ description: 'Whether this is a departed/estate sale', required: false })
+    @IsOptional()
+    @IsBoolean()
+    isDepartedSale?: boolean;
+
+    @ApiProperty({ description: 'Relationship of the seller to the departed owner (e.g. "Son", "Executor")', required: false })
+    @IsOptional()
+    @IsString()
+    @MaxLength(200)
+    departedRelationship?: string;
 
     @ApiProperty({ description: 'Torque in Nm', example: 400, required: false })
     @Type(() => Number)
