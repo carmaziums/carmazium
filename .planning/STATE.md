@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 11-03-PLAN.md (distance filter on search, KYC badge on seller profile)
-last_updated: "2026-06-20T20:35:41.478Z"
+stopped_at: Phase 12 context gathered
+last_updated: "2026-06-20T21:02:40.738Z"
 last_activity: "2026-06-21 — Phase 11 Plan 03 complete (distance filter + KYC badge: search page LocationContext migration, 5-chip distance filter, postcode fallback, seller profile KYC badge + prominent listing count)"
 progress:
   total_phases: 17
@@ -206,6 +206,6 @@ AuctionDetailScreen.tsx quickBidBtnText style key fixed in Plan 03.
 
 ## Session Continuity
 
-Last session: 2026-06-20T20:30:26.061Z
-Stopped at: Completed 11-03-PLAN.md (distance filter on search, KYC badge on seller profile)
-Resume file: None
+Last session: 2026-06-20T21:02:40.731Z
+Stopped at: Phase 12 context gathered
+Resume file: .planning/phases/12-auction-enhancements-buy-it-now-instant-purchase-cancel-bid-fat-finger-window/12-CONTEXT.md
