@@ -9,7 +9,7 @@ import dynamic from "next/dynamic"
 const FinanceCalculator = dynamic(() => import("@/components/features/FinanceCalculator").then(mod => mod.FinanceCalculator), { ssr: false })
 const ThreeDVehicleViewer = dynamic(() => import("@/components/listing/ThreeDVehicleViewer").then(m => m.ThreeDVehicleViewer), { ssr: false })
 import { ThreeDErrorBoundary } from "@/components/listing/ThreeDErrorBoundary"
-import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale, Loader2, MessageCircle, Tag, X, Clock, ThumbsUp, XCircle, AlertTriangle, BadgeCheck, Star, Sparkles, Info, Phone, Globe } from "lucide-react"
+import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale, Loader2, MessageCircle, Tag, X, Clock, ThumbsUp, XCircle, AlertTriangle, BadgeCheck, Star, Sparkles, Info, Phone, Globe, Fuel, Gavel } from "lucide-react"
 import { getListingBySlug, makeOffer, getMyOfferForListing, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, getDamageRecords, type Listing, type LatestOffer, formatPrice } from "@/lib/listingApi"
 import { createChatRoom } from "@/lib/chatApi"
 import { useAuth } from "@/context/AuthContext"
@@ -19,6 +19,10 @@ import { Input } from "@/components/ui/Input"
 import { SellerBadge } from "@/components/ui/SellerBadge"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 import { HpiReportModal } from "@/components/hpi/HpiReportModal"
+import { BODY_TYPE_LABELS, FUEL_TYPE_LABELS } from '@/lib/vehicleLabels'
+import { useLocation } from '@/context/LocationContext'
+import { haversineDistanceMiles } from '@/lib/distance'
+import { useCompare } from '@/context/CompareContext'
 
 // ─── Offer Status Chip ───────────────────────────────────────────────────────
 // viewerRole: 'buyer' = the person who made the offer
@@ -234,12 +238,17 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
     const [damageRecords, setDamageRecords] = React.useState<any[]>([])
     const [selectedDamageZone, setSelectedDamageZone] = React.useState<string | null>(null)
 
+    const { location: userLoc } = useLocation()
+    const { addToCompare } = useCompare()
+    const distanceFromUser = React.useMemo(() => {
+        if (!userLoc.lat || !userLoc.lng || !listing?.latitude || !listing?.longitude) return null
+        return haversineDistanceMiles(userLoc.lat, userLoc.lng, listing.latitude, listing.longitude)
+    }, [userLoc, listing])
+
     // Auto-open offer modal if navigated with ?editOffer=true
     React.useEffect(() => {
         if (isEditMode) setShowOfferModal(true)
     }, [isEditMode])
-
-    // Removed useCompare since we pass context via query params
 
     React.useEffect(() => {
         async function fetchListing() {
@@ -339,9 +348,10 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
         }
     }
 
-    const handleCompare = () => {
+    const handleCompareAndNavigate = () => {
         if (!listing) return
-        router.push(`/compare?slug=${listing.slug}`)
+        addToCompare(listing)
+        router.push('/compare')
     }
 
     const handleEnquire = async () => {
@@ -485,6 +495,24 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                     </Link>
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                         <div>
+                            {/* Category badge eyebrow — above H1 */}
+                            <div className="flex flex-wrap items-center gap-2 mb-3">
+                                {listing.bodyType && BODY_TYPE_LABELS[listing.bodyType] && (
+                                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold rounded-full px-3 py-1 bg-slate-700 border border-white/10 text-gray-200">
+                                        <CarIcon size={11} /> {BODY_TYPE_LABELS[listing.bodyType]}
+                                    </span>
+                                )}
+                                {listing.fuelType && FUEL_TYPE_LABELS[listing.fuelType] && (
+                                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold rounded-full px-3 py-1 bg-slate-700 border border-white/10 text-gray-200">
+                                        <Fuel size={11} /> {FUEL_TYPE_LABELS[listing.fuelType]}
+                                    </span>
+                                )}
+                                {listing.type === 'AUCTION' && (
+                                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold rounded-full px-3 py-1 bg-amber-500/15 border border-amber-500/30 text-amber-400">
+                                        <Gavel size={11} /> Auction
+                                    </span>
+                                )}
+                            </div>
                             <h1 className="text-3xl md:text-5xl font-bold font-heading text-white mb-2">{vehicle.title}</h1>
                             <p className="text-gray-300 text-lg">{vehicle.subtitle}</p>
                             {/* Badges Row */}
@@ -562,7 +590,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                             <Button
                                 variant="outline"
                                 className="rounded-full border-gray-600 text-gray-400 hover:text-white hover:border-white"
-                                onClick={handleCompare}
+                                onClick={handleCompareAndNavigate}
                             >
                                 <Scale size={20} className="mr-2" /> Compare
                             </Button>
@@ -1022,7 +1050,22 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                         </div>
                                     </Link>
                                 )}
-                                
+
+                                {/* Trust panel */}
+                                <div className="mt-2 flex items-center gap-3 p-3 rounded-xl bg-emerald-500/8 border border-emerald-500/20">
+                                    <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center shrink-0">
+                                        <ShieldCheck size={15} className="text-emerald-400" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-emerald-400 leading-tight">Verified</p>
+                                        {listing.seller?.listingCount != null && (
+                                            <p className="text-[10px] text-gray-500 mt-0.5">
+                                                {listing.seller.listingCount} active listing{listing.seller.listingCount !== 1 ? 's' : ''}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+
                                 {/* Dealership Info */}
                                 {listing.seller?.role === 'DEALER' && listing.seller?.dealerProfile && (
                                     <div className="mb-6 space-y-2 text-sm text-gray-300">
@@ -1120,7 +1163,12 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                             {/* Location Display */}
                             <div className="bg-white/5 p-4 flex items-center justify-center gap-2 text-gray-400 text-xs">
                                 <MapPin size={14} />
-                                <span>{listing.location || 'Location not specified'}</span>
+                                <span>
+                                    {listing.location || 'Location not specified'}
+                                    {distanceFromUser != null && (
+                                        <> · <span className="text-primary font-semibold">{Math.round(distanceFromUser)} miles away</span></>
+                                    )}
+                                </span>
                             </div>
                         </div>
 
