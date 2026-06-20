@@ -273,6 +273,15 @@ export default async function SellerProfilePage({ params }: { params: Promise<{ 
                                     </div>
                                 )}
                             </div>
+
+                            {/* KYC Verified badge */}
+                            <div className="flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/8 px-4 py-3 mt-3 w-fit">
+                                <ShieldCheck size={20} className="text-emerald-400 shrink-0" />
+                                <div>
+                                    <p className="text-[10px] uppercase tracking-widest text-gray-500 leading-none">Identity</p>
+                                    <p className="text-sm font-bold text-emerald-400 mt-0.5">KYC Verified</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -283,6 +292,16 @@ export default async function SellerProfilePage({ params }: { params: Promise<{ 
 
                     {/* ── Left column: stats ── */}
                     <aside className="space-y-6">
+                        {totalListings > 0 && (
+                            <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+                                <Car size={20} className="text-primary shrink-0" />
+                                <div>
+                                    <p className="text-[10px] uppercase tracking-widest text-gray-500 leading-none">Active Listings</p>
+                                    <p className="text-2xl font-black text-white mt-0.5">{totalListings}</p>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="rounded-2xl border border-white/5 bg-white/2 p-6">
                             <h2 className="mb-5 text-xs font-bold uppercase tracking-widest text-gray-500">Seller Stats</h2>
                             <ul className="space-y-4">
