@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 09-mobile-production-parity-09-01-PLAN.md
-last_updated: "2026-06-20T00:38:08.031Z"
-last_activity: "2026-06-15 — mobile-app-parity Plan 6 complete (10 screens: Skeleton+EmptyState+accent RefreshControl+mono coverage closure)"
+stopped_at: Completed 09-mobile-production-parity-09-03-PLAN.md
+last_updated: "2026-06-20T00:45:00.863Z"
+last_activity: "2026-06-20 — 09-mobile-production-parity Plan 3 complete (KYC document capture, isVerified authStore all 3 auth paths, bid gate with Alert+navigate in AuctionDetailScreen)"
 progress:
   total_phases: 9
   completed_phases: 1
   total_plans: 14
-  completed_plans: 10
-  percent: 94
+  completed_plans: 12
+  percent: 85
 ---
 
 # State: Carmazium Mobile App
@@ -19,11 +19,11 @@ progress:
 ## Current Position
 
 Phase: 09-mobile-production-parity (Mobile Production Parity)
-Plan: 1 of 4 complete
+Plan: 3 of 4 complete
 Status: In Progress
-Last activity: 2026-06-20 — 09-mobile-production-parity Plan 1 complete (storageHelper.ts ArrayBuffer upload, sellWizardStore.ts AsyncStorage persist, DVLA auto-submit, per-image progress bars, POST /listings + POST /auctions wired)
+Last activity: 2026-06-20 — 09-mobile-production-parity Plan 3 complete (KYC document capture, isVerified authStore all 3 auth paths, bid gate with Alert+navigate in AuctionDetailScreen)
 
-Progress: [████████░░] 80%
+Progress: [█████████░] 85%
 
 ## Project Reference
 
@@ -88,6 +88,12 @@ See: .planning/PROJECT.md (updated 2026-05-30)
 - src/lib/sellWizardStore.ts: Zustand persist store backed by AsyncStorage; partialize excludes clearDraft/updateDraft; onFinishHydration for hydration-safe resume
 - SellCarFlowScreen.tsx: handlePlateChange auto-triggers DVLA at 7-8 alphanumeric chars; ArrayBuffer upload with per-image progress bars (0→50→100%); draft persistence with resume Alert; POST /listings + POST /auctions on final submit; clearDraft + haptics.success on success
 - Critical: expo-file-system/legacy import required in SDK 54 for EncodingType + readAsStringAsync
+
+### 09-mobile-production-parity Plan 03 — Complete
+
+- authStore.ts: User interface adds isVerified?: boolean; UserProfileResponse adds dealerProfile?.isVerified; all 3 auth paths (initializeAuth, login, signup) populate isVerified from profile.dealerProfile?.isVerified ?? false; login path also fixed missing isAddressVerified
+- DealerKYCScreen.tsx: expo-image-picker + expo-document-picker added; docUrls/docUploading state; handleDocumentCapture() for 9 fields (4 image: drivingLicenceFront/Back, paymentScreenshot, directorSelfie; 5 pdf: vatCertificate, companyRegistration, memorandumOfAssociation, articlesOfAssociation, proofOfAddress); upload path kyc/{userId}/{field}-{ts}.{ext} in kyc-documents bucket; POST /dealers/kyc payload spreads docUrls
+- AuctionDetailScreen.tsx: role pulled from useAuthStore alongside currentUser; handleBid gates on role !== 'dealer' (setBidError) then !isVerified (Alert with Go to Verification CTA navigating to 'DealerKYC'); bid UI remains visible; quickBidBtnText style key added (pre-existing TS2551 fixed)
 
 ### Architecture Decisions Locked
 
@@ -171,6 +177,6 @@ Pre-existing TS errors in GlobalDrawer.tsx (role property), DealerInventoryScree
 
 ## Session Continuity
 
-Last session: 2026-06-20T00:38:08.021Z
-Stopped at: Completed 09-mobile-production-parity-09-01-PLAN.md
+Last session: 2026-06-20T00:45:00.854Z
+Stopped at: Completed 09-mobile-production-parity-09-03-PLAN.md
 Resume file: None
