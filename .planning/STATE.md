@@ -89,6 +89,13 @@ See: .planning/PROJECT.md (updated 2026-05-30)
 - SellCarFlowScreen.tsx: handlePlateChange auto-triggers DVLA at 7-8 alphanumeric chars; ArrayBuffer upload with per-image progress bars (0→50→100%); draft persistence with resume Alert; POST /listings + POST /auctions on final submit; clearDraft + haptics.success on success
 - Critical: expo-file-system/legacy import required in SDK 54 for EncodingType + readAsStringAsync
 
+### 09-mobile-production-parity Plan 02 — Complete
+
+- SellCarFlowScreen.tsx: triggerListingFeePayment() with dark Stripe Payment Sheet (appearance.colors); gates POST /listings/:id/publish for all classified tiers (BASIC £1 / STANDARD £10 / PREMIUM £25); user cancel shows "draft saved" Alert; auction tier publishes without listing fee
+- VehicleDetailScreen.tsx: handleHpiCheck() replaces free handleViewHpiReport; Stripe Payment Sheet (£9.99) before fetching HPI data; results rendered inline (hpiInlineCard) with stolen/finance/writeOff/mileageAnomaly fields; ErrorBanner on failure; "View Full Report" opens existing modal
+- EarningsScreen.tsx: Stripe Connect CTA added — POST /users/stripe-connect/onboard → Linking.openURL(res.url); payoutsCard section with ActivityIndicator + ErrorBanner; expo-file-system/legacy import fixed (SDK 54 bug)
+- AuctionCompleteScreen.tsx: buyer fee (£125) was already fully implemented — no changes needed
+
 ### 09-mobile-production-parity Plan 03 — Complete
 
 - authStore.ts: User interface adds isVerified?: boolean; UserProfileResponse adds dealerProfile?.isVerified; all 3 auth paths (initializeAuth, login, signup) populate isVerified from profile.dealerProfile?.isVerified ?? false; login path also fixed missing isAddressVerified
@@ -112,7 +119,9 @@ None yet.
 
 ### Blockers/Concerns
 
-Pre-existing TS errors in GlobalDrawer.tsx (role property), DealerInventoryScreen.tsx (blob url), EarningsScreen.tsx (expo-file-system legacy), AuctionDetailScreen.tsx (missing style key) — out of scope for Phase 09 Plan 01, deferred.
+Pre-existing TS errors in GlobalDrawer.tsx (role property), DealerInventoryScreen.tsx (blob url) — deferred, out of scope.
+EarningsScreen.tsx expo-file-system/legacy import fixed in Plan 02.
+AuctionDetailScreen.tsx quickBidBtnText style key fixed in Plan 03.
 
 ### mobile-app-parity Plan 1 — Complete
 
