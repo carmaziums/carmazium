@@ -141,12 +141,12 @@ export default function App() {
   }, []);
 
   const [fontsLoaded] = useFonts({
-    'Inter_400Regular': require('@expo-google-fonts/inter/Inter_400Regular.ttf'),
-    'Inter_500Medium': require('@expo-google-fonts/inter/Inter_500Medium.ttf'),
-    'Inter_600SemiBold': require('@expo-google-fonts/inter/Inter_600SemiBold.ttf'),
-    'Inter_700Bold': require('@expo-google-fonts/inter/Inter_700Bold.ttf'),
-    'Inter_800ExtraBold': require('@expo-google-fonts/inter/Inter_800ExtraBold.ttf'),
-    'Inter_900Black': require('@expo-google-fonts/inter/Inter_900Black.ttf'),
+    'Inter_400Regular': require('@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf'),
+    'Inter_500Medium': require('@expo-google-fonts/inter/500Medium/Inter_500Medium.ttf'),
+    'Inter_600SemiBold': require('@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.ttf'),
+    'Inter_700Bold': require('@expo-google-fonts/inter/700Bold/Inter_700Bold.ttf'),
+    'Inter_800ExtraBold': require('@expo-google-fonts/inter/800ExtraBold/Inter_800ExtraBold.ttf'),
+    'Inter_900Black': require('@expo-google-fonts/inter/900Black/Inter_900Black.ttf'),
     'Poppins_300Light': require('@expo-google-fonts/poppins/300Light/Poppins_300Light.ttf'),
     'Poppins_400Regular': require('@expo-google-fonts/poppins/400Regular/Poppins_400Regular.ttf'),
     'Poppins_500Medium': require('@expo-google-fonts/poppins/500Medium/Poppins_500Medium.ttf'),
