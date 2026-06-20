@@ -87,6 +87,10 @@ export interface Auction {
     updatedAt: string;
     listing: AuctionListing;
     winner?: { id: string; firstName: string | null; lastName: string | null } | null;
+    // Buy It Now fields
+    buyItNowPrice?: number | null;
+    buyItNowPendingBuyerId?: string | null;
+    buyItNowPendingAt?: string | null;  // ISO string from API
 }
 
 export interface CreateAuctionRequest {
@@ -95,6 +99,7 @@ export interface CreateAuctionRequest {
     reservePrice: number;
     startingBid: number;
     minIncrement?: number;   // default 100
+    buyItNowPrice?: number;  // optional, omit or 0 to disable BIN
 }
 
 export interface UpdateAuctionRequest {
@@ -207,3 +212,29 @@ export function isAntiSnipeActive(auction: Auction): boolean {
     const tenMinutes = 10 * 60 * 1000;
     return new Date(auction.endTime).getTime() - Date.now() <= tenMinutes;
 }
+
+// ─── Buy It Now & Cancel Bid API Functions ────────────────────────────────────
+
+export async function triggerBuyItNow(auctionId: string): Promise<void> {
+    const res = await fetch(`/api/auctions/${auctionId}/bin-trigger`, { method: 'POST' });
+    if (!res.ok) throw new Error(`BIN trigger failed: ${res.status}`);
+}
+
+export async function confirmBuyItNow(auctionId: string): Promise<void> {
+    const res = await fetch(`/api/auctions/${auctionId}/bin-confirm`, { method: 'POST' });
+    if (!res.ok) throw new Error(`BIN confirm failed: ${res.status}`);
+}
+
+export async function declineBuyItNow(auctionId: string): Promise<void> {
+    const res = await fetch(`/api/auctions/${auctionId}/bin-decline`, { method: 'POST' });
+    if (!res.ok) throw new Error(`BIN decline failed: ${res.status}`);
+}
+
+export async function cancelBid(bidId: string): Promise<void> {
+    const res = await fetch(`/api/bids/${bidId}/cancel`, { method: 'PATCH' });
+    if (!res.ok) throw new Error(`Cancel bid failed: ${res.status}`);
+}
+
+// Socket events consumed by live auction page (no API function needed — socket.on() directly):
+// 'bin:pending' → { auctionId: string; buyerId: string }
+// 'bid:cancelled' → { auctionId: string; bidId: string }
