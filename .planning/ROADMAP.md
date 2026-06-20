@@ -1,12 +1,14 @@
 # Roadmap: Carmazium Mobile App v1.0
 
 **Milestone:** v1.0 — Mobile App
-**Total phases:** 8
+**Total phases:** 9
 **Total requirements:** 82
 
 ## Overview
 
 Starting from a complete scaffold (auth screens, tab screens, detail screens, API client, socket client, UI atoms), the v1.0 Mobile App delivers all buyer, seller, and dealer flows in 8 sequential phases. Infrastructure and push notifications ship first because every transactional flow depends on them. Role dashboards ship second to establish the home base each role returns to after every action. Then features layer in: sell wizard, KYC, dealer operations, offer/purchase/auction-win flows, discovery enhancements, and finally app store preparation as a hard gate once all screens are complete.
+
+Phase 9 is a bonus production-parity phase that was added after the prior mobile-app-parity polish cycle completed all 47 screens. It wires every remaining stub to real backends in 4 sequential waves.
 
 ## Phases
 
@@ -24,6 +26,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 6: Offers, Purchase, and Auction Win Completion** - Offer composer, negotiation thread, purchase summary, handover confirmation, and auction win celebration wired to push notifications from Phase 1
 - [ ] **Phase 7: Mazium AI Search, Map Near Me, and Vehicle Compare** - Discovery enhancement screens that are independent of Phases 3–6 and can follow Phase 2
 - [ ] **Phase 8: App Store Preparation and Submission** - EAS production build profiles, store assets, privacy manifests, store listings, and first TestFlight/Play Store submissions
+- [ ] **Phase 9: Mobile Production Parity** - Wire all 47 existing screens to real backends: sell flow, Stripe native payments, dealer KYC, handover proof, push deep-linking
 
 ## Phase Details
 
@@ -240,6 +243,34 @@ Plans:
 
 ---
 
+### Phase 9: Mobile Production Parity
+**Goal:** Every user action in the mobile app maps to a real API call with no stubs — sell flow, Stripe native payments, dealer KYC documents, handover proof upload, and push notification deep-linking for all 10 notification types.
+**Depends on:** mobile-app-parity phase complete (all 47 screens built and polished)
+**Requirements:** SELL-01 through SELL-08, KYC-01 through KYC-05, PUSH-01 through PUSH-10 (production wiring)
+**Plans:** 4 plans
+Plans:
+- [ ] 09-01-PLAN.md — Wave 1: Sell flow — storageHelper, sellWizardStore, DVLA auto-submit, photo upload, listing + auction creation
+- [ ] 09-02-PLAN.md — Wave 2: Stripe native payments — listing fee, HPI check, auction buyer fee, Stripe Connect onboarding
+- [ ] 09-03-PLAN.md — Wave 3: Dealer KYC — document capture, Supabase upload, POST /dealers/kyc, isVerified gate for bidding
+- [ ] 09-04-PLAN.md — Wave 4: Missing features — handover proof upload, cold-start push notification routing for all 10 types
+
+**Success criteria:**
+1. Seller can complete the full sell wizard end-to-end: DVLA auto-fills at 7 chars, photos upload with per-image progress bars, draft persists across app restarts, POST /listings fires on submit
+2. Stripe Payment Sheet presents for listing fees (Basic/Standard/Premium), HPI checks (£9.99), and auction buyer fees (£125) — all with dark theme
+3. Dealer can upload KYC documents (photos + PDFs), submit to POST /dealers/kyc, and see pending state
+4. Unverified dealer attempting to bid sees "Verification Required" alert with CTA to DealerKYCScreen
+5. Tapping any push notification (including when app is killed) navigates to the correct screen for all 10 notification types
+
+**Pitfall watch:**
+- Supabase Storage blob upload (`fetch → blob`) is broken on Android — all uploads must use the ArrayBuffer pattern via `FileSystem.readAsStringAsync` + `base64-arraybuffer` decode
+- `expo-document-picker` requires `copyToCacheDirectory: true` on iOS or FileSystem cannot read the picked file
+- Stripe Payment Sheet dark theme requires explicit `appearance.colors` object — `style: 'alwaysDark'` is ignored on Android
+- Cold-start notification navigation crashes if `navigationRef.isReady()` is not checked before calling `navigate()`
+
+**Dependencies:** mobile-app-parity phase (all 47 screens must exist), Wave 1 must complete before Wave 2/3/4 (storageHelper.ts is a shared dependency)
+
+---
+
 ## Progress
 
 **Execution Order:** 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
@@ -254,6 +285,7 @@ Plans:
 | 6. Offers, Purchase, and Auction Win Completion | 0/TBD | Not started | - |
 | 7. Mazium AI Search, Map Near Me, and Vehicle Compare | 0/TBD | Not started | - |
 | 8. App Store Preparation and Submission | 0/TBD | Not started | - |
+| 9. Mobile Production Parity | 0/4 | Not started | - |
 
 ## Mobile App Parity Phase Progress
 
