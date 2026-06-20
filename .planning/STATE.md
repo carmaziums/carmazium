@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 10 Plan 02 complete — owners dropdown, deceased estate, photo minimum enforcement
-last_updated: "2026-06-20T19:07:01.508Z"
-last_activity: 2026-06-20 — Phase 10 Plan 01 complete (Prisma schema migration, DTO updates, photo min guard, counter tracking, buyer re-counter, expiry check, limit notifications)
+stopped_at: Phase 10 Plan 03 complete — counter-offer limit UI (buyer re-counter input, remaining count display, locked state banners, countdown timers)
+last_updated: "2026-06-20T19:14:40.383Z"
+last_activity: 2026-06-21 — Phase 10 Plan 03 complete (counter-offer limit UI — buyer re-counter input, remaining count, locked state banners, countdown timers)
 progress:
   total_phases: 17
   completed_phases: 2
-  total_plans: 18
-  completed_plans: 16
-  percent: 88
+  total_plans: 24
+  completed_plans: 22
+  percent: 92
 ---
 
 # State: Carmazium Mobile App
@@ -19,11 +19,11 @@ progress:
 ## Current Position
 
 Phase: 10-web-platform-quick-fixes (Web Platform Quick Fixes)
-Plan: 2 of 4 complete
+Plan: 3 of 4 complete
 Status: In Progress
-Last activity: 2026-06-21 — Phase 10 Plan 02 complete (owners dropdown 5 options, deceased estate checkbox, photo minimum 10 enforcement, progress bar, Deceased Estate badge on detail page)
+Last activity: 2026-06-21 — Phase 10 Plan 03 complete (counter-offer limit UI — buyer re-counter input, remaining count display, locked state banners with 48h countdown timers on both buyer and seller dashboards)
 
-Progress: [█████████░] 88%
+Progress: [█████████░] 92%
 
 ## Project Reference
 
@@ -198,8 +198,14 @@ AuctionDetailScreen.tsx quickBidBtnText style key fixed in Plan 03.
 - buy-cars/[slug]/page.tsx: Deceased Estate badge (purple) in badges row; owners count row in Overview specs table
 - listingApi.ts: CreateListingRequest + Listing extended with isDepartedSale + departedRelationship fields
 
+### Phase 10 Plan 03 — Complete
+
+- listingApi.ts: LatestOffer interface extended with counterAttemptsBuyer?, counterAttemptsSeller?, counterExpiresAt?, lastCounteredBy? fields
+- user/page.tsx (OutgoingOffersTab): CountdownTimer helper; counterAmounts state map keyed by offer.id; handleBuyerCounter() calling PATCH /api/offers/:id/respond-counter; "X counter-offers remaining" display when isBuyerTurn; buyer counter input + COUNTER button; amber locked banner "Counter limit reached — awaiting seller's final decision." + countdown when counterAttemptsBuyer >= 5
+- seller/offers/page.tsx (OfferRow): CountdownTimer helper; sellerRemaining/isSellerLocked/expiresAt derived values; showSellerCounterArea covers PENDING and COUNTERED+lastCounteredBy=BUYER; "X counter-offers remaining" display; amber locked banner "Counter limit reached — you must Accept or Decline." + countdown when counterAttemptsSeller >= 5; seller action buttons (Counter/Decline/Accept) shown for buyer re-counter path
+
 ## Session Continuity
 
-Last session: 2026-06-21T00:00:00.000Z
-Stopped at: Phase 10 Plan 02 complete — owners dropdown, deceased estate, photo minimum enforcement
+Last session: 2026-06-20T19:14:40.366Z
+Stopped at: Phase 10 Plan 03 complete — counter-offer limit UI (buyer re-counter input, remaining count display, locked state banners, countdown timers)
 Resume file: None
