@@ -37,6 +37,10 @@ import { createChatRoom } from '../../lib/chatApi';
 import { useChat } from '../../context/ChatContext';
 import { DamageMapViewer } from '../../components/DamageMapViewer';
 import { useAuthStore } from '../../store/authStore';
+import { useStripe } from '@stripe/stripe-react-native';
+import { createPaymentSheet } from '../../lib/paymentsApi';
+import { haptics } from '../../lib/haptics';
+import { ErrorBanner } from '../../components/ui/ErrorBanner';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'VehicleDetail'>;
 
@@ -83,9 +87,11 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [isTyping, setIsTyping] = useState(false);
 
   // HPI
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [hpiData, setHpiData] = useState<any>(null);
   const [hpiLoading, setHpiLoading] = useState(false);
   const [hpiModalVisible, setHpiModalVisible] = useState(false);
+  const [hpiError, setHpiError] = useState<string | null>(null);
 
   // Damage records
   const [damageRecords, setDamageRecords] = useState<any[]>([]);
@@ -205,14 +211,47 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       .finally(() => setDamageLoading(false));
   }, [listing.id]);
 
-  const handleViewHpiReport = async () => {
+  const handleHpiCheck = async () => {
+    if (!listing.id) return;
     if (hpiData) { setHpiModalVisible(true); return; }
     setHpiLoading(true);
+    setHpiError(null);
     try {
+      const sheet = await createPaymentSheet({ listingId: listing.id, amount: 9.99, type: 'COMMISSION', currency: 'gbp' });
+      const { error: initError } = await initPaymentSheet({
+        merchantDisplayName: 'Carmazium',
+        customerId: sheet.customerId,
+        customerEphemeralKeySecret: sheet.ephemeralKey,
+        paymentIntentClientSecret: sheet.clientSecret,
+        allowsDelayedPaymentMethods: false,
+        appearance: {
+          colors: {
+            primary: '#DC1F26',
+            background: '#111116',
+            componentBackground: '#18181f',
+            componentBorder: 'rgba(255,255,255,0.08)',
+            componentDivider: 'rgba(255,255,255,0.06)',
+            primaryText: '#FFFFFF',
+            secondaryText: '#A0A0AB',
+            componentText: '#FFFFFF',
+            placeholderText: '#606070',
+            icon: '#A0A0AB',
+            error: '#DC1F26',
+          },
+        },
+      });
+      if (initError) throw new Error(initError.message);
+      const { error: presentError } = await presentPaymentSheet();
+      if (presentError) {
+        if (presentError.code !== 'Canceled') throw new Error(presentError.message);
+        return; // user cancelled
+      }
+      // Payment succeeded — fetch HPI summary
+      haptics.success();
       const res = await apiClient<{ success: boolean; data: any }>(`/hpi/listing/${listing.id}/summary`);
-      if (res.success) { setHpiData(res.data); setHpiModalVisible(true); }
-    } catch {
-      Alert.alert('HPI Report', 'No HPI report is available for this listing yet.');
+      if (res.success) setHpiData(res.data);
+    } catch (err: any) {
+      setHpiError(err.message ?? 'HPI check failed');
     } finally {
       setHpiLoading(false);
     }
@@ -560,26 +599,63 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {/* Section: HPI Report CTA */}
           <View style={styles.sectionContainer}>
-            <TouchableOpacity
-              style={styles.hpiReportBtn}
-              activeOpacity={0.8}
-              onPress={handleViewHpiReport}
-              disabled={hpiLoading}
-            >
-              <View style={styles.hpiReportLeft}>
-                <View style={styles.hpiIconBg}>
-                  <Ionicons name="document-text-outline" size={16} color="#3B82F6" />
-                </View>
-                <View>
-                  <Text style={styles.hpiReportTitle}>Full HPI Check Report</Text>
-                  <Text style={styles.hpiReportSub}>Stolen · Finance · Write-off · Plate changes</Text>
-                </View>
+            {hpiError ? (
+              <ErrorBanner message={hpiError} onRetry={handleHpiCheck} />
+            ) : null}
+            {hpiData ? (
+              <View style={styles.hpiInlineCard}>
+                <Text style={styles.hpiInlineTitle}>HPI Report</Text>
+                {hpiData.stolen !== undefined && (
+                  <Text style={styles.hpiInlineField}>
+                    Stolen: {hpiData.stolen ? 'Yes ⚠' : 'No'}
+                  </Text>
+                )}
+                {hpiData.financeOutstanding !== undefined && (
+                  <Text style={styles.hpiInlineField}>
+                    Finance Outstanding: {hpiData.financeOutstanding ? 'Yes ⚠' : 'No'}
+                  </Text>
+                )}
+                {hpiData.writeOff !== undefined && (
+                  <Text style={styles.hpiInlineField}>
+                    Write-off: {hpiData.writeOff ? `Yes (${hpiData.writeOffCategory ?? ''})` : 'No'}
+                  </Text>
+                )}
+                {hpiData.mileageAnomaly !== undefined && (
+                  <Text style={styles.hpiInlineField}>
+                    Mileage Anomaly: {hpiData.mileageAnomaly ? 'Yes ⚠' : 'No'}
+                  </Text>
+                )}
+                <TouchableOpacity
+                  style={styles.hpiViewFullBtn}
+                  activeOpacity={0.8}
+                  onPress={() => setHpiModalVisible(true)}
+                >
+                  <Text style={styles.hpiViewFullText}>View Full Report</Text>
+                  <Ionicons name="chevron-forward" size={14} color="#3B82F6" />
+                </TouchableOpacity>
               </View>
-              {hpiLoading
-                ? <ActivityIndicator size="small" color={Colors.textMuted} />
-                : <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
-              }
-            </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.hpiButton}
+                activeOpacity={0.8}
+                onPress={handleHpiCheck}
+                disabled={hpiLoading}
+              >
+                <View style={styles.hpiReportLeft}>
+                  <View style={styles.hpiIconBg}>
+                    <Ionicons name="document-text-outline" size={16} color="#3B82F6" />
+                  </View>
+                  <View>
+                    <Text style={styles.hpiReportTitle}>Check HPI (£9.99)</Text>
+                    <Text style={styles.hpiReportSub}>Stolen · Finance · Write-off · Plate changes</Text>
+                  </View>
+                </View>
+                {hpiLoading
+                  ? <ActivityIndicator size="small" color={Colors.textMuted} />
+                  : <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+                }
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Section: Damage Assessment */}
@@ -1890,6 +1966,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#111115', borderRadius: 14, borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.06)', padding: 14,
   },
+  hpiButton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#111115', borderRadius: 14, borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)', padding: 14,
+  },
   hpiReportLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   hpiIconBg: {
     width: 34, height: 34, borderRadius: 10, backgroundColor: 'rgba(59,130,246,0.12)',
@@ -1897,6 +1978,24 @@ const styles = StyleSheet.create({
   },
   hpiReportTitle: { fontFamily: FontFamily.bold, fontSize: 13, color: '#FFFFFF' },
   hpiReportSub: { fontFamily: FontFamily.regular, fontSize: 11, color: '#A0A0AB', marginTop: 2 },
+
+  // HPI inline card (shown after payment)
+  hpiInlineCard: {
+    backgroundColor: Colors.bgTertiary, borderRadius: 14, borderWidth: 1,
+    borderColor: 'rgba(59,130,246,0.2)', padding: 16, gap: 8,
+  },
+  hpiInlineTitle: {
+    fontFamily: FontFamily.bold, fontSize: 14, color: '#FFFFFF', marginBottom: 4,
+  },
+  hpiInlineField: {
+    fontFamily: FontFamily.medium, fontSize: 13, color: '#A0A0AB',
+  },
+  hpiViewFullBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8,
+  },
+  hpiViewFullText: {
+    fontFamily: FontFamily.bold, fontSize: 12, color: '#3B82F6',
+  },
 
   // Finance calculator body
   financeCalcBody: {
