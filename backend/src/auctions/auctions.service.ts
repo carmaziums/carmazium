@@ -128,7 +128,7 @@ export class AuctionsService {
                             },
                         },
                         bids: {
-                            where: { deletedAt: null },
+                            where: { deletedAt: null, cancelledAt: null },
                             orderBy: { amount: 'desc' },
                             take: 1,
                             select: { amount: true },
@@ -186,7 +186,7 @@ export class AuctionsService {
                             },
                         },
                         bids: {
-                            where: { deletedAt: null },
+                            where: { deletedAt: null, cancelledAt: null },
                             orderBy: { amount: 'desc' },
                             take: 50,
                             include: {
@@ -203,7 +203,7 @@ export class AuctionsService {
             throw new NotFoundException(`Auction not found`);
         }
 
-        return auction;
+        return this.clearExpiredBin(auction);
     }
 
     async findMyAuctions(userId: string, page = 1, limit = 20): Promise<{ data: any[]; total: number }> {
@@ -216,7 +216,7 @@ export class AuctionsService {
                     listing: {
                         include: {
                             bids: {
-                                where: { deletedAt: null },
+                                where: { deletedAt: null, cancelledAt: null },
                                 orderBy: { amount: 'desc' },
                                 take: 1,
                                 select: { amount: true },
@@ -303,7 +303,7 @@ export class AuctionsService {
         }
 
         const bid = await this.prisma.bid.findUnique({ where: { id: bidId } });
-        if (!bid || bid.listingId !== auction.listingId || bid.deletedAt) {
+        if (!bid || bid.listingId !== auction.listingId || bid.deletedAt || bid.cancelledAt) {
             throw new NotFoundException('Bid not found in this auction');
         }
 
@@ -430,7 +430,7 @@ export class AuctionsService {
                 listing: {
                     include: {
                         bids: {
-                            where: { deletedAt: null },
+                            where: { deletedAt: null, cancelledAt: null },
                             orderBy: { amount: 'desc' },
                             take: 1,
                             include: { bidder: { select: { id: true, firstName: true } } },
@@ -607,5 +607,217 @@ export class AuctionsService {
                 }
             }
         }
+    }
+
+    // ── Buy It Now Lifecycle ─────────────────────────────────────────────────
+
+    /**
+     * Private helper: ends an auction with a winner — creates Sale record, marks listing SOLD,
+     * upserts SellerProfile, broadcasts auction:ended, sends notifications.
+     * Called by confirmBuyItNow(), acceptBid(), and closeAuction() to avoid duplication.
+     */
+    private async endAuctionWithWinner(
+        auctionId: string,
+        winnerId: string,
+        amount: number,
+        sellerId: string,
+        linkedListingId: string | null = null,
+    ): Promise<void> {
+        await this.prisma.$transaction([
+            this.prisma.auction.update({
+                where: { id: auctionId },
+                data: {
+                    status: 'ENDED',
+                    winnerId,
+                    winningBidAmount: amount,
+                    buyItNowPendingBuyerId: null,
+                    buyItNowPendingAt: null,
+                },
+            }),
+            this.prisma.listing.update({
+                where: { id: (await this.prisma.auction.findUnique({ where: { id: auctionId }, select: { listingId: true } }))!.listingId },
+                data: { status: 'SOLD' },
+            }),
+            ...(linkedListingId ? [
+                this.prisma.listing.update({
+                    where: { id: linkedListingId },
+                    data: { status: 'SOLD' },
+                }),
+            ] : []),
+            this.prisma.sale.create({
+                data: {
+                    listingId: (await this.prisma.auction.findUnique({ where: { id: auctionId }, select: { listingId: true } }))!.listingId,
+                    sellerId,
+                    buyerId: winnerId,
+                    soldPrice: amount,
+                },
+            }),
+            this.prisma.sellerProfile.upsert({
+                where: { userId: sellerId },
+                create: { userId: sellerId, totalSales: 1 },
+                update: { totalSales: { increment: 1 } },
+            }),
+        ]);
+
+        const endPayload: AuctionEndPayload = { auctionId, winnerId, winningBidAmount: amount, reserveMet: true };
+        this.auctionGateway.broadcastAuctionEnd(auctionId, endPayload);
+    }
+
+    /**
+     * Buyer triggers a Buy It Now request. Sets pending state, notifies seller, broadcasts to viewers.
+     */
+    async triggerBuyItNow(auctionId: string, buyerId: string): Promise<void> {
+        const auction = await this.findOne(auctionId);
+
+        if (auction.status !== 'ACTIVE') {
+            throw new BadRequestException('Auction is not ACTIVE');
+        }
+        if (!auction.buyItNowPrice) {
+            throw new BadRequestException('No Buy It Now price set on this auction');
+        }
+
+        // Check reserve not already met by existing top bid
+        const topBid = await this.prisma.bid.findFirst({
+            where: { listingId: auction.listingId, deletedAt: null, cancelledAt: null },
+            orderBy: { amount: 'desc' },
+        });
+        if (topBid && Number(topBid.amount) >= Number(auction.reservePrice)) {
+            throw new BadRequestException('Reserve is met — Buy It Now is no longer available');
+        }
+
+        // Allow re-trigger by any buyer (replaces existing pending)
+        await this.prisma.auction.update({
+            where: { id: auctionId },
+            data: { buyItNowPendingBuyerId: buyerId, buyItNowPendingAt: new Date() },
+        });
+
+        // Notify seller
+        await this.notificationsService.create({
+            userId: auction.listing.sellerId,
+            type: 'AUCTION_ENDED',
+            title: 'Buy It Now request received',
+            message: `A buyer wants to buy your ${auction.listing.make} ${auction.listing.model} for £${Number(auction.buyItNowPrice).toLocaleString()}.`,
+            entityType: 'AUCTION',
+            entityId: auctionId,
+            link: `/auctions/live/${auctionId}`,
+        });
+
+        // Broadcast BIN pending state to all viewers
+        this.auctionGateway.broadcastBinPending(auctionId, buyerId);
+    }
+
+    /**
+     * Seller confirms the Buy It Now request — ends the auction with the pending buyer as winner.
+     */
+    async confirmBuyItNow(auctionId: string, sellerId: string): Promise<void> {
+        const auction = await this.findOne(auctionId);
+
+        if (auction.listing.sellerId !== sellerId) {
+            throw new ForbiddenException('You do not own this auction');
+        }
+        if (!auction.buyItNowPendingBuyerId) {
+            throw new BadRequestException('No Buy It Now request is pending on this auction');
+        }
+
+        const pendingBuyerId = auction.buyItNowPendingBuyerId;
+        const binPrice = Number(auction.buyItNowPrice);
+        const linkedListingId = (auction.listing as any).linkedListingId as string | null;
+
+        // Run the full winner-close transaction
+        await this.prisma.$transaction([
+            this.prisma.auction.update({
+                where: { id: auctionId },
+                data: {
+                    status: 'ENDED',
+                    winnerId: pendingBuyerId,
+                    winningBidAmount: binPrice,
+                    buyItNowPendingBuyerId: null,
+                    buyItNowPendingAt: null,
+                },
+            }),
+            this.prisma.listing.update({
+                where: { id: auction.listingId },
+                data: { status: 'SOLD' },
+            }),
+            ...(linkedListingId ? [
+                this.prisma.listing.update({
+                    where: { id: linkedListingId },
+                    data: { status: 'SOLD' },
+                }),
+            ] : []),
+            this.prisma.sale.create({
+                data: {
+                    listingId: auction.listingId,
+                    sellerId,
+                    buyerId: pendingBuyerId,
+                    soldPrice: binPrice,
+                },
+            }),
+            this.prisma.sellerProfile.upsert({
+                where: { userId: sellerId },
+                create: { userId: sellerId, totalSales: 1 },
+                update: { totalSales: { increment: 1 } },
+            }),
+        ]);
+
+        const endPayload: AuctionEndPayload = {
+            auctionId,
+            winnerId: pendingBuyerId,
+            winningBidAmount: binPrice,
+            reserveMet: true,
+        };
+        this.auctionGateway.broadcastAuctionEnd(auctionId, endPayload);
+        await this.notifyAuctionEnd({ ...auction, id: auctionId }, pendingBuyerId, binPrice, true);
+    }
+
+    /**
+     * Seller declines the Buy It Now request — clears pending state, notifies buyer, auction resumes.
+     */
+    async declineBuyItNow(auctionId: string, sellerId: string): Promise<void> {
+        const auction = await this.findOne(auctionId);
+
+        if (auction.listing.sellerId !== sellerId) {
+            throw new ForbiddenException('You do not own this auction');
+        }
+
+        const pendingBuyerId = auction.buyItNowPendingBuyerId;
+
+        await this.prisma.auction.update({
+            where: { id: auctionId },
+            data: { buyItNowPendingBuyerId: null, buyItNowPendingAt: null },
+        });
+
+        // Notify buyer their BIN request was declined
+        if (pendingBuyerId) {
+            await this.notificationsService.create({
+                userId: pendingBuyerId,
+                type: 'AUCTION_ENDED',
+                title: 'Buy It Now request declined',
+                message: `The seller declined your Buy It Now request on ${auction.listing.make} ${auction.listing.model}. You can continue bidding.`,
+                entityType: 'AUCTION',
+                entityId: auctionId,
+                link: `/auctions/live/${auctionId}`,
+            });
+        }
+    }
+
+    /**
+     * Lazily clears expired BIN pending state. Called at the top of findOne() and findBySlug()
+     * return paths. Fire-and-forget DB update if 24h has elapsed.
+     */
+    private clearExpiredBin(auction: any): any {
+        if (
+            auction.buyItNowPendingAt &&
+            new Date(auction.buyItNowPendingAt).getTime() + 24 * 60 * 60 * 1000 < Date.now()
+        ) {
+            // Fire-and-forget — do not block the response
+            this.prisma.auction.update({
+                where: { id: auction.id },
+                data: { buyItNowPendingBuyerId: null, buyItNowPendingAt: null },
+            }).catch(() => { /* non-blocking */ });
+
+            return { ...auction, buyItNowPendingBuyerId: null, buyItNowPendingAt: null };
+        }
+        return auction;
     }
 }

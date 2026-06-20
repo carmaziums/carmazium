@@ -2,6 +2,7 @@ import {
     Controller,
     Get,
     Post,
+    Patch,
     Body,
     Param,
     Query,
@@ -15,6 +16,7 @@ import {
     ApiResponse,
     ApiCookieAuth,
     ApiQuery,
+    ApiBearerAuth,
 } from '@nestjs/swagger';
 import { BidsService } from './bids.service';
 import { CreateBidDto } from './dto/create-bid.dto';
@@ -91,5 +93,24 @@ export class BidsController {
     async findByListing(@Param('listingId') listingId: string) {
         const bids = await this.bidsService.findByListing(listingId);
         return new StandardResponse(bids);
+    }
+
+    /**
+     * Cancel a bid within the 2-minute fat-finger window.
+     * Only the bid owner can cancel, and only while they are the current high bidder
+     * and the auction is ACTIVE.
+     */
+    @Patch(':id/cancel')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Cancel a bid within the 2-minute fat-finger window' })
+    @ApiResponse({ status: 200, description: 'Bid cancelled successfully' })
+    @ApiResponse({ status: 400, description: 'Cancel window expired, not high bidder, or auction not active' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    @ApiResponse({ status: 403, description: 'Not your bid' })
+    async cancelBid(@Param('id') id: string, @CurrentUser() user: any) {
+        await this.bidsService.cancelBid(id, user.id);
+        return new StandardResponse({ message: 'Bid cancelled successfully' });
     }
 }

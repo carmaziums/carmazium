@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsDateString, IsNumber, IsPositive, IsUUID, Min } from 'class-validator';
+import { IsDateString, IsNumber, IsOptional, IsPositive, IsUUID, Min } from 'class-validator';
 
 export class CreateAuctionDto {
     @ApiProperty({ description: 'UUID of the listing to auction' })
@@ -28,4 +28,11 @@ export class CreateAuctionDto {
     @IsNumber({ maxDecimalPlaces: 2 })
     @Min(1)
     minIncrement: number = 100;
+
+    @ApiPropertyOptional({ description: 'Buy It Now price in GBP. Optional. Locked once auction goes ACTIVE.' })
+    @IsOptional()
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 2 })
+    @IsPositive()
+    buyItNowPrice?: number;
 }

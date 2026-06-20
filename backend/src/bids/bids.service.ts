@@ -65,7 +65,7 @@ export class BidsService {
         const startingBid = Number(auction.startingBid);
 
         const highestBid = await this.prisma.bid.findFirst({
-            where: { listingId: createBidDto.listingId, deletedAt: null },
+            where: { listingId: createBidDto.listingId, deletedAt: null, cancelledAt: null },
             orderBy: { amount: 'desc' },
         });
 
@@ -91,6 +91,28 @@ export class BidsService {
                 amount: createBidDto.amount,
             },
         });
+
+        // BIN auto-cancel: if new bid amount >= BIN price AND there's a pending BIN request, clear it
+        if (
+            auction.buyItNowPrice &&
+            (auction as any).buyItNowPendingBuyerId &&
+            createBidDto.amount >= Number(auction.buyItNowPrice)
+        ) {
+            const pendingBuyerId = (auction as any).buyItNowPendingBuyerId as string;
+            await this.prisma.auction.update({
+                where: { id: auction.id },
+                data: { buyItNowPendingBuyerId: null, buyItNowPendingAt: null },
+            });
+            this.notificationsService.create({
+                userId: pendingBuyerId,
+                type: 'AUCTION_ENDED',
+                title: 'Buy It Now request cancelled',
+                message: `A new bid cancelled your Buy It Now request on ${listing.make} ${listing.model}.`,
+                entityType: 'AUCTION',
+                entityId: auction.id,
+                link: `/auctions/live/${auction.id}`,
+            }).catch(() => { /* notification failure must not fail the bid */ });
+        }
 
         // Notify the displaced highest bidder they've been outbid
         if (highestBid && highestBid.bidderId !== bidderId) {
@@ -125,12 +147,54 @@ export class BidsService {
         return bid;
     }
 
+    async cancelBid(bidId: string, bidderId: string): Promise<void> {
+        const bid = await this.prisma.bid.findUnique({ where: { id: bidId } });
+
+        if (!bid || bid.bidderId !== bidderId) {
+            throw new ForbiddenException('Not your bid');
+        }
+
+        if (bid.cancelledAt || bid.deletedAt) {
+            throw new BadRequestException('Bid already cancelled');
+        }
+
+        const twoMinMs = 2 * 60 * 1000;
+        if (Date.now() - bid.createdAt.getTime() > twoMinMs) {
+            throw new BadRequestException('Cancel window has expired (2 minutes)');
+        }
+
+        const listing = await this.prisma.listing.findUnique({
+            where: { id: bid.listingId },
+            include: { auction: true },
+        });
+
+        if (!listing?.auction || listing.auction.status !== 'ACTIVE') {
+            throw new BadRequestException('Cannot cancel a bid on an auction that is not ACTIVE');
+        }
+
+        const topBid = await this.prisma.bid.findFirst({
+            where: { listingId: bid.listingId, deletedAt: null, cancelledAt: null },
+            orderBy: { amount: 'desc' },
+        });
+
+        if (topBid?.id !== bidId) {
+            throw new BadRequestException('You can only cancel your bid if you are the current highest bidder');
+        }
+
+        await this.prisma.bid.update({
+            where: { id: bidId },
+            data: { cancelledAt: new Date() },
+        });
+
+        this.auctionGateway.broadcastBidCancelled(listing.auction.id, bidId);
+    }
+
     async findMyBids(bidderId: string, page = 1, limit = 20): Promise<{ data: any[]; total: number }> {
         const skip = (page - 1) * limit;
 
         const [bids, total] = await Promise.all([
             this.prisma.bid.findMany({
-                where: { bidderId, deletedAt: null },
+                where: { bidderId, deletedAt: null, cancelledAt: null },
                 include: {
                     listing: {
                         select: {
@@ -160,12 +224,12 @@ export class BidsService {
                 skip,
                 take: limit,
             }),
-            this.prisma.bid.count({ where: { bidderId, deletedAt: null } }),
+            this.prisma.bid.count({ where: { bidderId, deletedAt: null, cancelledAt: null } }),
         ]);
 
         const listingIds = [...new Set(bids.map(b => b.listingId))];
         const topBids = await this.prisma.bid.findMany({
-            where: { listingId: { in: listingIds }, deletedAt: null },
+            where: { listingId: { in: listingIds }, deletedAt: null, cancelledAt: null },
             orderBy: { amount: 'desc' },
             distinct: ['listingId'],
             select: { id: true, listingId: true },
@@ -181,7 +245,7 @@ export class BidsService {
 
     async findByListing(listingId: string): Promise<Bid[]> {
         return this.prisma.bid.findMany({
-            where: { listingId, deletedAt: null },
+            where: { listingId, deletedAt: null, cancelledAt: null },
             include: {
                 bidder: {
                     select: { id: true, firstName: true, lastName: true },
@@ -203,6 +267,7 @@ export class BidsService {
                 where: {
                     bidderId: userId,
                     deletedAt: null,
+                    cancelledAt: null,
                     listing: { auction: { status: 'ACTIVE' } },
                 },
             }),

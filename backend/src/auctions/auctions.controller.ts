@@ -154,6 +154,45 @@ export class AuctionsController {
         return new StandardResponse({ accepted: true });
     }
 
+    // ── Buy It Now Routes ────────────────────────────────────────────────────
+
+    @Post(':id/bin-trigger')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Buyer triggers a Buy It Now request — enters BIN pending state (seller has 24h to respond)' })
+    @ApiResponse({ status: 200, description: 'BIN request sent to seller' })
+    @ApiResponse({ status: 400, description: 'Auction not ACTIVE, no BIN price set, or reserve already met' })
+    async binTrigger(@Param('id') id: string, @CurrentUser() user: any) {
+        await this.auctionsService.triggerBuyItNow(id, user.id);
+        return new StandardResponse({ triggered: true });
+    }
+
+    @Post(':id/bin-confirm')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Seller confirms a pending Buy It Now request — ends auction with BIN buyer as winner' })
+    @ApiResponse({ status: 200, description: 'Auction ended — BIN buyer declared winner' })
+    @ApiResponse({ status: 400, description: 'No pending BIN request' })
+    @ApiResponse({ status: 403, description: 'You do not own this auction' })
+    async binConfirm(@Param('id') id: string, @CurrentUser() user: any) {
+        await this.auctionsService.confirmBuyItNow(id, user.id);
+        return new StandardResponse({ confirmed: true });
+    }
+
+    @Post(':id/bin-decline')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Seller declines a pending Buy It Now request — auction resumes normally' })
+    @ApiResponse({ status: 200, description: 'BIN request declined — auction continues' })
+    @ApiResponse({ status: 403, description: 'You do not own this auction' })
+    async binDecline(@Param('id') id: string, @CurrentUser() user: any) {
+        await this.auctionsService.declineBuyItNow(id, user.id);
+        return new StandardResponse({ declined: true });
+    }
+
     @Post(':id/handover-proof')
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()

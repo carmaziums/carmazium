@@ -94,4 +94,14 @@ export class AuctionGateway implements OnGatewayInit, OnGatewayConnection, OnGat
     broadcastAuctionEnd(auctionId: string, payload: AuctionEndPayload): void {
         this.server.to(`auction:${auctionId}`).emit('auction:ended', payload);
     }
+
+    // Called by AuctionsService.triggerBuyItNow() — notifies all viewers a BIN request is pending
+    broadcastBinPending(auctionId: string, buyerId: string): void {
+        this.server.to(`auction:${auctionId}`).emit('bin:pending', { auctionId, buyerId });
+    }
+
+    // Called by BidsService.cancelBid() — removes a cancelled bid from all viewers' feed
+    broadcastBidCancelled(auctionId: string, bidId: string): void {
+        this.server.to(`auction:${auctionId}`).emit('bid:cancelled', { auctionId, bidId });
+    }
 }
