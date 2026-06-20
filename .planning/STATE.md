@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Phase 12 context gathered
-last_updated: "2026-06-20T21:02:40.738Z"
-last_activity: "2026-06-21 — Phase 11 Plan 03 complete (distance filter + KYC badge: search page LocationContext migration, 5-chip distance filter, postcode fallback, seller profile KYC badge + prominent listing count)"
+stopped_at: Completed Phase 12 Plan 01 — BIN backend lifecycle complete
+last_updated: "2026-06-20T23:09:39.233Z"
+last_activity: "2026-06-21 — Phase 12 Plan 01 complete (BIN backend: DB schema + triggerBuyItNow/confirmBuyItNow/declineBuyItNow + cancelBid 2-min window + 9 TDD tests GREEN)"
 progress:
   total_phases: 17
   completed_phases: 4
-  total_plans: 21
-  completed_plans: 20
+  total_plans: 24
+  completed_plans: 21
   percent: 96
 ---
 
@@ -18,12 +18,12 @@ progress:
 
 ## Current Position
 
-Phase: 11-listing-page-overhaul-category-badges-sticky-sidebar-ctas-dealer-verification-display-proximity-distance-on-all-listings (Listing Page Overhaul)
-Plan: 3 of 3 complete — Phase COMPLETE
-Status: Phase 11 complete, advancing to next phase
-Last activity: 2026-06-21 — Phase 11 Plan 03 complete (distance filter + KYC badge: search page LocationContext migration, 5-chip distance filter, postcode fallback, seller profile KYC badge + prominent listing count)
+Phase: 12-auction-enhancements-buy-it-now-instant-purchase-cancel-bid-fat-finger-window (Auction Enhancements)
+Plan: 1 of 3 complete — Phase In Progress
+Status: Plan 12-01 complete (BIN backend), continuing to 12-02 (cancel bid frontend)
+Last activity: 2026-06-21 — Phase 12 Plan 01 complete (BIN lifecycle: DB schema migration, triggerBuyItNow/confirmBuyItNow/declineBuyItNow service methods, 3 controller endpoints, broadcastBinPending/broadcastBidCancelled gateway events, cancelBid 2-min window, 9 TDD tests GREEN)
 
-Progress: [██████████] 96%
+Progress: [█████████░] 90%
 
 ## Project Reference
 
@@ -206,6 +206,6 @@ AuctionDetailScreen.tsx quickBidBtnText style key fixed in Plan 03.
 
 ## Session Continuity
 
-Last session: 2026-06-20T21:02:40.731Z
-Stopped at: Phase 12 context gathered
-Resume file: .planning/phases/12-auction-enhancements-buy-it-now-instant-purchase-cancel-bid-fat-finger-window/12-CONTEXT.md
+Last session: 2026-06-20T23:09:39.217Z
+Stopped at: Completed Phase 12 Plan 01 — BIN backend lifecycle complete
+Resume file: None
