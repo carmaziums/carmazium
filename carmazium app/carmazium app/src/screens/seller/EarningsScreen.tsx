@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   RefreshControl,
   ScrollView,
@@ -9,8 +10,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import * as Linking from 'expo-linking';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,6 +22,7 @@ import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { ErrorBanner } from '../../components/ui/ErrorBanner';
 
 // ─────────────────────────── interfaces ───────────────────────────
 
@@ -80,6 +83,10 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
   const [refreshing, setRefreshing] = useState(false);
   const [exporting, setExporting] = useState(false);
 
+  // Stripe Connect
+  const [connectLoading, setConnectLoading] = useState(false);
+  const [connectError, setConnectError] = useState<string | null>(null);
+
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     try {
@@ -137,6 +144,19 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
       Alert.alert('Export Failed', err?.message ?? 'Could not export the ledger.');
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleStripeConnect = async () => {
+    setConnectLoading(true);
+    setConnectError(null);
+    try {
+      const res = await apiClient<{ url: string }>('/users/stripe-connect/onboard', { method: 'POST' });
+      await Linking.openURL(res.url);
+    } catch (err: any) {
+      setConnectError(err.message ?? 'Failed to start Stripe Connect');
+    } finally {
+      setConnectLoading(false);
     }
   };
 
@@ -287,6 +307,37 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
           ) : (
             sales.map(renderSaleRow)
           )}
+        </View>
+
+        {/* ── Stripe Connect / Payouts ── */}
+        <View style={styles.payoutsSection}>
+          <Text style={styles.sectionHeader}>PAYOUTS</Text>
+          <View style={styles.payoutsCard}>
+            <View style={styles.payoutsCardHeader}>
+              <View style={styles.payoutsIconCircle}>
+                <Ionicons name="card-outline" size={18} color={Colors.success} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.payoutsCardTitle}>Set up bank payouts</Text>
+                <Text style={styles.payoutsCardSub}>Connect your bank account via Stripe to receive proceeds from your sales.</Text>
+              </View>
+            </View>
+            {connectError ? (
+              <ErrorBanner message={connectError} onRetry={handleStripeConnect} />
+            ) : null}
+            <TouchableOpacity
+              onPress={handleStripeConnect}
+              disabled={connectLoading}
+              style={[styles.connectButton, connectLoading && { opacity: 0.6 }]}
+              activeOpacity={0.85}
+            >
+              {connectLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.connectButtonText}>Set up Payouts with Stripe</Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={{ height: 40 }} />
@@ -532,5 +583,59 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     fontSize: 9,
     color: Colors.textMuted,
+  },
+
+  // ── Payouts / Stripe Connect ──
+  payoutsSection: {
+    gap: 10,
+  },
+  payoutsCard: {
+    backgroundColor: Colors.bgSecondary,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(34,197,94,0.15)',
+    padding: 16,
+    gap: 14,
+  },
+  payoutsCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  payoutsIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(34,197,94,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(34,197,94,0.20)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  payoutsCardTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: 14,
+    color: Colors.textPrimary,
+    marginBottom: 4,
+  },
+  payoutsCardSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: 12,
+    color: Colors.textMuted,
+    lineHeight: 18,
+  },
+  connectButton: {
+    backgroundColor: Colors.accent,
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  connectButtonText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 14,
+    color: '#FFFFFF',
+    textAlign: 'center',
   },
 });
