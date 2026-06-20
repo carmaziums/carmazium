@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed mobile-app-parity-mobile-06-PLAN.md
-last_updated: "2026-06-14T20:43:47.423Z"
-last_activity: 2026-06-15 — mobile-app-parity Plan 6 complete (10 screens: Skeleton+EmptyState+accent RefreshControl+mono coverage closure)
+stopped_at: Completed 09-mobile-production-parity-09-01-PLAN.md
+last_updated: "2026-06-20T00:38:08.031Z"
+last_activity: "2026-06-15 — mobile-app-parity Plan 6 complete (10 screens: Skeleton+EmptyState+accent RefreshControl+mono coverage closure)"
 progress:
-  total_phases: 8
-  completed_phases: 2
-  total_plans: 16
-  completed_plans: 15
+  total_phases: 9
+  completed_phases: 1
+  total_plans: 14
+  completed_plans: 10
   percent: 94
 ---
 
@@ -18,12 +18,12 @@ progress:
 
 ## Current Position
 
-Phase: mobile-app-parity (Mobile App Feature Parity & UI Polish)
-Plan: 6 of 6 complete — phase COMPLETE
+Phase: 09-mobile-production-parity (Mobile Production Parity)
+Plan: 1 of 4 complete
 Status: In Progress
-Last activity: 2026-06-15 — mobile-app-parity Plan 6 complete (10 screens: Skeleton+EmptyState+accent RefreshControl+mono coverage closure)
+Last activity: 2026-06-20 — 09-mobile-production-parity Plan 1 complete (storageHelper.ts ArrayBuffer upload, sellWizardStore.ts AsyncStorage persist, DVLA auto-submit, per-image progress bars, POST /listings + POST /auctions wired)
 
-Progress: [█████████░] 94%
+Progress: [████████░░] 80%
 
 ## Project Reference
 
@@ -82,13 +82,31 @@ See: .planning/PROJECT.md (updated 2026-05-30)
 - Testing: @testing-library/react-native v12.9.0 (not v13+) — React 18.3.1 compatibility
 - Babel: nativewind and reanimated plugins skipped in BABEL_ENV=test to avoid missing worklets dep
 
+### 09-mobile-production-parity Plan 01 — Complete
+
+- src/lib/storageHelper.ts: uploadToStorage (ArrayBuffer, eliminates 0-byte Android bug) + convertAndCompress (HEIC→JPEG quality loop <1.2 MB)
+- src/lib/sellWizardStore.ts: Zustand persist store backed by AsyncStorage; partialize excludes clearDraft/updateDraft; onFinishHydration for hydration-safe resume
+- SellCarFlowScreen.tsx: handlePlateChange auto-triggers DVLA at 7-8 alphanumeric chars; ArrayBuffer upload with per-image progress bars (0→50→100%); draft persistence with resume Alert; POST /listings + POST /auctions on final submit; clearDraft + haptics.success on success
+- Critical: expo-file-system/legacy import required in SDK 54 for EncodingType + readAsStringAsync
+
+### Architecture Decisions Locked
+
+- **expo-file-system/legacy import:** SDK 54 moved EncodingType and readAsStringAsync to /legacy subpath; main export throws at runtime for these. All file reading must import from expo-file-system/legacy.
+- Auth: Supabase Bearer token → backend SessionAuthGuard (dual-mode, no backend changes needed)
+- API base: https://carmazium-hjoh9w.fly.dev
+- Real-time: socket.io-client on /auctions, /chat, /notifications namespaces
+- State: Zustand (auth + auction live state), TanStack Query (server cache)
+- No payments: platform is communication-only, never trigger financial transactions
+- Testing: @testing-library/react-native v12.9.0 (not v13+) — React 18.3.1 compatibility
+- Babel: nativewind and reanimated plugins skipped in BABEL_ENV=test to avoid missing worklets dep
+
 ### Pending Todos
 
 None yet.
 
 ### Blockers/Concerns
 
-None yet.
+Pre-existing TS errors in GlobalDrawer.tsx (role property), DealerInventoryScreen.tsx (blob url), EarningsScreen.tsx (expo-file-system legacy), AuctionDetailScreen.tsx (missing style key) — out of scope for Phase 09 Plan 01, deferred.
 
 ### mobile-app-parity Plan 1 — Complete
 
@@ -153,6 +171,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-14T20:43:47.413Z
-Stopped at: Completed mobile-app-parity-mobile-06-PLAN.md
+Last session: 2026-06-20T00:38:08.021Z
+Stopped at: Completed 09-mobile-production-parity-09-01-PLAN.md
 Resume file: None
