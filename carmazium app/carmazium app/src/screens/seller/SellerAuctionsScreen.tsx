@@ -12,19 +12,24 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiClient } from '../../lib/apiClient';
 import { getListingById } from '../../lib/listingsApi';
+import { convertAndCompress, uploadToStorage } from '../../lib/storageHelper';
+import { useAuthStore } from '../../store/authStore';
+import { haptics } from '../../lib/haptics';
 import { Colors } from '../../constants/colors';
 import { FontFamily } from '../../constants/typography';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { ErrorBanner } from '../../components/ui/ErrorBanner';
 
 // ─────────────────────────── Types ───────────────────────────
 
-type ListingStatus = 'ACTIVE' | 'DRAFT' | 'SOLD' | 'WITHDRAWN' | 'OFFER_ACCEPTED';
+type ListingStatus = 'ACTIVE' | 'DRAFT' | 'SOLD' | 'WITHDRAWN' | 'OFFER_ACCEPTED' | 'ENDED';
 type TabFilter = 'ALL' | 'ACTIVE' | 'DRAFT' | 'ENDED';
 
 interface ApiListing {
@@ -42,6 +47,7 @@ interface ApiListing {
   mileage?: number;
   vrm?: string;
   condition?: string;
+  winnerId?: string | null;
 }
 
 // ─────────────────────────── Status Config ───────────────────────────
@@ -62,12 +68,18 @@ const isEnded = (status?: string) =>
 
 export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const userId = useAuthStore((state) => state.user?.id) ?? 'anon';
 
   const [listings, setListings] = useState<ApiListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabFilter>('ALL');
   const [navigating, setNavigating] = useState<string | null>(null);
+
+  // Handover proof upload state — keyed by auctionId
+  const [handoverUploading, setHandoverUploading] = useState<Record<string, boolean>>({});
+  const [handoverUploaded, setHandoverUploaded] = useState<Record<string, boolean>>({});
+  const [handoverError, setHandoverError] = useState<Record<string, string | null>>({});
 
   // ── Fetch ──
   const fetchListings = useCallback(async (isRefresh = false) => {
@@ -122,6 +134,38 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     }
   };
 
+  // ── Handover proof upload ──
+  async function handleHandoverUpload(auctionId: string) {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: 'images' as any,
+      allowsEditing: false,
+      quality: 1.0,
+    });
+    if (result.canceled) return;
+
+    setHandoverUploading(prev => ({ ...prev, [auctionId]: true }));
+    setHandoverError(prev => ({ ...prev, [auctionId]: null }));
+    try {
+      const jpegUri = await convertAndCompress(result.assets[0].uri);
+      const proofUrl = await uploadToStorage(
+        jpegUri,
+        'handover',
+        `${userId}/${auctionId}-${Date.now()}.jpg`,
+        'image/jpeg',
+      );
+      await apiClient(`/auctions/${auctionId}/handover-proof`, {
+        method: 'POST',
+        body: JSON.stringify({ proofUrl }),
+      });
+      haptics.success();
+      setHandoverUploaded(prev => ({ ...prev, [auctionId]: true }));
+    } catch (err: any) {
+      setHandoverError(prev => ({ ...prev, [auctionId]: err.message ?? 'Upload failed' }));
+    } finally {
+      setHandoverUploading(prev => ({ ...prev, [auctionId]: false }));
+    }
+  }
+
   // ── Render card ──
   const renderCard = ({ item }: { item: ApiListing }) => {
     const cfg = cfgFor(item.status);
@@ -137,32 +181,59 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         activeOpacity={0.8}
         disabled={!!navigating}
       >
-        <View style={styles.thumb}>
-          {thumb ? (
-            <Image source={{ uri: thumb }} style={styles.thumbImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-          ) : (
-            <View style={styles.thumbPlaceholder}>
-              <MaterialCommunityIcons name="gavel" size={22} color={Colors.textMuted} />
-            </View>
-          )}
-        </View>
-
-        <View style={styles.cardInfo}>
-          <Text style={styles.cardTitle} numberOfLines={1}>{title}</Text>
-          <Text style={styles.cardPrice}>{price}</Text>
-          <Text style={styles.cardMeta}>{item.viewCount ?? 0} views</Text>
-        </View>
-
-        <View style={styles.cardRight}>
-          <View style={[styles.statusChip, { backgroundColor: cfg.chipBg }]}>
-            <Text style={[styles.statusChipText, { color: cfg.chipText }]}>{cfg.label}</Text>
+        <View style={styles.cardRow}>
+          <View style={styles.thumb}>
+            {thumb ? (
+              <Image source={{ uri: thumb }} style={styles.thumbImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+            ) : (
+              <View style={styles.thumbPlaceholder}>
+                <MaterialCommunityIcons name="gavel" size={22} color={Colors.textMuted} />
+              </View>
+            )}
           </View>
-          {isLoading ? (
-            <ActivityIndicator size="small" color={Colors.textMuted} style={{ width: 28, height: 28 }} />
-          ) : (
-            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
-          )}
+
+          <View style={styles.cardInfo}>
+            <Text style={styles.cardTitle} numberOfLines={1}>{title}</Text>
+            <Text style={styles.cardPrice}>{price}</Text>
+            <Text style={styles.cardMeta}>{item.viewCount ?? 0} views</Text>
+          </View>
+
+          <View style={styles.cardRight}>
+            <View style={[styles.statusChip, { backgroundColor: cfg.chipBg }]}>
+              <Text style={[styles.statusChipText, { color: cfg.chipText }]}>{cfg.label}</Text>
+            </View>
+            {isLoading ? (
+              <ActivityIndicator size="small" color={Colors.textMuted} style={{ width: 28, height: 28 }} />
+            ) : (
+              <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+            )}
+          </View>
         </View>
+
+        {item.status === 'ENDED' && item.winnerId ? (
+          <View style={styles.handoverSection}>
+            {handoverUploaded[item.id] ? (
+              <Text style={styles.handoverDone}>Handover proof submitted</Text>
+            ) : handoverError[item.id] ? (
+              <ErrorBanner
+                message={handoverError[item.id]!}
+                onRetry={() => handleHandoverUpload(item.id)}
+              />
+            ) : (
+              <TouchableOpacity
+                style={styles.handoverButton}
+                onPress={() => handleHandoverUpload(item.id)}
+                disabled={handoverUploading[item.id]}
+              >
+                {handoverUploading[item.id] ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.handoverButtonText}>Upload Handover Proof</Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : null}
       </TouchableOpacity>
     );
   };
@@ -354,15 +425,18 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   card: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     backgroundColor: '#111115',
     borderRadius: 14,
     borderWidth: 1,
     borderLeftWidth: 3,
     borderColor: 'rgba(255,255,255,0.06)',
     padding: 12,
-    gap: 12,
+  },
+  cardRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
   },
   thumb: {
     width: 64,
@@ -415,6 +489,31 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bold,
     fontSize: 9,
     letterSpacing: 0.5,
+  },
+  handoverSection: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+  },
+  handoverButton: {
+    backgroundColor: Colors.accent,
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  handoverButtonText: {
+    color: '#FFFFFF',
+    fontFamily: FontFamily.semiBold,
+    fontSize: 14,
+  },
+  handoverDone: {
+    color: '#4ADE80',
+    fontFamily: FontFamily.regular,
+    fontSize: 13,
+    textAlign: 'center',
+    paddingVertical: 4,
   },
   createAuctionBtn: {
     flexDirection: 'row',
