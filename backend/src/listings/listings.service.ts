@@ -523,7 +523,14 @@ export class ListingsService {
                                 }
                             }
                         },
-                        dealerProfile: true
+                        dealerProfile: true,
+                        _count: {
+                            select: {
+                                listings: {
+                                    where: { status: 'ACTIVE', deletedAt: null }
+                                }
+                            }
+                        }
                     }
                 },
                 // Include the most recent offer so the buyer can see their offer status
@@ -558,7 +565,14 @@ export class ListingsService {
             data: { viewCount: { increment: 1 } },
         }).catch(err => console.error(`Failed to increment views for ${slugOrId}:`, err));
 
-        return listing;
+        // Map _count to listingCount on seller
+        const sellerWithCount = listing.seller
+            ? { ...listing.seller, listingCount: (listing.seller as any)._count?.listings ?? 0 }
+            : listing.seller
+
+        const listingWithCount = { ...listing, seller: sellerWithCount }
+
+        return listingWithCount as any;
     }
 
     /**

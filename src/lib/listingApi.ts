@@ -208,6 +208,7 @@ export interface Listing {
         firstName: string | null
         lastName: string | null
         profileImage: string | null
+        listingCount?: number
         dealerProfile?: {
             id: string
             companyName: string
