@@ -106,7 +106,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { listing } = route.params;
   const listingObj = listing as any;
   const insets = useSafeAreaInsets();
-  const { user: currentUser } = useAuthStore();
+  const { user: currentUser, role } = useAuthStore();
 
   // ── Auction state ──
   const [auction, setAuction] = useState<AuctionDetail | null>(null);
@@ -334,6 +334,26 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // ─── Bid handling ─────────────────────────────────────────────────────────
 
   const handleBid = useCallback(async (amount: number) => {
+    // Only dealers can place bids
+    if (role !== 'dealer') {
+      setBidError('Only dealers can place bids in auctions.');
+      return;
+    }
+    // Dealer must be KYC verified
+    if (!currentUser?.isVerified) {
+      Alert.alert(
+        'Verification Required',
+        'Verify your dealership to place bids. Complete KYC in Settings.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Go to Verification',
+            onPress: () => navigation.navigate('DealerKYC'),
+          },
+        ],
+      );
+      return;
+    }
     if (!auction || !currentUser) return;
     const parsed = Number(amount);
     if (!parsed || parsed <= 0) { setBidError('Enter a valid bid amount.'); return; }
@@ -1176,6 +1196,7 @@ const s = StyleSheet.create({
   quickBidBtn: { flex: 1, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', paddingVertical: 8, alignItems: 'center', gap: 2 },
   quickBidLabel: { fontFamily: FontFamily.bold, fontSize: 9, color: '#606070' },
   quickBidAmt: { fontFamily: FontFamily.mono, fontSize: 12, color: '#FFFFFF' },
+  quickBidBtnText: { fontFamily: FontFamily.bold, fontSize: 12, color: '#FFFFFF', letterSpacing: 0.5 },
   customBidWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', paddingHorizontal: 12 },
   customBidCurrency: { fontFamily: FontFamily.bold, fontSize: 14, color: '#606070', marginRight: 4 },
   customBidInput: { flex: 1, fontFamily: FontFamily.mono, fontSize: 16, color: '#FFFFFF', paddingVertical: 10 },
