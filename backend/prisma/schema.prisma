@@ -711,6 +711,11 @@ model Auction {
   winnerId         String?
   winningBidAmount Decimal?      @db.Decimal(12, 2)
 
+  // Buy It Now fields
+  buyItNowPrice          Decimal?  @db.Decimal(12, 2)
+  buyItNowPendingBuyerId String?
+  buyItNowPendingAt      DateTime?
+
   // Buyer fee & handover tracking
   buyerFeePaid           Boolean   @default(false)
   buyerFeeTransactionId  String?
@@ -740,9 +745,10 @@ model Bid {
   bidderId  String
   amount    Decimal   @db.Decimal(12, 2)
   timestamp DateTime  @default(now())
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  cancelledAt DateTime?
 
   listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
   bidder  User    @relation(fields: [bidderId], references: [id])
