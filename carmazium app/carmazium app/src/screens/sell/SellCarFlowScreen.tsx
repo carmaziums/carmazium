@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { Ionicons } from '@/components/BrandIcon';
+import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontFamily, FontSize } from '../../constants/typography';
@@ -71,11 +71,17 @@ const PRESET_FEATURES = [
   'Apple CarPlay', 'Android Auto', 'DAB Radio', 'LED Headlights', 'Alloy Wheels', 'Tow Bar',
 ];
 const BODY_TYPES = [
-  { v: 'HATCHBACK', l: 'Hatchback' }, { v: 'SALOON', l: 'Saloon' },
-  { v: 'ESTATE', l: 'Estate' }, { v: 'SUV', l: 'SUV' },
-  { v: 'COUPE', l: 'Coupé' }, { v: 'CONVERTIBLE', l: 'Convertible' },
-  { v: 'MPV', l: 'MPV' }, { v: 'VAN', l: 'Van' },
-  { v: 'PICKUP', l: 'Pickup' }, { v: 'OTHER', l: 'Other' },
+  { v: 'HATCHBACK', l: 'Hatchback', icon: 'car-hatchback' },
+  { v: 'SALOON', l: 'Saloon', icon: 'car-limousine' },
+  { v: 'SEDAN', l: 'Sedan', icon: 'car' },
+  { v: 'ESTATE', l: 'Estate', icon: 'car-estate' },
+  { v: 'SUV', l: 'SUV', icon: 'car-suv' },
+  { v: 'COUPE', l: 'Coupé', icon: 'car-sports' },
+  { v: 'CONVERTIBLE', l: 'Convertible', icon: 'car-convertible' },
+  { v: 'MPV', l: 'MPV', icon: 'car' },
+  { v: 'VAN', l: 'Van', icon: 'van-utility' },
+  { v: 'PICKUP', l: 'Pickup', icon: 'truck' },
+  { v: 'OTHER', l: 'Other', icon: 'car-outline' },
 ];
 const DAMAGE_ZONES = [
   'Front Bumper', 'Bonnet', 'Windscreen (Front)', 'Front Left Wing', 'Front Right Wing',
@@ -267,10 +273,12 @@ function DamageMapper({
 
   return (
     <View>
-      <Text style={s.dvlaFieldLabel}>Tap a zone to mark damage</Text>
-
       {/* 2D car outline */}
       <View style={s.carDiagram}>
+        <View style={s.carDiagramHeader}>
+          <MaterialCommunityIcons name="car-outline" size={32} color="#DC1F26" />
+          <Text style={[s.dvlaFieldLabel, { marginBottom: 0 }]}>Tap a zone to mark damage</Text>
+        </View>
         {carRows.map((row, ri) => (
           <View key={ri} style={{ flexDirection: 'row', marginBottom: 2 }}>
             {row.zones.map(z => {
@@ -609,7 +617,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     try {
       const res = await apiClient<any>('/ai/generate-description', {
         method: 'POST',
-        body: JSON.stringify({ make, model, year, mileage, fuelType, transmission, colour, features }),
+        body: JSON.stringify({ make, model, year, mileage, fuelType, transmission, color: colour, features, vrm, motStatus, condition: 'Used' }),
       });
       // API may return { data: { text: "..." } } or { text: "..." } directly
       const text = String(res?.data?.text || res?.text || '');
@@ -1081,10 +1089,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             {BODY_TYPES.map(bt => (
               <TouchableOpacity
                 key={bt.v}
-                style={[s.pill, bodyType === bt.v && s.pillActive]}
+                style={[s.pill, s.bodyTypePill, bodyType === bt.v && s.pillActive]}
                 onPress={() => setBodyType(bt.v)}
                 activeOpacity={0.7}
               >
+                <MaterialCommunityIcons name={bt.icon as any} size={18} color={bodyType === bt.v ? '#FFFFFF' : '#A0A0AB'} />
                 <Text style={[s.pillText, bodyType === bt.v && s.pillTextActive]}>{bt.l}</Text>
               </TouchableOpacity>
             ))}
@@ -1662,7 +1671,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     const minNum = parseFloat(priceMin.replace(/[^0-9.]/g, '')) || 0;
 
     return (
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 140 }]}>
+      <ScrollView style={{ flex: 1, backgroundColor: '#0A0A0C' }} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 140 }]}>
         <Text style={s.reviewHeading}>Review Your Listing</Text>
 
         {/* Vehicle Identity */}
@@ -1776,6 +1785,20 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             </View>
           )}
         </SectionBox>
+
+        {/* HPI Check Callout */}
+        <View style={s.hpiCallout}>
+          <View style={s.hpiCalloutIcon}>
+            <Ionicons name="shield-checkmark-outline" size={22} color="#3B82F6" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.hpiCalloutTitle}>Add HPI Vehicle Check</Text>
+            <Text style={s.hpiCalloutSub}>Verified HPI badge increases buyer trust and helps cars sell 2× faster</Text>
+          </View>
+          <View style={s.hpiCalloutBadge}>
+            <Text style={s.hpiCalloutPrice}>£9.99</Text>
+          </View>
+        </View>
 
       </ScrollView>
     );
@@ -1965,11 +1988,11 @@ const s = StyleSheet.create({
   photoProgressFill: { height: 4, backgroundColor: Colors.accent ?? '#DC1F26', borderRadius: 0 },
 
   // Damage Map
-  carDiagram: { backgroundColor: '#0D0D12', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', padding: 8, marginBottom: 12 },
-  carZone: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', padding: 4, alignItems: 'center', justifyContent: 'center', minHeight: 34, marginHorizontal: 1, position: 'relative' },
-  carZoneMarked: { backgroundColor: 'rgba(220,31,38,0.15)', borderColor: 'rgba(220,31,38,0.4)' },
-  carZoneText: { fontFamily: FontFamily.bold, fontSize: 8, color: '#404050', textAlign: 'center', letterSpacing: 0.3 },
-  carZoneTextMarked: { color: '#FFFFFF' },
+  carDiagram: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', padding: 8, marginBottom: 12 },
+  carZone: { margin: 1, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', paddingVertical: 10, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center' },
+  carZoneMarked: { backgroundColor: 'rgba(220,31,38,0.25)', borderColor: '#DC1F26' },
+  carZoneText: { fontFamily: FontFamily.regular, fontSize: 9, color: '#A0A0AB', textAlign: 'center' },
+  carZoneTextMarked: { color: '#FF6B6B', fontFamily: FontFamily.bold },
   carZoneDot: { position: 'absolute', top: 2, right: 2, width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#DC1F26' },
   wheelZone: { flex: 1, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', padding: 4, alignItems: 'center', justifyContent: 'center', height: 28 },
   dmgForm: { backgroundColor: '#111116', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(220,31,38,0.2)', padding: 14, marginBottom: 12 },
@@ -2016,6 +2039,20 @@ const s = StyleSheet.create({
   auctionModeBtnIcon: { fontSize: 20, marginBottom: 4 },
   auctionModeBtnTitle: { fontFamily: FontFamily.bold, fontSize: 13, color: '#FFFFFF', marginBottom: 2 },
   auctionModeBtnHint: { fontFamily: FontFamily.regular, fontSize: 10, color: '#606070' },
+
+  // Body type pill with icon stacked
+  bodyTypePill: { alignItems: 'center', paddingHorizontal: 10, paddingVertical: 8, gap: 4 },
+
+  // HPI callout in review
+  hpiCallout: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(59,130,246,0.07)', borderWidth: 1, borderColor: 'rgba(59,130,246,0.2)', borderRadius: 14, padding: 14, marginBottom: 12, gap: 12 },
+  hpiCalloutIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(59,130,246,0.12)', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  hpiCalloutTitle: { fontFamily: FontFamily.bold, fontSize: 14, color: '#FFFFFF', marginBottom: 3 },
+  hpiCalloutSub: { fontFamily: FontFamily.regular, fontSize: 11, color: '#A0A0AB', lineHeight: 16 },
+  hpiCalloutBadge: { backgroundColor: 'rgba(59,130,246,0.15)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, flexShrink: 0 },
+  hpiCalloutPrice: { fontFamily: FontFamily.bold, fontSize: 13, color: '#60A5FA' },
+
+  // Damage map enhancements
+  carDiagramHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12, paddingHorizontal: 4 },
 
   // Bottom Bar
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingTop: 12, backgroundColor: '#0A0A0C', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', flexDirection: 'row', gap: 10 },
