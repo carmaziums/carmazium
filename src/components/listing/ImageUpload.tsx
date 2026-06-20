@@ -42,7 +42,7 @@ const CATEGORIES: { id: ImageCategory; label: string; tip: string; minReq?: numb
 export function ImageUpload({
     onImagesChange,
     onDamageImageCountChange,
-    maxImages = 30,
+    maxImages = 100,
     existingImages = []
 }: ImageUploadProps) {
     // Map existing string[] to CategorizedImage[] (default to EXTERIOR or UNASSIGNED)

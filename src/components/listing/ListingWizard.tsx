@@ -481,7 +481,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 if ((formData.writeOffCategory === 'CAT_A' || formData.writeOffCategory === 'CAT_B') && formData.listingType !== 'AUCTION') return false
                 return baseValid && declarationsValid
             }
-            case 2: return formData.images.length > 0
+            case 2: return editId ? formData.images.length > 0 : formData.images.length >= 10
             case 3: {
                 const pMin = parseFloat(formData.priceMin)
                 const pAsk = parseFloat(formData.priceAsking)
@@ -1532,6 +1532,34 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             <div className="space-y-4">
                                 <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Photos *</h2>
                                 <p className="text-sm text-gray-400">Upload up to 100 photos. Aim for at least 20 for the best results, and organise them by selecting the relevant category below.</p>
+                                {/* Photo counter and progress bar — wizard form only */}
+                                {(() => {
+                                    const photoCount = formData.images.length
+                                    const MIN_PHOTOS = 10
+                                    const MAX_PHOTOS = 100
+                                    const isMinMet = photoCount >= MIN_PHOTOS
+                                    const progressPct = Math.min((photoCount / MAX_PHOTOS) * 100, 100)
+                                    const label = editId
+                                        ? `${photoCount}/${MAX_PHOTOS} photos`
+                                        : !isMinMet
+                                            ? `${photoCount}/${MIN_PHOTOS} photos — ${MIN_PHOTOS - photoCount} more required to publish`
+                                            : `${photoCount}/${MAX_PHOTOS} photos — More photos = more buyer trust. Keep going!`
+                                    return (
+                                        <div className="mb-4">
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className={`text-xs font-medium ${isMinMet ? 'text-green-400' : 'text-amber-400'}`}>
+                                                    {label}
+                                                </span>
+                                            </div>
+                                            <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                                <div
+                                                    className={`h-full rounded-full transition-all duration-300 ${isMinMet ? 'bg-green-500' : 'bg-amber-500'}`}
+                                                    style={{ width: `${progressPct}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )
+                                })()}
                                 <ImageUpload
                                     onImagesChange={(imgs) => set("images", imgs)}
                                     onDamageImageCountChange={setDamageImageCount}
