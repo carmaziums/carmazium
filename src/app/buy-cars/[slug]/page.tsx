@@ -539,6 +539,12 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                         </span>
                                     </>
                                 )}
+                                {/* Deceased Estate badge */}
+                                {listing.isDepartedSale && (
+                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-medium">
+                                        <span>Deceased Estate</span>
+                                    </div>
+                                )}
                                 {/* Original platform listing link */}
                                 {listing.importedFromUrl && (
                                     <a
@@ -844,6 +850,14 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                         {listing.condition && <div className="flex justify-between"><span className="text-gray-400 text-sm">Condition:</span><span className="text-white font-semibold text-sm">{listing.condition.replace('_', ' ')}</span></div>}
                                         {listing.vrm && <div className="flex justify-between"><span className="text-gray-400 text-sm">Registration:</span><span className="text-white font-semibold text-sm">{listing.vrm}</span></div>}
                                         {listing.monthOfFirstRegistration && <div className="flex justify-between"><span className="text-gray-400 text-sm">Reg. date:</span><span className="text-white font-semibold text-sm">{listing.monthOfFirstRegistration}</span></div>}
+                                        {listing.owners && (
+                                            <div className="flex justify-between py-0.5">
+                                                <span className="text-gray-400 text-sm">Previous Owners</span>
+                                                <span className="text-white font-semibold text-sm">
+                                                    {listing.owners === '1' ? '1 Owner' : listing.owners === '5+' ? '5+ Owners' : `${listing.owners} Owners`}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
