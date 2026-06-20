@@ -11,6 +11,7 @@ import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { AuthProvider } from "@/context/AuthContext";
 import { ChatProvider } from "@/context/ChatContext";
 import { CompareProvider } from "@/context/CompareContext";
+import { LocationProvider } from "@/context/LocationContext";
 
 const poppins = Poppins({
   variable: "--font-poppins",
@@ -87,14 +88,16 @@ export default function RootLayout({
           <AuthProvider>
             <ChatProvider>
               <CompareProvider>
-                <div className="flex flex-col min-h-screen">
-                  <Header />
-                  <main className="flex-grow pt-20">
-                    {children}
-                  </main>
-                  <ConditionalFooter />
-                  <MaziumWidgetLoader />
-                </div>
+                <LocationProvider>
+                  <div className="flex flex-col min-h-screen">
+                    <Header />
+                    <main className="flex-grow pt-20">
+                      {children}
+                    </main>
+                    <ConditionalFooter />
+                    <MaziumWidgetLoader />
+                  </div>
+                </LocationProvider>
               </CompareProvider>
             </ChatProvider>
           </AuthProvider>
