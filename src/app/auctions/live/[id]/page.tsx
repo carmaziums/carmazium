@@ -19,7 +19,7 @@ import {
 import { CountdownTimer } from "@/components/features/CountdownTimer"
 import { ThreeDErrorBoundary } from "@/components/listing/ThreeDErrorBoundary"
 import { useAuth } from "@/context/AuthContext"
-import { getAuction, acceptBidEarly, triggerBuyItNow, cancelBid, type Auction, type BidBroadcastPayload, type AuctionEndPayload } from "@/lib/auctionApi"
+import { getAuction, acceptBidEarly, triggerBuyItNow, confirmBuyItNow, declineBuyItNow, cancelBid, type Auction, type BidBroadcastPayload, type AuctionEndPayload } from "@/lib/auctionApi"
 import { placeBid, getDamageRecords } from "@/lib/listingApi"
 import { getWebSocketUrl, createChatRoom } from "@/lib/chatApi"
 
@@ -348,6 +348,33 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             setCancelLoading(false)
         }
     }
+
+    // ── Seller BIN Confirm / Decline ──────────────────────────────────────────
+    const handleBinConfirm = React.useCallback(async () => {
+        if (!auction) return
+        setBinLoading(true)
+        try {
+            await confirmBuyItNow(auction.id)
+            setBinPending(false)
+        } catch {
+            // Auction room will update via socket auction:ended event
+        } finally {
+            setBinLoading(false)
+        }
+    }, [auction])
+
+    const handleBinDecline = React.useCallback(async () => {
+        if (!auction) return
+        setBinLoading(true)
+        try {
+            await declineBuyItNow(auction.id)
+            setBinPending(false)
+        } catch {
+            setBinPending(false)
+        } finally {
+            setBinLoading(false)
+        }
+    }, [auction])
 
     const minIncrement = auction ? Number(auction.minIncrement) : 100
     const quickBids = [minIncrement, minIncrement * 2, minIncrement * 5, minIncrement * 10]
@@ -1416,6 +1443,30 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     {binPending && !isSeller && (
                         <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-300">
                             Buy It Now pending — awaiting seller confirmation
+                        </div>
+                    )}
+                    {binPending && isSeller && (
+                        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-3">
+                            <p className="text-sm font-semibold text-amber-300">Buy It Now Request</p>
+                            <p className="text-xs text-amber-300/80">
+                                A buyer has requested to purchase this vehicle at the Buy It Now price. Accept to end the auction now, or decline to continue bidding.
+                            </p>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handleBinConfirm}
+                                    disabled={binLoading}
+                                    className="flex-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 py-2 text-sm font-semibold text-white transition-colors"
+                                >
+                                    {binLoading ? 'Processing…' : 'Accept Buy It Now'}
+                                </button>
+                                <button
+                                    onClick={handleBinDecline}
+                                    disabled={binLoading}
+                                    className="flex-1 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-50 py-2 text-sm font-semibold text-slate-200 transition-colors"
+                                >
+                                    Decline
+                                </button>
+                            </div>
                         </div>
                     )}
 
