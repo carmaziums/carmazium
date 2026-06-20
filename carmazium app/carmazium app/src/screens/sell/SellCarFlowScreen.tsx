@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   StatusBar, TextInput, ActivityIndicator, Alert,
@@ -12,7 +12,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Colors } from '../../constants/colors';
 import { apiClient } from '../../lib/apiClient';
-import { supabase } from '../../lib/supabase';
+import { useAuthStore } from '../../store/authStore';
+import { convertAndCompress, uploadToStorage } from '../../lib/storageHelper';
+import { useSellWizardStore } from '../../lib/sellWizardStore';
+import { haptics } from '../../lib/haptics';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -448,6 +451,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [startingBid, setStartingBid] = useState('');
   const [minIncrement, setMinIncrement] = useState('100');
 
+  // ── Per-image upload progress ──
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+
   // ── Publishing ──
   const [isPublishing, setIsPublishing] = useState(false);
   const [editMode] = useState<boolean>(!!(route?.params?.listingId));
@@ -498,10 +504,20 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   const allImages = [...exteriorImages, ...interiorImages, ...damageImages];
 
+  // ─── DVLA Auto-submit handler ─────────────────────────────────────────────────
+
+  const handlePlateChange = (raw: string) => {
+    const cleaned = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    setVrm(cleaned);
+    if (cleaned.length >= 7 && cleaned.length <= 8 && !dvlaFetched && !dvlaLoading) {
+      handleDvlaLookup(cleaned);
+    }
+  };
+
   // ─── DVLA Lookup ─────────────────────────────────────────────────────────────
 
-  async function handleDvlaLookup() {
-    const clean = vrm.replace(/\s/g, '').toUpperCase();
+  async function handleDvlaLookup(override?: string) {
+    const clean = (override ?? vrm).replace(/\s/g, '').toUpperCase();
     if (!clean) return Alert.alert('Enter a registration', 'Please enter a UK registration number.');
     setDvlaLoading(true);
     try {
@@ -558,40 +574,53 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   // ─── Photo Handling ───────────────────────────────────────────────────────────
 
+  /**
+   * Upload a single image with per-image progress tracking.
+   * Shows 0 → 50 (post-compress) → 100 progress on the thumbnail.
+   * Returns a Supabase public URL (https://), never a local file:// URI.
+   */
+  async function uploadImage(localUri: string, category: string, index: number): Promise<string> {
+    const id = `${category}-${index}`;
+    setUploadProgress(prev => ({ ...prev, [id]: 0 }));
+    const jpegUri = await convertAndCompress(localUri);
+    setUploadProgress(prev => ({ ...prev, [id]: 50 }));
+    const userId = useAuthStore.getState().user?.id ?? 'anon';
+    const filename = `${userId}/${category}/${Date.now()}-${index}.jpg`;
+    const url = await uploadToStorage(jpegUri, 'listings', filename, 'image/jpeg');
+    setUploadProgress(prev => ({ ...prev, [id]: 100 }));
+    return url;
+  }
+
   async function handlePickPhoto() {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: 'images' as any,
       allowsMultipleSelection: true,
-      quality: 0.8,
+      quality: 1.0, // raw quality — convertAndCompress handles compression
     });
     if (result.canceled) return;
     setUploadingPhoto(true);
     try {
+      const category = photoTab.toLowerCase();
+      // Determine starting index for unique progress IDs
+      const startIndex = (
+        photoTab === 'Exterior' ? exteriorImages :
+        photoTab === 'Interior' ? interiorImages :
+        damageImages
+      ).length;
+
       const urls: string[] = [];
-      for (const asset of result.assets) {
-        const url = await uploadToSupabase(asset.uri);
+      for (let i = 0; i < result.assets.length; i++) {
+        const url = await uploadImage(result.assets[i].uri, category, startIndex + i);
         urls.push(url);
       }
       if (photoTab === 'Exterior') setExteriorImages(p => [...p, ...urls]);
       else if (photoTab === 'Interior') setInteriorImages(p => [...p, ...urls]);
       else setDamageImages(p => [...p, ...urls]);
     } catch {
-      Alert.alert('Upload failed', 'Could not upload one or more photos.');
+      Alert.alert('Upload failed', 'Could not upload one or more photos. Please try again.');
     } finally {
       setUploadingPhoto(false);
     }
-  }
-
-  async function uploadToSupabase(uri: string): Promise<string> {
-    const fileName = `listings/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
-    const resp = await fetch(uri);
-    const blob = await resp.blob();
-    const { data, error } = await supabase.storage.from('listings').upload(fileName, blob, {
-      contentType: 'image/jpeg', upsert: false,
-    });
-    if (error) throw error;
-    const { data: urlData } = supabase.storage.from('listings').getPublicUrl(data.path);
-    return urlData.publicUrl;
   }
 
   function removePhoto(tab: string, uri: string) {
@@ -802,7 +831,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             <TextInput
               style={s.vrmInput}
               value={vrm}
-              onChangeText={t => setVrm(t.toUpperCase())}
+              onChangeText={handlePlateChange}
               placeholder="e.g. AB12 CDE"
               placeholderTextColor="#806000"
               autoCapitalize="characters"
@@ -810,7 +839,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             />
             <TouchableOpacity
               style={[s.vrmBtn, dvlaLoading && { opacity: 0.6 }]}
-              onPress={handleDvlaLookup}
+              onPress={() => handleDvlaLookup()}
               disabled={dvlaLoading}
               activeOpacity={0.8}
             >
@@ -1193,21 +1222,33 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               <View>
                 <Text style={[s.sectionLabel, { marginTop: 20 }]}>ALL UPLOADED PHOTOS</Text>
                 <View style={s.photoGrid}>
-                  {tabImages.map((uri, i) => (
-                    <View key={uri} style={s.photoThumb}>
-                      <ExpoImage
-                        source={{ uri }}
-                        style={s.photoThumbImg}
-                        contentFit="cover"
-                        transition={200}
-                        placeholderContentFit="cover"
-                      />
-                      {i === 0 && <View style={s.coverBadge}><Text style={s.coverBadgeText}>COVER</Text></View>}
-                      <TouchableOpacity style={s.photoRemoveBtn} onPress={() => removePhoto(photoTab, uri)}>
-                        <Ionicons name="close" size={10} color="#FFF" />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
+                  {tabImages.map((uri, i) => {
+                    const category = photoTab.toLowerCase();
+                    const progressKey = `${category}-${i}`;
+                    const progress = uploadProgress[progressKey];
+                    const isUploading = progress !== undefined && progress < 100;
+                    return (
+                      <View key={uri} style={s.photoThumb}>
+                        <ExpoImage
+                          source={{ uri }}
+                          style={s.photoThumbImg}
+                          contentFit="cover"
+                          transition={200}
+                          placeholderContentFit="cover"
+                        />
+                        {/* Per-image upload progress bar */}
+                        {isUploading && (
+                          <View style={s.photoProgressBar}>
+                            <View style={[s.photoProgressFill, { width: `${progress}%` as any }]} />
+                          </View>
+                        )}
+                        {i === 0 && <View style={s.coverBadge}><Text style={s.coverBadgeText}>COVER</Text></View>}
+                        <TouchableOpacity style={s.photoRemoveBtn} onPress={() => removePhoto(photoTab, uri)}>
+                          <Ionicons name="close" size={10} color="#FFF" />
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
                 </View>
               </View>
             )}
@@ -1779,6 +1820,8 @@ const s = StyleSheet.create({
   coverBadge: { position: 'absolute', bottom: 4, left: 4, backgroundColor: '#DC1F26', paddingHorizontal: 4, paddingVertical: 2, borderRadius: 3 },
   coverBadgeText: { fontFamily: FontFamily.bold, fontSize: 7, color: '#FFF' },
   photoRemoveBtn: { position: 'absolute', top: 3, right: 3, width: 16, height: 16, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' },
+  photoProgressBar: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 4, backgroundColor: 'rgba(0,0,0,0.4)' },
+  photoProgressFill: { height: 4, backgroundColor: Colors.accent ?? '#DC1F26', borderRadius: 0 },
 
   // Damage Map
   carDiagram: { backgroundColor: '#0D0D12', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', padding: 8, marginBottom: 12 },
