@@ -69,6 +69,8 @@ export interface CreateListingRequest {
     extraUrbanMpg?: number
     bannerLabel?: string
     videoUrls?: string[]
+    isDepartedSale?: boolean
+    departedRelationship?: string
 }
 
 export interface CreateListingResponse {
@@ -184,6 +186,8 @@ export interface Listing {
     combinedMpg: number | null
     extraUrbanMpg: number | null
     bannerLabel: string | null
+    isDepartedSale?: boolean | null
+    departedRelationship?: string | null
     sellerId: string | null
     isFeatured: boolean
     featuredUntil: string | null

@@ -55,6 +55,8 @@ interface FormData {
     condition: string
     serviceHistory: string
     owners: string
+    isDepartedSale: boolean
+    departedRelationship: string
     isImported: boolean
     // Extended vehicle details
     variant: string
@@ -134,7 +136,7 @@ const INITIAL_FORM: FormData = {
     mileage: "", fuelType: "", transmission: "", color: "",
     doors: "", seats: "", engineSize: "", bhp: "",
     features: [], description: "", title: "",
-    condition: "", serviceHistory: "", owners: "", isImported: false,
+    condition: "", serviceHistory: "", owners: "", isDepartedSale: false, departedRelationship: "", isImported: false,
     variant: "", driveType: "", numberOfKeys: "",
     torqueNm: "", topSpeedMph: "", zeroTo60Mph: "", combinedMpg: "", extraUrbanMpg: "",
     writeOffCategory: "", stolenRecovered: null, hasOutstandingFinance: null, isLegalRegisteredKeeper: null, declarationAcknowledged: false,
@@ -473,7 +475,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const validateStep = (): boolean => {
         switch (currentStep) {
             case 1: {
-                const baseValid = !!(formData.vrm && formData.make && formData.model && formData.year && formData.mileage && formData.fuelType && formData.transmission && formData.title && formData.title.length >= 5 && formData.location)
+                const baseValid = !!(formData.vrm && formData.make && formData.model && formData.year && formData.mileage && formData.fuelType && formData.transmission && formData.title && formData.title.length >= 5 && formData.location && formData.owners)
                 const declarationsValid = formData.writeOffCategory !== '' && formData.stolenRecovered !== null && formData.hasOutstandingFinance !== null && formData.isLegalRegisteredKeeper === true && formData.declarationAcknowledged
                 // Cat A/B are total-loss write-offs — only allowed for auction listings
                 if ((formData.writeOffCategory === 'CAT_A' || formData.writeOffCategory === 'CAT_B') && formData.listingType !== 'AUCTION') return false
@@ -606,6 +608,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 extraUrbanMpg: formData.extraUrbanMpg ? parseFloat(formData.extraUrbanMpg) : undefined,
                 bannerLabel: formData.bannerLabel || undefined,
                 videoUrls: formData.videoUrls.length > 0 ? formData.videoUrls : undefined,
+                isDepartedSale: formData.isDepartedSale || undefined,
+                departedRelationship: formData.departedRelationship || undefined,
             }
 
             if (editId) {
@@ -1861,24 +1865,45 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                             {/* Ownership */}
                             <div className="space-y-3">
-                                <label className="text-sm font-bold uppercase text-gray-400">Number of Owners</label>
-                                <div className="grid grid-cols-3 gap-2.5">
-                                    {([
-                                        { value: "1", label: "1 Owner" },
-                                        { value: "2", label: "2 Owners" },
-                                        { value: "3+", label: "3+ Owners" },
-                                    ] as const).map((opt) => {
-                                        const active = formData.owners === opt.value
-                                        return (
-                                            <button key={opt.value} type="button"
-                                                onClick={() => set("owners", opt.value)}
-                                                className={`py-2.5 rounded-lg border text-sm font-semibold transition-all ${active ? "border-primary bg-primary/10 text-white" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"}`}
-                                            >
-                                                {opt.label}
-                                            </button>
-                                        )
-                                    })}
+                                <label className="text-sm font-bold uppercase text-gray-400">Number of Owners *</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {(['1', '2', '3', '4', '5+'] as const).map((opt) => (
+                                        <button
+                                            key={opt}
+                                            type="button"
+                                            onClick={() => set('owners', opt)}
+                                            className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                                                formData.owners === opt
+                                                    ? 'bg-blue-600 border-blue-500 text-white'
+                                                    : 'border-white/10 text-white/60 hover:border-white/30'
+                                            }`}
+                                        >
+                                            {opt === '5+' ? '5+ Owners' : `${opt} Owner${opt !== '1' ? 's' : ''}`}
+                                        </button>
+                                    ))}
                                 </div>
+                                {/* Departed Sale */}
+                                <div className="flex items-center gap-3 mt-3">
+                                    <input
+                                        type="checkbox"
+                                        id="isDepartedSale"
+                                        checked={formData.isDepartedSale ?? false}
+                                        onChange={(e) => set('isDepartedSale', e.target.checked)}
+                                        className="w-4 h-4 rounded border-white/20 bg-white/5 accent-blue-500"
+                                    />
+                                    <label htmlFor="isDepartedSale" className="text-sm text-white/70 cursor-pointer">
+                                        This is a deceased estate sale
+                                    </label>
+                                </div>
+                                {formData.isDepartedSale && (
+                                    <input
+                                        type="text"
+                                        placeholder="Your relationship to the original owner (e.g. Son, Daughter, Solicitor)"
+                                        value={formData.departedRelationship ?? ''}
+                                        onChange={(e) => set('departedRelationship', e.target.value)}
+                                        className="mt-2 w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
+                                    />
+                                )}
                             </div>
 
 
