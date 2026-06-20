@@ -84,8 +84,18 @@ const Tile: React.FC<TileProps> = ({ label, icon, iconLib = 'ion', accentColor, 
         </View>
       )}
     </View>
-    <Text style={styles.tileLabel}>{label}</Text>
-    {sublabel ? <Text style={styles.tileSublabel} numberOfLines={1}>{sublabel}</Text> : null}
+    {wide ? (
+      <View style={styles.tileTextWrap}>
+        <Text style={styles.tileLabel}>{label}</Text>
+        {sublabel ? <Text style={styles.tileSublabel}>{sublabel}</Text> : null}
+      </View>
+    ) : (
+      <>
+        <Text style={styles.tileLabel}>{label}</Text>
+        {sublabel ? <Text style={styles.tileSublabel} numberOfLines={1}>{sublabel}</Text> : null}
+      </>
+    )}
+    {wide && <Ionicons name="chevron-forward" size={16} color="#404050" />}
   </TouchableOpacity>
 );
 
@@ -207,7 +217,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
             icon="car-outline"
             accentColor="#22C55E"
             sublabel={isSeller ? `${seller.activeListings} active` : 'Sell a car'}
-            onPress={() => isSeller ? nav('SellerDashboard') : nav('SellCarFlow')}
+            onPress={() => isSeller ? nav('SellerListings') : nav('SellCarFlow')}
           />
           <Tile
             label="Auctions"
@@ -343,6 +353,7 @@ const styles = StyleSheet.create({
   tileGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 12, marginBottom: 20 },
   tile: { width: '47%', backgroundColor: CARD_BG, borderRadius: 16, borderWidth: 1, borderColor: BORDER, padding: 16, gap: 8 },
   tileWide: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 14 },
+  tileTextWrap: { flex: 1, gap: 3 },
   tileIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   tileBadge: { position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, borderWidth: 1.5, borderColor: '#0A0A0C' },
   tileBadgeText: { fontFamily: FontFamily.bold, fontSize: 9, color: '#FFF' },

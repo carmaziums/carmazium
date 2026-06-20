@@ -471,22 +471,38 @@ export const GlobalDrawer: React.FC = () => {
             </>
           )}
 
-          {/* Dealer account browsing in buyer mode — show switch-back banner */}
-          {isActualDealer && role !== 'dealer' && (
+          {/* ── Dealer toggle — visible for all non-dealer users ── */}
+          {role !== 'dealer' && (
             <>
               <View style={styles.divider} />
-              <Text style={[styles.groupLabel, styles.groupLabelDealer]}>DEALER ACCOUNT</Text>
               <TouchableOpacity
-                style={styles.row}
-                onPress={() => { closeDrawer(); setTimeout(() => setRole('dealer'), 160); }}
-                activeOpacity={0.7}
+                style={styles.dealerToggleCard}
+                activeOpacity={0.8}
+                onPress={() => {
+                  closeDrawer();
+                  setTimeout(() => {
+                    if (isActualDealer && user?.isVerified) {
+                      setRole('dealer');
+                    } else {
+                      navigation.navigate('Main', { screen: 'DealerKYC' } as never);
+                    }
+                  }, 160);
+                }}
               >
-                <View style={styles.bar} />
-                <View style={[styles.iconWrap, styles.iconWrapGold]}>
-                  <Ionicons name="briefcase-outline" size={19} color="#F59E0B" />
+                <View style={styles.dealerToggleIcon}>
+                  <Ionicons name="briefcase-outline" size={20} color="#F59E0B" />
                 </View>
-                <Text style={styles.rowLabelDealer}>Switch to dealer mode</Text>
-                <Ionicons name="chevron-forward" size={14} color="#606070" />
+                <View style={styles.dealerToggleText}>
+                  <Text style={styles.dealerToggleTitle}>
+                    {isActualDealer ? 'Switch to Dealer Mode' : 'Become a Dealer'}
+                  </Text>
+                  <Text style={styles.dealerToggleSub}>
+                    {isActualDealer && user?.isVerified
+                      ? 'Your account is verified — tap to switch'
+                      : 'Complete KYC to unlock dealer features'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={15} color="#F59E0B" />
               </TouchableOpacity>
             </>
           )}
@@ -724,6 +740,43 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: 0.5,
+  },
+
+  // Dealer toggle card
+  dealerToggleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginVertical: 6,
+    backgroundColor: 'rgba(245,158,11,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.25)',
+    borderRadius: 14,
+    padding: 14,
+    gap: 12,
+  },
+  dealerToggleIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(245,158,11,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  dealerToggleText: {
+    flex: 1,
+    gap: 3,
+  },
+  dealerToggleTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#F59E0B',
+  },
+  dealerToggleSub: {
+    fontSize: 11,
+    fontWeight: '400',
+    color: '#A0783A',
   },
 
   // Footer
