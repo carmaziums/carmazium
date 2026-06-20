@@ -16,6 +16,23 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+function CountdownTimer({ expiresAt }: { expiresAt: Date }) {
+    const [timeLeft, setTimeLeft] = React.useState('')
+    React.useEffect(() => {
+        function update() {
+            const diff = expiresAt.getTime() - Date.now()
+            if (diff <= 0) { setTimeLeft('Expired'); return }
+            const h = Math.floor(diff / 3600000)
+            const m = Math.floor((diff % 3600000) / 60000)
+            setTimeLeft(`${h}h ${m}m remaining`)
+        }
+        update()
+        const id = setInterval(update, 60000)
+        return () => clearInterval(id)
+    }, [expiresAt])
+    return <p className="text-white/40 text-xs">{timeLeft}</p>
+}
+
 function StatusBadge({ status }: { status: Offer['status'] }) {
     const styles: Record<string, string> = {
         PENDING: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
@@ -200,6 +217,13 @@ function OfferRow({
     const [isCountering, setIsCountering] = React.useState(false)
     const [counterAmount, setCounterAmount] = React.useState<number>(0)
 
+    const sellerRemaining = 5 - (offer.counterAttemptsSeller ?? 0)
+    const isSellerLocked = (offer.counterAttemptsSeller ?? 0) >= 5
+    const expiresAt = offer.counterExpiresAt ? new Date(offer.counterExpiresAt) : null
+    const showSellerCounterArea =
+        offer.status === 'PENDING' ||
+        (offer.status === 'COUNTERED' && offer.lastCounteredBy === 'BUYER')
+
     return (
         <div className="glass-card p-4 md:p-5 flex flex-col md:flex-row items-start md:items-center gap-4">
             {/* Buyer avatar */}
@@ -235,69 +259,153 @@ function OfferRow({
                 </p>
             </div>
 
-            {/* Accept / Reject (only for pending) */}
-            {isPending && !isCountering && (
-                <div className="flex gap-2 shrink-0">
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-blue-500/40 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500 gap-1"
-                        onClick={() => setIsCountering(true)}
-                        disabled={isResponding}
-                    >
-                        <RefreshCw size={13} /> Counter
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-red-500/40 text-red-400 hover:bg-red-500/10 hover:border-red-500 gap-1"
-                        disabled={isResponding}
-                        onClick={() => onRespond(offer.id, 'REJECTED')}
-                    >
-                        {isResponding && !isCountering ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />}
-                        Decline
-                    </Button>
-                    <Button
-                        size="sm"
-                        className="bg-emerald-600 hover:bg-emerald-500 gap-1 shadow-[0_0_15px_rgba(52,211,153,0.3)]"
-                        disabled={isResponding}
-                        onClick={() => onRespond(offer.id, 'ACCEPTED')}
-                    >
-                        {isResponding && !isCountering ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle size={13} />}
-                        Accept
-                    </Button>
-                </div>
-            )}
+            {/* Seller counter area — shown for PENDING and COUNTERED+lastCounteredBy=BUYER */}
+            {showSellerCounterArea && (
+                <div className="flex flex-col gap-2 shrink-0">
+                    {/* Remaining count */}
+                    {!isSellerLocked && (
+                        <p className="text-xs text-white/50 text-right">
+                            {sellerRemaining} counter-offer{sellerRemaining !== 1 ? 's' : ''} remaining
+                        </p>
+                    )}
 
-            {isPending && isCountering && (
-                <div className="flex items-center gap-2 shrink-0">
-                    <div className="relative">
-                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">£</span>
-                        <input
-                            type="number"
-                            className="bg-slate-900 border border-white/20 text-white rounded-md pl-6 pr-3 py-1.5 w-24 text-sm focus:outline-none focus:border-blue-500 transition-colors"
-                            placeholder="Amount"
-                            value={counterAmount || ''}
-                            onChange={e => setCounterAmount(Number(e.target.value))}
-                        />
-                    </div>
-                    <Button
-                        size="sm"
-                        className="bg-blue-600 hover:bg-blue-500 gap-1"
-                        disabled={isResponding || !counterAmount || counterAmount <= 0}
-                        onClick={() => onRespond(offer.id, 'COUNTERED', counterAmount)}
-                    >
-                        {isResponding ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle size={13} />} Send
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-white/20 text-gray-400 hover:text-white"
-                        disabled={isResponding}
-                        onClick={() => setIsCountering(false)}
-                    >
-                        <X size={13} />
-                    </Button>
+                    {/* Locked state: replace counter input with amber banner */}
+                    {isSellerLocked ? (
+                        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+                            <p className="text-amber-300 text-sm font-medium mb-1">
+                                Counter limit reached — you must Accept or Decline.
+                            </p>
+                            {expiresAt && <CountdownTimer expiresAt={expiresAt} />}
+                        </div>
+                    ) : (
+                        /* Accept / Decline / Counter (only when not locked) */
+                        isPending && !isCountering ? (
+                            <div className="flex gap-2">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-blue-500/40 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500 gap-1"
+                                    onClick={() => setIsCountering(true)}
+                                    disabled={isResponding}
+                                >
+                                    <RefreshCw size={13} /> Counter
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-red-500/40 text-red-400 hover:bg-red-500/10 hover:border-red-500 gap-1"
+                                    disabled={isResponding}
+                                    onClick={() => onRespond(offer.id, 'REJECTED')}
+                                >
+                                    {isResponding && !isCountering ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />}
+                                    Decline
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    className="bg-emerald-600 hover:bg-emerald-500 gap-1 shadow-[0_0_15px_rgba(52,211,153,0.3)]"
+                                    disabled={isResponding}
+                                    onClick={() => onRespond(offer.id, 'ACCEPTED')}
+                                >
+                                    {isResponding && !isCountering ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle size={13} />}
+                                    Accept
+                                </Button>
+                            </div>
+                        ) : isPending && isCountering ? (
+                            <div className="flex items-center gap-2">
+                                <div className="relative">
+                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">£</span>
+                                    <input
+                                        type="number"
+                                        className="bg-slate-900 border border-white/20 text-white rounded-md pl-6 pr-3 py-1.5 w-24 text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                                        placeholder="Amount"
+                                        value={counterAmount || ''}
+                                        onChange={e => setCounterAmount(Number(e.target.value))}
+                                    />
+                                </div>
+                                <Button
+                                    size="sm"
+                                    className="bg-blue-600 hover:bg-blue-500 gap-1"
+                                    disabled={isResponding || !counterAmount || counterAmount <= 0}
+                                    onClick={() => onRespond(offer.id, 'COUNTERED', counterAmount)}
+                                >
+                                    {isResponding ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle size={13} />} Send
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-white/20 text-gray-400 hover:text-white"
+                                    disabled={isResponding}
+                                    onClick={() => setIsCountering(false)}
+                                >
+                                    <X size={13} />
+                                </Button>
+                            </div>
+                        ) : offer.status === 'COUNTERED' && offer.lastCounteredBy === 'BUYER' ? (
+                            /* Buyer re-countered — seller needs to respond */
+                            !isCountering ? (
+                                <div className="flex gap-2">
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="border-blue-500/40 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500 gap-1"
+                                        onClick={() => setIsCountering(true)}
+                                        disabled={isResponding}
+                                    >
+                                        <RefreshCw size={13} /> Counter
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="border-red-500/40 text-red-400 hover:bg-red-500/10 hover:border-red-500 gap-1"
+                                        disabled={isResponding}
+                                        onClick={() => onRespond(offer.id, 'REJECTED')}
+                                    >
+                                        {isResponding && !isCountering ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />}
+                                        Decline
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        className="bg-emerald-600 hover:bg-emerald-500 gap-1 shadow-[0_0_15px_rgba(52,211,153,0.3)]"
+                                        disabled={isResponding}
+                                        onClick={() => onRespond(offer.id, 'ACCEPTED')}
+                                    >
+                                        {isResponding && !isCountering ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle size={13} />}
+                                        Accept
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    <div className="relative">
+                                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">£</span>
+                                        <input
+                                            type="number"
+                                            className="bg-slate-900 border border-white/20 text-white rounded-md pl-6 pr-3 py-1.5 w-24 text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                                            placeholder="Amount"
+                                            value={counterAmount || ''}
+                                            onChange={e => setCounterAmount(Number(e.target.value))}
+                                        />
+                                    </div>
+                                    <Button
+                                        size="sm"
+                                        className="bg-blue-600 hover:bg-blue-500 gap-1"
+                                        disabled={isResponding || !counterAmount || counterAmount <= 0}
+                                        onClick={() => onRespond(offer.id, 'COUNTERED', counterAmount)}
+                                    >
+                                        {isResponding ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle size={13} />} Send
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="border-white/20 text-gray-400 hover:text-white"
+                                        disabled={isResponding}
+                                        onClick={() => setIsCountering(false)}
+                                    >
+                                        <X size={13} />
+                                    </Button>
+                                </div>
+                            )
+                        ) : null
+                    )}
                 </div>
             )}
 
