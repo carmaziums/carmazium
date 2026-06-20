@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Completed Phase 12 Plan 01 — BIN backend lifecycle complete
-last_updated: "2026-06-20T23:09:39.233Z"
-last_activity: "2026-06-21 — Phase 12 Plan 01 complete (BIN backend: DB schema + triggerBuyItNow/confirmBuyItNow/declineBuyItNow + cancelBid 2-min window + 9 TDD tests GREEN)"
+status: in_progress
+stopped_at: Completed Phase 12 Plan 02 — cancel bid backend complete
+last_updated: "2026-06-21T00:10:00.000Z"
+last_activity: "2026-06-21 — Phase 12 Plan 02 complete (cancel bid backend: cancelBid() service method with 4 guards, PATCH /bids/:id/cancel endpoint, broadcastBidCancelled() gateway event, cancelledAt:null on 12 Bid query sites, 10 TDD tests GREEN)"
 progress:
   total_phases: 17
   completed_phases: 4
   total_plans: 24
-  completed_plans: 21
-  percent: 96
+  completed_plans: 23
+  percent: 93
 ---
 
 # State: Carmazium Mobile App
@@ -19,9 +19,9 @@ progress:
 ## Current Position
 
 Phase: 12-auction-enhancements-buy-it-now-instant-purchase-cancel-bid-fat-finger-window (Auction Enhancements)
-Plan: 1 of 3 complete — Phase In Progress
-Status: Plan 12-01 complete (BIN backend), continuing to 12-02 (cancel bid frontend)
-Last activity: 2026-06-21 — Phase 12 Plan 01 complete (BIN lifecycle: DB schema migration, triggerBuyItNow/confirmBuyItNow/declineBuyItNow service methods, 3 controller endpoints, broadcastBinPending/broadcastBidCancelled gateway events, cancelBid 2-min window, 9 TDD tests GREEN)
+Plan: 2 of 3 complete — Phase In Progress
+Status: Plan 12-02 complete (cancel bid backend), continuing to 12-03 (frontend UI)
+Last activity: 2026-06-21 — Phase 12 Plan 02 complete (cancel bid backend: cancelBid() service method with 4 guards, PATCH /bids/:id/cancel endpoint, broadcastBidCancelled() gateway event, cancelledAt:null on 12 Bid query sites, 10 TDD tests GREEN)
 
 Progress: [█████████░] 90%
 
@@ -204,8 +204,17 @@ AuctionDetailScreen.tsx quickBidBtnText style key fixed in Plan 03.
 - user/page.tsx (OutgoingOffersTab): CountdownTimer helper; counterAmounts state map keyed by offer.id; handleBuyerCounter() calling PATCH /api/offers/:id/respond-counter; "X counter-offers remaining" display when isBuyerTurn; buyer counter input + COUNTER button; amber locked banner "Counter limit reached — awaiting seller's final decision." + countdown when counterAttemptsBuyer >= 5
 - seller/offers/page.tsx (OfferRow): CountdownTimer helper; sellerRemaining/isSellerLocked/expiresAt derived values; showSellerCounterArea covers PENDING and COUNTERED+lastCounteredBy=BUYER; "X counter-offers remaining" display; amber locked banner "Counter limit reached — you must Accept or Decline." + countdown when counterAttemptsSeller >= 5; seller action buttons (Counter/Decline/Accept) shown for buyer re-counter path
 
+### Phase 12 Plan 02 — Complete
+
+- bids.service.spec.ts: 4 cancel-bid unit tests (ForbiddenException/BadRequestException guards); 10/10 bids.service.spec.ts GREEN
+- bids.service.ts: cancelBid() with ownership, 2-min window, high-bidder, ACTIVE-auction guards; cancelledAt:null on 7 Bid query sites
+- bids.controller.ts: PATCH /bids/:id/cancel behind SessionAuthGuard
+- auction.gateway.ts: broadcastBidCancelled() emits 'bid:cancelled' to auction room
+- auctions.service.ts: cancelledAt:null on 5 Bid query sites (findAllActive, findOne, findMyAuctions, closeAuction, acceptBid)
+- Coordination: Plan 12-01 provided the full implementation in parallel wave; Plan 12-02 confirmed TDD GREEN
+
 ## Session Continuity
 
-Last session: 2026-06-20T23:09:39.217Z
-Stopped at: Completed Phase 12 Plan 01 — BIN backend lifecycle complete
+Last session: 2026-06-21T00:10:00.000Z
+Stopped at: Completed Phase 12 Plan 02 — cancel bid backend complete
 Resume file: None
