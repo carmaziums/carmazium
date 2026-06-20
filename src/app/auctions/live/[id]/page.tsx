@@ -19,7 +19,7 @@ import {
 import { CountdownTimer } from "@/components/features/CountdownTimer"
 import { ThreeDErrorBoundary } from "@/components/listing/ThreeDErrorBoundary"
 import { useAuth } from "@/context/AuthContext"
-import { getAuction, acceptBidEarly, type Auction, type BidBroadcastPayload, type AuctionEndPayload } from "@/lib/auctionApi"
+import { getAuction, acceptBidEarly, triggerBuyItNow, cancelBid, type Auction, type BidBroadcastPayload, type AuctionEndPayload } from "@/lib/auctionApi"
 import { placeBid, getDamageRecords } from "@/lib/listingApi"
 import { getWebSocketUrl, createChatRoom } from "@/lib/chatApi"
 
@@ -92,6 +92,15 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const [acceptLoading, setAcceptLoading] = React.useState(false)
     const [acceptError, setAcceptError] = React.useState<string | null>(null)
 
+    // Buy It Now state
+    const [binPending, setBinPending] = React.useState(false)
+    const [showBinModal, setShowBinModal] = React.useState(false)
+    const [binLoading, setBinLoading] = React.useState(false)
+    // Cancel bid state
+    const [cancelableBidId, setCancelableBidId] = React.useState<string | null>(null)
+    const [cancelWindowMs, setCancelWindowMs] = React.useState(0)
+    const [cancelLoading, setCancelLoading] = React.useState(false)
+
     const feedRef = React.useRef<HTMLDivElement>(null)
     const socketRef = React.useRef<Socket | null>(null)
 
@@ -115,6 +124,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     bidId: b.id,
                 })))
                 setAntiSnipeActive(new Date(data.endTime).getTime() - Date.now() <= 3 * 60 * 1000)
+                setBinPending(!!data.buyItNowPendingBuyerId)
                 // If auction already ended, synthesize endedPayload from DB data so banner renders on page load
                 if (data.status === "ENDED") {
                     const winningBid = bids[0] ? Number(bids[0].amount) : null
@@ -177,6 +187,29 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             setBidError(null)
             // If user was winning and got outbid, refresh notification bell
             if (wasWinning) triggerNotificationRefresh()
+            // Track cancel window for own bids
+            if (payload.bidderId === user?.id) {
+                setCancelableBidId(payload.bidId)
+            } else {
+                // Outbid: clear own cancel window
+                setCancelableBidId(null)
+            }
+            // Hide BIN if reserve is now met (clears pending BIN)
+            setAuction(p => {
+                if (p?.reservePrice && Number(payload.amount) >= Number(p.reservePrice)) {
+                    setBinPending(false)
+                }
+                return p
+            })
+        })
+
+        socket.on("bin:pending", ({ auctionId: evtId }: { auctionId: string; buyerId: string }) => {
+            if (evtId === auction.id) setBinPending(true)
+        })
+
+        socket.on("bid:cancelled", ({ bidId }: { auctionId: string; bidId: string }) => {
+            setBidHistory(prev => prev.filter(b => b.bidId !== bidId))
+            setCancelableBidId(prev => prev === bidId ? null : prev)
         })
 
         socket.on("auction:ended", (payload: AuctionEndPayload) => {
@@ -207,6 +240,24 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
         const t = setTimeout(() => setAntiSnipeActive(true), msUntilWindow)
         return () => clearTimeout(t)
     }, [endTime, auction?.status])
+
+    // ── Cancel countdown (120s window after own bid) ──────────────────────────
+    React.useEffect(() => {
+        if (!cancelableBidId) return
+        const WINDOW = 2 * 60 * 1000 // 120s
+        setCancelWindowMs(WINDOW)
+        const intervalId = setInterval(() => {
+            setCancelWindowMs(prev => {
+                if (prev <= 100) {
+                    clearInterval(intervalId)
+                    setCancelableBidId(null)
+                    return 0
+                }
+                return prev - 100
+            })
+        }, 100)
+        return () => clearInterval(intervalId)
+    }, [cancelableBidId])
 
     // ── Auto-scroll bid feed ──────────────────────────────────────────────────
     React.useEffect(() => {
@@ -267,6 +318,37 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
         setTimeout(() => setCopied(false), 2000)
     }, [])
 
+    // ── Buy It Now ────────────────────────────────────────────────────────────
+    async function handleBinTrigger() {
+        if (!auction?.id) return
+        setBinLoading(true)
+        try {
+            await triggerBuyItNow(auction.id)
+            setBinPending(true)
+            setShowBinModal(false)
+        } catch {
+            // BIN trigger failed — modal stays open, no action needed
+        } finally {
+            setBinLoading(false)
+        }
+    }
+
+    // ── Cancel Bid ────────────────────────────────────────────────────────────
+    async function handleCancelBid() {
+        if (!cancelableBidId) return
+        const bidToCancel = cancelableBidId
+        setCancelLoading(true)
+        try {
+            await cancelBid(bidToCancel)
+            setCancelableBidId(null)
+            setBidHistory(prev => prev.filter(b => b.bidId !== bidToCancel))
+        } catch {
+            // Cancel failed — leave state as-is so user can retry
+        } finally {
+            setCancelLoading(false)
+        }
+    }
+
     const minIncrement = auction ? Number(auction.minIncrement) : 100
     const quickBids = [minIncrement, minIncrement * 2, minIncrement * 5, minIncrement * 10]
 
@@ -307,7 +389,10 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const isSeller = !!user && auction.listing.sellerId === user.id
     // userWon: check both socket payload (real-time) and auction.winnerId (page load for ended auctions)
     const userWon = isEnded && !!(endedPayload?.winnerId === user?.id || (auction.winnerId && auction.winnerId === user?.id))
-    const reserveMet = !!(auction.listing.bids?.[0] && Number(auction.listing.bids[0].amount) >= Number(auction.reservePrice))
+    const topBidAmount = bidHistory[0]?.amount ?? (auction.listing.bids?.[0] ? Number(auction.listing.bids[0].amount) : null)
+    const reserveMet = !!(topBidAmount !== null && topBidAmount >= Number(auction.reservePrice))
+    // BIN card visibility: live + buyer + BIN price set + reserve not met + no pending BIN
+    const showBin = isLive && !isSeller && !!auction.buyItNowPrice && !reserveMet && !binPending
     const image = auction.listing.images?.[0] ?? "/assets/images/hero-bg.png"
     const bidCount = bidHistory.length
 
@@ -373,6 +458,49 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                     ) : (
                                         <><CheckCircle size={13} /> Yes, Accept & End</>
                                     )}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* ── BIN Confirmation Modal ────────────────────────────────────── */}
+            <AnimatePresence>
+                {showBinModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="rounded-2xl bg-[#0A0A0C] border border-white/10 p-6 w-80 shadow-xl"
+                        >
+                            <h3 className="text-lg font-semibold text-white mb-2">Confirm Buy It Now</h3>
+                            <p className="text-slate-400 text-sm mb-4">
+                                Buy this vehicle now for{' '}
+                                <span className="font-mono text-white">
+                                    £{Number(auction?.buyItNowPrice).toLocaleString('en-GB')}
+                                </span>
+                                ? The seller must accept within 24 hours.
+                            </p>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setShowBinModal(false)}
+                                    className="flex-1 rounded-lg border border-white/10 py-2 text-sm text-slate-400 hover:text-white transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleBinTrigger}
+                                    disabled={binLoading}
+                                    className="flex-1 rounded-lg bg-primary py-2 text-sm font-semibold text-white disabled:opacity-50 hover:bg-red-600 transition-colors"
+                                >
+                                    {binLoading ? 'Sending…' : 'Confirm'}
                                 </button>
                             </div>
                         </motion.div>
@@ -1083,26 +1211,52 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                 </div>
                             ) : (
                                 bidHistory.map((bid, i) => (
-                                    <motion.div
-                                        key={i}
-                                        initial={bid.isNew ? { opacity: 0, y: -8 } : false}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        className={`group relative flex items-center gap-2 px-3 py-2 rounded-xl transition-colors ${i === 0 ? "bg-primary/5 border border-primary/15" : "hover:bg-white/5"} ${isSeller && isLive && bid.bidId ? "cursor-pointer" : ""}`}
-                                        onClick={isSeller && isLive && bid.bidId ? () => { setAcceptingBid(bid); setAcceptError(null) } : undefined}
-                                    >
-                                        <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center shrink-0">
-                                            <span className="text-[9px] font-black text-slate-400">{bid.initials}</span>
-                                        </div>
-                                        <span className="text-slate-500 text-[10px]">bid</span>
-                                        <span className="font-mono font-black text-white text-xs">£{bid.amount.toLocaleString()}</span>
-                                        {i === 0 && <TrendingUp size={10} className="text-emerald-400 shrink-0" />}
-                                        <span className="ml-auto text-[9px] text-slate-600 shrink-0">{bid.time}</span>
-                                        {isSeller && isLive && bid.bidId && (
-                                            <span className="hidden group-hover:flex items-center gap-1 absolute right-2 top-1/2 -translate-y-1/2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[9px] font-black px-1.5 py-0.5 rounded-lg pointer-events-none">
-                                                <CheckCircle size={9} /> Accept
-                                            </span>
+                                    <div key={i}>
+                                        <motion.div
+                                            initial={bid.isNew ? { opacity: 0, y: -8 } : false}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            className={`group relative flex items-center gap-2 px-3 py-2 rounded-xl transition-colors ${i === 0 ? "bg-primary/5 border border-primary/15" : "hover:bg-white/5"} ${isSeller && isLive && bid.bidId ? "cursor-pointer" : ""}`}
+                                            onClick={isSeller && isLive && bid.bidId ? () => { setAcceptingBid(bid); setAcceptError(null) } : undefined}
+                                        >
+                                            <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center shrink-0">
+                                                <span className="text-[9px] font-black text-slate-400">{bid.initials}</span>
+                                            </div>
+                                            <span className="text-slate-500 text-[10px]">bid</span>
+                                            <span className="font-mono font-black text-white text-xs">£{bid.amount.toLocaleString()}</span>
+                                            {i === 0 && <TrendingUp size={10} className="text-emerald-400 shrink-0" />}
+                                            <span className="ml-auto text-[9px] text-slate-600 shrink-0">{bid.time}</span>
+                                            {isSeller && isLive && bid.bidId && (
+                                                <span className="hidden group-hover:flex items-center gap-1 absolute right-2 top-1/2 -translate-y-1/2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[9px] font-black px-1.5 py-0.5 rounded-lg pointer-events-none">
+                                                    <CheckCircle size={9} /> Accept
+                                                </span>
+                                            )}
+                                        </motion.div>
+                                        {/* Cancel countdown — only visible to the bid owner, not sellers */}
+                                        {bid.bidId === cancelableBidId && !isSeller && (
+                                            <div className="flex items-center gap-2 mt-1 ml-2">
+                                                <svg width="24" height="24" viewBox="0 0 24 24" className="-rotate-90">
+                                                    <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-700" />
+                                                    <circle
+                                                        cx="12" cy="12" r="10"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2"
+                                                        strokeDasharray={`${2 * Math.PI * 10}`}
+                                                        strokeDashoffset={`${2 * Math.PI * 10 * (1 - cancelWindowMs / 120000)}`}
+                                                        className="text-primary"
+                                                        style={{ transition: 'none' }}
+                                                    />
+                                                </svg>
+                                                <button
+                                                    onClick={handleCancelBid}
+                                                    disabled={cancelLoading || cancelWindowMs <= 0}
+                                                    className="text-xs text-red-400 hover:text-red-300 disabled:opacity-40"
+                                                >
+                                                    {cancelLoading ? 'Cancelling…' : `Cancel bid (${Math.ceil(cancelWindowMs / 1000)}s)`}
+                                                </button>
+                                            </div>
                                         )}
-                                    </motion.div>
+                                    </div>
                                 ))
                             )}
                         </div>
@@ -1241,6 +1395,29 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                             </>
                         )}
                     </div>
+
+                    {/* Buy It Now card */}
+                    {showBin && (
+                        <div className="rounded-xl border border-primary/40 bg-slate-800/60 p-4">
+                            <p className="text-sm text-slate-400 mb-1">Buy It Now</p>
+                            <p className="text-2xl font-mono font-bold text-white mb-3">
+                                £{Number(auction.buyItNowPrice!).toLocaleString('en-GB')}
+                            </p>
+                            <button
+                                onClick={() => setShowBinModal(true)}
+                                className="w-full rounded-lg bg-primary py-2 text-sm font-semibold text-white hover:bg-red-600 transition-colors"
+                            >
+                                Buy Now
+                            </button>
+                        </div>
+                    )}
+
+                    {/* BIN pending banner */}
+                    {binPending && !isSeller && (
+                        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-300">
+                            Buy It Now pending — awaiting seller confirmation
+                        </div>
+                    )}
 
                     {/* Trust note */}
                     {!isCancelled && !isSeller && (
