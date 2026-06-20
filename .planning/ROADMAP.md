@@ -296,13 +296,15 @@ Plans:
 
 ### Phase 12: Auction Enhancements — Buy It Now instant purchase, cancel bid fat-finger window
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Add Buy It Now (optional seller-set price with buyer-trigger / seller-confirm 24h flow) and a 2-minute server-enforced bid cancel window to the auction engine — surfaced in the live auction room, listing detail sidebar, and dealer auction creation form.
+**Requirements**: BIN-01, BIN-02, BIN-03, BIN-04, BIN-UI-01, BIN-UI-02, CANCEL-01, CANCEL-02, CANCEL-03, CANCEL-UI-01
 **Depends on:** Phase 11
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 12 to break down)
+- [ ] 12-01-PLAN.md — Wave 1 (TDD): DB migration + BIN backend (trigger/confirm/decline service, lazy expiry, auto-cancel on bid >= BIN price, unit tests)
+- [ ] 12-02-PLAN.md — Wave 1 (TDD): Cancel bid backend (cancelBid service, PATCH endpoint, cancelledAt query filters, gateway broadcast, unit tests)
+- [ ] 12-03-PLAN.md — Wave 2: All frontend UI (auctionApi.ts types + API fns, BIN card + modal + pending banner in live room, cancel countdown button, listing detail BIN section, dealer creation BIN field) + human verify checkpoint
 
 ### Phase 13: Listing Form Enhancements — departed sale option with relationship field
 
