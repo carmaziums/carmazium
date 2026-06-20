@@ -163,7 +163,7 @@ export class OffersController {
         @Body() dto: RespondOfferDto,
         @CurrentUser() user: any,
     ): Promise<StandardResponse<any>> {
-        const offer = await this.offersService.respondToCounterOffer(id, user.id, dto.status);
+        const offer = await this.offersService.respondToCounterOffer(id, user.id, dto.status, dto.counterAmount);
         return new StandardResponse(offer);
     }
 

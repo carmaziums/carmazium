@@ -4,6 +4,7 @@ import { OffersService } from './offers.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
+import { EmailService } from '../email/email.service';
 import { OfferResponseStatus } from './dto/respond-offer.dto';
 
 /**
@@ -38,6 +39,7 @@ describe('OffersService — incremental bidding', () => {
                 findMany: jest.fn(),
             },
             dealerStaff: { findFirst: jest.fn() },
+            $transaction: jest.fn((fn: any) => fn(prisma)),
         };
 
         const module: TestingModule = await Test.createTestingModule({
@@ -46,6 +48,7 @@ describe('OffersService — incremental bidding', () => {
                 { provide: PrismaService, useValue: prisma },
                 { provide: NotificationsService, useValue: { create: jest.fn().mockResolvedValue({}) } },
                 { provide: NotificationsGateway, useValue: { sendNotification: jest.fn() } },
+                { provide: EmailService, useValue: { sendOfferReceivedEmail: jest.fn(), sendOfferAcceptedEmail: jest.fn(), sendOfferRejectedEmail: jest.fn(), sendOfferCounteredEmail: jest.fn(), sendCounterAcceptedEmail: jest.fn() } },
             ],
         }).compile();
 
@@ -153,6 +156,7 @@ describe('OffersService — accepted offer remains visible after sale', () => {
                 findMany: jest.fn(),
             },
             dealerStaff: { findFirst: jest.fn() },
+            $transaction: jest.fn((fn: any) => fn(prisma)),
         };
 
         const module: TestingModule = await Test.createTestingModule({
@@ -161,6 +165,7 @@ describe('OffersService — accepted offer remains visible after sale', () => {
                 { provide: PrismaService, useValue: prisma },
                 { provide: NotificationsService, useValue: { create: jest.fn().mockResolvedValue({}) } },
                 { provide: NotificationsGateway, useValue: { sendNotification: jest.fn() } },
+                { provide: EmailService, useValue: { sendOfferReceivedEmail: jest.fn(), sendOfferAcceptedEmail: jest.fn(), sendOfferRejectedEmail: jest.fn(), sendOfferCounteredEmail: jest.fn(), sendCounterAcceptedEmail: jest.fn() } },
             ],
         }).compile();
 

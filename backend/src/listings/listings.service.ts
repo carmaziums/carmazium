@@ -772,6 +772,13 @@ export class ListingsService {
             throw new ForbiddenException('You do not have permission to publish this listing');
         }
 
+        // Photo minimum guard — listings require at least 10 images before publishing
+        if (listing.images.length < 10) {
+            throw new BadRequestException(
+                `Listings require at least 10 photos before publishing. You have ${listing.images.length}.`,
+            );
+        }
+
         // Already active — nothing to do
         if (listing.status === 'ACTIVE') {
             return { activated: true };
