@@ -459,10 +459,56 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [editMode] = useState<boolean>(!!(route?.params?.listingId));
   const [editListingId] = useState<string | null>(route?.params?.listingId ?? null);
 
+  // ── Draft persistence ──
+  const { updateDraft, clearDraft } = useSellWizardStore();
+
   // ── Inline validation (Step 1 user-entered fields, Step 3 pricing) ──
   // Touched tracks whether user has interacted with a field (blur or change after focus)
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const fieldTouched = (key: string) => () => setTouched(prev => ({ ...prev, [key]: true }));
+
+  // ── Draft hydration — offer resume after app restart ─────────────────────────
+  useEffect(() => {
+    // Only show resume prompt for new listings, not edits
+    if (editMode) return;
+    const unsub = useSellWizardStore.persist.onFinishHydration(() => {
+      const store = useSellWizardStore.getState();
+      if (store.make || store.model || store.lastStep > 1) {
+        Alert.alert(
+          'Resume draft?',
+          'You have an unsaved listing. Continue where you left off?',
+          [
+            {
+              text: 'Start fresh',
+              onPress: clearDraft,
+              style: 'cancel',
+            },
+            {
+              text: 'Resume',
+              onPress: () => {
+                if (store.make) setMake(store.make);
+                if (store.model) setModel(store.model);
+                if (store.year) setYear(store.year);
+                if (store.mileage) setMileage(store.mileage);
+                if (store.title) setTitle(store.title);
+                if (store.fuelType) setFuelType(store.fuelType);
+                if (store.transmission) setTransmission(store.transmission);
+                if (store.bodyType) setBodyType(store.bodyType);
+                if (store.colour) setColour(store.colour);
+                if (store.price) setPriceAsking(store.price);
+                if (store.listingType) setListingType(store.listingType as 'CLASSIFIED' | 'AUCTION');
+                if (store.exteriorImages.length > 0) setExteriorImages(store.exteriorImages);
+                if (store.interiorImages.length > 0) setInteriorImages(store.interiorImages);
+                if (store.damageImages.length > 0) setDamageImages(store.damageImages);
+                if (store.lastStep > 1) setStep(store.lastStep as Step);
+              },
+            },
+          ],
+        );
+      }
+    });
+    return () => unsub();
+  }, []);
 
   // Validation rules — returns null (valid) or an error string (invalid)
   const fieldError = (key: string): string | null => {
@@ -716,11 +762,12 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
       if (editMode && editListingId) {
         await apiClient(`/listings/${editListingId}`, { method: 'PATCH', body: JSON.stringify(payload) });
+        haptics.success();
         Alert.alert('Updated!', 'Your listing has been updated.', [
           { text: 'Done', onPress: () => navigation?.navigate('SellerListings') },
         ]);
       } else {
-        const res = await apiClient<{ data: { id: string } }>('/listings', { method: 'POST', body: JSON.stringify(payload) });
+        const res = await apiClient<{ success: boolean; data: { id: string } }>('/listings', { method: 'POST', body: JSON.stringify(payload) });
         // If auction, schedule it
         if (isAuction && res?.data?.id) {
           const auctionPayload: Record<string, any> = {
@@ -737,8 +784,19 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             auctionPayload.startTime = new Date(auctionStartDate).toISOString();
           }
           Object.keys(auctionPayload).forEach(k => auctionPayload[k] === undefined && delete auctionPayload[k]);
-          await apiClient('/auctions', { method: 'POST', body: JSON.stringify(auctionPayload) });
+          try {
+            await apiClient('/auctions', { method: 'POST', body: JSON.stringify(auctionPayload) });
+          } catch (auctionErr: any) {
+            // Listing was created successfully — auction creation failed
+            // Notify user but still navigate (listing exists; auction can be created later)
+            Alert.alert(
+              'Listing created',
+              `Your listing was published but the auction could not be scheduled: ${auctionErr.message || 'Unknown error'}. You can schedule the auction from your listings.`,
+            );
+          }
         }
+        haptics.success();
+        clearDraft();
         Alert.alert(
           isAuction ? 'Auction Scheduled!' : 'Published!',
           isAuction ? 'Your auction is now live.' : 'Your listing is now live.',
@@ -760,7 +818,15 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       setTouched(prev => ({ ...prev, priceAsking: true, priceMin: priceMin.trim() ? true : prev.priceMin }));
     }
     if (!validateStep(step)) return;
-    if (step < totalSteps) setStep((step + 1) as Step);
+    const nextStep = Math.min(step + 1, totalSteps) as Step;
+    // Persist current state to draft before advancing
+    updateDraft({
+      make, model, year, mileage, title, fuelType, transmission, bodyType, colour,
+      price: priceAsking, listingType,
+      exteriorImages, interiorImages, damageImages,
+      lastStep: nextStep,
+    });
+    if (step < totalSteps) setStep(nextStep);
   }
 
   function handleBack() {
