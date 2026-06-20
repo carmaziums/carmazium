@@ -201,6 +201,20 @@ export interface Listing {
     importedSource?: string | null
     // Latest offer on this listing (populated in detail view)
     offers?: LatestOffer[]
+    // Auction relation (populated in detail view for AUCTION type listings)
+    auction?: {
+        id: string
+        status: 'SCHEDULED' | 'ACTIVE' | 'ENDED' | 'CANCELLED'
+        reservePrice: string | number
+        startTime: string
+        endTime: string
+        winnerId: string | null
+        winningBidAmount: string | number | null
+        buyItNowPrice?: number | null
+        buyItNowPendingBuyerId?: string | null
+    } | null
+    // Bids on this listing (populated in detail view)
+    bids?: { amount: string | number; bidderId: string }[]
     // Added seller relation details
     seller?: {
         id: string

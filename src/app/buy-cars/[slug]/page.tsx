@@ -11,6 +11,7 @@ const ThreeDVehicleViewer = dynamic(() => import("@/components/listing/ThreeDVeh
 import { ThreeDErrorBoundary } from "@/components/listing/ThreeDErrorBoundary"
 import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale, Loader2, MessageCircle, Tag, X, Clock, ThumbsUp, XCircle, AlertTriangle, BadgeCheck, Star, Sparkles, Info, Phone, Globe, Fuel, Gavel } from "lucide-react"
 import { getListingBySlug, makeOffer, getMyOfferForListing, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, getDamageRecords, type Listing, type LatestOffer, formatPrice } from "@/lib/listingApi"
+import { triggerBuyItNow } from "@/lib/auctionApi"
 import { createChatRoom } from "@/lib/chatApi"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -345,6 +346,22 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
             seats: listing.seats?.toString() || "-",
             color: listing.color || "-",
             mpg: "-",
+        }
+    }
+
+    // BIN availability for auction listings
+    const reserveMet = listing
+        ? !!(listing.auction?.reservePrice && listing.bids?.[0]?.amount &&
+              Number(listing.bids[0].amount) >= Number(listing.auction.reservePrice))
+        : false
+
+    const handleBinFromDetail = async () => {
+        if (!listing?.auction?.id) return
+        try {
+            await triggerBuyItNow(listing.auction.id)
+            router.push(`/auctions/live/${listing.auction.id}`)
+        } catch {
+            // BIN trigger failed — stay on page, user can try from live room
         }
     }
 
@@ -1186,6 +1203,26 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                                 </Button>
                                             </div>
                                         </div>
+
+                                        {/* Buy It Now section — auction listings only, reserve not met */}
+                                        {listing.type === 'AUCTION' &&
+                                         listing.auction?.status === 'ACTIVE' &&
+                                         listing.auction?.buyItNowPrice &&
+                                         !reserveMet && (
+                                            <div className="rounded-xl border border-primary/40 bg-slate-900/60 p-4 mt-4">
+                                                <p className="text-xs text-slate-400 mb-1 uppercase tracking-wide">Buy It Now</p>
+                                                <p className="text-2xl font-mono font-bold text-white mb-3">
+                                                    £{Number(listing.auction.buyItNowPrice).toLocaleString('en-GB')}
+                                                </p>
+                                                <button
+                                                    onClick={handleBinFromDetail}
+                                                    className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-white hover:bg-red-600 transition-colors"
+                                                >
+                                                    Buy Now
+                                                </button>
+                                                <p className="text-xs text-slate-500 mt-2 text-center">Seller must confirm within 24h</p>
+                                            </div>
+                                        )}
                                     </>
                                 )}
                             </div>

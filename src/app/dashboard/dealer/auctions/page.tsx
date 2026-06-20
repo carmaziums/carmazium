@@ -79,6 +79,7 @@ function DealerAuctionsPage() {
     const [formReservePrice, setFormReservePrice] = React.useState("")
     const [formStartingBid, setFormStartingBid] = React.useState("")
     const [formMinIncrement, setFormMinIncrement] = React.useState("100")
+    const [formBuyItNowPrice, setFormBuyItNowPrice] = React.useState("")
     const [submitting, setSubmitting] = React.useState(false)
     const [formError, setFormError] = React.useState<string | null>(null)
     const [successMsg, setSuccessMsg] = React.useState<string | null>(null)
@@ -153,13 +154,16 @@ function DealerAuctionsPage() {
                 reservePrice: Number(formReservePrice),
                 startingBid: Number(formStartingBid),
                 minIncrement: Number(formMinIncrement) || 100,
+                ...(formBuyItNowPrice && Number(formBuyItNowPrice) > 0
+                    ? { buyItNowPrice: Number(formBuyItNowPrice) }
+                    : {}),
             }
             await createAuction(dto)
             const endDisplay = addHours(new Date(formStartTime).toISOString(), 24)
             setSuccessMsg(`Auction scheduled! It will run until ${endDisplay}.`)
             setShowForm(false)
             setFormListingId(""); setFormStartTime(""); setFormReservePrice("")
-            setFormStartingBid(""); setFormMinIncrement("100")
+            setFormStartingBid(""); setFormMinIncrement("100"); setFormBuyItNowPrice("")
             fetchAuctions()
         } catch (err: any) {
             setFormError(err.message || "Failed to create auction.")
@@ -322,6 +326,25 @@ function DealerAuctionsPage() {
                                                 onChange={e => setFormReservePrice(e.target.value)}
                                                 className="bg-[#0A0A0C] border-white/5 text-white h-12 rounded-xl focus:ring-1 focus:ring-primary/50"
                                             />
+                                        </div>
+
+                                        {/* Buy It Now price (optional) */}
+                                        <div>
+                                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+                                                Buy It Now Price (optional)
+                                            </label>
+                                            <Input
+                                                type="number"
+                                                min={0}
+                                                step={1}
+                                                placeholder="Leave blank to disable"
+                                                value={formBuyItNowPrice}
+                                                onChange={e => setFormBuyItNowPrice(e.target.value)}
+                                                className="bg-[#0A0A0C] border-white/5 text-white h-12 rounded-xl focus:ring-1 focus:ring-primary/50"
+                                            />
+                                            <p className="text-xs text-gray-600 mt-1">
+                                                Buyers can request to buy at this price. Locked once auction goes live.
+                                            </p>
                                         </div>
 
                                         {/* Starting bid */}
