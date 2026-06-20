@@ -163,8 +163,11 @@ export class DashboardService {
             this.prisma.offer.count({ where: { buyerId: userId, status: 'COUNTERED' } }),
             
             // Seller/Dealer stats (Aggregated for the dealership if staff)
+            // Phase 10: include SOLD in total count — no status filter intentional (DRAFT + ACTIVE + SOLD all count)
             this.prisma.listing.count({ where: { sellerId: targetOwnerId, deletedAt: null } }),
+            // Phase 10: activeListings intentionally ACTIVE only — this is the current live inventory count
             this.prisma.listing.count({ where: { sellerId: targetOwnerId, status: 'ACTIVE', deletedAt: null } }),
+            // Phase 10: soldListings correctly counts only SOLD — used for sold count stat
             this.prisma.listing.count({ where: { sellerId: targetOwnerId, status: 'SOLD', deletedAt: null } }),
             this.prisma.listing.aggregate({
                 where: { sellerId: targetOwnerId, deletedAt: null },

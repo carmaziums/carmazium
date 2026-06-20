@@ -350,8 +350,11 @@ export class AdminService {
     async getPlatformStats() {
         const [users, listings, activeListings, soldListings, auctions, activeAuctions, endedAuctions, bids, revenueAgg] = await Promise.all([
             this.prisma.user.count(),
+            // Phase 10: include SOLD in total count — no status filter, counts DRAFT + ACTIVE + SOLD
             this.prisma.listing.count(),
+            // Phase 10: activeListings intentionally ACTIVE only — current live count
             this.prisma.listing.count({ where: { status: 'ACTIVE' } }),
+            // Phase 10: soldListings correctly counts SOLD listings only
             this.prisma.listing.count({ where: { status: 'SOLD' } }),
             this.prisma.auction.count({ where: { deletedAt: null } }),
             this.prisma.auction.count({ where: { status: 'ACTIVE', deletedAt: null } }),
