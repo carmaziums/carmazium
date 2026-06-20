@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: in_progress
-stopped_at: Completed Phase 12 Plan 02 — cancel bid backend complete
-last_updated: "2026-06-21T00:10:00.000Z"
+status: completed
+stopped_at: Completed 12-03-PLAN.md — BIN + cancel UI frontend complete; Phase 12 done
+last_updated: "2026-06-20T23:26:34.300Z"
 last_activity: "2026-06-21 — Phase 12 Plan 02 complete (cancel bid backend: cancelBid() service method with 4 guards, PATCH /bids/:id/cancel endpoint, broadcastBidCancelled() gateway event, cancelledAt:null on 12 Bid query sites, 10 TDD tests GREEN)"
 progress:
   total_phases: 17
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 24
-  completed_plans: 23
-  percent: 93
+  completed_plans: 24
+  percent: 97
 ---
 
 # State: Carmazium Mobile App
@@ -19,11 +19,11 @@ progress:
 ## Current Position
 
 Phase: 12-auction-enhancements-buy-it-now-instant-purchase-cancel-bid-fat-finger-window (Auction Enhancements)
-Plan: 2 of 3 complete — Phase In Progress
-Status: Plan 12-02 complete (cancel bid backend), continuing to 12-03 (frontend UI)
-Last activity: 2026-06-21 — Phase 12 Plan 02 complete (cancel bid backend: cancelBid() service method with 4 guards, PATCH /bids/:id/cancel endpoint, broadcastBidCancelled() gateway event, cancelledAt:null on 12 Bid query sites, 10 TDD tests GREEN)
+Plan: 3 of 3 complete — Phase Complete
+Status: Phase 12 complete — BIN frontend UI, cancel countdown, listing detail BIN section, dealer form BIN field all shipped; human checkpoint approved
+Last activity: 2026-06-21 — Phase 12 Plan 03 complete (BIN card + confirmation modal + cancel countdown SVG arc in live auction room; BIN section in listing detail sidebar; optional BIN price field in dealer auction creation form; zero TypeScript errors; human-verified)
 
-Progress: [█████████░] 90%
+Progress: [██████████] 97%
 
 ## Project Reference
 
@@ -213,8 +213,16 @@ AuctionDetailScreen.tsx quickBidBtnText style key fixed in Plan 03.
 - auctions.service.ts: cancelledAt:null on 5 Bid query sites (findAllActive, findOne, findMyAuctions, closeAuction, acceptBid)
 - Coordination: Plan 12-01 provided the full implementation in parallel wave; Plan 12-02 confirmed TDD GREEN
 
+### Phase 12 Plan 03 — Complete
+
+- auctionApi.ts: extended Auction interface with buyItNowPrice?, buyItNowPendingBuyerId?, buyItNowPendingAt?; added buyItNowPrice? to CreateAuctionRequest; exported triggerBuyItNow, confirmBuyItNow, declineBuyItNow, cancelBid
+- src/app/auctions/live/[id]/page.tsx: BIN card in right sidebar (between Bid Controls and Trust Note); AnimatePresence confirmation modal (inline, matches acceptingBid overlay pattern); BIN pending banner; SVG arc cancel countdown button (100ms setInterval, 120s window, visible only to bid owner); bin:pending and bid:cancelled socket handlers; reserveMet useMemo; showBin compound guard
+- src/app/buy-cars/[slug]/page.tsx: BIN section in listing detail right sidebar; handleBinFromDetail routes to /auctions/live/:id after triggerBuyItNow; reserveMet derived from listing.bids[0].amount vs auction.reservePrice
+- src/app/dashboard/dealer/auctions/page.tsx: optional buyItNowPrice input below Reserve Price; included in POST payload only when > 0
+- Human checkpoint approved; zero TypeScript errors
+
 ## Session Continuity
 
-Last session: 2026-06-21T00:10:00.000Z
-Stopped at: Completed Phase 12 Plan 02 — cancel bid backend complete
+Last session: 2026-06-20T23:26:34.280Z
+Stopped at: Completed 12-03-PLAN.md — BIN + cancel UI frontend complete; Phase 12 done
 Resume file: None
