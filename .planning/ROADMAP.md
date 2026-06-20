@@ -284,13 +284,15 @@ Plans:
 
 ### Phase 11: Listing Page Overhaul — category badges, sticky sidebar CTAs, dealer verification display, proximity distance on all listings
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Buyers see category badges (body type, fuel type, auction indicator) above the listing title, a prominent dealer trust panel with KYC verification and active listing count in the sidebar, Save/Share/Compare CTAs in the sidebar and a mobile sticky action bar, and proximity distance on CarCards and the listing detail sidebar — with a client-side distance filter and postcode fallback on the search page.
+**Requirements**: CAT-01, CAT-02, CAT-03, SIDE-01, SIDE-02, SIDE-03, SIDE-04, TRUST-01, TRUST-02, TRUST-03, DIST-01, DIST-02, DIST-03, DIST-04, DIST-05
 **Depends on:** Phase 10
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 11 to break down)
+- [ ] 11-01-PLAN.md — Wave 1: vehicleLabels.ts + LocationContext.tsx + backend listingCount
+- [ ] 11-02-PLAN.md — Wave 2: Listing detail page — eyebrow badges, trust panel, sidebar CTAs, mobile sticky bar, distance display
+- [ ] 11-03-PLAN.md — Wave 3: Search page distance filter + CarCard distance + seller profile KYC badge
 
 ### Phase 12: Auction Enhancements — Buy It Now instant purchase, cancel bid fat-finger window
 
