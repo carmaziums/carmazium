@@ -269,6 +269,89 @@ Plans:
 
 **Dependencies:** mobile-app-parity phase (all 47 screens must exist), Wave 1 must complete before Wave 2/3/4 (storageHelper.ts is a shared dependency)
 
+### Phase 10: Web Platform Quick Fixes — footer contacts, owners dropdown, photo minimum, counter-offer limit, sold car archiving
+
+**Goal:** Ship 4 targeted web-platform fixes: owners dropdown (5 options + departed sale deceased estate), photo minimum 10/max 100 with encouragement UX, counter-offer 5-per-side limit with lock state and 48h expiry, and sold car archiving — SOLD badge in inventory and search, Relist action, SOLD overlay on detail page.
+**Requirements**: OWNERS-01, OWNERS-02, OWNERS-03, OWNERS-04, OWNERS-05, PHOTO-01, PHOTO-02, PHOTO-03, PHOTO-04, PHOTO-05, PHOTO-06, COUNTER-01, COUNTER-02, COUNTER-03, COUNTER-04, COUNTER-05, COUNTER-06, COUNTER-07, COUNTER-08, COUNTER-09, SOLD-01, SOLD-02, SOLD-03, SOLD-04, SOLD-05, SOLD-06, SOLD-07
+**Depends on:** Phase 9
+**Plans:** 4 plans
+
+Plans:
+- [ ] 10-01-PLAN.md — Wave 1: DB migration + backend guards (photo min, counter limits, expiry, departed sale fields)
+- [ ] 10-02-PLAN.md — Wave 2: Owners dropdown + departed sale + photo min UX in listing wizard + detail page rendering
+- [ ] 10-03-PLAN.md — Wave 2: Counter-offer UI — remaining count, buyer re-counter input, lock state banner + 48h countdown
+- [ ] 10-04-PLAN.md — Wave 3: Sold car archiving — SOLD badge + Relist in inventory, SOLD overlay on detail page, SOLD badge in search results
+
+### Phase 11: Listing Page Overhaul — category badges, sticky sidebar CTAs, dealer verification display, proximity distance on all listings
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 10
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 11 to break down)
+
+### Phase 12: Auction Enhancements — Buy It Now instant purchase, cancel bid fat-finger window
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 11
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 12 to break down)
+
+### Phase 13: Listing Form Enhancements — departed sale option with relationship field
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 12
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 13 to break down)
+
+### Phase 14: Stripe KYC Fix — replace manual card form with Stripe Elements and live 1 pound verification charge
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 13
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 14 to break down)
+
+### Phase 15: Delivery and Distance System — seller delivery toggle, price-per-km auto-calculation, buyer delivery request flow
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 14
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 15 to break down)
+
+### Phase 16: Analytics and Infrastructure — 7-day 30-day dashboard filters, DB scalability audit, AWS S3 media migration, 30-day automated backups
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 15
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 16 to break down)
+
+### Phase 17: Mobile Catalog Swipe — image carousel swipe gesture on vehicle cards in buy car grid
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 16
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 17 to break down)
+
 ---
 
 ## Progress
