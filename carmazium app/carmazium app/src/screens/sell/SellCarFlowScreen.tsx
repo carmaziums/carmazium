@@ -16,6 +16,8 @@ import { useAuthStore } from '../../store/authStore';
 import { convertAndCompress, uploadToStorage } from '../../lib/storageHelper';
 import { useSellWizardStore } from '../../lib/sellWizardStore';
 import { haptics } from '../../lib/haptics';
+import { useStripe } from '@stripe/stripe-react-native';
+import { createPaymentSheet } from '../../lib/paymentsApi';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -368,6 +370,7 @@ function DamageMapper({
 
 export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [step, setStep] = useState<Step>(1);
 
   // ── Step 1 — Vehicle Details ──
@@ -712,6 +715,44 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     return true;
   }
 
+  // ─── Listing Fee Payment ──────────────────────────────────────────────────────
+
+  async function triggerListingFeePayment(listingId: string, tier: 'BASIC' | 'STANDARD' | 'PREMIUM'): Promise<boolean> {
+    const amounts: Record<string, number> = { BASIC: 1, STANDARD: 10, PREMIUM: 25 };
+    const amount = amounts[tier];
+    const sheet = await createPaymentSheet({ listingId, amount, type: 'COMMISSION', currency: 'gbp' });
+    const { error: initError } = await initPaymentSheet({
+      merchantDisplayName: 'Carmazium',
+      customerId: sheet.customerId,
+      customerEphemeralKeySecret: sheet.ephemeralKey,
+      paymentIntentClientSecret: sheet.clientSecret,
+      allowsDelayedPaymentMethods: false,
+      appearance: {
+        colors: {
+          primary: '#DC1F26',
+          background: '#111116',
+          componentBackground: '#18181f',
+          componentBorder: 'rgba(255,255,255,0.08)',
+          componentDivider: 'rgba(255,255,255,0.06)',
+          primaryText: '#FFFFFF',
+          secondaryText: '#A0A0AB',
+          componentText: '#FFFFFF',
+          placeholderText: '#606070',
+          icon: '#A0A0AB',
+          error: '#DC1F26',
+        },
+      },
+    });
+    if (initError) throw new Error(initError.message);
+
+    const { error: presentError } = await presentPaymentSheet();
+    if (presentError) {
+      if (presentError.code !== 'Canceled') throw new Error(presentError.message);
+      return false; // user cancelled
+    }
+    return true;
+  }
+
   // ─── Publish ─────────────────────────────────────────────────────────────────
 
   async function handlePublish() {
@@ -768,10 +809,12 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         ]);
       } else {
         const res = await apiClient<{ success: boolean; data: { id: string } }>('/listings', { method: 'POST', body: JSON.stringify(payload) });
-        // If auction, schedule it
-        if (isAuction && res?.data?.id) {
+        const newListingId = res?.data?.id;
+
+        if (isAuction && newListingId) {
+          // Auction listings: schedule the auction, then publish (no listing fee for auction tier)
           const auctionPayload: Record<string, any> = {
-            listingId: res.data.id,
+            listingId: newListingId,
             reservePrice: parseFloat(reservePrice),
             startingBid: parseFloat(startingBid),
             minIncrement: parseFloat(minIncrement),
@@ -787,21 +830,53 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           try {
             await apiClient('/auctions', { method: 'POST', body: JSON.stringify(auctionPayload) });
           } catch (auctionErr: any) {
-            // Listing was created successfully — auction creation failed
-            // Notify user but still navigate (listing exists; auction can be created later)
             Alert.alert(
               'Listing created',
               `Your listing was published but the auction could not be scheduled: ${auctionErr.message || 'Unknown error'}. You can schedule the auction from your listings.`,
             );
           }
+          // Publish auction listing (no fee)
+          try {
+            await apiClient(`/listings/${newListingId}/publish`, { method: 'POST' });
+          } catch {
+            // Non-fatal — listing still exists
+          }
+          haptics.success();
+          clearDraft();
+          Alert.alert('Auction Scheduled!', 'Your auction is now live.', [
+            { text: 'View Listings', onPress: () => navigation?.navigate('SellerListings') },
+          ]);
+        } else if (newListingId) {
+          // Classified listing: gate behind payment sheet for all tiers (BASIC=£1, STANDARD=£10, PREMIUM=£25)
+          let paid = false;
+          try {
+            paid = await triggerListingFeePayment(newListingId, badgeTier as 'BASIC' | 'STANDARD' | 'PREMIUM');
+          } catch (payErr: any) {
+            Alert.alert('Payment Failed', payErr.message || 'Could not process payment.');
+            return;
+          }
+
+          if (!paid) {
+            // User cancelled — listing exists as draft
+            Alert.alert('Payment cancelled', 'Your listing was saved as a draft. Complete payment to publish.');
+            return;
+          }
+
+          // Payment succeeded — publish the listing
+          haptics.success();
+          try {
+            await apiClient(`/listings/${newListingId}/publish`, { method: 'POST' });
+          } catch {
+            Alert.alert(
+              'Almost there!',
+              'Listing created but could not be published automatically. Visit "My Listings" to publish.',
+            );
+          }
+          clearDraft();
+          Alert.alert('Published!', 'Your listing is now live.', [
+            { text: 'View Listings', onPress: () => navigation?.navigate('SellerListings') },
+          ]);
         }
-        haptics.success();
-        clearDraft();
-        Alert.alert(
-          isAuction ? 'Auction Scheduled!' : 'Published!',
-          isAuction ? 'Your auction is now live.' : 'Your listing is now live.',
-          [{ text: 'View Listings', onPress: () => navigation?.navigate('SellerListings') }],
-        );
       }
     } catch (err: any) {
       Alert.alert('Failed', err.message || 'Could not publish listing.');
