@@ -15,7 +15,11 @@ import {
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { apiClient } from '../../lib/apiClient';
+import { convertAndCompress, uploadToStorage } from '../../lib/storageHelper';
+import { useAuthStore } from '../../store/authStore';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
@@ -130,11 +134,16 @@ const KycSkeleton: React.FC = () => (
 
 export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const userId = useAuthStore((state) => state.user?.id) ?? 'anon';
 
   const [existingKyc, setExistingKyc] = useState<any>(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // ── Document upload state ───────────────────────────────────────────────────
+  const [docUrls, setDocUrls] = useState<Record<string, string>>({});
+  const [docUploading, setDocUploading] = useState<Record<string, boolean>>({});
 
   const [form, setForm] = useState({
     companyHouseName: '',
@@ -182,6 +191,52 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
   const setField = (key: keyof typeof form) => (val: string) =>
     setForm((prev) => ({ ...prev, [key]: val }));
 
+  // ── Document capture + upload handler ──────────────────────────────────────
+  const handleDocumentCapture = async (fieldName: string, type: 'image' | 'pdf') => {
+    setDocUploading((prev) => ({ ...prev, [fieldName]: true }));
+    try {
+      let localUri: string;
+      let mimeType = 'image/jpeg';
+
+      if (type === 'image') {
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: 'images' as any,
+          allowsEditing: false,
+          quality: 1.0,
+        });
+        if (result.canceled) return;
+        localUri = result.assets[0].uri;
+        localUri = await convertAndCompress(localUri);
+        mimeType = 'image/jpeg';
+      } else {
+        const result = await DocumentPicker.getDocumentAsync({
+          type: ['application/pdf', 'image/*'],
+          copyToCacheDirectory: true, // REQUIRED for iOS FileSystem access
+        });
+        if (result.canceled) return;
+        const asset = result.assets[0];
+        localUri = asset.uri;
+        mimeType = asset.mimeType ?? 'application/pdf';
+        // If user picks an image via the document picker, compress it too
+        if (mimeType.startsWith('image/')) {
+          localUri = await convertAndCompress(localUri);
+          mimeType = 'image/jpeg';
+        }
+      }
+
+      const ext = mimeType === 'application/pdf' ? 'pdf' : 'jpg';
+      const path = `kyc/${userId}/${fieldName}-${Date.now()}.${ext}`;
+      // NOTE: using public URL pattern — kyc-documents bucket must have public access enabled in Supabase dashboard
+      const url = await uploadToStorage(localUri, 'kyc-documents', path, mimeType);
+      setDocUrls((prev) => ({ ...prev, [fieldName]: url }));
+      haptics.medium();
+    } catch (err: any) {
+      Alert.alert('Upload failed', err.message ?? 'Could not upload document');
+    } finally {
+      setDocUploading((prev) => ({ ...prev, [fieldName]: false }));
+    }
+  };
+
   // ── Submit handler ──────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     const required: (keyof typeof form)[] = [
@@ -206,7 +261,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const payload: any = { ...form };
+      const payload: any = { ...form, ...docUrls };
       if (!payload.tradingAddress) delete payload.tradingAddress;
       if (!payload.googleReviewsLink) delete payload.googleReviewsLink;
 
@@ -487,7 +542,59 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
               placeholder="e.g. James Wilson"
             />
 
-            {/* ── SECTION 4: PAYMENT VERIFICATION ────────────────────────── */}
+            {/* ── SECTION 4: DOCUMENT UPLOADS ─────────────────────────────── */}
+            <SectionLabel title="DOCUMENT UPLOADS" />
+
+            {/* Document upload helper */}
+            {([
+              { field: 'drivingLicenceFront', label: 'Driving Licence — Front', type: 'image' as const },
+              { field: 'drivingLicenceBack', label: 'Driving Licence — Back', type: 'image' as const },
+              { field: 'paymentScreenshot', label: 'Payment Screenshot', type: 'image' as const },
+              { field: 'directorSelfie', label: 'Director Selfie', type: 'image' as const },
+              { field: 'vatCertificate', label: 'VAT Certificate', type: 'pdf' as const },
+              { field: 'companyRegistration', label: 'Company Registration Certificate', type: 'pdf' as const },
+              { field: 'memorandumOfAssociation', label: 'Memorandum of Association', type: 'pdf' as const },
+              { field: 'articlesOfAssociation', label: 'Articles of Association', type: 'pdf' as const },
+              { field: 'proofOfAddress', label: 'Proof of Business Address', type: 'pdf' as const },
+            ] as const).map(({ field, label, type }) => (
+              <View key={field} style={styles.docField}>
+                <Text style={styles.docFieldLabel}>{label.toUpperCase()}</Text>
+                {docUploading[field] ? (
+                  <View style={styles.docUploadingRow}>
+                    <ActivityIndicator color={Colors.accent} size="small" />
+                    <Text style={styles.docUploadingText}>Uploading…</Text>
+                  </View>
+                ) : docUrls[field] ? (
+                  <View style={styles.docUploadedRow}>
+                    <Ionicons name="checkmark-circle" size={18} color="#22C55E" />
+                    <Text style={styles.docUploadedText} numberOfLines={1}>Uploaded</Text>
+                    <TouchableOpacity
+                      onPress={() => handleDocumentCapture(field, type)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.docReplaceLink}>Replace</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.docTapArea}
+                    onPress={() => handleDocumentCapture(field, type)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={type === 'pdf' ? 'document-outline' : 'camera-outline'}
+                      size={16}
+                      color="#5C5C6B"
+                    />
+                    <Text style={styles.docTapText}>
+                      Tap to upload {type === 'pdf' ? 'PDF or image' : 'photo'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
+
+            {/* ── SECTION 5: PAYMENT VERIFICATION ────────────────────────── */}
             <SectionLabel title="PAYMENT VERIFICATION" />
 
             <View style={styles.paymentInfoBox}>
@@ -689,6 +796,74 @@ const styles = StyleSheet.create({
   // Submit
   submitWrapper: {
     marginTop: 8,
+  },
+
+  // Document upload fields
+  docField: {
+    marginBottom: 16,
+  },
+  docFieldLabel: {
+    fontFamily: FontFamily.bold,
+    fontSize: 9,
+    color: '#A0A0AB',
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
+  docTapArea: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#111115',
+    borderWidth: 1,
+    borderColor: '#2A2A32',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderStyle: 'dashed',
+  },
+  docTapText: {
+    fontFamily: FontFamily.regular,
+    fontSize: 14,
+    color: '#5C5C6B',
+  },
+  docUploadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#111115',
+    borderWidth: 1,
+    borderColor: '#2A2A32',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  docUploadingText: {
+    fontFamily: FontFamily.regular,
+    fontSize: 14,
+    color: '#A0A0AB',
+  },
+  docUploadedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(34,197,94,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(34,197,94,0.2)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  docUploadedText: {
+    fontFamily: FontFamily.medium,
+    fontSize: 14,
+    color: '#22C55E',
+    flex: 1,
+  },
+  docReplaceLink: {
+    fontFamily: FontFamily.medium,
+    fontSize: 12,
+    color: '#A0A0AB',
+    textDecorationLine: 'underline',
   },
 
   // Pending view

@@ -14,6 +14,7 @@ interface User {
   profileImage?: string | null;
   location?: string | null;
   isAddressVerified?: boolean;
+  isVerified?: boolean; // true if dealer KYC approved
 }
 
 interface UserProfileResponse {
@@ -28,6 +29,9 @@ interface UserProfileResponse {
     profileImage?: string;
     location?: string;
     isAddressVerified?: boolean;
+    dealerProfile?: {
+      isVerified?: boolean;
+    };
   };
 }
 
@@ -109,6 +113,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               profileImage: profile.profileImage || null,
               location: profile.location || null,
               isAddressVerified: profile.isAddressVerified || false,
+              isVerified: profile.dealerProfile?.isVerified ?? false,
             },
           });
         }
@@ -195,6 +200,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             phone: profile.phone || null,
             profileImage: profile.profileImage || null,
             location: profile.location || null,
+            isAddressVerified: profile.isAddressVerified || false,
+            isVerified: profile.dealerProfile?.isVerified ?? false,
           },
         });
       }
@@ -285,6 +292,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               profileImage: profile.profileImage || null,
               location: profile.location || null,
               isAddressVerified: profile.isAddressVerified || false,
+              isVerified: profile.dealerProfile?.isVerified ?? false,
             },
           });
         }
