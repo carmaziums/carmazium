@@ -48,11 +48,13 @@ created: 2026-06-20
 | 9-02-03 | 02 | 2 | Stripe auction fee | compile + manual | tsc + win screen payment | ⬜ pending |
 | 9-03-01 | 03 | 3 | KYC doc upload | compile + manual | tsc + POST /dealers/kyc | ⬜ pending |
 | 9-03-02 | 03 | 3 | dealer bid gate | compile + manual | tsc + unverified blocked | ⬜ pending |
-| 9-04-01 | 04 | 4 | HPI report | compile + manual | tsc + summary shown | ⬜ pending |
-| 9-04-02 | 04 | 4 | handover proof | compile + manual | tsc + POST /handover-proof | ⬜ pending |
+| 9-04-01 | 04 | 4 | handover proof upload | compile + manual | tsc + POST /handover-proof | ⬜ pending |
+| 9-04-02 | 04 | 4 | cold-start notification deep-link | compile + manual | tsc + cold-start nav | ⬜ pending |
 | 9-04-03 | 04 | 4 | notif deep-link | compile + manual | tsc + cold-start nav | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+
+> **Parallel execution note:** Waves 2 and 3 are independent and can run in parallel. Wave 2 (09-02-PLAN: Stripe payments) and Wave 3 (09-03-PLAN: Dealer KYC) both depend only on Wave 1 completing. They do NOT depend on each other — assign to separate executors or run sequentially in either order.
 
 ---
 
