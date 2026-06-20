@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 09-mobile-production-parity-09-03-PLAN.md
-last_updated: "2026-06-20T00:45:00.863Z"
-last_activity: "2026-06-20 — 09-mobile-production-parity Plan 3 complete (KYC document capture, isVerified authStore all 3 auth paths, bid gate with Alert+navigate in AuctionDetailScreen)"
+status: complete
+stopped_at: Completed 09-mobile-production-parity-09-04-PLAN.md
+last_updated: "2026-06-20T01:25:00.000Z"
+last_activity: "2026-06-20 — 09-mobile-production-parity Plan 4 complete (handover proof upload in SellerAuctionsScreen, cold-start notification deep-linking all 10 types in App.tsx)"
 progress:
   total_phases: 9
-  completed_phases: 1
+  completed_phases: 9
   total_plans: 14
-  completed_plans: 12
-  percent: 85
+  completed_plans: 14
+  percent: 100
 ---
 
 # State: Carmazium Mobile App
@@ -19,11 +19,11 @@ progress:
 ## Current Position
 
 Phase: 09-mobile-production-parity (Mobile Production Parity)
-Plan: 3 of 4 complete
-Status: In Progress
-Last activity: 2026-06-20 — 09-mobile-production-parity Plan 3 complete (KYC document capture, isVerified authStore all 3 auth paths, bid gate with Alert+navigate in AuctionDetailScreen)
+Plan: 4 of 4 complete
+Status: Phase Complete
+Last activity: 2026-06-20 — 09-mobile-production-parity Plan 4 complete (handover proof upload in SellerAuctionsScreen, cold-start notification deep-linking all 10 types in App.tsx)
 
-Progress: [█████████░] 85%
+Progress: [██████████] 100%
 
 ## Project Reference
 
@@ -95,6 +95,11 @@ See: .planning/PROJECT.md (updated 2026-05-30)
 - VehicleDetailScreen.tsx: handleHpiCheck() replaces free handleViewHpiReport; Stripe Payment Sheet (£9.99) before fetching HPI data; results rendered inline (hpiInlineCard) with stolen/finance/writeOff/mileageAnomaly fields; ErrorBanner on failure; "View Full Report" opens existing modal
 - EarningsScreen.tsx: Stripe Connect CTA added — POST /users/stripe-connect/onboard → Linking.openURL(res.url); payoutsCard section with ActivityIndicator + ErrorBanner; expo-file-system/legacy import fixed (SDK 54 bug)
 - AuctionCompleteScreen.tsx: buyer fee (£125) was already fully implemented — no changes needed
+
+### 09-mobile-production-parity Plan 04 — Complete
+
+- SellerAuctionsScreen.tsx: ImagePicker + convertAndCompress + uploadToStorage('handover', userId/auctionId-ts.jpg) + POST /auctions/:id/handover-proof; handoverUploading/Uploaded/Error state keyed by auctionId; card layout changed to column flex with cardRow inner view to allow full-width handoverSection below; shows ActivityIndicator during upload, success text on complete, ErrorBanner with retry on failure
+- App.tsx: import * as Notifications from 'expo-notifications'; NOTIFICATION_SCREEN_MAP module-level constant (10 types: BID_PLACED/OUTBID/AUCTION_ENDING/AUCTION_ENDED → LiveAuctionDetailed, AUCTION_WON → AuctionComplete, OFFER_RECEIVED → SellerOffers, COUNTER_RECEIVED/OFFER_ACCEPTED/OFFER_REJECTED → BuyerOffers, PAYOUT_FAILED → Settings); handleNotificationResponse upgraded to null-safe with rawData.screen priority then type-map fallback + per-type params building + navigationRef.isReady() retry (100ms interval); getLastNotificationResponseAsync() cold-start check added
 
 ### 09-mobile-production-parity Plan 03 — Complete
 

@@ -247,12 +247,12 @@ Plans:
 **Goal:** Every user action in the mobile app maps to a real API call with no stubs — sell flow, Stripe native payments, dealer KYC documents, handover proof upload, and push notification deep-linking for all 10 notification types.
 **Depends on:** mobile-app-parity phase complete (all 47 screens built and polished)
 **Requirements:** SELL-01 through SELL-08, KYC-01 through KYC-05, PUSH-01 through PUSH-10 (production wiring)
-**Plans:** 2/4 plans executed
+**Plans:** 4/4 plans executed
 Plans:
-- [ ] 09-01-PLAN.md — Wave 1: Sell flow — storageHelper, sellWizardStore, DVLA auto-submit, photo upload, listing + auction creation
-- [ ] 09-02-PLAN.md — Wave 2: Stripe native payments — listing fee, HPI check, auction buyer fee, Stripe Connect onboarding
-- [ ] 09-03-PLAN.md — Wave 3: Dealer KYC — document capture, Supabase upload, POST /dealers/kyc, isVerified gate for bidding
-- [ ] 09-04-PLAN.md — Wave 4: Missing features — handover proof upload, cold-start push notification routing for all 10 types
+- [x] 09-01-PLAN.md — Wave 1: Sell flow — storageHelper, sellWizardStore, DVLA auto-submit, photo upload, listing + auction creation
+- [x] 09-02-PLAN.md — Wave 2: Stripe native payments — listing fee, HPI check, auction buyer fee, Stripe Connect onboarding
+- [x] 09-03-PLAN.md — Wave 3: Dealer KYC — document capture, Supabase upload, POST /dealers/kyc, isVerified gate for bidding
+- [x] 09-04-PLAN.md — Wave 4: Missing features — handover proof upload, cold-start push notification routing for all 10 types
 
 **Success criteria:**
 1. Seller can complete the full sell wizard end-to-end: DVLA auto-fills at 7 chars, photos upload with per-image progress bars, draft persists across app restarts, POST /listings fires on submit
@@ -285,7 +285,7 @@ Plans:
 | 6. Offers, Purchase, and Auction Win Completion | 0/TBD | Not started | - |
 | 7. Mazium AI Search, Map Near Me, and Vehicle Compare | 0/TBD | Not started | - |
 | 8. App Store Preparation and Submission | 0/TBD | Not started | - |
-| 9. Mobile Production Parity | 2/4 | In Progress|  |
+| 9. Mobile Production Parity | 4/4 | Complete | 2026-06-20 |
 
 ## Mobile App Parity Phase Progress
 
