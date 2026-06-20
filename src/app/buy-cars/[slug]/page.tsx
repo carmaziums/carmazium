@@ -428,7 +428,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
     }
 
     return (
-        <div className="min-h-screen bg-slate-900 pt-24 pb-12 relative">
+        <div className="min-h-screen bg-slate-900 pt-24 pb-36 lg:pb-12 relative">
             {/* Background gradient */}
             <div className="fixed inset-0 bg-gradient-to-br from-[#0f172a] to-[#1e293b] -z-10" />
 
@@ -1155,6 +1155,36 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                                     </Button>
                                                 </>
                                             )}
+                                            {/* Secondary action icon row */}
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className={`flex-1 h-10 transition-all ${isWatchlisted ? 'text-red-400 border-red-500/40 bg-red-500/10' : 'border-white/10 text-gray-400 hover:text-red-400 hover:border-red-500/40'}`}
+                                                    onClick={handleWatchlist}
+                                                    title="Save to watchlist"
+                                                >
+                                                    <Heart size={16} className={isWatchlisted ? 'fill-red-400' : ''} />
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className="flex-1 h-10 border-white/10 text-gray-400 hover:text-white hover:border-white/30 transition-all"
+                                                    onClick={handleShare}
+                                                    title="Share listing"
+                                                >
+                                                    <Share2 size={16} />
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className="flex-1 h-10 border-white/10 text-gray-400 hover:text-white hover:border-white/30 transition-all"
+                                                    onClick={handleCompareAndNavigate}
+                                                    title="Compare"
+                                                >
+                                                    <Scale size={16} />
+                                                </Button>
+                                            </div>
                                         </div>
                                     </>
                                 )}
@@ -1174,6 +1204,54 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
 
                     </div>
                     </div>
+                </div>
+            </div>
+
+            {/* Mobile sticky action bar — lg:hidden */}
+            <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-slate-900/95 backdrop-blur-md border-t border-white/10 p-3 pb-[env(safe-area-inset-bottom)]">
+                <div className="flex items-center gap-2">
+                    <Button
+                        className="flex-1 py-5"
+                        onClick={() => setShowOfferModal(true)}
+                    >
+                        Make an Offer
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-11 w-11 shrink-0 border-white/10 text-gray-400"
+                        onClick={handleEnquire}
+                        title="Enquire"
+                    >
+                        <MessageCircle size={18} />
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        className={`h-11 w-11 shrink-0 transition-all ${isWatchlisted ? 'text-red-400 border-red-500/40 bg-red-500/10' : 'border-white/10 text-gray-400'}`}
+                        onClick={handleWatchlist}
+                        title="Save"
+                    >
+                        <Heart size={18} className={isWatchlisted ? 'fill-red-400' : ''} />
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-11 w-11 shrink-0 border-white/10 text-gray-400"
+                        onClick={handleShare}
+                        title="Share"
+                    >
+                        <Share2 size={18} />
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-11 w-11 shrink-0 border-white/10 text-gray-400"
+                        onClick={handleCompareAndNavigate}
+                        title="Compare"
+                    >
+                        <Scale size={18} />
+                    </Button>
                 </div>
             </div>
         </div >
