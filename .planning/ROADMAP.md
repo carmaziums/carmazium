@@ -299,7 +299,7 @@ Plans:
 **Goal:** Add Buy It Now (optional seller-set price with buyer-trigger / seller-confirm 24h flow) and a 2-minute server-enforced bid cancel window to the auction engine — surfaced in the live auction room, listing detail sidebar, and dealer auction creation form.
 **Requirements**: BIN-01, BIN-02, BIN-03, BIN-04, BIN-UI-01, BIN-UI-02, CANCEL-01, CANCEL-02, CANCEL-03, CANCEL-UI-01
 **Depends on:** Phase 11
-**Plans:** 3/3 plans complete
+**Plans:** 4/4 plans complete
 
 Plans:
 - [ ] 12-01-PLAN.md — Wave 1 (TDD): DB migration + BIN backend (trigger/confirm/decline service, lazy expiry, auto-cancel on bid >= BIN price, unit tests)
