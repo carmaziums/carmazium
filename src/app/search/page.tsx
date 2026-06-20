@@ -14,7 +14,7 @@ import {
 import { getListings, getFeaturedListings, formatPrice, type Listing, type ListingFilters, type VehicleConditionValue, type EuroStandardValue } from "@/lib/listingApi"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { DualRangeSlider } from "@/components/ui/DualRangeSlider"
-import { useUserLocation } from "@/hooks/useUserLocation"
+import { useLocation } from "@/context/LocationContext"
 import { haversineDistanceMiles } from "@/lib/distance"
 import { CAR_MAKES, getModelsForMake } from "@/lib/carData"
 
@@ -78,6 +78,8 @@ const SORT_OPTIONS = [
 
 const CURRENT_YEAR = new Date().getFullYear()
 
+const DISTANCE_CHIPS = [10, 25, 50, 100, 200] as const
+
 // ─── Filter State ─────────────────────────────────────────────────────────────
 
 interface FilterState {
@@ -110,6 +112,7 @@ interface FilterState {
     listingType: 'CLASSIFIED' | 'AUCTION' | ''
     sortBy: string
     features: string[]
+    maxDistanceMi: number | null
 }
 
 const INITIAL_FILTERS: FilterState = {
@@ -127,6 +130,7 @@ const INITIAL_FILTERS: FilterState = {
     sellerType: '', location: '', listingType: '',
     sortBy: 'newest',
     features: [],
+    maxDistanceMi: null,
 }
 
 // ─── Collapsible Section ──────────────────────────────────────────────────────
@@ -212,7 +216,7 @@ export default function SearchPage() {
 function SearchPageContent() {
     const searchParams = useSearchParams()
     const router = useRouter()
-    const { location: userLocation } = useUserLocation()
+    const { location: userLocation, setPostcode } = useLocation()
     const [isFilterOpen, setIsFilterOpen] = React.useState(false)
     const [detectingLocation, setDetectingLocation] = React.useState(false)
     const [listings, setListings] = React.useState<Listing[]>([])
@@ -253,6 +257,7 @@ function SearchPageContent() {
             location: p('location'), listingType: (p('listingType') as 'CLASSIFIED' | 'AUCTION') || '',
             sortBy: p('sortBy') || 'newest',
             features: searchParams.get('features')?.split(',').filter(Boolean) || [],
+            maxDistanceMi: searchParams.get('maxDistanceMi') ? Number(searchParams.get('maxDistanceMi')) : null,
         }
     }, [searchParams])
 
@@ -337,6 +342,7 @@ function SearchPageContent() {
         if (appliedFilters.sellerType) count++
         if (appliedFilters.location) count++
         if (appliedFilters.listingType) count++
+        if (appliedFilters.maxDistanceMi) count++
         return count
     }, [appliedFilters])
 
@@ -387,11 +393,22 @@ function SearchPageContent() {
             apiFilters.page = page
             const response = await getListings(apiFilters)
 
-            const data = response.data
+            let filtered = response.data
+            if (filterState.maxDistanceMi && userLocation?.lat && userLocation?.lng) {
+                filtered = filtered.filter(l =>
+                    l.latitude != null && l.longitude != null &&
+                    haversineDistanceMiles(userLocation.lat!, userLocation.lng!, l.latitude, l.longitude) <= filterState.maxDistanceMi!
+                )
+                filtered.sort((a, b) => {
+                    const dA = haversineDistanceMiles(userLocation.lat!, userLocation.lng!, a.latitude!, a.longitude!)
+                    const dB = haversineDistanceMiles(userLocation.lat!, userLocation.lng!, b.latitude!, b.longitude!)
+                    return dA - dB
+                })
+            }
             if (append) {
-                setListings(prev => [...prev, ...data])
+                setListings(prev => [...prev, ...filtered])
             } else {
-                setListings(data)
+                setListings(filtered)
             }
             setTotalCount(response.pagination.total)
             setCurrentPage(page)
@@ -456,7 +473,7 @@ function SearchPageContent() {
         for (const [k, v] of Object.entries(state)) {
             if (skip.has(k) && v === 'newest') continue
             if (Array.isArray(v)) { if (v.length) params.set(k, v.join(',')) }
-            else if (v !== '' && v !== undefined) params.set(k, String(v))
+            else if (v !== '' && v !== undefined && v !== null) params.set(k, String(v))
         }
         const qs = params.toString()
         lastQs.current = qs // Stop useEffect double fetch
@@ -897,6 +914,46 @@ function SearchPageContent() {
                                 </div>
                             </FilterSection>
 
+                            {/* Distance */}
+                            <FilterSection title="Distance">
+                                <div className="space-y-2">
+                                    {!userLocation?.lat && (
+                                        <div className="space-y-2">
+                                            <p className="text-xs text-gray-500">Allow location or enter your postcode:</p>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    placeholder="e.g. M1 1AA"
+                                                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder:text-gray-600 focus:outline-none focus:border-primary/50"
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') setPostcode((e.target as HTMLInputElement).value)
+                                                    }}
+                                                    onBlur={(e) => { if (e.target.value) setPostcode(e.target.value) }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className="flex flex-wrap gap-2">
+                                        {DISTANCE_CHIPS.map(d => (
+                                            <button
+                                                key={d}
+                                                onClick={() => set('maxDistanceMi', filters.maxDistanceMi === d ? null : d)}
+                                                disabled={!userLocation?.lat}
+                                                className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors disabled:opacity-40 disabled:cursor-not-allowed
+                                                    ${filters.maxDistanceMi === d
+                                                        ? 'bg-primary/20 border-primary/40 text-primary'
+                                                        : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/20'}`}
+                                            >
+                                                {d} mi
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {userLocation?.lat && userLocation.source === 'postcode' && userLocation.postcode && (
+                                        <p className="text-[10px] text-gray-600">Using: {userLocation.postcode}</p>
+                                    )}
+                                </div>
+                            </FilterSection>
+
                             {/* Listing Type */}
                             <FilterSection title="Listing Type">
                                 <div className="flex gap-2">
@@ -962,7 +1019,9 @@ function SearchPageContent() {
                     {/* Sort Bar */}
                     <div className="flex justify-between items-center mb-6 gap-4 flex-wrap">
                         <p className="text-gray-400 text-sm">
-                            {loading ? <span>Loading...</span> : (
+                            {loading ? <span>Loading...</span> : appliedFilters.maxDistanceMi ? (
+                                <span className="text-xs text-gray-500">Filtered results ({listings.length} within {appliedFilters.maxDistanceMi} mi)</span>
+                            ) : (
                                 <>Showing <span className="font-bold text-white">{listings.length}</span> of <span className="font-bold text-white">{totalCount}</span> vehicles</>
                             )}
                         </p>
@@ -1004,6 +1063,7 @@ function SearchPageContent() {
                             {appliedFilters.location && <FilterTag label={`Near: ${appliedFilters.location}`} onRemove={() => clearFilter({ location: '' })} />}
                             {appliedFilters.listingType && <FilterTag label={appliedFilters.listingType === 'AUCTION' ? 'Auction' : 'Buy Now'} onRemove={() => clearFilter({ listingType: '' })} />}
                             {appliedFilters.sellerType && <FilterTag label={appliedFilters.sellerType === 'DEALER' ? 'Dealer' : 'Private Seller'} onRemove={() => clearFilter({ sellerType: '' })} />}
+                            {appliedFilters.maxDistanceMi && <FilterTag label={`Within ${appliedFilters.maxDistanceMi} mi`} onRemove={() => clearFilter({ maxDistanceMi: null })} />}
                         </div>
                     )}
 
@@ -1063,7 +1123,7 @@ function SearchPageContent() {
                                         fuelType={listing.fuelType ?? undefined}
                                         bodyType={listing.bodyType ?? undefined}
                                         location={listing.location ?? undefined}
-                                        distanceMi={userLocation && listing.latitude && listing.longitude
+                                        distanceMi={userLocation?.lat && userLocation?.lng && listing.latitude && listing.longitude
                                             ? haversineDistanceMiles(userLocation.lat, userLocation.lng, listing.latitude, listing.longitude)
                                             : null}
                                         isFeatured={true}
@@ -1096,7 +1156,7 @@ function SearchPageContent() {
                                     fuelType={listing.fuelType ?? undefined}
                                     bodyType={listing.bodyType ?? undefined}
                                     location={listing.location ?? undefined}
-                                    distanceMi={userLocation && listing.latitude && listing.longitude
+                                    distanceMi={userLocation?.lat && userLocation?.lng && listing.latitude && listing.longitude
                                         ? haversineDistanceMiles(userLocation.lat, userLocation.lng, listing.latitude, listing.longitude)
                                         : null}
                                     isFeatured={listing.isFeatured}
