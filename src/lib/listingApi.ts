@@ -71,6 +71,9 @@ export interface CreateListingRequest {
     videoUrls?: string[]
     isDepartedSale?: boolean
     departedRelationship?: string
+    deliveryAvailable?: boolean
+    deliveryPricePerMile?: number | null
+    deliveryMaxMiles?: number | null
 }
 
 export interface CreateListingResponse {
@@ -188,6 +191,10 @@ export interface Listing {
     bannerLabel: string | null
     isDepartedSale?: boolean | null
     departedRelationship?: string | null
+    // Delivery fields (Phase 15)
+    deliveryAvailable?: boolean | null
+    deliveryPricePerMile?: number | string | null
+    deliveryMaxMiles?: number | null
     sellerId: string | null
     isFeatured: boolean
     featuredUntil: string | null
@@ -283,6 +290,7 @@ export interface ListingFilters {
     search?: string
     page?: number
     limit?: number
+    deliveryAvailable?: boolean
 }
 
 /**
@@ -324,6 +332,7 @@ export async function getListings(filters?: ListingFilters): Promise<ListingsRes
         if (filters.search) params.append('search', filters.search)
         if (filters.page) params.append('page', filters.page.toString())
         if (filters.limit) params.append('limit', filters.limit.toString())
+        if (filters.deliveryAvailable !== undefined) params.append('deliveryAvailable', String(filters.deliveryAvailable))
     }
 
     return apiClient<ListingsResponse>(`/listings${params.toString() ? `?${params.toString()}` : ''}`, {
