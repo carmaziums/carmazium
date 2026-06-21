@@ -9,7 +9,7 @@ import dynamic from "next/dynamic"
 const FinanceCalculator = dynamic(() => import("@/components/features/FinanceCalculator").then(mod => mod.FinanceCalculator), { ssr: false })
 const ThreeDVehicleViewer = dynamic(() => import("@/components/listing/ThreeDVehicleViewer").then(m => m.ThreeDVehicleViewer), { ssr: false })
 import { ThreeDErrorBoundary } from "@/components/listing/ThreeDErrorBoundary"
-import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale, Loader2, MessageCircle, Tag, X, Clock, ThumbsUp, XCircle, AlertTriangle, BadgeCheck, Star, Sparkles, Info, Phone, Globe, Fuel, Gavel } from "lucide-react"
+import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale, Loader2, MessageCircle, Tag, X, Clock, ThumbsUp, XCircle, AlertTriangle, BadgeCheck, Star, Sparkles, Info, Phone, Globe, Fuel, Gavel, Truck } from "lucide-react"
 import { getListingBySlug, makeOffer, getMyOfferForListing, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, getDamageRecords, type Listing, type LatestOffer, formatPrice } from "@/lib/listingApi"
 import { triggerBuyItNow } from "@/lib/auctionApi"
 import { createChatRoom } from "@/lib/chatApi"
@@ -238,6 +238,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
     const [showHpiModal, setShowHpiModal] = React.useState(false)
     const [damageRecords, setDamageRecords] = React.useState<any[]>([])
     const [selectedDamageZone, setSelectedDamageZone] = React.useState<string | null>(null)
+    const [deliveryDistanceInfo, setDeliveryDistanceInfo] = React.useState<{ distanceMiles: number } | null>(null)
 
     const { location: userLoc } = useLocation()
     const { addToCompare } = useCompare()
@@ -290,6 +291,15 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
         if (!listing) return
         getDamageRecords(listing.id).then(setDamageRecords).catch(() => { })
     }, [listing])
+
+    // Delivery distance check — informational only, used to show greyed out-of-radius hint
+    React.useEffect(() => {
+        if (!listing?.deliveryAvailable || !listing?.deliveryMaxMiles || !listing?.latitude || !listing?.longitude || !userLoc?.postcode) return
+        fetch(`/api/delivery-distance?originLat=${listing.latitude}&originLng=${listing.longitude}&postcode=${userLoc.postcode}&pricePerMile=0`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => data && setDeliveryDistanceInfo(data))
+            .catch(() => {})
+    }, [listing?.id, userLoc?.postcode])
 
     // Determine the current viewer's relationship to the offer
     // Uses myOffer (not latestOffer) so third-party buyers aren't misidentified as 'public'
@@ -1226,6 +1236,39 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                                 <p className="text-xs text-slate-500 mt-2 text-center">Seller must confirm within 24h</p>
                                             </div>
                                         )}
+
+                                        {/* Delivery availability section */}
+                                        {listing.deliveryAvailable && (() => {
+                                            const isOutsideRadius = listing.deliveryMaxMiles && deliveryDistanceInfo
+                                                ? deliveryDistanceInfo.distanceMiles > listing.deliveryMaxMiles
+                                                : false
+                                            return isOutsideRadius ? (
+                                                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 opacity-60 space-y-1 mt-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <Truck size={16} className="text-gray-500" />
+                                                        <span className="text-sm font-semibold text-gray-400">Delivery not available to your location</span>
+                                                    </div>
+                                                    <p className="text-xs text-gray-500">Outside the seller&apos;s {listing.deliveryMaxMiles}-mile radius</p>
+                                                </div>
+                                            ) : (
+                                                <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 space-y-2 mt-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <Truck size={16} className="text-emerald-400" />
+                                                        <span className="text-sm font-semibold text-emerald-300">Delivery available</span>
+                                                    </div>
+                                                    {listing.deliveryPricePerMile ? (
+                                                        <p className="text-xs text-gray-400">
+                                                            £{Number(listing.deliveryPricePerMile).toFixed(2)} per mile · Request delivery after making an offer
+                                                        </p>
+                                                    ) : (
+                                                        <p className="text-xs text-gray-400">Cost to be discussed · Request delivery after making an offer</p>
+                                                    )}
+                                                    {listing.deliveryMaxMiles && (
+                                                        <p className="text-xs text-gray-500">Max radius: {listing.deliveryMaxMiles} miles</p>
+                                                    )}
+                                                </div>
+                                            )
+                                        })()}
                                     </>
                                 )}
                             </div>
