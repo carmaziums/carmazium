@@ -308,6 +308,8 @@ model User {
   purchasesAsBuyer        Sale[]               @relation("BuyerPurchases")
   offersReceived          Offer[]              @relation("SellerOffers")
   wonAuctions             Auction[]            @relation("AuctionWinner")
+  deliveryRequestsAsBuyer  DeliveryRequest[] @relation("DeliveryBuyer")
+  deliveryRequestsAsSeller DeliveryRequest[] @relation("DeliverySeller")
 
   notifyOnSale    Boolean @default(true)
   showPublicProfile Boolean @default(true)
@@ -659,6 +661,11 @@ model Listing {
   importedFromUrl String?
   importedSource  String? // AUTOTRADER | CARGURUS | CARWOW
 
+  // Phase 15: Delivery
+  deliveryAvailable       Boolean   @default(false)
+  deliveryPricePerMile    Decimal?  @db.Decimal(10, 2)
+  deliveryMaxMiles        Int?
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
@@ -679,6 +686,7 @@ model Listing {
   damageRecords       DamageRecord[]
   sale                Sale?
   hpiReport           HpiReport?
+  deliveryRequests    DeliveryRequest[]
 
   @@index([sellerId])
   @@index([vehicleId])
@@ -1056,9 +1064,10 @@ model Offer {
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
-  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  buyer   User    @relation(fields: [buyerId], references: [id])
-  seller  User?   @relation("SellerOffers", fields: [sellerId], references: [id])
+  listing          Listing          @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  buyer            User             @relation(fields: [buyerId], references: [id])
+  seller           User?            @relation("SellerOffers", fields: [sellerId], references: [id])
+  deliveryRequests DeliveryRequest[]
 
   @@index([listingId])
   @@index([buyerId])
@@ -1067,6 +1076,42 @@ model Offer {
   @@index([listingId, createdAt(sort: Desc)])
   @@index([buyerId, status])
   @@map("offers")
+}
+
+// ============================================================================
+// DELIVERY SYSTEM
+// ============================================================================
+
+model DeliveryRequest {
+  id               String         @id @default(uuid())
+  listingId        String
+  offerId          String
+  buyerId          String
+  sellerId         String
+  deliveryAddress  Json           // { street: string, city: string, postcode: string }
+  deliveryNotes    String?
+  distanceMiles    Float
+  estimatedCostGbp Decimal        @db.Decimal(10, 2)
+  status           DeliveryStatus @default(PENDING)
+  expiresAt        DateTime
+  acceptedAt       DateTime?
+  declinedAt       DateTime?
+  cancelledAt      DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  listing  Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  offer    Offer   @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  buyer    User    @relation("DeliveryBuyer", fields: [buyerId], references: [id])
+  seller   User    @relation("DeliverySeller", fields: [sellerId], references: [id])
+
+  @@index([listingId])
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("delivery_requests")
 }
 
 // ============================================================================
