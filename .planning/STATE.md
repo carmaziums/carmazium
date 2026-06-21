@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 13-03-PLAN.md
-last_updated: "2026-06-21T00:39:04.961Z"
+stopped_at: Phase 14 context gathered
+last_updated: "2026-06-21T00:52:03.870Z"
 last_activity: 2026-06-21 — Phase 13 Plan 03 complete (isDepartedSale threaded from ApiListing through CarListing into grey ESTATE badges on VehicleCard and HorizontalVehicleCard; zero TypeScript errors)
 progress:
   total_phases: 17
@@ -231,6 +231,6 @@ AuctionDetailScreen.tsx quickBidBtnText style key fixed in Plan 03.
 
 ## Session Continuity
 
-Last session: 2026-06-21T00:34:00.000Z
-Stopped at: Completed 13-03-PLAN.md
-Resume file: None
+Last session: 2026-06-21T00:52:03.860Z
+Stopped at: Phase 14 context gathered
+Resume file: .planning/phases/14-stripe-kyc-fix-replace-manual-card-form-with-stripe-elements-and-live-1-pound-verification-charge/14-CONTEXT.md
