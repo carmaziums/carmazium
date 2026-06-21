@@ -299,6 +299,7 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
                   status={listing.status}
                   bannerLabel={listing.bannerLabel}
                   hasLinkedAuction={!!listing.linkedListingId}
+                  isDepartedSale={listing.isDepartedSale ?? false}
                 />
               </motion.div>
             ))}

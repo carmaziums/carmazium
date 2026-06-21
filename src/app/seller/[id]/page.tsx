@@ -54,6 +54,7 @@ interface Listing {
     mileage: number
     fuelType: string
     location: string
+    isDepartedSale?: boolean
 }
 
 interface Review {
@@ -455,6 +456,11 @@ function ListingCard({ listing }: { listing: Listing }) {
                 <p className="mt-1 text-[11px] text-gray-500">
                     {listing.year} · {listing.mileage?.toLocaleString()} mi · {listing.location}
                 </p>
+                {listing.isDepartedSale && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide bg-white/5 text-gray-400 border border-white/10 px-2 py-0.5 rounded-full mt-1">
+                        Estate
+                    </span>
+                )}
             </div>
         </Link>
     )

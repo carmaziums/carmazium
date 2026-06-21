@@ -1131,6 +1131,7 @@ function SearchPageContent() {
                                         status={listing.status}
                                         bannerLabel={listing.bannerLabel}
                                         hasLinkedAuction={!!listing.linkedListingId}
+                                        isDepartedSale={listing.isDepartedSale ?? false}
                                     />
                                 ))}
                             </div>
@@ -1164,6 +1165,7 @@ function SearchPageContent() {
                                     status={listing.status}
                                     bannerLabel={listing.bannerLabel}
                                     hasLinkedAuction={!!listing.linkedListingId}
+                                    isDepartedSale={listing.isDepartedSale ?? false}
                                 />
                             ))}
                         </div>

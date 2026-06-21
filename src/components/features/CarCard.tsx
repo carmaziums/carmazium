@@ -32,6 +32,7 @@ interface CarCardProps {
     status?: string | null
     bannerLabel?: string | null
     hasLinkedAuction?: boolean
+    isDepartedSale?: boolean
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -53,7 +54,8 @@ const DEFAULT_BANNER_COLOR = 'bg-primary'
 export function CarCard({
     title, price, priceMin, priceMax, image, href = "#",
     year, mileage, fuelType, bodyType, location, distanceMi,
-    sellerId, sellerScore, isFeatured = false, badgeTier, status, bannerLabel, hasLinkedAuction
+    sellerId, sellerScore, isFeatured = false, badgeTier, status, bannerLabel, hasLinkedAuction,
+    isDepartedSale
 }: CarCardProps) {
     const ref = useRef<HTMLDivElement>(null)
 
@@ -234,6 +236,15 @@ export function CarCard({
                                 <ShieldCheck size={10} /> Standard
                             </span>
                         )}
+                    </div>
+                )}
+
+                {/* Estate chip — appears when isDepartedSale is true */}
+                {isDepartedSale && (
+                    <div className="flex items-center gap-2 mb-3">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide bg-white/5 text-gray-400 border border-white/10 px-2 py-0.5 rounded-full">
+                            Estate
+                        </span>
                     </div>
                 )}
 
