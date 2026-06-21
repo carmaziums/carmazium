@@ -6,9 +6,10 @@ import { DeliveryService } from './delivery.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { EmailModule } from '../email/email.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [PrismaModule, NotificationsModule, EmailModule, ConfigModule, HttpModule],
+  imports: [PrismaModule, NotificationsModule, EmailModule, ConfigModule, HttpModule, AuthModule],
   controllers: [DeliveryController],
   providers: [DeliveryService],
   exports: [DeliveryService],
