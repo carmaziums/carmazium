@@ -96,6 +96,11 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
               <Text style={styles.newText}>NEW</Text>
             </View>
           )}
+          {listing.isDepartedSale && (
+            <View style={styles.estateBadge}>
+              <Text style={styles.estateText}>ESTATE</Text>
+            </View>
+          )}
         </View>
 
         {/* Save button */}
@@ -218,6 +223,20 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bold,
     fontSize: 9,
     color: Colors.white,
+    letterSpacing: 0.8,
+  },
+  estateBadge: {
+    backgroundColor: 'rgba(160, 160, 171, 0.20)',
+    borderWidth: 1,
+    borderColor: 'rgba(160, 160, 171, 0.30)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  estateText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 9,
+    color: Colors.textSecondary,
     letterSpacing: 0.8,
   },
   saveBtn: {

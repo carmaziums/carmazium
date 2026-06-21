@@ -88,6 +88,11 @@ export const HorizontalVehicleCard: React.FC<HorizontalVehicleCardProps> = ({
             <Text style={styles.premiumText}>• PREMIUM</Text>
           </View>
         )}
+        {listing.isDepartedSale && (
+          <View style={styles.estateBadge}>
+            <Text style={styles.estateText}>ESTATE</Text>
+          </View>
+        )}
       </View>
 
       {/* Right: Info container */}
@@ -166,6 +171,23 @@ const styles = StyleSheet.create({
     fontSize: 8,
     color: '#000000',
     letterSpacing: 0.5,
+  },
+  estateBadge: {
+    backgroundColor: 'rgba(160, 160, 171, 0.20)',
+    borderWidth: 1,
+    borderColor: 'rgba(160, 160, 171, 0.30)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    position: 'absolute',
+    top: 8,
+    right: 8,
+  },
+  estateText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 9,
+    color: Colors.textSecondary,
+    letterSpacing: 0.8,
   },
   infoContainer: {
     flex: 1,
