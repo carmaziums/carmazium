@@ -308,26 +308,29 @@ Plans:
 
 ### Phase 13: Listing Form Enhancements — departed sale option with relationship field
 
-**Goal:** Upgrade the departed/estate sale section in the listing wizard to a structured relationship dropdown, propagate an Estate chip to all web listing card contexts and the mobile VehicleCard/HorizontalVehicleCard, and extend the listing detail badge to show ‘Listed by [relationship]’ inline.
+**Goal:** Upgrade the departed/estate sale section in the listing wizard to a structured relationship dropdown, propagate an Estate chip to all web listing card contexts and the mobile VehicleCard/HorizontalVehicleCard, and extend the listing detail badge to show 'Listed by [relationship]' inline.
 **Requirements**: FORM-01, FORM-02, FORM-03, FORM-04, BADGE-01, BADGE-02, MOBILE-01
 **Depends on:** Phase 12
 **Plans:** 3/4 plans complete
 
 Plans:
 - [ ] 13-01-PLAN.md — Wave 1: Wizard form upgrade — relationship dropdown + Other freetext + validation guard
-- [ ] 13-02-PLAN.md — Wave 1: Web CarCard Estate chip + prop threading + detail page ‘Listed by’ display
+- [ ] 13-02-PLAN.md — Wave 1: Web CarCard Estate chip + prop threading + detail page 'Listed by' display
 - [ ] 13-03-PLAN.md — Wave 1: Mobile type extension + VehicleCard/HorizontalVehicleCard Estate badge
 - [ ] 13-04-PLAN.md — Wave 2: Human verify checkpoint (all 7 requirements)
 
 ### Phase 14: Stripe KYC Fix — replace manual card form with Stripe Elements and live 1 pound verification charge
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Replace the manual "Bank Transfer" step 3 in the dealer KYC form with an inline Stripe CardElement that atomically charges a live £1 verification fee on submit. The charge is non-refundable, idempotent (charged once per dealer lifetime), and auto-approves the payment section for admin review. Admin panel shows a Stripe Verified badge for new-flow records; legacy records remain unchanged.
+**Requirements**: KYC-PAY-01, KYC-PAY-02, KYC-PAY-03, KYC-PAY-04, KYC-PAY-05, KYC-PAY-06, KYC-PAY-07
 **Depends on:** Phase 13
-**Plans:** 0 plans
+**Plans:** 4 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 14 to break down)
+- [ ] 14-01-PLAN.md — Wave 0 (TDD): Test scaffold — 5 failing unit stubs for DealersService KYC payment methods
+- [ ] 14-02-PLAN.md — Wave 1: Backend — Prisma migration, createKycPaymentIntent endpoint, submitKyc PI verification, admin notifications
+- [ ] 14-03-PLAN.md — Wave 2: Frontend — dealerApi.ts, KycOverlayForm.tsx step 3 Stripe replacement, admin panel conditional badge
+- [ ] 14-04-PLAN.md — Wave 3: Human verify checkpoint (end-to-end Stripe test card flow + admin panel)
 
 ### Phase 15: Delivery and Distance System — seller delivery toggle, price-per-km auto-calculation, buyer delivery request flow
 
