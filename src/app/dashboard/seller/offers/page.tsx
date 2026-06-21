@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/Button"
 import {
     Loader2, AlertTriangle, Tag, CheckCircle, XCircle,
     Clock, ChevronRight, Car, MessageSquare, RefreshCw, X,
-    DollarSign, User, Mail
+    DollarSign, User, Mail, Truck
 } from "lucide-react"
 import { getOffersForListing, getMyListings, respondToOffer, recordSale, type Offer, type Listing } from "@/lib/listingApi"
+import { getReceivedDeliveryRequests, acceptDeliveryRequest, declineDeliveryRequest, type DeliveryRequest } from "@/lib/deliveryApi"
 import { createChatRoom } from "@/lib/chatApi"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
@@ -453,6 +454,7 @@ function OfferRow({
 export default function SellerOffersPage() {
     const [listings, setListings] = React.useState<Listing[]>([])
     const [offers, setOffers] = React.useState<Record<string, Offer[]>>({})
+    const [receivedDeliveryRequests, setReceivedDeliveryRequests] = React.useState<DeliveryRequest[]>([])
     const [loadingListings, setLoadingListings] = React.useState(true)
     const [loadingOffers, setLoadingOffers] = React.useState<Record<string, boolean>>({})
     const [error, setError] = React.useState<string | null>(null)
@@ -464,6 +466,10 @@ export default function SellerOffersPage() {
     const [saleModal, setSaleModal] = React.useState<{ offer: Offer; listing: Listing } | null>(null)
     const [confirmingSale, setConfirmingSale] = React.useState(false)
     const router = useRouter()
+
+    const refreshDeliveryRequests = React.useCallback(() => {
+        getReceivedDeliveryRequests().then(setReceivedDeliveryRequests).catch(console.error)
+    }, [])
 
     // Load all seller's listings, then eagerly fetch all offers
     React.useEffect(() => {
@@ -490,6 +496,8 @@ export default function SellerOffersPage() {
                     }
                 })
                 setOffers(offersMap)
+                // Also load delivery requests
+                getReceivedDeliveryRequests().then(setReceivedDeliveryRequests).catch(console.error)
             } catch (err: any) {
                 setError(err.message || "Failed to load listings")
             } finally {
@@ -580,6 +588,30 @@ export default function SellerOffersPage() {
             setTimeout(() => setToast(null), 4000)
         } finally {
             setStartingChat(null)
+        }
+    }
+
+    const handleAcceptDelivery = async (deliveryId: string) => {
+        try {
+            await acceptDeliveryRequest(deliveryId)
+            refreshDeliveryRequests()
+            setToast('Delivery request accepted.')
+            setTimeout(() => setToast(null), 4000)
+        } catch (err: any) {
+            setToast(`Error: ${err.message || 'Failed to accept delivery'}`)
+            setTimeout(() => setToast(null), 4000)
+        }
+    }
+
+    const handleDeclineDelivery = async (deliveryId: string) => {
+        try {
+            await declineDeliveryRequest(deliveryId)
+            refreshDeliveryRequests()
+            setToast('Delivery request declined.')
+            setTimeout(() => setToast(null), 4000)
+        } catch (err: any) {
+            setToast(`Error: ${err.message || 'Failed to decline delivery'}`)
+            setTimeout(() => setToast(null), 4000)
         }
     }
 
@@ -687,18 +719,46 @@ export default function SellerOffersPage() {
                                                     </div>
                                                 ) : (
                                                     <div className="p-4 space-y-3">
-                                                        {listingOffers.map(offer => (
-                                                            <OfferRow
-                                                                key={offer.id}
-                                                                offer={offer}
-                                                                listingId={listing.id}
-                                                                onRespond={(id, status, amount) => handleRespond(id, listing.id, status, amount)}
-                                                                onMessage={(buyerId) => handleMessageBuyer(buyerId, listing.id)}
-                                                                onOpenSaleModal={(o) => setSaleModal({ offer: o, listing })}
-                                                                startingChat={startingChat}
-                                                                responding={responding}
-                                                            />
-                                                        ))}
+                                                        {listingOffers.map(offer => {
+                                                            const delivReq = receivedDeliveryRequests.find(
+                                                                r => r.listingId === listing.id && r.buyerId === offer.buyerId
+                                                            )
+                                                            return (
+                                                                <div key={offer.id}>
+                                                                    <OfferRow
+                                                                        offer={offer}
+                                                                        listingId={listing.id}
+                                                                        onRespond={(id, status, amount) => handleRespond(id, listing.id, status, amount)}
+                                                                        onMessage={(buyerId) => handleMessageBuyer(buyerId, listing.id)}
+                                                                        onOpenSaleModal={(o) => setSaleModal({ offer: o, listing })}
+                                                                        startingChat={startingChat}
+                                                                        responding={responding}
+                                                                    />
+                                                                    {delivReq && (
+                                                                        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-white/5 pl-14">
+                                                                            <Truck size={12} className="text-gray-400 shrink-0" />
+                                                                            <span className="text-xs text-gray-400">Delivery: {delivReq.status}</span>
+                                                                            {delivReq.status === 'PENDING' && (
+                                                                                <>
+                                                                                    <button
+                                                                                        onClick={() => handleAcceptDelivery(delivReq.id)}
+                                                                                        className="text-xs text-emerald-400 hover:text-emerald-300 underline transition-colors"
+                                                                                    >
+                                                                                        Accept
+                                                                                    </button>
+                                                                                    <button
+                                                                                        onClick={() => handleDeclineDelivery(delivReq.id)}
+                                                                                        className="text-xs text-red-400 hover:text-red-300 underline transition-colors"
+                                                                                    >
+                                                                                        Decline
+                                                                                    </button>
+                                                                                </>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )
+                                                        })}
                                                     </div>
                                                 )}
                                             </div>
