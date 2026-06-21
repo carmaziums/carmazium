@@ -17,8 +17,10 @@ export interface DealerKycData {
   businessRegisteredAddress: string;
   tradingAddress?: string;
   googleReviewsLink?: string;
-  paymentReference: string;
+  paymentReference?: string;
   paymentScreenshot?: string;
+  stripePaymentIntentId?: string;
+  stripeChargedAt?: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   documentStatuses?: Record<
     string,
@@ -42,5 +44,17 @@ export async function submitDealerKyc(data: Partial<DealerKycData>): Promise<Dea
     method: 'POST',
     body: JSON.stringify(data),
   });
+  return result.data;
+}
+
+export async function createKycPaymentIntent(): Promise<{
+  clientSecret?: string;
+  alreadyPaid: boolean;
+  chargedAt?: string;
+}> {
+  const result = await apiClient<{ data: { clientSecret?: string; alreadyPaid: boolean; chargedAt?: string } }>(
+    '/dealers/kyc/payment-intent',
+    { method: 'POST' },
+  );
   return result.data;
 }
