@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 15-04-PLAN.md
-last_updated: "2026-06-21T14:35:18.633Z"
-last_activity: 2026-06-21 — Phase 15 Plan 03 complete (delivery API client + seller wizard section)
+stopped_at: Completed 15-05-PLAN.md
+last_updated: "2026-06-21T14:42:10.515Z"
+last_activity: 2026-06-21 — Phase 15 Plan 04 complete (buyer + seller delivery UI wired to deliveryApi.ts)
 progress:
   total_phases: 17
   completed_phases: 6
-  total_plans: 39
-  completed_plans: 35
-  percent: 91
+  total_plans: 45
+  completed_plans: 42
+  percent: 93
 ---
 
 # State: Carmazium Mobile App
@@ -19,11 +19,11 @@ progress:
 ## Current Position
 
 Phase: 15-delivery-and-distance-system-seller-delivery-toggle-price-per-km-auto-calculation-buyer-delivery-request-flow — In Progress
-Plan: 4 of 6 complete
-Status: Phase 15 Plan 04 COMPLETE — /api/delivery-distance route, buyer offers delivery CTA + form + status badge, seller offers delivery Accept/Decline panel; zero TS errors
-Last activity: 2026-06-21 — Phase 15 Plan 04 complete (buyer + seller delivery UI wired to deliveryApi.ts)
+Plan: 5 of 6 complete
+Status: Phase 15 Plan 05 COMPLETE — delivery badge on CarCard, delivery filter on search page, delivery availability section in listing detail sidebar; zero TS errors
+Last activity: 2026-06-21 — Phase 15 Plan 05 complete (buyer delivery discovery surfaces — CarCard chip + search filter + listing sidebar)
 
-Progress: [█████████░] 89%
+Progress: [█████████░] 93%
 
 ## Project Reference
 
@@ -231,6 +231,6 @@ AuctionDetailScreen.tsx quickBidBtnText style key fixed in Plan 03.
 
 ## Session Continuity
 
-Last session: 2026-06-21T14:35:18.624Z
-Stopped at: Completed 15-04-PLAN.md
+Last session: 2026-06-21T14:42:10.509Z
+Stopped at: Completed 15-05-PLAN.md
 Resume file: None
