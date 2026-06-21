@@ -9,6 +9,8 @@ import { AuctionsModule } from '../auctions/auctions.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { DeliveryModule } from '../delivery/delivery.module';
 import { DeliveryExpiryService } from '../delivery/delivery-expiry.service';
+import { EmailModule } from '../email/email.module';
+import { DbBackupService } from './db-backup.service';
 
 @Module({
     imports: [
@@ -18,7 +20,8 @@ import { DeliveryExpiryService } from '../delivery/delivery-expiry.service';
         AuctionsModule,
         NotificationsModule,
         DeliveryModule,
+        EmailModule,
     ],
-    providers: [ImageCleanupService, FeaturedBoostExpiryService, AuctionLifecycleService, DeliveryExpiryService],
+    providers: [ImageCleanupService, FeaturedBoostExpiryService, AuctionLifecycleService, DeliveryExpiryService, DbBackupService],
 })
 export class TasksModule { }

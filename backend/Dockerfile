@@ -25,6 +25,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8080
 
+# Install postgresql-client for pg_dump (required by weekly backup cron)
+RUN apk add --no-cache postgresql16-client
+
 # Copy package files and install production deps only.
 # NODE_ENV=production is already set above — postinstall checks this and
 # skips `prisma generate` automatically (Prisma client is already built
