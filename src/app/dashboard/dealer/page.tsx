@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import {
     Car, Eye, TrendingUp, Users, Kanban,
@@ -9,6 +10,7 @@ import {
     Mail, Activity, Sparkles, ShieldCheck, HeartHandshake, Zap
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
+import { PeriodToggle } from "@/components/dashboard/PeriodToggle"
 import { useAuth } from "@/context/AuthContext"
 import { supabase } from "@/lib/supabase"
 import { apiClient } from "@/lib/apiClient"
@@ -17,6 +19,19 @@ import { MetricCard } from "@/components/dashboard/MetricCard"
 
 export default function DealerDashboard() {
     const { user, profile, loading: authLoading } = useAuth()
+    const searchParams = useSearchParams()
+    const router = useRouter()
+    const pathname = usePathname()
+    const period = (searchParams.get('period') as '7d' | '30d') ?? '30d'
+
+    function setPeriod(p: '7d' | '30d') {
+        const params = new URLSearchParams(searchParams.toString())
+        params.set('period', p)
+        router.replace(`${pathname}?${params.toString()}`)
+    }
+
+    const subLabel = period === '7d' ? 'Last 7 days' : 'Last 30 days'
+
     const [stats, setStats] = React.useState<any>(null)
     const [loading, setLoading] = React.useState(true)
     const [resending, setResending] = React.useState(false)
@@ -28,13 +43,13 @@ export default function DealerDashboard() {
         if (!authLoading && user) {
             fetchDashboardData()
         }
-    }, [user, authLoading])
+    }, [user, authLoading, period])
 
     async function fetchDashboardData() {
         setLoading(true)
         try {
             const [statsRes, leadsRes] = await Promise.all([
-                apiClient<{ data: any }>('/dealers/stats').catch(() => ({ data: null })),
+                apiClient<{ data: any }>(`/dashboard/dealer?period=${period}`).catch(() => ({ data: null })),
                 apiClient<{ data: any[]; meta?: any }>('/dealers/leads?limit=5').catch(() => ({ data: [] })),
             ])
 
@@ -193,6 +208,12 @@ export default function DealerDashboard() {
                         </div>
                     )}
 
+                    {/* ── Period Toggle ── */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <h2 className="text-2xl font-black font-heading uppercase tracking-tighter">Overview</h2>
+                        <PeriodToggle value={period} onChange={setPeriod} />
+                    </div>
+
                     {/* ── KPI Stats Row ── */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <MetricCard
@@ -205,24 +226,27 @@ export default function DealerDashboard() {
                             statusLabel="Live"
                             loading={loading}
                             href="/dashboard/dealer/inventory?status=ACTIVE"
+                            subLabel={subLabel}
                         />
-                        <MetricCard 
-                            label="Total Views" 
-                            value={stats?.totalViews?.toLocaleString() || 0} 
-                            icon={Eye} 
-                            color="text-blue-400" 
-                            bg="bg-blue-500/10" 
-                            border="border-blue-500/20" 
-                            loading={loading} 
+                        <MetricCard
+                            label="Total Views"
+                            value={stats?.totalViews?.toLocaleString() || 0}
+                            icon={Eye}
+                            color="text-blue-400"
+                            bg="bg-blue-500/10"
+                            border="border-blue-500/20"
+                            loading={loading}
+                            subLabel={subLabel}
                         />
-                        <MetricCard 
-                            label="Active Leads" 
-                            value={stats?.activeLeads || 0} 
-                            icon={Kanban} 
-                            color="text-amber-400" 
-                            bg="bg-amber-500/10" 
-                            border="border-amber-500/20" 
-                            loading={loading} 
+                        <MetricCard
+                            label="Active Leads"
+                            value={stats?.activeLeads || 0}
+                            icon={Kanban}
+                            color="text-amber-400"
+                            bg="bg-amber-500/10"
+                            border="border-amber-500/20"
+                            loading={loading}
+                            subLabel={subLabel}
                         />
                         <MetricCard
                             label="Vehicles Sold"
@@ -234,6 +258,7 @@ export default function DealerDashboard() {
                             statusLabel="MTD"
                             loading={loading}
                             href="/dashboard/dealer/inventory?status=SOLD"
+                            subLabel={subLabel}
                         />
                     </div>
 

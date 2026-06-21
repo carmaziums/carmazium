@@ -3,15 +3,31 @@
 import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { PlusCircle, Loader2, Eye, TrendingUp, Car, DollarSign } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { MetricCard } from "@/components/dashboard/MetricCard"
+import { PeriodToggle } from "@/components/dashboard/PeriodToggle"
 import { useAuth } from "@/context/AuthContext"
-import { getSellerStats, getMyListings, formatPrice, type SellerStats, type Listing } from "@/lib/listingApi"
+import { apiClient } from "@/lib/apiClient"
+import { getMyListings, formatPrice, type SellerStats, type Listing } from "@/lib/listingApi"
 
 export default function SellerDashboard() {
     const { user, profile, loading: authLoading } = useAuth()
+    const searchParams = useSearchParams()
+    const router = useRouter()
+    const pathname = usePathname()
+    const period = (searchParams.get('period') as '7d' | '30d') ?? '30d'
+
+    function setPeriod(p: '7d' | '30d') {
+        const params = new URLSearchParams(searchParams.toString())
+        params.set('period', p)
+        router.replace(`${pathname}?${params.toString()}`)
+    }
+
+    const subLabel = period === '7d' ? 'Last 7 days' : 'Last 30 days'
+
     const [stats, setStats] = React.useState<SellerStats | null>(null)
     const [listings, setListings] = React.useState<Listing[]>([])
     const [loading, setLoading] = React.useState(true)
@@ -24,7 +40,7 @@ export default function SellerDashboard() {
             try {
                 setLoading(true)
                 const [statsData, listingsData] = await Promise.all([
-                    getSellerStats(),
+                    apiClient<{ data: SellerStats }>(`/dashboard/seller?period=${period}`).then(r => r.data).catch(() => null),
                     getMyListings({ limit: 5 })
                 ])
                 setStats(statsData)
@@ -40,7 +56,7 @@ export default function SellerDashboard() {
         if (!authLoading && user) {
             fetchData()
         }
-    }, [user, authLoading])
+    }, [user, authLoading, period])
 
     if (authLoading) {
         return (
@@ -63,6 +79,12 @@ export default function SellerDashboard() {
                 </DashboardSidebar>
 
                 <main className="flex-1 space-y-8 min-w-0">
+                    {/* Period Toggle Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <h2 className="text-2xl font-black font-heading uppercase tracking-tighter">Overview</h2>
+                        <PeriodToggle value={period} onChange={setPeriod} />
+                    </div>
+
                     {/* Stats Row */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <MetricCard
@@ -74,15 +96,17 @@ export default function SellerDashboard() {
                             border="border-primary/20"
                             loading={loading}
                             href="/dashboard/seller/listings?status=ACTIVE"
+                            subLabel={subLabel}
                         />
-                        <MetricCard 
-                            label="Total Views" 
-                            value={stats?.totalViews?.toLocaleString() || 0} 
-                            icon={Eye} 
-                            color="text-blue-400" 
-                            bg="bg-blue-500/10" 
-                            border="border-blue-500/20" 
-                            loading={loading} 
+                        <MetricCard
+                            label="Total Views"
+                            value={stats?.totalViews?.toLocaleString() || 0}
+                            icon={Eye}
+                            color="text-blue-400"
+                            bg="bg-blue-500/10"
+                            border="border-blue-500/20"
+                            loading={loading}
+                            subLabel={subLabel}
                         />
                         <MetricCard
                             label="Sold"
@@ -93,15 +117,17 @@ export default function SellerDashboard() {
                             border="border-emerald-500/20"
                             loading={loading}
                             href="/dashboard/seller/listings?status=SOLD"
+                            subLabel={subLabel}
                         />
-                        <MetricCard 
-                            label="Revenue" 
-                            value={formatPrice(stats?.totalRevenue || 0)} 
-                            icon={DollarSign} 
-                            color="text-yellow-400" 
-                            bg="bg-yellow-500/10" 
-                            border="border-yellow-500/20" 
-                            loading={loading} 
+                        <MetricCard
+                            label="Revenue"
+                            value={formatPrice(stats?.totalRevenue || 0)}
+                            icon={DollarSign}
+                            color="text-yellow-400"
+                            bg="bg-yellow-500/10"
+                            border="border-yellow-500/20"
+                            loading={loading}
+                            subLabel={subLabel}
                         />
                     </div>
 
