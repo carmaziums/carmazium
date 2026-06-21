@@ -221,8 +221,16 @@ AuctionDetailScreen.tsx quickBidBtnText style key fixed in Plan 03.
 - src/app/dashboard/dealer/auctions/page.tsx: optional buyItNowPrice input below Reserve Price; included in POST payload only when > 0
 - Human checkpoint approved; zero TypeScript errors
 
+### Phase 13 Plan 03 — Complete
+
+- listingsApi.ts: ApiListing extended with isDepartedSale?: boolean | null; mapApiListingToCarListing maps isDepartedSale: l.isDepartedSale ?? false
+- listings.ts: CarListing interface extended with isDepartedSale?: boolean
+- VehicleCard.tsx: grey ESTATE badge (rgba(160,160,171,0.20) bg, Colors.textSecondary text) in imageBadgeRow when isDepartedSale=true
+- HorizontalVehicleCard.tsx: same grey ESTATE badge, absolute-positioned top-right (mirrors premiumBadge pattern); FontFamily.bold, fontSize 9
+- Zero TypeScript errors introduced; two pre-existing errors in GlobalDrawer/DealerInventoryScreen remain deferred
+
 ## Session Continuity
 
-Last session: 2026-06-21T00:33:19.585Z
-Stopped at: Completed 13-02-PLAN.md
+Last session: 2026-06-21T00:34:00.000Z
+Stopped at: Completed 13-03-PLAN.md
 Resume file: None
