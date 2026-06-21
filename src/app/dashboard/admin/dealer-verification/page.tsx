@@ -237,13 +237,23 @@ export default function AdminDealerVerificationPage() {
       const existingStatuses = dealerKyc.documentStatuses || {};
       KYC_FIELDS.forEach((field) => {
         const item = existingStatuses[field.id];
-        initialDecisions[field.id] = {
-          // Only preserve REJECTED from a previous review; default everything else
-          // (including PENDING first-submissions) to APPROVED so the admin only
-          // needs to actively reject fields rather than approve each one manually.
-          status: item?.status === "REJECTED" ? "REJECTED" : "APPROVED",
-          note: item?.status === "REJECTED" ? (item?.note || "") : "",
-        };
+
+        // Auto-approve payment fields for Stripe-verified records
+        const isPaymentFieldStripeVerified =
+          dealerKyc.stripePaymentIntentId &&
+          (field.id === 'paymentReference' || field.id === 'paymentScreenshot');
+
+        if (isPaymentFieldStripeVerified) {
+          initialDecisions[field.id] = { status: "APPROVED", note: "Stripe verified" };
+        } else {
+          initialDecisions[field.id] = {
+            // Only preserve REJECTED from a previous review; default everything else
+            // (including PENDING first-submissions) to APPROVED so the admin only
+            // needs to actively reject fields rather than approve each one manually.
+            status: item?.status === "REJECTED" ? "REJECTED" : "APPROVED",
+            note: item?.status === "REJECTED" ? (item?.note || "") : "",
+          };
+        }
       });
       setDecisions(initialDecisions);
     }
@@ -495,6 +505,40 @@ export default function AdminDealerVerificationPage() {
       <div className="space-y-6 text-left">
         {categories.map((cat) => {
           const catFields = KYC_FIELDS.filter((f) => f.category === cat);
+
+          // Stripe-verified records: show auto-approved badge for Payment Verification, skip manual fields
+          if (cat === 'Payment Verification' && item.stripePaymentIntentId) {
+            return (
+              <div key={cat} className="space-y-3">
+                <h4 className="text-xs font-black uppercase text-primary tracking-widest border-l-2 border-primary pl-2.5 flex items-center gap-2">
+                  <Receipt size={12} className="text-primary" />
+                  Payment Verification
+                </h4>
+                <div className="p-3 sm:p-4 rounded-xl border bg-emerald-500/5 border-emerald-500/20">
+                  <div className="flex items-center gap-3">
+                    <ShieldCheck size={16} className="text-emerald-400 shrink-0" />
+                    <div>
+                      <p className="text-[10px] font-extrabold text-emerald-400 uppercase tracking-widest">
+                        Stripe Verified · Auto-Approved
+                      </p>
+                      <p className="text-xs text-slate-300 font-mono mt-0.5">
+                        {item.stripePaymentIntentId}
+                      </p>
+                      {item.stripeChargedAt && (
+                        <p className="text-[10px] text-slate-500 mt-0.5">
+                          Charged {new Date(item.stripeChargedAt).toLocaleDateString('en-GB', {
+                            day: 'numeric', month: 'short', year: 'numeric',
+                          })}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // Legacy records fall through to normal catFields.map rendering
           return (
             <div key={cat} className="space-y-3">
               <h4 className="text-xs font-black uppercase text-primary tracking-widest border-l-2 border-primary pl-2.5 flex items-center gap-2">
