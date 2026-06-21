@@ -3,27 +3,27 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 16-05-PLAN.md
-last_updated: "2026-06-21T16:31:32.647Z"
+stopped_at: Completed 17-01-PLAN.md
+last_updated: "2026-06-21T16:52:34.474Z"
 last_activity: 2026-06-21 — Phase 16 Plan 05 complete (human verification checkpoint — all 6 checks passed, phase 16 approved)
 progress:
   total_phases: 17
   completed_phases: 8
-  total_plans: 45
-  completed_plans: 42
-  percent: 95
+  total_plans: 47
+  completed_plans: 43
+  percent: 92
 ---
 
 # State: Carmazium Mobile App
 
 ## Current Position
 
-Phase: 16-analytics-and-infrastructure-7-day-30-day-dashboard-filters-db-scalability-audit-aws-s3-media-migration-30-day-automated-backups — COMPLETE
-Plan: 5 of 5 complete
-Status: Phase 16 COMPLETE — all 5 plans done; human verification checkpoint passed (period toggles, URL state, sub-labels, db-audit.md, tests GREEN, TypeScript clean)
-Last activity: 2026-06-21 — Phase 16 Plan 05 complete (human verification checkpoint — all 6 checks passed, phase 16 approved)
+Phase: 17-mobile-catalog-swipe-image-carousel-swipe-gesture-on-vehicle-cards-in-buy-car-grid — IN PROGRESS
+Plan: 1 of 3 complete
+Status: Phase 17 Plan 01 COMPLETE — jest.config.js + 5 RED carousel test stubs for VehicleCard; jest-expo@54, jest@29 pinned
+Last activity: 2026-06-21 — Phase 17 Plan 01 complete (TDD RED: jest infrastructure + VehicleCard carousel test stubs)
 
-Progress: [█████████░] 95%
+Progress: [████████░░] 92%
 
 ## Project Reference
 
@@ -229,8 +229,16 @@ AuctionDetailScreen.tsx quickBidBtnText style key fixed in Plan 03.
 - HorizontalVehicleCard.tsx: same grey ESTATE badge, absolute-positioned top-right (mirrors premiumBadge pattern); FontFamily.bold, fontSize 9
 - Zero TypeScript errors introduced; two pre-existing errors in GlobalDrawer/DealerInventoryScreen remain deferred
 
+### Phase 17 Plan 01 — Complete
+
+- jest.config.js: jest-expo@54 preset, @/ -> src/ moduleNameMapper, transformIgnorePatterns for reanimated + gesture-handler ESM
+- VehicleCard.test.tsx: 5 RED carousel stubs (carousel-image, carousel-dots, carousel-dot, Image.prefetch x3)
+- devDeps added: jest-expo@54.0.17, @testing-library/react-native@12.9.0, jest@29.7.0
+- Key decisions: jest-expo@54 required (52/53 crash on RN 0.81.5), jest@29 required (jest@30 breaks clearMocksOnScope), direct render() not async act() (RNTL v12 pattern)
+- testID contract for 17-02: carousel-image (strip), carousel-dots (container), carousel-dot (with accessibilityState.selected), Image.prefetch called for first 3 URIs on mount
+
 ## Session Continuity
 
-Last session: 2026-06-21T16:22:53.113Z
-Stopped at: Completed 16-05-PLAN.md
+Last session: 2026-06-21T16:52:34.459Z
+Stopped at: Completed 17-01-PLAN.md
 Resume file: None
