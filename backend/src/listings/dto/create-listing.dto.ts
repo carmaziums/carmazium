@@ -445,4 +445,23 @@ export class CreateListingDto {
     @IsString()
     @IsOptional()
     bannerLabel?: string;
+
+    @ApiProperty({ description: 'Whether seller offers delivery for this listing', required: false })
+    @IsOptional()
+    @IsBoolean()
+    deliveryAvailable?: boolean;
+
+    @ApiProperty({ description: 'Delivery price per mile in GBP', example: 0.5, required: false })
+    @Type(() => Number)
+    @IsNumber({ maxDecimalPlaces: 2 })
+    @Min(0)
+    @IsOptional()
+    deliveryPricePerMile?: number;
+
+    @ApiProperty({ description: 'Maximum delivery radius in miles (null = UK-wide)', required: false })
+    @Type(() => Number)
+    @IsInt()
+    @Min(1)
+    @IsOptional()
+    deliveryMaxMiles?: number;
 }
