@@ -264,6 +264,13 @@ export class ListingsService {
                 combinedMpg: createListingDto.combinedMpg ?? null,
                 extraUrbanMpg: createListingDto.extraUrbanMpg ?? null,
                 bannerLabel: createListingDto.bannerLabel ?? null,
+                // Phase 13: departed/estate sale
+                isDepartedSale: createListingDto.isDepartedSale ?? false,
+                departedRelationship: createListingDto.departedRelationship ?? null,
+                // Phase 15: delivery options
+                deliveryAvailable: createListingDto.deliveryAvailable ?? false,
+                deliveryPricePerMile: createListingDto.deliveryPricePerMile ?? null,
+                deliveryMaxMiles: createListingDto.deliveryMaxMiles ?? null,
             },
         });
 
@@ -672,6 +679,13 @@ export class ListingsService {
         if (updateListingDto.combinedMpg !== undefined) updateData.combinedMpg = updateListingDto.combinedMpg;
         if (updateListingDto.extraUrbanMpg !== undefined) updateData.extraUrbanMpg = updateListingDto.extraUrbanMpg;
         if (updateListingDto.bannerLabel !== undefined) updateData.bannerLabel = updateListingDto.bannerLabel;
+        // Phase 13: departed/estate sale
+        if (updateListingDto.isDepartedSale !== undefined) updateData.isDepartedSale = updateListingDto.isDepartedSale;
+        if (updateListingDto.departedRelationship !== undefined) updateData.departedRelationship = updateListingDto.departedRelationship ?? null;
+        // Phase 15: delivery options
+        if (updateListingDto.deliveryAvailable !== undefined) updateData.deliveryAvailable = updateListingDto.deliveryAvailable;
+        if (updateListingDto.deliveryPricePerMile !== undefined) updateData.deliveryPricePerMile = updateListingDto.deliveryPricePerMile ?? null;
+        if (updateListingDto.deliveryMaxMiles !== undefined) updateData.deliveryMaxMiles = updateListingDto.deliveryMaxMiles ?? null;
 
         // Update the listing
         const updatedListing = await this.prisma.listing.update({
