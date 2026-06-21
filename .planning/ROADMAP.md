@@ -324,7 +324,7 @@ Plans:
 **Goal:** Replace the manual "Bank Transfer" step 3 in the dealer KYC form with an inline Stripe CardElement that atomically charges a live £1 verification fee on submit. The charge is non-refundable, idempotent (charged once per dealer lifetime), and auto-approves the payment section for admin review. Admin panel shows a Stripe Verified badge for new-flow records; legacy records remain unchanged.
 **Requirements**: KYC-PAY-01, KYC-PAY-02, KYC-PAY-03, KYC-PAY-04, KYC-PAY-05, KYC-PAY-06, KYC-PAY-07
 **Depends on:** Phase 13
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [ ] 14-01-PLAN.md — Wave 0 (TDD): Test scaffold — 5 failing unit stubs for DealersService KYC payment methods
