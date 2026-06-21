@@ -1,12 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole } from '@prisma/client';
+import { subDays } from 'date-fns';
 
 @Injectable()
 export class DashboardService {
     constructor(private readonly prisma: PrismaService) { }
 
-    async getBuyerDashboard(userId: string) {
+    private buildPeriodFilter(period: '7d' | '30d'): { gte: Date } {
+        return { gte: subDays(new Date(), period === '7d' ? 7 : 30) };
+    }
+
+    async getBuyerDashboard(userId: string, period: '7d' | '30d' = '30d') {
+        const dateFilter = this.buildPeriodFilter(period);
         const [
             activeBids,
             activeOffers,
@@ -16,12 +22,12 @@ export class DashboardService {
             offers,
             history,
         ] = await Promise.all([
-            this.prisma.bid.count({ where: { bidderId: userId } }),
-            this.prisma.offer.count({ where: { buyerId: userId, status: { in: ['PENDING', 'COUNTERED'] } } }),
-            this.prisma.watchlistItem.count({ where: { userId } }),
-            this.prisma.auction.count({ where: { winnerId: userId } }),
+            this.prisma.bid.count({ where: { bidderId: userId, createdAt: dateFilter } }),
+            this.prisma.offer.count({ where: { buyerId: userId, status: { in: ['PENDING', 'COUNTERED'] }, createdAt: dateFilter } }),
+            this.prisma.watchlistItem.count({ where: { userId, createdAt: dateFilter } }),
+            this.prisma.auction.count({ where: { winnerId: userId, createdAt: dateFilter } }),
             this.prisma.bid.findMany({
-                where: { bidderId: userId },
+                where: { bidderId: userId, createdAt: dateFilter },
                 take: 20,
                 orderBy: { createdAt: 'desc' },
                 include: {
@@ -44,7 +50,7 @@ export class DashboardService {
                 },
             }),
             this.prisma.offer.findMany({
-                where: { buyerId: userId },
+                where: { buyerId: userId, createdAt: dateFilter },
                 take: 20,
                 orderBy: { createdAt: 'desc' },
                 include: {
@@ -65,7 +71,7 @@ export class DashboardService {
                 },
             }),
             this.prisma.sale.findMany({
-                where: { buyerId: userId },
+                where: { buyerId: userId, createdAt: dateFilter },
                 take: 20,
                 orderBy: { createdAt: 'desc' },
                 include: { listing: { select: { title: true } } },
@@ -218,20 +224,21 @@ export class DashboardService {
         };
     }
 
-    async getSellerDashboard(userId: string) {
+    async getSellerDashboard(userId: string, period: '7d' | '30d' = '30d') {
+        const dateFilter = this.buildPeriodFilter(period);
         const [activeListings, activeAuctions, offerCount, savedCount, offers, earnings] = await Promise.all([
-            this.prisma.listing.count({ where: { sellerId: userId, status: 'ACTIVE', deletedAt: null } }),
+            this.prisma.listing.count({ where: { sellerId: userId, status: 'ACTIVE', deletedAt: null, createdAt: dateFilter } }),
             this.prisma.auction.count({
-                where: { listing: { sellerId: userId }, endTime: { gt: new Date() } },
+                where: { listing: { sellerId: userId }, endTime: { gt: new Date() }, createdAt: dateFilter },
             }),
             this.prisma.offer.count({
-                where: { listing: { sellerId: userId }, status: { in: ['PENDING', 'COUNTERED'] } },
+                where: { listing: { sellerId: userId }, status: { in: ['PENDING', 'COUNTERED'] }, createdAt: dateFilter },
             }),
             this.prisma.watchlistItem.count({
-                where: { listing: { sellerId: userId } },
+                where: { listing: { sellerId: userId }, createdAt: dateFilter },
             }),
             this.prisma.offer.findMany({
-                where: { listing: { sellerId: userId }, status: { in: ['PENDING', 'COUNTERED'] } },
+                where: { listing: { sellerId: userId }, status: { in: ['PENDING', 'COUNTERED'] }, createdAt: dateFilter },
                 take: 20,
                 orderBy: { createdAt: 'desc' },
                 include: {
@@ -240,7 +247,7 @@ export class DashboardService {
                 },
             }),
             this.prisma.sale.findMany({
-                where: { sellerId: userId },
+                where: { sellerId: userId, createdAt: dateFilter },
                 take: 20,
                 orderBy: { createdAt: 'desc' },
                 include: { listing: { select: { title: true } } },
@@ -271,12 +278,9 @@ export class DashboardService {
         };
     }
 
-    async getDealerDashboard(userId: string) {
+    async getDealerDashboard(userId: string, period: '7d' | '30d' = '30d') {
+        const dateFilter = this.buildPeriodFilter(period);
         const dealerProfile = await this.prisma.dealerProfile.findUnique({ where: { userId } });
-
-        const soldThisMonthStart = new Date();
-        soldThisMonthStart.setDate(1);
-        soldThisMonthStart.setHours(0, 0, 0, 0);
 
         const [
             activeListings,
@@ -286,9 +290,9 @@ export class DashboardService {
             viewAgg,
             totalListingsForViews,
         ] = await Promise.all([
-            this.prisma.listing.count({ where: { sellerId: userId, status: 'ACTIVE', deletedAt: null } }),
-            this.prisma.auction.count({ where: { listing: { sellerId: userId }, endTime: { gt: new Date() } } }),
-            this.prisma.sale.count({ where: { sellerId: userId, createdAt: { gte: soldThisMonthStart } } }),
+            this.prisma.listing.count({ where: { sellerId: userId, status: 'ACTIVE', deletedAt: null, createdAt: dateFilter } }),
+            this.prisma.auction.count({ where: { listing: { sellerId: userId }, endTime: { gt: new Date() }, createdAt: dateFilter } }),
+            this.prisma.sale.count({ where: { sellerId: userId, createdAt: dateFilter } }),
             dealerProfile
                 ? this.prisma.lead.groupBy({
                     by: ['status'],

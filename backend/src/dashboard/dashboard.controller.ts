@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, UseGuards, ForbiddenException, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiCookieAuth } from '@nestjs/swagger';
 import { DashboardService } from './dashboard.service';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
@@ -22,25 +22,34 @@ export class DashboardController {
 
     @Get('buyer')
     @ApiOperation({ summary: 'Get buyer dashboard data' })
-    async getBuyerDashboard(@CurrentUser() user: User) {
-        const data = await this.dashboardService.getBuyerDashboard(user.id);
+    async getBuyerDashboard(
+        @CurrentUser() user: User,
+        @Query('period') period: '7d' | '30d' = '30d',
+    ) {
+        const data = await this.dashboardService.getBuyerDashboard(user.id, period);
         return new StandardResponse(data);
     }
 
     @Get('seller')
     @ApiOperation({ summary: 'Get seller dashboard data' })
-    async getSellerDashboard(@CurrentUser() user: User) {
-        const data = await this.dashboardService.getSellerDashboard(user.id);
+    async getSellerDashboard(
+        @CurrentUser() user: User,
+        @Query('period') period: '7d' | '30d' = '30d',
+    ) {
+        const data = await this.dashboardService.getSellerDashboard(user.id, period);
         return new StandardResponse(data);
     }
 
     @Get('dealer')
     @ApiOperation({ summary: 'Get dealer dashboard data' })
-    async getDealerDashboard(@CurrentUser() user: User) {
+    async getDealerDashboard(
+        @CurrentUser() user: User,
+        @Query('period') period: '7d' | '30d' = '30d',
+    ) {
         if (user.role !== UserRole.DEALER && user.role !== UserRole.ADMIN) {
             throw new ForbiddenException('Only dealers can access this dashboard');
         }
-        const data = await this.dashboardService.getDealerDashboard(user.id);
+        const data = await this.dashboardService.getDealerDashboard(user.id, period);
         return new StandardResponse(data);
     }
 
