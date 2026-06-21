@@ -238,6 +238,17 @@ enum PurchaseStatus {
   @@map("purchase_status")
 }
 
+/// Phase 15: Delivery request lifecycle
+enum DeliveryStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  COMPLETED
+  CANCELLED
+
+  @@map("delivery_status")
+}
+
 
 // ============================================================================
 // USER MANAGEMENT & PROFILES
