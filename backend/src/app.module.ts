@@ -33,6 +33,7 @@ import { DealersModule } from './dealers/dealers.module';
 import { EmailModule } from './email/email.module';
 import { DamageAnalysisModule } from './damage/damage.module';
 import { HpiModule } from './hpi/hpi.module';
+import { DeliveryModule } from './delivery/delivery.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { HpiModule } from './hpi/hpi.module';
     EmailModule,
     DamageAnalysisModule,
     HpiModule,
+    DeliveryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

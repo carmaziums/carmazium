@@ -380,6 +380,11 @@ export class ListingsService {
         // ─── Boolean compliance filter ───────────────────────────────────────
         if (ulezCompliant !== undefined) where.ulezCompliant = ulezCompliant;
 
+        // ─── Delivery availability ────────────────────────────────────────────
+        if (filterDto.deliveryAvailable !== undefined) {
+            where.deliveryAvailable = filterDto.deliveryAvailable;
+        }
+
         // ─── BHP / Power range ───────────────────────────────────────────────
         if (minBhp !== undefined || maxBhp !== undefined) {
             where.bhp = {};

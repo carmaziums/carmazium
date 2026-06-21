@@ -1,15 +1,16 @@
+import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { DeliveryService } from './delivery.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { EmailService } from '../email/email.service';
+import { HttpService } from '@nestjs/axios';
+import { ConfigService } from '@nestjs/config';
 
 /**
- * Unit test stubs for DeliveryService — TDD RED state (Phase 15 Plan 01).
+ * Unit test stubs for DeliveryService — TDD GREEN state (Phase 15 Plan 02).
  *
- * All 8 tests FAIL in RED state because:
- * - Tests that guard → assert specific NestJS exception class (BadRequestException/ForbiddenException)
- *   but skeleton throws Error('not implemented'), which does not match instanceof check.
- * - Tests that store data → assert method resolves with a record, but skeleton throws.
- *
- * Plan 02 makes them GREEN by implementing real logic.
+ * All 8 tests pass GREEN because the real implementation is in place.
  *
  * DEL-01 through DEL-08 map to requirements in REQUIREMENTS.md.
  */
@@ -31,25 +32,46 @@ describe('DeliveryService', () => {
   const mockHttpService = { axiosRef: { get: jest.fn() } };
   const mockConfig = { get: jest.fn() };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
-    service = new DeliveryService();
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        DeliveryService,
+        { provide: PrismaService, useValue: mockPrisma },
+        { provide: NotificationsService, useValue: mockNotifications },
+        { provide: EmailService, useValue: mockEmail },
+        { provide: HttpService, useValue: mockHttpService },
+        { provide: ConfigService, useValue: mockConfig },
+      ],
+    }).compile();
+
+    service = module.get<DeliveryService>(DeliveryService);
   });
 
   // ---------------------------------------------------------------------------
   // createDeliveryRequest
   // ---------------------------------------------------------------------------
   describe('createDeliveryRequest', () => {
-    const dto = {
+    const dto: any = {
       listingId: 'listing-1',
       deliveryAddress: { street: '1 High St', city: 'London', postcode: 'SW1A 1AA' },
-      deliveryNotes: null,
+      deliveryNotes: undefined,
     };
     const buyerId = 'buyer-1';
 
     it('DEL-01: rejects if buyer has no offer on listing', async () => {
-      // Real implementation: throws BadRequestException when offer not found
-      // Skeleton: throws Error('not implemented') — does NOT match BadRequestException
+      mockPrisma.listing.findUnique.mockResolvedValue({
+        id: 'listing-1',
+        deliveryAvailable: true,
+        sellerId: 'seller-1',
+        seller: { id: 'seller-1' },
+        deliveryMaxMiles: null,
+        deliveryPricePerMile: 0.5,
+        latitude: 51.5074,
+        longitude: -0.1278,
+        title: 'BMW 3 Series',
+      });
       mockPrisma.offer.findFirst.mockResolvedValue(null);
 
       await expect(service.createDeliveryRequest(dto, buyerId)).rejects.toThrow(
@@ -58,9 +80,18 @@ describe('DeliveryService', () => {
     });
 
     it('DEL-02: rejects duplicate active request', async () => {
-      // Real implementation: throws BadRequestException for duplicate PENDING/ACCEPTED request
-      // Skeleton: throws Error('not implemented') — does NOT match BadRequestException
-      mockPrisma.offer.findFirst.mockResolvedValue({ id: 'offer-1' });
+      mockPrisma.listing.findUnique.mockResolvedValue({
+        id: 'listing-1',
+        deliveryAvailable: true,
+        sellerId: 'seller-1',
+        seller: { id: 'seller-1' },
+        deliveryMaxMiles: null,
+        deliveryPricePerMile: 0.5,
+        latitude: 51.5074,
+        longitude: -0.1278,
+        title: 'BMW 3 Series',
+      });
+      mockPrisma.offer.findFirst.mockResolvedValueOnce({ id: 'offer-1' });
       mockPrisma.deliveryRequest.findFirst.mockResolvedValue({
         id: 'req-1',
         status: 'PENDING',
@@ -72,17 +103,20 @@ describe('DeliveryService', () => {
     });
 
     it('DEL-03: rejects out-of-radius request', async () => {
-      // Real implementation: throws BadRequestException when distance > deliveryMaxMiles
-      // Skeleton: throws Error('not implemented') — does NOT match BadRequestException
-      mockPrisma.offer.findFirst.mockResolvedValue({ id: 'offer-1' });
-      mockPrisma.deliveryRequest.findFirst.mockResolvedValue(null);
       mockPrisma.listing.findUnique.mockResolvedValue({
         id: 'listing-1',
+        deliveryAvailable: true,
+        sellerId: 'seller-1',
+        seller: { id: 'seller-1' },
         deliveryMaxMiles: 50,
         deliveryPricePerMile: 0.5,
         latitude: 51.5074,
         longitude: -0.1278,
+        title: 'BMW 3 Series',
       });
+      mockPrisma.offer.findFirst.mockResolvedValueOnce({ id: 'offer-1' });
+      mockPrisma.deliveryRequest.findFirst.mockResolvedValue(null);
+      mockConfig.get.mockReturnValue('test-api-key');
       mockHttpService.axiosRef.get.mockResolvedValue({
         data: {
           rows: [{ elements: [{ distance: { value: 120000 }, status: 'OK' }] }],
@@ -96,17 +130,22 @@ describe('DeliveryService', () => {
     });
 
     it('DEL-04: stores distance and cost', async () => {
-      // Real implementation: resolves with created DeliveryRequest including distanceMiles + estimatedCostGbp
-      // Skeleton: throws Error('not implemented') — rejects instead of resolving
-      mockPrisma.offer.findFirst.mockResolvedValue({ id: 'offer-1' });
-      mockPrisma.deliveryRequest.findFirst.mockResolvedValue(null);
       mockPrisma.listing.findUnique.mockResolvedValue({
         id: 'listing-1',
+        deliveryAvailable: true,
+        sellerId: 'seller-1',
+        seller: { id: 'seller-1' },
         deliveryMaxMiles: null,
         deliveryPricePerMile: 0.5,
         latitude: 51.5074,
         longitude: -0.1278,
+        title: 'BMW 3 Series',
       });
+      mockPrisma.offer.findFirst
+        .mockResolvedValueOnce({ id: 'offer-1' })  // buyer has offer
+        .mockResolvedValueOnce({ id: 'offer-1' }); // most recent offerId
+      mockPrisma.deliveryRequest.findFirst.mockResolvedValue(null);
+      mockConfig.get.mockReturnValue('test-api-key');
       mockHttpService.axiosRef.get.mockResolvedValue({
         data: {
           rows: [{ elements: [{ distance: { value: 40234 }, status: 'OK' }] }],
@@ -118,8 +157,8 @@ describe('DeliveryService', () => {
         distanceMiles: 25,
         estimatedCostGbp: 13,
       });
+      mockNotifications.create.mockResolvedValue({});
 
-      // This must RESOLVE — but skeleton REJECTS — RED state
       const result = await service.createDeliveryRequest(dto, buyerId);
       expect(result).toHaveProperty('distanceMiles');
       expect(result).toHaveProperty('estimatedCostGbp');
@@ -131,14 +170,13 @@ describe('DeliveryService', () => {
   // ---------------------------------------------------------------------------
   describe('acceptDeliveryRequest', () => {
     it('DEL-05: throws ForbiddenException for non-seller', async () => {
-      // Real implementation: throws ForbiddenException when userId !== request.sellerId
-      // Skeleton: throws Error('not implemented') — does NOT match ForbiddenException
       const requestId = 'req-1';
       const nonSellerId = 'buyer-1';
       mockPrisma.deliveryRequest.findFirst.mockResolvedValue({
         id: requestId,
         sellerId: 'seller-1',
         status: 'PENDING',
+        expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
       });
 
       await expect(service.acceptDeliveryRequest(requestId, nonSellerId)).rejects.toThrow(
@@ -152,8 +190,6 @@ describe('DeliveryService', () => {
   // ---------------------------------------------------------------------------
   describe('declineDeliveryRequest', () => {
     it('DEL-06: sends buyer notification on decline', async () => {
-      // Real implementation: resolves after calling notificationsService.create(buyerId)
-      // Skeleton: throws Error('not implemented') — rejects instead of resolving
       const requestId = 'req-1';
       const sellerId = 'seller-1';
       mockPrisma.deliveryRequest.findFirst.mockResolvedValue({
@@ -161,9 +197,14 @@ describe('DeliveryService', () => {
         sellerId,
         buyerId: 'buyer-1',
         status: 'PENDING',
+        listing: { title: 'BMW 3 Series' },
       });
+      mockPrisma.deliveryRequest.update.mockResolvedValue({
+        id: requestId,
+        status: 'DECLINED',
+      });
+      mockNotifications.create.mockResolvedValue({});
 
-      // Must resolve — skeleton rejects — RED state
       await service.declineDeliveryRequest(requestId, sellerId);
 
       expect(mockNotifications.create).toHaveBeenCalledWith(
@@ -177,8 +218,6 @@ describe('DeliveryService', () => {
   // ---------------------------------------------------------------------------
   describe('cancelDeliveryRequest', () => {
     it('DEL-07: rejects non-PENDING status', async () => {
-      // Real implementation: throws BadRequestException when status !== PENDING
-      // Skeleton: throws Error('not implemented') — does NOT match BadRequestException
       const requestId = 'req-1';
       const buyerId = 'buyer-1';
       mockPrisma.deliveryRequest.findFirst.mockResolvedValue({
@@ -198,8 +237,6 @@ describe('DeliveryService', () => {
   // ---------------------------------------------------------------------------
   describe('completeDeliveryRequest', () => {
     it('DEL-08: rejects non-ACCEPTED status', async () => {
-      // Real implementation: throws BadRequestException when status !== ACCEPTED
-      // Skeleton: throws Error('not implemented') — does NOT match BadRequestException
       const requestId = 'req-1';
       const buyerId = 'buyer-1';
       mockPrisma.deliveryRequest.findFirst.mockResolvedValue({

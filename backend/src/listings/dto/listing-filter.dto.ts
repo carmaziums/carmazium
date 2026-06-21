@@ -241,4 +241,11 @@ export class ListingFilterDto {
     @IsBoolean()
     @IsOptional()
     includeSold?: boolean;
+
+    // ─── Delivery availability ─────────────────────────────────────────────────
+    @ApiPropertyOptional({ description: 'Filter by delivery availability', example: true })
+    @Transform(({ value }) => value === 'true' ? true : value === 'false' ? false : value)
+    @IsBoolean()
+    @IsOptional()
+    deliveryAvailable?: boolean;
 }
