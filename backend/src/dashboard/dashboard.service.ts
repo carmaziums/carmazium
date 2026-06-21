@@ -22,15 +22,19 @@ export class DashboardService {
             offers,
             history,
         ] = await Promise.all([
-            this.prisma.bid.count({ where: { bidderId: userId, createdAt: dateFilter } }),
+            this.prisma.bid.count({ where: { bidderId: userId, createdAt: dateFilter, cancelledAt: null } }),
             this.prisma.offer.count({ where: { buyerId: userId, status: { in: ['PENDING', 'COUNTERED'] }, createdAt: dateFilter } }),
             this.prisma.watchlistItem.count({ where: { userId, createdAt: dateFilter } }),
             this.prisma.auction.count({ where: { winnerId: userId, createdAt: dateFilter } }),
             this.prisma.bid.findMany({
-                where: { bidderId: userId, createdAt: dateFilter },
+                where: { bidderId: userId, createdAt: dateFilter, cancelledAt: null },
                 take: 20,
                 orderBy: { createdAt: 'desc' },
-                include: {
+                select: {
+                    id: true,
+                    amount: true,
+                    createdAt: true,
+                    listingId: true,
                     listing: {
                         select: {
                             id: true,
@@ -352,7 +356,11 @@ export class DashboardService {
             where: { contractorId: profile.id },
             take: 5,
             orderBy: { createdAt: 'desc' },
-            include: { requester: true },
+            include: {
+                requester: {
+                    select: { id: true, firstName: true, lastName: true, email: true, role: true },
+                },
+            },
         });
 
         return {
@@ -372,7 +380,10 @@ export class DashboardService {
         const recentApplications = await this.prisma.financeApplication.findMany({
             take: 10,
             orderBy: { createdAt: 'desc' },
-            include: { user: true, listing: true },
+            include: {
+                user: { select: { id: true, firstName: true, lastName: true, email: true } },
+                listing: { select: { id: true, title: true, price: true, status: true } },
+            },
         });
 
         return {
@@ -391,7 +402,10 @@ export class DashboardService {
         const recentQuotes = await this.prisma.insuranceQuote.findMany({
             take: 10,
             orderBy: { createdAt: 'desc' },
-            include: { user: true, listing: true },
+            include: {
+                user: { select: { id: true, firstName: true, lastName: true, email: true } },
+                listing: { select: { id: true, title: true, price: true, status: true } },
+            },
         });
 
         return {
@@ -413,6 +427,7 @@ export class DashboardService {
         const recentUsers = await this.prisma.user.findMany({
             take: 5,
             orderBy: { createdAt: 'desc' },
+            select: { id: true, firstName: true, lastName: true, email: true, role: true, createdAt: true },
         });
 
         return {
