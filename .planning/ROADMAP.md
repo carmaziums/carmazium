@@ -311,7 +311,7 @@ Plans:
 **Goal:** Upgrade the departed/estate sale section in the listing wizard to a structured relationship dropdown, propagate an Estate chip to all web listing card contexts and the mobile VehicleCard/HorizontalVehicleCard, and extend the listing detail badge to show ‘Listed by [relationship]’ inline.
 **Requirements**: FORM-01, FORM-02, FORM-03, FORM-04, BADGE-01, BADGE-02, MOBILE-01
 **Depends on:** Phase 12
-**Plans:** 4 plans
+**Plans:** 3/4 plans executed
 
 Plans:
 - [ ] 13-01-PLAN.md — Wave 1: Wizard form upgrade — relationship dropdown + Other freetext + validation guard

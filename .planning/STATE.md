@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Phase 13 context gathered
-last_updated: "2026-06-21T00:10:48.266Z"
-last_activity: 2026-06-21 — Phase 12 Plan 03 complete (BIN card + confirmation modal + cancel countdown SVG arc in live auction room; BIN section in listing detail sidebar; optional BIN price field in dealer auction creation form; zero TypeScript errors; human-verified)
+stopped_at: Completed 13-03-PLAN.md
+last_updated: "2026-06-21T00:34:00.000Z"
+last_activity: 2026-06-21 — Phase 13 Plan 03 complete (isDepartedSale threaded from ApiListing through CarListing into grey ESTATE badges on VehicleCard and HorizontalVehicleCard; zero TypeScript errors)
 progress:
   total_phases: 17
   completed_phases: 5
-  total_plans: 25
-  completed_plans: 24
+  total_plans: 29
+  completed_plans: 28
   percent: 97
 ---
 
@@ -18,10 +18,10 @@ progress:
 
 ## Current Position
 
-Phase: 12-auction-enhancements-buy-it-now-instant-purchase-cancel-bid-fat-finger-window (Auction Enhancements)
-Plan: 3 of 3 complete — Phase Complete
-Status: Phase 12 complete — BIN frontend UI, cancel countdown, listing detail BIN section, dealer form BIN field all shipped; human checkpoint approved
-Last activity: 2026-06-21 — Phase 12 Plan 03 complete (BIN card + confirmation modal + cancel countdown SVG arc in live auction room; BIN section in listing detail sidebar; optional BIN price field in dealer auction creation form; zero TypeScript errors; human-verified)
+Phase: 13-listing-form-enhancements-departed-sale-option-with-relationship-field (Listing Form Enhancements)
+Plan: 3 of 4 complete
+Status: Phase 13 Plan 03 complete — isDepartedSale field threaded through mobile type layer; grey ESTATE badge added to VehicleCard and HorizontalVehicleCard
+Last activity: 2026-06-21 — Phase 13 Plan 03 complete (isDepartedSale threaded from ApiListing through CarListing into grey ESTATE badges on VehicleCard and HorizontalVehicleCard; zero TypeScript errors)
 
 Progress: [██████████] 97%
 
@@ -223,6 +223,6 @@ AuctionDetailScreen.tsx quickBidBtnText style key fixed in Plan 03.
 
 ## Session Continuity
 
-Last session: 2026-06-21T00:10:48.251Z
-Stopped at: Phase 13 context gathered
-Resume file: .planning/phases/13-listing-form-enhancements-departed-sale-option-with-relationship-field/13-CONTEXT.md
+Last session: 2026-06-21T00:33:19.585Z
+Stopped at: Completed 13-02-PLAN.md
+Resume file: None
