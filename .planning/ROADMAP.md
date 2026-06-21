@@ -308,13 +308,16 @@ Plans:
 
 ### Phase 13: Listing Form Enhancements — departed sale option with relationship field
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Upgrade the departed/estate sale section in the listing wizard to a structured relationship dropdown, propagate an Estate chip to all web listing card contexts and the mobile VehicleCard/HorizontalVehicleCard, and extend the listing detail badge to show ‘Listed by [relationship]’ inline.
+**Requirements**: FORM-01, FORM-02, FORM-03, FORM-04, BADGE-01, BADGE-02, MOBILE-01
 **Depends on:** Phase 12
-**Plans:** 0 plans
+**Plans:** 4 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 13 to break down)
+- [ ] 13-01-PLAN.md — Wave 1: Wizard form upgrade — relationship dropdown + Other freetext + validation guard
+- [ ] 13-02-PLAN.md — Wave 1: Web CarCard Estate chip + prop threading + detail page ‘Listed by’ display
+- [ ] 13-03-PLAN.md — Wave 1: Mobile type extension + VehicleCard/HorizontalVehicleCard Estate badge
+- [ ] 13-04-PLAN.md — Wave 2: Human verify checkpoint (all 7 requirements)
 
 ### Phase 14: Stripe KYC Fix — replace manual card form with Stripe Elements and live 1 pound verification charge
 
