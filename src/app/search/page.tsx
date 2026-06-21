@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/Input"
 import { CarCard } from "@/components/features/CarCard"
 import {
     Search, Filter, X, Gavel, AlertTriangle, Loader2,
-    RotateCcw, ChevronDown, ShieldCheck, Star, ArrowRight, MapPin,
+    RotateCcw, ChevronDown, ShieldCheck, Star, ArrowRight, MapPin, Truck,
 } from "lucide-react"
 import { getListings, getFeaturedListings, formatPrice, type Listing, type ListingFilters, type VehicleConditionValue, type EuroStandardValue } from "@/lib/listingApi"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
@@ -113,6 +113,7 @@ interface FilterState {
     sortBy: string
     features: string[]
     maxDistanceMi: number | null
+    deliveryAvailable: boolean
 }
 
 const INITIAL_FILTERS: FilterState = {
@@ -131,6 +132,7 @@ const INITIAL_FILTERS: FilterState = {
     sortBy: 'newest',
     features: [],
     maxDistanceMi: null,
+    deliveryAvailable: false,
 }
 
 // ─── Collapsible Section ──────────────────────────────────────────────────────
@@ -258,6 +260,7 @@ function SearchPageContent() {
             sortBy: p('sortBy') || 'newest',
             features: searchParams.get('features')?.split(',').filter(Boolean) || [],
             maxDistanceMi: searchParams.get('maxDistanceMi') ? Number(searchParams.get('maxDistanceMi')) : null,
+            deliveryAvailable: p('deliveryAvailable') === 'true',
         }
     }, [searchParams])
 
@@ -343,6 +346,7 @@ function SearchPageContent() {
         if (appliedFilters.location) count++
         if (appliedFilters.listingType) count++
         if (appliedFilters.maxDistanceMi) count++
+        if (appliedFilters.deliveryAvailable) count++
         return count
     }, [appliedFilters])
 
@@ -380,6 +384,7 @@ function SearchPageContent() {
         if (state.listingType) f.listingType = state.listingType
         if (state.sortBy && state.sortBy !== 'newest') f.sortBy = state.sortBy
         if (state.features?.length) f.features = state.features
+        if (state.deliveryAvailable) f.deliveryAvailable = true
         return f
     }, [])
 
@@ -986,6 +991,22 @@ function SearchPageContent() {
                                 </div>
                             </FilterSection>
 
+                            {/* Delivery */}
+                            <FilterSection title="Delivery">
+                                <button
+                                    type="button"
+                                    onClick={() => set('deliveryAvailable', !filters.deliveryAvailable)}
+                                    className={`flex items-center gap-2 w-full py-1.5 px-2.5 rounded-md border text-xs font-semibold transition-all ${
+                                        filters.deliveryAvailable
+                                            ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300'
+                                            : 'border-white/10 text-gray-400 hover:border-white/20'
+                                    }`}
+                                >
+                                    <Truck size={12} />
+                                    Delivery available
+                                </button>
+                            </FilterSection>
+
                         </div>
 
                         {/* Auction Promo Card */}
@@ -1064,6 +1085,9 @@ function SearchPageContent() {
                             {appliedFilters.listingType && <FilterTag label={appliedFilters.listingType === 'AUCTION' ? 'Auction' : 'Buy Now'} onRemove={() => clearFilter({ listingType: '' })} />}
                             {appliedFilters.sellerType && <FilterTag label={appliedFilters.sellerType === 'DEALER' ? 'Dealer' : 'Private Seller'} onRemove={() => clearFilter({ sellerType: '' })} />}
                             {appliedFilters.maxDistanceMi && <FilterTag label={`Within ${appliedFilters.maxDistanceMi} mi`} onRemove={() => clearFilter({ maxDistanceMi: null })} />}
+                            {appliedFilters.deliveryAvailable && (
+                                <FilterTag label="Delivery available" onRemove={() => clearFilter({ deliveryAvailable: false })} />
+                            )}
                         </div>
                     )}
 
@@ -1132,6 +1156,7 @@ function SearchPageContent() {
                                         bannerLabel={listing.bannerLabel}
                                         hasLinkedAuction={!!listing.linkedListingId}
                                         isDepartedSale={listing.isDepartedSale ?? false}
+                                        deliveryAvailable={listing.deliveryAvailable ?? false}
                                     />
                                 ))}
                             </div>
@@ -1166,6 +1191,7 @@ function SearchPageContent() {
                                     bannerLabel={listing.bannerLabel}
                                     hasLinkedAuction={!!listing.linkedListingId}
                                     isDepartedSale={listing.isDepartedSale ?? false}
+                                    deliveryAvailable={listing.deliveryAvailable ?? false}
                                 />
                             ))}
                         </div>

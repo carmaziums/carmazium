@@ -5,7 +5,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui/Button"
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion"
 import { useRef } from "react"
-import { Calendar, Gauge, Fuel, Car, BadgeCheck, ShieldCheck, Star, Sparkles, MapPin, Gavel } from "lucide-react"
+import { Calendar, Gauge, Fuel, Car, BadgeCheck, ShieldCheck, Star, Sparkles, MapPin, Gavel, Truck } from "lucide-react"
 import { SellerBadge } from "@/components/ui/SellerBadge"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 import { BODY_TYPE_LABELS, FUEL_TYPE_LABELS } from "@/lib/vehicleLabels"
@@ -33,6 +33,7 @@ interface CarCardProps {
     bannerLabel?: string | null
     hasLinkedAuction?: boolean
     isDepartedSale?: boolean
+    deliveryAvailable?: boolean
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -55,7 +56,7 @@ export function CarCard({
     title, price, priceMin, priceMax, image, href = "#",
     year, mileage, fuelType, bodyType, location, distanceMi,
     sellerId, sellerScore, isFeatured = false, badgeTier, status, bannerLabel, hasLinkedAuction,
-    isDepartedSale
+    isDepartedSale, deliveryAvailable
 }: CarCardProps) {
     const ref = useRef<HTMLDivElement>(null)
 
@@ -280,6 +281,12 @@ export function CarCard({
                                 <MapPin size={10} /> {location.split(',')[0].trim()}
                             </span>
                         ) : null}
+                        {deliveryAvailable && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold
+                                bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                                <Truck size={11} /> Delivery
+                            </span>
+                        )}
                     </div>
                 )}
 
