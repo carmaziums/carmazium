@@ -39,6 +39,7 @@ export interface CarListing {
   description?: string;
   features?: string[];
   seller?: { id: string };
+  isDepartedSale?: boolean;
 }
 
 export interface AuctionListing extends CarListing {

@@ -33,6 +33,7 @@ export interface ApiListing {
     lastName?: string;
     dealerProfile?: { companyName?: string; logo?: string } | null;
   } | null;
+  isDepartedSale?: boolean | null;
 }
 
 export interface PaginatedApiResponse<T> {
@@ -157,6 +158,7 @@ export function mapApiListingToCarListing(l: ApiListing): CarListing {
     description:  l.description  ?? undefined,
     features:     l.features     ?? undefined,
     seller:       l.seller?.id ? { id: l.seller.id } : undefined,
+    isDepartedSale: l.isDepartedSale ?? false,
   };
 }
 
