@@ -334,13 +334,18 @@ Plans:
 
 ### Phase 15: Delivery and Distance System — seller delivery toggle, price-per-km auto-calculation, buyer delivery request flow
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Sellers can opt into per-listing delivery with a price-per-mile and optional radius; buyers with an active offer can submit a delivery request with a live cost preview via Google Maps road distance; both parties track delivery status on their offer dashboards; delivery-enabled listings are discoverable via a CarCard badge and search filter.
+**Requirements**: DEL-01, DEL-02, DEL-03, DEL-04, DEL-05, DEL-06, DEL-07, DEL-08, DEL-09, DEL-10, DEL-11, DEL-12, DEL-13, DEL-14, DEL-15
 **Depends on:** Phase 14
-**Plans:** 0 plans
+**Plans:** 6 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 15 to break down)
+- [ ] 15-01-PLAN.md — Wave 0 (TDD): delivery.service.spec.ts 8 stubs + delivery-expiry.service.spec.ts 1 stub (RED state)
+- [ ] 15-02-PLAN.md — Wave 1: Prisma schema + full NestJS delivery module (service, controller, DTOs, expiry cron, delivery filter)
+- [ ] 15-03-PLAN.md — Wave 2a: deliveryApi.ts + listingApi.ts delivery type extensions + ListingWizard delivery options section
+- [ ] 15-04-PLAN.md — Wave 2b: Buyer offers page inline delivery form + live cost preview + seller offers accept/decline + /api/delivery-distance route
+- [ ] 15-05-PLAN.md — Wave 3: CarCard delivery badge + search page delivery filter + listing detail sidebar delivery section
+- [ ] 15-06-PLAN.md — Wave 4: Human verify checkpoint (8 end-to-end flows)
 
 ### Phase 16: Analytics and Infrastructure — 7-day 30-day dashboard filters, DB scalability audit, AWS S3 media migration, 30-day automated backups
 
