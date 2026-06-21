@@ -906,6 +906,12 @@ export interface Offer extends LatestOffer {
         model: string | null
         year: number | null
         sellerId: string
+        // Delivery fields (Phase 15)
+        deliveryAvailable?: boolean | null
+        deliveryPricePerMile?: number | string | null
+        deliveryMaxMiles?: number | null
+        latitude?: number | null
+        longitude?: number | null
     }
 }
 
