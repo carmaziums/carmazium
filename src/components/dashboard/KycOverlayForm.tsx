@@ -12,6 +12,7 @@ import {
   ArrowRight,
   ArrowLeft,
   Check,
+  CheckCircle,
   CheckCircle2,
   Lock,
   AlertCircle,
@@ -26,13 +27,18 @@ import {
   Receipt,
   FileCheck,
 } from "lucide-react";
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { useAuth } from "@/context/AuthContext";
-import { getDealerKyc, submitDealerKyc, DealerKycData } from "@/lib/dealerApi";
+import { getDealerKyc, submitDealerKyc, DealerKycData, createKycPaymentIntent } from "@/lib/dealerApi";
 import { uploadImage } from "@/lib/supabase";
 import { apiClient } from "@/lib/apiClient";
 import { useRouter } from "next/navigation";
 
 export const KYC_SKIP_KEY = 'kyc_skipped_v1';
+
+// Initialize Stripe at module level (outside component) to avoid re-initializing on re-renders
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 // ─── File Upload Component ─────────────────────────────────────────────────────
 
@@ -250,6 +256,17 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
+  // ── Stripe Payment State ──
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [alreadyPaid, setAlreadyPaid] = useState(false);
+  const [paidAt, setPaidAt] = useState<string | null>(null);
+  const [stripeLoading, setStripeLoading] = useState(false);
+  const [stripePaymentIntentId, setStripePaymentIntentId] = useState<string | null>(null);
+  const [cardError, setCardError] = useState<string | null>(null);
+
+  // Ref to expose CardForm's confirmPayment function to the outer handleSubmit
+  const confirmPaymentRef = useRef<(() => Promise<string | null>) | null>(null);
+
   // ── Text Form Fields ──
   const [formData, setFormData] = useState({
     companyHouseName: "",
@@ -263,7 +280,6 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
     businessRegisteredAddress: "",
     tradingAddress: "",
     googleReviewsLink: "",
-    paymentReference: "",
   });
 
   // ── File Upload URL Fields ──
@@ -271,7 +287,6 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
     directorIdProof: "",
     vatProof: "",
     companyRegistrationProof: "",
-    paymentScreenshot: "",
   });
 
   // ── Load existing KYC record on mount ──
@@ -293,14 +308,20 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
             businessRegisteredAddress: kyc.businessRegisteredAddress || "",
             tradingAddress: kyc.tradingAddress || "",
             googleReviewsLink: kyc.googleReviewsLink || "",
-            paymentReference: kyc.paymentReference || "",
           });
           setFileUrls({
             directorIdProof: kyc.directorIdProof || "",
             vatProof: kyc.vatProof || "",
             companyRegistrationProof: kyc.companyRegistrationProof || "",
-            paymentScreenshot: kyc.paymentScreenshot || "",
           });
+          // Populate Stripe already-paid state if dealer has previously charged
+          if (kyc.stripeChargedAt) {
+            setAlreadyPaid(true);
+            setPaidAt(kyc.stripeChargedAt);
+            if (kyc.stripePaymentIntentId) {
+              setStripePaymentIntentId(kyc.stripePaymentIntentId);
+            }
+          }
         }
       } catch (err: any) {
         console.error("Failed to load dealer KYC info:", err);
@@ -310,6 +331,65 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
     }
     loadKyc();
   }, []);
+
+  // ── Fetch PaymentIntent when dealer reaches step 3 ──
+  useEffect(() => {
+    if (activeStep !== 3 || alreadyPaid || clientSecret) return;
+    setStripeLoading(true);
+    createKycPaymentIntent()
+      .then((res) => {
+        if (res.alreadyPaid) {
+          setAlreadyPaid(true);
+          setPaidAt(res.chargedAt ?? null);
+        } else {
+          setClientSecret(res.clientSecret ?? null);
+        }
+      })
+      .catch(() => setErrorMsg('Failed to initialise payment. Please refresh and try again.'))
+      .finally(() => setStripeLoading(false));
+  }, [activeStep]);
+
+  // ── Inner CardForm component — must be inside KycOverlayForm to share closure ──
+  const CardForm = () => {
+    const stripe = useStripe();
+    const elements = useElements();
+
+    useEffect(() => {
+      confirmPaymentRef.current = async () => {
+        if (alreadyPaid) return stripePaymentIntentId;
+        if (!stripe || !elements) return null;
+        const { error, paymentIntent } = await stripe.confirmCardPayment(undefined as any, {
+          payment_method: { card: elements.getElement(CardElement)! },
+        });
+        if (error) {
+          setCardError(error.message ?? 'Card declined. Please check your card details.');
+          return null;
+        }
+        if (paymentIntent?.status === 'succeeded') {
+          setStripePaymentIntentId(paymentIntent.id);
+          return paymentIntent.id;
+        }
+        setCardError('Payment did not complete. Please try again.');
+        return null;
+      };
+    }, [stripe, elements]);
+
+    return (
+      <CardElement
+        options={{
+          style: {
+            base: {
+              color: '#e2e8f0',
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '14px',
+              '::placeholder': { color: '#64748b' },
+            },
+            invalid: { color: '#f87171' },
+          },
+        }}
+      />
+    );
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -386,7 +466,10 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
       if (!formData.businessWebsite.trim()) { setErrorMsg("Business Website is required."); return false; }
       if (!formData.businessRegisteredAddress.trim()) { setErrorMsg("Registered Business Address is required."); return false; }
     } else if (step === 3) {
-      if (!formData.paymentReference.trim()) { setErrorMsg("Bank Transfer Reference is required."); return false; }
+      if (!alreadyPaid && !clientSecret) {
+        setErrorMsg('Payment not ready. Please wait for the card form to load.');
+        return false;
+      }
     }
     return true;
   };
@@ -407,16 +490,35 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
     setSubmitting(true);
     setErrorMsg("");
     setSuccessMsg("");
+    setCardError(null);
 
+    let confirmedPiId: string | null = null;
+
+    // Step 1: Charge the card (unless already paid)
+    if (!alreadyPaid) {
+      if (!confirmPaymentRef.current) {
+        setErrorMsg('Payment form not ready. Please wait a moment and try again.');
+        setSubmitting(false);
+        return;
+      }
+      confirmedPiId = await confirmPaymentRef.current();
+      if (!confirmedPiId) {
+        // cardError is already set inside confirmPaymentRef
+        setSubmitting(false);
+        return;
+      }
+    } else {
+      confirmedPiId = stripePaymentIntentId;
+    }
+
+    // Step 2: Submit KYC with the confirmed PI id
     try {
       // Send ALL fields in the payload — the backend service locks approved fields
       // by reading their values from the database (ignoring what arrives in the DTO).
-      // Previously we skipped approved fields here, which caused the backend's
-      // class-validator to reject the request with 400 "field should not be empty"
-      // because required fields were absent from the payload.
       const payload: Partial<DealerKycData> = {
         ...formData,
         ...fileUrls,
+        ...(confirmedPiId ? { stripePaymentIntentId: confirmedPiId } : {}),
       };
 
       const response = await submitDealerKyc(payload);
@@ -427,7 +529,6 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
       setErrorMsg(err.message || "Failed to submit KYC data. Please verify your fields and try again.");
     } finally {
       setSubmitting(false);
-
     }
   };
 
@@ -629,7 +730,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
           {[
             { step: 1, label: "Corporate Info", icon: Building2 },
             { step: 2, label: "Registrations", icon: FileSpreadsheet },
-            { step: 3, label: "Bank Transfer", icon: CreditCard },
+            { step: 3, label: "Payment Verification", icon: CreditCard },
           ].map((item) => {
             const isCompleted = activeStep > item.step;
             const isActive = activeStep === item.step;
@@ -777,69 +878,64 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
 
               {/* ── STEP 3: PAYMENT VERIFICATION ── */}
               {activeStep === 3 && (
-                <div className="space-y-5">
-                  <h3 className="text-base font-extrabold uppercase text-white tracking-tight border-b border-white/5 pb-2">
-                    Step 3: Verification Bank Transfer
-                  </h3>
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-sm font-extrabold text-white uppercase tracking-widest mb-1">
+                      Step 3: Payment Verification
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      Verify your identity with a £1 card charge. This fee is non-refundable and covers the cost of your KYC review.
+                    </p>
+                  </div>
 
-                  {/* Bank Details Card */}
-                  <div className="p-5 rounded-xl border border-primary/20 bg-primary/5 flex flex-col md:flex-row gap-5 items-start">
-                    <CreditCard className="text-primary shrink-0 animate-float" size={32} />
-                    <div className="space-y-2.5 text-slate-300 text-xs">
-                      <h4 className="font-extrabold text-white text-sm uppercase tracking-wide">
-                        Verify Account Activity (£1.00 GBP)
-                      </h4>
-                      <p className="leading-relaxed">
-                        To activate your commercial privileges, we require a manual £1.00 test deposit. This process
-                        validates active account ownership.
-                      </p>
-                      <div className="grid grid-cols-2 gap-4 py-3 px-4 bg-slate-950/80 rounded-xl border border-white/5">
-                        <div>
-                          <p className="text-[10px] text-slate-500 uppercase tracking-widest font-extrabold">Bank Name</p>
-                          <p className="font-bold text-white text-xs">Apex Clearing UK</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] text-slate-500 uppercase tracking-widest font-extrabold">Account Name</p>
-                          <p className="font-bold text-white text-xs">Carmazium Capital Ltd</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] text-slate-500 uppercase tracking-widest font-extrabold">Sort Code</p>
-                          <p className="font-bold text-white text-xs">40-02-50</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] text-slate-500 uppercase tracking-widest font-extrabold">Account Number</p>
-                          <p className="font-bold text-white text-xs">8827 9901</p>
-                        </div>
+                  {alreadyPaid ? (
+                    /* Already-paid state — green tick, no card form */
+                    <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 flex items-center gap-3">
+                      <CheckCircle size={20} className="text-emerald-400 shrink-0" />
+                      <div>
+                        <p className="text-sm font-extrabold text-emerald-400">Verification fee paid</p>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          £1 charged
+                          {paidAt ? ` on ${new Date(paidAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                        </p>
                       </div>
-                      <p className="text-[11px] leading-relaxed text-slate-400 italic">
-                        *Please insert your unique reference ID generated below into your bank transfer ref.
-                      </p>
                     </div>
-                  </div>
-
-                  <div className="space-y-5">
-                    {renderInput({ label: "Unique Bank Payment Reference Code", name: "paymentReference", value: formData.paymentReference, placeholder: "e.g. DEPOSIT-CARMAZIUM-XXXX", icon: CreditCard })}
-
-                    {/* Payment Screenshot Upload */}
-                    <div className="pt-2 border-t border-white/5 space-y-3">
-                      <p className="text-[10px] font-extrabold uppercase text-primary tracking-widest flex items-center gap-1.5">
-                        <Receipt size={11} />
-                        Payment Receipt Upload
-                      </p>
-                      <FileUploadField
-                        label="Bank Transfer Receipt / Screenshot"
-                        hint="Screenshot or photo of your completed bank transfer · JPG, PNG, PDF · Max 10MB"
-                        fieldName="paymentScreenshot"
-                        value={fileUrls.paymentScreenshot}
-                        onUpload={handleFileUpload}
-                        onClear={handleFileClear}
-                        isApproved={isFieldApproved("paymentScreenshot")}
-                        rejectionNote={getFieldRejectionNote("paymentScreenshot")}
-                        isSubmitting={submitting}
-                        icon={Receipt}
-                      />
+                  ) : stripeLoading ? (
+                    /* Loading PI */
+                    <div className="flex items-center justify-center py-8 gap-3 text-slate-400">
+                      <Loader2 size={18} className="animate-spin" />
+                      <span className="text-sm">Preparing payment form...</span>
                     </div>
-                  </div>
+                  ) : clientSecret ? (
+                    /* Stripe card form */
+                    <div className="space-y-3">
+                      <div className="p-3 rounded-lg border border-white/5 bg-slate-900/60">
+                        <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-0.5">
+                          Verification Fee
+                        </p>
+                        <p className="text-lg font-extrabold text-white">£1.00</p>
+                        <p className="text-[11px] text-slate-500">Non-refundable · charged once per dealer account</p>
+                      </div>
+
+                      <div className="p-4 rounded-xl border border-white/10 bg-slate-900/60">
+                        <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3">
+                          Card Details
+                        </p>
+                        <Elements stripe={stripePromise} options={{ clientSecret }}>
+                          <CardForm />
+                        </Elements>
+                      </div>
+
+                      {cardError && (
+                        <p className="text-xs text-red-400 font-semibold">{cardError}</p>
+                      )}
+                    </div>
+                  ) : (
+                    /* Error / not loaded state */
+                    <p className="text-xs text-red-400">
+                      Failed to load payment form. Please refresh the page.
+                    </p>
+                  )}
                 </div>
               )}
             </motion.div>
