@@ -588,6 +588,9 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                 {listing.isDepartedSale && (
                                     <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-medium">
                                         <span>Deceased Estate</span>
+                                        {listing.departedRelationship && (
+                                            <span className="text-purple-400/70">· Listed by {listing.departedRelationship}</span>
+                                        )}
                                     </div>
                                 )}
                                 {/* Original platform listing link */}
