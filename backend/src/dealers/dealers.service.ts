@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
@@ -15,7 +16,20 @@ export class DealersService {
         private readonly prisma: PrismaService,
         private readonly emailService: EmailService,
         private readonly notificationsService: NotificationsService,
+        private readonly config: ConfigService,
     ) {}
+
+    // ─── Stripe helper ───────────────────────────────────────────────
+
+    private async getStripe() {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+        const StripeModule = require('stripe');
+        // Handle both CommonJS default export and jest mock shapes
+        const StripeConstructor = StripeModule.default ?? StripeModule;
+        return new StripeConstructor(this.config.get<string>('STRIPE_SECRET_KEY')!, {
+            apiVersion: '2026-02-25.clover',
+        });
+    }
 
     // ─── Profile helpers ────────────────────────────────────────────
 
@@ -112,6 +126,18 @@ export class DealersService {
         // At this point profileResult is guaranteed non-null
         const profile = profileResult!;
 
+        // ─── Stripe PI verification ──────────────────────────────────────────
+        const stripePaymentIntentId = (dto as any).stripePaymentIntentId as string | undefined;
+        const alreadyStripeVerified = (profile.kyc as any)?.stripeChargedAt != null;
+
+        if (stripePaymentIntentId && !alreadyStripeVerified) {
+            const stripe = await this.getStripe();
+            const pi = await stripe.paymentIntents.retrieve(stripePaymentIntentId);
+            if (pi.status !== 'succeeded') {
+                throw new BadRequestException('Stripe payment verification failed — charge has not been confirmed.');
+            }
+        }
+
         const fieldsList = [
             'companyHouseName',
             'representativeName',
@@ -133,6 +159,8 @@ export class DealersService {
 
         // Fields that are required (non-nullable) in the DealerKyc schema.
         // We must never write null to these — fall back to existing DB value instead.
+        // NOTE: paymentReference is now String? (nullable) — removed from required set
+        // so Stripe-flow submissions that omit it don't crash.
         const requiredFields = new Set([
             'companyHouseName',
             'representativeName',
@@ -143,7 +171,6 @@ export class DealersService {
             'directorName',
             'businessWebsite',
             'businessRegisteredAddress',
-            'paymentReference',
         ]);
 
         let documentStatuses: Record<string, any> = {};
@@ -175,6 +202,12 @@ export class DealersService {
                 }
             }
 
+            // Auto-approve payment fields when Stripe-verified
+            if (stripePaymentIntentId || alreadyStripeVerified) {
+                documentStatuses['paymentReference'] = { status: 'APPROVED', note: 'Stripe verified' };
+                documentStatuses['paymentScreenshot'] = { status: 'APPROVED', note: 'Stripe verified' };
+            }
+
             const updatedKyc = await this.prisma.dealerKyc.update({
                 where: { id: profile.kyc.id },
                 data: {
@@ -182,11 +215,20 @@ export class DealersService {
                     status: 'PENDING',
                     documentStatuses,
                     submittedAt: new Date(),
+                    ...(stripePaymentIntentId && !alreadyStripeVerified ? {
+                        stripePaymentIntentId,
+                        stripeChargedAt: new Date(),
+                    } : {}),
                 } as any,
             });
 
             // Sync KYC fields back into DealerProfile so Settings page is pre-filled
             await this.syncProfileFromKyc(profile.id, updatedFields);
+
+            // Fire admin "fee paid" in-app notification before the email alert
+            if (stripePaymentIntentId && !alreadyStripeVerified) {
+                await this.notifyAdminsOfKycPayment(profile.companyName, stripePaymentIntentId).catch(() => {});
+            }
 
             // Alert admins of resubmission
             await this.notifyAdminsOfKycSubmission(profile.companyName);
@@ -204,6 +246,12 @@ export class DealersService {
                 documentStatuses[field] = { status: 'PENDING', note: '' };
             }
 
+            // Auto-approve payment fields when Stripe-verified
+            if (stripePaymentIntentId || alreadyStripeVerified) {
+                documentStatuses['paymentReference'] = { status: 'APPROVED', note: 'Stripe verified' };
+                documentStatuses['paymentScreenshot'] = { status: 'APPROVED', note: 'Stripe verified' };
+            }
+
             const newKyc = await this.prisma.dealerKyc.create({
                 data: {
                     ...updatedFields,
@@ -211,16 +259,74 @@ export class DealersService {
                     status: 'PENDING',
                     documentStatuses,
                     submittedAt: new Date(),
+                    ...(stripePaymentIntentId && !alreadyStripeVerified ? {
+                        stripePaymentIntentId,
+                        stripeChargedAt: new Date(),
+                    } : {}),
                 } as any,
             });
 
             // Sync KYC fields back into DealerProfile so Settings page is pre-filled
             await this.syncProfileFromKyc(profile.id, updatedFields);
 
+            // Fire admin "fee paid" in-app notification before the email alert
+            if (stripePaymentIntentId && !alreadyStripeVerified) {
+                await this.notifyAdminsOfKycPayment(profile.companyName, stripePaymentIntentId).catch(() => {});
+            }
+
             // Alert admins of first submission
             await this.notifyAdminsOfKycSubmission(profile.companyName);
             return newKyc;
         }
+    }
+
+    /** Create or retrieve a PaymentIntent for the £1 KYC verification fee */
+    async createKycPaymentIntent(userId: string): Promise<{ clientSecret?: string; alreadyPaid: boolean; chargedAt?: Date }> {
+        const profileResult = await this.prisma.dealerProfile.findUnique({
+            where: { userId },
+            include: { kyc: true },
+        });
+        const kyc = profileResult?.kyc as any;
+
+        // Already paid — return early, no new charge
+        if (kyc?.stripeChargedAt) {
+            return { alreadyPaid: true, chargedAt: kyc.stripeChargedAt };
+        }
+
+        const stripe = await this.getStripe();
+
+        // Existing PI still usable — return its client_secret
+        if (kyc?.stripePaymentIntentId) {
+            try {
+                const pi = await stripe.paymentIntents.retrieve(kyc.stripePaymentIntentId);
+                if (pi.status === 'requires_payment_method' || pi.status === 'requires_confirmation') {
+                    return { clientSecret: pi.client_secret!, alreadyPaid: false };
+                }
+            } catch { /* fall through to create new */ }
+        }
+
+        // Create new PaymentIntent for £1
+        const pi = await stripe.paymentIntents.create({
+            amount: 100,
+            currency: 'gbp',
+            metadata: {
+                type: 'KYC_VERIFICATION',
+                dealerProfileId: profileResult?.id ?? '',
+                userId,
+            },
+            description: `Dealer KYC verification fee — Carmazium (non-refundable)`,
+        });
+
+        // Store PI id on the KYC record if one already exists
+        if (kyc) {
+            await this.prisma.dealerKyc.update({
+                where: { id: kyc.id },
+                data: { stripePaymentIntentId: pi.id } as any,
+            });
+        }
+        // If no KYC record yet, the PI id is returned and stored on first submitKyc call
+
+        return { clientSecret: pi.client_secret!, alreadyPaid: false };
     }
 
     /** Fire-and-forget: email + in-app notification for an existing user added directly as staff */
@@ -287,6 +393,26 @@ export class DealersService {
         } catch (err) {
             console.error('Failed to send admin KYC submission alert email:', err);
         }
+    }
+
+    /** Fire in-app notification to all admins when a £1 KYC verification charge is confirmed */
+    private async notifyAdminsOfKycPayment(companyName: string, piId: string) {
+        const admins = await this.prisma.user.findMany({
+            where: { role: 'ADMIN' },
+            select: { id: true },
+        });
+        await Promise.all(
+            admins.map((admin) =>
+                this.notificationsService.create({
+                    userId: admin.id,
+                    type: 'SYSTEM',
+                    title: 'KYC £1 Verification Payment Received',
+                    message: `${companyName} has completed the £1 KYC verification charge (PI: ${piId}).`,
+                    data: { piId, companyName },
+                    link: '/admin/kyc',
+                }).catch(() => {}),
+            ),
+        );
     }
 
     // ─── Dashboard KPIs ─────────────────────────────────────────────

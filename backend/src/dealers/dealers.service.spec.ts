@@ -16,6 +16,7 @@ jest.mock('stripe', () => {
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { DealersService } from './dealers.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
@@ -60,6 +61,10 @@ describe('DealersService — KYC: createKycPaymentIntent', () => {
                 {
                     provide: NotificationsService,
                     useValue: { create: jest.fn().mockResolvedValue(null) },
+                },
+                {
+                    provide: ConfigService,
+                    useValue: { get: jest.fn().mockReturnValue('sk_test_mock') },
                 },
             ],
         }).compile();
@@ -165,6 +170,10 @@ describe('DealersService — KYC: submitKyc Stripe verification', () => {
                 {
                     provide: NotificationsService,
                     useValue: { create: jest.fn().mockResolvedValue(null) },
+                },
+                {
+                    provide: ConfigService,
+                    useValue: { get: jest.fn().mockReturnValue('sk_test_mock') },
                 },
             ],
         }).compile();

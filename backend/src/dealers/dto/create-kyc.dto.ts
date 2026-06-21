@@ -72,13 +72,18 @@ export class CreateKycDto {
     @IsString()
     googleReviewsLink?: string;
 
-    @ApiProperty({ description: 'Payment reference for £1 transfer confirmation' })
+    @ApiPropertyOptional({ description: 'Payment reference for £1 transfer confirmation (legacy — not required for Stripe-flow submissions)' })
+    @IsOptional()
     @IsString()
-    @IsNotEmpty()
-    paymentReference: string;
+    paymentReference?: string;
 
     @ApiPropertyOptional({ description: 'Supabase Storage URL of payment proof screenshot' })
     @IsOptional()
     @IsString()
     paymentScreenshot?: string;
+
+    @ApiPropertyOptional({ description: 'Stripe PaymentIntent ID after confirmed £1 KYC charge' })
+    @IsOptional()
+    @IsString()
+    stripePaymentIntentId?: string;
 }
