@@ -58,6 +58,10 @@ interface FormData {
     isDepartedSale: boolean
     departedRelationship: string
     isImported: boolean
+    // Delivery Options (Phase 15)
+    deliveryAvailable: boolean
+    deliveryPricePerMile: string
+    deliveryMaxMiles: string
     // Extended vehicle details
     variant: string
     driveType: string
@@ -147,6 +151,7 @@ const INITIAL_FORM: FormData = {
     doors: "", seats: "", engineSize: "", bhp: "",
     features: [], description: "", title: "",
     condition: "", serviceHistory: "", owners: "", isDepartedSale: false, departedRelationship: "", isImported: false,
+    deliveryAvailable: false, deliveryPricePerMile: '', deliveryMaxMiles: '',
     variant: "", driveType: "", numberOfKeys: "",
     torqueNm: "", topSpeedMph: "", zeroTo60Mph: "", combinedMpg: "", extraUrbanMpg: "",
     writeOffCategory: "", stolenRecovered: null, hasOutstandingFinance: null, isLegalRegisteredKeeper: null, declarationAcknowledged: false,
@@ -371,6 +376,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     zeroTo60Mph: l.zeroTo60Mph ? String(l.zeroTo60Mph) : '',
                     combinedMpg: l.combinedMpg ? String(l.combinedMpg) : '',
                     extraUrbanMpg: l.extraUrbanMpg ? String(l.extraUrbanMpg) : '',
+                    deliveryAvailable: l.deliveryAvailable ?? false,
+                    deliveryPricePerMile: l.deliveryPricePerMile ? String(l.deliveryPricePerMile) : '',
+                    deliveryMaxMiles: l.deliveryMaxMiles ? String(l.deliveryMaxMiles) : '',
                 }))
                 // Jump straight to step 1 (already pre-filled)
                 setSellingMethod('list')
@@ -646,6 +654,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 videoUrls: formData.videoUrls.length > 0 ? formData.videoUrls : undefined,
                 isDepartedSale: formData.isDepartedSale || undefined,
                 departedRelationship: formData.departedRelationship || undefined,
+                deliveryAvailable: formData.deliveryAvailable,
+                deliveryPricePerMile: formData.deliveryAvailable && formData.deliveryPricePerMile
+                    ? parseFloat(formData.deliveryPricePerMile)
+                    : null,
+                deliveryMaxMiles: formData.deliveryAvailable && formData.deliveryMaxMiles
+                    ? parseInt(formData.deliveryMaxMiles, 10)
+                    : null,
             }
 
             if (editId) {
@@ -2150,6 +2165,57 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     <p className="text-xs text-red-400 flex items-center gap-1.5">
                                         <AlertTriangle size={12} /> Please complete all declarations above before proceeding.
                                     </p>
+                                )}
+                            </div>
+
+                            {/* Delivery Options */}
+                            <div className="border-t border-white/5 pt-4 space-y-3">
+                                <h3 className="text-sm font-bold text-gray-300 uppercase tracking-wide">
+                                    Delivery Options
+                                </h3>
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.deliveryAvailable}
+                                        onChange={(e) => set('deliveryAvailable', e.target.checked)}
+                                        className="w-4 h-4 rounded border-white/20 bg-white/5 text-primary focus:ring-primary"
+                                    />
+                                    <span className="text-sm text-gray-300">Offer delivery for this listing</span>
+                                </label>
+                                {formData.deliveryAvailable && (
+                                    <div className="space-y-3 pl-7">
+                                        <div>
+                                            <label className="block text-xs text-gray-400 mb-1">
+                                                Price per mile <span className="text-gray-500">(e.g. 0.50)</span>
+                                            </label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">£</span>
+                                                <Input
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    placeholder="e.g. 0.50"
+                                                    value={formData.deliveryPricePerMile}
+                                                    onChange={(e) => set('deliveryPricePerMile', e.target.value)}
+                                                    className={`${inputCls} pl-7`}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-gray-400 mb-1">
+                                                Maximum delivery radius <span className="text-gray-500">(miles — leave blank for UK-wide)</span>
+                                            </label>
+                                            <Input
+                                                type="number"
+                                                step="1"
+                                                min="1"
+                                                placeholder="e.g. 100"
+                                                value={formData.deliveryMaxMiles}
+                                                onChange={(e) => set('deliveryMaxMiles', e.target.value)}
+                                                className={inputCls}
+                                            />
+                                        </div>
+                                    </div>
                                 )}
                             </div>
 
