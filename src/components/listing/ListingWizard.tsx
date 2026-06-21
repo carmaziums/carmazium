@@ -131,6 +131,16 @@ const BANNER_LABELS = [
     { value: 'Save £1,000',         color: 'bg-emerald-600/90' },
 ] as const
 
+const RELATIONSHIP_OPTIONS = [
+    { value: 'Son',              label: 'Son' },
+    { value: 'Daughter',         label: 'Daughter' },
+    { value: 'Sibling',          label: 'Sibling' },
+    { value: 'Spouse',           label: 'Spouse' },
+    { value: 'Executor of Will', label: 'Executor of Will' },
+    { value: 'Solicitor',        label: 'Solicitor' },
+    { value: 'Other',            label: 'Other' },
+] as const
+
 const INITIAL_FORM: FormData = {
     vehicleType: "CAR", vrm: "", vin: "", make: "", model: "", year: "", bodyType: "", location: "",
     mileage: "", fuelType: "", transmission: "", color: "",
@@ -293,6 +303,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const [editLoading, setEditLoading] = React.useState(false)
     const [videoUrlInput, setVideoUrlInput] = React.useState("")
     const [videoUrlError, setVideoUrlError] = React.useState("")
+
+    // Departed sale — ephemeral UI state for dropdown + freetext
+    const [departedRelSelect, setDepartedRelSelect] = React.useState<string>('')
+    const [departedRelOther, setDepartedRelOther] = React.useState<string>('')
 
     // Pre-fill form when editing an existing listing
     React.useEffect(() => {
@@ -470,6 +484,23 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         }
     }, [formData.listingType])
 
+    // ─── Departed sale handlers ──────────────────────────────────────────────────
+
+    const handleRelSelectChange = (v: string) => {
+        setDepartedRelSelect(v)
+        if (v !== 'Other') {
+            set('departedRelationship', v)
+            setDepartedRelOther('')
+        } else {
+            set('departedRelationship', '') // 'Other' sentinel — wait for freetext
+        }
+    }
+
+    const handleRelOtherChange = (v: string) => {
+        setDepartedRelOther(v)
+        set('departedRelationship', v)
+    }
+
     // ─── Navigation ─────────────────────────────────────────────────────────────
 
     const validateStep = (): boolean => {
@@ -479,6 +510,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 const declarationsValid = formData.writeOffCategory !== '' && formData.stolenRecovered !== null && formData.hasOutstandingFinance !== null && formData.isLegalRegisteredKeeper === true && formData.declarationAcknowledged
                 // Cat A/B are total-loss write-offs — only allowed for auction listings
                 if ((formData.writeOffCategory === 'CAT_A' || formData.writeOffCategory === 'CAT_B') && formData.listingType !== 'AUCTION') return false
+                // Departed sale relationship is required when isDepartedSale is checked
+                if (formData.isDepartedSale) {
+                    const rel = (formData.departedRelationship ?? '').trim()
+                    if (!rel) return false
+                }
                 return baseValid && declarationsValid
             }
             case 2: return editId ? formData.images.length > 0 : formData.images.length >= 10
@@ -1916,21 +1952,46 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         type="checkbox"
                                         id="isDepartedSale"
                                         checked={formData.isDepartedSale ?? false}
-                                        onChange={(e) => set('isDepartedSale', e.target.checked)}
+                                        onChange={(e) => {
+                                            set('isDepartedSale', e.target.checked)
+                                            if (!e.target.checked) {
+                                                setDepartedRelSelect('')
+                                                setDepartedRelOther('')
+                                                set('departedRelationship', '')
+                                            }
+                                        }}
                                         className="w-4 h-4 rounded border-white/20 bg-white/5 accent-blue-500"
                                     />
                                     <label htmlFor="isDepartedSale" className="text-sm text-white/70 cursor-pointer">
-                                        This is a deceased estate sale
+                                        This is a departed/estate sale
                                     </label>
                                 </div>
+                                <p className="text-xs text-white/40 mt-1 ml-7">
+                                    Buyers will see a Deceased Estate badge on your listing. You may be asked for probate documentation.
+                                </p>
                                 {formData.isDepartedSale && (
-                                    <input
-                                        type="text"
-                                        placeholder="Your relationship to the original owner (e.g. Son, Daughter, Solicitor)"
-                                        value={formData.departedRelationship ?? ''}
-                                        onChange={(e) => set('departedRelationship', e.target.value)}
-                                        className="mt-2 w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
-                                    />
+                                    <div className="mt-3 space-y-2">
+                                        <SelectField
+                                            label="Relationship to owner"
+                                            required
+                                            error={hasAttemptedNext && !formData.departedRelationship}
+                                            value={departedRelSelect}
+                                            onChange={handleRelSelectChange}
+                                            options={RELATIONSHIP_OPTIONS as unknown as { value: string; label: string }[]}
+                                        />
+                                        {hasAttemptedNext && !formData.departedRelationship && (
+                                            <p className="text-red-400 text-xs mt-1">Please select your relationship to the owner.</p>
+                                        )}
+                                        {departedRelSelect === 'Other' && (
+                                            <input
+                                                type="text"
+                                                placeholder="Please specify your relationship"
+                                                value={departedRelOther}
+                                                onChange={(e) => handleRelOtherChange(e.target.value)}
+                                                className="mt-2 w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
+                                            />
+                                        )}
+                                    </div>
                                 )}
                             </div>
 
