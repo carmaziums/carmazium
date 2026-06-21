@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Phase 15 context gathered
-last_updated: "2026-06-21T13:15:32.950Z"
+stopped_at: Completed 15-01-PLAN.md
+last_updated: "2026-06-21T14:09:31.472Z"
 last_activity: "2026-06-21 — Phase 14 Plan 04 complete (human verification approved: Stripe KYC end-to-end flow confirmed with test cards)"
 progress:
   total_phases: 17
   completed_phases: 6
-  total_plans: 33
-  completed_plans: 31
+  total_plans: 39
+  completed_plans: 32
   percent: 95
 ---
 
@@ -18,12 +18,12 @@ progress:
 
 ## Current Position
 
-Phase: 14-stripe-kyc-fix-replace-manual-card-form-with-stripe-elements-and-live-1-pound-verification-charge (Stripe KYC Fix) — COMPLETE
-Plan: 4 of 4 complete
-Status: Phase 14 COMPLETE — human verification passed all 5 tests (card renders, decline blocks, £1 charged in Stripe dashboard, already-paid green tick, admin Stripe badge)
-Last activity: 2026-06-21 — Phase 14 Plan 04 complete (human verification approved: Stripe KYC end-to-end flow confirmed with test cards)
+Phase: 15-delivery-and-distance-system-seller-delivery-toggle-price-per-km-auto-calculation-buyer-delivery-request-flow — In Progress
+Plan: 1 of 6 complete
+Status: Phase 15 Plan 01 COMPLETE — 9 failing TDD RED stubs for DeliveryService (DEL-01..DEL-08) and DeliveryExpiryService (DEL-09); skeleton files and DeliveryStatus enum in place
+Last activity: 2026-06-21 — Phase 15 Plan 01 complete (TDD RED state: 9 failing delivery unit test stubs committed)
 
-Progress: [██████████] 95%
+Progress: [████████░░] 84%
 
 ## Project Reference
 
@@ -231,6 +231,6 @@ AuctionDetailScreen.tsx quickBidBtnText style key fixed in Plan 03.
 
 ## Session Continuity
 
-Last session: 2026-06-21T13:15:32.939Z
-Stopped at: Phase 15 context gathered
-Resume file: .planning/phases/15-delivery-and-distance-system-seller-delivery-toggle-price-per-km-auto-calculation-buyer-delivery-request-flow/15-CONTEXT.md
+Last session: 2026-06-21T14:09:31.465Z
+Stopped at: Completed 15-01-PLAN.md
+Resume file: None

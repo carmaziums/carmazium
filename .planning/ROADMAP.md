@@ -337,7 +337,7 @@ Plans:
 **Goal:** Sellers can opt into per-listing delivery with a price-per-mile and optional radius; buyers with an active offer can submit a delivery request with a live cost preview via Google Maps road distance; both parties track delivery status on their offer dashboards; delivery-enabled listings are discoverable via a CarCard badge and search filter.
 **Requirements**: DEL-01, DEL-02, DEL-03, DEL-04, DEL-05, DEL-06, DEL-07, DEL-08, DEL-09, DEL-10, DEL-11, DEL-12, DEL-13, DEL-14, DEL-15
 **Depends on:** Phase 14
-**Plans:** 6 plans
+**Plans:** 1/6 plans executed
 
 Plans:
 - [ ] 15-01-PLAN.md — Wave 0 (TDD): delivery.service.spec.ts 8 stubs + delivery-expiry.service.spec.ts 1 stub (RED state)
