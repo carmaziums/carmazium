@@ -13,6 +13,7 @@ export interface MetricCardProps {
     foilValue?: boolean
     loading?: boolean
     href?: string
+    subLabel?: string
 }
 
 export function MetricCard({
@@ -26,6 +27,7 @@ export function MetricCard({
     foilValue = false,
     loading = false,
     href,
+    subLabel,
 }: MetricCardProps) {
     const inner = (
         <>
@@ -42,6 +44,11 @@ export function MetricCard({
             <h3 className={`text-3xl font-black font-heading text-white relative z-10 ${foilValue ? "metallic-foil" : ""}`}>
                 {loading ? "..." : value}
             </h3>
+            {subLabel && (
+                <p className="text-gray-500 text-[10px] mt-0.5 uppercase tracking-widest font-bold relative z-10">
+                    {subLabel}
+                </p>
+            )}
             <p className="text-gray-400 text-xs mt-1 uppercase tracking-widest font-bold relative z-10">{label}</p>
             {/* Synthetic Sparkline */}
             <svg className="absolute bottom-0 left-0 w-full h-12 opacity-20 pointer-events-none" preserveAspectRatio="none" viewBox="0 0 100 100">
