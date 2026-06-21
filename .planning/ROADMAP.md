@@ -352,7 +352,7 @@ Plans:
 **Goal:** All three role dashboards (buyer, seller, dealer) gain a 7d/30d period toggle filtering KPI metrics via URL state; a weekly automated DB backup cron ships to a private Supabase Storage bucket with admin email alerting on failure; a DB scalability audit produces docs/db-audit.md with safe N+1 fixes applied inline.
 **Requirements**: DASH-FILTER-01, DASH-FILTER-02, DASH-FILTER-03, DASH-UI-01, DASH-UI-02, BACKUP-01, BACKUP-02, BACKUP-03, DB-AUDIT-01
 **Depends on:** Phase 15
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 - [ ] 16-01-PLAN.md — Wave 1 (TDD): Test stubs RED — dashboard.service.spec.ts + db-backup.service.spec.ts
