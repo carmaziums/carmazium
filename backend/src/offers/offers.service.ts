@@ -596,6 +596,9 @@ export class OffersService {
         if (offer.status !== 'COUNTERED') {
             throw new BadRequestException('This offer has not been countered or is already closed.');
         }
+        if (offer.lastCounteredBy === 'BUYER') {
+            throw new BadRequestException('Awaiting the seller\'s response to your previous counter.');
+        }
 
         // Expiry check: if the 48-hour counter window has passed, auto-reject
         if (

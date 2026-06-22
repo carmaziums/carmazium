@@ -225,8 +225,10 @@ function OfferRow({
         offer.status === 'PENDING' ||
         (offer.status === 'COUNTERED' && offer.lastCounteredBy === 'BUYER')
 
+    const needsSellerAction = offer.status === 'PENDING' || (offer.status === 'COUNTERED' && offer.lastCounteredBy === 'BUYER')
+
     return (
-        <div className="glass-card p-4 md:p-5 flex flex-col md:flex-row items-start md:items-center gap-4">
+        <div className={`glass-card p-4 md:p-5 flex flex-col md:flex-row items-start md:items-center gap-4 ${needsSellerAction ? 'border border-amber-500/30' : ''}`}>
             {/* Buyer avatar */}
             <div className="w-10 h-10 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-primary font-bold text-sm shrink-0">
                 {buyer?.firstName?.[0] ?? '?'}
@@ -246,8 +248,11 @@ function OfferRow({
                         : formatGBP(offer.amount)
                     }
                 </p>
-                {offer.counterAmount && (
-                    <p className="text-xs text-blue-400 mt-0.5">Counter: {formatGBP(offer.counterAmount)}</p>
+                {offer.status === 'COUNTERED' && offer.lastCounteredBy === 'BUYER' && offer.buyerCounterAmount != null && (
+                    <p className="text-xs text-amber-400 font-bold mt-0.5">Buyer re-countered: {formatGBP(offer.buyerCounterAmount)}</p>
+                )}
+                {offer.status === 'COUNTERED' && offer.lastCounteredBy === 'SELLER' && offer.sellerCounterAmount != null && (
+                    <p className="text-xs text-blue-400/70 mt-0.5">Your counter: {formatGBP(offer.sellerCounterAmount)} — awaiting buyer</p>
                 )}
                 {offer.message && (
                     <div className="mt-2 flex items-start gap-1.5 text-xs text-gray-400">
@@ -471,6 +476,28 @@ export default function SellerOffersPage() {
         getReceivedDeliveryRequests().then(setReceivedDeliveryRequests).catch(console.error)
     }, [])
 
+    // Silently refresh offers without showing a loading spinner
+    const silentRefreshOffers = React.useCallback(async () => {
+        try {
+            const res = await getMyListings({ limit: 50, includeSold: true })
+            const loadedListings = res.data
+            setListings(loadedListings)
+            const offerResults = await Promise.allSettled(
+                loadedListings.map(async (listing) => {
+                    const data = await getOffersForListing(listing.id)
+                    return { id: listing.id, data }
+                })
+            )
+            const offersMap: Record<string, Offer[]> = {}
+            offerResults.forEach(result => {
+                if (result.status === 'fulfilled') {
+                    offersMap[result.value.id] = result.value.data
+                }
+            })
+            setOffers(offersMap)
+        } catch { /* silent */ }
+    }, [])
+
     // Load all seller's listings, then eagerly fetch all offers
     React.useEffect(() => {
         const load = async () => {
@@ -505,7 +532,9 @@ export default function SellerOffersPage() {
             }
         }
         load()
-    }, [])
+        const pollId = setInterval(silentRefreshOffers, 30000)
+        return () => clearInterval(pollId)
+    }, [silentRefreshOffers])
 
     // Load offers for a listing when expanded
     const loadOffersFor = async (listingId: string) => {
@@ -640,11 +669,21 @@ export default function SellerOffersPage() {
                         )}
 
                         {/* Header */}
-                        <div className="mb-8">
-                            <h1 className="text-2xl md:text-3xl font-bold font-heading text-white mb-1 flex items-center gap-3">
-                                <Tag className="text-primary" size={24} /> Incoming Offers
-                            </h1>
-                            <p className="text-gray-400 text-sm">Review and respond to buyer offers on your listings.</p>
+                        <div className="mb-8 flex items-start justify-between gap-4">
+                            <div>
+                                <h1 className="text-2xl md:text-3xl font-bold font-heading text-white mb-1 flex items-center gap-3">
+                                    <Tag className="text-primary" size={24} /> Incoming Offers
+                                </h1>
+                                <p className="text-gray-400 text-sm">Review and respond to buyer offers on your listings.</p>
+                            </div>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-white/10 text-gray-400 hover:text-white gap-1 shrink-0 mt-1"
+                                onClick={silentRefreshOffers}
+                            >
+                                <RefreshCw size={13} /> Refresh
+                            </Button>
                         </div>
 
                         {loadingListings && (

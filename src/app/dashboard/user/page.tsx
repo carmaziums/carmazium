@@ -760,20 +760,20 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const router = useRouter()
     const { refreshRooms } = useChat()
 
-    const fetchOffers = async () => {
+    const fetchOffers = async (quiet = false) => {
         try {
-            setLoading(true)
+            if (!quiet) setLoading(true)
             const res = await getMyListings({ limit: 50, includeSold: true })
             const activeListings = res.data
             setListings(activeListings)
-            
+
             const results = await Promise.allSettled(
                 activeListings.map(async (l) => {
                     const data = await getOffersForListing(l.id)
                     return { id: l.id, data }
                 })
             )
-            
+
             const map: Record<string, Offer[]> = {}
             results.forEach(r => {
                 if (r.status === 'fulfilled') map[r.value.id] = r.value.data
@@ -782,12 +782,14 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
         } catch (err) {
             console.error('Failed to fetch offers:', err)
         } finally {
-            setLoading(false)
+            if (!quiet) setLoading(false)
         }
     }
 
     React.useEffect(() => {
         fetchOffers()
+        const id = setInterval(() => fetchOffers(true), 30000)
+        return () => clearInterval(id)
     }, [])
 
     const toggleExpand = (id: string) => {
@@ -873,47 +875,63 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                             <p className="text-center py-6 text-xs text-gray-600 italic">No offers on this vehicle yet.</p>
                                         ) : (
                                             listingOffers.map(offer => (
-                                                <div key={offer.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5 gap-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary font-black">{offer.buyer?.firstName?.[0] || '?'}</div>
-                                                        <div>
-                                                            <p className="font-bold text-sm text-white uppercase">{offer.buyer?.firstName} {offer.buyer?.lastName}</p>
-                                                            <p className="text-lg font-black text-primary font-mono">{formatPrice(offer.amount)}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        {offer.status === 'PENDING' ? (
-                                                            <>
-                                                                <Button size="sm" variant="outline" className="h-9 border-red-500/30 text-red-400" onClick={() => handleRespond(offer.id, listing.id, 'REJECTED')} disabled={!!responding}>Decline</Button>
-                                                                <Button size="sm" variant="outline" className="h-9 border-blue-500/30 text-blue-400" onClick={() => setCountering({ id: offer.id, amount: '' })} disabled={!!responding}>Counter</Button>
-                                                                <Button size="sm" className="h-9 bg-emerald-600 hover:bg-emerald-500" onClick={() => handleRespond(offer.id, listing.id, 'ACCEPTED')} disabled={!!responding}>Accept</Button>
-                                                            </>
-                                                        ) : (
-                                                            <div className="flex items-center gap-2 flex-wrap">
-                                                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">{offer.status}</span>
-                                                                {offer.status === 'ACCEPTED' && (
-                                                                    <>
-                                                                        <Button size="sm" variant="ghost" className="h-8 text-blue-400" onClick={() => handleMessage(offer.buyerId, listing.id)}>Message</Button>
-                                                                        <Button size="sm" className="h-8 bg-emerald-600 hover:bg-emerald-500 text-white" onClick={() => setSaleContext({ listing, offer })}>Mark as Sold</Button>
-                                                                    </>
+                                                <div key={offer.id} className={`flex flex-col p-4 rounded-xl border gap-3 ${offer.status === 'COUNTERED' && offer.lastCounteredBy === 'BUYER' ? 'bg-blue-500/5 border-blue-500/30' : 'bg-white/5 border-white/5'}`}>
+                                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary font-black shrink-0">{offer.buyer?.firstName?.[0] || '?'}</div>
+                                                            <div>
+                                                                <p className="font-bold text-sm text-white uppercase">{offer.buyer?.firstName} {offer.buyer?.lastName}</p>
+                                                                <p className="text-lg font-black text-primary font-mono">{formatPrice(offer.amount)}</p>
+                                                                {offer.status === 'COUNTERED' && offer.sellerCounterAmount != null && (
+                                                                    <p className="text-[11px] font-bold text-blue-400 mt-0.5">Your counter: {formatPrice(offer.sellerCounterAmount)}</p>
+                                                                )}
+                                                                {offer.status === 'COUNTERED' && offer.lastCounteredBy === 'BUYER' && offer.buyerCounterAmount != null && (
+                                                                    <p className="text-[11px] font-bold text-amber-400 mt-0.5">Buyer re-countered: {formatPrice(offer.buyerCounterAmount)}</p>
                                                                 )}
                                                             </div>
-                                                        )}
+                                                        </div>
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            {offer.status === 'PENDING' ? (
+                                                                <>
+                                                                    <Button size="sm" variant="outline" className="h-9 border-red-500/30 text-red-400" onClick={() => handleRespond(offer.id, listing.id, 'REJECTED')} disabled={!!responding}>Decline</Button>
+                                                                    <Button size="sm" variant="outline" className="h-9 border-blue-500/30 text-blue-400" onClick={() => setCountering({ id: offer.id, amount: '' })} disabled={!!responding}>Counter</Button>
+                                                                    <Button size="sm" className="h-9 bg-emerald-600 hover:bg-emerald-500" onClick={() => handleRespond(offer.id, listing.id, 'ACCEPTED')} disabled={!!responding}>Accept</Button>
+                                                                </>
+                                                            ) : offer.status === 'COUNTERED' && offer.lastCounteredBy === 'BUYER' ? (
+                                                                <>
+                                                                    <Button size="sm" variant="outline" className="h-9 border-red-500/30 text-red-400" onClick={() => handleRespond(offer.id, listing.id, 'REJECTED')} disabled={!!responding}>Decline</Button>
+                                                                    <Button size="sm" variant="outline" className="h-9 border-blue-500/30 text-blue-400" onClick={() => setCountering({ id: offer.id, amount: '' })} disabled={!!responding}>Counter</Button>
+                                                                    <Button size="sm" className="h-9 bg-emerald-600 hover:bg-emerald-500" onClick={() => handleRespond(offer.id, listing.id, 'ACCEPTED')} disabled={!!responding}>Accept</Button>
+                                                                </>
+                                                            ) : offer.status === 'COUNTERED' && offer.lastCounteredBy === 'SELLER' ? (
+                                                                <span className="text-[10px] font-black uppercase tracking-widest text-blue-400/70">Awaiting buyer response</span>
+                                                            ) : (
+                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">{offer.status}</span>
+                                                                    {offer.status === 'ACCEPTED' && (
+                                                                        <>
+                                                                            <Button size="sm" variant="ghost" className="h-8 text-blue-400" onClick={() => handleMessage(offer.buyerId, listing.id)}>Message</Button>
+                                                                            <Button size="sm" className="h-8 bg-emerald-600 hover:bg-emerald-500 text-white" onClick={() => setSaleContext({ listing, offer })}>Mark as Sold</Button>
+                                                                        </>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                     {countering?.id === offer.id && (
-                                                        <div className="w-full mt-4 flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-blue-500/30 animate-in zoom-in-95 duration-200">
+                                                        <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-blue-500/30 animate-in zoom-in-95 duration-200">
                                                             <div className="relative flex-1">
                                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">£</span>
-                                                                <Input 
-                                                                    placeholder="Enter counter amount..." 
+                                                                <Input
+                                                                    placeholder="Enter counter amount..."
                                                                     className="pl-8 bg-transparent border-white/10 h-10"
                                                                     value={countering.amount}
                                                                     onChange={(e) => setCountering({ ...countering, amount: e.target.value })}
                                                                     type="number"
                                                                 />
                                                             </div>
-                                                            <Button 
-                                                                size="sm" 
+                                                            <Button
+                                                                size="sm"
                                                                 className="h-10 bg-blue-600 hover:bg-blue-500"
                                                                 onClick={() => {
                                                                     handleRespond(offer.id, listing.id, 'COUNTERED', parseFloat(countering.amount))
@@ -988,20 +1006,22 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const router = useRouter()
     const { refreshRooms } = useChat()
 
-    const fetchData = async () => {
+    const fetchData = async (quiet = false) => {
         try {
-            setLoading(true)
+            if (!quiet) setLoading(true)
             const o = await getMyOffers()
             setOffers(o)
         } catch (err) {
             console.error('Failed to fetch outgoing activity:', err)
         } finally {
-            setLoading(false)
+            if (!quiet) setLoading(false)
         }
     }
 
     React.useEffect(() => {
         fetchData()
+        const id = setInterval(() => fetchData(true), 30000)
+        return () => clearInterval(id)
     }, [])
 
     const handleWithdraw = async (id: string) => {
