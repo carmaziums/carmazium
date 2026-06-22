@@ -1068,11 +1068,7 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
         if (!amount || amount <= 0) return
         try {
             setBuyerCountering(offerId)
-            await fetch(`/api/offers/${offerId}/respond-counter`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'COUNTERED', counterAmount: amount }),
-            })
+            await respondToCounterOffer(offerId, 'COUNTERED', amount)
             setCounterAmounts(prev => { const next = { ...prev }; delete next[offerId]; return next })
             await fetchData()
             onRefreshStats()
@@ -1127,9 +1123,9 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="font-black font-mono text-white">{formatPrice(offer.amount)}</div>
-                                                {offer.status === 'COUNTERED' && offer.counterAmount != null && (
+                                                {offer.status === 'COUNTERED' && offer.sellerCounterAmount != null && (
                                                     <div className="text-[10px] font-black uppercase tracking-widest text-blue-400 mt-1">
-                                                        Seller counter: {formatPrice(offer.counterAmount)}
+                                                        Seller counter: {formatPrice(offer.sellerCounterAmount)}
                                                     </div>
                                                 )}
                                             </td>

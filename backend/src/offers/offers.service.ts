@@ -280,7 +280,9 @@ export class OffersService {
             throw new BadRequestException('This offer has expired after the 48-hour counter window.');
         }
 
-        if (offer.status !== 'PENDING' && !(offer.status === 'ACCEPTED' && status === OfferResponseStatus.REJECTED)) {
+        // Allow seller to respond when offer is PENDING, or when it's COUNTERED and the buyer last countered (seller's turn)
+        const isSellerTurn = offer.status === 'COUNTERED' && offer.lastCounteredBy === 'BUYER';
+        if (offer.status !== 'PENDING' && !isSellerTurn && !(offer.status === 'ACCEPTED' && status === OfferResponseStatus.REJECTED)) {
             throw new BadRequestException(`This offer is already ${offer.status.toLowerCase()}.`);
         }
 

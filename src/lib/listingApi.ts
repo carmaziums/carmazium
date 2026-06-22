@@ -876,6 +876,8 @@ export interface LatestOffer {
     message: string | null
     buyerId: string
     counterAmount: string | number | null
+    sellerCounterAmount?: string | number | null
+    buyerCounterAmount?: string | number | null
     createdAt: string
     counterAttemptsBuyer?: number
     counterAttemptsSeller?: number
@@ -1067,10 +1069,10 @@ export async function withdrawOffer(offerId: string): Promise<Offer> {
     return data.data
 }
 
-export async function respondToCounterOffer(offerId: string, status: 'ACCEPTED' | 'REJECTED'): Promise<Offer> {
+export async function respondToCounterOffer(offerId: string, status: 'ACCEPTED' | 'REJECTED' | 'COUNTERED', counterAmount?: number): Promise<Offer> {
     const data = await apiClient<{ data: Offer }>(`/offers/${offerId}/respond-counter`, {
         method: 'PATCH',
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, counterAmount }),
     })
     return data.data
 }
