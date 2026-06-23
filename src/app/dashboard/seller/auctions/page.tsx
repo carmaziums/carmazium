@@ -83,6 +83,7 @@ function SellerAuctionsPage() {
     const [formReservePrice, setFormReservePrice] = React.useState("")
     const [formStartingBid, setFormStartingBid] = React.useState("")
     const [formMinIncrement, setFormMinIncrement] = React.useState("100")
+    const [formBinPrice, setFormBinPrice] = React.useState("")
     const [submitting, setSubmitting] = React.useState(false)
     const [formError, setFormError] = React.useState<string | null>(null)
     const [successMsg, setSuccessMsg] = React.useState<string | null>(null)
@@ -170,13 +171,14 @@ function SellerAuctionsPage() {
                 reservePrice: Number(formReservePrice),
                 startingBid: Number(formStartingBid),
                 minIncrement: Number(formMinIncrement) || 100,
+                ...(formBinPrice ? { buyItNowPrice: Number(formBinPrice) } : {}),
             }
             await createAuction(dto)
             const endDisplay = addHours(resolvedStartTime, 24)
             setSuccessMsg(formStartImmediately ? `Auction is now live! It will run until ${endDisplay}.` : `Auction scheduled! It will run until ${endDisplay}.`)
             setShowForm(false)
             setFormListingId(""); setFormStartTime(""); setFormStartImmediately(false); setFormReservePrice("")
-            setFormStartingBid(""); setFormMinIncrement("100")
+            setFormStartingBid(""); setFormMinIncrement("100"); setFormBinPrice("")
             fetchAuctions()
         } catch (err: any) {
             setFormError(err.message || "Failed to create auction.")
@@ -460,6 +462,22 @@ function SellerAuctionsPage() {
                                                 step={1}
                                                 value={formMinIncrement}
                                                 onChange={e => setFormMinIncrement(e.target.value)}
+                                                className="bg-slate-800 border-white/10 text-white h-11 rounded-lg"
+                                            />
+                                        </div>
+
+                                        {/* Buy It Now price (optional) */}
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                                                Buy It Now Price (£) <span className="text-gray-600 font-normal normal-case">— optional</span>
+                                            </label>
+                                            <Input
+                                                type="number"
+                                                min={0}
+                                                step={1}
+                                                placeholder="Leave blank to disable BIN"
+                                                value={formBinPrice}
+                                                onChange={e => setFormBinPrice(e.target.value)}
                                                 className="bg-slate-800 border-white/10 text-white h-11 rounded-lg"
                                             />
                                         </div>

@@ -276,10 +276,26 @@ export class AuctionsService {
             throw new BadRequestException('Only SCHEDULED auctions can be cancelled');
         }
 
-        return this.prisma.auction.update({
+        const cancelled = await this.prisma.auction.update({
             where: { id },
             data: { status: 'CANCELLED' },
         });
+
+        // Clear linkedListingId on both the AUCTION listing and the linked CLASSIFIED listing
+        // so the seller can re-auction or proceed with retail only
+        const classifiedId = (auction.listing as any).linkedListingId as string | null;
+        await this.prisma.listing.update({
+            where: { id: auction.listingId },
+            data: { linkedListingId: null } as any,
+        });
+        if (classifiedId) {
+            await this.prisma.listing.update({
+                where: { id: classifiedId },
+                data: { linkedListingId: null } as any,
+            });
+        }
+
+        return cancelled;
     }
 
     async sellerClose(auctionId: string, userId: string): Promise<void> {
@@ -500,6 +516,7 @@ export class AuctionsService {
             // Move listing to DRAFT (seller's inventory). It will NOT appear in
             // public retail search until the seller explicitly relists it from
             // their inventory dashboard.
+            const classifiedId = (auction.listing as any).linkedListingId as string | null;
             await this.prisma.$transaction([
                 this.prisma.auction.update({
                     where: { id: auctionId },
@@ -510,8 +527,17 @@ export class AuctionsService {
                     data: {
                         status: 'DRAFT',
                         type: 'CLASSIFIED', // Reset type so seller can list it for retail
-                    },
+                        linkedListingId: null, // Clear link so seller can re-auction
+                    } as any,
                 }),
+                // If there was a paired CLASSIFIED retail listing, clear its link too
+                // so the seller can re-auction the same vehicle if they want
+                ...(classifiedId ? [
+                    this.prisma.listing.update({
+                        where: { id: classifiedId },
+                        data: { linkedListingId: null } as any,
+                    }),
+                ] : []),
             ]);
 
             const endPayload: AuctionEndPayload = {

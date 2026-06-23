@@ -564,6 +564,15 @@ export class ListingsService {
                 damageRecords: {
                     orderBy: { createdAt: 'asc' },
                 },
+                linkedListing: {
+                    select: {
+                        id: true,
+                        type: true,
+                        auction: {
+                            select: { id: true, status: true, endTime: true },
+                        },
+                    },
+                },
             }
         });
 
@@ -1075,12 +1084,17 @@ export class ListingsService {
     async alsoAuction(
         listingId: string,
         userId: string,
-        dto: { startTime: string; reservePrice: number; startingBid: number; minIncrement?: number },
+        dto: { startTime: string; reservePrice: number; startingBid: number; minIncrement?: number; buyItNowPrice?: number },
     ): Promise<{ linkedListingId: string; auctionId: string }> {
         const source = await this.findById(listingId);
         if (source.sellerId !== userId) throw new ForbiddenException('You do not own this listing');
         if (source.type !== 'CLASSIFIED') throw new BadRequestException('Source listing must be of type CLASSIFIED');
         if ((source as any).linkedListingId) throw new BadRequestException('This listing already has a linked auction listing');
+        if (dto.reservePrice > Number(source.price)) {
+            throw new BadRequestException(
+                `Reserve price (£${dto.reservePrice.toLocaleString('en-GB')}) cannot exceed the retail listing price (£${Number(source.price).toLocaleString('en-GB')}). Lower the reserve or raise the retail price first.`,
+            );
+        }
 
         const startTime = new Date(dto.startTime);
         if (isNaN(startTime.getTime()) || startTime.getTime() < Date.now() - 60_000) {
@@ -1141,6 +1155,7 @@ export class ListingsService {
                 startingBid: dto.startingBid,
                 minIncrement: dto.minIncrement ?? 100,
                 status: 'SCHEDULED',
+                ...(dto.buyItNowPrice ? { buyItNowPrice: dto.buyItNowPrice } : {}),
             },
         });
 

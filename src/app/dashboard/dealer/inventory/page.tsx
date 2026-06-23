@@ -79,6 +79,7 @@ export default function DealerInventoryPage() {
     const [alsoAuctionReserve,   setAlsoAuctionReserve]   = React.useState("")
     const [alsoAuctionStartBid,  setAlsoAuctionStartBid]  = React.useState("")
     const [alsoAuctionIncrement, setAlsoAuctionIncrement] = React.useState("100")
+    const [alsoAuctionBinPrice,  setAlsoAuctionBinPrice]  = React.useState("")
     const [alsoAuctionLoading,   setAlsoAuctionLoading]   = React.useState(false)
     const [alsoAuctionError,     setAlsoAuctionError]     = React.useState<string | null>(null)
     const [alsoAuctionSuccess,   setAlsoAuctionSuccess]   = React.useState(false)
@@ -192,6 +193,7 @@ export default function DealerInventoryPage() {
                 reservePrice: parseFloat(alsoAuctionReserve),
                 startingBid: parseFloat(alsoAuctionStartBid),
                 minIncrement: parseFloat(alsoAuctionIncrement) || 100,
+                ...(alsoAuctionBinPrice ? { buyItNowPrice: parseFloat(alsoAuctionBinPrice) } : {}),
             })
             setAlsoAuctionSuccess(true)
             setTimeout(() => {
@@ -637,6 +639,10 @@ export default function DealerInventoryPage() {
                                 <div>
                                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Min Bid Increment (£)</label>
                                     <Input type="number" placeholder="100" value={alsoAuctionIncrement} onChange={e => setAlsoAuctionIncrement(e.target.value)} className="bg-slate-800 border-white/10 text-white h-10" />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Buy It Now Price (£) <span className="text-slate-600 font-normal normal-case">— optional</span></label>
+                                    <Input type="number" placeholder="Leave blank to disable BIN" value={alsoAuctionBinPrice} onChange={e => setAlsoAuctionBinPrice(e.target.value)} className="bg-slate-800 border-white/10 text-white h-10" />
                                 </div>
 
                                 {alsoAuctionError && <p className="text-red-400 text-xs">{alsoAuctionError}</p>}

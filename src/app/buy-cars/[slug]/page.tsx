@@ -378,7 +378,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
     const handleCompareAndNavigate = () => {
         if (!listing) return
         addToCompare(listing)
-        router.push('/compare')
+        router.push(`/compare?slug=${listing.slug}`)
     }
 
     const handleEnquire = async () => {
@@ -616,7 +616,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                 )}
                             </div>
                         </div>
-                        <div className="flex gap-4">
+                        <div className="hidden lg:flex gap-4">
                             <Button
                                 variant="outline"
                                 className="rounded-full border-gray-600 text-gray-400 hover:text-white hover:border-white"
@@ -746,6 +746,21 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                         </div>
                                     )}
 
+                                    {listing.linkedListingId && listing.linkedListing?.auction?.status === 'ACTIVE' && (
+                                        <Link
+                                            href={`/auctions/live/${listing.linkedListing.auction.id}`}
+                                            className="flex items-center gap-3 mb-4 px-4 py-3 rounded-xl border border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 transition-colors group"
+                                        >
+                                            <Gavel size={16} className="text-amber-400 shrink-0" />
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-amber-300 font-bold text-xs uppercase tracking-wide">Also in Live Auction</div>
+                                                <div className="text-[11px] text-gray-400 mt-0.5">
+                                                    Closes {new Date(listing.linkedListing.auction.endTime).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                                </div>
+                                            </div>
+                                            <span className="text-amber-400 text-xs font-bold group-hover:translate-x-0.5 transition-transform">View →</span>
+                                        </Link>
+                                    )}
                                     <div className="mb-6">
                                         <div className="flex items-center gap-1.5 mb-3">
                                             <Info size={14} className="text-gray-500" />
@@ -1131,6 +1146,21 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                     </>
                                 ) : (
                                     <>
+                                        {listing.linkedListingId && listing.linkedListing?.auction?.status === 'ACTIVE' && (
+                                            <Link
+                                                href={`/auctions/live/${listing.linkedListing.auction.id}`}
+                                                className="flex items-center gap-3 mb-4 px-4 py-3 rounded-xl border border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 transition-colors group"
+                                            >
+                                                <Gavel size={16} className="text-amber-400 shrink-0" />
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-amber-300 font-bold text-xs uppercase tracking-wide">Also in Live Auction</div>
+                                                    <div className="text-[11px] text-gray-400 mt-0.5">
+                                                        Closes {new Date(listing.linkedListing.auction.endTime).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                                    </div>
+                                                </div>
+                                                <span className="text-amber-400 text-xs font-bold group-hover:translate-x-0.5 transition-transform">View →</span>
+                                            </Link>
+                                        )}
                                         <div className="mb-6">
                                             {/* Policies tooltip */}
                                             <div className="flex items-center gap-1.5 mb-3">
@@ -1185,36 +1215,6 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                                     </Button>
                                                 </>
                                             )}
-                                            {/* Secondary action icon row */}
-                                            <div className="flex items-center gap-2 mt-2">
-                                                <Button
-                                                    variant="outline"
-                                                    size="icon"
-                                                    className={`flex-1 h-10 transition-all ${isWatchlisted ? 'text-red-400 border-red-500/40 bg-red-500/10' : 'border-white/10 text-gray-400 hover:text-red-400 hover:border-red-500/40'}`}
-                                                    onClick={handleWatchlist}
-                                                    title="Save to watchlist"
-                                                >
-                                                    <Heart size={16} className={isWatchlisted ? 'fill-red-400' : ''} />
-                                                </Button>
-                                                <Button
-                                                    variant="outline"
-                                                    size="icon"
-                                                    className="flex-1 h-10 border-white/10 text-gray-400 hover:text-white hover:border-white/30 transition-all"
-                                                    onClick={handleShare}
-                                                    title="Share listing"
-                                                >
-                                                    <Share2 size={16} />
-                                                </Button>
-                                                <Button
-                                                    variant="outline"
-                                                    size="icon"
-                                                    className="flex-1 h-10 border-white/10 text-gray-400 hover:text-white hover:border-white/30 transition-all"
-                                                    onClick={handleCompareAndNavigate}
-                                                    title="Compare"
-                                                >
-                                                    <Scale size={16} />
-                                                </Button>
-                                            </div>
                                         </div>
 
                                         {/* Buy It Now section — auction listings only, reserve not met */}

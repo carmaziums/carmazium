@@ -204,6 +204,11 @@ export interface Listing {
     createdAt: string
     updatedAt: string
     linkedListingId?: string | null
+    linkedListing?: {
+        id: string
+        type: string
+        auction?: { id: string; status: string; endTime: string } | null
+    } | null
     importedFromUrl?: string | null
     importedSource?: string | null
     // Latest offer on this listing (populated in detail view)
@@ -1174,7 +1179,7 @@ export async function alsoListRetail(
 
 export async function alsoAuction(
     listingId: string,
-    dto: { startTime: string; reservePrice: number; startingBid: number; minIncrement?: number },
+    dto: { startTime: string; reservePrice: number; startingBid: number; minIncrement?: number; buyItNowPrice?: number },
 ): Promise<{ linkedListingId: string; auctionId: string }> {
     const data = await apiClient<{ data: { linkedListingId: string; auctionId: string } }>(`/listings/${listingId}/also-auction`, {
         method: 'POST',

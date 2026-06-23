@@ -365,6 +365,33 @@ export class OffersService {
                 where: { id: offer.listingId },
                 data: { status: 'OFFER_ACCEPTED' }
             });
+
+            // Auto-cancel any linked auction so the vehicle isn't still bidding
+            const listing = await this.prisma.listing.findUnique({
+                where: { id: offer.listingId },
+                select: { linkedListingId: true } as any,
+            });
+            const linkedId = (listing as any)?.linkedListingId as string | null;
+            if (linkedId) {
+                const linkedAuction = await this.prisma.auction.findFirst({
+                    where: { listingId: linkedId, status: { in: ['ACTIVE', 'SCHEDULED'] } },
+                });
+                if (linkedAuction) {
+                    await this.prisma.auction.update({
+                        where: { id: linkedAuction.id },
+                        data: { status: 'CANCELLED' },
+                    });
+                    await this.prisma.listing.update({
+                        where: { id: linkedId },
+                        data: { status: 'DRAFT' } as any,
+                    });
+                }
+                // Clear the link on both sides
+                await this.prisma.listing.updateMany({
+                    where: { id: { in: [offer.listingId, linkedId] } },
+                    data: { linkedListingId: null } as any,
+                });
+            }
         }
 
         // If rejecting a previously-accepted offer (seller "Cancel & Relist"),
