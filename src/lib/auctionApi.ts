@@ -216,23 +216,19 @@ export function isAntiSnipeActive(auction: Auction): boolean {
 // ─── Buy It Now & Cancel Bid API Functions ────────────────────────────────────
 
 export async function triggerBuyItNow(auctionId: string): Promise<void> {
-    const res = await fetch(`/api/auctions/${auctionId}/bin-trigger`, { method: 'POST' });
-    if (!res.ok) throw new Error(`BIN trigger failed: ${res.status}`);
+    await apiClient(`/auctions/${auctionId}/bin-trigger`, { method: 'POST' });
 }
 
 export async function confirmBuyItNow(auctionId: string): Promise<void> {
-    const res = await fetch(`/api/auctions/${auctionId}/bin-confirm`, { method: 'POST' });
-    if (!res.ok) throw new Error(`BIN confirm failed: ${res.status}`);
+    await apiClient(`/auctions/${auctionId}/bin-confirm`, { method: 'POST' });
 }
 
 export async function declineBuyItNow(auctionId: string): Promise<void> {
-    const res = await fetch(`/api/auctions/${auctionId}/bin-decline`, { method: 'POST' });
-    if (!res.ok) throw new Error(`BIN decline failed: ${res.status}`);
+    await apiClient(`/auctions/${auctionId}/bin-decline`, { method: 'POST' });
 }
 
 export async function cancelBid(bidId: string): Promise<void> {
-    const res = await fetch(`/api/bids/${bidId}/cancel`, { method: 'PATCH' });
-    if (!res.ok) throw new Error(`Cancel bid failed: ${res.status}`);
+    await apiClient(`/bids/${bidId}/cancel`, { method: 'PATCH' });
 }
 
 // Socket events consumed by live auction page (no API function needed — socket.on() directly):
