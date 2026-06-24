@@ -69,4 +69,20 @@ export class AiDescriptionDto {
     @IsOptional()
     @IsString()
     motStatus?: string;
+
+    @IsOptional()
+    @IsString()
+    engineSize?: string;
+
+    @IsOptional()
+    @IsString()
+    bodyType?: string;
+
+    @IsOptional()
+    @IsString()
+    serviceHistory?: string;
+
+    @IsOptional()
+    @IsString()
+    owners?: string;
 }
