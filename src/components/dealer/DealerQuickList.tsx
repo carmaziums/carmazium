@@ -21,7 +21,7 @@ import { apiClient } from "@/lib/apiClient"
 import { dvlaLookup } from "@/lib/dvlaApi"
 import { aiGenerateDescription } from "@/lib/aiApi"
 import { useAuth } from "@/context/AuthContext"
-import { DamageAnalysisTool } from "@/components/listing/DamageAnalysisTool"
+import { VehicleDamageMapper, type DamageRecord } from "@/components/listing/VehicleDamageMapper"
 import { useRouter, useSearchParams } from "next/navigation"
 
 // ─── Required fields for publish completeness (must match inventory page) ────
@@ -68,6 +68,7 @@ export function DealerQuickList() {
     const [videoUrls,        setVideoUrls]        = React.useState<string[]>([])
     const [videoUrlInput,    setVideoUrlInput]    = React.useState("")
     const [videoUrlError,    setVideoUrlError]    = React.useState("")
+    const [damageRecords,    setDamageRecords]    = React.useState<DamageRecord[]>([])
     // Plan-selection modal (shown after saving in "complete listing" edit flow)
     const [showPlanModal,    setShowPlanModal]    = React.useState(false)
     const [planPublishing,   setPlanPublishing]   = React.useState(false)
@@ -265,13 +266,33 @@ export function DealerQuickList() {
                     method: 'PATCH',
                     body: JSON.stringify({ ...payload, status: 'DRAFT' }),
                 })
+                if (damageRecords.length > 0) {
+                    await apiClient(`/damage/${editId}/save`, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            detections: damageRecords.map(r => ({
+                                part: r.zone, type: r.description, imageUrl: r.photoUrl, size: '', severity: 'medium',
+                            })),
+                        }),
+                    }).catch(e => console.error('Failed to save damage records:', e))
+                }
                 if (returnPublish) {
                     setShowPlanModal(true)
                 } else {
                     router.push('/dashboard/dealer/inventory')
                 }
             } else {
-                await createListing(payload)
+                const newListing = await createListing(payload)
+                if (damageRecords.length > 0 && (newListing as any).id) {
+                    await apiClient(`/damage/${(newListing as any).id}/save`, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            detections: damageRecords.map(r => ({
+                                part: r.zone, type: r.description, imageUrl: r.photoUrl, size: '', severity: 'medium',
+                            })),
+                        }),
+                    }).catch(e => console.error('Failed to save damage records:', e))
+                }
                 router.push('/dashboard/dealer/inventory')
             }
         } catch (error: any) {
@@ -673,12 +694,15 @@ export function DealerQuickList() {
                     />
 
                     <div className="pt-6 border-t border-white/5">
-                        <DamageAnalysisTool
-                            images={images}
-                            onComplete={(detections) => {
-                                console.log("Quick List Detections:", detections)
-                                alert(`${detections.length} damage records detected. These will be saved with the listing.`)
-                            }}
+                        <h3 className="text-sm font-black uppercase tracking-widest text-gray-400 flex items-center gap-2 mb-4">
+                            <span className="w-6 h-6 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary text-[10px] font-black">★</span>
+                            Damage Mapping
+                            <span className="text-[10px] text-gray-600 normal-case font-normal">— optional, increases buyer trust</span>
+                        </h3>
+                        <VehicleDamageMapper
+                            bodyType={bodyType || dvlaData?.bodyType || undefined}
+                            existingRecords={damageRecords}
+                            onComplete={(records) => setDamageRecords(records)}
                         />
                     </div>
                 </section>

@@ -115,7 +115,7 @@ export default function DealerInventoryPage() {
         setPlanModalError(null)
     }
 
-    async function handlePlanConfirm(tier: 'FREE' | 'BASIC' | 'STANDARD' | 'PREMIUM') {
+    async function handlePlanConfirm(tier: 'BASIC' | 'STANDARD' | 'PREMIUM') {
         if (!planSelectListing) return
 
         // Gate: must be complete before any money or activation happens
@@ -129,13 +129,8 @@ export default function DealerInventoryPage() {
         closePlanModal()
         try {
             setPublishing(listing.id)
-            if (tier === 'FREE') {
-                await publishListing(listing.id)
-                fetchListings(searchQuery)
-            } else {
-                const checkout = await createListingCheckoutSession(listing.id, tier)
-                window.location.href = checkout.url
-            }
+            const checkout = await createListingCheckoutSession(listing.id, tier)
+            window.location.href = checkout.url
         } catch (err: any) {
             alert('Failed to publish: ' + err.message)
         } finally {
@@ -401,7 +396,7 @@ export default function DealerInventoryPage() {
 
                                                     {/* Actions */}
                                                     <td className="px-8 py-6 text-right">
-                                                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <div className="flex items-center justify-end gap-2 transition-opacity">
                                                             {listing.status === 'DRAFT' && (
                                                                 <Button
                                                                     variant="ghost"
@@ -744,13 +739,13 @@ export default function DealerInventoryPage() {
 
                         {/* Plan cards */}
                         <div className="grid grid-cols-2 gap-3 mb-3">
-                            {/* FREE */}
+                            {/* BASIC */}
                             <button
-                                onClick={() => handlePlanConfirm('FREE')}
+                                onClick={() => handlePlanConfirm('BASIC')}
                                 className="flex flex-col p-4 rounded-xl border border-white/10 bg-white/[0.02] hover:border-white/25 hover:bg-white/5 transition-all text-left"
                             >
-                                <p className="text-white font-bold text-sm mb-1">Free</p>
-                                <p className="text-2xl font-black text-white mb-3">£0</p>
+                                <p className="text-white font-bold text-sm mb-1">Basic</p>
+                                <p className="text-2xl font-black text-white mb-3">£1</p>
                                 <ul className="space-y-1 text-[11px] text-gray-400">
                                     <li className="flex items-center gap-1.5"><CheckCircle2 size={11} className="text-emerald-400" /> Basic listing</li>
                                     <li className="flex items-center gap-1.5"><CheckCircle2 size={11} className="text-emerald-400" /> Offer system</li>

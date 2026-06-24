@@ -177,8 +177,30 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
     return ALL_ZONES.find(z => z.id === zoneId)?.label ?? zoneId
   }
 
+  const grade = records.length === 0 ? 1 : records.length <= 2 ? 1 : records.length <= 4 ? 2 : records.length <= 6 ? 3 : records.length <= 9 ? 4 : 5
+  const GRADE_META: Record<number, { label: string; desc: string; color: string; bg: string }> = {
+    1: { label: 'Excellent', desc: 'Negligible or no cosmetic damage', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
+    2: { label: 'Great', desc: 'Minor cosmetic damage only', color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/20' },
+    3: { label: 'Good', desc: 'Noticeable but moderate damage', color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/20' },
+    4: { label: 'Average', desc: 'Multiple moderate damage areas', color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20' },
+    5: { label: 'Below Average', desc: 'Extensive wear and major damage', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' },
+  }
+  const gm = GRADE_META[grade]
+
   return (
     <div className="space-y-5">
+      {/* Grade badge */}
+      <div className={`flex items-center justify-between p-3 rounded-xl border ${gm.bg}`}>
+        <div className="flex items-center gap-2">
+          <span className={`text-2xl font-black ${gm.color}`}>{grade}</span>
+          <div>
+            <p className={`text-sm font-bold ${gm.color}`}>{gm.label}</p>
+            <p className="text-[11px] text-gray-400">{gm.desc}</p>
+          </div>
+        </div>
+        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">{records.length} zone{records.length !== 1 ? 's' : ''} marked</span>
+      </div>
+
       {/* Instruction banner */}
       <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
         <p className="text-xs font-bold text-blue-300 mb-0.5">How to mark damage</p>

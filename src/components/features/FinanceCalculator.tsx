@@ -1,24 +1,20 @@
 "use client"
 
 import * as React from "react"
-import { Button } from "@/components/ui/Button"
-import { Input } from "@/components/ui/Input"
-import { Calculator, HelpCircle } from "lucide-react"
+import { Calculator, HelpCircle, Minus, Plus } from "lucide-react"
 
 interface FinanceCalculatorProps {
     vehiclePrice: number
 }
 
 export function FinanceCalculator({ vehiclePrice }: FinanceCalculatorProps) {
-    const [deposit, setDeposit] = React.useState(vehiclePrice * 0.1) // 10% default
-    const [term, setTerm] = React.useState(48) // 48 months default
-    const [apr, setApr] = React.useState(19) // 19% default
+    const [deposit, setDeposit] = React.useState(vehiclePrice * 0.1)
+    const [term, setTerm] = React.useState(48)
+    const [apr, setApr] = React.useState(19)
 
-    // Calculate monthly payment
-    // Formula: M = P [ i(1 + i)^n ] / [ (1 + i)^n – 1 ]
-    // P = Principal (Price - Deposit)
-    // i = Monthly Interest Rate (APR / 100 / 12)
-    // n = Term (Months)
+    const MIN_APR = 9
+    const MAX_APR = 49
+
     const calculateMonthlyPayment = () => {
         const principal = vehiclePrice - deposit
         const monthlyRate = apr / 100 / 12
@@ -30,6 +26,8 @@ export function FinanceCalculator({ vehiclePrice }: FinanceCalculatorProps) {
     }
 
     const monthlyPayment = calculateMonthlyPayment()
+
+    const aprPercent = ((apr - MIN_APR) / (MAX_APR - MIN_APR)) * 100
 
     return (
         <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-6 md:p-8">
@@ -86,10 +84,50 @@ export function FinanceCalculator({ vehiclePrice }: FinanceCalculatorProps) {
                         </div>
                     </div>
 
-                    {/* APR info (Static for now) */}
-                    <div className="flex items-center gap-2 text-xs text-gray-400 bg-white/5 p-2 rounded">
-                        <HelpCircle size={14} />
-                        <span>Representative APR: <span className="text-white font-bold">{apr}%</span> fixed</span>
+                    {/* APR Slider */}
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center text-sm">
+                            <label className="text-gray-300 font-medium flex items-center gap-1.5">
+                                <HelpCircle size={13} className="text-gray-500" />
+                                Representative APR
+                            </label>
+                            <span className="text-white font-bold">{apr}% fixed</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => setApr(a => Math.max(MIN_APR, a - 1))}
+                                className="w-8 h-8 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-colors shrink-0"
+                                aria-label="Decrease APR"
+                            >
+                                <Minus size={14} />
+                            </button>
+                            <div className="relative flex-1">
+                                <input
+                                    type="range"
+                                    min={MIN_APR}
+                                    max={MAX_APR}
+                                    step={1}
+                                    value={apr}
+                                    onChange={(e) => setApr(Number(e.target.value))}
+                                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary"
+                                />
+                                <div
+                                    className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-primary pointer-events-none"
+                                    style={{ left: `calc(${aprPercent}% - ${aprPercent * 0.12}px)` }}
+                                />
+                            </div>
+                            <button
+                                onClick={() => setApr(a => Math.min(MAX_APR, a + 1))}
+                                className="w-8 h-8 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-colors shrink-0"
+                                aria-label="Increase APR"
+                            >
+                                <Plus size={14} />
+                            </button>
+                        </div>
+                        <div className="flex justify-between text-xs text-gray-500">
+                            <span>{MIN_APR}%</span>
+                            <span>{MAX_APR}%</span>
+                        </div>
                     </div>
                 </div>
 
@@ -103,7 +141,7 @@ export function FinanceCalculator({ vehiclePrice }: FinanceCalculatorProps) {
                     </div>
                     <p className="text-emerald-400 text-xs font-bold mb-6">Total Payable: £{Math.round(monthlyPayment * term + deposit).toLocaleString()}</p>
 
-                    <Button className="w-full shadow-neon" size="lg">Apply for Finance</Button>
+                    <button className="w-full bg-primary hover:bg-primary/90 text-white font-bold rounded-lg py-3 transition-colors">Apply for Finance</button>
                 </div>
             </div>
 

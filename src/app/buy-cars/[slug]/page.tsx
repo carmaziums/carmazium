@@ -980,10 +980,21 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                         </div>
 
                         {/* Damage Report Section */}
-                        {damageRecords.length > 0 && (
+                        {damageRecords.length > 0 && (() => {
+                            const count = damageRecords.length
+                            const grade = count <= 2 ? 1 : count <= 4 ? 2 : count <= 6 ? 3 : count <= 9 ? 4 : 5
+                            const gradeLabel = ['', 'Excellent', 'Great', 'Good', 'Average', 'Below Average'][grade]
+                            const gradeColor = ['', 'text-emerald-400', 'text-green-400', 'text-yellow-400', 'text-orange-400', 'text-red-400'][grade]
+                            const gradeBg = ['', 'bg-emerald-500/10 border-emerald-500/20', 'bg-green-500/10 border-green-500/20', 'bg-yellow-500/10 border-yellow-500/20', 'bg-orange-500/10 border-orange-500/20', 'bg-red-500/10 border-red-500/20'][grade]
+                            return (
                             <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-8">
-                                <h3 className="text-xl font-bold text-white mb-2 border-l-4 border-amber-500 pl-4">Reported Damage</h3>
-                                <p className="text-xs text-gray-500 mb-4 pl-5">{damageRecords.length} zone{damageRecords.length !== 1 ? 's' : ''} marked by seller — click a zone to see details</p>
+                                <div className="flex items-start justify-between mb-2">
+                                    <h3 className="text-xl font-bold text-white border-l-4 border-amber-500 pl-4">Condition &amp; Damage</h3>
+                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-bold ${gradeBg} ${gradeColor}`}>
+                                        Grade {grade} — {gradeLabel}
+                                    </span>
+                                </div>
+                                <p className="text-xs text-gray-500 mb-4 pl-5">{count} zone{count !== 1 ? 's' : ''} marked by seller — click a zone to see details</p>
 
                                 {/* WebGL isn't guaranteed on every device (in-app
                                     browsers, low-power mode, older phones) — wrap
@@ -1027,7 +1038,8 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                     ))}
                                 </div>
                             </div>
-                        )}
+                            )
+                        })()}
 
                         {/* HPI Report Section */}
                         <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-6">
@@ -1239,9 +1251,19 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
 
                                         {/* Delivery availability section */}
                                         {listing.deliveryAvailable && (() => {
-                                            const isOutsideRadius = listing.deliveryMaxMiles && deliveryDistanceInfo
-                                                ? deliveryDistanceInfo.distanceMiles > listing.deliveryMaxMiles
+                                            const miles = deliveryDistanceInfo?.distanceMiles ?? null
+                                            const isOutsideRadius = listing.deliveryMaxMiles && miles != null
+                                                ? miles > listing.deliveryMaxMiles
                                                 : false
+
+                                            const calcDeliveryFeeExVat = (d: number) => {
+                                                if (d <= 10) return 30
+                                                if (d <= 30) return 30 + (d - 10) * 2
+                                                return 70 + (d - 30) * 1.5
+                                            }
+                                            const feeExVat = miles != null ? calcDeliveryFeeExVat(miles) : null
+                                            const feeIncVat = feeExVat != null ? Math.round(feeExVat * 1.2) : null
+
                                             return isOutsideRadius ? (
                                                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 opacity-60 space-y-1 mt-4">
                                                     <div className="flex items-center gap-2">
@@ -1255,13 +1277,16 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                                     <div className="flex items-center gap-2">
                                                         <Truck size={16} className="text-emerald-400" />
                                                         <span className="text-sm font-semibold text-emerald-300">Delivery available</span>
+                                                        {feeIncVat != null && (
+                                                            <span className="ml-auto text-white font-bold text-sm">£{feeIncVat} <span className="text-gray-400 text-[11px] font-normal">inc. VAT</span></span>
+                                                        )}
                                                     </div>
-                                                    {listing.deliveryPricePerMile ? (
+                                                    {feeExVat != null ? (
                                                         <p className="text-xs text-gray-400">
-                                                            £{Number(listing.deliveryPricePerMile).toFixed(2)} per mile · Request delivery after making an offer
+                                                            Estimated delivery: £{Math.round(feeExVat)} ex. VAT · {miles != null ? `${Math.round(miles)} miles` : ''} · Request after making an offer
                                                         </p>
                                                     ) : (
-                                                        <p className="text-xs text-gray-400">Cost to be discussed · Request delivery after making an offer</p>
+                                                        <p className="text-xs text-gray-400">Enter your postcode to see a delivery quote · Request after making an offer</p>
                                                     )}
                                                     {listing.deliveryMaxMiles && (
                                                         <p className="text-xs text-gray-500">Max radius: {listing.deliveryMaxMiles} miles</p>
