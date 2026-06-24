@@ -200,6 +200,7 @@ ${JSON.stringify(data, null, 2)}
             });
 
             const content = completion.choices[0]?.message?.content?.trim() || '';
+            if (!content) throw new Error('Empty response from OpenAI');
 
             return { text: content };
         } catch (error) {

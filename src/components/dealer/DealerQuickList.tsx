@@ -61,6 +61,7 @@ export function DealerQuickList() {
     const [editLoading,     setEditLoading]     = React.useState(false)
 
     const [isGeneratingDesc, setIsGeneratingDesc] = React.useState(false)
+    const [generateDescError, setGenerateDescError] = React.useState<string | null>(null)
     const [isSubmitting,     setIsSubmitting]     = React.useState(false)
     const [submitError,      setSubmitError]      = React.useState<string | null>(null)
     const [publishAs,        setPublishAs]        = React.useState<"ACTIVE" | "DRAFT">("ACTIVE")
@@ -148,6 +149,7 @@ export function DealerQuickList() {
     const handleGenerateDescription = async () => {
         if (!dvlaData) return
         setIsGeneratingDesc(true)
+        setGenerateDescError(null)
         try {
             const result = await aiGenerateDescription({
                 make:           dvlaData.make,
@@ -158,14 +160,21 @@ export function DealerQuickList() {
                 engineSize:     dvlaData.engineSize ? String(dvlaData.engineSize) : undefined,
                 mileage,
                 condition,
-                // Also pass dealer-entered fields so the AI produces richer copy
                 transmission:   transmission || undefined,
                 bodyType:       bodyType || undefined,
                 serviceHistory: serviceHistory || undefined,
                 owners:         owners || undefined,
             })
-            setDescription(result.text)
-        } catch (error) {
+            if (result?.text) {
+                setDescription(result.text)
+            } else {
+                setGenerateDescError("AI returned an empty description — please try again.")
+            }
+        } catch (error: any) {
+            const msg = error?.message || String(error)
+            if (msg !== 'AUTH_REDIRECT') {
+                setGenerateDescError(msg || "AI generation failed — please try again.")
+            }
             console.error("AI Generation failed:", error)
         } finally {
             setIsGeneratingDesc(false)
@@ -738,6 +747,12 @@ export function DealerQuickList() {
                         onChange={(e) => setDescription(e.target.value)}
                         className="bg-slate-900/50 border-white/10 text-white min-h-[120px] placeholder:text-gray-600 focus:border-primary"
                     />
+                    {generateDescError && (
+                        <p className="text-xs text-red-400 flex items-center gap-1.5">
+                            <AlertTriangle size={12} />
+                            {generateDescError}
+                        </p>
+                    )}
                 </section>
             )}
 
