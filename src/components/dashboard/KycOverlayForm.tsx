@@ -264,6 +264,10 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
   const [stripePaymentIntentId, setStripePaymentIntentId] = useState<string | null>(null);
   const [cardError, setCardError] = useState<string | null>(null);
 
+  // Keep a ref to the latest clientSecret so CardForm's closure always reads the current value
+  const clientSecretRef = useRef<string | null>(null);
+  useEffect(() => { clientSecretRef.current = clientSecret; }, [clientSecret]);
+
   // Ref to expose CardForm's confirmPayment function to the outer handleSubmit
   const confirmPaymentRef = useRef<(() => Promise<string | null>) | null>(null);
 
@@ -358,7 +362,12 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
       confirmPaymentRef.current = async () => {
         if (alreadyPaid) return stripePaymentIntentId;
         if (!stripe || !elements) return null;
-        const { error, paymentIntent } = await stripe.confirmCardPayment(undefined as any, {
+        const secret = clientSecretRef.current;
+        if (!secret) {
+          setCardError('Payment not ready. Please refresh and try again.');
+          return null;
+        }
+        const { error, paymentIntent } = await stripe.confirmCardPayment(secret, {
           payment_method: { card: elements.getElement(CardElement)! },
         });
         if (error) {
@@ -921,7 +930,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
                         <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3">
                           Card Details
                         </p>
-                        <Elements stripe={stripePromise} options={{ clientSecret }}>
+                        <Elements stripe={stripePromise}>
                           <CardForm />
                         </Elements>
                       </div>

@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/Button"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { MetricCard } from "@/components/dashboard/MetricCard"
+import { ReceiptsTab } from "@/components/dashboard/ReceiptsTab"
 import { useAuth } from "@/context/AuthContext"
 import { getEarnings, exportEarningsCsv, formatPrice, type SaleRecord, type EarningsResponse } from "@/lib/listingApi"
 
@@ -29,6 +30,7 @@ export default function EarningsPage() {
     const [loading, setLoading] = React.useState(true)
     const [searchTerm, setSearchTerm] = React.useState("")
     const [exporting, setExporting] = React.useState(false)
+    const [activeTab, setActiveTab] = React.useState<'sales' | 'receipts'>('sales')
 
     React.useEffect(() => {
         async function fetchData() {
@@ -122,8 +124,34 @@ export default function EarningsPage() {
                         />
                     </div>
 
+                    {/* Tab switcher */}
+                    <div className="flex gap-1 bg-slate-800/50 p-1 rounded-xl border border-white/5 w-fit">
+                        {(['sales', 'receipts'] as const).map(tab => (
+                            <button
+                                key={tab}
+                                onClick={() => setActiveTab(tab)}
+                                className={`px-5 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-primary text-white shadow-neon-small' : 'text-gray-400 hover:text-white'}`}
+                            >
+                                {tab === 'sales' ? 'Sales History' : 'Receipts'}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Receipts tab */}
+                    {activeTab === 'receipts' && (
+                        <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl shadow-2xl">
+                            <div className="p-6 border-b border-white/10 bg-white/2">
+                                <h2 className="text-xl font-black font-heading text-white uppercase tracking-tight flex items-center gap-2">
+                                    Payment Receipts
+                                </h2>
+                                <p className="text-xs text-gray-400 mt-1">All payments made or received through CarMazium.</p>
+                            </div>
+                            <ReceiptsTab isDealer={false} />
+                        </div>
+                    )}
+
                     {/* Sales Table */}
-                    <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl shadow-2xl">
+                    {activeTab === 'sales' && <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl shadow-2xl">
                         <div className="p-6 border-b border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/2">
                             <h2 className="text-xl font-black font-heading text-white uppercase tracking-tight flex items-center gap-2">
                                 <Calendar className="text-primary" size={20} /> Sales History
@@ -253,7 +281,7 @@ export default function EarningsPage() {
                                 <Button variant="outline" size="sm" disabled className="h-9 opacity-50">Next</Button>
                             </div>
                         </div>
-                    </div>
+                    </div>}
                 </main>
             </div>
         </div>

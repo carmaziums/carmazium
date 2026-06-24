@@ -3,23 +3,25 @@
 import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { 
-    DollarSign, 
-    TrendingUp, 
-    Calendar, 
-    User as UserIcon, 
-    ArrowUpRight, 
+import {
+    DollarSign,
+    TrendingUp,
+    Calendar,
+    User as UserIcon,
+    ArrowUpRight,
     ArrowDownRight,
     Loader2,
     Search,
     Download,
     Car,
     ChevronRight,
-    Building2
+    Building2,
+    Receipt,
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { MetricCard } from "@/components/dashboard/MetricCard"
+import { ReceiptsTab } from "@/components/dashboard/ReceiptsTab"
 import { useAuth } from "@/context/AuthContext"
 import { getEarnings, formatPrice, type SaleRecord, type EarningsResponse } from "@/lib/listingApi"
 
@@ -28,6 +30,7 @@ export default function DealerEarningsPage() {
     const [data, setData] = React.useState<EarningsResponse | null>(null)
     const [loading, setLoading] = React.useState(true)
     const [searchTerm, setSearchTerm] = React.useState("")
+    const [activeTab, setActiveTab] = React.useState<'sales' | 'receipts'>('sales')
 
     React.useEffect(() => {
         async function fetchData() {
@@ -117,8 +120,35 @@ export default function DealerEarningsPage() {
                         />
                     </div>
 
+                    {/* Tab switcher */}
+                    <div className="flex gap-1 bg-slate-800/50 p-1 rounded-xl border border-white/5 w-fit">
+                        {(['sales', 'receipts'] as const).map(tab => (
+                            <button
+                                key={tab}
+                                onClick={() => setActiveTab(tab)}
+                                className={`px-5 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-primary text-white shadow-neon-small' : 'text-gray-400 hover:text-white'}`}
+                            >
+                                {tab === 'sales' ? 'Sales Registry' : 'Receipts'}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Receipts tab */}
+                    {activeTab === 'receipts' && (
+                        <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-3xl shadow-2xl">
+                            <div className="p-8 border-b border-white/10 bg-gradient-to-r from-white/[0.05] to-transparent">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-2 h-8 bg-primary rounded-full" />
+                                    <h2 className="text-2xl font-black font-heading text-white uppercase tracking-tight">Payment Receipts</h2>
+                                </div>
+                                <p className="text-xs text-gray-400 mt-1 ml-5">All platform fees, listing charges, and KYC payments.</p>
+                            </div>
+                            <ReceiptsTab isDealer={true} />
+                        </div>
+                    )}
+
                     {/* Sales Table */}
-                    <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-3xl shadow-2xl overflow-hidden">
+                    {activeTab === 'sales' && <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-3xl shadow-2xl overflow-hidden">
                         <div className="p-8 border-b border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gradient-to-r from-white/[0.05] to-transparent">
                             <div className="flex items-center gap-3">
                                 <div className="w-2 h-8 bg-primary rounded-full" />
@@ -247,7 +277,7 @@ export default function DealerEarningsPage() {
                                 </tbody>
                             </table>
                         </div>
-                    </div>
+                    </div>}
                 </main>
             </div>
         </div>

@@ -22,7 +22,7 @@ export interface PaymentTransaction {
     id: string
     listingId: string
     amount: string | number
-    type: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' | 'REFUND'
+    type: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' | 'REFUND' | 'HPI_REPORT' | 'LISTING_FEE' | 'BOOST'
     status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED'
     stripePaymentId: string | null
     description: string | null
