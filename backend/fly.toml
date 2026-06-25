@@ -4,6 +4,7 @@ primary_region = 'lhr'
 [build]
 
 [deploy]
+  release_command = "npx prisma db push --accept-data-loss"
 
 [http_service]
   internal_port = 8080
