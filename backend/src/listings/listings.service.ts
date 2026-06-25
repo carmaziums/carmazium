@@ -735,6 +735,7 @@ export class ListingsService {
         id: string,
         userId: string,
         status: ListingStatus,
+        buyerPostcode?: string,
     ): Promise<Listing> {
         const listing = await this.findById(id);
 
@@ -773,6 +774,7 @@ export class ListingsService {
                             sellerId: listing.sellerId || userId,
                             buyerId: null,
                             soldPrice: listing.price,
+                            buyerPostcode: buyerPostcode ?? null,
                         },
                     });
                 }
@@ -926,7 +928,7 @@ export class ListingsService {
     async recordSale(
         id: string,
         userId: string,
-        dto: { soldPrice: number; buyerId?: string; buyerName?: string; buyerEmail?: string },
+        dto: { soldPrice: number; buyerId?: string; buyerName?: string; buyerEmail?: string; buyerPostcode?: string },
     ): Promise<Listing> {
         const listing = await this.findById(id);
 
@@ -966,6 +968,7 @@ export class ListingsService {
                     buyerId: dto.buyerId ?? null,
                     buyerName: dto.buyerName ?? null,
                     buyerEmail: dto.buyerEmail ?? null,
+                    buyerPostcode: dto.buyerPostcode ?? null,
                     soldPrice: dto.soldPrice,
                 },
                 update: {
@@ -973,6 +976,7 @@ export class ListingsService {
                     buyerId: dto.buyerId ?? null,
                     buyerName: dto.buyerName ?? null,
                     buyerEmail: dto.buyerEmail ?? null,
+                    buyerPostcode: dto.buyerPostcode ?? null,
                     soldPrice: dto.soldPrice,
                 },
             });

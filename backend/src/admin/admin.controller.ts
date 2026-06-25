@@ -41,11 +41,13 @@ export class AdminController {
     @ApiOperation({ summary: 'List all users' })
     @ApiQuery({ name: 'page', required: false })
     @ApiQuery({ name: 'limit', required: false })
+    @ApiQuery({ name: 'search', required: false, description: 'Filter by name or email' })
     async getAllUsers(
         @Query('page') page = 1,
         @Query('limit') limit = 20,
+        @Query('search') search?: string,
     ): Promise<PaginatedResponse<any>> {
-        const { data, total } = await this.adminService.getAllUsers(Number(page), Number(limit));
+        const { data, total } = await this.adminService.getAllUsers(Number(page), Number(limit), search);
         return new PaginatedResponse(data, total, Number(page), Number(limit));
     }
 

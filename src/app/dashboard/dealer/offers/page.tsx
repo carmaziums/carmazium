@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Button } from "@/components/ui/Button"
 import {
-    Loader2, Trophy, XCircle, Clock, Tag, Mail, CheckCircle
+    Loader2, Trophy, XCircle, Clock, Tag, Mail, CheckCircle, MapPin,
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
@@ -12,6 +12,9 @@ import { recordSale } from "@/lib/listingApi"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 
+// ─── UK postcode validation (loose — accepts formatted or unformatted) ────────
+const UK_POSTCODE_RE = /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i
+
 export default function DealerOffersPage() {
     const { user, profile, loading: authLoading } = useAuth()
     const [offers, setOffers] = React.useState<any[]>([])
@@ -19,13 +22,14 @@ export default function DealerOffersPage() {
     const [actionLoading, setActionLoading] = React.useState<Record<string, boolean>>({})
     const [counteringOfferId, setCounteringOfferId] = React.useState<string | null>(null)
     const [counterAmount, setCounterAmount] = React.useState<number | undefined>(undefined)
-    const [markingSold, setMarkingSold] = React.useState<string | null>(null)
     const [toast, setToast] = React.useState<string | null>(null)
 
+    // Postcode capture state — set to offer ID when dealer clicks "Mark as Sold"
+    const [postcodeCapture, setPostcodeCapture] = React.useState<{ offerId: string; postcode: string } | null>(null)
+    const [confirmingSale, setConfirmingSale] = React.useState(false)
+
     React.useEffect(() => {
-        if (!authLoading && user) {
-            fetchOffers()
-        }
+        if (!authLoading && user) fetchOffers()
     }, [user, authLoading])
 
     async function fetchOffers() {
@@ -40,38 +44,49 @@ export default function DealerOffersPage() {
         }
     }
 
-    async function handleMarkSold(offer: any) {
-        setMarkingSold(offer.id)
+    async function confirmMarkSold() {
+        if (!postcodeCapture) return
+        const offer = offers.find(o => o.id === postcodeCapture.offerId)
+        if (!offer) return
+
+        const postcode = postcodeCapture.postcode.trim()
+        if (postcode && !UK_POSTCODE_RE.test(postcode)) {
+            setToast("Please enter a valid UK postcode, or leave it blank")
+            return
+        }
+
+        setConfirmingSale(true)
         try {
             const soldPrice = Number(offer.counterAmount ?? offer.amount)
-            await recordSale(offer.listingId, { soldPrice, buyerId: offer.buyerId })
+            await recordSale(offer.listingId, {
+                soldPrice,
+                buyerId: offer.buyerId,
+                buyerPostcode: postcode || undefined,
+            })
             setToast("Sale recorded — listing marked as sold")
             setOffers(prev => prev.filter(o => o.id !== offer.id))
+            setPostcodeCapture(null)
         } catch (err: any) {
             setToast(err.message || "Failed to record sale")
         } finally {
-            setMarkingSold(null)
+            setConfirmingSale(false)
         }
     }
 
     async function handleRespond(offerId: string, status: 'ACCEPTED' | 'REJECTED' | 'COUNTERED', counterAmount?: number) {
-        // Optimistic update: Update the UI immediately
         const previousOffers = [...offers]
-        setOffers(current => current.map(offer => 
+        setOffers(current => current.map(offer =>
             offer.id === offerId ? { ...offer, status } : offer
         ))
-        
         setActionLoading(prev => ({ ...prev, [offerId]: true }))
         try {
             await apiClient(`/offers/${offerId}/respond`, {
                 method: 'PATCH',
                 body: JSON.stringify({ status, counterAmount }),
             })
-            // Fetch fresh data in the background to ensure consistency
             fetchOffers()
         } catch (err) {
             console.error('Failed to respond to offer:', err)
-            // Rollback on error
             setOffers(previousOffers)
         } finally {
             setActionLoading(prev => ({ ...prev, [offerId]: false }))
@@ -82,7 +97,6 @@ export default function DealerOffersPage() {
         ? `${profile.firstName} ${profile.lastName || ""}`
         : (user?.email?.split('@')[0] || "Dealer")
 
-    // Stats
     const pendingCount = offers.filter(o => o.status === "PENDING").length
     const acceptedCount = offers.filter(o => o.status === "ACCEPTED").length
     const totalOffers = offers.length
@@ -111,35 +125,9 @@ export default function DealerOffersPage() {
 
                     {/* Stats Summary */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <MetricCard
-                            label="Pending Offers"
-                            value={pendingCount}
-                            icon={Clock}
-                            color="text-amber-400"
-                            bg="bg-amber-500/10"
-                            border="border-amber-500/20"
-                            statusLabel="Action Required"
-                            loading={loading}
-                        />
-                        <MetricCard
-                            label="Accepted"
-                            value={acceptedCount}
-                            icon={Trophy}
-                            color="text-emerald-400"
-                            bg="bg-emerald-500/10"
-                            border="border-emerald-500/20"
-                            statusLabel="Closed"
-                            loading={loading}
-                        />
-                        <MetricCard
-                            label="Total Received"
-                            value={totalOffers}
-                            icon={Tag}
-                            color="text-blue-400"
-                            bg="bg-blue-500/10"
-                            border="border-blue-500/20"
-                            loading={loading}
-                        />
+                        <MetricCard label="Pending Offers" value={pendingCount} icon={Clock} color="text-amber-400" bg="bg-amber-500/10" border="border-amber-500/20" statusLabel="Action Required" loading={loading} />
+                        <MetricCard label="Accepted" value={acceptedCount} icon={Trophy} color="text-emerald-400" bg="bg-emerald-500/10" border="border-emerald-500/20" statusLabel="Closed" loading={loading} />
+                        <MetricCard label="Total Received" value={totalOffers} icon={Tag} color="text-blue-400" bg="bg-blue-500/10" border="border-blue-500/20" loading={loading} />
                     </div>
 
                     {/* Offers Table */}
@@ -174,7 +162,8 @@ export default function DealerOffersPage() {
                                             const isActioning = !!actionLoading[offer.id]
                                             const isPending = offer.status === 'PENDING'
                                             const isCountering = counteringOfferId === offer.id
-                                            
+                                            const isCapturingPostcode = postcodeCapture?.offerId === offer.id
+
                                             return (
                                                 <tr key={offer.id} className="group hover:bg-white/[0.02] transition-colors">
                                                     <td className="px-6 py-6">
@@ -207,94 +196,90 @@ export default function DealerOffersPage() {
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-6 text-right">
-                                                        <div className="flex items-center justify-end gap-2">
+                                                        <div className="flex items-center justify-end gap-2 flex-wrap">
+                                                            {/* ── Pending: Accept / Counter / Reject ── */}
                                                             {isPending && !isCountering && (
                                                                 <>
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="sm"
-                                                                        disabled={isActioning}
-                                                                        onClick={() => {
-                                                                            setCounteringOfferId(offer.id)
-                                                                            setCounterAmount(offer.amount)
-                                                                        }}
-                                                                        className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 font-black text-[9px] uppercase tracking-widest h-9 px-4 border border-blue-500/20 rounded-xl transition-all"
-                                                                    >
+                                                                    <Button variant="ghost" size="sm" disabled={isActioning}
+                                                                        onClick={() => { setCounteringOfferId(offer.id); setCounterAmount(offer.amount) }}
+                                                                        className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 font-black text-[9px] uppercase tracking-widest h-9 px-4 border border-blue-500/20 rounded-xl transition-all">
                                                                         COUNTER
                                                                     </Button>
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="sm"
-                                                                        disabled={isActioning}
+                                                                    <Button variant="ghost" size="sm" disabled={isActioning}
                                                                         onClick={() => handleRespond(offer.id, 'ACCEPTED')}
-                                                                        className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-black text-[9px] uppercase tracking-widest h-9 px-4 border border-emerald-500/20 rounded-xl transition-all"
-                                                                    >
+                                                                        className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-black text-[9px] uppercase tracking-widest h-9 px-4 border border-emerald-500/20 rounded-xl transition-all">
                                                                         {isActioning ? <Loader2 size={14} className="animate-spin" /> : 'ACCEPT'}
                                                                     </Button>
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="sm"
-                                                                        disabled={isActioning}
+                                                                    <Button variant="ghost" size="sm" disabled={isActioning}
                                                                         onClick={() => handleRespond(offer.id, 'REJECTED')}
-                                                                        className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-black text-[9px] uppercase tracking-widest h-9 px-4 border border-red-500/20 rounded-xl transition-all"
-                                                                    >
+                                                                        className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-black text-[9px] uppercase tracking-widest h-9 px-4 border border-red-500/20 rounded-xl transition-all">
                                                                         {isActioning ? <Loader2 size={14} className="animate-spin" /> : 'REJECT'}
                                                                     </Button>
                                                                 </>
                                                             )}
+
+                                                            {/* ── Pending: Counter input ── */}
                                                             {isPending && isCountering && (
                                                                 <div className="flex items-center gap-2">
                                                                     <div className="relative">
                                                                         <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-[10px] font-black">£</span>
-                                                                        <input
-                                                                            type="number"
+                                                                        <input type="number"
                                                                             className="bg-black/40 border border-white/10 text-white rounded-lg pl-6 pr-2 py-1.5 w-24 text-xs font-black focus:outline-none focus:border-blue-500 transition-colors"
                                                                             value={counterAmount || ''}
                                                                             onChange={e => setCounterAmount(Number(e.target.value))}
-                                                                            autoFocus
-                                                                        />
+                                                                            autoFocus />
                                                                     </div>
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="sm"
-                                                                        disabled={isActioning || !counterAmount}
-                                                                        onClick={() => {
-                                                                            handleRespond(offer.id, 'COUNTERED', counterAmount)
-                                                                            setCounteringOfferId(null)
-                                                                            setCounterAmount(undefined)
-                                                                        }}
-                                                                        className="bg-blue-600 text-white font-black text-[9px] uppercase tracking-widest h-9 px-3 rounded-xl hover:bg-blue-500 transition-all"
-                                                                    >
+                                                                    <Button variant="ghost" size="sm" disabled={isActioning || !counterAmount}
+                                                                        onClick={() => { handleRespond(offer.id, 'COUNTERED', counterAmount); setCounteringOfferId(null); setCounterAmount(undefined) }}
+                                                                        className="bg-blue-600 text-white font-black text-[9px] uppercase tracking-widest h-9 px-3 rounded-xl hover:bg-blue-500 transition-all">
                                                                         Send
                                                                     </Button>
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="sm"
-                                                                        disabled={isActioning}
-                                                                        onClick={() => {
-                                                                            setCounteringOfferId(null)
-                                                                            setCounterAmount(undefined)
-                                                                        }}
-                                                                        className="text-gray-500 hover:text-white"
-                                                                    >
+                                                                    <Button variant="ghost" size="sm" disabled={isActioning}
+                                                                        onClick={() => { setCounteringOfferId(null); setCounterAmount(undefined) }}
+                                                                        className="text-gray-500 hover:text-white">
                                                                         <XCircle size={16} />
                                                                     </Button>
                                                                 </div>
                                                             )}
-                                                            {!isPending && offer.status === 'ACCEPTED' && (
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    disabled={markingSold === offer.id}
-                                                                    onClick={() => handleMarkSold(offer)}
-                                                                    className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-black text-[9px] uppercase tracking-widest h-9 px-4 border border-emerald-500/20 rounded-xl transition-all gap-1.5"
-                                                                >
-                                                                    {markingSold === offer.id
-                                                                        ? <Loader2 size={12} className="animate-spin" />
-                                                                        : <CheckCircle size={12} />}
-                                                                    Mark as Sold
+
+                                                            {/* ── Accepted: postcode capture then confirm ── */}
+                                                            {!isPending && offer.status === 'ACCEPTED' && !isCapturingPostcode && (
+                                                                <Button variant="ghost" size="sm"
+                                                                    onClick={() => setPostcodeCapture({ offerId: offer.id, postcode: '' })}
+                                                                    className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-black text-[9px] uppercase tracking-widest h-9 px-4 border border-emerald-500/20 rounded-xl transition-all gap-1.5">
+                                                                    <CheckCircle size={12} /> Mark as Sold
                                                                 </Button>
                                                             )}
+
+                                                            {/* ── Postcode capture inline form ── */}
+                                                            {!isPending && offer.status === 'ACCEPTED' && isCapturingPostcode && (
+                                                                <div className="flex items-center gap-2 flex-wrap justify-end">
+                                                                    <div className="relative">
+                                                                        <MapPin size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                                                                        <input
+                                                                            type="text"
+                                                                            placeholder="Postcode (opt.)"
+                                                                            maxLength={8}
+                                                                            className="bg-black/40 border border-white/10 text-white rounded-lg pl-7 pr-2 py-1.5 w-32 text-xs font-bold focus:outline-none focus:border-emerald-500 transition-colors uppercase placeholder:normal-case placeholder:text-gray-600"
+                                                                            value={postcodeCapture?.postcode ?? ''}
+                                                                            onChange={e => setPostcodeCapture(p => p ? { ...p, postcode: e.target.value.toUpperCase() } : null)}
+                                                                            autoFocus
+                                                                        />
+                                                                    </div>
+                                                                    <Button variant="ghost" size="sm" disabled={confirmingSale}
+                                                                        onClick={confirmMarkSold}
+                                                                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[9px] uppercase tracking-widest h-9 px-3 rounded-xl transition-all gap-1">
+                                                                        {confirmingSale ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
+                                                                        Confirm
+                                                                    </Button>
+                                                                    <Button variant="ghost" size="sm" disabled={confirmingSale}
+                                                                        onClick={() => setPostcodeCapture(null)}
+                                                                        className="text-gray-500 hover:text-white">
+                                                                        <XCircle size={16} />
+                                                                    </Button>
+                                                                </div>
+                                                            )}
+
                                                             {!isPending && offer.status !== 'ACCEPTED' && (
                                                                 <span className="text-[10px] text-gray-600 uppercase tracking-widest font-black italic">
                                                                     Decision Finalized

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/Input"
 import {
     Car, Search, Filter, PlusCircle, MoreVertical,
     Loader2, Upload, TrendingUp, ShieldCheck, Trash2, Eye, RefreshCcw, Pencil, AlertTriangle,
-    Star, Zap, X, BadgeCheck, Shield, CheckCircle2, ChevronRight, Gavel, Tag
+    Star, Zap, X, BadgeCheck, Shield, CheckCircle2, ChevronRight, Gavel, Tag, MapPin
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
@@ -83,6 +83,10 @@ export default function DealerInventoryPage() {
     const [alsoAuctionLoading,   setAlsoAuctionLoading]   = React.useState(false)
     const [alsoAuctionError,     setAlsoAuctionError]     = React.useState<string | null>(null)
     const [alsoAuctionSuccess,   setAlsoAuctionSuccess]   = React.useState(false)
+    // Mark-as-sold modal
+    const [soldModal,            setSoldModal]            = React.useState<any | null>(null)
+    const [soldModalPostcode,    setSoldModalPostcode]    = React.useState("")
+    const [soldModalLoading,     setSoldModalLoading]     = React.useState(false)
 
     React.useEffect(() => {
         if (!authLoading && user) fetchListings(searchQuery)
@@ -149,17 +153,27 @@ export default function DealerInventoryPage() {
         }
     }
 
-    async function handleMarkSold(id: string) {
-        if (!window.confirm("Mark this vehicle as Sold?")) return
+    function openSoldModal(listing: any) {
+        setSoldModalPostcode("")
+        setSoldModal(listing)
+        setActiveDropdown(null)
+    }
+
+    async function confirmMarkSold() {
+        if (!soldModal) return
+        const postcode = soldModalPostcode.trim().toUpperCase()
+        setSoldModalLoading(true)
         try {
-            await apiClient(`/listings/${id}/status`, {
+            await apiClient(`/listings/${soldModal.id}/status`, {
                 method: 'PATCH',
-                body: JSON.stringify({ status: 'SOLD' })
+                body: JSON.stringify({ status: 'SOLD', buyerPostcode: postcode || undefined }),
             })
+            setSoldModal(null)
             fetchListings(searchQuery)
         } catch (err) {
             console.error('Failed to mark sold:', err)
-            alert('Failed to update listing status.')
+        } finally {
+            setSoldModalLoading(false)
         }
     }
 
@@ -479,7 +493,7 @@ export default function DealerInventoryPage() {
                                                                     )}
                                                                     {listing.status !== 'SOLD' && (
                                                                         <button
-                                                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleMarkSold(listing.id) }}
+                                                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); openSoldModal(listing) }}
                                                                             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-emerald-500/10 hover:text-emerald-400 transition-colors w-full text-left"
                                                                         >
                                                                             <CheckCircle2 size={14} /> Mark Sold
@@ -521,6 +535,58 @@ export default function DealerInventoryPage() {
                     </div>
                 </main>
             </div>
+
+            {/* ── Mark as Sold modal ─────────────────────────────────── */}
+            {soldModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                    <div className="bg-[#0A0A0C] border border-white/10 rounded-2xl w-full max-w-sm p-6 space-y-5 shadow-2xl">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                                    <CheckCircle2 size={16} className="text-emerald-400" />
+                                </div>
+                                <div>
+                                    <p className="text-white font-bold text-sm">Mark as Sold</p>
+                                    <p className="text-slate-500 text-xs truncate max-w-[180px]">{soldModal.title}</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setSoldModal(null)} className="text-slate-500 hover:text-white transition-colors">
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+                                <MapPin size={11} className="text-rose-400" /> Buyer Postcode
+                                <span className="text-slate-600 normal-case font-medium tracking-normal ml-1">(optional)</span>
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="e.g. SW1A 1AA"
+                                maxLength={8}
+                                value={soldModalPostcode}
+                                onChange={e => setSoldModalPostcode(e.target.value.toUpperCase())}
+                                className="w-full bg-slate-800 border border-white/10 text-white rounded-xl px-3 py-2 text-sm font-bold placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition-colors uppercase placeholder:normal-case"
+                            />
+                            <p className="text-[10px] text-slate-600 mt-1.5 font-medium">
+                                UK postcode recorded for buyer area analytics. Leave blank if not available.
+                            </p>
+                        </div>
+
+                        <div className="flex gap-3 pt-1">
+                            <Button variant="outline" className="flex-1 border-white/10 text-slate-400 hover:text-white h-10"
+                                onClick={() => setSoldModal(null)} disabled={soldModalLoading}>
+                                Cancel
+                            </Button>
+                            <Button className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold h-10 gap-2"
+                                onClick={confirmMarkSold} disabled={soldModalLoading}>
+                                {soldModalLoading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                                Confirm Sold
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <BulkImportModal
                 isOpen={isBulkImportOpen}

@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty } from 'class-validator';
-
+import { IsEnum, IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator';
 
 export class UpdateStatusDto {
     @ApiProperty({
@@ -11,4 +10,14 @@ export class UpdateStatusDto {
     @IsNotEmpty()
     @IsEnum(['DRAFT', 'ACTIVE', 'SOLD', 'WITHDRAWN'])
     status: 'DRAFT' | 'ACTIVE' | 'SOLD' | 'WITHDRAWN';
+
+    @ApiProperty({
+        description: 'Buyer UK postcode (optional, recorded for analytics when marking as SOLD)',
+        example: 'SW1A 1AA',
+        required: false,
+    })
+    @IsOptional()
+    @IsString()
+    @Matches(/^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i, { message: 'Invalid UK postcode format' })
+    buyerPostcode?: string;
 }

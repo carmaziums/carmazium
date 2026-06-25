@@ -717,30 +717,205 @@ export class DealersService {
 
         // ─── Avg Days to Sell ────────────────────────────────────────
 
-        const avgDaysRaw = await this.prisma.$queryRawUnsafe<Array<{ avg_days: string }>>(
-            `SELECT AVG(EXTRACT(EPOCH FROM (s."createdAt" - l."createdAt")) / 86400)::TEXT AS avg_days
-             FROM sales s
-             JOIN listings l ON s."listingId" = l.id
-             WHERE s."sellerId" = $1
-               AND s."createdAt" >= $2`,
-            ownerUserId,
-            dateFilter.gte,
-        );
-
-        const prevAvgDaysRaw = await this.prisma.$queryRawUnsafe<Array<{ avg_days: string }>>(
-            `SELECT AVG(EXTRACT(EPOCH FROM (s."createdAt" - l."createdAt")) / 86400)::TEXT AS avg_days
-             FROM sales s
-             JOIN listings l ON s."listingId" = l.id
-             WHERE s."sellerId" = $1
-               AND s."createdAt" >= $2
-               AND s."createdAt" < $3`,
-            ownerUserId,
-            prevFilter.gte,
-            prevFilter.lte,
-        );
+        const [avgDaysRaw, prevAvgDaysRaw] = await Promise.all([
+            this.prisma.$queryRawUnsafe<Array<{ avg_days: string }>>(
+                `SELECT AVG(EXTRACT(EPOCH FROM (s."createdAt" - l."createdAt")) / 86400)::TEXT AS avg_days
+                 FROM sales s
+                 JOIN listings l ON s."listingId" = l.id
+                 WHERE s."sellerId" = $1
+                   AND s."createdAt" >= $2`,
+                ownerUserId,
+                dateFilter.gte,
+            ),
+            this.prisma.$queryRawUnsafe<Array<{ avg_days: string }>>(
+                `SELECT AVG(EXTRACT(EPOCH FROM (s."createdAt" - l."createdAt")) / 86400)::TEXT AS avg_days
+                 FROM sales s
+                 JOIN listings l ON s."listingId" = l.id
+                 WHERE s."sellerId" = $1
+                   AND s."createdAt" >= $2
+                   AND s."createdAt" < $3`,
+                ownerUserId,
+                prevFilter.gte,
+                prevFilter.lte,
+            ),
+        ]);
 
         const avgDaysToSell = Math.round(Number(avgDaysRaw?.[0]?.avg_days || 0));
         const prevAvgDaysToSell = Math.round(Number(prevAvgDaysRaw?.[0]?.avg_days || 0));
+
+        // ─── New KPIs ─────────────────────────────────────────────────
+
+        const [
+            avgSoldPriceRaw,
+            stockValueRaw,
+            marginVsListedRaw,
+            topSellingModelsRaw,
+            fastMoversRaw,
+            slowMoversRaw,
+            leadSourceRaw,
+            salespersonRaw,
+            salesByTypeRaw,
+            customersByAreaRaw,
+        ] = await Promise.all([
+            // Avg sold price in period
+            this.prisma.sale.aggregate({
+                where: { sellerId: ownerUserId, createdAt: dateFilter },
+                _avg: { soldPrice: true },
+            }),
+            // Stock value: sum of all active listing prices
+            this.prisma.listing.aggregate({
+                where: { sellerId: ownerUserId, status: 'ACTIVE', deletedAt: null },
+                _sum: { price: true },
+            }),
+            // Margin vs listed: avg % diff between sold price and original list price
+            this.prisma.$queryRawUnsafe<Array<{ avg_margin: string }>>(
+                `SELECT AVG((s."soldPrice" - l.price) / NULLIF(l.price, 0) * 100)::TEXT AS avg_margin
+                 FROM sales s
+                 JOIN listings l ON s."listingId" = l.id
+                 WHERE s."sellerId" = $1
+                   AND s."createdAt" >= $2`,
+                ownerUserId,
+                dateFilter.gte,
+            ),
+            // Top selling models by units sold
+            this.prisma.$queryRawUnsafe<Array<{ make: string; model: string; units: string; revenue: string; avg_price: string }>>(
+                `SELECT l.make, l.model,
+                        COUNT(*)::TEXT AS units,
+                        SUM(s."soldPrice")::TEXT AS revenue,
+                        AVG(s."soldPrice")::TEXT AS avg_price
+                 FROM sales s
+                 JOIN listings l ON s."listingId" = l.id
+                 WHERE s."sellerId" = $1
+                   AND s."createdAt" >= $2
+                   AND l.make IS NOT NULL
+                 GROUP BY l.make, l.model
+                 ORDER BY COUNT(*) DESC
+                 LIMIT 10`,
+                ownerUserId,
+                dateFilter.gte,
+            ),
+            // Fast movers: sold vehicles grouped by model, ordered by avg days to sell ASC
+            this.prisma.$queryRawUnsafe<Array<{ make: string; model: string; units: string; avg_days: string }>>(
+                `SELECT l.make, l.model,
+                        COUNT(*)::TEXT AS units,
+                        AVG(EXTRACT(EPOCH FROM (s."createdAt" - l."createdAt")) / 86400)::TEXT AS avg_days
+                 FROM sales s
+                 JOIN listings l ON s."listingId" = l.id
+                 WHERE s."sellerId" = $1
+                   AND s."createdAt" >= $2
+                   AND l.make IS NOT NULL
+                 GROUP BY l.make, l.model
+                 HAVING COUNT(*) >= 1
+                 ORDER BY AVG(EXTRACT(EPOCH FROM (s."createdAt" - l."createdAt")) / 86400) ASC
+                 LIMIT 10`,
+                ownerUserId,
+                dateFilter.gte,
+            ),
+            // Slow movers: active listings grouped by model, ordered by avg days in stock DESC
+            this.prisma.$queryRawUnsafe<Array<{ make: string; model: string; count: string; avg_days: string }>>(
+                `SELECT l.make, l.model,
+                        COUNT(*)::TEXT AS count,
+                        AVG(EXTRACT(EPOCH FROM (NOW() - l."createdAt")) / 86400)::TEXT AS avg_days
+                 FROM listings l
+                 WHERE l."sellerId" = $1
+                   AND l."deletedAt" IS NULL
+                   AND l.status = 'ACTIVE'
+                   AND l.make IS NOT NULL
+                 GROUP BY l.make, l.model
+                 ORDER BY AVG(EXTRACT(EPOCH FROM (NOW() - l."createdAt")) / 86400) DESC
+                 LIMIT 10`,
+                ownerUserId,
+            ),
+            // Lead source breakdown
+            this.prisma.$queryRawUnsafe<Array<{ source: string; count: string }>>(
+                `SELECT COALESCE(NULLIF(source, ''), 'unknown') AS source, COUNT(*)::TEXT AS count
+                 FROM leads
+                 WHERE "dealerProfileId" = $1
+                 GROUP BY COALESCE(NULLIF(source, ''), 'unknown')
+                 ORDER BY COUNT(*) DESC`,
+                profile.id,
+            ),
+            // Salesperson performance
+            this.prisma.$queryRawUnsafe<Array<{ name: string; total: string; won: string; active: string }>>(
+                `SELECT TRIM(u."firstName" || ' ' || COALESCE(u."lastName", '')) AS name,
+                        COUNT(*)::TEXT AS total,
+                        COUNT(*) FILTER (WHERE l.status = 'WON')::TEXT AS won,
+                        COUNT(*) FILTER (WHERE l.status NOT IN ('WON', 'LOST'))::TEXT AS active
+                 FROM leads l
+                 JOIN users u ON l."assignedToId" = u.id
+                 WHERE l."dealerProfileId" = $1
+                 GROUP BY u.id, u."firstName", u."lastName"
+                 ORDER BY COUNT(*) FILTER (WHERE l.status = 'WON') DESC`,
+                profile.id,
+            ),
+            // Sales by listing type (AUCTION vs CLASSIFIED)
+            this.prisma.$queryRawUnsafe<Array<{ type: string; units: string; revenue: string }>>(
+                `SELECT l.type, COUNT(*)::TEXT AS units, SUM(s."soldPrice")::TEXT AS revenue
+                 FROM sales s
+                 JOIN listings l ON s."listingId" = l.id
+                 WHERE s."sellerId" = $1
+                   AND s."createdAt" >= $2
+                 GROUP BY l.type`,
+                ownerUserId,
+                dateFilter.gte,
+            ),
+            // Customers by area (UK postcode)
+            this.prisma.$queryRawUnsafe<Array<{ postcode: string; count: string; revenue: string }>>(
+                `SELECT "buyerPostcode" AS postcode,
+                        COUNT(*)::TEXT AS count,
+                        SUM("soldPrice")::TEXT AS revenue
+                 FROM sales
+                 WHERE "sellerId" = $1
+                   AND "buyerPostcode" IS NOT NULL
+                   AND "createdAt" >= $2
+                 GROUP BY "buyerPostcode"
+                 ORDER BY COUNT(*) DESC
+                 LIMIT 15`,
+                ownerUserId,
+                dateFilter.gte,
+            ),
+        ]);
+
+        const avgSoldPrice = Math.round(Number(avgSoldPriceRaw._avg.soldPrice || 0));
+        const stockValue = Math.round(Number(stockValueRaw._sum.price || 0));
+        const marginVsListed = Math.round(Number(marginVsListedRaw?.[0]?.avg_margin || 0) * 10) / 10;
+
+        const topSellingModels = topSellingModelsRaw.map(r => ({
+            make: r.make, model: r.model,
+            units: Number(r.units), revenue: Math.round(Number(r.revenue)),
+            avgPrice: Math.round(Number(r.avg_price)),
+        }));
+
+        const fastMovers = fastMoversRaw.map(r => ({
+            make: r.make, model: r.model,
+            units: Number(r.units), avgDays: Math.round(Number(r.avg_days)),
+        }));
+
+        const slowMovers = slowMoversRaw.map(r => ({
+            make: r.make, model: r.model,
+            count: Number(r.count), avgDays: Math.round(Number(r.avg_days)),
+        }));
+
+        const leadSourceBreakdown = leadSourceRaw.map(r => ({
+            source: r.source, count: Number(r.count),
+        }));
+
+        const salespersonPerformance = salespersonRaw.map(r => ({
+            name: r.name, total: Number(r.total), won: Number(r.won), active: Number(r.active),
+            conversionRate: Number(r.total) > 0 ? Math.round((Number(r.won) / Number(r.total)) * 1000) / 10 : 0,
+        }));
+
+        const salesByType: Record<string, { units: number; revenue: number }> = {
+            AUCTION: { units: 0, revenue: 0 },
+            CLASSIFIED: { units: 0, revenue: 0 },
+        };
+        salesByTypeRaw.forEach(r => {
+            salesByType[r.type] = { units: Number(r.units), revenue: Math.round(Number(r.revenue)) };
+        });
+
+        const customersByArea = customersByAreaRaw.map(r => ({
+            postcode: r.postcode, count: Number(r.count), revenue: Math.round(Number(r.revenue)),
+        }));
 
         return {
             kpis: {
@@ -749,13 +924,16 @@ export class DealersService {
                 totalUnitsSold: currentUnitsSold,
                 totalUnitsSoldTrend: this.calcTrend(currentUnitsSold, prevUnitsSold),
                 avgDaysToSell,
-                avgDaysToSellTrend: this.calcTrend(prevAvgDaysToSell, avgDaysToSell), // inverted — lower is better
+                avgDaysToSellTrend: this.calcTrend(prevAvgDaysToSell, avgDaysToSell),
                 offerConversionRate: offerConvRate,
                 offerConversionRateTrend: this.calcTrend(offerConvRate, prevOfferConvRate),
                 leadConversionRate: leadConvRate,
                 leadConversionRateTrend: this.calcTrend(leadConvRate, prevLeadConvRate),
                 avgViewsPerListing: avgViews,
                 avgViewsPerListingTrend: this.calcTrend(avgViews, prevAvgViewsVal),
+                avgSoldPrice,
+                stockValue,
+                marginVsListed,
             },
             revenueTrend,
             leadFunnel,
@@ -771,6 +949,13 @@ export class DealersService {
                 agingBuckets,
             },
             topVehicles,
+            topSellingModels,
+            fastMovers,
+            slowMovers,
+            leadSourceBreakdown,
+            salespersonPerformance,
+            salesByType,
+            customersByArea,
         };
     }
 

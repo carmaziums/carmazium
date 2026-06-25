@@ -17,10 +17,21 @@ export class AdminService {
         private readonly notificationsService: NotificationsService,
     ) { }
 
-    async getAllUsers(page = 1, limit = 20) {
+    async getAllUsers(page = 1, limit = 20, search?: string) {
         const skip = (page - 1) * limit;
+        const where = search
+            ? {
+                  OR: [
+                      { email: { contains: search, mode: 'insensitive' as const } },
+                      { firstName: { contains: search, mode: 'insensitive' as const } },
+                      { lastName: { contains: search, mode: 'insensitive' as const } },
+                  ],
+              }
+            : undefined;
+
         const [data, total] = await Promise.all([
             this.prisma.user.findMany({
+                where,
                 skip,
                 take: limit,
                 orderBy: { createdAt: 'desc' },
@@ -43,7 +54,7 @@ export class AdminService {
                     payoutPreference: true,
                 },
             }),
-            this.prisma.user.count(),
+            this.prisma.user.count({ where }),
         ]);
         return { data, total };
     }

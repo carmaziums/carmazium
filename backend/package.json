@@ -48,6 +48,7 @@
     "date-fns": "^4.1.0",
     "expo-server-sdk": "^3.7.0",
     "express-session": "^1.18.1",
+    "geoip-lite": "^2.0.3",
     "helmet": "^8.1.0",
     "ioredis": "^5.9.3",
     "nest-winston": "^1.10.2",
@@ -71,6 +72,7 @@
     "@types/connect-pg-simple": "^7.0.3",
     "@types/express": "^5.0.0",
     "@types/express-session": "^1.18.1",
+    "@types/geoip-lite": "^1.4.4",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.10.7",
     "@types/supertest": "^6.0.2",
@@ -99,7 +101,12 @@
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(t|j)s$": ["ts-jest", { "diagnostics": false }]
+      "^.+\\.(t|j)s$": [
+        "ts-jest",
+        {
+          "diagnostics": false
+        }
+      ]
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"

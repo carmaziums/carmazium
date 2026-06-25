@@ -29,8 +29,10 @@ export async function getAdminAnalytics(): Promise<AnalyticsMonth[]> {
   return result.data;
 }
 
-export async function getAdminUsers(page = 1, limit = 20) {
-  const result = await apiClient<any>(`/admin/users?page=${page}&limit=${limit}`);
+export async function getAdminUsers(page = 1, limit = 20, search?: string) {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (search) params.set('search', search);
+  const result = await apiClient<any>(`/admin/users?${params.toString()}`);
   return result;
 }
 
@@ -106,5 +108,54 @@ export async function reviewKyc(id: string, fields: { field: string; status: 'AP
     body: JSON.stringify({ fields }),
   });
   return result;
+}
+
+// ─── Traffic Analytics ────────────────────────────────────────────────────────
+
+export interface TrafficOverview {
+  pageViews: number;
+  uniqueVisitors: number;
+  pagesPerVisit: number;
+  searches: number;
+}
+
+export interface TrafficByDay {
+  date: string;
+  sessions: number;
+  pageviews: number;
+}
+
+export interface BusySlot {
+  dow?: number;
+  hour?: number;
+  sessions: number;
+}
+
+export interface TopPage { url: string; views: number }
+export interface Referrer { referrer: string; count: number }
+export interface GeoItem { city?: string; country?: string; count: number }
+export interface DeviceItem { device: string; count: number }
+export interface SearchItem { query: string; count: number }
+
+export interface TrafficAnalytics {
+  overview: TrafficOverview;
+  trafficByDay: TrafficByDay[];
+  busyDayOfWeek: { dow: number; sessions: number }[];
+  busyHour: { hour: number; sessions: number }[];
+  topPages: TopPage[];
+  referrers: Referrer[];
+  topCities: { city: string; count: number }[];
+  topCountries: { country: string; count: number }[];
+  devices: DeviceItem[];
+  topSearches: SearchItem[];
+}
+
+export async function getTrafficAnalytics(from?: string, to?: string): Promise<TrafficAnalytics> {
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  const qs = params.toString();
+  const result = await apiClient<{ data: TrafficAnalytics }>(`/analytics/traffic${qs ? `?${qs}` : ''}`);
+  return result.data;
 }
 

@@ -975,7 +975,7 @@ export async function getMyOfferForListing(listingId: string): Promise<LatestOff
 /**
  * Seller: Record a final sale for a listing
  */
-export async function recordSale(listingId: string, data: { soldPrice: number; buyerId?: string; buyerName?: string; buyerEmail?: string }): Promise<Listing> {
+export async function recordSale(listingId: string, data: { soldPrice: number; buyerId?: string; buyerName?: string; buyerEmail?: string; buyerPostcode?: string }): Promise<Listing> {
     const res = await apiClient<{ data: Listing }>(`/listings/${listingId}/sold`, {
         method: 'PATCH',
         body: JSON.stringify(data),

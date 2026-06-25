@@ -428,7 +428,7 @@ export class ListingsController {
         @Body() updateStatusDto: UpdateStatusDto,
         @CurrentUser() user: any,
     ): Promise<StandardResponse<Listing>> {
-        const listing = await this.listingsService.updateStatus(id, user.id, updateStatusDto.status);
+        const listing = await this.listingsService.updateStatus(id, user.id, updateStatusDto.status, updateStatusDto.buyerPostcode);
         return new StandardResponse(listing);
     }
 

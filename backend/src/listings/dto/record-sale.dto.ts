@@ -37,4 +37,13 @@ export class RecordSaleDto {
     @IsOptional()
     @IsString()
     buyerEmail?: string;
+
+    @ApiProperty({
+        description: 'Buyer UK postcode for area analytics',
+        example: 'SW1A 1AA',
+        required: false,
+    })
+    @IsOptional()
+    @IsString()
+    buyerPostcode?: string;
 }

@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Users, Loader2, ArrowLeft, MoreHorizontal, ShieldAlert, BadgeCheck, Ban, LockKeyhole, LockKeyholeOpen, ShieldCheck, X, Landmark, CreditCard, AlertCircle } from "lucide-react"
+import { Users, Loader2, ArrowLeft, MoreHorizontal, ShieldAlert, BadgeCheck, Ban, LockKeyhole, LockKeyholeOpen, ShieldCheck, X, Landmark, CreditCard, AlertCircle, Search } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { getAdminUsers, updateUserRole, banUser, unbanUser, lockUser, unlockUser } from "@/lib/adminApi"
@@ -18,6 +18,8 @@ export default function AdminUsersPage() {
     const [page, setPage] = React.useState(1)
     const [total, setTotal] = React.useState(0)
     const [openMenu, setOpenMenu] = React.useState<string | null>(null)
+    const [search, setSearch] = React.useState("")
+    const [searchInput, setSearchInput] = React.useState("")
     const menuRef = React.useRef<HTMLDivElement>(null)
     const limit = 20
 
@@ -32,9 +34,10 @@ export default function AdminUsersPage() {
         try {
             setLoading(true)
             setError(null)
-            const result = await getAdminUsers(page, limit)
+            const result = await getAdminUsers(page, limit, search || undefined)
             setUsers(result.data || [])
-            setTotal(result.meta?.total || 0)
+            // Backend returns PaginatedResponse: { data, pagination: { total, ... } }
+            setTotal(result.pagination?.total ?? 0)
         } catch (err: any) {
             setError(err.message || "Failed to load system users.")
         } finally {
@@ -44,7 +47,7 @@ export default function AdminUsersPage() {
 
     React.useEffect(() => {
         if (profile?.role === 'ADMIN') fetchUsers()
-    }, [profile, page])
+    }, [profile, page, search])
 
     // Close dropdown on outside click
     React.useEffect(() => {
@@ -120,7 +123,41 @@ export default function AdminUsersPage() {
                                 <Users className="text-blue-400 hidden sm:block" size={28} />
                                 Account Management
                             </h1>
+                            <p className="text-gray-500 text-sm mt-1">{total.toLocaleString()} total users</p>
                         </div>
+
+                        {/* Search */}
+                        <form
+                            onSubmit={(e) => { e.preventDefault(); setPage(1); setSearch(searchInput.trim()) }}
+                            className="flex items-center gap-2 w-full sm:w-auto"
+                        >
+                            <div className="relative flex-1 sm:w-64">
+                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                                <input
+                                    type="text"
+                                    placeholder="Search name or email…"
+                                    value={searchInput}
+                                    onChange={e => setSearchInput(e.target.value)}
+                                    className="w-full bg-slate-800 border border-white/10 text-white text-sm rounded-xl pl-9 pr-3 py-2 placeholder:text-gray-600 focus:outline-none focus:border-blue-500 transition-colors"
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl transition-colors shrink-0"
+                            >
+                                Search
+                            </button>
+                            {search && (
+                                <button
+                                    type="button"
+                                    onClick={() => { setSearchInput(""); setSearch(""); setPage(1) }}
+                                    className="p-2 text-gray-500 hover:text-white transition-colors"
+                                    title="Clear search"
+                                >
+                                    <X size={16} />
+                                </button>
+                            )}
+                        </form>
                     </div>
 
                     {error && (
@@ -288,15 +325,19 @@ export default function AdminUsersPage() {
                             </table>
                         </div>
                         <div className="p-4 border-t border-white/10 bg-slate-800/30 flex items-center justify-between text-xs font-medium text-gray-400">
-                            <span>Showing {(page - 1) * limit + 1} to {Math.min(page * limit, total)} of {total}</span>
+                            <span>
+                                {total === 0 ? "No users found" : `Showing ${(page - 1) * limit + 1}–${Math.min(page * limit, total)} of ${total.toLocaleString()}`}
+                                {search && <span className="ml-2 text-blue-400">· filtered by "{search}"</span>}
+                            </span>
                             <div className="flex items-center gap-2">
                                 <button
-                                    className="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded disabled:opacity-50"
+                                    className="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded disabled:opacity-40 transition-colors"
                                     onClick={() => setPage(p => Math.max(1, p - 1))}
                                     disabled={page === 1}
                                 >Prev</button>
+                                <span className="text-gray-600">pg {page} / {Math.max(1, Math.ceil(total / limit))}</span>
                                 <button
-                                    className="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded disabled:opacity-50"
+                                    className="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded disabled:opacity-40 transition-colors"
                                     onClick={() => setPage(p => p + 1)}
                                     disabled={page * limit >= total}
                                 >Next</button>
