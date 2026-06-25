@@ -146,7 +146,60 @@ export default function DealerOffersPage() {
                             <div className="p-6 border-b border-white/5 bg-black/20">
                                 <h3 className="text-sm font-black uppercase tracking-widest text-gray-300">Offers Registry</h3>
                             </div>
-                            <div className="overflow-x-auto">
+                            {/* ── Mobile cards (< sm) ── */}
+                            <div className="sm:hidden divide-y divide-white/[0.03]">
+                                {offers.map((offer: any) => {
+                                    const isPending = offer.status === 'PENDING'
+                                    const isCapturingPostcode = postcodeCapture?.offerId === offer.id
+                                    const isCountering = counteringOfferId === offer.id
+                                    return (
+                                        <div key={offer.id} className="p-4 space-y-3">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div>
+                                                    <p className="font-black text-white text-sm">{offer.buyer?.firstName} {offer.buyer?.lastName}</p>
+                                                    <p className="text-xs text-gray-500">{offer.buyer?.email}</p>
+                                                    <p className="text-xs text-gray-400 mt-0.5 truncate">{offer.listing?.title}</p>
+                                                </div>
+                                                <div className="text-right shrink-0">
+                                                    <p className="text-lg font-black text-white tabular-nums">£{offer.amount?.toLocaleString()}</p>
+                                                    {offer.counterAmount && <p className="text-xs text-blue-400 font-black">Ctr: £{offer.counterAmount.toLocaleString()}</p>}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className={`inline-flex px-2.5 py-1 rounded-lg text-[9px] font-black tracking-widest uppercase border ${
+                                                    offer.status === "PENDING" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
+                                                    offer.status === "ACCEPTED" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                                                    offer.status === "REJECTED" ? "bg-red-500/10 text-red-400 border-red-500/20" :
+                                                    offer.status === "COUNTERED" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
+                                                    "bg-slate-500/10 text-gray-400 border-white/10"
+                                                }`}>{offer.status}</span>
+                                                <div className="flex items-center gap-2 flex-wrap justify-end">
+                                                    {isPending && !isCountering && (
+                                                        <>
+                                                            <button onClick={() => { setCounteringOfferId(offer.id); setCounterAmount(offer.amount) }} className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-xl">Counter</button>
+                                                            <button onClick={() => handleRespond(offer.id, 'ACCEPTED')} className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl">Accept</button>
+                                                            <button onClick={() => handleRespond(offer.id, 'REJECTED')} className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl">Reject</button>
+                                                        </>
+                                                    )}
+                                                    {offer.status === 'ACCEPTED' && !isCapturingPostcode && (
+                                                        <button onClick={() => setPostcodeCapture({ offerId: offer.id, postcode: '' })} className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 bg-emerald-600 text-white rounded-xl">Mark Sold</button>
+                                                    )}
+                                                    {offer.status === 'ACCEPTED' && isCapturingPostcode && (
+                                                        <div className="flex items-center gap-2 w-full mt-1">
+                                                            <input type="text" placeholder="Postcode (opt.)" maxLength={8} value={postcodeCapture?.postcode ?? ''} onChange={e => setPostcodeCapture(p => p ? { ...p, postcode: e.target.value.toUpperCase() } : null)} className="flex-1 bg-black/40 border border-white/10 text-white rounded-lg px-3 py-1.5 text-xs font-bold focus:outline-none focus:border-emerald-500 uppercase" />
+                                                            <button onClick={confirmMarkSold} disabled={confirmingSale} className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold">Confirm</button>
+                                                            <button onClick={() => setPostcodeCapture(null)} className="px-2 py-1.5 text-gray-500"><XCircle size={16} /></button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+
+                            {/* ── Desktop table (≥ sm) ── */}
+                            <div className="hidden sm:block overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
                                     <thead className="vip-table-header text-[10px] uppercase font-black tracking-widest text-gray-400 border-b border-white/5">
                                         <tr>
@@ -292,7 +345,7 @@ export default function DealerOffersPage() {
                                         })}
                                     </tbody>
                                 </table>
-                            </div>
+                            </div>{/* end hidden sm:block */}
                         </div>
                     )}
                 </main>

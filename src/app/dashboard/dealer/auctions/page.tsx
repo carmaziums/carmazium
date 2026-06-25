@@ -404,7 +404,61 @@ function DealerAuctionsPage() {
 
                     {/* Auctions table */}
                     <div className="dealer-glass-card overflow-hidden">
-                        <div className="overflow-x-auto border-t border-white/5">
+
+                        {/* ── Mobile cards (< sm) ── */}
+                        <div className="sm:hidden divide-y divide-white/[0.03]">
+                            {auctions.map(auction => (
+                                <div key={auction.id} className="p-4 space-y-2">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-16 h-11 bg-black/40 rounded-xl overflow-hidden border border-white/10 shrink-0">
+                                            {auction.listing.images?.[0] ? (
+                                                <img src={auction.listing.images[0]} alt="" className="w-full h-full object-cover opacity-80" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-gray-700"><Gavel size={18} /></div>
+                                            )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-black text-white text-sm truncate">{auction.listing.title}</p>
+                                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{auction.listing.year} · {auction.listing.make}</p>
+                                        </div>
+                                        <span className={`inline-flex px-2.5 py-1 rounded-lg text-[9px] font-black tracking-widest border shrink-0 ${STATUS_STYLES[auction.status] ?? STATUS_STYLES.ENDED}`}>
+                                            {auction.status}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-2 text-sm">
+                                        <div>
+                                            <p className="font-black text-white">£{getCurrentBid(auction).toLocaleString()}</p>
+                                            <p className="text-[10px] text-gray-600 font-bold uppercase">{getBidCount(auction) === 0 ? 'starting bid' : `${getBidCount(auction)} bids`}</p>
+                                        </div>
+                                        <div className="text-right text-xs text-gray-400">
+                                            {auction.status === "ACTIVE" ? (
+                                                <p className="text-primary font-black" key={tick}>{formatCountdown(new Date(auction.endTime))}</p>
+                                            ) : auction.status === "SCHEDULED" ? (
+                                                <p className="text-blue-400">Starts in {formatCountdown(new Date(auction.startTime))}</p>
+                                            ) : (
+                                                <p>{formatDate(auction.endTime)}</p>
+                                            )}
+                                        </div>
+                                        <div>
+                                            {auction.status === "ACTIVE" && (
+                                                <Link href={`/auctions/live/${auction.id}`} className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg">Live</Link>
+                                            )}
+                                            {auction.status === "SCHEDULED" && (
+                                                <button onClick={() => handleCancel(auction.id)} disabled={cancelling === auction.id} className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg disabled:opacity-50">
+                                                    {cancelling === auction.id ? <Loader2 size={12} className="animate-spin" /> : 'Cancel'}
+                                                </button>
+                                            )}
+                                            {(auction.status === "ENDED" || auction.status === "CANCELLED") && (
+                                                <Link href={`/auctions/live/${auction.id}`} className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 bg-white/5 text-gray-400 border border-white/5 rounded-lg">Results</Link>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* ── Desktop table (≥ sm) ── */}
+                        <div className="hidden sm:block overflow-x-auto border-t border-white/5">
                             <table className="w-full text-left border-collapse">
                                 <thead className="vip-table-header">
                                     <tr>
@@ -579,7 +633,7 @@ function DealerAuctionsPage() {
                                     )}
                                 </tbody>
                             </table>
-                        </div>
+                        </div>{/* end hidden sm:block */}
                     </div>
                 </main>
             </div>

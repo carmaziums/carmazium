@@ -167,7 +167,72 @@ export default function AdminUsersPage() {
                     )}
 
                     <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl">
-                        <div className="overflow-x-auto">
+
+                        {/* ── Mobile cards (< sm) ── */}
+                        <div className="sm:hidden divide-y divide-white/5">
+                            {users.map((u) => {
+                                const isBanned = !!u.deletedAt
+                                const isLocked = !isBanned && !!u.lockoutUntil && new Date(u.lockoutUntil) > new Date()
+                                const isSelf = u.id === user?.id
+                                return (
+                                    <div key={u.id} className={`p-4 ${isBanned ? 'bg-red-500/5' : ''}`}>
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs ring-1 ring-white/10 shrink-0 ${isBanned ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                                                {(u.firstName?.[0] || u.email[0]).toUpperCase()}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-bold text-white text-sm truncate">{u.firstName} {u.lastName}</p>
+                                                    <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold border shrink-0 ${isBanned ? 'bg-red-500/10 text-red-400 border-red-500/20' : isLocked ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
+                                                        {isBanned ? 'BAN' : isLocked ? 'LOCK' : 'OK'}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-gray-400 truncate">{u.email}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 mt-3">
+                                            {updating === u.id ? (
+                                                <Loader2 size={14} className="animate-spin text-primary" />
+                                            ) : (
+                                                <select
+                                                    className="flex-1 bg-slate-800 border border-white/10 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary text-white"
+                                                    value={u.role}
+                                                    onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                                                    disabled={isSelf}
+                                                >
+                                                    <option value="BUYER">BUYER</option>
+                                                    <option value="SELLER">SELLER</option>
+                                                    <option value="DEALER">DEALER</option>
+                                                    <option value="CONTRACTOR">CONTRACTOR</option>
+                                                    <option value="FINANCE_PARTNER">FINANCE_PARTNER</option>
+                                                    <option value="INSURANCE_PARTNER">INSURANCE_PARTNER</option>
+                                                    <option value="ADMIN">ADMIN</option>
+                                                </select>
+                                            )}
+                                            {!isSelf && (
+                                                <div className="flex gap-1">
+                                                    {isBanned ? (
+                                                        <button onClick={() => handleUserAction(u.id, 'unban')} className="p-2 bg-emerald-500/10 rounded-lg text-emerald-400 text-xs font-bold">Unban</button>
+                                                    ) : isLocked ? (
+                                                        <button onClick={() => handleUserAction(u.id, 'unlock')} className="p-2 bg-blue-500/10 rounded-lg text-blue-400 text-xs font-bold">Unlock</button>
+                                                    ) : (
+                                                        <>
+                                                            <button onClick={() => handleUserAction(u.id, 'lock')} className="p-2 bg-yellow-500/10 rounded-lg text-yellow-400"><LockKeyhole size={14} /></button>
+                                                            {u.role !== 'ADMIN' && (
+                                                                <button onClick={() => { if (window.confirm(`Ban ${u.firstName || u.email}?`)) handleUserAction(u.id, 'ban') }} className="p-2 bg-red-500/10 rounded-lg text-red-400"><Ban size={14} /></button>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+
+                        {/* ── Desktop table (≥ sm) ── */}
+                        <div className="hidden sm:block overflow-x-auto">
                             <table className="w-full text-left">
                                 <thead className="bg-slate-800/50 text-gray-400 text-[10px] uppercase font-black tracking-widest border-b border-white/10">
                                     <tr>
@@ -323,7 +388,8 @@ export default function AdminUsersPage() {
                                     })}
                                 </tbody>
                             </table>
-                        </div>
+                        </div>{/* end hidden sm:block */}
+
                         <div className="p-4 border-t border-white/10 bg-slate-800/30 flex items-center justify-between text-xs font-medium text-gray-400">
                             <span>
                                 {total === 0 ? "No users found" : `Showing ${(page - 1) * limit + 1}–${Math.min(page * limit, total)} of ${total.toLocaleString()}`}

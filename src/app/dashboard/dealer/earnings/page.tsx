@@ -166,7 +166,47 @@ export default function DealerEarningsPage() {
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto">
+                        {/* ── Mobile cards (< sm) ── */}
+                        <div className="sm:hidden divide-y divide-white/5">
+                            {filteredSales.map((sale) => (
+                                <div key={sale.id} className="flex items-center gap-3 p-4">
+                                    <div className="relative w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-white/10 bg-slate-800">
+                                        {sale.listing.images?.[0] ? (
+                                            <Image src={sale.listing.images[0]} alt="" fill className="object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-gray-600"><Car size={20} /></div>
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-black text-white text-sm truncate uppercase tracking-tight">{sale.listing.title}</p>
+                                        <p className="text-[10px] text-gray-500 font-bold">{sale.listing.vrm || 'PRIVATE'}</p>
+                                        <div className="flex items-center justify-between mt-1.5 gap-2">
+                                            <span className="text-xs text-gray-400 truncate">
+                                                {sale.buyer ? `${sale.buyer.firstName} ${sale.buyer.lastName || ''}`.trim() : (sale as any).buyerName || 'Direct'}
+                                            </span>
+                                            <span className="text-[10px] text-gray-500 shrink-0">{new Date(sale.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>
+                                        </div>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                        <p className="font-black text-white text-base leading-none">{formatPrice(sale.soldPrice)}</p>
+                                        <div className="mt-1">
+                                            {Number(sale.soldPrice) >= Number(sale.listedPrice) ? (
+                                                <span className="text-[10px] text-emerald-400 font-black flex items-center gap-0.5 justify-end">
+                                                    <ArrowUpRight size={9} /> +{formatPrice(Number(sale.soldPrice) - Number(sale.listedPrice))}
+                                                </span>
+                                            ) : (
+                                                <span className="text-[10px] text-red-400 font-black flex items-center gap-0.5 justify-end">
+                                                    <ArrowDownRight size={9} /> -{formatPrice(Number(sale.listedPrice) - Number(sale.soldPrice))}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* ── Desktop table (≥ sm) ── */}
+                        <div className="hidden sm:block overflow-x-auto">
                             <table className="w-full text-left">
                                 <thead className="bg-slate-800/50 text-gray-400 text-[11px] uppercase font-black tracking-[0.2em] border-b border-white/5">
                                     <tr>
@@ -276,7 +316,7 @@ export default function DealerEarningsPage() {
                                     )}
                                 </tbody>
                             </table>
-                        </div>
+                        </div>{/* end hidden sm:block */}
                     </div>}
                 </main>
             </div>

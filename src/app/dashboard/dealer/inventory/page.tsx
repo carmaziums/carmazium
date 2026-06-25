@@ -291,7 +291,64 @@ export default function DealerInventoryPage() {
 
                     {/* Table */}
                     <div className="dealer-glass-card overflow-hidden">
-                        <div className="overflow-x-auto border-t border-white/5">
+
+                        {/* ── Mobile cards (< sm) ── */}
+                        <div className="sm:hidden divide-y divide-white/[0.03]">
+                            {loading ? (
+                                <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+                            ) : !filteredListings.length ? (
+                                <div className="flex flex-col items-center justify-center py-12 gap-2">
+                                    <Car className="h-10 w-10 text-gray-700" />
+                                    <p className="text-gray-500 font-bold text-sm">No vehicles found</p>
+                                </div>
+                            ) : filteredListings.map((listing: any) => {
+                                const comp = listing.status === 'DRAFT' ? getListingCompleteness(listing) : null
+                                return (
+                                    <div key={listing.id} className="flex items-center gap-3 p-4">
+                                        {/* Thumbnail */}
+                                        <div className="w-16 h-12 bg-black/40 rounded-xl overflow-hidden border border-white/10 shrink-0 relative">
+                                            {listing.images?.[0] ? (
+                                                <img src={listing.images[0]} alt="" className={`w-full h-full object-cover ${listing.status === 'SOLD' ? 'opacity-40' : 'opacity-80'}`} />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-gray-700"><Car size={18} /></div>
+                                            )}
+                                            {listing.status === 'SOLD' && (
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                    <span className="bg-red-600/90 text-white text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rotate-[-20deg]">SOLD</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Info */}
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-black text-white text-sm truncate">{listing.title}</p>
+                                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1.5 py-0.5 bg-white/5 rounded border border-white/5">{listing.vrm || 'PRIVATE'}</span>
+                                                <span className={`inline-flex px-2 py-0.5 rounded text-[9px] font-black tracking-widest border ${STATUS_COLORS[listing.status] || STATUS_COLORS.DRAFT}`}>{listing.status}</span>
+                                                {comp && !comp.isComplete && <span className="text-[9px] text-amber-400 font-bold">{comp.complete}/{comp.total} fields</span>}
+                                            </div>
+                                            <p className="text-sm font-black text-white mt-1">£{listing.price?.toLocaleString()}</p>
+                                        </div>
+
+                                        {/* Quick actions */}
+                                        <div className="flex flex-col gap-1.5 shrink-0">
+                                            {listing.status === 'DRAFT' && (
+                                                <button onClick={() => handlePublish(listing)} disabled={publishing === listing.id} className="p-2.5 bg-emerald-500/10 rounded-lg text-emerald-400 hover:bg-emerald-500/20 transition-colors disabled:opacity-50">
+                                                    {publishing === listing.id ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
+                                                </button>
+                                            )}
+                                            {listing.status !== 'SOLD' && (
+                                                <button onClick={() => openSoldModal(listing)} className="p-2.5 bg-white/5 rounded-lg text-gray-400 hover:bg-emerald-500/10 hover:text-emerald-400 transition-colors"><CheckCircle2 size={15} /></button>
+                                            )}
+                                            <Link href={`/dashboard/dealer/add-listing?id=${listing.id}`} className="p-2.5 bg-white/5 rounded-lg text-gray-400 hover:bg-white/10 transition-colors"><Pencil size={15} /></Link>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+
+                        {/* ── Desktop table (≥ sm) ── */}
+                        <div className="hidden sm:block overflow-x-auto border-t border-white/5">
                             <table className="w-full text-left border-collapse">
                                 <thead className="vip-table-header">
                                     <tr>
@@ -531,7 +588,7 @@ export default function DealerInventoryPage() {
                                     )}
                                 </tbody>
                             </table>
-                        </div>
+                        </div>{/* end hidden sm:block */}
                     </div>
                 </main>
             </div>

@@ -179,7 +179,47 @@ export default function DealerMyOffersPage() {
                                 )}
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
+                            <>
+                            {/* ── Mobile cards (< sm) ── */}
+                            <div className="sm:hidden divide-y divide-white/[0.03]">
+                                {filtered.map(offer => {
+                                    const isActioning = !!actionLoading[offer.id]
+                                    const style = STATUS_STYLES[offer.status] ?? STATUS_STYLES.PENDING
+                                    const image = offer.listing?.images?.[0]
+                                    const slug = offer.listing?.slug || offer.listingId
+                                    return (
+                                        <div key={offer.id} className="p-4 space-y-2">
+                                            <div className="flex items-center gap-3">
+                                                <div className="relative w-14 h-10 rounded-lg overflow-hidden border border-white/10 shrink-0 bg-slate-800">
+                                                    {image ? <Image src={image} alt={offer.listing?.title || ''} fill className="object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-600"><Car size={16} /></div>}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <Link href={`/vehicle/${slug}`} className="font-black text-white text-sm truncate block hover:text-primary transition-colors">{offer.listing?.title || 'Listing'}</Link>
+                                                    <p className="text-[10px] text-gray-500 font-bold uppercase truncate">{offer.listing?.year} {offer.listing?.make} {offer.listing?.model}</p>
+                                                </div>
+                                                <span className={`inline-flex px-2.5 py-1 rounded-lg text-[9px] font-black tracking-widest uppercase border shrink-0 ${style.bg} ${style.text} ${style.border}`}>{style.label}</span>
+                                            </div>
+                                            <div className="flex items-center justify-between gap-2">
+                                                <div>
+                                                    <p className="text-base font-black text-white tabular-nums">{formatPrice(offer.amount)}</p>
+                                                    {offer.counterAmount && <p className="text-xs font-black text-blue-400">Counter: {formatPrice(offer.counterAmount)}</p>}
+                                                    <p className="text-[10px] text-gray-500">{new Date(offer.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
+                                                </div>
+                                                <div className="flex items-center gap-2 flex-wrap justify-end">
+                                                    {offer.status === 'PENDING' && <button onClick={() => handleWithdraw(offer.id)} disabled={isActioning} className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl disabled:opacity-50">{isActioning ? <Loader2 size={12} className="animate-spin" /> : 'Withdraw'}</button>}
+                                                    {offer.status === 'COUNTERED' && <>
+                                                        <button onClick={() => handleCounterResponse(offer.id, 'ACCEPTED')} disabled={isActioning} className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl">{isActioning ? <Loader2 size={12} className="animate-spin" /> : 'Accept'}</button>
+                                                        <button onClick={() => handleCounterResponse(offer.id, 'REJECTED')} disabled={isActioning} className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl">Reject</button>
+                                                    </>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+
+                            {/* ── Desktop table (≥ sm) ── */}
+                            <div className="hidden sm:block overflow-x-auto">
                                 <table className="w-full text-left">
                                     <thead className="vip-table-header text-[10px] uppercase font-black tracking-widest text-gray-400 border-b border-white/5">
                                         <tr>
@@ -305,7 +345,8 @@ export default function DealerMyOffersPage() {
                                         })}
                                     </tbody>
                                 </table>
-                            </div>
+                            </div>{/* end hidden sm:block */}
+                            </>
                         )}
                     </div>
                 </main>

@@ -80,7 +80,38 @@ export default function AdminTransactionsPage() {
                     {error && <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200"><strong>Error:</strong> {error}</div>}
 
                     <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl">
-                        <div className="overflow-x-auto">
+
+                        {/* ── Mobile cards (< sm) ── */}
+                        <div className="sm:hidden divide-y divide-white/5">
+                            {transactions.map((t) => (
+                                <div key={t.id} className="p-4">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm font-bold text-white truncate">{t.user?.firstName} {t.user?.lastName}</p>
+                                            <p className="text-xs text-gray-400 truncate">{t.user?.email}</p>
+                                        </div>
+                                        <span className={`text-sm font-black shrink-0 ${t.type === 'REFUND' ? 'text-red-400' : 'text-white'}`}>
+                                            {t.type === 'REFUND' ? '-' : ''}{formatPrice(Number(t.amount))}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                        <span className="inline-flex px-2 py-0.5 rounded border border-white/10 bg-white/5 text-[10px] font-bold text-gray-300">
+                                            {TYPE_LABELS[t.type] || t.type}
+                                        </span>
+                                        <span className={`inline-flex px-2 py-0.5 rounded border text-[10px] font-bold ${STATUS_STYLES[t.status] || STATUS_STYLES.PENDING}`}>
+                                            {t.status}
+                                        </span>
+                                        <span className="text-[10px] text-gray-600">{new Date(t.createdAt).toLocaleDateString()}</span>
+                                    </div>
+                                    {t.listing && (
+                                        <p className="text-xs text-gray-500 mt-1 truncate">{t.listing.title}</p>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* ── Desktop table (≥ sm) ── */}
+                        <div className="hidden sm:block overflow-x-auto">
                             <table className="w-full text-left">
                                 <thead className="bg-slate-800/50 text-gray-400 text-[10px] uppercase font-black tracking-widest border-b border-white/10">
                                     <tr>
@@ -129,7 +160,8 @@ export default function AdminTransactionsPage() {
                                     ))}
                                 </tbody>
                             </table>
-                        </div>
+                        </div>{/* end hidden sm:block */}
+
                         <div className="p-4 border-t border-white/10 bg-slate-800/30 flex items-center justify-between text-xs font-medium text-gray-400">
                             <span>Showing {(page - 1) * limit + 1}–{Math.min(page * limit, total)} of {total}</span>
                             <div className="flex gap-2">

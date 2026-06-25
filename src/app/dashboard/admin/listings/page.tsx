@@ -109,7 +109,45 @@ export default function AdminListingsPage() {
                     )}
 
                     <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl">
-                        <div className="overflow-x-auto">
+
+                        {/* ── Mobile cards (< sm) ── */}
+                        <div className="sm:hidden divide-y divide-white/5">
+                            {listings.map((l) => {
+                                const isSelf = false
+                                return (
+                                    <div key={l.id} className={`flex items-center gap-3 p-4 ${l.deletedAt ? 'bg-red-500/5' : ''}`}>
+                                        {l.images?.[0] ? (
+                                            <Image src={l.images[0]} alt="" width={48} height={48} className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                                        ) : (
+                                            <div className="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+                                                <Car className="text-gray-400" size={18} />
+                                            </div>
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <p className="font-bold text-white text-sm truncate">{l.title}</p>
+                                                <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold shrink-0 border ${l.deletedAt ? 'bg-red-500/10 text-red-400 border-red-500/20' : l.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : l.status === 'SOLD' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-gray-500/10 text-gray-400 border-gray-500/20'}`}>
+                                                    {l.deletedAt ? 'DELETED' : l.status}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-between mt-1">
+                                                <p className="text-xs text-gray-400 truncate">{l.seller?.firstName} {l.seller?.lastName} · {l.vrm || 'No VRM'}</p>
+                                                <p className="text-sm font-bold text-white ml-2 shrink-0">{formatPrice(l.price)}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col gap-1 shrink-0 ml-1">
+                                            <Link href={`/buy-cars/${l.slug}`} target="_blank" className="p-2.5 bg-blue-500/10 rounded-lg text-blue-400 hover:bg-blue-500/20 transition-colors"><Eye size={16} /></Link>
+                                            <button onClick={() => handleDelete(l.id)} disabled={deleting === l.id || !!l.deletedAt} className="p-2.5 bg-red-500/10 rounded-lg text-red-400 disabled:opacity-30 hover:bg-red-500/20 transition-colors">
+                                                {deleting === l.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+
+                        {/* ── Desktop table (≥ sm) ── */}
+                        <div className="hidden sm:block overflow-x-auto">
                             <table className="w-full text-left">
                                 <thead className="bg-slate-800/50 text-gray-400 text-[10px] uppercase font-black tracking-widest border-b border-white/10">
                                     <tr>
@@ -179,7 +217,8 @@ export default function AdminListingsPage() {
                                     ))}
                                 </tbody>
                             </table>
-                        </div>
+                        </div>{/* end hidden sm:block */}
+
                         {/* Pagination footer */}
                         <div className="p-4 border-t border-white/10 bg-slate-800/30 flex items-center justify-between text-xs font-medium text-gray-400">
                             <span>Showing {(page - 1) * limit + 1 + (listings.length === 0 ? -1 : 0)} to {Math.min(page * limit, total)} of {total}</span>
