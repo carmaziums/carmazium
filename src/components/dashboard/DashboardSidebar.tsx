@@ -171,7 +171,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
     return (
         <>
             {/* Mobile Bottom Tab Navigation */}
-            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-lg border-t border-white/10 safe-area-pb">
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-lg border-t border-white/10 pb-[env(safe-area-inset-bottom)]">
                 <div className="flex justify-around items-center py-2 px-1">
                     {mobileLinks.map((link) => {
                         const linkPath = link.href.split('?')[0]
