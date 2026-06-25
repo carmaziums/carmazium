@@ -155,7 +155,7 @@ export async function getTrafficAnalytics(from?: string, to?: string): Promise<T
   if (from) params.set('from', from);
   if (to) params.set('to', to);
   const qs = params.toString();
-  const result = await apiClient<{ data: TrafficAnalytics }>(`/analytics/traffic${qs ? `?${qs}` : ''}`);
-  return result.data;
+  // /analytics/traffic returns the object directly (no StandardResponse wrapper)
+  return apiClient<TrafficAnalytics>(`/analytics/traffic${qs ? `?${qs}` : ''}`);
 }
 
