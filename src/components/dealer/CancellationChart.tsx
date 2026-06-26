@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 
@@ -38,7 +38,7 @@ export function CancellationChart({
         <div className="dealer-glass-card p-6">
             <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">{title}</h3>
-                <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest">
+                <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest">
                     <span className="flex items-center gap-1.5">
                         <span className="w-2.5 h-2.5 rounded-sm bg-red-500/60" /> Cancelled
                     </span>
@@ -69,7 +69,7 @@ export function CancellationChart({
                                     className="bg-emerald-500/25 border-r border-white/5 transition-all duration-700 ease-out flex items-center justify-end pr-1.5"
                                     style={{ width: `${completedWidth}%` }}
                                 >
-                                    <span className="text-[9px] font-bold text-emerald-400/80 tabular-nums">
+                                    <span className="text-xs font-bold text-emerald-400/80 tabular-nums">
                                         {item.total - item.cancelled}
                                     </span>
                                 </div>
@@ -78,7 +78,7 @@ export function CancellationChart({
                                     style={{ width: `${cancelledWidth}%` }}
                                 >
                                     {cancelledWidth > 5 && (
-                                        <span className="text-[9px] font-bold text-red-400/80 tabular-nums">
+                                        <span className="text-xs font-bold text-red-400/80 tabular-nums">
                                             {item.cancelled}
                                         </span>
                                     )}

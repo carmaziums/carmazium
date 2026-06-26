@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import { X, DollarSign, User, Mail, Loader2, CheckCircle2 } from "lucide-react"
@@ -83,7 +83,7 @@ export function RecordSaleModal({ listing, offer, onClose, onSuccess }: RecordSa
 
                 <form onSubmit={handleSubmit} className="space-y-5">
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                             <DollarSign size={12} /> Final Sold Price
                         </label>
                         <div className="relative">
@@ -96,13 +96,13 @@ export function RecordSaleModal({ listing, offer, onClose, onSuccess }: RecordSa
                                 required
                             />
                         </div>
-                        <p className="text-[10px] text-gray-500 italic">
+                        <p className="text-xs text-gray-500 italic">
                             {offer ? `Agreed offer: ${formatPrice(agreedPrice)}` : `Asking price: ${formatPrice(listing.price)}`}
                         </p>
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                             <User size={12} /> Buyer Name <span className="text-gray-600 normal-case font-medium">(optional)</span>
                         </label>
                         <Input
@@ -114,7 +114,7 @@ export function RecordSaleModal({ listing, offer, onClose, onSuccess }: RecordSa
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                             <Mail size={12} /> Buyer Email <span className="text-gray-600 normal-case font-medium">(optional)</span>
                         </label>
                         <Input

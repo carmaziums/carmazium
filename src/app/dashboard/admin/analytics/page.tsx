@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import Link from "next/link"
@@ -39,7 +39,7 @@ function BarChart({ data, valueKey, color, label }: {
     const max = Math.max(...data.map(d => Number(d[valueKey])), 1)
     return (
         <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-3">{label}</p>
+            <p className="text-xs font-black uppercase tracking-widest text-gray-500 mb-3">{label}</p>
             <div className="flex items-end gap-2 h-32">
                 {data.map((d) => {
                     const val = Number(d[valueKey])
@@ -49,7 +49,7 @@ function BarChart({ data, valueKey, color, label }: {
                             <div className="relative w-full flex items-end justify-center" style={{ height: "100px" }}>
                                 <div className={`w-full rounded-t transition-all ${color}`} style={{ height: `${Math.max(pct, 2)}%` }} title={String(val)} />
                             </div>
-                            <span className="text-[9px] text-gray-500 group-hover:text-gray-300 transition-colors">{d.month}</span>
+                            <span className="text-xs text-gray-500 group-hover:text-gray-300 transition-colors">{d.month}</span>
                         </div>
                     )
                 })}
@@ -73,11 +73,11 @@ function SimpleBarChart({ data, maxVal, labelKey, valueKey, color, unit = "" }: 
                 const pct = maxVal > 0 ? (val / maxVal) * 100 : 0
                 return (
                     <div key={i} className="flex items-center gap-3">
-                        <span className="text-[10px] text-gray-400 font-bold w-16 shrink-0 truncate text-right">{String(row[labelKey] ?? "")}</span>
+                        <span className="text-xs text-gray-400 font-bold w-16 shrink-0 truncate text-right">{String(row[labelKey] ?? "")}</span>
                         <div className="flex-1 h-2 bg-white/[0.04] rounded-full overflow-hidden">
                             <div className={`h-full ${color} rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
                         </div>
-                        <span className="text-[10px] font-black text-white tabular-nums w-12 text-right shrink-0">{val.toLocaleString()}{unit}</span>
+                        <span className="text-xs font-black text-white tabular-nums w-12 text-right shrink-0">{val.toLocaleString()}{unit}</span>
                     </div>
                 )
             })}
@@ -92,7 +92,7 @@ function StatCard({ label, value, icon: Icon, color }: StatCardProps) {
             <div className={`inline-flex p-2 ${color} rounded-lg mb-3`}>
                 <Icon size={16} className="text-white" />
             </div>
-            <p className="text-gray-400 text-[10px] uppercase tracking-widest font-bold">{label}</p>
+            <p className="text-gray-400 text-xs uppercase tracking-widest font-bold">{label}</p>
             <h3 className="text-3xl font-black font-heading text-white mt-1">{typeof value === "number" ? value.toLocaleString() : value}</h3>
         </div>
     )
@@ -219,7 +219,7 @@ export default function AdminAnalyticsPage() {
 
                     {/* ── 6-month summary ── */}
                     <div>
-                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 mb-3 px-1">Platform Overview — Last 6 Months</p>
+                        <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-600 mb-3 px-1">Platform Overview — Last 6 Months</p>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             {([
                                 { label: "Revenue (6m)", value: formatPrice(totalRevenue6m), icon: DollarSign, color: "bg-yellow-500/20" },
@@ -268,7 +268,7 @@ export default function AdminAnalyticsPage() {
                                     { label: "Total Bids", value: stats.totalBids.toLocaleString() },
                                 ].map(item => (
                                     <div key={item.label} className="p-3 bg-white/5 rounded-xl">
-                                        <p className="text-gray-500 text-[10px] uppercase tracking-widest font-bold">{item.label}</p>
+                                        <p className="text-gray-500 text-xs uppercase tracking-widest font-bold">{item.label}</p>
                                         <p className="text-2xl font-black font-heading text-white mt-1">{item.value}</p>
                                     </div>
                                 ))}
@@ -282,8 +282,8 @@ export default function AdminAnalyticsPage() {
                     <div>
                         <div className="flex items-center justify-between mb-4">
                             <div>
-                                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 mb-1 px-1">Website Traffic & Visitors</p>
-                                <p className="text-[10px] text-gray-700 px-1">Derived from on-site event tracking. Geo data enriches over time.</p>
+                                <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-600 mb-1 px-1">Website Traffic & Visitors</p>
+                                <p className="text-xs text-gray-700 px-1">Derived from on-site event tracking. Geo data enriches over time.</p>
                             </div>
                         </div>
 
@@ -322,7 +322,7 @@ export default function AdminAnalyticsPage() {
                                     <div className="glass-card p-6 border border-white/5 bg-white/5 rounded-2xl">
                                         <div className="flex items-center gap-2 mb-4">
                                             <Calendar size={14} className="text-gray-400" />
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Traffic by Day</p>
+                                            <p className="text-xs font-black uppercase tracking-widest text-gray-400">Traffic by Day</p>
                                         </div>
                                         <div className="flex items-end gap-1 h-28">
                                             {traffic.trafficByDay.map(d => {
@@ -343,7 +343,7 @@ export default function AdminAnalyticsPage() {
                                                 )
                                             })}
                                         </div>
-                                        <p className="text-[9px] text-gray-600 mt-2 font-medium">{traffic.trafficByDay.length} days · bars = unique sessions</p>
+                                        <p className="text-xs text-gray-600 mt-2 font-medium">{traffic.trafficByDay.length} days · bars = unique sessions</p>
                                     </div>
                                 )}
 
@@ -352,7 +352,7 @@ export default function AdminAnalyticsPage() {
                                     <div className="glass-card p-6 border border-white/5 bg-white/5 rounded-2xl">
                                         <div className="flex items-center gap-2 mb-4">
                                             <BarChart3 size={14} className="text-amber-400" />
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Busiest Days of Week</p>
+                                            <p className="text-xs font-black uppercase tracking-widest text-gray-400">Busiest Days of Week</p>
                                         </div>
                                         <SimpleBarChart
                                             data={dowData as Record<string, unknown>[]}
@@ -366,7 +366,7 @@ export default function AdminAnalyticsPage() {
                                     <div className="glass-card p-6 border border-white/5 bg-white/5 rounded-2xl">
                                         <div className="flex items-center gap-2 mb-4">
                                             <Clock size={14} className="text-cyan-400" />
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Busiest Hours of Day</p>
+                                            <p className="text-xs font-black uppercase tracking-widest text-gray-400">Busiest Hours of Day</p>
                                         </div>
                                         <SimpleBarChart
                                             data={hourData as Record<string, unknown>[]}
@@ -384,7 +384,7 @@ export default function AdminAnalyticsPage() {
                                     <div className="glass-card border border-white/5 bg-white/5 rounded-2xl overflow-hidden">
                                         <div className="p-4 border-b border-white/5 flex items-center gap-2">
                                             <Eye size={13} className="text-blue-400" />
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Top Pages</p>
+                                            <p className="text-xs font-black uppercase tracking-widest text-gray-400">Top Pages</p>
                                         </div>
                                         {traffic.topPages.length === 0 ? (
                                             <p className="text-xs text-gray-600 font-bold p-4 text-center">No page view data yet</p>
@@ -392,7 +392,7 @@ export default function AdminAnalyticsPage() {
                                             <div className="divide-y divide-white/[0.03]">
                                                 {traffic.topPages.slice(0, 10).map((p, i) => (
                                                     <div key={p.url} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.02] transition-colors">
-                                                        <span className="text-[9px] font-black text-gray-600 w-4 shrink-0">{i + 1}</span>
+                                                        <span className="text-xs font-black text-gray-600 w-4 shrink-0">{i + 1}</span>
                                                         <span className="flex-1 text-xs text-gray-300 truncate font-medium">{p.url}</span>
                                                         <span className="text-xs font-black text-white tabular-nums">{p.views.toLocaleString()}</span>
                                                     </div>
@@ -404,7 +404,7 @@ export default function AdminAnalyticsPage() {
                                     <div className="glass-card border border-white/5 bg-white/5 rounded-2xl overflow-hidden">
                                         <div className="p-4 border-b border-white/5 flex items-center gap-2">
                                             <Search size={13} className="text-amber-400" />
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">What Visitors Search For</p>
+                                            <p className="text-xs font-black uppercase tracking-widest text-gray-400">What Visitors Search For</p>
                                         </div>
                                         {traffic.topSearches.length === 0 ? (
                                             <p className="text-xs text-gray-600 font-bold p-4 text-center">No search data yet</p>
@@ -412,7 +412,7 @@ export default function AdminAnalyticsPage() {
                                             <div className="divide-y divide-white/[0.03]">
                                                 {traffic.topSearches.slice(0, 10).map((s, i) => (
                                                     <div key={s.query} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.02] transition-colors">
-                                                        <span className="text-[9px] font-black text-gray-600 w-4 shrink-0">{i + 1}</span>
+                                                        <span className="text-xs font-black text-gray-600 w-4 shrink-0">{i + 1}</span>
                                                         <span className="flex-1 text-xs text-gray-300 truncate font-medium">"{s.query}"</span>
                                                         <span className="text-xs font-black text-white tabular-nums">{s.count.toLocaleString()}</span>
                                                     </div>
@@ -427,7 +427,7 @@ export default function AdminAnalyticsPage() {
                                     <div className="glass-card border border-white/5 bg-white/5 rounded-2xl overflow-hidden">
                                         <div className="p-4 border-b border-white/5 flex items-center gap-2">
                                             <Globe size={13} className="text-emerald-400" />
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Where Visitors Come From</p>
+                                            <p className="text-xs font-black uppercase tracking-widest text-gray-400">Where Visitors Come From</p>
                                         </div>
                                         {traffic.referrers.length === 0 ? (
                                             <p className="text-xs text-gray-600 font-bold p-4 text-center">No referrer data yet</p>
@@ -435,7 +435,7 @@ export default function AdminAnalyticsPage() {
                                             <div className="divide-y divide-white/[0.03]">
                                                 {traffic.referrers.slice(0, 10).map((r, i) => (
                                                     <div key={r.referrer} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.02] transition-colors">
-                                                        <span className="text-[9px] font-black text-gray-600 w-4 shrink-0">{i + 1}</span>
+                                                        <span className="text-xs font-black text-gray-600 w-4 shrink-0">{i + 1}</span>
                                                         <span className="flex-1 text-xs text-gray-300 truncate font-medium">{r.referrer}</span>
                                                         <span className="text-xs font-black text-white tabular-nums">{r.count.toLocaleString()}</span>
                                                     </div>
@@ -447,7 +447,7 @@ export default function AdminAnalyticsPage() {
                                     <div className="glass-card border border-white/5 bg-white/5 rounded-2xl overflow-hidden">
                                         <div className="p-4 border-b border-white/5 flex items-center gap-2">
                                             <Monitor size={13} className="text-purple-400" />
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Devices</p>
+                                            <p className="text-xs font-black uppercase tracking-widest text-gray-400">Devices</p>
                                         </div>
                                         {traffic.devices.length === 0 ? (
                                             <p className="text-xs text-gray-600 font-bold p-4 text-center">No device data yet</p>
@@ -464,7 +464,7 @@ export default function AdminAnalyticsPage() {
                                                                 <div className="w-16 h-1.5 bg-white/[0.04] rounded-full overflow-hidden">
                                                                     <div className="h-full bg-primary/60 rounded-full" style={{ width: `${pct}%` }} />
                                                                 </div>
-                                                                <span className="text-[10px] text-gray-500 font-bold w-8 text-right">{pct}%</span>
+                                                                <span className="text-xs text-gray-500 font-bold w-8 text-right">{pct}%</span>
                                                             </div>
                                                             <span className="text-xs font-black text-white tabular-nums w-12 text-right">{d.count.toLocaleString()}</span>
                                                         </div>
@@ -480,7 +480,7 @@ export default function AdminAnalyticsPage() {
                                     <div className="glass-card border border-white/5 bg-white/5 rounded-2xl overflow-hidden">
                                         <div className="p-4 border-b border-white/5 flex items-center gap-2">
                                             <Globe size={13} className="text-rose-400" />
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Top Cities</p>
+                                            <p className="text-xs font-black uppercase tracking-widest text-gray-400">Top Cities</p>
                                         </div>
                                         {traffic.topCities.length === 0 ? (
                                             <p className="text-xs text-gray-600 font-bold p-4 text-center">No city data yet — geo enriches over time</p>
@@ -488,7 +488,7 @@ export default function AdminAnalyticsPage() {
                                             <div className="divide-y divide-white/[0.03]">
                                                 {traffic.topCities.slice(0, 10).map((c, i) => (
                                                     <div key={c.city} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.02] transition-colors">
-                                                        <span className="text-[9px] font-black text-gray-600 w-4 shrink-0">{i + 1}</span>
+                                                        <span className="text-xs font-black text-gray-600 w-4 shrink-0">{i + 1}</span>
                                                         <span className="flex-1 text-xs text-gray-300 truncate font-medium">{c.city}</span>
                                                         <span className="text-xs font-black text-white tabular-nums">{c.count.toLocaleString()}</span>
                                                     </div>
@@ -500,7 +500,7 @@ export default function AdminAnalyticsPage() {
                                     <div className="glass-card border border-white/5 bg-white/5 rounded-2xl overflow-hidden">
                                         <div className="p-4 border-b border-white/5 flex items-center gap-2">
                                             <Globe size={13} className="text-indigo-400" />
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Top Countries</p>
+                                            <p className="text-xs font-black uppercase tracking-widest text-gray-400">Top Countries</p>
                                         </div>
                                         {traffic.topCountries.length === 0 ? (
                                             <p className="text-xs text-gray-600 font-bold p-4 text-center">No country data yet — geo enriches over time</p>
@@ -508,7 +508,7 @@ export default function AdminAnalyticsPage() {
                                             <div className="divide-y divide-white/[0.03]">
                                                 {traffic.topCountries.slice(0, 10).map((c, i) => (
                                                     <div key={c.country} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.02] transition-colors">
-                                                        <span className="text-[9px] font-black text-gray-600 w-4 shrink-0">{i + 1}</span>
+                                                        <span className="text-xs font-black text-gray-600 w-4 shrink-0">{i + 1}</span>
                                                         <span className="flex-1 text-xs text-gray-300 truncate font-medium">{c.country}</span>
                                                         <span className="text-xs font-black text-white tabular-nums">{c.count.toLocaleString()}</span>
                                                     </div>

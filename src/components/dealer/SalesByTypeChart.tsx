@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import { Gavel, Tag } from "lucide-react"
@@ -26,7 +26,7 @@ export function SalesByTypeChart({ data, title = "Sales Channel Mix" }: Props) {
 
     return (
         <div className="dealer-glass-card p-5">
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">{title}</h3>
+            <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-4">{title}</h3>
 
             {totalUnits === 0 ? (
                 <p className="text-xs text-gray-600 font-bold text-center py-6">No sales yet</p>
@@ -55,10 +55,10 @@ export function SalesByTypeChart({ data, title = "Sales Channel Mix" }: Props) {
                         <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-3">
                             <div className="flex items-center gap-1.5 mb-2">
                                 <Gavel size={12} className="text-purple-400" />
-                                <span className="text-[9px] font-black uppercase tracking-widest text-purple-400">Auction</span>
+                                <span className="text-xs font-black uppercase tracking-widest text-purple-400">Auction</span>
                             </div>
                             <p className="text-2xl font-black text-white leading-none">{data.AUCTION?.units ?? 0}</p>
-                            <p className="text-[9px] text-gray-500 font-medium mt-0.5">units · {auctionPct}%</p>
+                            <p className="text-xs text-gray-500 font-medium mt-0.5">units · {auctionPct}%</p>
                             <p className="text-xs font-bold text-purple-300 mt-1">{formatPrice(data.AUCTION?.revenue ?? 0)}</p>
                         </div>
 
@@ -66,10 +66,10 @@ export function SalesByTypeChart({ data, title = "Sales Channel Mix" }: Props) {
                         <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3">
                             <div className="flex items-center gap-1.5 mb-2">
                                 <Tag size={12} className="text-blue-400" />
-                                <span className="text-[9px] font-black uppercase tracking-widest text-blue-400">Classified</span>
+                                <span className="text-xs font-black uppercase tracking-widest text-blue-400">Classified</span>
                             </div>
                             <p className="text-2xl font-black text-white leading-none">{data.CLASSIFIED?.units ?? 0}</p>
-                            <p className="text-[9px] text-gray-500 font-medium mt-0.5">units · {classifiedPct}%</p>
+                            <p className="text-xs text-gray-500 font-medium mt-0.5">units · {classifiedPct}%</p>
                             <p className="text-xs font-bold text-blue-300 mt-1">{formatPrice(data.CLASSIFIED?.revenue ?? 0)}</p>
                         </div>
                     </div>

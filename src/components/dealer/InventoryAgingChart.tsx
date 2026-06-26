@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import { AlertTriangle } from "lucide-react"
@@ -77,7 +77,7 @@ export function InventoryAgingChart({
                 {data.staleCount > 0 && (
                     <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20">
                         <AlertTriangle size={12} />
-                        <span className="text-[10px] font-bold">{data.staleCount} stale</span>
+                        <span className="text-xs font-bold">{data.staleCount} stale</span>
                     </div>
                 )}
             </div>
@@ -85,8 +85,8 @@ export function InventoryAgingChart({
             {/* Status Distribution Bar */}
             <div className="mb-6">
                 <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Stock Distribution</span>
-                    <span className="text-[10px] font-bold text-gray-400">{totalStock} total</span>
+                    <span className="text-xs font-bold uppercase tracking-widest text-gray-500">Stock Distribution</span>
+                    <span className="text-xs font-bold text-gray-400">{totalStock} total</span>
                 </div>
                 <div className="flex h-5 gap-0.5 rounded-lg overflow-hidden">
                     {STATUS_CONFIG.map((status) => {
@@ -116,8 +116,8 @@ export function InventoryAgingChart({
                         return (
                             <div key={status.key} className="flex items-center gap-1.5">
                                 <span className={`w-2 h-2 rounded-full`} style={{ backgroundColor: status.dotColor }} />
-                                <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">{status.label}</span>
-                                <span className={`text-[9px] font-black ${status.textColor}`}>{count}</span>
+                                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{status.label}</span>
+                                <span className={`text-xs font-black ${status.textColor}`}>{count}</span>
                             </div>
                         )
                     })}
@@ -127,8 +127,8 @@ export function InventoryAgingChart({
             {/* Aging Heatmap Bars */}
             <div className="pt-5 border-t border-white/5">
                 <div className="flex items-center justify-between mb-3">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Active Listing Age</span>
-                    <span className="text-[10px] font-bold text-gray-500">Avg {data.avgAge}d</span>
+                    <span className="text-xs font-bold uppercase tracking-widest text-gray-500">Active Listing Age</span>
+                    <span className="text-xs font-bold text-gray-500">Avg {data.avgAge}d</span>
                 </div>
                 <div className="space-y-2.5">
                     {BUCKET_CONFIG.map((bucket) => {
@@ -139,9 +139,9 @@ export function InventoryAgingChart({
                         return (
                             <div key={bucket.key}>
                                 <div className="flex items-center justify-between mb-1">
-                                    <span className="text-[10px] font-bold text-gray-400">{bucket.label}</span>
+                                    <span className="text-xs font-bold text-gray-400">{bucket.label}</span>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-[10px] font-bold text-gray-600">{pctOfTotal}%</span>
+                                        <span className="text-xs font-bold text-gray-600">{pctOfTotal}%</span>
                                         <span className="text-[11px] font-black text-white tabular-nums">{count}</span>
                                     </div>
                                 </div>

@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import {
@@ -189,7 +189,7 @@ export default function DealerPurchasesPage() {
                                             <h2 className="text-xs font-black uppercase tracking-widest text-gray-400">
                                                 {config.label}
                                             </h2>
-                                            <span className="px-2 py-0.5 rounded-md bg-white/5 text-[10px] font-bold text-gray-500 tabular-nums">
+                                            <span className="px-2 py-0.5 rounded-md bg-white/5 text-xs font-bold text-gray-500 tabular-nums">
                                                 {items.length}
                                             </span>
                                         </div>
@@ -230,10 +230,10 @@ export default function DealerPurchasesPage() {
                                         {/* Column Header */}
                                         <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/5">
                                             <Icon size={14} className={config.color} />
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex-1">
+                                            <span className="text-xs font-black uppercase tracking-widest text-gray-400 flex-1">
                                                 {config.label}
                                             </span>
-                                            <span className={`min-w-[20px] h-5 flex items-center justify-center rounded-md text-[9px] font-black tabular-nums bg-white/5 text-gray-500`}>
+                                            <span className={`min-w-[20px] h-5 flex items-center justify-center rounded-md text-xs font-black tabular-nums bg-white/5 text-gray-500`}>
                                                 {items.length}
                                             </span>
                                         </div>
@@ -246,7 +246,7 @@ export default function DealerPurchasesPage() {
                                                         {item.vehicleTitle}
                                                     </h4>
                                                     {item.vehicleSubtitle && (
-                                                        <p className="text-[10px] text-gray-500 mt-0.5 truncate">{item.vehicleSubtitle}</p>
+                                                        <p className="text-xs text-gray-500 mt-0.5 truncate">{item.vehicleSubtitle}</p>
                                                     )}
                                                     <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
                                                         <span className="text-sm font-black text-white tabular-nums">
@@ -255,7 +255,7 @@ export default function DealerPurchasesPage() {
                                                         <div className="flex items-center gap-1">
                                                             <button
                                                                 onClick={() => setSummaryItem(item)}
-                                                                className="text-[9px] font-bold uppercase tracking-widest text-gray-500 hover:text-primary transition-colors px-2 py-1 rounded hover:bg-white/5"
+                                                                className="text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-primary transition-colors px-2 py-1 rounded hover:bg-white/5"
                                                             >
                                                                 Details
                                                             </button>
@@ -266,8 +266,8 @@ export default function DealerPurchasesPage() {
                                                     {item.status === "reviewing_docs" && item.documentsReceived !== undefined && item.documentsTotal !== undefined && (
                                                         <div className="mt-2.5 pt-2.5 border-t border-white/5">
                                                             <div className="flex items-center justify-between mb-1">
-                                                                <span className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Documents</span>
-                                                                <span className="text-[9px] font-bold text-blue-400 tabular-nums">{item.documentsReceived}/{item.documentsTotal}</span>
+                                                                <span className="text-xs font-bold uppercase tracking-widest text-gray-500">Documents</span>
+                                                                <span className="text-xs font-bold text-blue-400 tabular-nums">{item.documentsReceived}/{item.documentsTotal}</span>
                                                             </div>
                                                             <div className="w-full h-1 bg-black/40 rounded-full overflow-hidden">
                                                                 <div
@@ -283,7 +283,7 @@ export default function DealerPurchasesPage() {
                                                         <div className="mt-2.5 pt-2.5 border-t border-white/5">
                                                             <div className="flex items-center gap-1.5">
                                                                 <Truck size={10} className="text-violet-400" />
-                                                                <span className="text-[9px] font-bold text-violet-400">
+                                                                <span className="text-xs font-bold text-violet-400">
                                                                     ETA: {new Date(item.estimatedDelivery).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                                                                 </span>
                                                             </div>
@@ -294,7 +294,7 @@ export default function DealerPurchasesPage() {
 
                                             {items.length === 0 && (
                                                 <div className="py-8 text-center">
-                                                    <p className="text-gray-600 text-[10px] font-bold uppercase tracking-widest">Empty</p>
+                                                    <p className="text-gray-600 text-xs font-bold uppercase tracking-widest">Empty</p>
                                                 </div>
                                             )}
                                         </div>
@@ -328,11 +328,11 @@ export default function DealerPurchasesPage() {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="bg-black/20 rounded-xl p-4 border border-white/5">
-                                <span className="text-[9px] font-bold uppercase tracking-widest text-gray-500 block mb-1">Purchase Price</span>
+                                <span className="text-xs font-bold uppercase tracking-widest text-gray-500 block mb-1">Purchase Price</span>
                                 <span className="text-xl font-black text-white tabular-nums">£{summaryItem.purchasePrice.toLocaleString()}</span>
                             </div>
                             <div className="bg-black/20 rounded-xl p-4 border border-white/5">
-                                <span className="text-[9px] font-bold uppercase tracking-widest text-gray-500 block mb-1">Purchase Date</span>
+                                <span className="text-xs font-bold uppercase tracking-widest text-gray-500 block mb-1">Purchase Date</span>
                                 <span className="text-sm font-bold text-white">
                                     {new Date(summaryItem.purchaseDate).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
                                 </span>
@@ -340,7 +340,7 @@ export default function DealerPurchasesPage() {
                         </div>
 
                         <div className="bg-black/20 rounded-xl p-4 border border-white/5">
-                            <span className="text-[9px] font-bold uppercase tracking-widest text-gray-500 block mb-1">Current Status</span>
+                            <span className="text-xs font-bold uppercase tracking-widest text-gray-500 block mb-1">Current Status</span>
                             <span className={`inline-flex items-center gap-2 text-sm font-bold ${
                                 STATUS_LABELS[summaryItem.status].color
                             }`}>
@@ -350,13 +350,13 @@ export default function DealerPurchasesPage() {
                         </div>
 
                         <div className="bg-black/20 rounded-xl p-4 border border-white/5">
-                            <span className="text-[9px] font-bold uppercase tracking-widest text-gray-500 block mb-1">Reference</span>
+                            <span className="text-xs font-bold uppercase tracking-widest text-gray-500 block mb-1">Reference</span>
                             <span className="text-sm text-gray-300 font-mono">{summaryItem.id}</span>
                         </div>
 
                         {summaryItem.estimatedDelivery && (
                             <div className="bg-violet-500/5 rounded-xl p-4 border border-violet-500/10">
-                                <span className="text-[9px] font-bold uppercase tracking-widest text-violet-400 block mb-1">Estimated Delivery</span>
+                                <span className="text-xs font-bold uppercase tracking-widest text-violet-400 block mb-1">Estimated Delivery</span>
                                 <span className="text-sm font-bold text-violet-300">
                                     {new Date(summaryItem.estimatedDelivery).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
                                 </span>
@@ -381,20 +381,20 @@ export default function DealerPurchasesPage() {
                                 </div>
                                 <div>
                                     <h3 className="text-base font-black text-white">{sellerItem.sellerName}</h3>
-                                    <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Verified Seller</p>
+                                    <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">Verified Seller</p>
                                 </div>
                             </div>
                         </div>
 
                         <div className="space-y-3">
                             <div className="bg-black/20 rounded-xl p-4 border border-white/5">
-                                <span className="text-[9px] font-bold uppercase tracking-widest text-gray-500 block mb-1">Email</span>
+                                <span className="text-xs font-bold uppercase tracking-widest text-gray-500 block mb-1">Email</span>
                                 <a href={`mailto:${sellerItem.sellerEmail}`} className="text-sm text-primary hover:text-white transition-colors font-medium">
                                     {sellerItem.sellerEmail}
                                 </a>
                             </div>
                             <div className="bg-black/20 rounded-xl p-4 border border-white/5">
-                                <span className="text-[9px] font-bold uppercase tracking-widest text-gray-500 block mb-1">Phone</span>
+                                <span className="text-xs font-bold uppercase tracking-widest text-gray-500 block mb-1">Phone</span>
                                 <a href={`tel:${sellerItem.sellerPhone}`} className="text-sm text-primary hover:text-white transition-colors font-medium">
                                     {sellerItem.sellerPhone}
                                 </a>
@@ -402,7 +402,7 @@ export default function DealerPurchasesPage() {
                         </div>
 
                         <div className="bg-black/20 rounded-xl p-4 border border-white/5">
-                            <span className="text-[9px] font-bold uppercase tracking-widest text-gray-500 block mb-1">Vehicle</span>
+                            <span className="text-xs font-bold uppercase tracking-widest text-gray-500 block mb-1">Vehicle</span>
                             <span className="text-sm font-bold text-white">{sellerItem.vehicleTitle}</span>
                             <span className="text-xs text-gray-400 block mt-0.5">{sellerItem.vehicleSubtitle}</span>
                         </div>

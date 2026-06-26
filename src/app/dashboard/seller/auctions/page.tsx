@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import Link from "next/link"
@@ -699,7 +699,7 @@ function SellerAuctionsPage() {
                                         <p className="font-bold text-white text-sm">{auction.listing?.title}</p>
                                         <p className="text-xs text-emerald-400 mt-0.5">Handover verified — £100 seller bonus released</p>
                                     </div>
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg">Complete</span>
+                                    <span className="text-xs font-black uppercase tracking-widest text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg">Complete</span>
                                 </div>
                             ))}
                         </div>
@@ -752,7 +752,7 @@ function SellerAuctionsPage() {
                                                 </div>
                                             </div>
                                             <div className="text-right shrink-0">
-                                                <p className="text-[10px] text-gray-500 uppercase tracking-widest">Winning Bid</p>
+                                                <p className="text-xs text-gray-500 uppercase tracking-widest">Winning Bid</p>
                                                 <p className="text-lg font-black text-white font-mono">£{winningBid.toLocaleString()}</p>
                                             </div>
                                         </div>
@@ -760,19 +760,19 @@ function SellerAuctionsPage() {
                                         {/* Fee summary */}
                                         <div className="grid grid-cols-3 gap-2 text-center text-xs">
                                             <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/15 p-2.5">
-                                                <p className="text-gray-500 text-[9px] uppercase tracking-widest mb-0.5">Your Bonus</p>
+                                                <p className="text-gray-500 text-xs uppercase tracking-widest mb-0.5">Your Bonus</p>
                                                 <p className="text-emerald-400 font-black text-base">£100</p>
-                                                <p className="text-gray-600 text-[9px]">after handover verified</p>
+                                                <p className="text-gray-600 text-xs">after handover verified</p>
                                             </div>
                                             <div className="rounded-lg bg-white/[0.02] border border-white/5 p-2.5">
-                                                <p className="text-gray-500 text-[9px] uppercase tracking-widest mb-0.5">Platform Fee</p>
+                                                <p className="text-gray-500 text-xs uppercase tracking-widest mb-0.5">Platform Fee</p>
                                                 <p className="text-white font-black text-base">£25</p>
-                                                <p className="text-gray-600 text-[9px]">non-refundable</p>
+                                                <p className="text-gray-600 text-xs">non-refundable</p>
                                             </div>
                                             <div className="rounded-lg bg-white/[0.02] border border-white/5 p-2.5">
-                                                <p className="text-gray-500 text-[9px] uppercase tracking-widest mb-0.5">Buyer Paid</p>
+                                                <p className="text-gray-500 text-xs uppercase tracking-widest mb-0.5">Buyer Paid</p>
                                                 <p className="text-white font-black text-base">£125</p>
-                                                <p className="text-gray-600 text-[9px]">total buyer fee</p>
+                                                <p className="text-gray-600 text-xs">total buyer fee</p>
                                             </div>
                                         </div>
 
@@ -857,7 +857,7 @@ function SellerAuctionsPage() {
                                 <p className="text-xs text-gray-500 truncate max-w-[260px]">{resultsAuction.listing.title}</p>
                             </div>
                         </div>
-                        <button onClick={() => setResultsAuction(null)} className="p-2 text-gray-500 hover:text-white transition-colors">
+                        <button onClick={() => setResultsAuction(null)} className="p-2.5 text-gray-500 hover:text-white transition-colors">
                             <X size={18} />
                         </button>
                     </div>
@@ -889,7 +889,7 @@ function SellerAuctionsPage() {
                         {/* Stats grid */}
                         <div className="grid grid-cols-3 gap-3">
                             <div className="rounded-xl bg-slate-800/50 border border-white/5 p-3 text-center">
-                                <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Winning Bid</p>
+                                <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Winning Bid</p>
                                 <p className="text-lg font-black text-white font-mono">
                                     {resultsAuction.winningBidAmount
                                         ? `£${Number(resultsAuction.winningBidAmount).toLocaleString()}`
@@ -897,13 +897,13 @@ function SellerAuctionsPage() {
                                 </p>
                             </div>
                             <div className="rounded-xl bg-slate-800/50 border border-white/5 p-3 text-center">
-                                <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Total Bids</p>
+                                <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Total Bids</p>
                                 <p className="text-lg font-black text-white">
                                     {getBidCount(resultsAuction)}
                                 </p>
                             </div>
                             <div className="rounded-xl bg-slate-800/50 border border-white/5 p-3 text-center">
-                                <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Reserve</p>
+                                <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Reserve</p>
                                 <p className="text-lg font-black text-white font-mono">
                                     £{Number(resultsAuction.reservePrice).toLocaleString()}
                                 </p>
@@ -1000,7 +1000,7 @@ function SellerAuctionsPage() {
                                         onClick={() => setAlsoRetailTier(tier)}
                                         className={`py-2.5 rounded-xl border text-xs font-bold transition-all ${alsoRetailTier === tier ? 'bg-primary/15 border-primary/40 text-primary' : 'bg-slate-800/60 border-white/10 text-slate-400 hover:border-white/20'}`}
                                     >
-                                        {tier}<br /><span className="text-[10px] font-normal">{price}</span>
+                                        {tier}<br /><span className="text-xs font-normal">{price}</span>
                                     </button>
                                 ))}
                             </div>

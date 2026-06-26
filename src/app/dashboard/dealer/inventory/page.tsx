@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import Link from "next/link"
@@ -279,7 +279,7 @@ export default function DealerInventoryPage() {
                                 <button
                                     key={s}
                                     onClick={() => setStatusFilter(s)}
-                                    className={`px-5 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                                    className={`px-5 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${
                                         statusFilter === s ? 'vip-tab-active' : 'text-gray-500 hover:text-gray-300'
                                     }`}
                                 >
@@ -323,9 +323,9 @@ export default function DealerInventoryPage() {
                                         <div className="flex-1 min-w-0">
                                             <p className="font-black text-white text-sm truncate">{listing.title}</p>
                                             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1.5 py-0.5 bg-white/5 rounded border border-white/5">{listing.vrm || 'PRIVATE'}</span>
-                                                <span className={`inline-flex px-2 py-0.5 rounded text-[9px] font-black tracking-widest border ${STATUS_COLORS[listing.status] || STATUS_COLORS.DRAFT}`}>{listing.status}</span>
-                                                {comp && !comp.isComplete && <span className="text-[9px] text-amber-400 font-bold">{comp.complete}/{comp.total} fields</span>}
+                                                <span className="text-xs font-bold text-gray-500 uppercase tracking-widest px-1.5 py-0.5 bg-white/5 rounded border border-white/5">{listing.vrm || 'PRIVATE'}</span>
+                                                <span className={`inline-flex px-2 py-0.5 rounded text-xs font-black tracking-widest border ${STATUS_COLORS[listing.status] || STATUS_COLORS.DRAFT}`}>{listing.status}</span>
+                                                {comp && !comp.isComplete && <span className="text-xs text-amber-400 font-bold">{comp.complete}/{comp.total} fields</span>}
                                             </div>
                                             <p className="text-sm font-black text-white mt-1">£{listing.price?.toLocaleString()}</p>
                                         </div>
@@ -401,9 +401,9 @@ export default function DealerInventoryPage() {
                                                             <div>
                                                                 <p className="font-black text-white text-base tracking-tight group-hover:text-primary transition-colors">{listing.title}</p>
                                                                 <div className="flex items-center gap-2 mt-1">
-                                                                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-2 py-0.5 bg-white/5 rounded border border-white/5">{listing.vrm || "PRIVATE"}</span>
-                                                                    <span className="text-[10px] font-bold text-primary italic uppercase tracking-widest">{listing.make}</span>
-                                                                    <span className="text-[10px] text-gray-600 font-bold">• {listing.mileage?.toLocaleString()} mi</span>
+                                                                    <span className="text-xs font-bold text-gray-500 uppercase tracking-widest px-2 py-0.5 bg-white/5 rounded border border-white/5">{listing.vrm || "PRIVATE"}</span>
+                                                                    <span className="text-xs font-bold text-primary italic uppercase tracking-widest">{listing.make}</span>
+                                                                    <span className="text-xs text-gray-600 font-bold">• {listing.mileage?.toLocaleString()} mi</span>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -413,7 +413,7 @@ export default function DealerInventoryPage() {
                                                     <td className="px-6 py-6">
                                                         <div className="flex flex-col">
                                                             <span className="font-black text-white text-lg tracking-tight">£{listing.price?.toLocaleString()}</span>
-                                                            <span className="text-[9px] text-emerald-400 font-black uppercase tracking-widest inline-flex items-center gap-1">
+                                                            <span className="text-xs text-emerald-400 font-black uppercase tracking-widest inline-flex items-center gap-1">
                                                                 <TrendingUp size={8} /> Market Value Plus
                                                             </span>
                                                         </div>
@@ -422,13 +422,13 @@ export default function DealerInventoryPage() {
                                                     {/* Status + completeness */}
                                                     <td className="px-6 py-6 text-center">
                                                         <div className="flex flex-col items-center gap-1.5">
-                                                            <span className={`inline-flex px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest border shadow-sm ${STATUS_COLORS[listing.status] || STATUS_COLORS.DRAFT}`}>
+                                                            <span className={`inline-flex px-3 py-1.5 rounded-lg text-xs font-black tracking-widest border shadow-sm ${STATUS_COLORS[listing.status] || STATUS_COLORS.DRAFT}`}>
                                                                 {listing.status}
                                                             </span>
                                                             {comp && (
                                                                 <div
                                                                     title={comp.isComplete ? 'Listing complete — ready to publish' : `Missing: ${comp.missing.join(', ')}`}
-                                                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border cursor-default ${
+                                                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold border cursor-default ${
                                                                         comp.isComplete
                                                                             ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                                                                             : comp.percent >= 60
@@ -625,7 +625,7 @@ export default function DealerInventoryPage() {
                                 onChange={e => setSoldModalPostcode(e.target.value.toUpperCase())}
                                 className="w-full bg-slate-800 border border-white/10 text-white rounded-xl px-3 py-2 text-sm font-bold placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition-colors uppercase placeholder:normal-case"
                             />
-                            <p className="text-[10px] text-slate-600 mt-1.5 font-medium">
+                            <p className="text-xs text-slate-600 mt-1.5 font-medium">
                                 UK postcode recorded for buyer area analytics. Leave blank if not available.
                             </p>
                         </div>
@@ -695,7 +695,7 @@ export default function DealerInventoryPage() {
                                             onClick={() => setAlsoRetailTier(tier)}
                                             className={`py-2.5 rounded-xl border text-xs font-bold transition-all ${alsoRetailTier === tier ? 'bg-primary/15 border-primary/40 text-primary' : 'bg-slate-800/60 border-white/10 text-slate-400 hover:border-white/20'}`}
                                         >
-                                            {tier}<br /><span className="text-[10px] font-normal">{price}</span>
+                                            {tier}<br /><span className="text-xs font-normal">{price}</span>
                                         </button>
                                     ))}
                                 </div>
@@ -802,10 +802,10 @@ export default function DealerInventoryPage() {
                             return (
                                 <div className={`mb-5 p-3 rounded-xl border ${comp.isComplete ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-amber-500/5 border-amber-500/20'}`}>
                                     <div className="flex items-center justify-between mb-2">
-                                        <span className={`text-[10px] font-black uppercase tracking-widest ${comp.isComplete ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                        <span className={`text-xs font-black uppercase tracking-widest ${comp.isComplete ? 'text-emerald-400' : 'text-amber-400'}`}>
                                             Listing completeness — {comp.complete}/{comp.total} required fields
                                         </span>
-                                        <span className={`text-[10px] font-black ${comp.isComplete ? 'text-emerald-400' : 'text-amber-400'}`}>{comp.percent}%</span>
+                                        <span className={`text-xs font-black ${comp.isComplete ? 'text-emerald-400' : 'text-amber-400'}`}>{comp.percent}%</span>
                                     </div>
                                     <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden mb-2">
                                         <div
@@ -817,7 +817,7 @@ export default function DealerInventoryPage() {
                                         {REQUIRED_FIELDS.map(f => {
                                             const has = f.check(planSelectListing)
                                             return (
-                                                <span key={f.key} className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border font-bold ${has ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+                                                <span key={f.key} className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border font-bold ${has ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
                                                     {has ? <CheckCircle2 size={8} /> : <X size={8} />}
                                                     {f.label}
                                                 </span>
@@ -896,7 +896,7 @@ export default function DealerInventoryPage() {
                             onClick={() => handlePlanConfirm('PREMIUM')}
                             className="relative w-full flex items-center gap-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 hover:border-amber-500/60 hover:bg-amber-500/10 transition-all text-left"
                         >
-                            <span className="absolute -top-2.5 left-4 text-[10px] bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold px-3 py-0.5 rounded-full flex items-center gap-1">
+                            <span className="absolute -top-2.5 left-4 text-xs bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold px-3 py-0.5 rounded-full flex items-center gap-1">
                                 <Star size={9} /> Best Value
                             </span>
                             <div className="flex-1">

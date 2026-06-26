@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import Link from "next/link"
@@ -126,7 +126,7 @@ export default function AdminListingsPage() {
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-start justify-between gap-2">
                                                 <p className="font-bold text-white text-sm truncate">{l.title}</p>
-                                                <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold shrink-0 border ${l.deletedAt ? 'bg-red-500/10 text-red-400 border-red-500/20' : l.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : l.status === 'SOLD' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-gray-500/10 text-gray-400 border-gray-500/20'}`}>
+                                                <span className={`inline-flex px-2 py-0.5 rounded text-xs font-bold shrink-0 border ${l.deletedAt ? 'bg-red-500/10 text-red-400 border-red-500/20' : l.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : l.status === 'SOLD' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-gray-500/10 text-gray-400 border-gray-500/20'}`}>
                                                     {l.deletedAt ? 'DELETED' : l.status}
                                                 </span>
                                             </div>
@@ -149,7 +149,7 @@ export default function AdminListingsPage() {
                         {/* ── Desktop table (≥ sm) ── */}
                         <div className="hidden sm:block overflow-x-auto">
                             <table className="w-full text-left">
-                                <thead className="bg-slate-800/50 text-gray-400 text-[10px] uppercase font-black tracking-widest border-b border-white/10">
+                                <thead className="bg-slate-800/50 text-gray-400 text-xs uppercase font-black tracking-widest border-b border-white/10">
                                     <tr>
                                         <th className="px-6 py-4">Vehicle</th>
                                         <th className="px-6 py-4 text-center">Status</th>
@@ -180,7 +180,7 @@ export default function AdminListingsPage() {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <span className={`inline-flex items-center px-2 py-1 rounded text-[10px] font-bold ${
+                                                <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold ${
                                                     l.deletedAt ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
                                                     l.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
                                                     l.status === 'SOLD' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
@@ -200,7 +200,7 @@ export default function AdminListingsPage() {
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex items-center justify-end gap-2">
-                                                    <Link href={`/buy-cars/${l.slug}`} target="_blank" className="p-2 hover:bg-white/10 rounded-lg transition-colors text-blue-400 hover:text-white" title="View Listing">
+                                                    <Link href={`/buy-cars/${l.slug}`} target="_blank" className="p-2.5 hover:bg-white/10 rounded-lg transition-colors text-blue-400 hover:text-white" title="View Listing">
                                                         <Eye size={18} />
                                                     </Link>
                                                     <button 

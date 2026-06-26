@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import { Sparkles, Clock, ArrowUp, ArrowDown, Gavel, Eye, AlertTriangle } from "lucide-react"
@@ -84,10 +84,10 @@ function AIPriceBadge({ estimate, currentBid }: { estimate: number; currentBid: 
         <div className="flex items-center gap-2 px-3 py-2 bg-violet-500/8 border border-violet-500/15 rounded-xl">
             <div className="flex items-center gap-1">
                 <Sparkles size={13} className="text-violet-400" />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-violet-400/80">AI Est.</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-violet-400/80">AI Est.</span>
             </div>
             <span className="text-sm font-black text-violet-300 tabular-nums">£{estimate.toLocaleString()}</span>
-            <span className={`text-[10px] font-bold tabular-nums flex items-center gap-0.5 ${
+            <span className={`text-xs font-bold tabular-nums flex items-center gap-0.5 ${
                 isOver ? "text-red-400" : isUnder ? "text-emerald-400" : "text-gray-400"
             }`}>
                 {isOver ? <ArrowUp size={10} /> : isUnder ? <ArrowDown size={10} /> : null}
@@ -125,7 +125,7 @@ export function VehicleCard({ vehicle, onPlaceBid, onSetProxyBid, variant = "act
                 {/* Overlay Badges */}
                 <div className="absolute top-3 left-3 right-3 flex items-start justify-between">
                     {/* Status Badge */}
-                    <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest backdrop-blur-md ${
+                    <span className={`px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-widest backdrop-blur-md ${
                         variant === "active"
                             ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
                             : variant === "under_offer"
@@ -144,12 +144,12 @@ export function VehicleCard({ vehicle, onPlaceBid, onSetProxyBid, variant = "act
                 {/* Meta stats */}
                 <div className="absolute bottom-3 left-3 flex items-center gap-3">
                     {vehicle.bidCount !== undefined && (
-                        <span className="flex items-center gap-1 text-[10px] font-bold text-white/70 bg-black/50 backdrop-blur-sm px-2 py-1 rounded-md">
+                        <span className="flex items-center gap-1 text-xs font-bold text-white/70 bg-black/50 backdrop-blur-sm px-2 py-1 rounded-md">
                             <Gavel size={10} /> {vehicle.bidCount} bids
                         </span>
                     )}
                     {vehicle.watchers !== undefined && (
-                        <span className="flex items-center gap-1 text-[10px] font-bold text-white/70 bg-black/50 backdrop-blur-sm px-2 py-1 rounded-md">
+                        <span className="flex items-center gap-1 text-xs font-bold text-white/70 bg-black/50 backdrop-blur-sm px-2 py-1 rounded-md">
                             <Eye size={10} /> {vehicle.watchers}
                         </span>
                     )}
@@ -171,7 +171,7 @@ export function VehicleCard({ vehicle, onPlaceBid, onSetProxyBid, variant = "act
                 {/* Current Bid + AI Estimate Side by Side */}
                 <div className="flex items-end justify-between gap-3">
                     <div>
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-gray-500 block mb-0.5">
+                        <span className="text-xs font-bold uppercase tracking-widest text-gray-500 block mb-0.5">
                             {variant === "didnt_win" ? "Your Max Bid" : "Current Bid"}
                         </span>
                         <span className="text-2xl font-black text-white tabular-nums metallic-foil">
@@ -186,12 +186,12 @@ export function VehicleCard({ vehicle, onPlaceBid, onSetProxyBid, variant = "act
                     <div className="bg-red-500/5 border border-red-500/10 rounded-xl p-3.5">
                         <div className="flex items-center justify-between">
                             <div>
-                                <span className="text-[9px] font-bold uppercase tracking-widest text-gray-500 block mb-0.5">Final Sale Price</span>
+                                <span className="text-xs font-bold uppercase tracking-widest text-gray-500 block mb-0.5">Final Sale Price</span>
                                 <span className="text-xl font-black text-white tabular-nums">£{vehicle.finalSalePrice.toLocaleString()}</span>
                             </div>
                             {gapToWin !== null && (
                                 <div className="text-right">
-                                    <span className="text-[9px] font-bold uppercase tracking-widest text-gray-500 block mb-0.5">Gap</span>
+                                    <span className="text-xs font-bold uppercase tracking-widest text-gray-500 block mb-0.5">Gap</span>
                                     <span className="text-lg font-black text-red-400 tabular-nums flex items-center gap-1">
                                         <AlertTriangle size={14} />
                                         £{gapToWin.toLocaleString()}
@@ -234,7 +234,7 @@ export function VehicleCard({ vehicle, onPlaceBid, onSetProxyBid, variant = "act
                         {/* Proxy Bid Toggle */}
                         <button
                             onClick={() => setShowProxy(!showProxy)}
-                            className="text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-primary transition-colors flex items-center gap-1.5"
+                            className="text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-primary transition-colors flex items-center gap-1.5"
                         >
                             <span className={`w-4 h-4 rounded-md border transition-all flex items-center justify-center ${
                                 showProxy ? "bg-primary border-primary" : "border-white/20"
@@ -264,7 +264,7 @@ export function VehicleCard({ vehicle, onPlaceBid, onSetProxyBid, variant = "act
                                         const amt = Number(proxyInput)
                                         if (amt > 0) onSetProxyBid?.(vehicle.id, amt)
                                     }}
-                                    className="px-4 h-[42px] text-[10px] border-violet-500/20 hover:border-violet-500/40"
+                                    className="px-4 h-[42px] text-xs border-violet-500/20 hover:border-violet-500/40"
                                     disabled={!proxyInput}
                                 >
                                     Set

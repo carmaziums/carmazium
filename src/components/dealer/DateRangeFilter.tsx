@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import { Calendar, ChevronDown, X } from "lucide-react"
@@ -81,7 +81,7 @@ export function DateRangeFilter({
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="flex-1">
-                            <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5">From</label>
+                            <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1.5">From</label>
                             <input
                                 type="date"
                                 value={customStart || ""}
@@ -91,7 +91,7 @@ export function DateRangeFilter({
                         </div>
                         <span className="text-gray-600 text-xs font-bold mt-5">→</span>
                         <div className="flex-1">
-                            <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5">To</label>
+                            <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1.5">To</label>
                             <input
                                 type="date"
                                 value={customEnd || ""}
@@ -102,7 +102,7 @@ export function DateRangeFilter({
                     </div>
                     {customStart && customEnd && (
                         <div className="mt-3 pt-3 border-t border-white/5 text-center">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
+                            <span className="text-xs font-bold uppercase tracking-widest text-primary">
                                 {new Date(customStart).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                                 {" — "}
                                 {new Date(customEnd).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}

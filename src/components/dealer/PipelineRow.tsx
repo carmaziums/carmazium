@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import {
@@ -105,23 +105,23 @@ export function PipelineRow({ item, onViewSummary, onViewSeller }: PipelineRowPr
                         {item.vehicleTitle}
                     </h3>
                     {item.vehicleSubtitle && (
-                        <p className="text-[10px] text-gray-500 font-medium mt-0.5 truncate">{item.vehicleSubtitle}</p>
+                        <p className="text-xs text-gray-500 font-medium mt-0.5 truncate">{item.vehicleSubtitle}</p>
                     )}
-                    <p className="text-[10px] text-gray-600 mt-1 font-medium">
+                    <p className="text-xs text-gray-600 mt-1 font-medium">
                         Purchased {new Date(item.purchaseDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                     </p>
                 </div>
 
                 {/* Price */}
                 <div className="hidden md:block text-right shrink-0">
-                    <span className="text-[9px] font-bold uppercase tracking-widest text-gray-500 block">Price</span>
+                    <span className="text-xs font-bold uppercase tracking-widest text-gray-500 block">Price</span>
                     <span className="text-lg font-black text-white tabular-nums">£{item.purchasePrice.toLocaleString()}</span>
                 </div>
 
                 {/* Document Progress (if reviewing) */}
                 {item.status === "reviewing_docs" && item.documentsReceived !== undefined && item.documentsTotal !== undefined && (
                     <div className="hidden lg:flex flex-col items-center gap-1 shrink-0">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Docs</span>
+                        <span className="text-xs font-bold uppercase tracking-widest text-gray-500">Docs</span>
                         <div className="flex items-center gap-1">
                             <div className="w-16 h-1.5 bg-black/40 rounded-full overflow-hidden">
                                 <div
@@ -129,7 +129,7 @@ export function PipelineRow({ item, onViewSummary, onViewSeller }: PipelineRowPr
                                     style={{ width: `${(item.documentsReceived / item.documentsTotal) * 100}%` }}
                                 />
                             </div>
-                            <span className="text-[9px] font-bold text-blue-400 tabular-nums">
+                            <span className="text-xs font-bold text-blue-400 tabular-nums">
                                 {item.documentsReceived}/{item.documentsTotal}
                             </span>
                         </div>
@@ -139,7 +139,7 @@ export function PipelineRow({ item, onViewSummary, onViewSeller }: PipelineRowPr
                 {/* Estimated Delivery */}
                 {item.status === "delivery_requested" && item.estimatedDelivery && (
                     <div className="hidden lg:block text-right shrink-0">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-gray-500 block">ETA</span>
+                        <span className="text-xs font-bold uppercase tracking-widest text-gray-500 block">ETA</span>
                         <span className="text-xs font-bold text-violet-400">
                             {new Date(item.estimatedDelivery).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                         </span>
@@ -147,7 +147,7 @@ export function PipelineRow({ item, onViewSummary, onViewSeller }: PipelineRowPr
                 )}
 
                 {/* Status Badge */}
-                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border shrink-0 ${config.bg} ${config.color} ${config.border}`}>
+                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest border shrink-0 ${config.bg} ${config.color} ${config.border}`}>
                     <StatusIcon size={12} />
                     <span className="hidden md:inline">{config.label}</span>
                 </div>

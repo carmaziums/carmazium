@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import Link from "next/link"
@@ -200,13 +200,13 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                                                 </span>
                                             </span>
                                         ) : (
-                                            <span className="absolute -top-2 -right-2 bg-primary text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                                            <span className="absolute -top-2 -right-2 bg-primary text-white text-xs font-bold w-4 h-4 rounded-full flex items-center justify-center">
                                                 {link.badge > 9 ? '9+' : link.badge}
                                             </span>
                                         )
                                     )}
                                 </div>
-                                <span className={`text-[10px] mt-1 font-medium ${isActive ? 'text-primary' : ''}`}>
+                                <span className={`text-xs mt-1 font-medium ${isActive ? 'text-primary' : ''}`}>
                                     {link.label}
                                 </span>
                                 {isActive && (
@@ -222,7 +222,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                             }`}
                     >
                         {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-                        <span className="text-[10px] mt-1 font-medium">More</span>
+                        <span className="text-xs mt-1 font-medium">More</span>
                     </button>
                 </div>
             </div>
@@ -250,7 +250,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                         </div>
                         <div>
                             <h3 className="font-bold text-white text-sm">{userName}</h3>
-                            <p className="text-[10px] text-gray-400 uppercase tracking-wider">{displayType}</p>
+                            <p className="text-xs text-gray-400 uppercase tracking-wider">{displayType}</p>
                         </div>
                     </div>
 
@@ -306,7 +306,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                         </div>
                         <div className="overflow-hidden">
                             <h3 className="font-bold text-white truncate text-sm">{userName}</h3>
-                            <p className="text-[10px] text-gray-400 uppercase tracking-wider">{displayType}</p>
+                            <p className="text-xs text-gray-400 uppercase tracking-wider">{displayType}</p>
                         </div>
                     </div>
 
@@ -336,7 +336,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                                             // Pulsating dot for offers tab
                                             <span className="relative flex items-center justify-center">
                                                 <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-primary opacity-60" />
-                                                <span className="relative inline-flex items-center justify-center rounded-full bg-primary text-white text-[9px] font-black min-w-[18px] h-[18px] px-1">
+                                                <span className="relative inline-flex items-center justify-center rounded-full bg-primary text-white text-xs font-black min-w-[18px] h-[18px] px-1">
                                                     {link.badge > 9 ? '9+' : link.badge}
                                                 </span>
                                             </span>

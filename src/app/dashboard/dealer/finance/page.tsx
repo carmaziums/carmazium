@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import { Button } from "@/components/ui/Button"
@@ -108,9 +108,9 @@ export default function DealerFinancePage() {
                         <div className="p-8 border-b border-white/5 bg-[#0A0A0C]/40 flex items-center justify-between">
                             <div>
                                 <h2 className="text-base font-black font-heading text-white uppercase tracking-tight">Active Applications</h2>
-                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Live underwriting ledger</p>
+                                <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-1">Live underwriting ledger</p>
                             </div>
-                            <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest p-2 bg-primary/5 rounded-lg border border-primary/10">
+                            <div className="flex items-center gap-2 text-primary font-black text-xs uppercase tracking-widest p-2 bg-primary/5 rounded-lg border border-primary/10">
                                 <TrendingUp size={12} /> Real-time Pricing
                             </div>
                         </div>
@@ -152,21 +152,21 @@ export default function DealerFinancePage() {
                                                         </div>
                                                         <div>
                                                             <p className="font-black text-white text-sm tracking-tight">{app.user?.firstName} {app.user?.lastName}</p>
-                                                            <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">ID: {app.id.slice(0, 8)}</p>
+                                                            <p className="text-xs font-bold text-gray-600 uppercase tracking-widest">ID: {app.id.slice(0, 8)}</p>
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-6 font-bold text-white tracking-tight uppercase text-xs">{app.listing?.title}</td>
                                                 <td className="px-6 py-6 text-right font-black text-white text-sm tracking-tighter">£{app.depositAmount?.toLocaleString()}</td>
-                                                <td className="px-6 py-6 text-center text-[10px] font-black uppercase tracking-widest text-gray-400">{app.termMonths} Months</td>
+                                                <td className="px-6 py-6 text-center text-xs font-black uppercase tracking-widest text-gray-400">{app.termMonths} Months</td>
                                                 <td className="px-6 py-6 text-right">
                                                     <div className="flex flex-col items-end">
                                                         <span className="text-sm font-black text-white tracking-tighter">{app.monthlyPayment ? `£${app.monthlyPayment}` : '—'}</span>
-                                                        <span className="text-[9px] text-gray-500 uppercase tracking-widest leading-none mt-1">Estim. P&I</span>
+                                                        <span className="text-xs text-gray-500 uppercase tracking-widest leading-none mt-1">Estim. P&I</span>
                                                     </div>
                                                 </td>
                                                 <td className="px-8 py-6 text-center">
-                                                    <span className={`inline-flex px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest uppercase border ${STATUS_BADGES[app.status] || STATUS_BADGES.PENDING}`}>
+                                                    <span className={`inline-flex px-3 py-1.5 rounded-lg text-xs font-black tracking-widest uppercase border ${STATUS_BADGES[app.status] || STATUS_BADGES.PENDING}`}>
                                                         {app.status}
                                                     </span>
                                                 </td>
@@ -180,7 +180,7 @@ export default function DealerFinancePage() {
                                                                 {app.status !== 'APPROVED' && app.status !== 'FUNDED' && (
                                                                     <button
                                                                         onClick={() => updateStatus(app.id, 'APPROVED')}
-                                                                        className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
+                                                                        className="px-3 py-1.5 text-xs font-black uppercase tracking-widest rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
                                                                     >
                                                                         Approve
                                                                     </button>
@@ -188,7 +188,7 @@ export default function DealerFinancePage() {
                                                                 {app.status === 'PENDING' && (
                                                                     <button
                                                                         onClick={() => updateStatus(app.id, 'REVIEWING')}
-                                                                        className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors"
+                                                                        className="px-3 py-1.5 text-xs font-black uppercase tracking-widest rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors"
                                                                     >
                                                                         Review
                                                                     </button>
@@ -196,7 +196,7 @@ export default function DealerFinancePage() {
                                                                 {app.status !== 'REJECTED' && app.status !== 'FUNDED' && (
                                                                     <button
                                                                         onClick={() => updateStatus(app.id, 'REJECTED')}
-                                                                        className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+                                                                        className="px-3 py-1.5 text-xs font-black uppercase tracking-widest rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
                                                                     >
                                                                         Reject
                                                                     </button>

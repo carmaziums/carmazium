@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import Image from "next/image"
@@ -197,7 +197,7 @@ export function ReceiptsTab({ isDealer = false }: { isDealer?: boolean }) {
                                 <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest">
                                     {TYPE_LABELS[receipt.type] || receipt.type}
                                 </span>
-                                <span className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full border ${status.bg} ${status.color}`}>
+                                <span className={`inline-flex items-center gap-1 text-xs font-black px-2 py-0.5 rounded-full border ${status.bg} ${status.color}`}>
                                     <StatusIcon size={9} /> {status.label}
                                 </span>
                             </div>
@@ -211,7 +211,7 @@ export function ReceiptsTab({ isDealer = false }: { isDealer?: boolean }) {
                                 {receipt.stripePaymentId && (
                                     <>
                                         <span className="text-gray-700">·</span>
-                                        <span className="font-mono opacity-60 text-[10px]">ref: ···{receipt.stripePaymentId.slice(-8)}</span>
+                                        <span className="font-mono opacity-60 text-xs">ref: ···{receipt.stripePaymentId.slice(-8)}</span>
                                     </>
                                 )}
                             </p>
@@ -222,7 +222,7 @@ export function ReceiptsTab({ isDealer = false }: { isDealer?: boolean }) {
                             <p className="text-lg font-black text-white">{formatPrice(receipt.amount)}</p>
                             <button
                                 onClick={() => printReceipt(receipt, receiptNum)}
-                                className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-primary transition-colors"
+                                className="flex items-center gap-1 text-xs text-gray-500 hover:text-primary transition-colors"
                             >
                                 <Download size={10} /> Print receipt
                             </button>

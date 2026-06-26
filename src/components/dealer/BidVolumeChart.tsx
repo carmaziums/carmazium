@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import { TrendingUp, TrendingDown } from "lucide-react"
@@ -49,7 +49,7 @@ export function BidVolumeChart({
                 <div className="flex items-center justify-between mb-6">
                     <div>
                         <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">{title}</h3>
-                        {subtitle && <p className="text-[10px] text-gray-600 mt-0.5">{subtitle}</p>}
+                        {subtitle && <p className="text-xs text-gray-600 mt-0.5">{subtitle}</p>}
                     </div>
                 </div>
                 <div className="animate-pulse" style={{ height }}>
@@ -102,9 +102,9 @@ export function BidVolumeChart({
             <div className="flex items-center justify-between mb-6">
                 <div>
                     <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">{title}</h3>
-                    {subtitle && <p className="text-[10px] text-gray-600 mt-0.5">{subtitle}</p>}
+                    {subtitle && <p className="text-xs text-gray-600 mt-0.5">{subtitle}</p>}
                 </div>
-                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold ${
+                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold ${
                     trendPct >= 0 ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"
                 }`}>
                     {trendPct >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
@@ -204,7 +204,7 @@ export function BidVolumeChart({
                             transform: "translateX(-50%)",
                         }}
                     >
-                        <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">{tooltip.point.label}</p>
+                        <p className="text-xs text-gray-400 uppercase tracking-widest font-bold">{tooltip.point.label}</p>
                         <p className="text-white font-black text-lg">{tooltip.point.value}</p>
                     </div>
                 )}

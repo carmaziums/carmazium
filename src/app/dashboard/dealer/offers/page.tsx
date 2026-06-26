@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import { Button } from "@/components/ui/Button"
@@ -166,7 +166,7 @@ export default function DealerOffersPage() {
                                                 </div>
                                             </div>
                                             <div className="flex items-center justify-between gap-2">
-                                                <span className={`inline-flex px-2.5 py-1 rounded-lg text-[9px] font-black tracking-widest uppercase border ${
+                                                <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-black tracking-widest uppercase border ${
                                                     offer.status === "PENDING" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
                                                     offer.status === "ACCEPTED" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
                                                     offer.status === "REJECTED" ? "bg-red-500/10 text-red-400 border-red-500/20" :
@@ -176,13 +176,13 @@ export default function DealerOffersPage() {
                                                 <div className="flex items-center gap-2 flex-wrap justify-end">
                                                     {isPending && !isCountering && (
                                                         <>
-                                                            <button onClick={() => { setCounteringOfferId(offer.id); setCounterAmount(offer.amount) }} className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-xl">Counter</button>
-                                                            <button onClick={() => handleRespond(offer.id, 'ACCEPTED')} className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl">Accept</button>
-                                                            <button onClick={() => handleRespond(offer.id, 'REJECTED')} className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl">Reject</button>
+                                                            <button onClick={() => { setCounteringOfferId(offer.id); setCounterAmount(offer.amount) }} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-xl">Counter</button>
+                                                            <button onClick={() => handleRespond(offer.id, 'ACCEPTED')} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl">Accept</button>
+                                                            <button onClick={() => handleRespond(offer.id, 'REJECTED')} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl">Reject</button>
                                                         </>
                                                     )}
                                                     {offer.status === 'ACCEPTED' && !isCapturingPostcode && (
-                                                        <button onClick={() => setPostcodeCapture({ offerId: offer.id, postcode: '' })} className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 bg-emerald-600 text-white rounded-xl">Mark Sold</button>
+                                                        <button onClick={() => setPostcodeCapture({ offerId: offer.id, postcode: '' })} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-emerald-600 text-white rounded-xl">Mark Sold</button>
                                                     )}
                                                     {offer.status === 'ACCEPTED' && isCapturingPostcode && (
                                                         <div className="flex items-center gap-2 w-full mt-1">
@@ -201,7 +201,7 @@ export default function DealerOffersPage() {
                             {/* ── Desktop table (≥ sm) ── */}
                             <div className="hidden sm:block overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
-                                    <thead className="vip-table-header text-[10px] uppercase font-black tracking-widest text-gray-400 border-b border-white/5">
+                                    <thead className="vip-table-header text-xs uppercase font-black tracking-widest text-gray-400 border-b border-white/5">
                                         <tr>
                                             <th className="px-6 py-5">Buyer Identification</th>
                                             <th className="px-6 py-5">Linked Vehicle</th>
@@ -221,24 +221,24 @@ export default function DealerOffersPage() {
                                                 <tr key={offer.id} className="group hover:bg-white/[0.02] transition-colors">
                                                     <td className="px-6 py-6">
                                                         <p className="font-black text-white text-sm tracking-tight">{offer.buyer?.firstName} {offer.buyer?.lastName}</p>
-                                                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{offer.buyer?.email}</p>
+                                                        <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">{offer.buyer?.email}</p>
                                                     </td>
                                                     <td className="px-6 py-6">
                                                         <div className="flex flex-col">
                                                             <span className="text-xs font-black text-white group-hover:text-primary transition-colors">{offer.listing?.title}</span>
-                                                            <span className="text-[9px] text-gray-600 font-black uppercase tracking-widest mt-0.5">VRM: {offer.listing?.vrm || 'Private'}</span>
+                                                            <span className="text-xs text-gray-600 font-black uppercase tracking-widest mt-0.5">VRM: {offer.listing?.vrm || 'Private'}</span>
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-6 text-right">
                                                         <span className="text-xl font-black text-white tabular-nums">£{offer.amount?.toLocaleString()}</span>
                                                         {offer.counterAmount && (
-                                                            <div className="text-[10px] text-blue-400 font-black uppercase tracking-widest mt-1">
+                                                            <div className="text-xs text-blue-400 font-black uppercase tracking-widest mt-1">
                                                                 My Counter: £{offer.counterAmount.toLocaleString()}
                                                             </div>
                                                         )}
                                                     </td>
                                                     <td className="px-6 py-6 text-center">
-                                                        <span className={`inline-flex px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest uppercase border ${
+                                                        <span className={`inline-flex px-3 py-1.5 rounded-lg text-xs font-black tracking-widest uppercase border ${
                                                             offer.status === "PENDING" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
                                                             offer.status === "ACCEPTED" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
                                                             offer.status === "REJECTED" ? "bg-red-500/10 text-red-400 border-red-500/20" :
@@ -255,17 +255,17 @@ export default function DealerOffersPage() {
                                                                 <>
                                                                     <Button variant="ghost" size="sm" disabled={isActioning}
                                                                         onClick={() => { setCounteringOfferId(offer.id); setCounterAmount(offer.amount) }}
-                                                                        className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 font-black text-[9px] uppercase tracking-widest h-9 px-4 border border-blue-500/20 rounded-xl transition-all">
+                                                                        className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 font-black text-xs uppercase tracking-widest h-9 px-4 border border-blue-500/20 rounded-xl transition-all">
                                                                         COUNTER
                                                                     </Button>
                                                                     <Button variant="ghost" size="sm" disabled={isActioning}
                                                                         onClick={() => handleRespond(offer.id, 'ACCEPTED')}
-                                                                        className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-black text-[9px] uppercase tracking-widest h-9 px-4 border border-emerald-500/20 rounded-xl transition-all">
+                                                                        className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-black text-xs uppercase tracking-widest h-9 px-4 border border-emerald-500/20 rounded-xl transition-all">
                                                                         {isActioning ? <Loader2 size={14} className="animate-spin" /> : 'ACCEPT'}
                                                                     </Button>
                                                                     <Button variant="ghost" size="sm" disabled={isActioning}
                                                                         onClick={() => handleRespond(offer.id, 'REJECTED')}
-                                                                        className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-black text-[9px] uppercase tracking-widest h-9 px-4 border border-red-500/20 rounded-xl transition-all">
+                                                                        className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-black text-xs uppercase tracking-widest h-9 px-4 border border-red-500/20 rounded-xl transition-all">
                                                                         {isActioning ? <Loader2 size={14} className="animate-spin" /> : 'REJECT'}
                                                                     </Button>
                                                                 </>
@@ -275,7 +275,7 @@ export default function DealerOffersPage() {
                                                             {isPending && isCountering && (
                                                                 <div className="flex items-center gap-2">
                                                                     <div className="relative">
-                                                                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-[10px] font-black">£</span>
+                                                                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-xs font-black">£</span>
                                                                         <input type="number"
                                                                             className="bg-black/40 border border-white/10 text-white rounded-lg pl-6 pr-2 py-1.5 w-24 text-xs font-black focus:outline-none focus:border-blue-500 transition-colors"
                                                                             value={counterAmount || ''}
@@ -284,7 +284,7 @@ export default function DealerOffersPage() {
                                                                     </div>
                                                                     <Button variant="ghost" size="sm" disabled={isActioning || !counterAmount}
                                                                         onClick={() => { handleRespond(offer.id, 'COUNTERED', counterAmount); setCounteringOfferId(null); setCounterAmount(undefined) }}
-                                                                        className="bg-blue-600 text-white font-black text-[9px] uppercase tracking-widest h-9 px-3 rounded-xl hover:bg-blue-500 transition-all">
+                                                                        className="bg-blue-600 text-white font-black text-xs uppercase tracking-widest h-9 px-3 rounded-xl hover:bg-blue-500 transition-all">
                                                                         Send
                                                                     </Button>
                                                                     <Button variant="ghost" size="sm" disabled={isActioning}
@@ -299,7 +299,7 @@ export default function DealerOffersPage() {
                                                             {!isPending && offer.status === 'ACCEPTED' && !isCapturingPostcode && (
                                                                 <Button variant="ghost" size="sm"
                                                                     onClick={() => setPostcodeCapture({ offerId: offer.id, postcode: '' })}
-                                                                    className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-black text-[9px] uppercase tracking-widest h-9 px-4 border border-emerald-500/20 rounded-xl transition-all gap-1.5">
+                                                                    className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-black text-xs uppercase tracking-widest h-9 px-4 border border-emerald-500/20 rounded-xl transition-all gap-1.5">
                                                                     <CheckCircle size={12} /> Mark as Sold
                                                                 </Button>
                                                             )}
@@ -321,7 +321,7 @@ export default function DealerOffersPage() {
                                                                     </div>
                                                                     <Button variant="ghost" size="sm" disabled={confirmingSale}
                                                                         onClick={confirmMarkSold}
-                                                                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[9px] uppercase tracking-widest h-9 px-3 rounded-xl transition-all gap-1">
+                                                                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-widest h-9 px-3 rounded-xl transition-all gap-1">
                                                                         {confirmingSale ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
                                                                         Confirm
                                                                     </Button>
@@ -334,7 +334,7 @@ export default function DealerOffersPage() {
                                                             )}
 
                                                             {!isPending && offer.status !== 'ACCEPTED' && (
-                                                                <span className="text-[10px] text-gray-600 uppercase tracking-widest font-black italic">
+                                                                <span className="text-xs text-gray-600 uppercase tracking-widest font-black italic">
                                                                     Decision Finalized
                                                                 </span>
                                                             )}

@@ -1,4 +1,4 @@
-import React from "react"
+﻿import React from "react"
 import Link from "next/link"
 import { LucideIcon } from "lucide-react"
 
@@ -36,7 +36,7 @@ export function MetricCard({
                     <Icon size={18} className={color} />
                 </div>
                 {statusLabel && (
-                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">
                         {statusLabel}
                     </span>
                 )}
@@ -45,7 +45,7 @@ export function MetricCard({
                 {loading ? "..." : value}
             </h3>
             {subLabel && (
-                <p className="text-gray-500 text-[10px] mt-0.5 uppercase tracking-widest font-bold relative z-10">
+                <p className="text-gray-500 text-xs mt-0.5 uppercase tracking-widest font-bold relative z-10">
                     {subLabel}
                 </p>
             )}

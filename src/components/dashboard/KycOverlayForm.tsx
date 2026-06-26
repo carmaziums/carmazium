@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -124,7 +124,7 @@ function FileUploadField({
 
   return (
     <div className="space-y-1.5 text-left">
-      <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider flex items-center justify-between">
+      <label className="text-xs font-extrabold uppercase text-slate-400 tracking-wider flex items-center justify-between">
         <span className="flex items-center gap-1.5">
           <Icon size={11} className={isApproved ? "text-emerald-500" : rejectionNote ? "text-red-400" : "text-slate-500"} />
           {label}
@@ -151,7 +151,7 @@ function FileUploadField({
               <p className="text-xs font-semibold text-slate-200 truncate">
                 {isApproved ? "✓ Document Verified" : "Document Uploaded"}
               </p>
-              <p className="text-[10px] text-slate-500 truncate">{value.split("/").pop()}</p>
+              <p className="text-xs text-slate-500 truncate">{value.split("/").pop()}</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <a
@@ -217,7 +217,7 @@ function FileUploadField({
                   <p className="text-xs font-bold text-slate-300">
                     {dragging ? "Drop file here" : "Click or drag to upload"}
                   </p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">{hint}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{hint}</p>
                 </div>
               </>
             )}
@@ -226,14 +226,14 @@ function FileUploadField({
       )}
 
       {uploadError && (
-        <p className="text-[10px] text-red-500 font-semibold flex items-start gap-1">
+        <p className="text-xs text-red-500 font-semibold flex items-start gap-1">
           <AlertCircle size={10} className="shrink-0 mt-0.5" />
           <span>{uploadError}</span>
         </p>
       )}
 
       {rejectionNote && (
-        <p className="text-[10px] text-red-400 font-semibold leading-relaxed flex items-start gap-1">
+        <p className="text-xs text-red-400 font-semibold leading-relaxed flex items-start gap-1">
           <AlertCircle size={10} className="shrink-0 mt-0.5" />
           <span>{rejectionNote}</span>
         </p>
@@ -686,7 +686,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
               <h1 className="text-lg sm:text-xl md:text-2xl font-black font-heading text-white tracking-tight uppercase leading-tight">
                 Dealer KYC Portal
               </h1>
-              <p className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-widest font-bold truncate">
+              <p className="text-xs sm:text-xs text-slate-400 uppercase tracking-widest font-bold truncate">
                 Verification Required for Dashboard Access
               </p>
             </div>
@@ -767,11 +767,11 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
                   {isCompleted ? <Check size={14} /> : <StepIcon size={14} />}
                 </div>
                 <div className="hidden sm:block min-w-0">
-                  <p className="text-[10px] font-extrabold uppercase tracking-widest opacity-60 leading-none mb-0.5">Step 0{item.step}</p>
+                  <p className="text-xs font-extrabold uppercase tracking-widest opacity-60 leading-none mb-0.5">Step 0{item.step}</p>
                   <p className="text-xs font-bold font-heading truncate">{item.label}</p>
                 </div>
                 <div className="sm:hidden">
-                  <p className="text-[10px] font-extrabold uppercase tracking-widest opacity-60">{item.step}</p>
+                  <p className="text-xs font-extrabold uppercase tracking-widest opacity-60">{item.step}</p>
                 </div>
               </div>
             );
@@ -808,7 +808,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
 
                   {/* Director ID Upload */}
                   <div className="pt-2 border-t border-white/5">
-                    <p className="text-[10px] font-extrabold uppercase text-primary tracking-widest mb-3 flex items-center gap-1.5">
+                    <p className="text-xs font-extrabold uppercase text-primary tracking-widest mb-3 flex items-center gap-1.5">
                       <IdCard size={11} />
                       Supporting Document Upload
                     </p>
@@ -851,7 +851,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
 
                   {/* Document Proof Uploads */}
                   <div className="pt-2 border-t border-white/5 space-y-4">
-                    <p className="text-[10px] font-extrabold uppercase text-primary tracking-widest flex items-center gap-1.5">
+                    <p className="text-xs font-extrabold uppercase text-primary tracking-widest flex items-center gap-1.5">
                       <FileCheck size={11} />
                       Supporting Document Uploads
                     </p>
@@ -919,7 +919,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
                     /* Stripe card form */
                     <div className="space-y-3">
                       <div className="p-3 rounded-lg border border-white/5 bg-slate-900/60">
-                        <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-0.5">
+                        <p className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-0.5">
                           Verification Fee
                         </p>
                         <p className="text-lg font-extrabold text-white">£1.00</p>
@@ -927,7 +927,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
                       </div>
 
                       <div className="p-4 rounded-xl border border-white/10 bg-slate-900/60">
-                        <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3">
+                        <p className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-3">
                           Card Details
                         </p>
                         <Elements stripe={stripePromise}>
@@ -1028,7 +1028,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
     const rejectionNote = getFieldRejectionNote(name);
     return (
       <div className="space-y-1.5 text-left">
-        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider flex items-center justify-between">
+        <label className="text-xs font-extrabold uppercase text-slate-400 tracking-wider flex items-center justify-between">
           <span>{label}</span>
           {isApproved && (
             <span className="flex items-center gap-1 text-[8px] font-black text-emerald-400 uppercase tracking-widest px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
@@ -1057,7 +1057,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
           />
         </div>
         {rejectionNote && (
-          <p className="text-[10px] text-red-500 font-semibold leading-relaxed flex items-start gap-1">
+          <p className="text-xs text-red-500 font-semibold leading-relaxed flex items-start gap-1">
             <AlertCircle size={10} className="shrink-0 mt-0.5" />
             <span>{rejectionNote}</span>
           </p>
@@ -1080,7 +1080,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
     const rejectionNote = getFieldRejectionNote(name);
     return (
       <div className="space-y-1.5 text-left">
-        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider flex items-center justify-between">
+        <label className="text-xs font-extrabold uppercase text-slate-400 tracking-wider flex items-center justify-between">
           <span>{label}</span>
           {isApproved && (
             <span className="flex items-center gap-1 text-[8px] font-black text-emerald-400 uppercase tracking-widest px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
@@ -1109,7 +1109,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
           />
         </div>
         {rejectionNote && (
-          <p className="text-[10px] text-red-500 font-semibold leading-relaxed flex items-start gap-1">
+          <p className="text-xs text-red-500 font-semibold leading-relaxed flex items-start gap-1">
             <AlertCircle size={10} className="shrink-0 mt-0.5" />
             <span>{rejectionNote}</span>
           </p>

@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import Link from "next/link"
@@ -95,13 +95,13 @@ export default function AdminTransactionsPage() {
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                        <span className="inline-flex px-2 py-0.5 rounded border border-white/10 bg-white/5 text-[10px] font-bold text-gray-300">
+                                        <span className="inline-flex px-2 py-0.5 rounded border border-white/10 bg-white/5 text-xs font-bold text-gray-300">
                                             {TYPE_LABELS[t.type] || t.type}
                                         </span>
-                                        <span className={`inline-flex px-2 py-0.5 rounded border text-[10px] font-bold ${STATUS_STYLES[t.status] || STATUS_STYLES.PENDING}`}>
+                                        <span className={`inline-flex px-2 py-0.5 rounded border text-xs font-bold ${STATUS_STYLES[t.status] || STATUS_STYLES.PENDING}`}>
                                             {t.status}
                                         </span>
-                                        <span className="text-[10px] text-gray-600">{new Date(t.createdAt).toLocaleDateString()}</span>
+                                        <span className="text-xs text-gray-600">{new Date(t.createdAt).toLocaleDateString()}</span>
                                     </div>
                                     {t.listing && (
                                         <p className="text-xs text-gray-500 mt-1 truncate">{t.listing.title}</p>
@@ -113,7 +113,7 @@ export default function AdminTransactionsPage() {
                         {/* ── Desktop table (≥ sm) ── */}
                         <div className="hidden sm:block overflow-x-auto">
                             <table className="w-full text-left">
-                                <thead className="bg-slate-800/50 text-gray-400 text-[10px] uppercase font-black tracking-widest border-b border-white/10">
+                                <thead className="bg-slate-800/50 text-gray-400 text-xs uppercase font-black tracking-widest border-b border-white/10">
                                     <tr>
                                         <th className="px-6 py-4">User</th>
                                         <th className="px-6 py-4">Vehicle</th>
@@ -139,12 +139,12 @@ export default function AdminTransactionsPage() {
                                                 ) : <span className="text-gray-500">—</span>}
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <span className="inline-flex px-2 py-1 rounded border border-white/10 bg-white/5 text-[10px] font-bold text-gray-300">
+                                                <span className="inline-flex px-2 py-1 rounded border border-white/10 bg-white/5 text-xs font-bold text-gray-300">
                                                     {TYPE_LABELS[t.type] || t.type}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <span className={`inline-flex px-2 py-1 rounded border text-[10px] font-bold ${STATUS_STYLES[t.status] || STATUS_STYLES.PENDING}`}>
+                                                <span className={`inline-flex px-2 py-1 rounded border text-xs font-bold ${STATUS_STYLES[t.status] || STATUS_STYLES.PENDING}`}>
                                                     {t.status}
                                                 </span>
                                             </td>

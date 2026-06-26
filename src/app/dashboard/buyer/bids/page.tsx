@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import Link from "next/link"
@@ -129,7 +129,7 @@ export default function MyBidsPage() {
                                                                 <div className="font-bold text-white flex items-center gap-2">
                                                                     {bid.listing.title}
                                                                     {isAuction && (
-                                                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-widest bg-primary/10 text-primary border border-primary/20">
+                                                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-black uppercase tracking-widest bg-primary/10 text-primary border border-primary/20">
                                                                             <Gavel size={8} /> Auction
                                                                         </span>
                                                                     )}

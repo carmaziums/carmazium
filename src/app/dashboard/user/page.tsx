@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 import * as React from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { 
@@ -404,7 +404,7 @@ function WatchlistTab() {
                                         <div className="w-full h-full flex items-center justify-center text-gray-600"><Car size={32} /></div>
                                     )}
                                     {item.listing.status !== 'ACTIVE' && (
-                                        <div className="absolute top-2 left-2 bg-red-500/90 text-white text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg">
+                                        <div className="absolute top-2 left-2 bg-red-500/90 text-white text-xs font-black uppercase tracking-widest px-2 py-1 rounded-lg">
                                             {item.listing.status === 'SOLD' ? 'Sold' : 'Unavailable'}
                                         </div>
                                     )}
@@ -584,7 +584,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
             <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
-                        <thead className="bg-slate-800/50 text-gray-400 text-[10px] uppercase font-black tracking-widest border-b border-white/5">
+                        <thead className="bg-slate-800/50 text-gray-400 text-xs uppercase font-black tracking-widest border-b border-white/5">
                             <tr>
                                 <th className="px-6 py-4">Vehicle</th>
                                 <th className="px-6 py-4">Status</th>
@@ -623,12 +623,12 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                         <p className="font-bold text-sm truncate uppercase">{listing.title}</p>
                                                         {listing.isFeatured && <Zap size={12} className="text-amber-400 fill-amber-400" />}
                                                     </div>
-                                                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{listing.year} • {listing.mileage?.toLocaleString()} miles</p>
+                                                    <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">{listing.year} • {listing.mileage?.toLocaleString()} miles</p>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+                                            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-widest border ${
                                                 listing.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
                                                 listing.status === 'SOLD' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
                                                 listing.status === 'DRAFT' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
@@ -658,7 +658,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                 {listing.status === 'ACTIVE' && !listing.isFeatured && listing.viewCount > 20 && (
                                                     <Button
                                                         size="sm"
-                                                        className="h-8 px-3 text-[10px] bg-gradient-to-r from-amber-400 to-orange-500 text-black font-black"
+                                                        className="h-8 px-3 text-xs bg-gradient-to-r from-amber-400 to-orange-500 text-black font-black"
                                                         onClick={() => handleBoost(listing.id)}
                                                         disabled={boosting === listing.id}
                                                     >
@@ -666,7 +666,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                     </Button>
                                                 )}
                                                 <div className="relative group">
-                                                    <button className="p-2 text-gray-400 hover:text-white transition-colors">
+                                                    <button className="p-2.5 text-gray-500 hover:text-white transition-colors">
                                                         <MoreVertical size={16} />
                                                     </button>
                                                     <div className="absolute right-0 top-full mt-1 w-44 bg-slate-800 border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 py-2">
@@ -865,7 +865,7 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                         <p className="font-bold text-white truncate uppercase">{listing.title}</p>
                                         <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">{listingOffers.length} TOTAL OFFERS</p>
                                     </div>
-                                    {pending > 0 && <span className="bg-primary text-white text-[10px] font-black px-3 py-1 rounded-full">{pending} PENDING</span>}
+                                    {pending > 0 && <span className="bg-primary text-white text-xs font-black px-3 py-1 rounded-full">{pending} PENDING</span>}
                                     <ChevronRight className={`text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`} size={20} />
                                 </button>
 
@@ -904,10 +904,10 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                                     <Button size="sm" className="h-9 bg-emerald-600 hover:bg-emerald-500" onClick={() => handleRespond(offer.id, listing.id, 'ACCEPTED')} disabled={!!responding}>Accept</Button>
                                                                 </>
                                                             ) : offer.status === 'COUNTERED' && offer.lastCounteredBy === 'SELLER' ? (
-                                                                <span className="text-[10px] font-black uppercase tracking-widest text-blue-400/70">Awaiting buyer response</span>
+                                                                <span className="text-xs font-black uppercase tracking-widest text-blue-400/70">Awaiting buyer response</span>
                                                             ) : (
                                                                 <div className="flex items-center gap-2 flex-wrap">
-                                                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">{offer.status}</span>
+                                                                    <span className="text-xs font-black uppercase tracking-widest text-gray-500">{offer.status}</span>
                                                                     {offer.status === 'ACCEPTED' && (
                                                                         <>
                                                                             <Button size="sm" variant="ghost" className="h-8 text-blue-400" onClick={() => handleMessage(offer.buyerId, listing.id)}>Message</Button>
@@ -1111,7 +1111,7 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                 <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
-                            <thead className="bg-slate-800/50 text-[10px] text-gray-500 uppercase font-black tracking-widest">
+                            <thead className="bg-slate-800/50 text-xs text-gray-500 uppercase font-black tracking-widest">
                                 <tr>
                                     <th className="px-6 py-4">Vehicle</th>
                                     <th className="px-6 py-4">My Offer</th>
@@ -1144,13 +1144,13 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                             <td className="px-6 py-4">
                                                 <div className="font-black font-mono text-white">{formatPrice(offer.amount)}</div>
                                                 {offer.status === 'COUNTERED' && offer.sellerCounterAmount != null && (
-                                                    <div className="text-[10px] font-black uppercase tracking-widest text-blue-400 mt-1">
+                                                    <div className="text-xs font-black uppercase tracking-widest text-blue-400 mt-1">
                                                         Seller counter: {formatPrice(offer.sellerCounterAmount)}
                                                     </div>
                                                 )}
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className={`text-[10px] font-black uppercase tracking-widest ${outgoingOfferStatusClass(offer.status)}`}>
+                                                <span className={`text-xs font-black uppercase tracking-widest ${outgoingOfferStatusClass(offer.status)}`}>
                                                     {offer.status}
                                                 </span>
                                             </td>
@@ -1187,7 +1187,7 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                                     />
                                                                     <Button
                                                                         size="sm"
-                                                                        className="h-8 bg-blue-600 hover:bg-blue-500 text-[10px] font-black"
+                                                                        className="h-8 bg-blue-600 hover:bg-blue-500 text-xs font-black"
                                                                         onClick={() => handleBuyerCounter(offer.id, parseFloat(counterAmounts[offer.id] ?? '0'))}
                                                                         disabled={buyerCountering === offer.id || !counterAmounts[offer.id]}
                                                                     >
@@ -1201,7 +1201,7 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                                 <Button
                                                                     size="sm"
                                                                     variant="ghost"
-                                                                    className="h-8 text-emerald-400 text-[10px] font-black"
+                                                                    className="h-8 text-emerald-400 text-xs font-black"
                                                                     onClick={() => handleAcceptCounter(offer.id)}
                                                                     disabled={accepting === offer.id || declining === offer.id}
                                                                 >
@@ -1210,7 +1210,7 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                                 <Button
                                                                     size="sm"
                                                                     variant="ghost"
-                                                                    className="h-8 text-red-400 text-[10px] font-black"
+                                                                    className="h-8 text-red-400 text-xs font-black"
                                                                     onClick={() => handleDeclineCounter(offer.id)}
                                                                     disabled={accepting === offer.id || declining === offer.id}
                                                                 >
@@ -1219,7 +1219,7 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                                 <Button
                                                                     size="sm"
                                                                     variant="ghost"
-                                                                    className="h-8 text-blue-400 text-[10px] font-black"
+                                                                    className="h-8 text-blue-400 text-xs font-black"
                                                                     onClick={() => handleMessageSeller(offer.listing?.sellerId, offer.listing?.id)}
                                                                     disabled={startingChat === offer.listing?.id}
                                                                 >
@@ -1229,13 +1229,13 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                         </div>
                                                     )}
                                                     {offer.status === 'PENDING' && (
-                                                        <Button size="sm" variant="ghost" className="h-8 text-red-400 text-[10px] font-black" onClick={() => handleWithdraw(offer.id)} disabled={actioning === offer.id}>WITHDRAW</Button>
+                                                        <Button size="sm" variant="ghost" className="h-8 text-red-400 text-xs font-black" onClick={() => handleWithdraw(offer.id)} disabled={actioning === offer.id}>WITHDRAW</Button>
                                                     )}
                                                     {offer.status === 'ACCEPTED' && (
                                                         <Button
                                                             size="sm"
                                                             variant="ghost"
-                                                            className="h-8 text-blue-400 text-[10px] font-black"
+                                                            className="h-8 text-blue-400 text-xs font-black"
                                                             onClick={() => handleMessageSeller(offer.listing?.sellerId, offer.listing?.id)}
                                                             disabled={startingChat === offer.listing?.id}
                                                         >
@@ -1304,7 +1304,7 @@ function StatsTab() {
                     <div className="space-y-6">
                         {performance.recentListingViews.map(l => (
                             <div key={l.id} className="space-y-2">
-                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                                <div className="flex justify-between items-center text-xs font-black uppercase tracking-widest">
                                     <span className="text-gray-400">{l.title}</span>
                                     <span className="text-white">{l.views} VIEWS</span>
                                 </div>
@@ -1427,29 +1427,29 @@ function EarningsTab() {
             {/* KPI summary — Total Earnings stays in sync with /listings/earnings */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="glass-card p-5 border border-white/5 bg-white/5 rounded-2xl">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-2">Total Earnings</p>
+                    <p className="text-xs font-black uppercase tracking-widest text-emerald-400 mb-2">Total Earnings</p>
                     <p className="text-3xl font-black text-white tabular-nums">
                         {loading ? "—" : formatPrice(totalRevenue)}
                     </p>
-                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-2">
+                    <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-2">
                         Sourced from finalized sales
                     </p>
                 </div>
                 <div className="glass-card p-5 border border-white/5 bg-white/5 rounded-2xl">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-2">Vehicles Sold</p>
+                    <p className="text-xs font-black uppercase tracking-widest text-primary mb-2">Vehicles Sold</p>
                     <p className="text-3xl font-black text-white tabular-nums">
                         {loading ? "—" : totalSales}
                     </p>
-                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-2">
+                    <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-2">
                         Lifetime
                     </p>
                 </div>
                 <div className="glass-card p-5 border border-white/5 bg-white/5 rounded-2xl">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-400 mb-2">Avg. Sale Price</p>
+                    <p className="text-xs font-black uppercase tracking-widest text-blue-400 mb-2">Avg. Sale Price</p>
                     <p className="text-3xl font-black text-white tabular-nums">
                         {loading ? "—" : formatPrice(avgSale)}
                     </p>
-                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-2">
+                    <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-2">
                         Mean across all sales
                     </p>
                 </div>
@@ -1458,7 +1458,7 @@ function EarningsTab() {
             <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
-                        <thead className="bg-slate-800/80 text-gray-400 text-[10px] uppercase font-black tracking-widest border-b border-white/5">
+                        <thead className="bg-slate-800/80 text-gray-400 text-xs uppercase font-black tracking-widest border-b border-white/5">
                             <tr>
                                 <th className="px-6 py-5">Vehicle</th>
                                 <th className="px-6 py-5">Buyer</th>
@@ -1489,7 +1489,7 @@ function EarningsTab() {
                                                 </div>
                                                 <div className="min-w-0">
                                                     <p className="font-bold text-sm text-white truncate uppercase">{sale.listing.title}</p>
-                                                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{sale.listing.vrm || "N/A"}</p>
+                                                    <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">{sale.listing.vrm || "N/A"}</p>
                                                 </div>
                                             </div>
                                         </td>
@@ -1499,7 +1499,7 @@ function EarningsTab() {
                                                     ? `${sale.buyer.firstName} ${sale.buyer.lastName || ""}`.trim()
                                                     : (sale as any).buyerName || "Direct Buyer"}
                                             </p>
-                                            <p className="text-[10px] text-gray-500 truncate">
+                                            <p className="text-xs text-gray-500 truncate">
                                                 {sale.buyer?.email || (sale as any).buyerEmail || ""}
                                             </p>
                                         </td>
@@ -1617,13 +1617,13 @@ function SettingsTab({ profile }: { profile: any }) {
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-1">
-                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                        <p className="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
                             <Mail size={12} /> Email Address
                         </p>
                         <p className="text-sm font-black text-white">{profile?.email}</p>
                     </div>
                     <div className="space-y-1">
-                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                        <p className="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
                             <Phone size={12} /> Phone Number
                         </p>
                         <p className="text-sm font-black text-white">{profile?.phone || "Not set"}</p>
@@ -1637,7 +1637,7 @@ function SettingsTab({ profile }: { profile: any }) {
                 </h3>
                 <form onSubmit={handleResetPassword} className="space-y-6">
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Current Password</label>
+                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Current Password</label>
                         <Input 
                             type="password" 
                             placeholder="••••••••" 
@@ -1649,7 +1649,7 @@ function SettingsTab({ profile }: { profile: any }) {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">New Password</label>
+                            <label className="text-xs font-black text-gray-400 uppercase tracking-widest">New Password</label>
                             <Input 
                                 type="password" 
                                 placeholder="Min. 8 characters" 
@@ -1660,7 +1660,7 @@ function SettingsTab({ profile }: { profile: any }) {
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Confirm New Password</label>
+                            <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Confirm New Password</label>
                             <Input 
                                 type="password" 
                                 placeholder="••••••••" 
@@ -1744,7 +1744,7 @@ function SettingsTab({ profile }: { profile: any }) {
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2 md:col-span-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Account Holder Name</label>
+                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Account Holder Name</label>
                         <Input
                             type="text"
                             value={bankName}
@@ -1754,7 +1754,7 @@ function SettingsTab({ profile }: { profile: any }) {
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sort Code</label>
+                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Sort Code</label>
                         <Input
                             type="text"
                             value={bankSortCode}
@@ -1765,7 +1765,7 @@ function SettingsTab({ profile }: { profile: any }) {
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Account Number</label>
+                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Account Number</label>
                         <Input
                             type="text"
                             value={bankAccountNumber}

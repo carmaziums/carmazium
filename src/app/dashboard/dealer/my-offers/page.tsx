@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import Link from "next/link"
@@ -195,21 +195,21 @@ export default function DealerMyOffersPage() {
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <Link href={`/vehicle/${slug}`} className="font-black text-white text-sm truncate block hover:text-primary transition-colors">{offer.listing?.title || 'Listing'}</Link>
-                                                    <p className="text-[10px] text-gray-500 font-bold uppercase truncate">{offer.listing?.year} {offer.listing?.make} {offer.listing?.model}</p>
+                                                    <p className="text-xs text-gray-500 font-bold uppercase truncate">{offer.listing?.year} {offer.listing?.make} {offer.listing?.model}</p>
                                                 </div>
-                                                <span className={`inline-flex px-2.5 py-1 rounded-lg text-[9px] font-black tracking-widest uppercase border shrink-0 ${style.bg} ${style.text} ${style.border}`}>{style.label}</span>
+                                                <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-black tracking-widest uppercase border shrink-0 ${style.bg} ${style.text} ${style.border}`}>{style.label}</span>
                                             </div>
                                             <div className="flex items-center justify-between gap-2">
                                                 <div>
                                                     <p className="text-base font-black text-white tabular-nums">{formatPrice(offer.amount)}</p>
                                                     {offer.counterAmount && <p className="text-xs font-black text-blue-400">Counter: {formatPrice(offer.counterAmount)}</p>}
-                                                    <p className="text-[10px] text-gray-500">{new Date(offer.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
+                                                    <p className="text-xs text-gray-500">{new Date(offer.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
                                                 </div>
                                                 <div className="flex items-center gap-2 flex-wrap justify-end">
-                                                    {offer.status === 'PENDING' && <button onClick={() => handleWithdraw(offer.id)} disabled={isActioning} className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl disabled:opacity-50">{isActioning ? <Loader2 size={12} className="animate-spin" /> : 'Withdraw'}</button>}
+                                                    {offer.status === 'PENDING' && <button onClick={() => handleWithdraw(offer.id)} disabled={isActioning} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl disabled:opacity-50">{isActioning ? <Loader2 size={12} className="animate-spin" /> : 'Withdraw'}</button>}
                                                     {offer.status === 'COUNTERED' && <>
-                                                        <button onClick={() => handleCounterResponse(offer.id, 'ACCEPTED')} disabled={isActioning} className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl">{isActioning ? <Loader2 size={12} className="animate-spin" /> : 'Accept'}</button>
-                                                        <button onClick={() => handleCounterResponse(offer.id, 'REJECTED')} disabled={isActioning} className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl">Reject</button>
+                                                        <button onClick={() => handleCounterResponse(offer.id, 'ACCEPTED')} disabled={isActioning} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl">{isActioning ? <Loader2 size={12} className="animate-spin" /> : 'Accept'}</button>
+                                                        <button onClick={() => handleCounterResponse(offer.id, 'REJECTED')} disabled={isActioning} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl">Reject</button>
                                                     </>}
                                                 </div>
                                             </div>
@@ -221,7 +221,7 @@ export default function DealerMyOffersPage() {
                             {/* ── Desktop table (≥ sm) ── */}
                             <div className="hidden sm:block overflow-x-auto">
                                 <table className="w-full text-left">
-                                    <thead className="vip-table-header text-[10px] uppercase font-black tracking-widest text-gray-400 border-b border-white/5">
+                                    <thead className="vip-table-header text-xs uppercase font-black tracking-widest text-gray-400 border-b border-white/5">
                                         <tr>
                                             <th className="px-6 py-5">Vehicle</th>
                                             <th className="px-6 py-5 text-right">My Offer</th>
@@ -254,7 +254,7 @@ export default function DealerMyOffersPage() {
                                                                 <p className="font-black text-white truncate group-hover/link:text-primary transition-colors text-sm">
                                                                     {offer.listing?.title || 'Listing'}
                                                                 </p>
-                                                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider truncate">
+                                                                <p className="text-xs text-gray-500 font-bold uppercase tracking-wider truncate">
                                                                     {offer.listing?.year ? `${offer.listing.year} ` : ''}
                                                                     {offer.listing?.make || ''} {offer.listing?.model || ''}
                                                                 </p>
@@ -276,7 +276,7 @@ export default function DealerMyOffersPage() {
                                                         )}
                                                     </td>
                                                     <td className="px-6 py-5 text-center">
-                                                        <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest uppercase border ${style.bg} ${style.text} ${style.border}`}>
+                                                        <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-black tracking-widest uppercase border ${style.bg} ${style.text} ${style.border}`}>
                                                             {style.label}
                                                         </span>
                                                     </td>
@@ -284,7 +284,7 @@ export default function DealerMyOffersPage() {
                                                         <p className="text-xs font-bold text-gray-300">
                                                             {new Date(offer.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
                                                         </p>
-                                                        <p className="text-[10px] text-gray-500">
+                                                        <p className="text-xs text-gray-500">
                                                             {new Date(offer.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                                                         </p>
                                                     </td>
@@ -296,7 +296,7 @@ export default function DealerMyOffersPage() {
                                                                     size="sm"
                                                                     disabled={isActioning}
                                                                     onClick={() => handleWithdraw(offer.id)}
-                                                                    className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-black text-[9px] uppercase tracking-widest h-9 px-4 border border-red-500/20 rounded-xl"
+                                                                    className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-black text-xs uppercase tracking-widest h-9 px-4 border border-red-500/20 rounded-xl"
                                                                 >
                                                                     {isActioning ? <Loader2 size={14} className="animate-spin" /> : 'Withdraw'}
                                                                 </Button>
@@ -308,7 +308,7 @@ export default function DealerMyOffersPage() {
                                                                         size="sm"
                                                                         disabled={isActioning}
                                                                         onClick={() => handleCounterResponse(offer.id, 'ACCEPTED')}
-                                                                        className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-black text-[9px] uppercase tracking-widest h-9 px-4 border border-emerald-500/20 rounded-xl"
+                                                                        className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-black text-xs uppercase tracking-widest h-9 px-4 border border-emerald-500/20 rounded-xl"
                                                                     >
                                                                         {isActioning ? <Loader2 size={14} className="animate-spin" /> : 'Accept Counter'}
                                                                     </Button>
@@ -317,24 +317,24 @@ export default function DealerMyOffersPage() {
                                                                         size="sm"
                                                                         disabled={isActioning}
                                                                         onClick={() => handleCounterResponse(offer.id, 'REJECTED')}
-                                                                        className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-black text-[9px] uppercase tracking-widest h-9 px-4 border border-red-500/20 rounded-xl"
+                                                                        className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-black text-xs uppercase tracking-widest h-9 px-4 border border-red-500/20 rounded-xl"
                                                                     >
                                                                         Reject
                                                                     </Button>
                                                                 </>
                                                             )}
                                                             {offer.status === 'ACCEPTED' && (
-                                                                <span className="inline-flex items-center gap-1 text-emerald-400 font-black text-[9px] uppercase tracking-widest">
+                                                                <span className="inline-flex items-center gap-1 text-emerald-400 font-black text-xs uppercase tracking-widest">
                                                                     <CheckCircle size={12} /> Closed
                                                                 </span>
                                                             )}
                                                             {offer.status === 'REJECTED' && (
-                                                                <span className="inline-flex items-center gap-1 text-red-400/80 font-black text-[9px] uppercase tracking-widest">
+                                                                <span className="inline-flex items-center gap-1 text-red-400/80 font-black text-xs uppercase tracking-widest">
                                                                     <XCircle size={12} /> Declined
                                                                 </span>
                                                             )}
                                                             {offer.status === 'WITHDRAWN' && (
-                                                                <span className="text-gray-600 font-black text-[9px] uppercase tracking-widest italic">
+                                                                <span className="text-gray-600 font-black text-xs uppercase tracking-widest italic">
                                                                     Withdrawn
                                                                 </span>
                                                             )}

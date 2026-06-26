@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import { MapPin } from "lucide-react"
@@ -24,8 +24,8 @@ export function CustomerAreaTable({ data, title = "Customers by Area" }: Props) 
             <div className="p-5 border-b border-white/5 bg-black/20 flex items-center gap-2">
                 <MapPin size={14} className="text-rose-400" />
                 <div>
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-300">{title}</h3>
-                    <p className="text-[9px] text-gray-600 font-medium">UK postcode areas (set when closing a deal)</p>
+                    <h3 className="text-xs font-black uppercase tracking-widest text-gray-300">{title}</h3>
+                    <p className="text-xs text-gray-600 font-medium">UK postcode areas (set when closing a deal)</p>
                 </div>
             </div>
 
@@ -43,13 +43,13 @@ export function CustomerAreaTable({ data, title = "Customers by Area" }: Props) 
                         const barPct = (row.count / maxCount) * 100
                         return (
                             <div key={row.postcode} className="flex items-center gap-3 px-5 py-3 hover:bg-white/[0.02] transition-colors">
-                                <span className={`text-[10px] font-black tabular-nums w-4 shrink-0 ${i === 0 ? 'text-amber-400' : 'text-gray-600'}`}>
+                                <span className={`text-xs font-black tabular-nums w-4 shrink-0 ${i === 0 ? 'text-amber-400' : 'text-gray-600'}`}>
                                     {i + 1}
                                 </span>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between mb-1">
                                         <span className="text-sm font-black text-white">{row.postcode}</span>
-                                        <span className="text-[10px] font-bold text-gray-500 tabular-nums ml-2">{row.count} sale{row.count !== 1 ? 's' : ''}</span>
+                                        <span className="text-xs font-bold text-gray-500 tabular-nums ml-2">{row.count} sale{row.count !== 1 ? 's' : ''}</span>
                                     </div>
                                     <div className="relative h-1 bg-white/[0.04] rounded-full overflow-hidden">
                                         <div

@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import { Upload, X, CheckCircle, Loader2, AlertTriangle, FileSpreadsheet, ArrowRight, Car, Settings2, Download } from "lucide-react"
@@ -304,7 +304,7 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
                             <h3 className="text-xl font-bold text-white mb-2 tracking-tight">Syncing Inventory...</h3>
                             <p className="text-sm text-gray-400 mb-6 text-center">
                                 Processing {progress.current} of {progress.total} vehicles<br/>
-                                <span className="text-[10px] uppercase tracking-widest text-emerald-500/70">Connecting to UK DVLA</span>
+                                <span className="text-xs uppercase tracking-widest text-emerald-500/70">Connecting to UK DVLA</span>
                             </p>
                             
                             <div className="w-full max-w-sm bg-slate-800 rounded-full h-1.5 overflow-hidden">

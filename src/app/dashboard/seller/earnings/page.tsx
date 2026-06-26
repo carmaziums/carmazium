@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import Link from "next/link"
@@ -170,7 +170,7 @@ export default function EarningsPage() {
 
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
-                                <thead className="bg-slate-800/80 text-gray-400 text-[10px] uppercase font-black tracking-widest border-b border-white/5">
+                                <thead className="bg-slate-800/80 text-gray-400 text-xs uppercase font-black tracking-widest border-b border-white/5">
                                     <tr>
                                         <th className="px-6 py-5">Vehicle Details</th>
                                         <th className="px-6 py-5">Buyer</th>
@@ -213,7 +213,7 @@ export default function EarningsPage() {
                                                         </div>
                                                         <div className="min-w-0">
                                                             <p className="font-black text-white group-hover:text-primary transition-colors truncate uppercase tracking-tight">{sale.listing.title}</p>
-                                                            <p className="text-[10px] text-gray-500 font-bold tracking-widest uppercase mt-0.5">{sale.listing.vrm || "Private Plate"}</p>
+                                                            <p className="text-xs text-gray-500 font-bold tracking-widest uppercase mt-0.5">{sale.listing.vrm || "Private Plate"}</p>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -228,7 +228,7 @@ export default function EarningsPage() {
                                                                     ? `${sale.buyer.firstName} ${sale.buyer.lastName || ""}`.trim()
                                                                     : (sale as any).buyerName || "Private Buyer"}
                                                             </p>
-                                                            <p className="text-[10px] text-gray-500 truncate">
+                                                            <p className="text-xs text-gray-500 truncate">
                                                                 {sale.buyer?.email || (sale as any).buyerEmail || "No email recorded"}
                                                             </p>
                                                         </div>
@@ -243,29 +243,29 @@ export default function EarningsPage() {
                                                         const listed = Number((sale as any).listing?.price ?? sale.listedPrice ?? 0)
                                                         const sold = Number(sale.soldPrice)
                                                         if (sold > listed && listed > 0) return (
-                                                            <span className="text-[10px] text-emerald-400 font-bold flex items-center justify-end gap-1">
+                                                            <span className="text-xs text-emerald-400 font-bold flex items-center justify-end gap-1">
                                                                 <ArrowUpRight size={10} /> +{formatPrice(sold - listed)}
                                                             </span>
                                                         )
                                                         if (sold < listed && listed > 0) return (
-                                                            <span className="text-[10px] text-red-400 font-bold flex items-center justify-end gap-1">
+                                                            <span className="text-xs text-red-400 font-bold flex items-center justify-end gap-1">
                                                                 <ArrowDownRight size={10} /> -{formatPrice(listed - sold)}
                                                             </span>
                                                         )
-                                                        return <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Asking Price</span>
+                                                        return <span className="text-xs text-gray-500 font-bold uppercase tracking-widest">Asking Price</span>
                                                     })()}
                                                 </td>
                                                 <td className="px-6 py-5 text-right">
                                                     <div className="inline-flex flex-col items-end">
                                                         <span className="text-emerald-400 font-black text-base">{formatPrice(sale.soldPrice)}</span>
-                                                        <span className="text-[9px] text-gray-500 font-bold uppercase tracking-tighter">After 0% Fee</span>
+                                                        <span className="text-xs text-gray-500 font-bold uppercase tracking-tighter">After 0% Fee</span>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-5 text-center">
                                                     <p className="text-sm font-bold text-gray-300">
                                                         {new Date(sale.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                                                     </p>
-                                                    <p className="text-[10px] text-gray-500">{new Date(sale.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</p>
+                                                    <p className="text-xs text-gray-500">{new Date(sale.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</p>
                                                 </td>
                                             </tr>
                                         ))

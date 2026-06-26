@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import Link from "next/link"
@@ -179,23 +179,23 @@ export default function DealerEarningsPage() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="font-black text-white text-sm truncate uppercase tracking-tight">{sale.listing.title}</p>
-                                        <p className="text-[10px] text-gray-500 font-bold">{sale.listing.vrm || 'PRIVATE'}</p>
+                                        <p className="text-xs text-gray-500 font-bold">{sale.listing.vrm || 'PRIVATE'}</p>
                                         <div className="flex items-center justify-between mt-1.5 gap-2">
                                             <span className="text-xs text-gray-400 truncate">
                                                 {sale.buyer ? `${sale.buyer.firstName} ${sale.buyer.lastName || ''}`.trim() : (sale as any).buyerName || 'Direct'}
                                             </span>
-                                            <span className="text-[10px] text-gray-500 shrink-0">{new Date(sale.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>
+                                            <span className="text-xs text-gray-500 shrink-0">{new Date(sale.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>
                                         </div>
                                     </div>
                                     <div className="text-right shrink-0">
                                         <p className="font-black text-white text-base leading-none">{formatPrice(sale.soldPrice)}</p>
                                         <div className="mt-1">
                                             {Number(sale.soldPrice) >= Number(sale.listedPrice) ? (
-                                                <span className="text-[10px] text-emerald-400 font-black flex items-center gap-0.5 justify-end">
+                                                <span className="text-xs text-emerald-400 font-black flex items-center gap-0.5 justify-end">
                                                     <ArrowUpRight size={9} /> +{formatPrice(Number(sale.soldPrice) - Number(sale.listedPrice))}
                                                 </span>
                                             ) : (
-                                                <span className="text-[10px] text-red-400 font-black flex items-center gap-0.5 justify-end">
+                                                <span className="text-xs text-red-400 font-black flex items-center gap-0.5 justify-end">
                                                     <ArrowDownRight size={9} /> -{formatPrice(Number(sale.listedPrice) - Number(sale.soldPrice))}
                                                 </span>
                                             )}
@@ -254,11 +254,11 @@ export default function DealerEarningsPage() {
                                                         <div className="min-w-0">
                                                             <p className="font-black text-white group-hover:text-primary transition-colors truncate uppercase tracking-tight text-base leading-tight">{sale.listing.title}</p>
                                                             <div className="flex items-center gap-2 mt-1">
-                                                                <span className="bg-slate-700 text-gray-300 text-[10px] font-black px-2 py-0.5 rounded tracking-widest uppercase border border-white/5">
+                                                                <span className="bg-slate-700 text-gray-300 text-xs font-black px-2 py-0.5 rounded tracking-widest uppercase border border-white/5">
                                                                     {sale.listing.vrm || "PRIVATE"}
                                                                 </span>
                                                                 <span className="w-1 h-1 bg-gray-600 rounded-full" />
-                                                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">ID: {sale.listingId.split('-')[0]}</p>
+                                                                <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">ID: {sale.listingId.split('-')[0]}</p>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -287,11 +287,11 @@ export default function DealerEarningsPage() {
                                                     <p className="font-black text-white text-lg leading-none">{formatPrice(sale.soldPrice)}</p>
                                                     <div className="flex items-center justify-end gap-1 mt-1.5">
                                                         {Number(sale.soldPrice) >= Number(sale.listedPrice) ? (
-                                                            <span className="text-[10px] text-emerald-400 font-black flex items-center gap-0.5 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                                                            <span className="text-xs text-emerald-400 font-black flex items-center gap-0.5 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
                                                                 <ArrowUpRight size={10} /> +{formatPrice(Number(sale.soldPrice) - Number(sale.listedPrice))}
                                                             </span>
                                                         ) : (
-                                                            <span className="text-[10px] text-red-400 font-black flex items-center gap-0.5 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">
+                                                            <span className="text-xs text-red-400 font-black flex items-center gap-0.5 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">
                                                                 <ArrowDownRight size={10} /> -{formatPrice(Number(sale.listedPrice) - Number(sale.soldPrice))}
                                                             </span>
                                                         )}
@@ -300,7 +300,7 @@ export default function DealerEarningsPage() {
                                                 <td className="px-8 py-6 text-right">
                                                     <div className="inline-flex flex-col items-end px-4 py-2 bg-emerald-500/5 rounded-2xl border border-emerald-500/10">
                                                         <span className="text-emerald-400 font-black text-lg leading-none">{formatPrice(sale.soldPrice)}</span>
-                                                        <span className="text-[9px] text-emerald-500/60 font-black uppercase tracking-widest mt-1">Net Realized</span>
+                                                        <span className="text-xs text-emerald-500/60 font-black uppercase tracking-widest mt-1">Net Realized</span>
                                                     </div>
                                                 </td>
                                                 <td className="px-8 py-6 text-center">
@@ -308,7 +308,7 @@ export default function DealerEarningsPage() {
                                                         <p className="text-sm font-black text-gray-200 tracking-tight">
                                                             {new Date(sale.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                         </p>
-                                                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">{new Date(sale.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</p>
+                                                        <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-0.5">{new Date(sale.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</p>
                                                     </div>
                                                 </td>
                                             </tr>

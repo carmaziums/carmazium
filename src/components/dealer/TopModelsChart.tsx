@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import { Car } from "lucide-react"
@@ -29,7 +29,7 @@ export function TopModelsChart({ data, title = "Top Selling Models" }: Props) {
         <div className="dealer-glass-card overflow-hidden">
             <div className="p-5 border-b border-white/5 bg-black/20">
                 <h3 className="text-xs font-black uppercase tracking-widest text-gray-300">{title}</h3>
-                <p className="text-[10px] text-gray-600 mt-0.5 font-medium">Ranked by units sold in selected period</p>
+                <p className="text-xs text-gray-600 mt-0.5 font-medium">Ranked by units sold in selected period</p>
             </div>
 
             {data.length === 0 ? (
@@ -52,7 +52,7 @@ export function TopModelsChart({ data, title = "Top Selling Models" }: Props) {
                                         <span className="text-sm font-bold text-white truncate">
                                             {row.make} {row.model}
                                         </span>
-                                        <span className="text-[10px] font-black text-gray-400 tabular-nums ml-2 shrink-0">
+                                        <span className="text-xs font-black text-gray-400 tabular-nums ml-2 shrink-0">
                                             {row.units} sold
                                         </span>
                                     </div>
@@ -66,7 +66,7 @@ export function TopModelsChart({ data, title = "Top Selling Models" }: Props) {
 
                                 <div className="text-right shrink-0 hidden sm:block">
                                     <p className="text-sm font-black text-white tabular-nums">{formatPrice(row.revenue)}</p>
-                                    <p className="text-[9px] text-gray-600 font-medium">avg {formatPrice(row.avgPrice)}</p>
+                                    <p className="text-xs text-gray-600 font-medium">avg {formatPrice(row.avgPrice)}</p>
                                 </div>
                             </div>
                         )

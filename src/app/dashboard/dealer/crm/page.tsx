@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import Link from "next/link"
@@ -355,7 +355,7 @@ export default function DealerCRMPage() {
                         ].map(s => (
                             <div key={s.label} className="glass-card p-4 text-center">
                                 <p className={`text-2xl font-black ${s.color}`}>{s.count}</p>
-                                <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">{s.label}</p>
+                                <p className="text-xs text-gray-500 uppercase font-bold tracking-widest">{s.label}</p>
                             </div>
                         ))}
                     </div>
@@ -373,7 +373,7 @@ export default function DealerCRMPage() {
                                         <div className={`flex items-center gap-2 px-5 py-4 bg-gradient-to-b ${col.bg} to-transparent rounded-t-2xl border-x border-white/5`}>
                                             <div className={`w-2.5 h-2.5 rounded-full ${col.dotColor} animate-pulse shadow-[0_0_8px_currentColor]`} />
                                             <span className="text-xs font-black uppercase tracking-widest text-white">{col.label}</span>
-                                            <span className="ml-auto bg-white/5 px-2.5 py-1 rounded-full text-[10px] font-black text-gray-400 border border-white/5">
+                                            <span className="ml-auto bg-white/5 px-2.5 py-1 rounded-full text-xs font-black text-gray-400 border border-white/5">
                                                 {leadsByStatus(col.key).length}
                                             </span>
                                         </div>
@@ -401,7 +401,7 @@ export default function DealerCRMPage() {
                                                 <div className="w-12 h-12 rounded-full bg-white/[0.02] border border-white/5 flex items-center justify-center opacity-20">
                                                     <ShieldCheck size={20} className="text-gray-500" />
                                                 </div>
-                                                <p className="text-gray-600 text-[10px] font-black uppercase tracking-widest">Empty</p>
+                                                <p className="text-gray-600 text-xs font-black uppercase tracking-widest">Empty</p>
                                             </div>
                                         ) : (
                                             leadsByStatus(col.key).map((lead: any) => (
@@ -426,7 +426,7 @@ export default function DealerCRMPage() {
                                                             </div>
                                                             <div>
                                                                 <p className="font-black text-white text-sm tracking-tight">{lead.buyerName}</p>
-                                                                <p className="text-[10px] font-bold text-primary uppercase tracking-widest">{lead.source || 'direct'}</p>
+                                                                <p className="text-xs font-bold text-primary uppercase tracking-widest">{lead.source || 'direct'}</p>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -434,7 +434,7 @@ export default function DealerCRMPage() {
                                                     {/* Linked listing */}
                                                     {lead.listing && (
                                                         <div className="mb-4 p-2.5 bg-black/40 rounded-xl border border-white/5 group-hover:bg-black/60 transition-colors">
-                                                            <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">
+                                                            <p className="text-xs text-gray-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">
                                                                 <TrendingUp size={10} /> Interested In
                                                             </p>
                                                             <p className="text-xs text-white font-bold truncate tracking-tight">{lead.listing.title}</p>
@@ -450,7 +450,7 @@ export default function DealerCRMPage() {
                                                                 className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/5 rounded-lg border border-white/5 hover:bg-blue-500/10 hover:border-blue-500/20 hover:text-blue-400 transition-all text-gray-400 text-xs"
                                                             >
                                                                 <Mail size={12} />
-                                                                <span className="hidden group-hover:inline text-[10px] max-w-[80px] truncate">{lead.buyerEmail}</span>
+                                                                <span className="hidden group-hover:inline text-xs max-w-[80px] truncate">{lead.buyerEmail}</span>
                                                             </a>
                                                         )}
                                                         {lead.buyerPhone && (
@@ -460,7 +460,7 @@ export default function DealerCRMPage() {
                                                                 className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/5 rounded-lg border border-white/5 hover:bg-emerald-500/10 hover:border-emerald-500/20 hover:text-emerald-400 transition-all text-gray-400 text-xs"
                                                             >
                                                                 <Phone size={12} />
-                                                                <span className="text-[10px]">{lead.buyerPhone}</span>
+                                                                <span className="text-xs">{lead.buyerPhone}</span>
                                                             </a>
                                                         )}
                                                         {lead.buyerId && (
@@ -488,7 +488,7 @@ export default function DealerCRMPage() {
                                                             value={lead.status}
                                                             disabled={updatingLeadId === lead.id}
                                                             onChange={e => updateLeadStatus(lead.id, e.target.value)}
-                                                            className="w-full bg-black/40 border border-white/10 text-white rounded-xl px-3 py-2 text-[10px] font-bold tracking-widest uppercase focus:outline-none focus:ring-1 focus:ring-primary/40 appearance-none cursor-pointer hover:bg-black/60 transition-colors"
+                                                            className="w-full bg-black/40 border border-white/10 text-white rounded-xl px-3 py-2 text-xs font-bold tracking-widest uppercase focus:outline-none focus:ring-1 focus:ring-primary/40 appearance-none cursor-pointer hover:bg-black/60 transition-colors"
                                                         >
                                                             {COLUMNS.map(status => (
                                                                 <option key={status.key} value={status.key} className="bg-slate-900">

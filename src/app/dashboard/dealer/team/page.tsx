@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import { Button } from "@/components/ui/Button"
@@ -122,7 +122,7 @@ export default function DealerTeamPage() {
                                     <select
                                         value={inviteRole}
                                         onChange={e => setInviteRole(e.target.value)}
-                                        className="bg-black/60 border border-white/5 text-white rounded-xl px-5 py-3 text-[10px] font-black uppercase tracking-widest h-12 min-w-[200px] appearance-none cursor-pointer focus:ring-1 focus:ring-primary/40"
+                                        className="bg-black/60 border border-white/5 text-white rounded-xl px-5 py-3 text-xs font-black uppercase tracking-widest h-12 min-w-[200px] appearance-none cursor-pointer focus:ring-1 focus:ring-primary/40"
                                     >
                                         <option value="SALES_AGENT">Sales Consultant</option>
                                         <option value="FINANCE_MANAGER">Capital Director</option>
@@ -132,7 +132,7 @@ export default function DealerTeamPage() {
                                         <Activity size={12} />
                                     </div>
                                 </div>
-                                <Button onClick={handleInvite} disabled={inviting} className="h-12 px-8 whitespace-nowrap bg-white text-black font-black uppercase tracking-widest text-[10px] hover:bg-gray-200 rounded-xl transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+                                <Button onClick={handleInvite} disabled={inviting} className="h-12 px-8 whitespace-nowrap bg-white text-black font-black uppercase tracking-widest text-xs hover:bg-gray-200 rounded-xl transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]">
                                     {inviting ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Mail size={16} className="mr-2" />} {inviting ? 'AUTHORIZING…' : 'DISPATCH INVITE'}
                                 </Button>
                             </div>
@@ -212,11 +212,11 @@ export default function DealerTeamPage() {
                                                     </div>
                                                     
                                                     <p className="font-black text-white text-lg tracking-tighter group-hover:text-primary transition-colors">{member.user?.firstName} {member.user?.lastName}</p>
-                                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-1">{member.user?.email}</p>
+                                                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">{member.user?.email}</p>
                                                 </div>
 
                                                 <div className="space-y-3 pt-4 border-t border-white/5">
-                                                    <div className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/5 ${roleConfig.bg} ${roleConfig.color}`}>
+                                                    <div className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest border border-white/5 ${roleConfig.bg} ${roleConfig.color}`}>
                                                         <roleConfig.icon size={14} />
                                                         {roleConfig.label}
                                                     </div>
@@ -244,7 +244,7 @@ export default function DealerTeamPage() {
                                                         </div>
                                                         <div>
                                                             <p className="text-xs font-black text-white truncate max-w-[140px]">{invite.email}</p>
-                                                            <p className="text-[9px] font-bold text-gray-600 uppercase tracking-widest">{roleConfig.label}</p>
+                                                            <p className="text-xs font-bold text-gray-600 uppercase tracking-widest">{roleConfig.label}</p>
                                                         </div>
                                                     </div>
                                                     <div className="px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg text-[8px] font-black text-amber-500 uppercase tracking-widest animate-pulse">

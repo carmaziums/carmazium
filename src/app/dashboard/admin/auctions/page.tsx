@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import Link from "next/link"
@@ -73,7 +73,7 @@ export default function AdminAuctionsPage() {
                     <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
-                                <thead className="bg-slate-800/50 text-gray-400 text-[10px] uppercase font-black tracking-widest border-b border-white/10">
+                                <thead className="bg-slate-800/50 text-gray-400 text-xs uppercase font-black tracking-widest border-b border-white/10">
                                     <tr>
                                         <th className="px-6 py-4">Vehicle</th>
                                         <th className="px-6 py-4">Seller</th>
@@ -106,7 +106,7 @@ export default function AdminAuctionsPage() {
                                                 <p className="text-gray-400">{a.listing?.seller?.email}</p>
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <span className={`inline-flex px-2 py-1 rounded border text-[10px] font-bold ${STATUS_STYLES[a.status] || STATUS_STYLES.ENDED}`}>
+                                                <span className={`inline-flex px-2 py-1 rounded border text-xs font-bold ${STATUS_STYLES[a.status] || STATUS_STYLES.ENDED}`}>
                                                     {a.status}
                                                 </span>
                                             </td>
@@ -121,7 +121,7 @@ export default function AdminAuctionsPage() {
                                                 ) : <span className="text-gray-500">—</span>}
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <Link href={`/auctions/live/${a.id}`} target="_blank" className="p-2 hover:bg-white/10 rounded-lg transition-colors text-blue-400 hover:text-white inline-flex" title="View Auction">
+                                                <Link href={`/auctions/live/${a.id}`} target="_blank" className="p-2.5 hover:bg-white/10 rounded-lg transition-colors text-blue-400 hover:text-white inline-flex" title="View Auction">
                                                     <Eye size={16} />
                                                 </Link>
                                             </td>

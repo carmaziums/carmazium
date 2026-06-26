@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import { Zap, Snail } from "lucide-react"
@@ -14,10 +14,10 @@ interface Props {
 function Row({ rank, label, sub, days, accent }: { rank: number; label: string; sub: string; days: number; accent: string }) {
     return (
         <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.02] transition-colors">
-            <span className={`text-[10px] font-black tabular-nums w-4 shrink-0 ${rank === 1 ? 'text-amber-400' : 'text-gray-600'}`}>{rank}</span>
+            <span className={`text-xs font-black tabular-nums w-4 shrink-0 ${rank === 1 ? 'text-amber-400' : 'text-gray-600'}`}>{rank}</span>
             <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold text-white truncate">{label}</p>
-                <p className="text-[9px] text-gray-600 font-medium">{sub}</p>
+                <p className="text-xs text-gray-600 font-medium">{sub}</p>
             </div>
             <span className={`text-xs font-black tabular-nums ${accent}`}>{days}d</span>
         </div>
@@ -32,8 +32,8 @@ export function MoversList({ fastMovers, slowMovers }: Props) {
                 <div className="p-4 border-b border-white/5 bg-black/20 flex items-center gap-2">
                     <Zap size={14} className="text-emerald-400" />
                     <div>
-                        <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-300">Fast Movers</h3>
-                        <p className="text-[9px] text-gray-600 font-medium">Lowest avg days to sell</p>
+                        <h3 className="text-xs font-black uppercase tracking-widest text-gray-300">Fast Movers</h3>
+                        <p className="text-xs text-gray-600 font-medium">Lowest avg days to sell</p>
                     </div>
                 </div>
                 {fastMovers.length === 0 ? (
@@ -59,8 +59,8 @@ export function MoversList({ fastMovers, slowMovers }: Props) {
                 <div className="p-4 border-b border-white/5 bg-black/20 flex items-center gap-2">
                     <Snail size={14} className="text-red-400" />
                     <div>
-                        <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-300">Slow Movers</h3>
-                        <p className="text-[9px] text-gray-600 font-medium">Longest time in active stock</p>
+                        <h3 className="text-xs font-black uppercase tracking-widest text-gray-300">Slow Movers</h3>
+                        <p className="text-xs text-gray-600 font-medium">Longest time in active stock</p>
                     </div>
                 </div>
                 {slowMovers.length === 0 ? (

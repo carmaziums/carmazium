@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import { LucideIcon, TrendingUp, TrendingDown, Minus } from "lucide-react"
@@ -40,7 +40,7 @@ function KPICard({ metric, loading }: { metric: KPIMetric; loading?: boolean }) 
                     <Icon size={16} className={accentColor} />
                 </div>
                 {trend !== undefined && (
-                    <div className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold ${
+                    <div className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-bold ${
                         trendPositive ? "bg-emerald-500/10 text-emerald-400" :
                         trendNegative ? "bg-red-500/10 text-red-400" :
                         "bg-gray-500/10 text-gray-400"
@@ -64,9 +64,9 @@ function KPICard({ metric, loading }: { metric: KPIMetric; loading?: boolean }) 
                     )}
                 </h3>
                 <div className="flex items-center justify-between mt-2">
-                    <p className="text-gray-400 text-[10px] uppercase tracking-[0.15em] font-bold">{label}</p>
+                    <p className="text-gray-400 text-xs uppercase tracking-[0.15em] font-bold">{label}</p>
                     {trendLabel && (
-                        <span className="text-[9px] text-gray-600 font-medium">{trendLabel}</span>
+                        <span className="text-xs text-gray-600 font-medium">{trendLabel}</span>
                     )}
                 </div>
             </div>

@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import Link from "next/link"
@@ -165,7 +165,7 @@ export default function AdminDashboard() {
                                     <div className={`inline-flex p-2 ${bgColor} rounded-lg mb-2`}>
                                         <Icon size={16} className={textColor} />
                                     </div>
-                                    <p className="text-gray-400 text-[10px] uppercase tracking-widest font-bold">{card.label}</p>
+                                    <p className="text-gray-400 text-xs uppercase tracking-widest font-bold">{card.label}</p>
                                     <h3 className={`text-3xl font-black font-heading ${card.color === 'emerald' ? 'text-emerald-400' : card.color === 'yellow' ? 'text-white' : 'text-white'} mt-1 truncate`}>
                                         {loading ? "..." : card.value}
                                     </h3>

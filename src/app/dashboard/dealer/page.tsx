@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import Link from "next/link"
@@ -269,7 +269,7 @@ export default function DealerDashboard() {
                                 <div className="p-2.5 bg-primary/10 border border-primary/20 rounded-xl"><Car size={20} className="text-primary group-hover:scale-110 transition-transform" /></div>
                                 <div>
                                     <p className="font-bold text-white text-sm relative">Inventory<span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all"></span></p>
-                                    <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider mt-0.5">Manage Stock</p>
+                                    <p className="text-gray-500 text-xs uppercase font-bold tracking-wider mt-0.5">Manage Stock</p>
                                 </div>
                             </div>
                         </Link>
@@ -278,7 +278,7 @@ export default function DealerDashboard() {
                                 <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl"><Kanban size={20} className="text-amber-400 group-hover:scale-110 transition-transform" /></div>
                                 <div>
                                      <p className="font-bold text-white text-sm relative">Leads<span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-amber-400 group-hover:w-full transition-all"></span></p>
-                                     <p className="text-gray-500 text-[10px] uppercase font-bold tracking-wider mt-0.5">Sales Pipeline</p>
+                                     <p className="text-gray-500 text-xs uppercase font-bold tracking-wider mt-0.5">Sales Pipeline</p>
                                 </div>
                             </div>
                         </Link>
@@ -298,7 +298,7 @@ export default function DealerDashboard() {
                             </div>
                             <div className="overflow-x-auto flex-1">
                                 <table className="w-full text-left h-full">
-                                    <thead className="bg-[#0A0A0C]/80 text-gray-400 text-[10px] uppercase font-black tracking-widest border-b border-white/5">
+                                    <thead className="bg-[#0A0A0C]/80 text-gray-400 text-xs uppercase font-black tracking-widest border-b border-white/5">
                                         <tr>
                                             <th className="px-6 py-4">Name</th>
                                             <th className="px-6 py-4">Vehicle</th>
@@ -327,7 +327,7 @@ export default function DealerDashboard() {
                                                     </td>
                                                     <td className="px-6 py-4 text-sm text-gray-300 font-medium">{lead.listing?.title || '—'}</td>
                                                     <td className="px-6 py-4 text-center">
-                                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] uppercase tracking-wider font-bold ${
+                                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs uppercase tracking-wider font-bold ${
                                                             lead.status === 'NEW' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
                                                             lead.status === 'CONTACTED' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
                                                             lead.status === 'WON' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :

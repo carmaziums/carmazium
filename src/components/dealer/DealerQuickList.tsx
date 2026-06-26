@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import { Button } from "@/components/ui/Button"
@@ -415,7 +415,7 @@ export function DealerQuickList() {
             {/* ── SECTION 1: VRM Lookup ────────────────────────────────────── */}
             <section className="space-y-4">
                 <h2 className="text-sm font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary text-[10px] font-black">1</span>
+                    <span className="w-6 h-6 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary text-xs font-black">1</span>
                     Vehicle Identification
                 </h2>
                 <div className="flex flex-col sm:flex-row gap-3">
@@ -456,7 +456,7 @@ export function DealerQuickList() {
                                 { label: "Tax",    value: dvlaData.taxStatus },
                             ].filter(f => f.value).map(f => (
                                 <div key={f.label}>
-                                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500 block">{f.label}</span>
+                                    <span className="text-xs font-bold uppercase tracking-widest text-gray-500 block">{f.label}</span>
                                     <span className="text-white font-semibold">{f.value}</span>
                                 </div>
                             ))}
@@ -492,7 +492,7 @@ export function DealerQuickList() {
             {dvlaData && (
                 <section className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <h2 className="text-sm font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary text-[10px] font-black">2</span>
+                        <span className="w-6 h-6 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary text-xs font-black">2</span>
                         Essentials
                     </h2>
 
@@ -515,7 +515,7 @@ export function DealerQuickList() {
                         <div className="space-y-2">
                             <label className="text-xs font-bold uppercase text-gray-400">
                                 Mileage
-                                {mileage && <span className="text-emerald-400 ml-2 normal-case text-[10px]">● Auto-filled from MOT</span>}
+                                {mileage && <span className="text-emerald-400 ml-2 normal-case text-xs">● Auto-filled from MOT</span>}
                             </label>
                             <Input
                                 type="number"
@@ -691,10 +691,10 @@ export function DealerQuickList() {
             {dvlaData && (
                 <section className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '100ms' }}>
                     <h2 className="text-sm font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary text-[10px] font-black">3</span>
+                        <span className="w-6 h-6 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary text-xs font-black">3</span>
                         Photos
-                        {editId && <span className="text-primary text-[10px] font-black">*</span>}
-                        {images.length > 0 && <span className="text-emerald-400 text-[10px] bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">{images.length} uploaded</span>}
+                        {editId && <span className="text-primary text-xs font-black">*</span>}
+                        {images.length > 0 && <span className="text-emerald-400 text-xs bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">{images.length} uploaded</span>}
                     </h2>
                     <ImageUpload
                         onImagesChange={setImages}
@@ -704,9 +704,9 @@ export function DealerQuickList() {
 
                     <div className="pt-6 border-t border-white/5">
                         <h3 className="text-sm font-black uppercase tracking-widest text-gray-400 flex items-center gap-2 mb-4">
-                            <span className="w-6 h-6 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary text-[10px] font-black">★</span>
+                            <span className="w-6 h-6 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary text-xs font-black">★</span>
                             Damage Mapping
-                            <span className="text-[10px] text-gray-600 normal-case font-normal">— optional, increases buyer trust</span>
+                            <span className="text-xs text-gray-600 normal-case font-normal">— optional, increases buyer trust</span>
                         </h3>
                         <VehicleDamageMapper
                             bodyType={bodyType || dvlaData?.bodyType || undefined}
@@ -722,11 +722,11 @@ export function DealerQuickList() {
                 <section className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '200ms' }}>
                     <div className="flex items-center justify-between">
                         <h2 className="text-sm font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary text-[10px] font-black">4</span>
+                            <span className="w-6 h-6 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary text-xs font-black">4</span>
                             Description
                             {editId
-                                ? <span className="text-primary text-[10px] font-black">* Required to publish</span>
-                                : <span className="text-[10px] text-gray-600 normal-case font-normal">Optional</span>
+                                ? <span className="text-primary text-xs font-black">* Required to publish</span>
+                                : <span className="text-xs text-gray-600 normal-case font-normal">Optional</span>
                             }
                         </h2>
                         <Button
@@ -760,9 +760,9 @@ export function DealerQuickList() {
             {dvlaData && (
                 <section className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '250ms' }}>
                     <h2 className="text-sm font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary text-[10px] font-black">5</span>
+                        <span className="w-6 h-6 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary text-xs font-black">5</span>
                         Video Links
-                        <span className="text-[10px] text-gray-600 normal-case font-normal">Optional · up to 5</span>
+                        <span className="text-xs text-gray-600 normal-case font-normal">Optional · up to 5</span>
                     </h2>
                     <div className="flex gap-2">
                         <Input
@@ -800,7 +800,7 @@ export function DealerQuickList() {
                                     : 'X / Twitter'
                                 return (
                                     <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-slate-900/50 border border-white/5">
-                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-500/20 text-orange-300 border border-orange-500/20 shrink-0">{platform}</span>
+                                        <span className="text-xs font-bold px-2 py-0.5 rounded bg-orange-500/20 text-orange-300 border border-orange-500/20 shrink-0">{platform}</span>
                                         <span className="text-xs text-blue-400 truncate flex-1">{url}</span>
                                         <button type="button" onClick={() => setVideoUrls(videoUrls.filter((_, i) => i !== idx))} className="text-gray-500 hover:text-red-400 transition-colors shrink-0">
                                             <X size={14} />
@@ -928,7 +928,7 @@ export function DealerQuickList() {
                             disabled={planPublishing}
                             className="relative w-full flex items-center gap-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 hover:border-amber-500/60 hover:bg-amber-500/10 transition-all text-left disabled:opacity-50"
                         >
-                            <span className="absolute -top-2.5 left-4 text-[10px] bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold px-3 py-0.5 rounded-full flex items-center gap-1">
+                            <span className="absolute -top-2.5 left-4 text-xs bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold px-3 py-0.5 rounded-full flex items-center gap-1">
                                 <Star size={9} /> Best Value
                             </span>
                             <div className="flex-1">

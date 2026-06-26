@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import Link from "next/link"
@@ -151,7 +151,7 @@ export default function AdminUsersPage() {
                                 <button
                                     type="button"
                                     onClick={() => { setSearchInput(""); setSearch(""); setPage(1) }}
-                                    className="p-2 text-gray-500 hover:text-white transition-colors"
+                                    className="p-2.5 text-gray-500 hover:text-white transition-colors"
                                     title="Clear search"
                                 >
                                     <X size={16} />
@@ -183,7 +183,7 @@ export default function AdminUsersPage() {
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2">
                                                     <p className="font-bold text-white text-sm truncate">{u.firstName} {u.lastName}</p>
-                                                    <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold border shrink-0 ${isBanned ? 'bg-red-500/10 text-red-400 border-red-500/20' : isLocked ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
+                                                    <span className={`inline-flex px-1.5 py-0.5 rounded text-xs font-bold border shrink-0 ${isBanned ? 'bg-red-500/10 text-red-400 border-red-500/20' : isLocked ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
                                                         {isBanned ? 'BAN' : isLocked ? 'LOCK' : 'OK'}
                                                     </span>
                                                 </div>
@@ -217,9 +217,9 @@ export default function AdminUsersPage() {
                                                         <button onClick={() => handleUserAction(u.id, 'unlock')} className="p-2 bg-blue-500/10 rounded-lg text-blue-400 text-xs font-bold">Unlock</button>
                                                     ) : (
                                                         <>
-                                                            <button onClick={() => handleUserAction(u.id, 'lock')} className="p-2 bg-yellow-500/10 rounded-lg text-yellow-400"><LockKeyhole size={14} /></button>
+                                                            <button onClick={() => handleUserAction(u.id, 'lock')} className="p-2.5 bg-yellow-500/10 rounded-lg text-yellow-400"><LockKeyhole size={14} /></button>
                                                             {u.role !== 'ADMIN' && (
-                                                                <button onClick={() => { if (window.confirm(`Ban ${u.firstName || u.email}?`)) handleUserAction(u.id, 'ban') }} className="p-2 bg-red-500/10 rounded-lg text-red-400"><Ban size={14} /></button>
+                                                                <button onClick={() => { if (window.confirm(`Ban ${u.firstName || u.email}?`)) handleUserAction(u.id, 'ban') }} className="p-2.5 bg-red-500/10 rounded-lg text-red-400"><Ban size={14} /></button>
                                                             )}
                                                         </>
                                                     )}
@@ -234,7 +234,7 @@ export default function AdminUsersPage() {
                         {/* ── Desktop table (≥ sm) ── */}
                         <div className="hidden sm:block overflow-x-auto">
                             <table className="w-full text-left">
-                                <thead className="bg-slate-800/50 text-gray-400 text-[10px] uppercase font-black tracking-widest border-b border-white/10">
+                                <thead className="bg-slate-800/50 text-gray-400 text-xs uppercase font-black tracking-widest border-b border-white/10">
                                     <tr>
                                         <th className="px-6 py-4">User</th>
                                         <th className="px-6 py-4">Role</th>
@@ -288,7 +288,7 @@ export default function AdminUsersPage() {
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <span className={`inline-flex items-center px-2 py-1 rounded text-[10px] font-bold ${
+                                                    <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold ${
                                                         isBanned ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
                                                         isLocked ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20' :
                                                         'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
@@ -299,26 +299,26 @@ export default function AdminUsersPage() {
                                                 <td className="px-6 py-4">
                                                     {u.role === 'SELLER' ? (
                                                         u.stripeConnectOnboardingComplete ? (
-                                                            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                                            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                                                                 <CreditCard size={10} /> Stripe
                                                             </span>
                                                         ) : u.bankAccountNumber ? (
                                                             <div className="space-y-1">
-                                                                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                                                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
                                                                     <Landmark size={10} /> Bank Transfer
                                                                 </span>
-                                                                <div className="text-[10px] text-gray-400 font-mono">
+                                                                <div className="text-xs text-gray-400 font-mono">
                                                                     <div>{u.bankAccountName}</div>
                                                                     <div>Sort: {u.bankSortCode} · ****{u.bankAccountNumber.slice(-4)}</div>
                                                                 </div>
                                                             </div>
                                                         ) : (
-                                                            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                                            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
                                                                 <AlertCircle size={10} /> Not set
                                                             </span>
                                                         )
                                                     ) : (
-                                                        <span className="text-[10px] text-gray-600">—</span>
+                                                        <span className="text-xs text-gray-600">—</span>
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4 text-xs text-gray-400">

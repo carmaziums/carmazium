@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import Link from "next/link"
@@ -124,24 +124,24 @@ export default function AdminHandoversPage() {
                                                         <h3 className="font-bold text-white text-lg leading-tight">{h.listing?.title}</h3>
                                                         <p className="text-xs text-gray-400 mt-0.5">{h.listing?.year} · {h.listing?.make} {h.listing?.model}</p>
                                                     </div>
-                                                    <span className="inline-flex px-2 py-1 rounded border border-amber-500/30 bg-amber-500/10 text-amber-400 text-[10px] font-bold shrink-0">
+                                                    <span className="inline-flex px-2 py-1 rounded border border-amber-500/30 bg-amber-500/10 text-amber-400 text-xs font-bold shrink-0">
                                                         PENDING REVIEW
                                                     </span>
                                                 </div>
 
                                                 <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
                                                     <div>
-                                                        <p className="text-gray-500 uppercase tracking-widest font-bold text-[9px] mb-0.5">Seller</p>
+                                                        <p className="text-gray-500 uppercase tracking-widest font-bold text-xs mb-0.5">Seller</p>
                                                         <p className="text-white">{h.listing?.seller?.firstName} {h.listing?.seller?.lastName}</p>
                                                         <p className="text-gray-400">{h.listing?.seller?.email}</p>
                                                     </div>
                                                     <div>
-                                                        <p className="text-gray-500 uppercase tracking-widest font-bold text-[9px] mb-0.5">Winner / Buyer</p>
+                                                        <p className="text-gray-500 uppercase tracking-widest font-bold text-xs mb-0.5">Winner / Buyer</p>
                                                         <p className="text-white">{h.winner?.firstName} {h.winner?.lastName}</p>
                                                         <p className="text-gray-400">{h.winner?.email}</p>
                                                     </div>
                                                     <div>
-                                                        <p className="text-gray-500 uppercase tracking-widest font-bold text-[9px] mb-0.5">Winning Bid</p>
+                                                        <p className="text-gray-500 uppercase tracking-widest font-bold text-xs mb-0.5">Winning Bid</p>
                                                         <p className="text-emerald-400 font-bold">{formatPrice(Number(h.winningBidAmount ?? 0))}</p>
                                                     </div>
                                                 </div>
@@ -152,7 +152,7 @@ export default function AdminHandoversPage() {
                                     {/* Fee summary + Proof */}
                                     <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-5">
                                         <div className="space-y-2">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Fee Breakdown</p>
+                                            <p className="text-xs font-black uppercase tracking-widest text-gray-500">Fee Breakdown</p>
                                             <div className="space-y-1 text-sm">
                                                 <div className="flex justify-between">
                                                     <span className="text-gray-400">Buyer paid</span>
@@ -207,7 +207,7 @@ export default function AdminHandoversPage() {
                                         </div>
 
                                         <div className="space-y-2">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Proof Submitted</p>
+                                            <p className="text-xs font-black uppercase tracking-widest text-gray-500">Proof Submitted</p>
                                             {h.handoverProofUrl && (
                                                 <a
                                                     href={h.handoverProofUrl}

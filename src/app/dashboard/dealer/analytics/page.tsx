@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import Image from "next/image"
@@ -245,7 +245,7 @@ export default function DealerAnalyticsPage() {
                         <>
                             {/* ── Section 1: Sales & Stock Overview ── */}
                             <div>
-                                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 mb-3 px-1">Sales & Stock Overview</p>
+                                <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-600 mb-3 px-1">Sales & Stock Overview</p>
                                 <div className="space-y-3">
                                     <KPIGrid metrics={kpiRow1} loading={loading} columns={3} />
                                     <KPIGrid metrics={kpiRow2} loading={loading} columns={3} />
@@ -276,7 +276,7 @@ export default function DealerAnalyticsPage() {
 
                             {/* ── Section 4: Inventory Performance ── */}
                             <div>
-                                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 mb-3 px-1">Inventory Performance</p>
+                                <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-600 mb-3 px-1">Inventory Performance</p>
                                 <div className="space-y-4">
                                     <TopModelsChart data={analytics.topSellingModels} title="Top Selling Models" />
                                     <MoversList fastMovers={analytics.fastMovers} slowMovers={analytics.slowMovers} />
@@ -285,7 +285,7 @@ export default function DealerAnalyticsPage() {
 
                             {/* ── Section 5: Sales Mix & Customers ── */}
                             <div>
-                                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 mb-3 px-1">Sales Mix & Customers</p>
+                                <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-600 mb-3 px-1">Sales Mix & Customers</p>
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                                     <LeadSourceChart data={analytics.leadSourceBreakdown} title="Lead Sources" />
                                     <SalesByTypeChart data={analytics.salesByType} title="Sales Channel Mix" />
@@ -296,28 +296,28 @@ export default function DealerAnalyticsPage() {
                             {/* ── Section 6: Salesperson Performance ── */}
                             {analytics.salespersonPerformance.length > 0 && (
                                 <div>
-                                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 mb-3 px-1">Team Performance</p>
+                                    <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-600 mb-3 px-1">Team Performance</p>
                                     <SalespersonTable data={analytics.salespersonPerformance} />
                                 </div>
                             )}
 
                             {/* ── Section 7: Top Performing Vehicles ── */}
                             <div>
-                                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-600 mb-3 px-1">Vehicle Engagement</p>
+                                <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-600 mb-3 px-1">Vehicle Engagement</p>
                                 <div className="dealer-glass-card overflow-hidden">
                                     <div className="p-5 border-b border-white/5 flex items-center justify-between bg-black/20">
                                         <div>
                                             <h3 className="text-xs font-black uppercase tracking-widest text-gray-300">Top Performing Vehicles</h3>
-                                            <p className="text-[10px] text-gray-600 mt-0.5 font-medium">Ranked by total views and engagement</p>
+                                            <p className="text-xs text-gray-600 mt-0.5 font-medium">Ranked by total views and engagement</p>
                                         </div>
                                         <div className="flex items-center gap-2 px-3 py-1.5 bg-white/[0.03] rounded-lg border border-white/5">
-                                            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Showing</span>
+                                            <span className="text-xs font-bold uppercase tracking-widest text-gray-500">Showing</span>
                                             <span className="text-xs font-black text-white">{analytics.topVehicles.length}</span>
                                         </div>
                                     </div>
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-left border-collapse">
-                                            <thead className="bg-[#0A0A0C]/80 text-gray-400 text-[10px] uppercase font-black tracking-widest border-b border-white/5">
+                                            <thead className="bg-[#0A0A0C]/80 text-gray-400 text-xs uppercase font-black tracking-widest border-b border-white/5">
                                                 <tr>
                                                     <th className="px-6 py-4 w-8">#</th>
                                                     <th className="px-6 py-4">Vehicle</th>
@@ -368,7 +368,7 @@ export default function DealerAnalyticsPage() {
                                                             <span className="text-sm font-black text-white tabular-nums">{formatPrice(v.price)}</span>
                                                         </td>
                                                         <td className="px-6 py-4 text-center">
-                                                            <span className={`inline-flex px-2.5 py-1 rounded-lg text-[9px] font-black tracking-widest uppercase border ${
+                                                            <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-black tracking-widest uppercase border ${
                                                                 v.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
                                                                 v.status === 'SOLD' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
                                                                 v.status === 'OFFER_ACCEPTED' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :

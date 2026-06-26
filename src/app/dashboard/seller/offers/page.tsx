@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import { Button } from "@/components/ui/Button"
@@ -50,7 +50,7 @@ function StatusBadge({ status }: { status: Offer['status'] }) {
         COUNTERED: <RefreshCw size={11} />,
     }
     return (
-        <span className={`inline-flex items-center gap-1 border text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full ${styles[status] ?? ''}`}>
+        <span className={`inline-flex items-center gap-1 border text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-full ${styles[status] ?? ''}`}>
             {icons[status]} {status}
         </span>
     )
@@ -120,7 +120,7 @@ function MarkAsSoldModal({
                 {/* Form fields */}
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5">
+                        <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-1.5">
                             Final Sale Price
                         </label>
                         <div className="relative">
@@ -136,7 +136,7 @@ function MarkAsSoldModal({
                     </div>
 
                     <div>
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5">
+                        <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-1.5">
                             Buyer Name
                         </label>
                         <div className="relative">
@@ -152,7 +152,7 @@ function MarkAsSoldModal({
                     </div>
 
                     <div>
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5">
+                        <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-1.5">
                             Buyer Email <span className="text-gray-600 normal-case font-medium">(optional)</span>
                         </label>
                         <div className="relative">
@@ -260,7 +260,7 @@ function OfferRow({
                         <span className="italic">&ldquo;{offer.message}&rdquo;</span>
                     </div>
                 )}
-                <p className="text-[10px] text-gray-600 mt-1">
+                <p className="text-xs text-gray-600 mt-1">
                     {new Date(offer.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </p>
             </div>

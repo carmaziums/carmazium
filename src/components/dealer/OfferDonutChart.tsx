@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 
@@ -125,7 +125,7 @@ export function OfferDonutChart({
                     {/* Center text */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                         <span className="text-3xl font-black metallic-foil leading-none">{total}</span>
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-gray-500 mt-1">Total Offers</span>
+                        <span className="text-xs font-bold uppercase tracking-widest text-gray-500 mt-1">Total Offers</span>
                         <span className={`text-lg font-black leading-none mt-1 ${convRate >= 30 ? 'text-emerald-400' : convRate >= 15 ? 'text-amber-400' : 'text-red-400'}`}>
                             {convRate}%
                         </span>
@@ -149,7 +149,7 @@ export function OfferDonutChart({
                                     className="w-2.5 h-2.5 rounded-full shrink-0"
                                     style={{ backgroundColor: arc.color }}
                                 />
-                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{arc.label}</span>
+                                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">{arc.label}</span>
                             </div>
                             <span className="text-[11px] font-black text-white tabular-nums">{arc.count}</span>
                         </div>
@@ -160,12 +160,12 @@ export function OfferDonutChart({
                 <div className="flex items-center gap-4 mt-5 pt-5 border-t border-white/5 w-full">
                     <div className="flex-1 text-center">
                         <p className="text-lg font-black text-white leading-none">{formatCurrency(data.avgAcceptedAmount)}</p>
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-500 mt-1">Avg Accepted</p>
+                        <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mt-1">Avg Accepted</p>
                     </div>
                     <div className="w-px h-10 bg-white/10" />
                     <div className="flex-1 text-center">
                         <p className="text-lg font-black text-white leading-none">{data.avgTimeToRespond}h</p>
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-500 mt-1">Avg Response</p>
+                        <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mt-1">Avg Response</p>
                     </div>
                 </div>
             </div>

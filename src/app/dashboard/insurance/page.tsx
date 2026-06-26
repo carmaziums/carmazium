@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import Link from "next/link"
@@ -122,7 +122,7 @@ export default function InsuranceDashboard() {
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
-                                <thead className="bg-slate-800/50 text-gray-400 text-[10px] uppercase font-black tracking-widest">
+                                <thead className="bg-slate-800/50 text-gray-400 text-xs uppercase font-black tracking-widest">
                                     <tr>
                                         <th className="px-6 py-4">Applicant</th>
                                         <th className="px-6 py-4">Vehicle</th>

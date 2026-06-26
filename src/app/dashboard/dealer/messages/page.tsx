@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import { MessageSquare, Sparkles, ShieldCheck, Activity, Shield } from "lucide-react"
@@ -71,7 +71,7 @@ function MessagesContent() {
                                     <h2 className="text-xl font-black font-heading text-white uppercase tracking-tighter metallic-foil">
                                         {DEALER_ROUTE_CONFIG[6].title}
                                     </h2>
-                                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">
+                                    <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-1">
                                         {DEALER_ROUTE_CONFIG[6].subHeader}
                                     </p>
                                 </div>

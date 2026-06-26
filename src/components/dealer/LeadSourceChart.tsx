@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 
@@ -52,7 +52,7 @@ export function LeadSourceChart({ data, title = "Lead Sources" }: Props) {
 
     return (
         <div className="dealer-glass-card p-5">
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">{title}</h3>
+            <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-4">{title}</h3>
 
             {total === 0 ? (
                 <p className="text-xs text-gray-600 font-bold text-center py-8">No leads yet</p>
@@ -80,7 +80,7 @@ export function LeadSourceChart({ data, title = "Lead Sources" }: Props) {
                         </svg>
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
                             <span className="text-2xl font-black metallic-foil">{total}</span>
-                            <span className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Total Leads</span>
+                            <span className="text-xs font-bold uppercase tracking-widest text-gray-500">Total Leads</span>
                         </div>
                     </div>
 
@@ -94,12 +94,12 @@ export function LeadSourceChart({ data, title = "Lead Sources" }: Props) {
                             >
                                 <div className="flex items-center gap-2">
                                     <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: arc.color }} />
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
                                         {SOURCE_LABELS[arc.source] ?? arc.source}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <span className="text-[10px] text-gray-600 font-medium">{Math.round(arc.pct * 100)}%</span>
+                                    <span className="text-xs text-gray-600 font-medium">{Math.round(arc.pct * 100)}%</span>
                                     <span className="text-xs font-black text-white tabular-nums">{arc.count}</span>
                                 </div>
                             </div>

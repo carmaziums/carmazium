@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import Link from "next/link"
@@ -260,7 +260,7 @@ function DealerAuctionsPage() {
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                                         {/* Listing select */}
                                         <div className="lg:col-span-2">
-                                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+                                            <label className="block text-xs font-black uppercase tracking-widest text-gray-500 mb-2">
                                                 Select Listing (AUCTION type)
                                             </label>
                                             <select
@@ -284,7 +284,7 @@ function DealerAuctionsPage() {
 
                                         {/* Start time */}
                                         <div>
-                                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+                                            <label className="block text-xs font-black uppercase tracking-widest text-gray-500 mb-2">
                                                 Start Date & Time
                                             </label>
                                             <Input
@@ -298,7 +298,7 @@ function DealerAuctionsPage() {
 
                                         {/* Duration (read-only) */}
                                         <div>
-                                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+                                            <label className="block text-xs font-black uppercase tracking-widest text-gray-500 mb-2">
                                                 Duration
                                             </label>
                                             <div className="flex items-center gap-2 h-12 px-4 bg-white/[0.03] border border-white/5 rounded-xl text-gray-400 text-sm">
@@ -314,7 +314,7 @@ function DealerAuctionsPage() {
 
                                         {/* Reserve price */}
                                         <div>
-                                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+                                            <label className="block text-xs font-black uppercase tracking-widest text-gray-500 mb-2">
                                                 Reserve Price (£)
                                             </label>
                                             <Input
@@ -330,7 +330,7 @@ function DealerAuctionsPage() {
 
                                         {/* Buy It Now price (optional) */}
                                         <div>
-                                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+                                            <label className="block text-xs font-black uppercase tracking-widest text-gray-500 mb-2">
                                                 Buy It Now Price (optional)
                                             </label>
                                             <Input
@@ -349,7 +349,7 @@ function DealerAuctionsPage() {
 
                                         {/* Starting bid */}
                                         <div>
-                                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+                                            <label className="block text-xs font-black uppercase tracking-widest text-gray-500 mb-2">
                                                 Starting Bid (£)
                                             </label>
                                             <Input
@@ -365,7 +365,7 @@ function DealerAuctionsPage() {
 
                                         {/* Min increment */}
                                         <div>
-                                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">
+                                            <label className="block text-xs font-black uppercase tracking-widest text-gray-500 mb-2">
                                                 Minimum Increment (£)
                                             </label>
                                             <Input
@@ -419,16 +419,16 @@ function DealerAuctionsPage() {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="font-black text-white text-sm truncate">{auction.listing.title}</p>
-                                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{auction.listing.year} · {auction.listing.make}</p>
+                                            <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">{auction.listing.year} · {auction.listing.make}</p>
                                         </div>
-                                        <span className={`inline-flex px-2.5 py-1 rounded-lg text-[9px] font-black tracking-widest border shrink-0 ${STATUS_STYLES[auction.status] ?? STATUS_STYLES.ENDED}`}>
+                                        <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-black tracking-widest border shrink-0 ${STATUS_STYLES[auction.status] ?? STATUS_STYLES.ENDED}`}>
                                             {auction.status}
                                         </span>
                                     </div>
                                     <div className="flex items-center justify-between gap-2 text-sm">
                                         <div>
                                             <p className="font-black text-white">£{getCurrentBid(auction).toLocaleString()}</p>
-                                            <p className="text-[10px] text-gray-600 font-bold uppercase">{getBidCount(auction) === 0 ? 'starting bid' : `${getBidCount(auction)} bids`}</p>
+                                            <p className="text-xs text-gray-600 font-bold uppercase">{getBidCount(auction) === 0 ? 'starting bid' : `${getBidCount(auction)} bids`}</p>
                                         </div>
                                         <div className="text-right text-xs text-gray-400">
                                             {auction.status === "ACTIVE" ? (
@@ -441,15 +441,15 @@ function DealerAuctionsPage() {
                                         </div>
                                         <div>
                                             {auction.status === "ACTIVE" && (
-                                                <Link href={`/auctions/live/${auction.id}`} className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg">Live</Link>
+                                                <Link href={`/auctions/live/${auction.id}`} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg">Live</Link>
                                             )}
                                             {auction.status === "SCHEDULED" && (
-                                                <button onClick={() => handleCancel(auction.id)} disabled={cancelling === auction.id} className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg disabled:opacity-50">
+                                                <button onClick={() => handleCancel(auction.id)} disabled={cancelling === auction.id} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg disabled:opacity-50">
                                                     {cancelling === auction.id ? <Loader2 size={12} className="animate-spin" /> : 'Cancel'}
                                                 </button>
                                             )}
                                             {(auction.status === "ENDED" || auction.status === "CANCELLED") && (
-                                                <Link href={`/auctions/live/${auction.id}`} className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 bg-white/5 text-gray-400 border border-white/5 rounded-lg">Results</Link>
+                                                <Link href={`/auctions/live/${auction.id}`} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-white/5 text-gray-400 border border-white/5 rounded-lg">Results</Link>
                                             )}
                                         </div>
                                     </div>
@@ -523,7 +523,7 @@ function DealerAuctionsPage() {
                                                             <p className="font-black text-white text-base tracking-tight group-hover:text-primary transition-colors">
                                                                 {auction.listing.title}
                                                             </p>
-                                                            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-0.5">
+                                                            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-0.5">
                                                                 {auction.listing.year} · {auction.listing.make} {auction.listing.model}
                                                             </p>
                                                         </div>
@@ -532,7 +532,7 @@ function DealerAuctionsPage() {
 
                                                 {/* Status */}
                                                 <td className="px-6 py-6 text-center">
-                                                    <span className={`inline-flex px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest border ${STATUS_STYLES[auction.status] ?? STATUS_STYLES.ENDED}`}>
+                                                    <span className={`inline-flex px-3 py-1.5 rounded-lg text-xs font-black tracking-widest border ${STATUS_STYLES[auction.status] ?? STATUS_STYLES.ENDED}`}>
                                                         {auction.status === "ACTIVE" && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1.5 self-center" />}
                                                         {auction.status}
                                                     </span>
@@ -567,7 +567,7 @@ function DealerAuctionsPage() {
                                                         <span className="font-black text-white text-lg tracking-tight">
                                                             £{getCurrentBid(auction).toLocaleString()}
                                                         </span>
-                                                        <span className="text-[9px] text-gray-600 font-bold uppercase tracking-widest">
+                                                        <span className="text-xs text-gray-600 font-bold uppercase tracking-widest">
                                                             {getBidCount(auction) === 0 ? "starting bid" : "current bid"}
                                                         </span>
                                                     </div>

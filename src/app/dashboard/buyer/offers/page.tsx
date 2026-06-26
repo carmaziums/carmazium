@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import { getMyOffers, withdrawOffer, respondToCounterOffer, type Offer } from "@/lib/listingApi"
@@ -212,21 +212,21 @@ function DeliveryRequestForm({ listing, onSuccess }: { listing: DeliveryFormList
                         onChange={(e) => handlePostcodeChange(e.target.value)}
                         className="w-full bg-slate-800 border border-white/15 text-white text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-primary/50 placeholder:text-gray-600 transition-colors uppercase"
                     />
-                    {postcodeError && <p className="text-[10px] text-red-400 mt-0.5">{postcodeError}</p>}
+                    {postcodeError && <p className="text-xs text-red-400 mt-0.5">{postcodeError}</p>}
                     {outsideRadius && (
-                        <p className="text-[10px] text-red-400 mt-0.5">
+                        <p className="text-xs text-red-400 mt-0.5">
                             Delivery not available — outside seller&apos;s {listing.deliveryMaxMiles} mile radius.
                         </p>
                     )}
                     {costPreview && !outsideRadius && (
-                        <p className="text-[10px] text-emerald-400 mt-0.5">
+                        <p className="text-xs text-emerald-400 mt-0.5">
                             {pricePerMile > 0
                                 ? `Estimated cost: £${costPreview.estimatedCostGbp} (${costPreview.distanceMiles} mi)`
                                 : `Distance: ${costPreview.distanceMiles} mi · Cost: TBD`}
                         </p>
                     )}
                     {!costPreview && !postcodeError && postcode.length >= 3 && (
-                        <p className="text-[10px] text-gray-500 mt-0.5">Estimating cost...</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Estimating cost...</p>
                     )}
                 </div>
                 <div className="col-span-2">
@@ -493,7 +493,7 @@ export default function BuyerOffersPage() {
                                                                 </div>
                                                             )}
                                                             {listing?.price && (
-                                                                <div className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold mt-0.5">
+                                                                <div className="text-xs text-gray-500 uppercase tracking-widest font-semibold mt-0.5">
                                                                     ASKING: £{Number(listing.price).toLocaleString('en-GB')}
                                                                 </div>
                                                             )}

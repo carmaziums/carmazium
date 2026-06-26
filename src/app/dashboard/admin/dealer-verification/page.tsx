@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
@@ -132,7 +132,7 @@ function DocumentLightbox({
           )}
         </div>
 
-        <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-widest">
+        <p className="text-xs text-slate-500 font-semibold uppercase tracking-widest">
           Press ESC or click outside to close
         </p>
       </div>
@@ -174,7 +174,7 @@ function ProofThumbnail({
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-extrabold text-primary uppercase tracking-widest flex items-center gap-1">
+        <p className="text-xs font-extrabold text-primary uppercase tracking-widest flex items-center gap-1">
           <ZoomIn size={9} />
           Click to Review
         </p>
@@ -414,12 +414,12 @@ export default function AdminDealerVerificationPage() {
                         </div>
                         <div className="flex items-center gap-3 shrink-0 self-stretch sm:self-auto justify-end border-t sm:border-t-0 border-white/5 pt-3 sm:pt-0">
                           {item.status === "REJECTED" ? (
-                            <span className="px-2.5 py-1 rounded-md text-[9px] font-extrabold uppercase tracking-wider border bg-red-500/10 border-red-500/20 text-red-400 flex items-center gap-1.5">
+                            <span className="px-2.5 py-1 rounded-md text-xs font-extrabold uppercase tracking-wider border bg-red-500/10 border-red-500/20 text-red-400 flex items-center gap-1.5">
                               <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
                               Rejected — Awaiting Fix
                             </span>
                           ) : (
-                            <span className="px-2.5 py-1 rounded-md text-[9px] font-extrabold uppercase tracking-wider border bg-amber-500/10 border-amber-500/20 text-amber-500 flex items-center gap-1.5">
+                            <span className="px-2.5 py-1 rounded-md text-xs font-extrabold uppercase tracking-wider border bg-amber-500/10 border-amber-500/20 text-amber-500 flex items-center gap-1.5">
                               <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping" />
                               Pending Review
                             </span>
@@ -434,11 +434,11 @@ export default function AdminDealerVerificationPage() {
                           {/* Summary Meta */}
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-slate-900/60 border border-white/5 text-xs">
                             <div>
-                              <p className="text-slate-500 uppercase font-extrabold text-[9px] tracking-wider">Representative Role</p>
+                              <p className="text-slate-500 uppercase font-extrabold text-xs tracking-wider">Representative Role</p>
                               <p className="font-bold text-white mt-0.5">{item.representativePosition}</p>
                             </div>
                             <div>
-                              <p className="text-slate-500 uppercase font-extrabold text-[9px] tracking-wider">Submitted On</p>
+                              <p className="text-slate-500 uppercase font-extrabold text-xs tracking-wider">Submitted On</p>
                               <p className="font-bold text-white mt-0.5">
                                 {new Date(item.submittedAt).toLocaleDateString("en-GB", {
                                   day: "numeric", month: "short", year: "numeric",
@@ -447,7 +447,7 @@ export default function AdminDealerVerificationPage() {
                               </p>
                             </div>
                             <div>
-                              <p className="text-slate-500 uppercase font-extrabold text-[9px] tracking-wider">Record ID</p>
+                              <p className="text-slate-500 uppercase font-extrabold text-xs tracking-wider">Record ID</p>
                               <p className="font-bold text-slate-400 truncate mt-0.5">{item.id}</p>
                             </div>
                           </div>
@@ -518,14 +518,14 @@ export default function AdminDealerVerificationPage() {
                   <div className="flex items-center gap-3">
                     <ShieldCheck size={16} className="text-emerald-400 shrink-0" />
                     <div>
-                      <p className="text-[10px] font-extrabold text-emerald-400 uppercase tracking-widest">
+                      <p className="text-xs font-extrabold text-emerald-400 uppercase tracking-widest">
                         Stripe Verified · Auto-Approved
                       </p>
                       <p className="text-xs text-slate-300 font-mono mt-0.5">
                         {item.stripePaymentIntentId}
                       </p>
                       {item.stripeChargedAt && (
-                        <p className="text-[10px] text-slate-500 mt-0.5">
+                        <p className="text-xs text-slate-500 mt-0.5">
                           Charged {new Date(item.stripeChargedAt).toLocaleDateString('en-GB', {
                             day: 'numeric', month: 'short', year: 'numeric',
                           })}
@@ -564,7 +564,7 @@ export default function AdminDealerVerificationPage() {
                       <div className="flex items-start justify-between gap-3">
                         {/* Left: Content */}
                         <div className="space-y-1.5 min-w-0 flex-1">
-                          <p className="text-[10px] text-slate-500 font-extrabold uppercase tracking-wider">
+                          <p className="text-xs text-slate-500 font-extrabold uppercase tracking-wider">
                             {field.label}
                           </p>
 
@@ -609,7 +609,7 @@ export default function AdminDealerVerificationPage() {
                           <button
                             type="button"
                             onClick={() => handleDecisionChange(field.id, "APPROVED")}
-                            className={`px-2 sm:px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all flex items-center gap-1 cursor-pointer ${
+                            className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider border transition-all flex items-center gap-1 cursor-pointer ${
                               isApproved
                                 ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]"
                                 : "bg-slate-950/60 border-white/5 text-slate-500 hover:text-slate-300"
@@ -621,7 +621,7 @@ export default function AdminDealerVerificationPage() {
                           <button
                             type="button"
                             onClick={() => handleDecisionChange(field.id, "REJECTED")}
-                            className={`px-2 sm:px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all flex items-center gap-1 cursor-pointer ${
+                            className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider border transition-all flex items-center gap-1 cursor-pointer ${
                               isRejected
                                 ? "bg-red-500/10 border-red-500/30 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.1)]"
                                 : "bg-slate-950/60 border-white/5 text-slate-500 hover:text-slate-300"

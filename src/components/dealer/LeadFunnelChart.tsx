@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 
@@ -63,7 +63,7 @@ export function LeadFunnelChart({
             <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">{title}</h3>
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-white/[0.03] rounded-lg border border-white/5">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Total</span>
+                    <span className="text-xs font-bold uppercase tracking-widest text-gray-500">Total</span>
                     <span className="text-sm font-black text-white">{total}</span>
                 </div>
             </div>
@@ -90,7 +90,7 @@ export function LeadFunnelChart({
                                         {stage.label}
                                     </span>
                                     {convFromPrev !== null && (
-                                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                        <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${
                                             stage.key === 'LOST'
                                                 ? 'bg-red-500/10 text-red-400 border border-red-500/20'
                                                 : 'bg-white/5 text-gray-500 border border-white/5'
@@ -115,7 +115,7 @@ export function LeadFunnelChart({
                                 {/* Count inside bar */}
                                 {widthPct > 15 && (
                                     <div className="absolute inset-y-0 left-0 flex items-center pl-3" style={{ width: `${widthPct}%` }}>
-                                        <span className="text-[10px] font-black text-white/90 tabular-nums">
+                                        <span className="text-xs font-black text-white/90 tabular-nums">
                                             {total > 0 ? Math.round((count / total) * 100) : 0}% of total
                                         </span>
                                     </div>
@@ -129,7 +129,7 @@ export function LeadFunnelChart({
             {/* Win/Loss Summary Bar */}
             {(data.WON > 0 || data.LOST > 0) && (
                 <div className="mt-5 pt-5 border-t border-white/5">
-                    <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest mb-2">
+                    <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest mb-2">
                         <span className="text-gray-500">Outcome Split</span>
                         <span className="text-gray-500">{data.WON + data.LOST} resolved</span>
                     </div>
@@ -144,8 +144,8 @@ export function LeadFunnelChart({
                         />
                     </div>
                     <div className="flex items-center justify-between mt-2">
-                        <span className="text-[10px] font-black text-emerald-400">{data.WON} Won ({Math.round((data.WON / (data.WON + data.LOST)) * 100)}%)</span>
-                        <span className="text-[10px] font-black text-red-400">{data.LOST} Lost ({Math.round((data.LOST / (data.WON + data.LOST)) * 100)}%)</span>
+                        <span className="text-xs font-black text-emerald-400">{data.WON} Won ({Math.round((data.WON / (data.WON + data.LOST)) * 100)}%)</span>
+                        <span className="text-xs font-black text-red-400">{data.LOST} Lost ({Math.round((data.LOST / (data.WON + data.LOST)) * 100)}%)</span>
                     </div>
                 </div>
             )}
