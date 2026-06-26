@@ -12,6 +12,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { ChatProvider } from "@/context/ChatContext";
 import { CompareProvider } from "@/context/CompareContext";
 import { LocationProvider } from "@/context/LocationContext";
+import { PageViewTracker } from "@/components/analytics/PageViewTracker";
 
 const poppins = Poppins({
   variable: "--font-poppins",
@@ -89,6 +90,7 @@ export default function RootLayout({
             <ChatProvider>
               <CompareProvider>
                 <LocationProvider>
+                  <PageViewTracker />
                   <div className="flex flex-col min-h-screen">
                     <Header />
                     <main className="flex-grow pt-20">

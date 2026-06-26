@@ -766,6 +766,35 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                 )}
             </AnimatePresence>
 
+            {/* ── Mobile Sticky Bid Bar ─────────────────────────────────────── */}
+            {isLive && !isSeller && user && profile?.role === 'DEALER' && !isEnded && (
+                <div className="lg:hidden sticky top-[80px] z-40 bg-slate-900/95 backdrop-blur-md border-b border-white/10 px-4 py-2.5 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                        <p className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Current Bid</p>
+                        <p className="text-xl font-black text-white font-mono leading-none">£{currentBid.toLocaleString()}</p>
+                    </div>
+                    {isWinning ? (
+                        <span className="flex items-center gap-1 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-black px-3 py-1.5 rounded-full">
+                            <CheckCircle size={11} /> Winning
+                        </span>
+                    ) : (
+                        <button
+                            onClick={() => handleBid(currentBid + minIncrement)}
+                            disabled={bidLoading}
+                            className="flex items-center gap-1.5 bg-primary hover:bg-red-600 disabled:opacity-50 text-white text-xs font-black px-4 py-2.5 rounded-xl transition-colors shadow-neon"
+                        >
+                            <Gavel size={13} /> +£{minIncrement >= 1000 ? `${minIncrement / 1000}k` : minIncrement}
+                        </button>
+                    )}
+                    {endTime && (
+                        <div className="text-right shrink-0">
+                            <p className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Ends In</p>
+                            <CountdownTimer targetDate={endTime} minimal />
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* ── Main Layout ───────────────────────────────────────────────── */}
             <div className="flex-1 container mx-auto px-4 md:px-6 py-6 grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
 

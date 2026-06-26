@@ -542,6 +542,16 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                             </div>
                             <h1 className="text-3xl md:text-5xl font-bold font-heading text-white mb-2">{vehicle.title}</h1>
                             <p className="text-gray-300 text-lg">{vehicle.subtitle}</p>
+                            {/* Mobile-only price — shown immediately below subtitle so price is above the fold */}
+                            <div className="flex items-center gap-3 mt-3 lg:hidden">
+                                <span className="text-3xl font-black text-white">{vehicle.price}</span>
+                                {String(listing.status) === 'SOLD' && (
+                                    <span className="text-xs font-black uppercase tracking-widest bg-red-500/15 text-red-400 border border-red-500/40 px-2.5 py-1 rounded-full">Sold</span>
+                                )}
+                                {listing.type === 'AUCTION' && listing.auction?.status === 'ACTIVE' && (
+                                    <span className="text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-full">Live Auction</span>
+                                )}
+                            </div>
                             {/* Badges Row */}
                             <div className="flex flex-wrap items-center gap-2 mt-3">
                                 {/* SOLD pill — shown prominently when listing is closed */}
