@@ -220,7 +220,7 @@ export function NotificationBell() {
             </button>
 
             {open && (
-                <div className="absolute top-full right-0 mt-2 w-80 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                <div className="fixed sm:absolute top-20 sm:top-full left-2 right-2 sm:left-auto sm:right-0 sm:mt-2 sm:w-80 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                     {/* Header */}
                     <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
                         <div className="flex items-center gap-2">
