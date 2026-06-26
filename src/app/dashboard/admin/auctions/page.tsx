@@ -39,7 +39,7 @@ export default function AdminAuctionsPage() {
         setLoading(true)
         setError(null)
         getAdminAuctions(page, limit)
-            .then(r => { setAuctions(r.data || []); setTotal(r.meta?.total || 0) })
+            .then(r => { setAuctions(r.data || []); setTotal(r.pagination?.total || 0) })
             .catch(err => setError(err.message || 'Failed to load auctions'))
             .finally(() => setLoading(false))
     }, [profile, page])

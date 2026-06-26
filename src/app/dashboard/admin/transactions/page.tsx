@@ -48,7 +48,7 @@ export default function AdminTransactionsPage() {
         setLoading(true)
         setError(null)
         getAdminTransactions(page, limit)
-            .then(r => { setTransactions(r.data || []); setTotal(r.meta?.total || 0) })
+            .then(r => { setTransactions(r.data || []); setTotal(r.pagination?.total || 0) })
             .catch(err => setError(err.message || 'Failed to load transactions'))
             .finally(() => setLoading(false))
     }, [profile, page])

@@ -42,7 +42,7 @@ export default function AdminListingsPage() {
             setError(null)
             const result = await getAdminListings(page, limit)
             setListings(result.data || [])
-            setTotal(result.meta?.total || 0)
+            setTotal(result.pagination?.total || 0)
         } catch (err: any) {
             console.error('Failed to fetch admin listings:', err)
             setError(err.message || "Failed to load system listings.")
