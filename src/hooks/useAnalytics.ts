@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef } from "react"
 import { useAuth } from "@/context/AuthContext"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev"
 
 function getSessionId(): string {
     const KEY = "cm_session_id"
@@ -56,7 +56,11 @@ export function useAnalytics() {
                         userId: user?.id ?? undefined,
                     }),
                     keepalive: true,
-                }).catch(() => { })
+                }).catch((err) => {
+                    if (process.env.NODE_ENV === "development") {
+                        console.warn("[analytics] event failed:", err)
+                    }
+                })
             } catch {
                 // swallow
             }
