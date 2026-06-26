@@ -29,6 +29,9 @@ export class CsrfMiddleware implements NestMiddleware {
             '/payments/listing-checkout',
             '/payments/checkout',
             '/pricing/estimate',
+            '/analytics/event',
+            '/analytics/email',
+            '/payments/webhook',
         ];
         const fullPath = req.originalUrl?.split('?')[0] ?? req.path;
 
