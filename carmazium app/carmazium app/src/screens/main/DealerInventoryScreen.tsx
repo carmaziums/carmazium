@@ -26,6 +26,8 @@ import { apiClient } from '../../lib/apiClient';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
+import { ImportListingModal } from '../../components/ImportListingModal';
+import { BulkImportModal } from '../../components/BulkImportModal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -295,6 +297,8 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkText, setBulkText] = useState('');
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
   const [bulkImporting, setBulkImporting] = useState(false);
   const [bulkDone, setBulkDone] = useState(false);
 
@@ -533,10 +537,26 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
         <TouchableOpacity
           style={styles.bulkImportBtn}
           activeOpacity={0.85}
-          onPress={() => { setBulkDone(false); setBulkText(''); setShowBulkModal(true); }}
+          onPress={() => setShowImportModal(true)}
+        >
+          <Ionicons name="link-outline" size={20} color="#60A5FA" />
+          <Text style={[styles.bulkImportText, { color: '#60A5FA' }]}>IMPORT</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.bulkImportBtn}
+          activeOpacity={0.85}
+          onPress={() => setShowBulkImportModal(true)}
         >
           <Ionicons name="cloud-upload-outline" size={20} color="#F59E0B" />
-          <Text style={styles.bulkImportText}>BULK</Text>
+          <Text style={styles.bulkImportText}>CSV</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.bulkImportBtn}
+          activeOpacity={0.85}
+          onPress={() => { setBulkDone(false); setBulkText(''); setShowBulkModal(true); }}
+        >
+          <Ionicons name="list-outline" size={20} color="#A0A0AB" />
+          <Text style={[styles.bulkImportText, { color: '#A0A0AB' }]}>VRMS</Text>
         </TouchableOpacity>
       </View>
 
@@ -628,6 +648,21 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
           </Pressable>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Bulk CSV Import Modal */}
+      <BulkImportModal
+        isOpen={showBulkImportModal}
+        onClose={() => setShowBulkImportModal(false)}
+        onComplete={() => setShowBulkImportModal(false)}
+      />
+
+      {/* Import Listing Modal */}
+      {showImportModal && (
+        <ImportListingModal
+          onClose={() => setShowImportModal(false)}
+          onImported={() => { setShowImportModal(false); /* fetchListings called by onClose */ }}
+        />
+      )}
     </View>
   );
 };

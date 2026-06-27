@@ -12,6 +12,7 @@ import {
   Modal,
   TextInput,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 // expo-image: caching/recycling for the swipeable photo gallery + thumbnail
 // strip — users flick through many high-res car photos per listing here.
@@ -41,6 +42,7 @@ import { useStripe } from '@stripe/stripe-react-native';
 import { createPaymentSheet } from '../../lib/paymentsApi';
 import { haptics } from '../../lib/haptics';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
+import { createDeliveryRequest, calcDeliveryFeeExVat } from '../../lib/deliveryApi';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'VehicleDetail'>;
 
@@ -101,6 +103,17 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [financeExpanded, setFinanceExpanded] = useState(false);
   const [depositPct, setDepositPct] = useState(10); // % of price as deposit
   const [termMonths, setTermMonths] = useState(48);
+
+  // Delivery
+  const [offerStatus, setOfferStatus] = useState<string | null>(null);
+  const [deliveryModalVisible, setDeliveryModalVisible] = useState(false);
+  const [deliveryStreet, setDeliveryStreet] = useState('');
+  const [deliveryCity, setDeliveryCity] = useState('');
+  const [deliveryPostcode, setDeliveryPostcode] = useState('');
+  const [deliveryNotes, setDeliveryNotes] = useState('');
+  const [deliverySubmitting, setDeliverySubmitting] = useState(false);
+  const [deliverySubmitted, setDeliverySubmitted] = useState(false);
+  const [deliveryError, setDeliveryError] = useState<string | null>(null);
 
   // Dealer tools panel
   const role = useAuthStore((s) => s.role);
@@ -210,6 +223,41 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       .catch(() => {})
       .finally(() => setDamageLoading(false));
   }, [listing.id]);
+
+  // Fetch the current user's offer status for this listing (to gate "Request Delivery")
+  const { user: currentUser } = useAuthStore();
+  useEffect(() => {
+    if (!listing.id || !currentUser) return;
+    apiClient<{ data: { status: string } | null }>(`/offers/my/${listing.id}`)
+      .then(res => { if (res?.data?.status) setOfferStatus(res.data.status); })
+      .catch(() => {});
+  }, [listing.id, currentUser]);
+
+  const handleDeliveryRequest = async () => {
+    if (!deliveryStreet.trim() || !deliveryCity.trim() || !deliveryPostcode.trim()) {
+      setDeliveryError('Street, city and postcode are required.');
+      return;
+    }
+    setDeliverySubmitting(true);
+    setDeliveryError(null);
+    try {
+      await createDeliveryRequest({
+        listingId: listing.id,
+        deliveryAddress: {
+          street: deliveryStreet.trim(),
+          city: deliveryCity.trim(),
+          postcode: deliveryPostcode.trim().toUpperCase(),
+        },
+        deliveryNotes: deliveryNotes.trim() || undefined,
+      });
+      haptics.success();
+      setDeliverySubmitted(true);
+    } catch (err: any) {
+      setDeliveryError(err?.message ?? 'Could not request delivery. Please try again.');
+    } finally {
+      setDeliverySubmitting(false);
+    }
+  };
 
   const handleHpiCheck = async () => {
     if (!listing.id) return;
@@ -494,6 +542,25 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </Text>
           </View>
 
+          {/* Imported-from badge — links to the original listing on the external platform */}
+          {listing.importedFromUrl ? (
+            <TouchableOpacity
+              style={styles.importedBadge}
+              onPress={() => Linking.openURL(listing.importedFromUrl!)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="globe-outline" size={11} color={Colors.textMuted} />
+              <Text style={styles.importedBadgeText}>
+                {`See on ${
+                  listing.importedSource === 'AUTOTRADER' ? 'AutoTrader' :
+                  listing.importedSource === 'CARGURUS'   ? 'CarGurus'   :
+                  listing.importedSource === 'CARWOW'     ? 'CarWow'     :
+                  'Original Platform'
+                }`}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+
           {/* Horizontal Specifications Badges Row (4 Boxes) */}
           <View style={styles.specBadgesRow}>
             <View style={styles.specBadgeBox}>
@@ -517,6 +584,30 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </Text>
             </View>
           </View>
+
+          {/* Dual-channel: linked live auction cross-link */}
+          {listing.linkedListing?.auction?.status === 'ACTIVE' && (
+            <TouchableOpacity
+              style={styles.linkedAuctionBanner}
+              activeOpacity={0.75}
+              onPress={() =>
+                Alert.alert(
+                  'Live Auction Available',
+                  'This vehicle is also running in a live auction. View auctions in the Live tab.',
+                  [{ text: 'OK' }],
+                )
+              }
+            >
+              <Ionicons name="hammer-outline" size={14} color="#F59E0B" />
+              <Text style={styles.linkedAuctionText}>
+                {'Also in Live Auction — ends '}
+                {new Date(listing.linkedListing.auction.endTime).toLocaleString('en-GB', {
+                  day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+                })}
+              </Text>
+              <Text style={styles.linkedAuctionCta}>View →</Text>
+            </TouchableOpacity>
+          )}
 
           {/* Section: About This Car */}
           <View style={styles.sectionContainer}>
@@ -847,8 +938,142 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               HPI clear · VIN verified
             </Text>
           </View>
+
+          {/* ── Delivery section — only when seller offers delivery ── */}
+          {listing.deliveryAvailable && (
+            <View style={styles.deliveryCard}>
+              {/* Header row */}
+              <View style={styles.deliveryHeader}>
+                <View style={styles.deliveryIconWrap}>
+                  <Ionicons name="car-outline" size={16} color="#10B981" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.deliveryTitle}>Delivery available</Text>
+                  {listing.deliveryMaxMiles && (
+                    <Text style={styles.deliverySubtitle}>
+                      Up to {listing.deliveryMaxMiles} miles from the seller
+                    </Text>
+                  )}
+                </View>
+                <View style={styles.deliveryFeeWrap}>
+                  <Text style={styles.deliveryFeeLabel}>FROM</Text>
+                  <Text style={styles.deliveryFeeValue}>
+                    £{Math.round(calcDeliveryFeeExVat(10) * 1.2)}
+                  </Text>
+                  <Text style={styles.deliveryFeeHint}>inc. VAT</Text>
+                </View>
+              </View>
+
+              {/* Request Delivery button — only when offer is ACCEPTED */}
+              {offerStatus === 'ACCEPTED' && !deliverySubmitted && (
+                <TouchableOpacity
+                  style={styles.deliveryRequestBtn}
+                  onPress={() => setDeliveryModalVisible(true)}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="car-outline" size={15} color="#FFFFFF" />
+                  <Text style={styles.deliveryRequestBtnText}>Request Delivery</Text>
+                </TouchableOpacity>
+              )}
+              {deliverySubmitted && (
+                <View style={styles.deliverySuccessRow}>
+                  <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                  <Text style={styles.deliverySuccessText}>Delivery request sent — seller will confirm soon.</Text>
+                </View>
+              )}
+              {offerStatus !== 'ACCEPTED' && !deliverySubmitted && (
+                <Text style={styles.deliveryPendingHint}>
+                  Request delivery once your offer is accepted.
+                </Text>
+              )}
+            </View>
+          )}
         </View>
       </ScrollView>
+
+      {/* ── Delivery Request Modal ── */}
+      <Modal
+        visible={deliveryModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => { setDeliveryModalVisible(false); setDeliveryError(null); }}
+      >
+        <View style={styles.modalBackdrop}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => { setDeliveryModalVisible(false); setDeliveryError(null); }}
+          />
+          <View style={[styles.modalSheet, { paddingBottom: insets.bottom + 20 }]}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalSheetTitle}>Request Delivery</Text>
+            <Text style={styles.modalSheetSubtitle}>
+              Enter your delivery address. The seller will confirm and arrange logistics.
+            </Text>
+
+            {/* Street */}
+            <Text style={styles.deliveryInputLabel}>STREET ADDRESS</Text>
+            <TextInput
+              style={styles.deliveryInput}
+              value={deliveryStreet}
+              onChangeText={v => { setDeliveryStreet(v); setDeliveryError(null); }}
+              placeholder="e.g. 42 Park Lane"
+              placeholderTextColor="#404050"
+              autoCapitalize="words"
+            />
+
+            {/* City */}
+            <Text style={styles.deliveryInputLabel}>CITY / TOWN</Text>
+            <TextInput
+              style={styles.deliveryInput}
+              value={deliveryCity}
+              onChangeText={v => { setDeliveryCity(v); setDeliveryError(null); }}
+              placeholder="e.g. London"
+              placeholderTextColor="#404050"
+              autoCapitalize="words"
+            />
+
+            {/* Postcode */}
+            <Text style={styles.deliveryInputLabel}>POSTCODE</Text>
+            <TextInput
+              style={styles.deliveryInput}
+              value={deliveryPostcode}
+              onChangeText={v => { setDeliveryPostcode(v.toUpperCase()); setDeliveryError(null); }}
+              placeholder="e.g. SW1A 1AA"
+              placeholderTextColor="#404050"
+              autoCapitalize="characters"
+            />
+
+            {/* Notes (optional) */}
+            <Text style={styles.deliveryInputLabel}>NOTES (OPTIONAL)</Text>
+            <TextInput
+              style={[styles.deliveryInput, { height: 72, textAlignVertical: 'top', paddingTop: 12 }]}
+              value={deliveryNotes}
+              onChangeText={setDeliveryNotes}
+              placeholder="e.g. Leave at reception, call on arrival…"
+              placeholderTextColor="#404050"
+              multiline
+            />
+
+            {deliveryError && (
+              <ErrorBanner message={deliveryError} />
+            )}
+
+            <TouchableOpacity
+              style={[styles.deliveryModalSubmitBtn, deliverySubmitting && { opacity: 0.6 }]}
+              onPress={handleDeliveryRequest}
+              disabled={deliverySubmitting}
+              activeOpacity={0.85}
+            >
+              {deliverySubmitting ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.deliveryModalSubmitText}>Confirm Delivery Request</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Sticky Bottom Actions Bar */}
       <View style={[styles.stickyCTAOuter, { paddingBottom: insets.bottom + 12 }]}>
@@ -1356,6 +1581,49 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#8A8A93',
   },
+  linkedAuctionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(245,158,11,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.25)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 16,
+  },
+  linkedAuctionText: {
+    flex: 1,
+    fontFamily: FontFamily.medium,
+    fontSize: 12,
+    color: '#FCD34D',
+    lineHeight: 17,
+  },
+  linkedAuctionCta: {
+    fontFamily: FontFamily.bold,
+    fontSize: 12,
+    color: '#F59E0B',
+    flexShrink: 0,
+  },
+  importedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginBottom: 12,
+  },
+  importedBadgeText: {
+    fontFamily: FontFamily.medium,
+    fontSize: 11,
+    color: Colors.textMuted,
+  },
   // Specs boxes row
   specBadgesRow: {
     flexDirection: 'row',
@@ -1654,6 +1922,151 @@ const styles = StyleSheet.create({
     color: '#00D28E',
     lineHeight: 16,
   },
+
+  // Delivery section
+  deliveryCard: {
+    backgroundColor: 'rgba(16,185,129,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(16,185,129,0.20)',
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 12,
+    gap: 12,
+  },
+  deliveryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  deliveryIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: 'rgba(16,185,129,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  deliveryTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: 14,
+    color: '#10B981',
+  },
+  deliverySubtitle: {
+    fontFamily: FontFamily.regular,
+    fontSize: 11,
+    color: '#6EE7B7',
+    marginTop: 2,
+  },
+  deliveryFeeWrap: {
+    alignItems: 'flex-end',
+    flexShrink: 0,
+  },
+  deliveryFeeLabel: {
+    fontFamily: FontFamily.bold,
+    fontSize: 8,
+    color: '#6EE7B7',
+    letterSpacing: 0.8,
+  },
+  deliveryFeeValue: {
+    fontFamily: FontFamily.mono,
+    fontSize: 16,
+    color: '#10B981',
+  },
+  deliveryFeeHint: {
+    fontFamily: FontFamily.regular,
+    fontSize: 9,
+    color: '#6EE7B7',
+  },
+  deliveryRequestBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    height: 42,
+    borderRadius: 10,
+    backgroundColor: '#10B981',
+  },
+  deliveryRequestBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 13,
+    color: '#FFFFFF',
+  },
+  deliverySuccessRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  deliverySuccessText: {
+    fontFamily: FontFamily.medium,
+    fontSize: 12,
+    color: '#10B981',
+    flex: 1,
+    lineHeight: 17,
+  },
+  deliveryPendingHint: {
+    fontFamily: FontFamily.regular,
+    fontSize: 11,
+    color: '#6EE7B7',
+    opacity: 0.7,
+    lineHeight: 16,
+  },
+
+  // Delivery modal fields
+  modalSheetTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: 18,
+    color: '#FFFFFF',
+    marginBottom: 6,
+  },
+  modalSheetSubtitle: {
+    fontFamily: FontFamily.regular,
+    fontSize: 13,
+    color: '#606070',
+    lineHeight: 19,
+    marginBottom: 16,
+  },
+  modalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  deliveryInputLabel: {
+    fontFamily: FontFamily.bold,
+    fontSize: 9,
+    color: '#606070',
+    letterSpacing: 0.8,
+    marginBottom: 6,
+    marginTop: 12,
+  },
+  deliveryInput: {
+    backgroundColor: '#111115',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#2A2A32',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontFamily: FontFamily.regular,
+    fontSize: 15,
+    color: '#FFFFFF',
+  },
+  deliveryModalSubmitBtn: {
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: '#10B981',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+  },
+  deliveryModalSubmitText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 15,
+    color: '#FFFFFF',
+  },
+
   // Bottom Sticky Actions Bar
   stickyCTAOuter: {
     position: 'absolute',

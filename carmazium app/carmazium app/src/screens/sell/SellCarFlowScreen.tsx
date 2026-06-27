@@ -448,10 +448,16 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [damageImages, setDamageImages] = useState<string[]>([]);
   const [damageRecords, setDamageRecords] = useState<DamageEntry[]>([]);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [videoUrls, setVideoUrls] = useState<string[]>([]);
+  const [videoInput, setVideoInput] = useState('');
 
   // ── Step 3 — Pricing ──
   const [priceMin, setPriceMin] = useState('');
   const [priceAsking, setPriceAsking] = useState('');
+  const [bannerLabel, setBannerLabel] = useState('');
+  const [deliveryAvailable, setDeliveryAvailable] = useState(false);
+  const [deliveryMaxMiles, setDeliveryMaxMiles] = useState('');
+  const [deliveryPricePerMile, setDeliveryPricePerMile] = useState('');
   const [badgeTier, setBadgeTier] = useState<BadgeTier>('BASIC');
   const [listingType, setListingType] = useState<'CLASSIFIED' | 'AUCTION'>('CLASSIFIED');
 
@@ -686,6 +692,15 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     else setDamageImages(p => p.filter(x => x !== uri));
   }
 
+  function handleAddVideoUrl() {
+    const url = videoInput.trim();
+    if (!url.startsWith('http')) return;
+    if (videoUrls.includes(url)) { setVideoInput(''); return; }
+    if (videoUrls.length >= 4) return;
+    setVideoUrls(p => [...p, url]);
+    setVideoInput('');
+  }
+
   // ─── Validation ───────────────────────────────────────────────────────────────
 
   const isAuction = listingType === 'AUCTION';
@@ -796,9 +811,16 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         isLegalRegisteredKeeper: isLegalKeeper,
         declarationAcknowledged: declAcknowledged,
         images: allImages,
+        videoUrls: videoUrls.length ? videoUrls : undefined,
         priceMin: priceMin ? parseFloat(priceMin.replace(/[^0-9.]/g, '')) : undefined,
         priceAsking: priceAsking ? parseFloat(priceAsking.replace(/[^0-9.]/g, '')) : undefined,
         price: priceAsking ? parseFloat(priceAsking.replace(/[^0-9.]/g, '')) : 0,
+        bannerLabel: bannerLabel.trim() || undefined,
+        ...(deliveryAvailable && {
+          deliveryAvailable: true,
+          deliveryMaxMiles: deliveryMaxMiles ? parseFloat(deliveryMaxMiles) : undefined,
+          deliveryPricePerMile: deliveryPricePerMile ? parseFloat(deliveryPricePerMile) : undefined,
+        }),
         badgeTier,
         listingType,
         damageRecords: damageRecords.map(r => ({ zone: r.zone, type: r.type, description: r.description })),
@@ -1419,6 +1441,68 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           </View>
         )}
 
+        {/* Video Links */}
+        <SectionBox title="Video Links (optional)">
+          <Text style={s.fieldHint}>
+            Add YouTube, Instagram, Facebook or X links to show your car in action.
+          </Text>
+
+          {/* Input + Add row */}
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+            <TextInput
+              style={[s.input, { flex: 1, marginBottom: 0 }]}
+              value={videoInput}
+              onChangeText={setVideoInput}
+              onSubmitEditing={handleAddVideoUrl}
+              placeholder="Paste a YouTube, Instagram or Facebook URL"
+              placeholderTextColor="#404050"
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              returnKeyType="done"
+              editable={videoUrls.length < 4}
+            />
+            <TouchableOpacity
+              style={[s.pill, s.pillActive, { paddingHorizontal: 16, alignSelf: 'stretch', justifyContent: 'center' }]}
+              onPress={handleAddVideoUrl}
+              disabled={videoUrls.length >= 4}
+              activeOpacity={0.7}
+            >
+              <Text style={s.pillTextActive}>Add</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* URL chips */}
+          {videoUrls.length > 0 && (
+            <View style={{ gap: 8, marginTop: 12 }}>
+              {videoUrls.map(url => (
+                <View
+                  key={url}
+                  style={[s.pill, s.pillActive, { flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 8 }]}
+                >
+                  <Ionicons name="play-circle-outline" size={14} color="#FFFFFF" />
+                  <Text style={[s.pillTextActive, { flex: 1, fontSize: 11 }]} numberOfLines={1}>
+                    {url.length > 40 ? `${url.slice(0, 40)}…` : url}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => setVideoUrls(p => p.filter(v => v !== url))}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="close" size={13} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Limit notice */}
+          {videoUrls.length >= 4 && (
+            <Text style={[s.fieldHint, { color: Colors.warning, marginTop: 6 }]}>
+              Max 4 videos
+            </Text>
+          )}
+        </SectionBox>
+
       </ScrollView>
     );
   }
@@ -1495,6 +1579,91 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   {askVal > 0 ? `£${askVal.toLocaleString()}` : '—'}
                 </Text>
               </View>
+            </View>
+          )}
+
+          {/* Listing Ribbon Label */}
+          <View style={{ marginTop: 20 }}>
+            <Text style={s.sectionLabel}>LISTING RIBBON LABEL (optional)</Text>
+            <Text style={s.fieldHint}>Appears as a coloured tag on your listing card</Text>
+            <TextInput
+              style={s.input}
+              value={bannerLabel}
+              onChangeText={setBannerLabel}
+              placeholder="e.g. Price Drop, Just Arrived, Finance Available"
+              placeholderTextColor="#404050"
+              maxLength={30}
+              autoCorrect={false}
+            />
+          </View>
+        </SectionBox>
+
+        {/* Delivery */}
+        <SectionBox title="Delivery">
+          {/* Toggle row — matches the isImported Switch pattern */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Text style={s.sectionLabel}>OFFER DELIVERY</Text>
+              <Text style={s.fieldHint}>Buyers can request delivery to their address</Text>
+            </View>
+            <Switch
+              value={deliveryAvailable}
+              onValueChange={setDeliveryAvailable}
+              trackColor={{ false: '#2A2A35', true: '#DC1F26' }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+
+          {/* Reveal delivery detail inputs when toggle is ON */}
+          {deliveryAvailable && (
+            <View style={{ marginTop: 16, gap: 16 }}>
+              <View>
+                <Text style={s.sectionLabel}>MAX DELIVERY RADIUS (MILES)</Text>
+                <TextInput
+                  style={s.input}
+                  value={deliveryMaxMiles}
+                  onChangeText={setDeliveryMaxMiles}
+                  placeholder="e.g. 50"
+                  placeholderTextColor="#404050"
+                  keyboardType="number-pad"
+                  autoCorrect={false}
+                />
+              </View>
+
+              <View>
+                <Text style={s.sectionLabel}>PRICE PER MILE (£, ex-VAT)</Text>
+                <TextInput
+                  style={s.input}
+                  value={deliveryPricePerMile}
+                  onChangeText={setDeliveryPricePerMile}
+                  placeholder="e.g. 2.00"
+                  placeholderTextColor="#404050"
+                  keyboardType="decimal-pad"
+                  autoCorrect={false}
+                />
+              </View>
+
+              {/* Fee preview — shows how the tiered formula works for a 20-mile trip */}
+              {(() => {
+                const EXAMPLE_MILES = 20;
+                const ppm = parseFloat(deliveryPricePerMile) || 0;
+                // Tiered base: ≤10mi = £30, 11-30mi = £30+(d-10)×£2, >30mi = £70+(d-30)×£1.50
+                const feeExVat = EXAMPLE_MILES <= 10
+                  ? 30
+                  : EXAMPLE_MILES <= 30
+                    ? 30 + (EXAMPLE_MILES - 10) * 2
+                    : 70 + (EXAMPLE_MILES - 30) * 1.5;
+                const totalExVat = feeExVat + ppm * EXAMPLE_MILES;
+                return (
+                  <View style={s.deliveryPreview}>
+                    <Ionicons name="information-circle-outline" size={13} color="#60A5FA" />
+                    <Text style={s.deliveryPreviewText}>
+                      {`Example: ${EXAMPLE_MILES}-mile delivery = £${Math.round(totalExVat)} ex-VAT`}
+                      {ppm > 0 ? ` (£${Math.round(feeExVat)} base + £${Math.round(ppm * EXAMPLE_MILES)} per-mile)` : ' (base fee only)'}
+                    </Text>
+                  </View>
+                );
+              })()}
             </View>
           )}
         </SectionBox>
@@ -1918,6 +2087,8 @@ const s = StyleSheet.create({
   // Labels
   sectionLabel: { fontFamily: FontFamily.bold, fontSize: 10, color: '#FFFFFF', letterSpacing: 1.2, marginBottom: 8 },
   fieldHint: { fontFamily: FontFamily.regular, fontSize: 11, color: '#606070', marginBottom: 8, lineHeight: 16 },
+  deliveryPreview: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, backgroundColor: 'rgba(59,130,246,0.08)', borderWidth: 1, borderColor: 'rgba(59,130,246,0.20)', borderRadius: 8, padding: 10 },
+  deliveryPreviewText: { fontFamily: FontFamily.regular, fontSize: 11, color: '#93C5FD', flex: 1, lineHeight: 17 },
   fieldHintRed: { fontFamily: FontFamily.regular, fontSize: 10, color: '#DC1F26', marginBottom: 8 },
 
   // Input

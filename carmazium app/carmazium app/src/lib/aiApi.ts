@@ -22,3 +22,16 @@ export async function sendAiChatMessage(messages: AiChatMessage[]): Promise<AiCh
   });
   return res.data;
 }
+
+export interface AiSearchResult {
+  filters: Record<string, string>;
+  explanation: string;
+}
+
+export async function naturalLanguageSearch(query: string): Promise<AiSearchResult> {
+  const res = await apiClient<{ success: boolean; data: AiSearchResult }>('/ai/search', {
+    method: 'POST',
+    body: JSON.stringify({ query }),
+  });
+  return res.data;
+}

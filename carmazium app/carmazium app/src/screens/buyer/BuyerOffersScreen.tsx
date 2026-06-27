@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -26,7 +28,12 @@ interface Offer {
   id: string;
   amount: number;
   status: OfferStatus;
-  counterAmount?: number | null;
+  // Canonical counter fields — prefer these; fall back to counterAmount for old records
+  sellerCounterAmount?: number | null;
+  buyerCounterAmount?: number | null;
+  lastCounteredBy?: 'BUYER' | 'SELLER' | null;
+  counterAmount?: number | null; // legacy — kept for backwards compat
+  counterExpiresAt?: string | null;
   listingId?: string;
   sellerId?: string;
   createdAt?: string;
@@ -65,6 +72,31 @@ const timeAgo = (iso?: string): string => {
   const diffDays = Math.floor(diffHrs / 24);
   return `${diffDays}d ago`;
 };
+
+// Returns display text + colour for a counter-offer expiry timestamp.
+// Returns null when counterExpiresAt is absent (field not sent by older backend versions).
+function formatCounterExpiry(
+  iso: string | null | undefined,
+): { text: string; color: string } | null {
+  if (!iso) return null;
+  const msLeft = new Date(iso).getTime() - Date.now();
+  if (msLeft <= 0) {
+    return { text: 'Counter has expired', color: Colors.textMuted };
+  }
+  const totalMins = Math.floor(msLeft / 60_000);
+  if (totalMins < 60) {
+    return { text: `Counter expires in ${totalMins}m`, color: Colors.warning };
+  }
+  const totalHours = Math.floor(totalMins / 60);
+  if (totalHours < 24) {
+    return { text: `Counter expires in ${totalHours}h`, color: Colors.warning };
+  }
+  const days = Math.floor(totalHours / 24);
+  return {
+    text: `Counter expires in ${days} day${days !== 1 ? 's' : ''}`,
+    color: Colors.textMuted,
+  };
+}
 
 // ─────────────────────── status config ────────────────────────────
 
@@ -119,6 +151,10 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [counterBackOfferId, setCounterBackOfferId] = useState<string | null>(null);
+  const [counterBackAmount, setCounterBackAmount] = useState('');
+  const [counterBackLoading, setCounterBackLoading] = useState(false);
+  const [counterBackError, setCounterBackError] = useState<string | null>(null);
 
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -180,7 +216,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
     const label = status === 'ACCEPTED' ? 'accept' : 'decline';
     Alert.alert(
       status === 'ACCEPTED' ? 'Accept Counter-Offer' : 'Decline Counter-Offer',
-      `Are you sure you want to ${label} the seller's counter of ${formatPrice(offer.counterAmount ?? 0)}?`,
+      `Are you sure you want to ${label} the seller's counter of ${formatPrice((offer.sellerCounterAmount ?? offer.counterAmount) ?? 0)}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -209,6 +245,46 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
         },
       ],
     );
+  };
+
+  const handleCounterBack = async (offer: Offer) => {
+    const parsed = parseFloat(counterBackAmount.replace(/[^0-9.]/g, ''));
+    const ceiling = (offer.sellerCounterAmount ?? offer.counterAmount) ?? Infinity;
+
+    if (!counterBackAmount.trim() || isNaN(parsed) || parsed <= 0) {
+      setCounterBackError('Enter a valid amount.');
+      return;
+    }
+    if (parsed >= ceiling) {
+      setCounterBackError(
+        `Must be less than the seller's counter of ${formatPrice(ceiling as number)}.`,
+      );
+      return;
+    }
+
+    setCounterBackLoading(true);
+    setCounterBackError(null);
+    try {
+      await apiClient(`/offers/${offer.id}/respond-counter`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'COUNTERED', counterAmount: parsed }),
+      });
+      haptics.medium();
+      // Optimistically flip to PENDING — ball is now in the seller's court
+      setOffers(prev =>
+        prev.map(o =>
+          o.id === offer.id
+            ? { ...o, status: 'PENDING' as const, buyerCounterAmount: parsed }
+            : o,
+        ),
+      );
+      setCounterBackOfferId(null);
+      setCounterBackAmount('');
+    } catch (err: any) {
+      setCounterBackError(err?.message ?? 'Something went wrong. Please try again.');
+    } finally {
+      setCounterBackLoading(false);
+    }
   };
 
   const handleMessageSeller = async (offer: Offer) => {
@@ -273,10 +349,15 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
     const isActioning = actionLoading === offer.id;
     const listingTitle = offer.listing?.title ?? 'Vehicle listing';
     const isCountered = offer.status === 'COUNTERED';
+    // Canonical counter amount from the seller (fall back to legacy field for old records)
+    const displayedCounter = offer.sellerCounterAmount ?? offer.counterAmount ?? null;
     const counterDiff =
-      isCountered && offer.counterAmount != null
-        ? offer.counterAmount - offer.amount
+      isCountered && displayedCounter != null
+        ? displayedCounter - offer.amount
         : null;
+    const counterExpiry = isCountered
+      ? formatCounterExpiry(offer.counterExpiresAt)
+      : null;
 
     return (
       <View
@@ -304,14 +385,14 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
         </View>
 
         {/* Counter-offer section */}
-        {isCountered && offer.counterAmount != null && (
+        {isCountered && displayedCounter != null && (
           <View style={styles.counterSection}>
             <View style={styles.counterHeader}>
               <Ionicons name="pricetag-outline" size={13} color={Colors.warning} />
               <Text style={styles.counterLabel}>SELLER'S COUNTER</Text>
             </View>
             <View style={styles.counterAmountRow}>
-              <Text style={styles.counterAmount}>{formatPrice(offer.counterAmount)}</Text>
+              <Text style={styles.counterAmount}>{formatPrice(displayedCounter)}</Text>
               {counterDiff != null && (
                 <Text
                   style={[
@@ -324,6 +405,11 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
                 </Text>
               )}
             </View>
+            {counterExpiry && (
+              <Text style={[styles.counterExpiryText, { color: counterExpiry.color }]}>
+                {counterExpiry.text}
+              </Text>
+            )}
           </View>
         )}
 
@@ -361,30 +447,101 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
           </View>
         )}
 
-        {/* Actions: COUNTERED — decline / accept counter */}
+        {/* Actions: COUNTERED — decline / accept / counter back */}
         {isCountered && (
-          <View style={styles.actionsRow}>
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnDeclineCounter]}
-              activeOpacity={0.75}
-              onPress={() => handleCounterRespond(offer, 'REJECTED')}
-              disabled={isActioning}
-            >
-              <Text style={[styles.actionBtnText, { color: Colors.accent }]}>
-                Decline Counter
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnAcceptCounter]}
-              activeOpacity={0.75}
-              onPress={() => handleCounterRespond(offer, 'ACCEPTED')}
-              disabled={isActioning}
-            >
-              <Text style={[styles.actionBtnText, { color: '#FFFFFF' }]}>
-                Accept Counter
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <>
+            {/* Primary row: Decline + Accept */}
+            <View style={styles.actionsRow}>
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.actionBtnDeclineCounter]}
+                activeOpacity={0.75}
+                onPress={() => handleCounterRespond(offer, 'REJECTED')}
+                disabled={isActioning || counterBackLoading}
+              >
+                <Text style={[styles.actionBtnText, { color: Colors.accent }]}>
+                  Decline
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.actionBtnAcceptCounter]}
+                activeOpacity={0.75}
+                onPress={() => handleCounterRespond(offer, 'ACCEPTED')}
+                disabled={isActioning || counterBackLoading}
+              >
+                <Text style={[styles.actionBtnText, { color: '#FFFFFF' }]}>
+                  Accept
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Counter-back button — visible when expand is closed */}
+            {counterBackOfferId !== offer.id && (
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.actionBtnCounterBack]}
+                activeOpacity={0.75}
+                onPress={() => {
+                  setCounterBackOfferId(offer.id);
+                  setCounterBackAmount(String(offer.amount));
+                  setCounterBackError(null);
+                }}
+                disabled={isActioning}
+              >
+                <Ionicons name="return-down-back-outline" size={13} color={Colors.textSecondary} />
+                <Text style={styles.actionBtnCounterBackText}>Counter Back</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Inline counter-back input — expands inside the card */}
+            {counterBackOfferId === offer.id && (
+              <View style={styles.counterBackExpand}>
+                <Text style={styles.counterBackExpandLabel}>YOUR COUNTER AMOUNT</Text>
+                <View style={styles.counterBackRow}>
+                  <View style={styles.counterBackInputWrap}>
+                    <Text style={styles.counterBackCurrency}>£</Text>
+                    <TextInput
+                      style={styles.counterBackInput}
+                      value={counterBackAmount}
+                      onChangeText={v => {
+                        setCounterBackAmount(v);
+                        setCounterBackError(null);
+                      }}
+                      keyboardType="number-pad"
+                      placeholder="0"
+                      placeholderTextColor={Colors.textMuted}
+                      returnKeyType="done"
+                      onSubmitEditing={() => handleCounterBack(offer)}
+                      autoFocus
+                    />
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.actionBtn, styles.actionBtnAcceptCounter, { paddingHorizontal: 18 }]}
+                    onPress={() => handleCounterBack(offer)}
+                    disabled={counterBackLoading || isActioning}
+                    activeOpacity={0.8}
+                  >
+                    {counterBackLoading ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text style={[styles.actionBtnText, { color: '#FFFFFF' }]}>Submit</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+                {counterBackError && (
+                  <Text style={styles.counterBackError}>{counterBackError}</Text>
+                )}
+                <TouchableOpacity
+                  onPress={() => {
+                    setCounterBackOfferId(null);
+                    setCounterBackAmount('');
+                    setCounterBackError(null);
+                  }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={styles.counterBackCancel}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </>
         )}
       </View>
     );
@@ -646,6 +803,11 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.mono,
     fontSize: 11,
   },
+  counterExpiryText: {
+    fontFamily: FontFamily.medium,
+    fontSize: 11,
+    // colour applied inline from formatCounterExpiry()
+  },
 
   // ── Time ──
   timeText: {
@@ -698,5 +860,77 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bold,
     fontSize: 12,
     letterSpacing: 0.3,
+  },
+
+  // ── Counter-back ghost button ──
+  actionBtnCounterBack: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'transparent',
+    borderColor: 'rgba(255,255,255,0.12)',
+    alignSelf: 'flex-start',
+  },
+  actionBtnCounterBackText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 12,
+    color: Colors.textSecondary,
+    letterSpacing: 0.3,
+  },
+
+  // ── Inline counter-back expand ──
+  counterBackExpand: {
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+    marginTop: 2,
+  },
+  counterBackExpandLabel: {
+    fontFamily: FontFamily.bold,
+    fontSize: 9,
+    color: Colors.textMuted,
+    letterSpacing: 1,
+  },
+  counterBackRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  counterBackInputWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.inputBg,
+    borderWidth: 1,
+    borderColor: Colors.inputBorder,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+  },
+  counterBackCurrency: {
+    fontFamily: FontFamily.bold,
+    fontSize: 14,
+    color: Colors.textMuted,
+    marginRight: 4,
+  },
+  counterBackInput: {
+    flex: 1,
+    fontFamily: FontFamily.mono,
+    fontSize: 16,
+    color: Colors.textPrimary,
+    paddingVertical: 10,
+  },
+  counterBackError: {
+    fontFamily: FontFamily.medium,
+    fontSize: 11,
+    color: Colors.error,
+  },
+  counterBackCancel: {
+    fontFamily: FontFamily.medium,
+    fontSize: 12,
+    color: Colors.textMuted,
+    alignSelf: 'flex-start',
   },
 });

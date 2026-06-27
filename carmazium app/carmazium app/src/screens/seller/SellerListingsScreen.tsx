@@ -25,6 +25,11 @@ import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { ImportListingModal } from '../../components/ImportListingModal';
+import { BulkImportModal } from '../../components/BulkImportModal';
+import { alsoAuction } from '../../lib/listingsApi';
+import { haptics } from '../../lib/haptics';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
 // ─────────────────────────── types ────────────────────────────────
 
@@ -41,6 +46,12 @@ interface ApiListing {
   badgeTier?: string;
   description?: string;
   mileage?: number;
+  linkedListingId?: string | null;
+  linkedListing?: {
+    id: string;
+    type: string;
+    auction?: { id: string; status: string; endTime: string } | null;
+  } | null;
 }
 
 type TabKey = 'ALL' | 'ACTIVE' | 'DRAFT' | 'SOLD';
@@ -103,6 +114,34 @@ interface ActionItem {
   isDestructive?: boolean;
 }
 
+const getActionsForListing = (listing: ApiListing): ActionItem[] => {
+  const s = (listing.status ?? 'DRAFT').toUpperCase();
+
+  // Guard: can only create dual-channel auction if no linked auction is already SCHEDULED or ACTIVE
+  const linkedAuctionStatus = listing.linkedListing?.auction?.status;
+  const hasActiveLinkedAuction = linkedAuctionStatus === 'SCHEDULED' || linkedAuctionStatus === 'ACTIVE';
+
+  if (s === 'ACTIVE') {
+    const base: ActionItem[] = [
+      { key: 'boost', icon: 'flash-outline', label: 'Boost listing', tone: '#F59E0B', toneBg: 'rgba(245,158,11,0.14)' },
+      { key: 'edit', icon: 'pencil-outline', label: 'Edit listing', tone: '#3B82F6', toneBg: 'rgba(59,130,246,0.14)' },
+    ];
+    if (!hasActiveLinkedAuction) {
+      base.push({ key: 'also_auction', icon: 'hammer-outline', label: 'Also Put in Auction', tone: '#F97316', toneBg: 'rgba(249,115,22,0.14)' });
+    }
+    base.push(
+      { key: 'withdraw', icon: 'arrow-undo-outline', label: 'Withdraw', tone: '#A0A0AB', toneBg: 'rgba(255,255,255,0.07)' },
+      { key: 'mark_sold', icon: 'checkmark-circle-outline', label: 'Mark as Sold', tone: '#22C55E', toneBg: 'rgba(34,197,94,0.14)' },
+      { key: 'delete', icon: 'trash-outline', label: 'Delete', tone: '#EF4444', toneBg: 'rgba(239,68,68,0.14)', isDestructive: true },
+    );
+    return base;
+  }
+
+  // Shim to preserve old call sites that pass only status
+  return getActionsForStatus(listing.status);
+};
+
+// Kept for DRAFT/SOLD paths (unchanged)
 const getActionsForStatus = (status?: string): ActionItem[] => {
   const s = (status ?? 'DRAFT').toUpperCase();
   if (s === 'ACTIVE') {
@@ -132,6 +171,19 @@ const getActionsForStatus = (status?: string): ActionItem[] => {
 export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
 
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
+  // Dual-channel: "Also Put in Auction"
+  const [alsoAuctionListing, setAlsoAuctionListing] = useState<ApiListing | null>(null);
+  const [auctionStartDate, setAuctionStartDate] = useState<Date>(new Date(Date.now() + 5 * 60 * 1000));
+  const [showAuctionDatePicker, setShowAuctionDatePicker] = useState(false);
+  const [auctionPickerMode, setAuctionPickerMode] = useState<'date' | 'time'>('date');
+  const [auctionReserve, setAuctionReserve] = useState('');
+  const [auctionStartingBid, setAuctionStartingBid] = useState('');
+  const [auctionIncrement, setAuctionIncrement] = useState('100');
+  const [auctionBin, setAuctionBin] = useState('');
+  const [auctionSubmitting, setAuctionSubmitting] = useState(false);
+  const [auctionError, setAuctionError] = useState<string | null>(null);
   const [listings, setListings] = useState<ApiListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -250,6 +302,19 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       return;
     }
 
+    if (key === 'also_auction') {
+      setAuctionStartDate(new Date(Date.now() + 5 * 60 * 1000));
+      setShowAuctionDatePicker(false);
+      setAuctionPickerMode('date');
+      setAuctionReserve('');
+      setAuctionStartingBid('');
+      setAuctionIncrement('100');
+      setAuctionBin('');
+      setAuctionError(null);
+      setAlsoAuctionListing(listing);
+      return;
+    }
+
     if (key === 'boost') {
       setActionLoading(true);
       try {
@@ -273,6 +338,55 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       } finally {
         setActionLoading(false);
       }
+    }
+  };
+
+  function onAuctionDateChange(event: DateTimePickerEvent, selected?: Date) {
+    if (event.type === 'dismissed') { setShowAuctionDatePicker(false); return; }
+    if (selected) setAuctionStartDate(selected);
+    if (Platform.OS === 'android') {
+      if (auctionPickerMode === 'date') {
+        setAuctionPickerMode('time');
+        setShowAuctionDatePicker(true);
+      } else {
+        setShowAuctionDatePicker(false);
+      }
+    }
+  }
+
+  const handleAlsoAuctionSubmit = async () => {
+    if (!alsoAuctionListing) return;
+    if (auctionStartDate.getTime() < Date.now() + 60_000) {
+      setAuctionError('Start time must be at least 1 minute in the future.');
+      return;
+    }
+    const reserve = parseFloat(auctionReserve.replace(/[^0-9.]/g, ''));
+    const starting = parseFloat(auctionStartingBid.replace(/[^0-9.]/g, ''));
+    const increment = parseFloat(auctionIncrement.replace(/[^0-9.]/g, '')) || 100;
+    const bin = auctionBin.trim() ? parseFloat(auctionBin.replace(/[^0-9.]/g, '')) : undefined;
+
+    if (isNaN(reserve) || reserve <= 0) { setAuctionError('Enter a valid reserve price.'); return; }
+    if (isNaN(starting) || starting <= 0) { setAuctionError('Enter a valid starting bid.'); return; }
+    if (starting > reserve) { setAuctionError('Starting bid must be ≤ reserve price.'); return; }
+
+    setAuctionSubmitting(true);
+    setAuctionError(null);
+    try {
+      await alsoAuction(alsoAuctionListing.id, {
+        startTime: auctionStartDate.toISOString(),
+        reservePrice: reserve,
+        startingBid: starting,
+        minIncrement: increment,
+        ...(bin != null && !isNaN(bin) && bin > 0 && { buyItNowPrice: bin }),
+      });
+      haptics.success();
+      setAlsoAuctionListing(null);
+      fetchListings(true);
+      Alert.alert('Auction Created!', 'Both listings are now live. Bidders can find the auction in the Live tab.');
+    } catch (err: any) {
+      setAuctionError(err?.message ?? 'Could not create auction. Please try again.');
+    } finally {
+      setAuctionSubmitting(false);
     }
   };
 
@@ -389,7 +503,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
   const renderActionSheet = () => {
     if (!actionMenuListing) return null;
-    const actions = getActionsForStatus(actionMenuListing.status);
+    const actions = getActionsForListing(actionMenuListing);
     return (
       <Modal
         visible
@@ -523,13 +637,29 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
         <Text style={styles.headerTitle}>My Listings</Text>
 
-        <TouchableOpacity
-          style={styles.headerBtn}
-          activeOpacity={0.75}
-          onPress={() => navigation?.navigate('SellCars')}
-        >
-          <Ionicons name="add" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity
+            style={styles.headerBtn}
+            activeOpacity={0.75}
+            onPress={() => setShowBulkImportModal(true)}
+          >
+            <Ionicons name="cloud-upload-outline" size={18} color="#F59E0B" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerBtn}
+            activeOpacity={0.75}
+            onPress={() => setShowImportModal(true)}
+          >
+            <Ionicons name="link-outline" size={18} color="#60A5FA" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerBtn}
+            activeOpacity={0.75}
+            onPress={() => navigation?.navigate('SellCars')}
+          >
+            <Ionicons name="add" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* ── Status tabs ── */}
@@ -598,6 +728,125 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           <ActivityIndicator color={Colors.accent} size="large" />
         </View>
       )}
+
+      {/* Bulk CSV Import Modal */}
+      <BulkImportModal
+        isOpen={showBulkImportModal}
+        onClose={() => setShowBulkImportModal(false)}
+        onComplete={() => { setShowBulkImportModal(false); fetchListings(); }}
+      />
+
+      {/* Import Listing Modal */}
+      {showImportModal && (
+        <ImportListingModal
+          onClose={() => setShowImportModal(false)}
+          onImported={() => { setShowImportModal(false); fetchListings(); }}
+        />
+      )}
+
+      {/* ── Also Put in Auction Modal ── */}
+      <Modal
+        visible={alsoAuctionListing !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setAlsoAuctionListing(null)}
+      >
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <TouchableOpacity style={styles.dualModalOverlay} activeOpacity={1} onPress={() => setAlsoAuctionListing(null)}>
+            <View style={[styles.dualModalSheet, { paddingBottom: Math.max(insets.bottom, 24) }]} onStartShouldSetResponder={() => true}>
+              <View style={styles.dualModalHandle} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <Ionicons name="hammer-outline" size={16} color="#F97316" />
+                <Text style={styles.dualModalTitle}>Also Put in Auction</Text>
+              </View>
+              {alsoAuctionListing && (
+                <Text style={styles.dualModalSub} numberOfLines={1}>
+                  {getTitle(alsoAuctionListing)} · stays on sale simultaneously
+                </Text>
+              )}
+
+              <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 16 }}>
+                {/* Start time */}
+                <Text style={styles.dualFieldLabel}>START TIME</Text>
+                <TouchableOpacity
+                  style={styles.datePickerBtn}
+                  onPress={() => { setAuctionPickerMode('date'); setShowAuctionDatePicker(true); }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="calendar-outline" size={14} color="#60A5FA" />
+                  <Text style={styles.datePickerBtnText}>
+                    {auctionStartDate.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                  <Ionicons name="chevron-down" size={13} color={Colors.textMuted} />
+                </TouchableOpacity>
+                {(Platform.OS === 'ios' || showAuctionDatePicker) && (
+                  <DateTimePicker
+                    value={auctionStartDate}
+                    mode={Platform.OS === 'ios' ? 'datetime' : auctionPickerMode}
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={onAuctionDateChange}
+                    minimumDate={new Date(Date.now() + 60_000)}
+                    themeVariant="dark"
+                    style={Platform.OS === 'ios' ? { marginVertical: 4 } : undefined}
+                  />
+                )}
+
+                {/* Reserve */}
+                <Text style={[styles.dualFieldLabel, { marginTop: 14 }]}>RESERVE PRICE (£) *</Text>
+                <View style={styles.dualPriceRow}>
+                  <Text style={styles.dualCurrency}>£</Text>
+                  <TextInput style={styles.dualInput} value={auctionReserve} onChangeText={v => { setAuctionReserve(v); setAuctionError(null); }} keyboardType="number-pad" placeholder="0" placeholderTextColor={Colors.textMuted} />
+                </View>
+
+                {/* Starting bid */}
+                <Text style={[styles.dualFieldLabel, { marginTop: 14 }]}>STARTING BID (£) *</Text>
+                <View style={styles.dualPriceRow}>
+                  <Text style={styles.dualCurrency}>£</Text>
+                  <TextInput style={styles.dualInput} value={auctionStartingBid} onChangeText={v => { setAuctionStartingBid(v); setAuctionError(null); }} keyboardType="number-pad" placeholder="0" placeholderTextColor={Colors.textMuted} />
+                </View>
+
+                {/* Min increment */}
+                <Text style={[styles.dualFieldLabel, { marginTop: 14 }]}>MIN INCREMENT (£)</Text>
+                <View style={styles.dualPriceRow}>
+                  <Text style={styles.dualCurrency}>£</Text>
+                  <TextInput style={styles.dualInput} value={auctionIncrement} onChangeText={v => { setAuctionIncrement(v); setAuctionError(null); }} keyboardType="number-pad" placeholder="100" placeholderTextColor={Colors.textMuted} />
+                </View>
+
+                {/* BIN optional */}
+                <Text style={[styles.dualFieldLabel, { marginTop: 14 }]}>BUY IT NOW PRICE (£, optional)</Text>
+                <View style={styles.dualPriceRow}>
+                  <Text style={styles.dualCurrency}>£</Text>
+                  <TextInput style={styles.dualInput} value={auctionBin} onChangeText={v => { setAuctionBin(v); setAuctionError(null); }} keyboardType="number-pad" placeholder="Optional" placeholderTextColor={Colors.textMuted} />
+                </View>
+
+                {auctionError && (
+                  <View style={styles.dualErrorBox}>
+                    <Ionicons name="alert-circle-outline" size={12} color={Colors.error} />
+                    <Text style={styles.dualErrorText}>{auctionError}</Text>
+                  </View>
+                )}
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(249,115,22,0.06)', borderWidth: 1, borderColor: 'rgba(249,115,22,0.18)', borderRadius: 10, padding: 10, marginTop: 14 }}>
+                  <Ionicons name="time-outline" size={13} color="#FB923C" />
+                  <Text style={{ fontFamily: FontFamily.regular, fontSize: 11, color: '#FB923C', flex: 1, lineHeight: 16 }}>Auction runs for 24 hours. Anti-snipe: bids in the final 3 minutes extend the auction by 3 minutes.</Text>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.dualSubmitBtn, auctionSubmitting && { opacity: 0.6 }]}
+                  onPress={handleAlsoAuctionSubmit}
+                  disabled={auctionSubmitting}
+                  activeOpacity={0.85}
+                >
+                  {auctionSubmitting ? <ActivityIndicator color="#FFF" size="small" /> : (
+                    <Text style={styles.dualSubmitText}>Create Auction</Text>
+                  )}
+                </TouchableOpacity>
+                <View style={{ height: 20 }} />
+              </ScrollView>
+            </View>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 };
@@ -932,4 +1181,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+
+  // ── Dual-channel modal (Also Put in Auction) ──
+  dualModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' },
+  dualModalSheet: { backgroundColor: '#0F0F14', borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', paddingHorizontal: 22, paddingTop: 18, maxHeight: '90%' },
+  dualModalHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)', alignSelf: 'center', marginBottom: 14 },
+  dualModalTitle: { fontFamily: FontFamily.bold, fontSize: 16, color: '#FFFFFF' },
+  dualModalSub: { fontFamily: FontFamily.regular, fontSize: 12, color: Colors.textMuted, marginTop: 2 },
+  dualFieldLabel: { fontFamily: FontFamily.bold, fontSize: 9, color: Colors.textMuted, letterSpacing: 0.8, marginBottom: 6 },
+  dualPriceRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.inputBg, borderWidth: 1, borderColor: Colors.inputBorder, borderRadius: 10, paddingHorizontal: 12 },
+  dualCurrency: { fontFamily: FontFamily.bold, fontSize: 14, color: Colors.textMuted, marginRight: 4 },
+  dualInput: { flex: 1, fontFamily: FontFamily.mono, fontSize: 15, color: Colors.textPrimary, paddingVertical: 11 },
+  datePickerBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.inputBg, borderWidth: 1, borderColor: 'rgba(59,130,246,0.30)', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12 },
+  datePickerBtnText: { flex: 1, fontFamily: FontFamily.mono, fontSize: 13, color: '#60A5FA' },
+  dualErrorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 7, backgroundColor: 'rgba(239,68,68,0.08)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.20)', borderRadius: 10, padding: 10, marginTop: 10 },
+  dualErrorText: { fontFamily: FontFamily.medium, fontSize: 12, color: Colors.error, flex: 1, lineHeight: 17 },
+  dualSubmitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, borderRadius: 12, backgroundColor: '#F97316', marginTop: 16 },
+  dualSubmitText: { fontFamily: FontFamily.bold, fontSize: 15, color: '#FFFFFF', letterSpacing: 0.3 },
 });

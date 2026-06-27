@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity,
   StatusBar, Dimensions, Modal, ActivityIndicator, FlatList,
-  RefreshControl,
+  RefreshControl, Switch, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +11,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CarListing } from '../../data/listings';
 import { searchListings } from '../../lib/listingsApi';
+import { naturalLanguageSearch } from '../../lib/aiApi';
 import { HorizontalVehicleCard } from '../../components/HorizontalVehicleCard';
 import { Colors } from '../../constants/colors';
 import { FontFamily } from '../../constants/typography';
@@ -67,7 +68,17 @@ const SORT_OPTIONS = [
   { id: 'price_desc', label: 'Price: high → low' },
 ];
 const YEAR_OPTS = ['Any', '2015', '2017', '2019', '2020', '2021', '2022', '2023'];
+const YEAR_OPTS_MAX = ['Any', '2016', '2018', '2020', '2021', '2022', '2023', '2024'];
 const MILES_OPTS = ['Any', '10k', '20k', '30k', '40k', '60k', '80k', '100k'];
+const MILES_OPTS_MIN = ['Any', '5k', '10k', '20k', '30k', '40k', '60k', '80k'];
+const CONDITIONS = [
+  { id: 'EXCELLENT', label: 'Excellent' },
+  { id: 'GOOD',      label: 'Good' },
+  { id: 'FAIR',      label: 'Fair' },
+  { id: 'POOR',      label: 'Poor' },
+  { id: 'CAT_S',     label: 'Cat S' },
+  { id: 'CAT_N',     label: 'Cat N' },
+];
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -96,8 +107,23 @@ export const SearchScreen: React.FC = () => {
   const [minYear, setMinYear] = useState<string>(
     route.params?.minYear ? String(route.params.minYear) : 'Any'
   );
+  const [maxYear, setMaxYear] = useState('Any');
+  const [minMiles, setMinMiles] = useState('Any');
   const [maxMiles, setMaxMiles] = useState('Any');
   const [transmission, setTransmission] = useState('');
+  // New filter dimensions
+  const [conditions, setConditions] = useState<string[]>([]);
+  const [ulezCompliant, setUlezCompliant] = useState(false);
+  const [minBhp, setMinBhp] = useState('');
+  const [maxBhp, setMaxBhp] = useState('');
+  const [deliveryAvailable, setDeliveryAvailable] = useState(false);
+  const [sellerType, setSellerType] = useState<'' | 'DEALER' | 'PRIVATE'>('');
+  const [listingType, setListingType] = useState<'' | 'CLASSIFIED' | 'AUCTION'>('');
+  // AI search state
+  const [aiModalVisible, setAiModalVisible] = useState(false);
+  const [aiQuery, setAiQuery] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiExplanation, setAiExplanation] = useState<string | null>(null);
 
   // ── Results state ──
   const [listings, setListings] = useState<CarListing[]>([]);
@@ -151,7 +177,16 @@ export const SearchScreen: React.FC = () => {
       bodyType: selectedBody || qf?.params.bodyType,
       fuelType: selectedFuels[0] || qf?.params.fuelType,
       minYear: minYear !== 'Any' ? parseInt(minYear) : qf?.params.minYear,
+      maxYear: maxYear !== 'Any' ? parseInt(maxYear) : undefined,
+      minMileage: parseMi(minMiles),
       maxMileage: parseMi(maxMiles),
+      conditions: conditions.length ? conditions : undefined,
+      ulezCompliant: ulezCompliant ? true : undefined,
+      minBhp: minBhp ? parseInt(minBhp) : undefined,
+      maxBhp: maxBhp ? parseInt(maxBhp) : undefined,
+      deliveryAvailable: deliveryAvailable ? true : undefined,
+      sellerType: sellerType || undefined,
+      listingType: listingType || undefined,
       sortBy: sortId,
       page: p,
       limit: 20,
@@ -182,7 +217,7 @@ export const SearchScreen: React.FC = () => {
       setLoadingMore(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxMiles, transmission, page]);
+  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmission, conditions, ulezCompliant, minBhp, maxBhp, deliveryAvailable, sellerType, listingType, page]);
 
   // Initial load
   useEffect(() => { fetch(true); }, []);
@@ -200,7 +235,7 @@ export const SearchScreen: React.FC = () => {
   useEffect(() => {
     fetch(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxMiles, transmission]);
+  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmission, conditions, ulezCompliant, minBhp, maxBhp, deliveryAvailable, sellerType, listingType]);
 
   const onRefresh = () => { setRefreshing(true); fetch(true); };
 
@@ -211,8 +246,16 @@ export const SearchScreen: React.FC = () => {
     !!selectedBody,
     selectedFuels.length > 0,
     minYear !== 'Any',
+    maxYear !== 'Any',
+    minMiles !== 'Any',
     maxMiles !== 'Any',
     !!transmission,
+    conditions.length > 0,
+    ulezCompliant,
+    !!minBhp || !!maxBhp,
+    deliveryAvailable,
+    !!sellerType,
+    !!listingType,
   ].filter(Boolean).length;
 
   const resetFilters = () => {
@@ -222,8 +265,17 @@ export const SearchScreen: React.FC = () => {
     setSelectedBody('');
     setSelectedFuels([]);
     setMinYear('Any');
+    setMaxYear('Any');
+    setMinMiles('Any');
     setMaxMiles('Any');
     setTransmission('');
+    setConditions([]);
+    setUlezCompliant(false);
+    setMinBhp('');
+    setMaxBhp('');
+    setDeliveryAvailable(false);
+    setSellerType('');
+    setListingType('');
   };
 
   const applyQuickFilter = (id: string) => {
@@ -241,6 +293,36 @@ export const SearchScreen: React.FC = () => {
   };
 
   const sortLabel = SORT_OPTIONS.find(s => s.id === sortId)?.label ?? 'Sort';
+
+  const handleAiSearch = async () => {
+    if (!aiQuery.trim() || aiLoading) return;
+    setAiLoading(true);
+    try {
+      const result = await naturalLanguageSearch(aiQuery.trim());
+      const f = result.filters ?? {};
+      // Apply whatever filter params the AI returned
+      if (f.make) setSelectedMakes([f.make]);
+      if (f.fuelType) setSelectedFuels([f.fuelType]);
+      if (f.bodyType) setSelectedBody(f.bodyType);
+      if (f.maxPrice) setMaxPrice(parseInt(f.maxPrice));
+      if (f.minPrice) setMinPrice(parseInt(f.minPrice));
+      if (f.minYear)  setMinYear(f.minYear);
+      if (f.maxYear)  setMaxYear(f.maxYear);
+      if (f.transmission) setTransmission(f.transmission);
+      if (f.listingType)  setListingType(f.listingType as any);
+      if (f.sellerType)   setSellerType(f.sellerType as any);
+      if (f.ulezCompliant === 'true') setUlezCompliant(true);
+      if (f.deliveryAvailable === 'true') setDeliveryAvailable(true);
+      setQuickFilter('custom');
+      setAiExplanation(result.explanation ?? null);
+      setAiModalVisible(false);
+      setAiQuery('');
+    } catch (err: any) {
+      Alert.alert('AI Search failed', err?.message ?? 'Please try again.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   return (
     <View style={s.container}>
@@ -285,6 +367,25 @@ export const SearchScreen: React.FC = () => {
           )}
         </View>
       </View>
+
+      {/* ── AI Search button ── */}
+      <View style={s.aiSearchWrap}>
+        <TouchableOpacity style={s.aiSearchBtn} onPress={() => setAiModalVisible(true)} activeOpacity={0.8}>
+          <Ionicons name="sparkles" size={13} color="#F59E0B" />
+          <Text style={s.aiSearchBtnText}>Try AI Search ✦</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* ── AI Explanation banner ── */}
+      {aiExplanation && (
+        <View style={s.aiExplanationBanner}>
+          <Ionicons name="sparkles" size={12} color="#F59E0B" />
+          <Text style={s.aiExplanationText} numberOfLines={2}>{aiExplanation}</Text>
+          <TouchableOpacity onPress={() => setAiExplanation(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="close" size={14} color="#F59E0B" />
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* ── Quick filters ── */}
       <ScrollView
@@ -398,6 +499,52 @@ export const SearchScreen: React.FC = () => {
         />
       )}
 
+      {/* ── AI Search Modal ── */}
+      <Modal visible={aiModalVisible} animationType="slide" transparent onRequestClose={() => setAiModalVisible(false)}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <TouchableOpacity style={s.aiModalOverlay} activeOpacity={1} onPress={() => setAiModalVisible(false)}>
+            <View style={[s.aiModalSheet, { paddingBottom: Math.max(insets.bottom, 24) }]} onStartShouldSetResponder={() => true}>
+              <View style={s.aiModalHandle} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <Ionicons name="sparkles" size={16} color="#F59E0B" />
+                <Text style={s.aiModalTitle}>AI Car Search</Text>
+              </View>
+              <Text style={s.aiModalSubtitle}>Describe what you're looking for in plain English</Text>
+              <TextInput
+                style={s.aiModalInput}
+                value={aiQuery}
+                onChangeText={setAiQuery}
+                placeholder="Describe the car you're looking for…"
+                placeholderTextColor="#404050"
+                multiline
+                numberOfLines={3}
+                onSubmitEditing={handleAiSearch}
+                blurOnSubmit
+                autoFocus
+              />
+              <TouchableOpacity
+                style={[s.aiModalBtn, (aiLoading || !aiQuery.trim()) && { opacity: 0.5 }]}
+                onPress={handleAiSearch}
+                disabled={aiLoading || !aiQuery.trim()}
+                activeOpacity={0.85}
+              >
+                {aiLoading ? (
+                  <ActivityIndicator color="#FFF" size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="sparkles" size={14} color="#FFF" />
+                    <Text style={s.aiModalBtnText}>Search with AI</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
+      </Modal>
+
       {/* ── Advanced Filters Modal ── */}
       <Modal visible={filterOpen} animationType="slide" transparent onRequestClose={() => setFilterOpen(false)}>
         <View style={s.modalOverlay}>
@@ -501,39 +648,58 @@ export const SearchScreen: React.FC = () => {
 
               <View style={s.divider} />
 
-              {/* Year & Mileage */}
-              <Text style={s.filterLabel}>YEAR & MILEAGE</Text>
-              <View style={s.twoCol}>
-                {/* Min year */}
+              {/* Year Range */}
+              <Text style={s.filterLabel}>YEAR RANGE</Text>
+              <View style={s.inputBox}>
+                <Text style={s.inputBoxLabel}>FROM YEAR</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    {YEAR_OPTS.map(y => (
+                      <TouchableOpacity key={y} style={[s.miniChip, minYear === y && s.filterChipActive]} onPress={() => setMinYear(y)}>
+                        <Text style={[s.miniChipText, minYear === y && { color: '#FFF' }]}>{y}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+              <View style={{ marginTop: 10 }}>
                 <View style={s.inputBox}>
-                  <Text style={s.inputBoxLabel}>MIN YEAR</Text>
+                  <Text style={s.inputBoxLabel}>TO YEAR</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     <View style={{ flexDirection: 'row', gap: 6 }}>
-                      {YEAR_OPTS.map(y => (
-                        <TouchableOpacity
-                          key={y}
-                          style={[s.miniChip, minYear === y && s.filterChipActive]}
-                          onPress={() => setMinYear(y)}
-                        >
-                          <Text style={[s.miniChipText, minYear === y && { color: '#FFF' }]}>{y}</Text>
+                      {YEAR_OPTS_MAX.map(y => (
+                        <TouchableOpacity key={y} style={[s.miniChip, maxYear === y && s.filterChipActive]} onPress={() => setMaxYear(y)}>
+                          <Text style={[s.miniChipText, maxYear === y && { color: '#FFF' }]}>{y}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
                   </ScrollView>
                 </View>
               </View>
-              <View style={[s.twoCol, { marginTop: 10 }]}>
-                {/* Max miles */}
+
+              <View style={s.divider} />
+
+              {/* Mileage Range */}
+              <Text style={s.filterLabel}>MILEAGE RANGE</Text>
+              <View style={s.inputBox}>
+                <Text style={s.inputBoxLabel}>MIN MILES</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    {MILES_OPTS_MIN.map(m => (
+                      <TouchableOpacity key={m} style={[s.miniChip, minMiles === m && s.filterChipActive]} onPress={() => setMinMiles(m)}>
+                        <Text style={[s.miniChipText, minMiles === m && { color: '#FFF' }]}>{m}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+              <View style={{ marginTop: 10 }}>
                 <View style={s.inputBox}>
                   <Text style={s.inputBoxLabel}>MAX MILES</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     <View style={{ flexDirection: 'row', gap: 6 }}>
                       {MILES_OPTS.map(m => (
-                        <TouchableOpacity
-                          key={m}
-                          style={[s.miniChip, maxMiles === m && s.filterChipActive]}
-                          onPress={() => setMaxMiles(m)}
-                        >
+                        <TouchableOpacity key={m} style={[s.miniChip, maxMiles === m && s.filterChipActive]} onPress={() => setMaxMiles(m)}>
                           <Text style={[s.miniChipText, maxMiles === m && { color: '#FFF' }]}>{m}</Text>
                         </TouchableOpacity>
                       ))}
@@ -559,6 +725,122 @@ export const SearchScreen: React.FC = () => {
                     </Text>
                   </TouchableOpacity>
                 ))}
+              </View>
+
+              <View style={s.divider} />
+
+              {/* Condition */}
+              <Text style={s.filterLabel}>CONDITION</Text>
+              <View style={s.chipGrid}>
+                {CONDITIONS.map(c => (
+                  <TouchableOpacity
+                    key={c.id}
+                    style={[s.filterChip, conditions.includes(c.id) && s.filterChipActive]}
+                    onPress={() => setConditions(prev => prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id])}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.filterChipText, conditions.includes(c.id) && s.filterChipTextActive]}>{c.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={s.divider} />
+
+              {/* BHP Range */}
+              <Text style={s.filterLabel}>POWER (BHP)</Text>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={[s.inputBox, { flex: 1 }]}>
+                  <Text style={s.inputBoxLabel}>MIN BHP</Text>
+                  <TextInput
+                    style={s.inputBoxValue}
+                    value={minBhp}
+                    onChangeText={setMinBhp}
+                    placeholder="0"
+                    placeholderTextColor="#404050"
+                    keyboardType="number-pad"
+                  />
+                </View>
+                <View style={[s.inputBox, { flex: 1 }]}>
+                  <Text style={s.inputBoxLabel}>MAX BHP</Text>
+                  <TextInput
+                    style={s.inputBoxValue}
+                    value={maxBhp}
+                    onChangeText={setMaxBhp}
+                    placeholder="Any"
+                    placeholderTextColor="#404050"
+                    keyboardType="number-pad"
+                  />
+                </View>
+              </View>
+
+              <View style={s.divider} />
+
+              {/* Listing Type */}
+              <Text style={s.filterLabel}>LISTING TYPE</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {[
+                  { id: '' as const,           label: 'All' },
+                  { id: 'CLASSIFIED' as const, label: 'Buy Now' },
+                  { id: 'AUCTION' as const,    label: 'Auction' },
+                ].map(opt => (
+                  <TouchableOpacity
+                    key={opt.id}
+                    style={[s.segmentBtn, listingType === opt.id && s.segmentBtnActive]}
+                    onPress={() => setListingType(opt.id)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.segmentBtnText, listingType === opt.id && s.segmentBtnTextActive]}>{opt.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={s.divider} />
+
+              {/* Seller Type */}
+              <Text style={s.filterLabel}>SELLER TYPE</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {[
+                  { id: '' as const,        label: 'All' },
+                  { id: 'DEALER' as const,  label: 'Dealer' },
+                  { id: 'PRIVATE' as const, label: 'Private' },
+                ].map(opt => (
+                  <TouchableOpacity
+                    key={opt.id}
+                    style={[s.segmentBtn, sellerType === opt.id && s.segmentBtnActive]}
+                    onPress={() => setSellerType(opt.id)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.segmentBtnText, sellerType === opt.id && s.segmentBtnTextActive]}>{opt.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={s.divider} />
+
+              {/* Toggle filters */}
+              <View style={s.toggleRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.toggleLabel}>ULEZ COMPLIANT ONLY</Text>
+                  <Text style={s.toggleHint}>Meets London Ultra Low Emission Zone standards</Text>
+                </View>
+                <Switch
+                  value={ulezCompliant}
+                  onValueChange={setUlezCompliant}
+                  trackColor={{ false: '#2A2A35', true: '#DC1F26' }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+              <View style={[s.toggleRow, { marginTop: 14 }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.toggleLabel}>DELIVERY AVAILABLE ONLY</Text>
+                  <Text style={s.toggleHint}>Only show listings where seller offers delivery</Text>
+                </View>
+                <Switch
+                  value={deliveryAvailable}
+                  onValueChange={setDeliveryAvailable}
+                  trackColor={{ false: '#2A2A35', true: '#DC1F26' }}
+                  thumbColor="#FFFFFF"
+                />
               </View>
 
               <View style={{ height: 80 }} />
@@ -645,4 +927,34 @@ const s = StyleSheet.create({
   inputBoxValue: { fontFamily: FontFamily.bold, fontSize: 15, color: '#FFFFFF' },
   miniChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
   miniChipText: { fontFamily: FontFamily.medium, fontSize: 11, color: '#A0A0AB' },
+
+  // AI search button
+  aiSearchWrap: { paddingHorizontal: 24, marginBottom: 6 },
+  aiSearchBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: 'rgba(245,158,11,0.10)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.25)' },
+  aiSearchBtnText: { fontFamily: FontFamily.bold, fontSize: 12, color: '#F59E0B' },
+
+  // AI explanation banner
+  aiExplanationBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginHorizontal: 24, marginBottom: 6, backgroundColor: 'rgba(245,158,11,0.08)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.20)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9 },
+  aiExplanationText: { flex: 1, fontFamily: FontFamily.regular, fontSize: 12, color: '#FCD34D', lineHeight: 18 },
+
+  // AI modal
+  aiModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' },
+  aiModalSheet: { backgroundColor: '#0F0F14', borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', padding: 24, gap: 12 },
+  aiModalHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)', alignSelf: 'center', marginBottom: 4 },
+  aiModalTitle: { fontFamily: FontFamily.bold, fontSize: 18, color: '#FFFFFF' },
+  aiModalSubtitle: { fontFamily: FontFamily.regular, fontSize: 13, color: '#606070', lineHeight: 19 },
+  aiModalInput: { backgroundColor: '#111115', borderRadius: 14, borderWidth: 1, borderColor: '#2A2A32', paddingHorizontal: 16, paddingVertical: 14, fontFamily: FontFamily.regular, fontSize: 15, color: '#FFFFFF', minHeight: 80, textAlignVertical: 'top' },
+  aiModalBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, borderRadius: 12, backgroundColor: '#F59E0B' },
+  aiModalBtnText: { fontFamily: FontFamily.bold, fontSize: 15, color: '#FFFFFF' },
+
+  // Segmented controls (listing type / seller type)
+  segmentBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', alignItems: 'center' },
+  segmentBtnActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+  segmentBtnText: { fontFamily: FontFamily.medium, fontSize: 13, color: '#A0A0AB' },
+  segmentBtnTextActive: { color: '#FFFFFF', fontFamily: FontFamily.bold },
+
+  // Toggle rows
+  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  toggleLabel: { fontFamily: FontFamily.bold, fontSize: 12, color: '#FFFFFF', marginBottom: 3 },
+  toggleHint: { fontFamily: FontFamily.regular, fontSize: 11, color: '#606070', lineHeight: 15 },
 });

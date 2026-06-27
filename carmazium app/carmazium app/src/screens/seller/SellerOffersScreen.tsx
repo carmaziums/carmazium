@@ -24,13 +24,17 @@ import { EmptyState } from '../../components/ui/EmptyState';
 
 // ─────────────────────────── interfaces ───────────────────────────
 
-type OfferStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'COUNTERED';
+type OfferStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'COUNTERED' | 'WITHDRAWN';
 
 interface Offer {
   id: string;
   amount: number;
   status: OfferStatus;
-  counterAmount?: number | null;
+  // Canonical counter fields — prefer these; fall back to counterAmount for old records
+  sellerCounterAmount?: number | null;
+  buyerCounterAmount?: number | null;
+  lastCounteredBy?: 'BUYER' | 'SELLER' | null;
+  counterAmount?: number | null; // legacy — kept for backwards compat
   listing?: {
     title?: string;
     price?: number;
@@ -113,6 +117,12 @@ const STATUS_CONFIG: Record<
     chipBg: 'rgba(59,130,246,0.15)',
     chipText: '#3B82F6',
     chipLabel: 'COUNTERED',
+  },
+  WITHDRAWN: {
+    leftBorder: 'rgba(255,255,255,0.08)',
+    chipBg: 'rgba(255,255,255,0.05)',
+    chipText: Colors.textMuted,
+    chipLabel: 'WITHDRAWN',
   },
 };
 
@@ -262,6 +272,10 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
     const isActioning = actionLoading === offer.id;
     const showActions = offer.status === 'PENDING';
     const isCountered = offer.status === 'COUNTERED';
+    // Canonical counter amount the seller sent (fall back to legacy field for old records)
+    const displayedSellerCounter = offer.sellerCounterAmount ?? offer.counterAmount ?? null;
+    // True when the buyer has counter-backed — ball is in the seller's court
+    const buyerCounteredBack = isCountered && offer.lastCounteredBy === 'BUYER';
 
     return (
       <View key={offer.id} style={[styles.offerCard, { borderLeftColor: cfg.leftBorder }]}>
@@ -302,12 +316,28 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
         {/* Listing name */}
         <Text style={styles.listingName} numberOfLines={1}>{listingTitle}</Text>
 
-        {/* Counter sent label */}
+        {/* Counter state label */}
         {isCountered && (
-          <View style={styles.counterSentChip}>
-            <Ionicons name="time-outline" size={12} color="#3B82F6" />
-            <Text style={styles.counterSentText}>Counter sent — awaiting buyer response</Text>
-          </View>
+          buyerCounteredBack ? (
+            // Buyer has counter-backed — show their amount and flag that the seller must act
+            <View style={styles.buyerCounteredChip}>
+              <Ionicons name="swap-horizontal-outline" size={12} color={Colors.warning} />
+              <Text style={styles.buyerCounteredText}>
+                BUYER COUNTERED
+                {offer.buyerCounterAmount != null
+                  ? ` — ${formatPrice(offer.buyerCounterAmount)}`
+                  : ''}
+              </Text>
+            </View>
+          ) : (
+            // Seller's counter is out — show the amount sent and wait for buyer
+            <View style={styles.counterSentChip}>
+              <Ionicons name="time-outline" size={12} color="#3B82F6" />
+              <Text style={styles.counterSentText}>
+                Counter sent{displayedSellerCounter != null ? ` · ${formatPrice(displayedSellerCounter)}` : ''} — awaiting buyer response
+              </Text>
+            </View>
+          )
         )}
 
         {/* Action row */}
@@ -633,6 +663,23 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.medium,
     fontSize: 11,
     color: '#3B82F6',
+  },
+  buyerCounteredChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(245,158,11,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.30)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  buyerCounteredText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 11,
+    color: Colors.warning,
   },
 
   // ── Action buttons ──

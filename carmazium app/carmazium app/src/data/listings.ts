@@ -40,6 +40,17 @@ export interface CarListing {
   features?: string[];
   seller?: { id: string };
   isDepartedSale?: boolean;
+  importedFromUrl?: string | null;
+  importedSource?: string | null;
+  linkedListingId?: string | null;
+  linkedListing?: {
+    id: string;
+    type: string;
+    auction?: { id: string; status: string; endTime: string } | null;
+  } | null;
+  deliveryAvailable?: boolean;
+  deliveryMaxMiles?: number | null;
+  deliveryPricePerMile?: number | null;
 }
 
 export interface AuctionListing extends CarListing {

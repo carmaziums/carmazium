@@ -59,6 +59,12 @@ export interface AuctionListingDetail {
   _count?: {
     bids: number;
   };
+  linkedListingId?: string | null;
+  linkedListing?: {
+    id: string;
+    type: string;
+    auction?: { id: string; status: string; endTime: string } | null;
+  } | null;
 }
 
 export interface AuctionDetail {
@@ -72,6 +78,8 @@ export interface AuctionDetail {
   status: 'SCHEDULED' | 'ACTIVE' | 'ENDED' | 'CANCELLED';
   winnerId?: string | null;
   winningBidAmount?: number | null;
+  buyItNowPrice?: number | null;
+  buyItNowPendingBuyerId?: string | null;
   createdAt: string;
   updatedAt: string;
   listing: AuctionListingDetail;
@@ -127,4 +135,18 @@ export async function placeBid(listingId: string, amount: number): Promise<any> 
     body: JSON.stringify({ listingId, amount }),
   });
   return res.data;
+}
+
+// ─── Buy It Now ───────────────────────────────────────────────────────────────
+
+export async function triggerBuyItNow(auctionId: string): Promise<void> {
+  await apiClient(`/auctions/${auctionId}/bin-trigger`, { method: 'POST' });
+}
+
+export async function confirmBuyItNow(auctionId: string): Promise<void> {
+  await apiClient(`/auctions/${auctionId}/bin-confirm`, { method: 'POST' });
+}
+
+export async function declineBuyItNow(auctionId: string): Promise<void> {
+  await apiClient(`/auctions/${auctionId}/bin-decline`, { method: 'POST' });
 }

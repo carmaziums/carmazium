@@ -34,6 +34,17 @@ export interface ApiListing {
     dealerProfile?: { companyName?: string; logo?: string } | null;
   } | null;
   isDepartedSale?: boolean | null;
+  importedFromUrl?: string | null;
+  importedSource?: string | null;
+  linkedListingId?: string | null;
+  linkedListing?: {
+    id: string;
+    type: string;
+    auction?: { id: string; status: string; endTime: string } | null;
+  } | null;
+  deliveryAvailable?: boolean | null;
+  deliveryMaxMiles?: number | null;
+  deliveryPricePerMile?: number | null;
 }
 
 export interface PaginatedApiResponse<T> {
@@ -74,6 +85,9 @@ export interface CreateListingPayload {
   description?: string;
   features?: string[];
   variant?: string;
+  deliveryAvailable?: boolean;
+  deliveryMaxMiles?: number;
+  deliveryPricePerMile?: number;
 }
 
 export interface SellerStats {
@@ -157,8 +171,15 @@ export function mapApiListingToCarListing(l: ApiListing): CarListing {
     isNew:        false,
     description:  l.description  ?? undefined,
     features:     l.features     ?? undefined,
-    seller:       l.seller?.id ? { id: l.seller.id } : undefined,
-    isDepartedSale: l.isDepartedSale ?? false,
+    seller:         l.seller?.id ? { id: l.seller.id } : undefined,
+    isDepartedSale: l.isDepartedSale  ?? false,
+    importedFromUrl:  l.importedFromUrl  ?? null,
+    importedSource:   l.importedSource   ?? null,
+    linkedListingId:  l.linkedListingId  ?? null,
+    linkedListing:    l.linkedListing    ?? null,
+    deliveryAvailable:    l.deliveryAvailable    ?? false,
+    deliveryMaxMiles:     l.deliveryMaxMiles     ?? null,
+    deliveryPricePerMile: l.deliveryPricePerMile ?? null,
   };
 }
 
@@ -209,9 +230,18 @@ export async function searchListings(params: {
   minPrice?: number;
   maxPrice?: number;
   minYear?: number;
+  maxYear?: number;
+  minMileage?: number;
   maxMileage?: number;
   fuelType?: string;
   bodyType?: string;
+  conditions?: string[];
+  ulezCompliant?: boolean;
+  minBhp?: number;
+  maxBhp?: number;
+  deliveryAvailable?: boolean;
+  sellerType?: string;
+  listingType?: string;
   sortBy?: string;
   page?: number;
   limit?: number;
@@ -224,7 +254,16 @@ export async function searchListings(params: {
     if (params.minPrice != null) query.set('minPrice', String(params.minPrice));
     if (params.maxPrice != null) query.set('maxPrice', String(params.maxPrice));
     if (params.minYear  != null) query.set('minYear',  String(params.minYear));
+    if (params.maxYear  != null) query.set('maxYear',  String(params.maxYear));
+    if (params.minMileage != null) query.set('minMileage', String(params.minMileage));
     if (params.maxMileage != null) query.set('maxMileage', String(params.maxMileage));
+    if (params.conditions?.length) query.set('conditions', params.conditions.join(','));
+    if (params.ulezCompliant) query.set('ulezCompliant', 'true');
+    if (params.minBhp != null) query.set('minBhp', String(params.minBhp));
+    if (params.maxBhp != null) query.set('maxBhp', String(params.maxBhp));
+    if (params.deliveryAvailable) query.set('deliveryAvailable', 'true');
+    if (params.sellerType) query.set('sellerType', params.sellerType);
+    if (params.listingType) query.set('listingType', params.listingType);
     if (params.sortBy)    query.set('sortBy', params.sortBy);
     if (params.page  != null) query.set('page',  String(params.page));
     if (params.limit != null) query.set('limit', String(params.limit));
@@ -294,4 +333,89 @@ export async function getSellerStats(): Promise<SellerStats> {
   } catch {
     return { activeListings: 0, totalViews: 0, offersReceived: 0, totalEarnings: 0 };
   }
+}
+
+// ─── Import from external platform ───────────────────────────────────────────
+
+export interface ScrapedListingPreview {
+  platform: 'AUTOTRADER' | 'CARGURUS' | 'CARWOW';
+  originalUrl: string;
+  title: string;
+  price?: number;
+  make?: string;
+  model?: string;
+  year?: number;
+  mileage?: number;
+  fuelType?: string;
+  transmission?: string;
+  color?: string;
+  bodyType?: string;
+  doors?: number;
+  engineSize?: number;
+  bhp?: number;
+  description?: string;
+  images: string[];
+  location?: string;
+  vrm?: string;
+  vin?: string;
+}
+
+export async function previewImport(url: string): Promise<ScrapedListingPreview> {
+  const res = await apiClient<ApiResponse<ScrapedListingPreview>>('/listings/preview-import', {
+    method: 'POST',
+    body: JSON.stringify({ url }),
+  });
+  return res.data;
+}
+
+export async function importFromUrl(params: {
+  url: string;
+  price: number;
+  vrm: string;
+  title?: string;
+}): Promise<{ id: string; slug: string }> {
+  const res = await apiClient<ApiResponse<{ id: string; slug: string }>>('/listings/import-from-url', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+  return res.data;
+}
+
+// ─── Dual-channel ─────────────────────────────────────────────────────────────
+
+/** Creates a linked CLASSIFIED listing from an AUCTION listing */
+export async function alsoListRetail(
+  listingId: string,
+  price: number,
+  badgeTier: 'BASIC' | 'STANDARD' | 'PREMIUM',
+): Promise<{ linkedListingId: string }> {
+  const res = await apiClient<ApiResponse<{ linkedListingId: string }>>(
+    `/listings/${listingId}/also-list-retail`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ price, badgeTier }),
+    },
+  );
+  return res.data;
+}
+
+/** Creates a linked AUCTION from a CLASSIFIED listing */
+export async function alsoAuction(
+  listingId: string,
+  dto: {
+    startTime: string;
+    reservePrice: number;
+    startingBid: number;
+    minIncrement?: number;
+    buyItNowPrice?: number;
+  },
+): Promise<{ linkedListingId: string; auctionId: string }> {
+  const res = await apiClient<ApiResponse<{ linkedListingId: string; auctionId: string }>>(
+    `/listings/${listingId}/also-auction`,
+    {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    },
+  );
+  return res.data;
 }

@@ -26,6 +26,7 @@ import { Colors } from '../../constants/colors';
 import { useAuthStore } from '../../store/authStore';
 import {
   getAuction, placeBid,
+  triggerBuyItNow, confirmBuyItNow, declineBuyItNow,
   type AuctionDetail, type BidBroadcastPayload, type AuctionEndPayload,
 } from '../../lib/auctionApi';
 import { createChatRoom } from '../../lib/chatApi';
@@ -44,6 +45,7 @@ interface BidEntry {
   name: string;
   amount: number;
   time: string;
+  bidderId?: string; // needed to recalculate isWinning after bid:cancelled
   isNew?: boolean;
 }
 
@@ -131,6 +133,20 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [antiSnipeToast, setAntiSnipeToast] = useState(false);
   const [connectingChat, setConnectingChat] = useState(false);
 
+  // ── BIN state ──
+  const [binPendingBuyerId, setBinPendingBuyerId] = useState<string | null>(null);
+  const [binBannerDismissed, setBinBannerDismissed] = useState(false);
+  const [binLoading, setBinLoading] = useState(false);
+
+  // ── Bid cancel window ──
+  const [cancelableBidId, setCancelableBidId] = useState<string | null>(null);
+  const [cancelWindowMs, setCancelWindowMs] = useState(0);
+  const [cancelLoading, setCancelLoading] = useState(false);
+
+  // ── Seller tools ──
+  const [acceptingBidId, setAcceptingBidId] = useState<string | null>(null);
+  const [closingEarly, setClosingEarly] = useState(false);
+
   // ── UI state ──
   const [activeTab, setActiveTab] = useState<'details' | 'bids' | 'seller'>('details');
   const [secondsLeft, setSecondsLeft] = useState(0);
@@ -197,6 +213,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             name: fullName || 'Anonymous',
             amount: Number(b.amount),
             time: new Date(b.timestamp).toLocaleTimeString('en-GB'),
+            bidderId: b.bidderId,
           };
         }));
         if (data.status === 'ENDED') {
@@ -209,6 +226,10 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           });
         }
         setAntiSnipeActive(et.getTime() - Date.now() <= 3 * 60 * 1000 && data.status === 'ACTIVE');
+        // Seed BIN pending state from initial fetch (in case BIN was triggered before this screen mounted)
+        if (data.buyItNowPendingBuyerId) {
+          setBinPendingBuyerId(data.buyItNowPendingBuyerId);
+        }
       })
       .catch(() => setLoadError('Failed to load auction. Please try again.'))
       .finally(() => setLoading(false));
@@ -247,16 +268,20 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         setCurrentBid(payload.amount);
         setIsWinning(!!currentUser && payload.bidderId === currentUser.id);
         setBidHistory(prev => [
-          { id: payload.bidId, initials: payload.bidderInitials || '??', name: payload.bidderInitials || '??', amount: payload.amount, time: new Date(payload.timestamp).toLocaleTimeString('en-GB'), isNew: true },
+          { id: payload.bidId, initials: payload.bidderInitials || '??', name: payload.bidderInitials || '??', amount: payload.amount, time: new Date(payload.timestamp).toLocaleTimeString('en-GB'), bidderId: payload.bidderId, isNew: true },
           ...prev.map(b => ({ ...b, isNew: false })),
         ]);
-        // Bid flash + haptic for own bids
+        // Bid flash + haptic for own bids; track cancel window
         if (currentUser && payload.bidderId === currentUser.id) {
           bidFlash.value = withSequence(
             withTiming(1, { duration: 120 }),
             withTiming(0, { duration: 400 }),
           );
           haptics.medium();
+          setCancelableBidId(payload.bidId); // start the 2-minute cancel window
+        } else {
+          // Outbid — clear our cancel window (the separate useEffect will clean up the interval)
+          setCancelableBidId(null);
         }
         if (payload.newEndTime) {
           const newEnd = new Date(payload.newEndTime);
@@ -304,10 +329,50 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         if (d.auctionId !== auctionId) return;
         setAuction(p => p ? { ...p, status: 'ACTIVE' } : p);
       });
+
+      socket.on('bid:cancelled', (d: { auctionId: string; bidId: string }) => {
+        if (d.auctionId !== auctionId) return;
+        setBidHistory(prev => {
+          const next = prev.filter(b => b.id !== d.bidId);
+          // Recalculate current bid: top remaining bid, or fall back to starting bid
+          const topAmount = next.length > 0 ? next[0].amount : Number(auction?.startingBid ?? 0);
+          setCurrentBid(topAmount);
+          // Recalculate winning status from the new top bidder
+          setIsWinning(!!currentUser && next.length > 0 && next[0].bidderId === currentUser.id);
+          return next;
+        });
+      });
+
+      socket.on('bin:pending', (d: { auctionId: string; buyerId: string }) => {
+        if (d.auctionId !== auctionId) return;
+        setBinPendingBuyerId(d.buyerId);
+        setBinBannerDismissed(false); // reset so the banner reappears for each new BIN request
+      });
     })();
 
     return () => { socket?.disconnect(); };
   }, [auctionId, currentUser]);
+
+  // ─── Cancel bid countdown — 120s window that starts when own bid lands ──────
+  // Driven by cancelableBidId: when it's set, start the interval; when it becomes
+  // null (outbid, expired, or user cancelled), the cleanup clears the interval.
+
+  useEffect(() => {
+    if (!cancelableBidId) return;
+    const WINDOW_MS = 2 * 60 * 1000; // 120 000ms
+    setCancelWindowMs(WINDOW_MS);
+    const id = setInterval(() => {
+      setCancelWindowMs(prev => {
+        if (prev <= 100) {
+          clearInterval(id);
+          setCancelableBidId(null);
+          return 0;
+        }
+        return prev - 100;
+      });
+    }, 100);
+    return () => clearInterval(id);
+  }, [cancelableBidId]);
 
   // ─── Anti-snipe timer ─────────────────────────────────────────────────────
 
@@ -371,6 +436,164 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       setBidLoading(false);
     }
   }, [auction, currentUser, currentBid]);
+
+  // ─── Cancel bid ──────────────────────────────────────────────────────────────
+
+  const handleCancelBid = useCallback(() => {
+    if (!cancelableBidId) return;
+    const bidId = cancelableBidId; // capture before async gap
+    Alert.alert(
+      'Cancel your bid?',
+      'Your bid will be removed. The auction continues with the previous highest bid.',
+      [
+        { text: 'Keep Bid', style: 'cancel' },
+        {
+          text: 'Cancel Bid',
+          style: 'destructive',
+          onPress: async () => {
+            setCancelLoading(true);
+            try {
+              await apiClient(`/bids/${bidId}/cancel`, { method: 'PATCH' });
+              haptics.light();
+              // Clear local cancel state — bid:cancelled socket event will update bidHistory
+              setCancelableBidId(null);
+              setCancelWindowMs(0);
+            } catch (err: any) {
+              Alert.alert('Failed', err?.message ?? 'Could not cancel bid. Please try again.');
+            } finally {
+              setCancelLoading(false);
+            }
+          },
+        },
+      ],
+    );
+  }, [cancelableBidId]);
+
+  // ─── Buy It Now handlers ──────────────────────────────────────────────────────
+
+  const handleTriggerBin = useCallback(() => {
+    if (!auction) return;
+    Alert.alert(
+      'Buy It Now?',
+      `The seller must confirm within 24 hours. The auction continues until they respond.\n\nBuy It Now price: ${fmt(Number(auction.buyItNowPrice))}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Request Buy It Now',
+          onPress: async () => {
+            setBinLoading(true);
+            try {
+              await triggerBuyItNow(auction.id);
+              setBinPendingBuyerId(currentUser?.id ?? 'pending');
+              setBinBannerDismissed(false);
+            } catch (err: any) {
+              Alert.alert('Failed', err?.message ?? 'Could not request Buy It Now. Please try again.');
+            } finally {
+              setBinLoading(false);
+            }
+          },
+        },
+      ],
+    );
+  }, [auction, currentUser]);
+
+  const handleConfirmBin = useCallback(() => {
+    if (!auction) return;
+    Alert.alert(
+      'Confirm Buy It Now?',
+      `This ends the auction immediately at ${fmt(Number(auction.buyItNowPrice))}.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm Sale',
+          onPress: async () => {
+            setBinLoading(true);
+            try {
+              await confirmBuyItNow(auction.id);
+              // The auction:ended socket event will fire and update the UI
+            } catch (err: any) {
+              Alert.alert('Failed', err?.message ?? 'Could not confirm sale. Please try again.');
+            } finally {
+              setBinLoading(false);
+            }
+          },
+        },
+      ],
+    );
+  }, [auction]);
+
+  const handleDeclineBin = useCallback(async () => {
+    if (!auction) return;
+    setBinLoading(true);
+    try {
+      await declineBuyItNow(auction.id);
+      setBinPendingBuyerId(null);
+    } catch (err: any) {
+      Alert.alert('Failed', err?.message ?? 'Could not decline. Please try again.');
+    } finally {
+      setBinLoading(false);
+    }
+  }, [auction]);
+
+  // ─── Seller: accept a specific bid early ─────────────────────────────────────
+
+  const handleAcceptBid = useCallback((bid: BidEntry) => {
+    if (!auction) return;
+    Alert.alert(
+      'Accept this bid?',
+      `This will end the auction immediately with ${fmt(bid.amount)} as the winning bid.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Accept Bid',
+          onPress: async () => {
+            setAcceptingBidId(bid.id);
+            try {
+              await apiClient(`/auctions/${auction.id}/accept-bid`, {
+                method: 'POST',
+                body: JSON.stringify({ bidId: bid.id }),
+              });
+              haptics.success();
+              setAuction(p => p ? { ...p, status: 'ENDED', winnerId: bid.bidderId ?? null } : p);
+            } catch (err: any) {
+              Alert.alert('Failed', err?.message ?? 'Could not accept bid. Please try again.');
+            } finally {
+              setAcceptingBidId(null);
+            }
+          },
+        },
+      ],
+    );
+  }, [auction]);
+
+  // ─── Seller: close auction early (uses current highest bid) ──────────────────
+
+  const handleCloseEarly = useCallback(() => {
+    if (!auction) return;
+    Alert.alert(
+      'Close auction early?',
+      'The current highest bid will be set as the winner. This cannot be undone.',
+      [
+        { text: 'Keep Open', style: 'cancel' },
+        {
+          text: 'Close Now',
+          style: 'destructive',
+          onPress: async () => {
+            setClosingEarly(true);
+            try {
+              await apiClient(`/auctions/${auction.id}/close`, { method: 'POST' });
+              haptics.success();
+              setAuction(p => p ? { ...p, status: 'ENDED' } : p);
+            } catch (err: any) {
+              Alert.alert('Failed', err?.message ?? 'Could not close auction. Please try again.');
+            } finally {
+              setClosingEarly(false);
+            }
+          },
+        },
+      ],
+    );
+  }, [auction]);
 
   // ─── Derived values ───────────────────────────────────────────────────────
 
@@ -510,6 +733,24 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </Text>
         </View>
       )}
+      {/* Seller quick-close control — only when auction is actively running */}
+      {isSeller && isActive && (
+        <View style={s.sellerToolsRow}>
+          <Ionicons name="settings-outline" size={13} color="#F59E0B" />
+          <Text style={s.sellerToolsLabel}>Seller Tools</Text>
+          <TouchableOpacity
+            style={[s.sellerCloseBtn, closingEarly && { opacity: 0.6 }]}
+            onPress={handleCloseEarly}
+            disabled={closingEarly}
+            activeOpacity={0.8}
+          >
+            {closingEarly
+              ? <ActivityIndicator size="small" color="#DC1F26" />
+              : <Text style={s.sellerCloseBtnText}>Close Auction Now</Text>
+            }
+          </TouchableOpacity>
+        </View>
+      )}
       {isScheduled && !isSeller && startTime && (
         <View style={[s.banner, s.bannerBlue]}>
           <Ionicons name="calendar-outline" size={14} color="#60A5FA" />
@@ -523,6 +764,63 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         <View style={[s.banner, s.bannerAmber]}>
           <Ionicons name="wifi-outline" size={14} color="#F59E0B" />
           <Text style={[s.bannerText, { color: '#FCD34D' }]}>Connection lost — bids may not update in real time.</Text>
+        </View>
+      )}
+      {/* ── Seller BIN confirmation panel ── */}
+      {isSeller && isActive && binPendingBuyerId && auction?.buyItNowPrice && (
+        <View style={s.binSellerPanel}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <Ionicons name="pricetag" size={16} color="#F59E0B" />
+            <Text style={s.binSellerTitle}>Buy It Now Request</Text>
+          </View>
+          <Text style={s.binSellerBody}>
+            A buyer wants to purchase this vehicle right now at{' '}
+            <Text style={{ fontFamily: FontFamily.mono, color: '#FFFFFF' }}>{fmt(Number(auction.buyItNowPrice))}</Text>.
+            {'\n'}Confirm to end the auction immediately, or decline to continue bidding.
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+            <TouchableOpacity
+              style={[s.binSellerDeclineBtn, binLoading && { opacity: 0.5 }]}
+              onPress={handleDeclineBin}
+              disabled={binLoading}
+              activeOpacity={0.8}
+            >
+              <Text style={s.binSellerDeclineText}>Decline</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.binSellerConfirmBtn, binLoading && { opacity: 0.5 }]}
+              onPress={handleConfirmBin}
+              disabled={binLoading}
+              activeOpacity={0.8}
+            >
+              {binLoading
+                ? <ActivityIndicator size="small" color="#FFF" />
+                : <Text style={s.binSellerConfirmText}>Confirm Sale — {fmt(Number(auction.buyItNowPrice))}</Text>
+              }
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+      {binPendingBuyerId && !isSeller && !binBannerDismissed && (
+        <View style={[s.banner, s.bannerAmber, { alignItems: 'center' }]}>
+          <Ionicons name="pricetag-outline" size={14} color="#F59E0B" />
+          <Text style={[s.bannerText, { color: '#FCD34D' }]}>
+            A buyer has requested to Buy It Now — seller is reviewing.
+          </Text>
+          <TouchableOpacity
+            onPress={() => setBinBannerDismissed(true)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="close" size={16} color="#F59E0B" />
+          </TouchableOpacity>
+        </View>
+      )}
+      {auction?.listing?.linkedListingId && auction.listing.linkedListing?.type === 'CLASSIFIED' && (
+        <View style={[s.banner, s.bannerDark]}>
+          <Ionicons name="pricetag-outline" size={14} color="#A0A0AB" />
+          <Text style={[s.bannerText, { color: '#A0A0AB' }]}>
+            Also available as a classified listing — make an offer without bidding.
+          </Text>
         </View>
       )}
       {isEnded && (
@@ -857,9 +1155,23 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                           <View style={s.leaderChip}><Text style={s.leaderChipText}>LEADER</Text></View>
                         )}
                       </View>
-                      <View style={{ alignItems: 'flex-end' }}>
+                      <View style={{ alignItems: 'flex-end', gap: 4 }}>
                         <Text style={[s.bidAmt, { fontFamily: FontFamily.mono }]}>{fmt(bid.amount)}</Text>
                         <Text style={s.bidTime}>{bid.time}</Text>
+                        {/* Seller-only "Accept" button — ends the auction at this bid */}
+                        {isSeller && isActive && (
+                          <TouchableOpacity
+                            style={[s.acceptBidBtn, acceptingBidId === bid.id && { opacity: 0.6 }]}
+                            onPress={() => handleAcceptBid(bid)}
+                            disabled={!!acceptingBidId}
+                            activeOpacity={0.8}
+                          >
+                            {acceptingBidId === bid.id
+                              ? <ActivityIndicator size="small" color="#FFF" />
+                              : <Text style={s.acceptBidBtnText}>Accept</Text>
+                            }
+                          </TouchableOpacity>
+                        )}
                       </View>
                     </View>
                   ))}
@@ -888,6 +1200,44 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </View>
             </View>
           </View>
+        )}
+
+        {/* ── Buy It Now panel (buyer) — hidden when reserve met or auction not active ── */}
+        {isActive && !isSeller && !isEnded && !isCancelled && auction?.buyItNowPrice && !reserveMet && (
+          binPendingBuyerId ? (
+            // BIN is pending — show waiting state
+            <View style={s.binPendingBanner}>
+              <Ionicons name="time-outline" size={14} color="#F59E0B" />
+              <Text style={s.binPendingText}>
+                Buy It Now requested — awaiting seller confirmation
+              </Text>
+            </View>
+          ) : (
+            // BIN available — show trigger panel
+            <View style={s.binPanel}>
+              <View style={s.binPanelRow}>
+                <View>
+                  <Text style={s.binPanelLabel}>BUY IT NOW</Text>
+                  <Text style={[s.binPanelPrice, { fontFamily: FontFamily.mono }]}>{fmt(Number(auction.buyItNowPrice))}</Text>
+                </View>
+                <Text style={s.binPanelHint}>Skip the auction{'\n'}seller must confirm</Text>
+              </View>
+              <TouchableOpacity
+                style={[s.binBtn, binLoading && { opacity: 0.6 }]}
+                onPress={handleTriggerBin}
+                disabled={binLoading}
+                activeOpacity={0.85}
+              >
+                {binLoading
+                  ? <ActivityIndicator size="small" color="#FFF" />
+                  : <>
+                      <Ionicons name="pricetag-outline" size={15} color="#FFF" />
+                      <Text style={s.binBtnText}>Buy Now — {fmt(Number(auction.buyItNowPrice))}</Text>
+                    </>
+                }
+              </TouchableOpacity>
+            </View>
+          )
         )}
 
         {/* Spacer for sticky bid console */}
@@ -980,20 +1330,15 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[s.quickBidBtn, { flex: 1, backgroundColor: 'rgba(220,31,38,0.1)', borderColor: 'rgba(220,31,38,0.25)', borderWidth: 1 }]}
+                style={[s.quickBidBtn, { flex: 1, backgroundColor: 'rgba(220,31,38,0.1)', borderColor: 'rgba(220,31,38,0.25)', borderWidth: 1 }, closingEarly && { opacity: 0.6 }]}
                 activeOpacity={0.8}
-                onPress={() =>
-                  Alert.alert(
-                    'Cancel Auction',
-                    'Are you sure you want to cancel this auction? All bids will be voided and bidders notified.',
-                    [
-                      { text: 'Keep Auction', style: 'cancel' },
-                      { text: 'Cancel Auction', style: 'destructive', onPress: () => Alert.alert('Auction Cancelled', 'The auction has been cancelled and all bidders notified.') },
-                    ]
-                  )
-                }
+                onPress={handleCloseEarly}
+                disabled={closingEarly}
               >
-                <Text style={[s.quickBidBtnText, { color: '#DC1F26' }]}>CANCEL</Text>
+                {closingEarly
+                  ? <ActivityIndicator size="small" color="#DC1F26" />
+                  : <Text style={[s.quickBidBtnText, { color: '#DC1F26' }]}>CLOSE NOW</Text>
+                }
               </TouchableOpacity>
             </View>
           </View>
@@ -1069,6 +1414,31 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <View style={[s.banner, s.bannerRed, { marginTop: -4 }]}>
                 <Ionicons name="alert-circle-outline" size={12} color="#DC1F26" />
                 <Text style={[s.bannerText, { color: '#FCA5A5' }]} numberOfLines={2} ellipsizeMode="tail">{bidError}</Text>
+              </View>
+            )}
+
+            {/* Cancel bid countdown banner — visible for 120s after own bid lands */}
+            {cancelableBidId && (
+              <View style={[s.banner, s.bannerRed, s.cancelBidBanner]}>
+                <Ionicons name="timer-outline" size={12} color="#DC1F26" />
+                <Text style={[s.bannerText, { color: '#FCA5A5', flex: 1 }]} numberOfLines={1}>
+                  {'Cancel window — '}
+                  <Text style={{ fontFamily: FontFamily.mono }}>
+                    {Math.ceil(cancelWindowMs / 1000)}s
+                  </Text>
+                  {' remaining'}
+                </Text>
+                <TouchableOpacity
+                  style={s.cancelBidBtn}
+                  onPress={handleCancelBid}
+                  disabled={cancelLoading}
+                  activeOpacity={0.8}
+                >
+                  {cancelLoading
+                    ? <ActivityIndicator size="small" color="#FFF" />
+                    : <Text style={s.cancelBidBtnText}>Cancel Bid</Text>
+                  }
+                </TouchableOpacity>
               </View>
             )}
 
@@ -1207,7 +1577,195 @@ const s = StyleSheet.create({
   feeNoticeHint: { fontFamily: FontFamily.regular, fontSize: 10, color: '#606070', marginTop: 1 },
   feeNoticeAmt: { fontFamily: FontFamily.mono, fontSize: 20, color: '#F59E0B' },
 
+  // Seller tools row (top strip, below header banners)
+  sellerToolsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(245,158,11,0.06)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(245,158,11,0.15)',
+  },
+  sellerToolsLabel: {
+    fontFamily: FontFamily.bold,
+    fontSize: 11,
+    color: '#F59E0B',
+    flex: 1,
+  },
+  sellerCloseBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(220,31,38,0.5)',
+    backgroundColor: 'rgba(220,31,38,0.08)',
+    minWidth: 44,
+    justifyContent: 'center',
+  },
+  sellerCloseBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 11,
+    color: '#DC1F26',
+  },
+
+  // Bid row: seller Accept button
+  acceptBidBtn: {
+    backgroundColor: Colors.accent,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 52,
+  },
+  acceptBidBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 10,
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+  },
+
+  // Cancel bid banner
+  cancelBidBanner: { alignItems: 'center' },
+  cancelBidBtn: {
+    backgroundColor: '#DC1F26',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 80,
+  },
+  cancelBidBtnText: { fontFamily: FontFamily.bold, fontSize: 11, color: '#FFFFFF' },
+
   // Error/retry
   retryBtn: { backgroundColor: '#DC1F26', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10 },
   retryBtnText: { fontFamily: FontFamily.bold, fontSize: 13, color: '#FFF' },
+
+  // ── Buy It Now (buyer) ──
+  binPanel: {
+    backgroundColor: 'rgba(220,31,38,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(220,31,38,0.25)',
+    borderRadius: 14,
+    padding: 14,
+    marginHorizontal: 14,
+    marginBottom: 14,
+    gap: 12,
+  },
+  binPanelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  binPanelLabel: {
+    fontFamily: FontFamily.bold,
+    fontSize: 9,
+    color: '#DC1F26',
+    letterSpacing: 1.2,
+    marginBottom: 4,
+  },
+  binPanelPrice: {
+    fontSize: 22,
+    color: '#FFFFFF',
+  },
+  binPanelHint: {
+    fontFamily: FontFamily.regular,
+    fontSize: 11,
+    color: '#606070',
+    textAlign: 'right',
+    lineHeight: 16,
+  },
+  binBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 46,
+    borderRadius: 11,
+    backgroundColor: '#DC1F26',
+  },
+  binBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 14,
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
+  },
+
+  // BIN pending (buyer waiting)
+  binPendingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(245,158,11,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.20)',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginHorizontal: 14,
+    marginBottom: 14,
+  },
+  binPendingText: {
+    fontFamily: FontFamily.medium,
+    fontSize: 13,
+    color: '#FCD34D',
+    flex: 1,
+    lineHeight: 18,
+  },
+
+  // ── Buy It Now (seller confirm panel) ──
+  binSellerPanel: {
+    marginHorizontal: 14,
+    marginBottom: 4,
+    backgroundColor: 'rgba(245,158,11,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.30)',
+    borderRadius: 14,
+    padding: 14,
+  },
+  binSellerTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: 14,
+    color: '#F59E0B',
+  },
+  binSellerBody: {
+    fontFamily: FontFamily.regular,
+    fontSize: 13,
+    color: '#FCD34D',
+    lineHeight: 19,
+  },
+  binSellerDeclineBtn: {
+    flex: 1,
+    height: 40,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.20)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  binSellerDeclineText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 13,
+    color: '#A0A0AB',
+  },
+  binSellerConfirmBtn: {
+    flex: 2,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#DC1F26',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  binSellerConfirmText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 13,
+    color: '#FFFFFF',
+  },
 });

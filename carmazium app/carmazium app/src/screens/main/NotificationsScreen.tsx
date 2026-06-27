@@ -25,6 +25,7 @@ import {
 } from '../../lib/notificationsApi';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { useAuthStore } from '../../store/authStore';
 
 // ─────────────────────────── helpers ──────────────────────────────────────────
 
@@ -62,6 +63,7 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
   navigation,
 }) => {
   const insets = useSafeAreaInsets();
+  const role = useAuthStore((s) => s.role);
 
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,9 +102,44 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
         );
         markNotificationRead(n.id).catch(() => {});
       }
-      // Future: deep-link to entity based on n.entityType / n.entityId
+
+      // Deep-link to the relevant screen based on notification type.
+      // Types not listed here are terminal info notifications with no actionable
+      // destination (AUCTION_ENDING — auction may already be over) or require a
+      // network fetch to reconstruct navigation params (AUCTION_WON, AUCTION_ENDED
+      // — LiveAuctionDetailed needs a full CarListing object we don't have locally).
+      switch (n.type) {
+        case 'OUTBID':
+        case 'BID_PLACED':
+          navigation?.navigate('BuyerBids');
+          break;
+
+        case 'OFFER_RECEIVED':
+        case 'COUNTER_RECEIVED':
+          if (role === 'seller' || role === 'dealer') {
+            navigation?.navigate('SellerOffers');
+          } else {
+            navigation?.navigate('BuyerOffers');
+          }
+          break;
+
+        case 'OFFER_ACCEPTED':
+        case 'OFFER_REJECTED':
+          navigation?.navigate('BuyerOffers');
+          break;
+
+        case 'PAYOUT_FAILED':
+          navigation?.navigate('Settings');
+          break;
+
+        // AUCTION_WON, AUCTION_ENDED: can't navigate to LiveAuctionDetailed without
+        // fetching the full listing. AUCTION_ENDING: auction may be over by tap time.
+        // All other types: informational only.
+        default:
+          break;
+      }
     },
-    [],
+    [navigation, role],
   );
 
   const handleMarkAll = useCallback(async () => {

@@ -98,7 +98,8 @@
             "enableShrinkResourcesInReleaseBuilds": false
           }
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "owner": "pizn-01s-team"
   }
