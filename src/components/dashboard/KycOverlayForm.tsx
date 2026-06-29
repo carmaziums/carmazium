@@ -37,8 +37,90 @@ import { useRouter } from "next/navigation";
 
 export const KYC_SKIP_KEY = 'kyc_skipped_v1';
 
-// Initialize Stripe at module level (outside component) to avoid re-initializing on re-renders
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+// Guard against undefined publishable key (e.g. missing Vercel env var).
+// loadStripe throws synchronously if given undefined, so we must check first.
+const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+  : null;
+
+// ─── CardForm — module-level to prevent remount on every parent render ────────
+// Defining this inside KycOverlayForm would create a new component reference on
+// every re-render, causing React to unmount/remount the card element (and lose
+// input state) any time the parent state changes (e.g. user types in a field).
+
+interface CardFormProps {
+  clientSecretRef: React.RefObject<string | null>;
+  alreadyPaid: boolean;
+  stripePaymentIntentId: string | null;
+  confirmPaymentRef: React.RefObject<(() => Promise<string | null>) | null>;
+  onPaymentIntentId: (id: string) => void;
+  onCardError: (err: string | null) => void;
+}
+
+const CardForm = React.memo(function CardForm({
+  clientSecretRef,
+  alreadyPaid,
+  stripePaymentIntentId,
+  confirmPaymentRef,
+  onPaymentIntentId,
+  onCardError,
+}: CardFormProps) {
+  const stripe = useStripe();
+  const elements = useElements();
+
+  useEffect(() => {
+    confirmPaymentRef.current = async () => {
+      if (alreadyPaid) return stripePaymentIntentId;
+      if (!stripe || !elements) {
+        onCardError('Payment form not ready. Please wait a moment and try again.');
+        return null;
+      }
+      const secret = clientSecretRef.current;
+      if (!secret) {
+        onCardError('Payment not initialised. Please refresh and try again.');
+        return null;
+      }
+      const cardElement = elements.getElement(CardElement);
+      if (!cardElement) {
+        onCardError('Card input not ready. Please wait and try again.');
+        return null;
+      }
+      const { error, paymentIntent } = await stripe.confirmCardPayment(secret, {
+        payment_method: { card: cardElement },
+      });
+      if (error) {
+        onCardError(error.message ?? 'Card declined. Please check your details and try again.');
+        return null;
+      }
+      if (paymentIntent?.status === 'succeeded') {
+        onPaymentIntentId(paymentIntent.id);
+        return paymentIntent.id;
+      }
+      if (paymentIntent?.status === 'requires_action') {
+        onCardError('Additional authentication required. Please complete the security check and try again.');
+        return null;
+      }
+      onCardError('Payment did not complete. Please try again.');
+      return null;
+    };
+  }, [stripe, elements, alreadyPaid, stripePaymentIntentId, clientSecretRef, confirmPaymentRef, onPaymentIntentId, onCardError]);
+
+  return (
+    <CardElement
+      options={{
+        style: {
+          base: {
+            color: '#e2e8f0',
+            fontFamily: 'Inter, sans-serif',
+            fontSize: '14px',
+            '::placeholder': { color: '#64748b' },
+          },
+          invalid: { color: '#f87171' },
+        },
+      }}
+    />
+  );
+});
 
 // ─── File Upload Component ─────────────────────────────────────────────────────
 
@@ -353,53 +435,6 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
       .finally(() => setStripeLoading(false));
   }, [activeStep]);
 
-  // ── Inner CardForm component — must be inside KycOverlayForm to share closure ──
-  const CardForm = () => {
-    const stripe = useStripe();
-    const elements = useElements();
-
-    useEffect(() => {
-      confirmPaymentRef.current = async () => {
-        if (alreadyPaid) return stripePaymentIntentId;
-        if (!stripe || !elements) return null;
-        const secret = clientSecretRef.current;
-        if (!secret) {
-          setCardError('Payment not ready. Please refresh and try again.');
-          return null;
-        }
-        const { error, paymentIntent } = await stripe.confirmCardPayment(secret, {
-          payment_method: { card: elements.getElement(CardElement)! },
-        });
-        if (error) {
-          setCardError(error.message ?? 'Card declined. Please check your card details.');
-          return null;
-        }
-        if (paymentIntent?.status === 'succeeded') {
-          setStripePaymentIntentId(paymentIntent.id);
-          return paymentIntent.id;
-        }
-        setCardError('Payment did not complete. Please try again.');
-        return null;
-      };
-    }, [stripe, elements]);
-
-    return (
-      <CardElement
-        options={{
-          style: {
-            base: {
-              color: '#e2e8f0',
-              fontFamily: 'Inter, sans-serif',
-              fontSize: '14px',
-              '::placeholder': { color: '#64748b' },
-            },
-            invalid: { color: '#f87171' },
-          },
-        }}
-      />
-    );
-  };
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -475,9 +510,15 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
       if (!formData.businessWebsite.trim()) { setErrorMsg("Business Website is required."); return false; }
       if (!formData.businessRegisteredAddress.trim()) { setErrorMsg("Registered Business Address is required."); return false; }
     } else if (step === 3) {
-      if (!alreadyPaid && !clientSecret) {
-        setErrorMsg('Payment not ready. Please wait for the card form to load.');
-        return false;
+      if (!alreadyPaid) {
+        if (!stripePromise) {
+          setErrorMsg('Payment system is not configured. Please contact support.');
+          return false;
+        }
+        if (!clientSecret) {
+          setErrorMsg('Payment not ready. Please wait for the card form to load.');
+          return false;
+        }
       }
     }
     return true;
@@ -909,6 +950,17 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
                         </p>
                       </div>
                     </div>
+                  ) : !stripePromise ? (
+                    /* Stripe publishable key not configured in environment */
+                    <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/5 flex items-start gap-3">
+                      <AlertCircle size={16} className="text-red-400 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-extrabold text-red-400">Payment system unavailable</p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          The payment provider is not configured. Please contact <span className="text-white font-bold">support@carmazium.uk</span> to complete your verification.
+                        </p>
+                      </div>
+                    </div>
                   ) : stripeLoading ? (
                     /* Loading PI */
                     <div className="flex items-center justify-center py-8 gap-3 text-slate-400">
@@ -931,19 +983,32 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
                           Card Details
                         </p>
                         <Elements stripe={stripePromise}>
-                          <CardForm />
+                          <CardForm
+                            clientSecretRef={clientSecretRef}
+                            alreadyPaid={alreadyPaid}
+                            stripePaymentIntentId={stripePaymentIntentId}
+                            confirmPaymentRef={confirmPaymentRef}
+                            onPaymentIntentId={setStripePaymentIntentId}
+                            onCardError={setCardError}
+                          />
                         </Elements>
                       </div>
 
                       {cardError && (
-                        <p className="text-xs text-red-400 font-semibold">{cardError}</p>
+                        <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                          <AlertCircle size={13} className="text-red-400 shrink-0 mt-0.5" />
+                          <p className="text-xs text-red-400 font-semibold">{cardError}</p>
+                        </div>
                       )}
                     </div>
                   ) : (
                     /* Error / not loaded state */
-                    <p className="text-xs text-red-400">
-                      Failed to load payment form. Please refresh the page.
-                    </p>
+                    <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/5 flex items-center gap-3">
+                      <AlertCircle size={16} className="text-red-400 shrink-0" />
+                      <p className="text-xs text-red-400 font-semibold">
+                        Failed to load payment form. Please refresh the page and try again.
+                      </p>
+                    </div>
                   )}
                 </div>
               )}

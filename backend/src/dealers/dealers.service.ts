@@ -295,14 +295,27 @@ export class DealersService {
 
         const stripe = await this.getStripe();
 
-        // Existing PI still usable — return its client_secret
+        // Existing PI — inspect its status to decide what to do
         if (kyc?.stripePaymentIntentId) {
             try {
                 const pi = await stripe.paymentIntents.retrieve(kyc.stripePaymentIntentId);
                 if (pi.status === 'requires_payment_method' || pi.status === 'requires_confirmation') {
+                    // PI still open — return it so the dealer can complete payment
                     return { clientSecret: pi.client_secret!, alreadyPaid: false };
                 }
-            } catch { /* fall through to create new */ }
+                if (pi.status === 'succeeded') {
+                    // Edge case: card was charged but the KYC form submission failed before
+                    // stripeChargedAt could be written. Heal the record now so we never
+                    // create a second PaymentIntent and charge the dealer twice.
+                    const healedAt = new Date();
+                    await this.prisma.dealerKyc.update({
+                        where: { id: kyc.id },
+                        data: { stripeChargedAt: healedAt } as any,
+                    });
+                    return { alreadyPaid: true, chargedAt: healedAt };
+                }
+                // Any other status (cancelled, processing, etc.) — fall through to create new PI
+            } catch { /* Stripe API error — fall through to create new */ }
         }
 
         // Create new PaymentIntent for £1
