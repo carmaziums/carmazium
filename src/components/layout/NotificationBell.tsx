@@ -149,11 +149,14 @@ export function NotificationBell() {
         // Auction notification routing — navigate to the live auction room
         if (n.type.startsWith("AUCTION_")) {
             const auctionId = typeof dataObj.auctionId === "string" ? dataObj.auctionId : n.entityId
+            if (n.type === "AUCTION_WON" && auctionId) {
+                router.push(`/auctions/won/${auctionId}`)
+                return
+            }
             if (auctionId && (
                 n.type === "AUCTION_BID" ||
                 n.type === "AUCTION_BID_PLACED" ||
                 n.type === "AUCTION_OUTBID" ||
-                n.type === "AUCTION_WON" ||
                 n.type === "AUCTION_ENDED" ||
                 n.type === "AUCTION_STARTED" ||
                 n.type === "AUCTION_ENDING_SOON" ||
