@@ -126,17 +126,10 @@ export class DealersService {
         // At this point profileResult is guaranteed non-null
         const profile = profileResult!;
 
-        // ─── Stripe PI verification ──────────────────────────────────────────
-        const stripePaymentIntentId = (dto as any).stripePaymentIntentId as string | undefined;
+        // £1 verification fee is now collected via a hosted Stripe Checkout redirect
+        // (see createKycCheckoutSession) and confirmed asynchronously by the webhook —
+        // submitKyc only persists the dealer's form fields, it never touches payment state.
         const alreadyStripeVerified = (profile.kyc as any)?.stripeChargedAt != null;
-
-        if (stripePaymentIntentId && !alreadyStripeVerified) {
-            const stripe = await this.getStripe();
-            const pi = await stripe.paymentIntents.retrieve(stripePaymentIntentId);
-            if (pi.status !== 'succeeded') {
-                throw new BadRequestException('Stripe payment verification failed — charge has not been confirmed.');
-            }
-        }
 
         const fieldsList = [
             'companyHouseName',
@@ -202,8 +195,8 @@ export class DealersService {
                 }
             }
 
-            // Auto-approve payment fields when Stripe-verified
-            if (stripePaymentIntentId || alreadyStripeVerified) {
+            // Auto-approve payment fields if the £1 fee was already verified in a prior cycle
+            if (alreadyStripeVerified) {
                 documentStatuses['paymentReference'] = { status: 'APPROVED', note: 'Stripe verified' };
                 documentStatuses['paymentScreenshot'] = { status: 'APPROVED', note: 'Stripe verified' };
             }
@@ -215,23 +208,18 @@ export class DealersService {
                     status: 'PENDING',
                     documentStatuses,
                     submittedAt: new Date(),
-                    ...(stripePaymentIntentId && !alreadyStripeVerified ? {
-                        stripePaymentIntentId,
-                        stripeChargedAt: new Date(),
-                    } : {}),
                 } as any,
             });
 
             // Sync KYC fields back into DealerProfile so Settings page is pre-filled
             await this.syncProfileFromKyc(profile.id, updatedFields);
 
-            // Fire admin "fee paid" in-app notification before the email alert
-            if (stripePaymentIntentId && !alreadyStripeVerified) {
-                await this.notifyAdminsOfKycPayment(profile.companyName, stripePaymentIntentId).catch(() => {});
+            // Only alert admins now if the fee is already paid — otherwise the dealer is about
+            // to be redirected to Stripe Checkout, and the webhook fires this notification once
+            // payment actually clears (reviewing an unpaid submission isn't actionable).
+            if (alreadyStripeVerified) {
+                await this.notifyAdminsOfKycSubmission(profile.companyName);
             }
-
-            // Alert admins of resubmission
-            await this.notifyAdminsOfKycSubmission(profile.companyName);
             return updatedKyc;
 
         } else {
@@ -246,12 +234,6 @@ export class DealersService {
                 documentStatuses[field] = { status: 'PENDING', note: '' };
             }
 
-            // Auto-approve payment fields when Stripe-verified
-            if (stripePaymentIntentId || alreadyStripeVerified) {
-                documentStatuses['paymentReference'] = { status: 'APPROVED', note: 'Stripe verified' };
-                documentStatuses['paymentScreenshot'] = { status: 'APPROVED', note: 'Stripe verified' };
-            }
-
             const newKyc = await this.prisma.dealerKyc.create({
                 data: {
                     ...updatedFields,
@@ -259,87 +241,104 @@ export class DealersService {
                     status: 'PENDING',
                     documentStatuses,
                     submittedAt: new Date(),
-                    ...(stripePaymentIntentId && !alreadyStripeVerified ? {
-                        stripePaymentIntentId,
-                        stripeChargedAt: new Date(),
-                    } : {}),
                 } as any,
             });
 
             // Sync KYC fields back into DealerProfile so Settings page is pre-filled
             await this.syncProfileFromKyc(profile.id, updatedFields);
 
-            // Fire admin "fee paid" in-app notification before the email alert
-            if (stripePaymentIntentId && !alreadyStripeVerified) {
-                await this.notifyAdminsOfKycPayment(profile.companyName, stripePaymentIntentId).catch(() => {});
-            }
-
-            // Alert admins of first submission
-            await this.notifyAdminsOfKycSubmission(profile.companyName);
+            // A brand-new KYC record can never be alreadyStripeVerified — the £1 fee is paid
+            // via the Stripe Checkout redirect that follows; the webhook notifies admins then.
             return newKyc;
         }
     }
 
-    /** Create or retrieve a PaymentIntent for the £1 KYC verification fee */
-    async createKycPaymentIntent(userId: string): Promise<{ clientSecret?: string; alreadyPaid: boolean; chargedAt?: Date }> {
+    /** Create a Stripe Checkout Session for the £1 KYC verification fee (hosted, redirect-based) */
+    async createKycCheckoutSession(userId: string): Promise<{ url?: string; alreadyPaid: boolean; chargedAt?: Date }> {
         const profileResult = await this.prisma.dealerProfile.findUnique({
             where: { userId },
             include: { kyc: true },
         });
         const kyc = profileResult?.kyc as any;
 
+        if (!kyc) {
+            // Dealer must submit their KYC form fields (POST /dealers/kyc) before a
+            // checkout session can be created — there's no record to attach the fee to yet.
+            throw new BadRequestException('Please submit your KYC details before paying the verification fee.');
+        }
+
         // Already paid — return early, no new charge
-        if (kyc?.stripeChargedAt) {
+        if (kyc.stripeChargedAt) {
             return { alreadyPaid: true, chargedAt: kyc.stripeChargedAt };
         }
 
         const stripe = await this.getStripe();
 
-        // Existing PI — inspect its status to decide what to do
-        if (kyc?.stripePaymentIntentId) {
+        // Existing open session — reuse it instead of creating a duplicate
+        if (kyc.stripeCheckoutSessionId) {
             try {
-                const pi = await stripe.paymentIntents.retrieve(kyc.stripePaymentIntentId);
-                if (pi.status === 'requires_payment_method' || pi.status === 'requires_confirmation') {
-                    // PI still open — return it so the dealer can complete payment
-                    return { clientSecret: pi.client_secret!, alreadyPaid: false };
+                const existing = await stripe.checkout.sessions.retrieve(kyc.stripeCheckoutSessionId);
+                if (existing.status === 'open' && existing.url) {
+                    return { url: existing.url, alreadyPaid: false };
                 }
-                if (pi.status === 'succeeded') {
-                    // Edge case: card was charged but the KYC form submission failed before
-                    // stripeChargedAt could be written. Heal the record now so we never
-                    // create a second PaymentIntent and charge the dealer twice.
+                if (existing.payment_status === 'paid') {
+                    // Edge case: Stripe confirmed payment but our webhook hasn't landed yet
+                    // (or failed). Heal the record now so we never create a duplicate session
+                    // and charge the dealer a second £1.
                     const healedAt = new Date();
+                    const existingStatuses = (kyc.documentStatuses as Record<string, any>) || {};
                     await this.prisma.dealerKyc.update({
                         where: { id: kyc.id },
-                        data: { stripeChargedAt: healedAt } as any,
+                        data: {
+                            stripeChargedAt: healedAt,
+                            stripePaymentIntentId: (existing.payment_intent as string) ?? existing.id,
+                            documentStatuses: {
+                                ...existingStatuses,
+                                paymentReference: { status: 'APPROVED', note: 'Stripe verified' },
+                                paymentScreenshot: { status: 'APPROVED', note: 'Stripe verified' },
+                            },
+                        } as any,
                     });
                     return { alreadyPaid: true, chargedAt: healedAt };
                 }
-                // Any other status (cancelled, processing, etc.) — fall through to create new PI
+                // Expired / completed-unpaid — fall through to create a new session
             } catch { /* Stripe API error — fall through to create new */ }
         }
 
-        // Create new PaymentIntent for £1
-        const pi = await stripe.paymentIntents.create({
-            amount: 100,
-            currency: 'gbp',
+        const baseUrl = this.config.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            mode: 'payment',
+            line_items: [
+                {
+                    price_data: {
+                        currency: 'gbp',
+                        product_data: {
+                            name: 'Dealer KYC Verification Fee',
+                            description: 'Non-refundable £1 identity verification charge — covers the cost of your KYC review.',
+                        },
+                        unit_amount: 100,
+                    },
+                    quantity: 1,
+                },
+            ],
             metadata: {
                 type: 'KYC_VERIFICATION',
+                kycId: kyc.id,
                 dealerProfileId: profileResult?.id ?? '',
                 userId,
             },
-            description: `Dealer KYC verification fee — Carmazium (non-refundable)`,
+            success_url: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${baseUrl}/dashboard/dealer?kyc=cancelled`,
         });
 
-        // Store PI id on the KYC record if one already exists
-        if (kyc) {
-            await this.prisma.dealerKyc.update({
-                where: { id: kyc.id },
-                data: { stripePaymentIntentId: pi.id } as any,
-            });
-        }
-        // If no KYC record yet, the PI id is returned and stored on first submitKyc call
+        await this.prisma.dealerKyc.update({
+            where: { id: kyc.id },
+            data: { stripeCheckoutSessionId: session.id } as any,
+        });
 
-        return { clientSecret: pi.client_secret!, alreadyPaid: false };
+        return { url: session.url ?? undefined, alreadyPaid: false };
     }
 
     /** Fire-and-forget: email + in-app notification for an existing user added directly as staff */

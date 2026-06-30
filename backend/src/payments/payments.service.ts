@@ -2,6 +2,8 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { HpiService } from '../hpi/hpi.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class PaymentsService {
@@ -9,6 +11,8 @@ export class PaymentsService {
         private readonly prisma: PrismaService,
         private readonly config: ConfigService,
         private readonly hpiService: HpiService,
+        private readonly notificationsService: NotificationsService,
+        private readonly emailService: EmailService,
     ) {}
 
     // Prices in GBP
@@ -377,7 +381,12 @@ export class PaymentsService {
         switch (event.type) {
             case 'checkout.session.completed': {
                 const session = event.data.object;
-                const { transactionId, listingId, type, boostId } = session.metadata;
+                const { transactionId, listingId, type, boostId, kycId } = session.metadata;
+
+                // 0. Handle Dealer KYC £1 verification fee
+                if (type === 'KYC_VERIFICATION' && kycId) {
+                    await this.markKycFeePaid(kycId, session.payment_intent ?? session.id);
+                }
 
                 // 1. Handle Featured Boost (from FeaturedBoostService)
                 if (boostId) {
@@ -567,6 +576,74 @@ export class PaymentsService {
         }
 
         return { received: true };
+    }
+
+    /**
+     * Mark a dealer's £1 KYC verification fee as paid and notify admins.
+     * Called from the webhook (primary path) and applyKycFee (fallback path) — both
+     * routes converge here so the side effects only ever fire once per dealer.
+     */
+    private async markKycFeePaid(kycId: string, stripePaymentId: string) {
+        const kyc = await this.prisma.dealerKyc.findUnique({
+            where: { id: kycId },
+            include: { dealerProfile: true },
+        });
+        if (!kyc || (kyc as any).stripeChargedAt) return; // already healed or unknown record
+
+        const existingStatuses = (kyc.documentStatuses as Record<string, any>) || {};
+        await this.prisma.dealerKyc.update({
+            where: { id: kycId },
+            data: {
+                stripeChargedAt: new Date(),
+                stripePaymentIntentId: stripePaymentId,
+                documentStatuses: {
+                    ...existingStatuses,
+                    paymentReference: { status: 'APPROVED', note: 'Stripe verified' },
+                    paymentScreenshot: { status: 'APPROVED', note: 'Stripe verified' },
+                },
+            } as any,
+        });
+
+        const companyName = kyc.dealerProfile?.companyName ?? 'A dealer';
+
+        // Combined "submitted + fee paid" alert — this is the first point where the
+        // submission is actually actionable for admin review.
+        const admins = await this.prisma.user.findMany({ where: { role: 'ADMIN' }, select: { id: true, email: true } });
+        await Promise.all(
+            admins.map((admin) =>
+                this.notificationsService.create({
+                    userId: admin.id,
+                    type: 'SYSTEM',
+                    title: 'Dealer KYC Submitted — £1 Verification Paid',
+                    message: `${companyName} has paid the £1 KYC verification fee and is ready for review.`,
+                    data: { kycId, stripePaymentId, companyName },
+                    link: '/admin/kyc',
+                }).catch(() => {}),
+            ),
+        );
+        const adminEmails = admins.map((a) => a.email).filter(Boolean);
+        if (adminEmails.length > 0) {
+            await this.emailService.sendKycSubmissionAdminAlert(adminEmails, companyName).catch(() => {});
+        }
+    }
+
+    /**
+     * Webhook fallback for the £1 dealer KYC verification fee.
+     * Called from the success page in case the webhook was delayed or missed.
+     */
+    async applyKycFee(sessionId: string): Promise<{ applied: boolean }> {
+        const kyc = await this.prisma.dealerKyc.findFirst({
+            where: { stripeCheckoutSessionId: sessionId } as any,
+        });
+        if (!kyc) return { applied: false };
+        if ((kyc as any).stripeChargedAt) return { applied: true };
+
+        const stripe = await this.getStripe();
+        const session = await stripe.checkout.sessions.retrieve(sessionId);
+        if (session.payment_status !== 'paid') return { applied: false };
+
+        await this.markKycFeePaid(kyc.id, (session.payment_intent as string) ?? session.id);
+        return { applied: true };
     }
 
     /**

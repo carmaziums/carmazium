@@ -47,13 +47,14 @@ export async function submitDealerKyc(data: Partial<DealerKycData>): Promise<Dea
   return result.data;
 }
 
-export async function createKycPaymentIntent(): Promise<{
-  clientSecret?: string;
+/** Creates a Stripe Checkout Session for the £1 KYC fee — redirect the browser to `url`. */
+export async function createKycCheckoutSession(): Promise<{
+  url?: string;
   alreadyPaid: boolean;
   chargedAt?: string;
 }> {
-  const result = await apiClient<{ data: { clientSecret?: string; alreadyPaid: boolean; chargedAt?: string } }>(
-    '/dealers/kyc/payment-intent',
+  const result = await apiClient<{ data: { url?: string; alreadyPaid: boolean; chargedAt?: string } }>(
+    '/dealers/kyc/checkout',
     { method: 'POST' },
   );
   return result.data;

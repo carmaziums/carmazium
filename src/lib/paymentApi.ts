@@ -78,6 +78,17 @@ export async function applyAuctionFee(sessionId: string): Promise<{ applied: boo
 }
 
 /**
+ * Webhook fallback: apply the £1 dealer KYC verification fee if the Stripe webhook was delayed.
+ */
+export async function applyKycFee(sessionId: string): Promise<{ applied: boolean }> {
+    const data = await apiClient<{ data: { applied: boolean } }>('/payments/apply-kyc-fee', {
+        method: 'POST',
+        body: JSON.stringify({ sessionId }),
+    })
+    return data.data
+}
+
+/**
  * Fetch payment history for the current user.
  */
 export async function getPaymentHistory(): Promise<PaymentTransaction[]> {

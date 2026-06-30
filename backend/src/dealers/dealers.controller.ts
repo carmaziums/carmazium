@@ -175,12 +175,12 @@ export class DealersController {
         return new StandardResponse(kyc);
     }
 
-    @Post('kyc/payment-intent')
+    @Post('kyc/checkout')
     @HttpCode(HttpStatus.CREATED)
-    @ApiOperation({ summary: 'Create or retrieve a PaymentIntent for the £1 KYC verification fee' })
-    @ApiResponse({ status: 201, description: 'PaymentIntent client secret or alreadyPaid flag' })
-    async createKycPaymentIntent(@CurrentUser() user: any): Promise<StandardResponse<any>> {
-        const result = await this.dealersService.createKycPaymentIntent(user.id);
+    @ApiOperation({ summary: 'Create a Stripe Checkout Session for the £1 KYC verification fee' })
+    @ApiResponse({ status: 201, description: 'Checkout session URL or alreadyPaid flag' })
+    async createKycCheckoutSession(@CurrentUser() user: any): Promise<StandardResponse<any>> {
+        const result = await this.dealersService.createKycCheckoutSession(user.id);
         return new StandardResponse(result);
     }
 

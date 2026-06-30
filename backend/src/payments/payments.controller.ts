@@ -113,6 +113,16 @@ export class PaymentsController {
         return new StandardResponse(result);
     }
 
+    @Post('apply-kyc-fee')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Webhook fallback: apply dealer KYC £1 fee if webhook was delayed' })
+    async applyKycFee(@Body('sessionId') sessionId: string) {
+        if (!sessionId) throw new BadRequestException('sessionId is required');
+        const result = await this.paymentsService.applyKycFee(sessionId);
+        return new StandardResponse(result);
+    }
+
     @Get('history')
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()

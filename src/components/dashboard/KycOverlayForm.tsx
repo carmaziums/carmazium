@@ -27,100 +27,13 @@ import {
   Receipt,
   FileCheck,
 } from "lucide-react";
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { useAuth } from "@/context/AuthContext";
-import { getDealerKyc, submitDealerKyc, DealerKycData, createKycPaymentIntent } from "@/lib/dealerApi";
+import { getDealerKyc, submitDealerKyc, DealerKycData, createKycCheckoutSession } from "@/lib/dealerApi";
 import { uploadImage } from "@/lib/supabase";
 import { apiClient } from "@/lib/apiClient";
 import { useRouter } from "next/navigation";
 
 export const KYC_SKIP_KEY = 'kyc_skipped_v1';
-
-// Guard against undefined publishable key (e.g. missing Vercel env var).
-// loadStripe throws synchronously if given undefined, so we must check first.
-const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-  ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
-  : null;
-
-// ─── CardForm — module-level to prevent remount on every parent render ────────
-// Defining this inside KycOverlayForm would create a new component reference on
-// every re-render, causing React to unmount/remount the card element (and lose
-// input state) any time the parent state changes (e.g. user types in a field).
-
-interface CardFormProps {
-  clientSecretRef: React.RefObject<string | null>;
-  alreadyPaid: boolean;
-  stripePaymentIntentId: string | null;
-  confirmPaymentRef: React.RefObject<(() => Promise<string | null>) | null>;
-  onPaymentIntentId: (id: string) => void;
-  onCardError: (err: string | null) => void;
-}
-
-const CardForm = React.memo(function CardForm({
-  clientSecretRef,
-  alreadyPaid,
-  stripePaymentIntentId,
-  confirmPaymentRef,
-  onPaymentIntentId,
-  onCardError,
-}: CardFormProps) {
-  const stripe = useStripe();
-  const elements = useElements();
-
-  useEffect(() => {
-    confirmPaymentRef.current = async () => {
-      if (alreadyPaid) return stripePaymentIntentId;
-      if (!stripe || !elements) {
-        onCardError('Payment form not ready. Please wait a moment and try again.');
-        return null;
-      }
-      const secret = clientSecretRef.current;
-      if (!secret) {
-        onCardError('Payment not initialised. Please refresh and try again.');
-        return null;
-      }
-      const cardElement = elements.getElement(CardElement);
-      if (!cardElement) {
-        onCardError('Card input not ready. Please wait and try again.');
-        return null;
-      }
-      const { error, paymentIntent } = await stripe.confirmCardPayment(secret, {
-        payment_method: { card: cardElement },
-      });
-      if (error) {
-        onCardError(error.message ?? 'Card declined. Please check your details and try again.');
-        return null;
-      }
-      if (paymentIntent?.status === 'succeeded') {
-        onPaymentIntentId(paymentIntent.id);
-        return paymentIntent.id;
-      }
-      if (paymentIntent?.status === 'requires_action') {
-        onCardError('Additional authentication required. Please complete the security check and try again.');
-        return null;
-      }
-      onCardError('Payment did not complete. Please try again.');
-      return null;
-    };
-  }, [stripe, elements, alreadyPaid, stripePaymentIntentId, clientSecretRef, confirmPaymentRef, onPaymentIntentId, onCardError]);
-
-  return (
-    <CardElement
-      options={{
-        style: {
-          base: {
-            color: '#e2e8f0',
-            fontFamily: 'Inter, sans-serif',
-            fontSize: '14px',
-            '::placeholder': { color: '#64748b' },
-          },
-          invalid: { color: '#f87171' },
-        },
-      }}
-    />
-  );
-});
 
 // ─── File Upload Component ─────────────────────────────────────────────────────
 
@@ -338,20 +251,10 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  // ── Stripe Payment State ──
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  // ── £1 Verification Fee State (paid via hosted Stripe Checkout redirect) ──
   const [alreadyPaid, setAlreadyPaid] = useState(false);
   const [paidAt, setPaidAt] = useState<string | null>(null);
-  const [stripeLoading, setStripeLoading] = useState(false);
-  const [stripePaymentIntentId, setStripePaymentIntentId] = useState<string | null>(null);
-  const [cardError, setCardError] = useState<string | null>(null);
-
-  // Keep a ref to the latest clientSecret so CardForm's closure always reads the current value
-  const clientSecretRef = useRef<string | null>(null);
-  useEffect(() => { clientSecretRef.current = clientSecret; }, [clientSecret]);
-
-  // Ref to expose CardForm's confirmPayment function to the outer handleSubmit
-  const confirmPaymentRef = useRef<(() => Promise<string | null>) | null>(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   // ── Text Form Fields ──
   const [formData, setFormData] = useState({
@@ -400,13 +303,15 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
             vatProof: kyc.vatProof || "",
             companyRegistrationProof: kyc.companyRegistrationProof || "",
           });
-          // Populate Stripe already-paid state if dealer has previously charged
+          // Populate already-paid state if the dealer has previously cleared the £1 fee
           if (kyc.stripeChargedAt) {
             setAlreadyPaid(true);
             setPaidAt(kyc.stripeChargedAt);
-            if (kyc.stripePaymentIntentId) {
-              setStripePaymentIntentId(kyc.stripePaymentIntentId);
-            }
+          } else if (kyc.status === "PENDING") {
+            // Fields were saved on a previous visit but the dealer never completed (or
+            // cancelled) the Stripe Checkout redirect — skip straight to the payment step
+            // instead of making them re-click through steps 1 and 2.
+            setActiveStep(3);
           }
         }
       } catch (err: any) {
@@ -417,23 +322,6 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
     }
     loadKyc();
   }, []);
-
-  // ── Fetch PaymentIntent when dealer reaches step 3 ──
-  useEffect(() => {
-    if (activeStep !== 3 || alreadyPaid || clientSecret) return;
-    setStripeLoading(true);
-    createKycPaymentIntent()
-      .then((res) => {
-        if (res.alreadyPaid) {
-          setAlreadyPaid(true);
-          setPaidAt(res.chargedAt ?? null);
-        } else {
-          setClientSecret(res.clientSecret ?? null);
-        }
-      })
-      .catch(() => setErrorMsg('Failed to initialise payment. Please refresh and try again.'))
-      .finally(() => setStripeLoading(false));
-  }, [activeStep]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -509,17 +397,6 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
       if (!formData.companyRegistrationNumber.trim()) { setErrorMsg("Company Registration Number is required."); return false; }
       if (!formData.businessWebsite.trim()) { setErrorMsg("Business Website is required."); return false; }
       if (!formData.businessRegisteredAddress.trim()) { setErrorMsg("Registered Business Address is required."); return false; }
-    } else if (step === 3) {
-      if (!alreadyPaid) {
-        if (!stripePromise) {
-          setErrorMsg('Payment system is not configured. Please contact support.');
-          return false;
-        }
-        if (!clientSecret) {
-          setErrorMsg('Payment not ready. Please wait for the card form to load.');
-          return false;
-        }
-      }
     }
     return true;
   };
@@ -540,45 +417,47 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
     setSubmitting(true);
     setErrorMsg("");
     setSuccessMsg("");
-    setCardError(null);
 
-    let confirmedPiId: string | null = null;
-
-    // Step 1: Charge the card (unless already paid)
-    if (!alreadyPaid) {
-      if (!confirmPaymentRef.current) {
-        setErrorMsg('Payment form not ready. Please wait a moment and try again.');
-        setSubmitting(false);
-        return;
-      }
-      confirmedPiId = await confirmPaymentRef.current();
-      if (!confirmedPiId) {
-        // cardError is already set inside confirmPaymentRef
-        setSubmitting(false);
-        return;
-      }
-    } else {
-      confirmedPiId = stripePaymentIntentId;
-    }
-
-    // Step 2: Submit KYC with the confirmed PI id
     try {
-      // Send ALL fields in the payload — the backend service locks approved fields
-      // by reading their values from the database (ignoring what arrives in the DTO).
-      const payload: Partial<DealerKycData> = {
-        ...formData,
-        ...fileUrls,
-        ...(confirmedPiId ? { stripePaymentIntentId: confirmedPiId } : {}),
-      };
-
+      // Always save the latest field values first — the backend service locks
+      // already-approved fields by reading their values from the database
+      // (ignoring what arrives in the DTO), so it's safe to resend everything.
+      const payload: Partial<DealerKycData> = { ...formData, ...fileUrls };
       const response = await submitDealerKyc(payload);
       setKycData(response);
-      setSuccessMsg("KYC documents submitted successfully! Our administrators have been notified.");
-      await refreshProfile();
+
+      if (alreadyPaid) {
+        // £1 fee was already cleared in a previous cycle — submission is complete,
+        // no Stripe redirect needed.
+        setSuccessMsg("KYC documents submitted successfully! Our administrators have been notified.");
+        await refreshProfile();
+        setSubmitting(false);
+        return;
+      }
+
+      // Redirect to Stripe's hosted Checkout page to collect the £1 verification fee.
+      setCheckoutLoading(true);
+      const checkout = await createKycCheckoutSession();
+      if (checkout.alreadyPaid) {
+        setAlreadyPaid(true);
+        setPaidAt(checkout.chargedAt ?? null);
+        setSuccessMsg("KYC documents submitted successfully! Our administrators have been notified.");
+        await refreshProfile();
+        setSubmitting(false);
+        setCheckoutLoading(false);
+        return;
+      }
+      if (checkout.url) {
+        window.location.href = checkout.url;
+        return; // navigating away — leave submitting/checkoutLoading true
+      }
+      setErrorMsg("Failed to start the payment. Please try again.");
+      setSubmitting(false);
+      setCheckoutLoading(false);
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to submit KYC data. Please verify your fields and try again.");
-    } finally {
       setSubmitting(false);
+      setCheckoutLoading(false);
     }
   };
 
@@ -625,7 +504,10 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
   }
 
   // ─── Render "Under Review" State ─────────────────────────────────────────────
-  if (kycData && kycData.status === "PENDING") {
+  // Requires stripeChargedAt too — a PENDING record with fields saved but the £1 fee
+  // unpaid (e.g. dealer cancelled the Stripe Checkout redirect) must fall through to
+  // the form below so they can retry payment, not get stuck behind this hard gate.
+  if (kycData && kycData.status === "PENDING" && kycData.stripeChargedAt) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-4 overflow-y-auto">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
@@ -934,12 +816,12 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
                       Step 3: Payment Verification
                     </h3>
                     <p className="text-[11px] text-slate-400">
-                      Verify your identity with a £1 card charge. This fee is non-refundable and covers the cost of your KYC review.
+                      Verify your identity with a £1 charge. This fee is non-refundable and covers the cost of your KYC review.
                     </p>
                   </div>
 
                   {alreadyPaid ? (
-                    /* Already-paid state — green tick, no card form */
+                    /* Already-paid state — green tick */
                     <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 flex items-center gap-3">
                       <CheckCircle size={20} className="text-emerald-400 shrink-0" />
                       <div>
@@ -950,25 +832,8 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
                         </p>
                       </div>
                     </div>
-                  ) : !stripePromise ? (
-                    /* Stripe publishable key not configured in environment */
-                    <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/5 flex items-start gap-3">
-                      <AlertCircle size={16} className="text-red-400 shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-extrabold text-red-400">Payment system unavailable</p>
-                        <p className="text-xs text-slate-400 mt-1">
-                          The payment provider is not configured. Please contact <span className="text-white font-bold">support@carmazium.uk</span> to complete your verification.
-                        </p>
-                      </div>
-                    </div>
-                  ) : stripeLoading ? (
-                    /* Loading PI */
-                    <div className="flex items-center justify-center py-8 gap-3 text-slate-400">
-                      <Loader2 size={18} className="animate-spin" />
-                      <span className="text-sm">Preparing payment form...</span>
-                    </div>
-                  ) : clientSecret ? (
-                    /* Stripe card form */
+                  ) : (
+                    /* Not yet paid — explain the redirect, the actual button lives in Form Actions below */
                     <div className="space-y-3">
                       <div className="p-3 rounded-lg border border-white/5 bg-slate-900/60">
                         <p className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-0.5">
@@ -978,36 +843,25 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
                         <p className="text-[11px] text-slate-500">Non-refundable · charged once per dealer account</p>
                       </div>
 
-                      <div className="p-4 rounded-xl border border-white/10 bg-slate-900/60">
-                        <p className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-3">
-                          Card Details
-                        </p>
-                        <Elements stripe={stripePromise}>
-                          <CardForm
-                            clientSecretRef={clientSecretRef}
-                            alreadyPaid={alreadyPaid}
-                            stripePaymentIntentId={stripePaymentIntentId}
-                            confirmPaymentRef={confirmPaymentRef}
-                            onPaymentIntentId={setStripePaymentIntentId}
-                            onCardError={setCardError}
-                          />
-                        </Elements>
+                      <div className="p-4 rounded-xl border border-white/10 bg-slate-900/60 flex items-start gap-3">
+                        <Lock size={16} className="text-primary shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-extrabold text-slate-300 uppercase tracking-widest mb-1">
+                            Secure payment via Stripe
+                          </p>
+                          <p className="text-xs text-slate-400 leading-relaxed">
+                            Your form details are saved first. Clicking &ldquo;Pay £1 &amp; Submit&rdquo; below takes you to Stripe&rsquo;s
+                            secure checkout page to complete the charge — card details are never entered on this site.
+                          </p>
+                        </div>
                       </div>
 
-                      {cardError && (
-                        <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-                          <AlertCircle size={13} className="text-red-400 shrink-0 mt-0.5" />
-                          <p className="text-xs text-red-400 font-semibold">{cardError}</p>
+                      {errorMsg === '' && checkoutLoading && (
+                        <div className="flex items-center justify-center gap-3 py-2 text-slate-400">
+                          <Loader2 size={16} className="animate-spin" />
+                          <span className="text-xs font-semibold">Redirecting you to Stripe...</span>
                         </div>
                       )}
-                    </div>
-                  ) : (
-                    /* Error / not loaded state */
-                    <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/5 flex items-center gap-3">
-                      <AlertCircle size={16} className="text-red-400 shrink-0" />
-                      <p className="text-xs text-red-400 font-semibold">
-                        Failed to load payment form. Please refresh the page and try again.
-                      </p>
                     </div>
                   )}
                 </div>
@@ -1063,12 +917,17 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
                 {submitting ? (
                   <>
                     <Loader2 className="animate-spin" size={14} />
-                    Submitting Account...
+                    {checkoutLoading ? "Redirecting to Stripe..." : "Submitting..."}
                   </>
-                ) : (
+                ) : alreadyPaid ? (
                   <>
                     <Check size={14} />
                     Finalize Submission
+                  </>
+                ) : (
+                  <>
+                    <Lock size={14} />
+                    Pay £1 &amp; Submit
                   </>
                 )}
               </button>

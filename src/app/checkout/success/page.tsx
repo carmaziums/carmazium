@@ -7,7 +7,7 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import { CheckCircle, ArrowRight, Home, Car, Loader2, PartyPopper, LayoutDashboard } from "lucide-react"
 import { Button } from "@/components/ui/Button"
-import { getSessionStatus, applyAuctionFee } from "@/lib/paymentApi"
+import { getSessionStatus, applyAuctionFee, applyKycFee } from "@/lib/paymentApi"
 import type { SessionStatus } from "@/lib/paymentApi"
 import { publishListing } from "@/lib/listingApi"
 
@@ -45,6 +45,9 @@ function CheckoutSuccessContent() {
                 }
                 if (data?.metadata?.type === 'COMMISSION') {
                     applyAuctionFee(sessionId).catch(() => {})
+                }
+                if (data?.metadata?.type === 'KYC_VERIFICATION') {
+                    applyKycFee(sessionId).catch(() => {})
                 }
             } catch {
                 // Silently fail — show generic success
@@ -106,6 +109,8 @@ function CheckoutSuccessContent() {
                             ? 'Your Listing is Live!'
                             : sessionData?.metadata?.type === 'COMMISSION'
                             ? 'Buyer Fee Paid!'
+                            : sessionData?.metadata?.type === 'KYC_VERIFICATION'
+                            ? 'Verification Fee Paid!'
                             : 'Payment Successful!'}
                     </h1>
                     <p className="mt-3 text-lg" style={{ color: 'var(--text-muted)' }}>
@@ -113,6 +118,8 @@ function CheckoutSuccessContent() {
                             ? 'Your vehicle is now published and visible to buyers.'
                             : sessionData?.metadata?.type === 'COMMISSION'
                             ? 'Your £125 buyer fee is confirmed. Submit your handover proof to release the seller payout.'
+                            : sessionData?.metadata?.type === 'KYC_VERIFICATION'
+                            ? 'Your £1 verification fee is confirmed. Our team will review your dealer application shortly.'
                             : 'Your transaction has been completed securely through Stripe.'}
                     </p>
                 </motion.div>
@@ -178,6 +185,12 @@ function CheckoutSuccessContent() {
                                 </Link>
                             </Button>
                         </>
+                    ) : sessionData?.metadata?.type === 'KYC_VERIFICATION' ? (
+                        <Button asChild className="gap-2 bg-gradient-to-r from-primary to-[#ff4d4d] hover:from-[#ff4d4d] hover:to-primary px-6">
+                            <Link href="/dashboard/dealer">
+                                <LayoutDashboard size={18} /> Go to Dealer Dashboard <ArrowRight size={14} />
+                            </Link>
+                        </Button>
                     ) : (
                         <>
                             <Button asChild className="gap-2 bg-gradient-to-r from-primary to-[#ff4d4d] hover:from-[#ff4d4d] hover:to-primary px-6">

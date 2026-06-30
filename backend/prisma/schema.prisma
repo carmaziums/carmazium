@@ -421,6 +421,7 @@ model DealerKyc {
   paymentReference           String?
   paymentScreenshot          String?       // Optional URL to stored image
   stripePaymentIntentId      String?       // Populated after confirmed £1 KYC charge
+  stripeCheckoutSessionId    String?       @unique // Stripe Checkout Session ID, for webhook reconciliation
   stripeChargedAt            DateTime?     // Timestamp of confirmed charge
   status                     KycStatus     @default(PENDING)
   documentStatuses           Json?         // Granular field status: Map of field name to { status: KycStatus, note: string }

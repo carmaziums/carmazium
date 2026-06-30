@@ -81,9 +81,4 @@ export class CreateKycDto {
     @IsOptional()
     @IsString()
     paymentScreenshot?: string;
-
-    @ApiPropertyOptional({ description: 'Stripe PaymentIntent ID after confirmed £1 KYC charge' })
-    @IsOptional()
-    @IsString()
-    stripePaymentIntentId?: string;
 }
