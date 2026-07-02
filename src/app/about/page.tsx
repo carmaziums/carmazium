@@ -9,8 +9,10 @@ import { TestimonialsSection } from "@/components/features/TestimonialsSection"
 import { Button } from "@/components/ui/Button"
 import { useRef } from "react"
 import Link from "next/link"
+import { useAuth } from "@/context/AuthContext"
 
 export default function AboutPage() {
+    const { user } = useAuth()
     const targetRef = useRef(null)
     const { scrollYProgress } = useScroll({
         target: targetRef,
@@ -259,8 +261,8 @@ export default function AboutPage() {
                 </div>
             </section>
 
-            {/* CTA */}
-            <section className="py-20 container mx-auto px-5">
+            {/* CTA — only for non-authenticated visitors */}
+            {!user && <section className="py-20 container mx-auto px-5">
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     whileInView={{ opacity: 1, scale: 1 }}
@@ -286,7 +288,7 @@ export default function AboutPage() {
                         </div>
                     </div>
                 </motion.div>
-            </section>
+            </section>}
         </div>
     )
 }

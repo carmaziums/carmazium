@@ -324,7 +324,7 @@ export class ListingsService {
             sortBy, search, features,
             page = 1, limit = 20,
         } = filterDto;
-        const where: any = { deletedAt: null, status: { in: ['ACTIVE', 'SOLD'] } };
+        const where: any = { deletedAt: null, status: { in: ['ACTIVE', 'SOLD', 'OFFER_ACCEPTED'] } };
 
         // ─── Price range ────────────────────────────────────────────────────
         if (minPrice !== undefined || maxPrice !== undefined) {

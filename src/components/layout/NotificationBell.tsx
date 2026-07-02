@@ -115,7 +115,13 @@ export function NotificationBell() {
         return () => document.removeEventListener("mousedown", handler)
     }, [])
 
-    // Load notifications when panel opens
+    // Load notifications on mount so the badge count is visible immediately
+    React.useEffect(() => {
+        if (!user) return
+        getNotifications(12).then(setNotifications).catch(() => {})
+    }, [user])
+
+    // Refresh list when panel opens (gets latest reads/new items)
     React.useEffect(() => {
         if (!open || !user) return
         setLoading(true)

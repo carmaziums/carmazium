@@ -89,6 +89,7 @@ import {
     type WatchlistItem,
     type StripeConnectStatus
 } from "@/lib/listingApi"
+import { apiClient } from "@/lib/apiClient"
 import { createChatRoom, type ChatRoom } from "@/lib/chatApi"
 import { ImportListingModal } from "@/components/features/ImportListingModal"
 
@@ -537,18 +538,12 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
 
     const handleRelist = async (listingId: string) => {
         try {
-            const res = await fetch(`/api/listings/${listingId}/status`, {
+            await apiClient(`/listings/${listingId}/status`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: 'ACTIVE' }),
             })
-            if (res.ok) {
-                fetchListings()
-                onRefreshStats()
-            } else {
-                const err = await res.json().catch(() => ({}))
-                alert('Failed to relist: ' + (err.message || res.statusText))
-            }
+            fetchListings()
+            onRefreshStats()
         } catch (err: any) {
             alert('Failed to relist: ' + err.message)
         }

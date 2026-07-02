@@ -6,6 +6,7 @@ import {
     Sparkles, MessageSquare, ChevronDown, Gavel, Clock, Users, Lock,
 } from "lucide-react"
 import { PRICING } from "@/lib/pricingConfig"
+import { DealerCtaButton } from "@/components/features/DealerCtaButton"
 
 export const metadata: Metadata = {
     title: "Pricing — CarMazium",
@@ -321,9 +322,7 @@ export default function PricingPage() {
                                 </p>
                             </div>
                             <div className="flex flex-col gap-3 shrink-0">
-                                <Link href="/auth/signup?role=dealer" className="inline-flex items-center gap-2 bg-primary hover:bg-red-600 text-white font-bold px-8 py-3.5 rounded-xl transition-all shadow-neon whitespace-nowrap">
-                                    Apply as Dealer <ArrowRight size={16} />
-                                </Link>
+                                <DealerCtaButton />
                                 <Link href="/contact" className="text-center text-sm text-gray-400 hover:text-white transition-colors">
                                     Contact sales →
                                 </Link>

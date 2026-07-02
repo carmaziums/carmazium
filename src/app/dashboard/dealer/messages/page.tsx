@@ -62,7 +62,7 @@ function MessagesContent() {
 
                 <main className="flex-1 min-w-0">
                     <div className="dealer-glass-card overflow-hidden h-[calc(100vh-180px)] flex flex-col">
-                        <div className="p-8 border-b border-white/5 flex items-center justify-between bg-[#0A0A0C]/40">
+                        <div className="p-4 sm:p-6 border-b border-white/5 flex items-center justify-between bg-[#0A0A0C]/40 shrink-0">
                             <div className="flex items-center gap-4">
                                 <div className="p-3 bg-black/60 rounded-xl border border-white/10 shadow-2xl">
                                     <MessageSquare className="text-white" size={20} />
@@ -78,7 +78,7 @@ function MessagesContent() {
                             </div>
                         </div>
 
-                        <div className="flex h-[calc(100%-80px)]">
+                        <div className="flex flex-1 min-h-0 overflow-hidden">
                             {/* Room List */}
                             <div className={`w-full lg:w-80 border-r border-white/10 ${selectedRoom ? 'hidden lg:block' : ''}`}>
                                 <ChatRoomList

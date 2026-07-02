@@ -300,7 +300,7 @@ export class OffersService {
         const updateData: any = {
             status: prismaStatus,
             sellerCounterAmount: status === OfferResponseStatus.COUNTERED ? counterAmount : undefined,
-            finalAmount: prismaStatus === 'ACCEPTED' ? offer.amount : undefined,
+            finalAmount: prismaStatus === 'ACCEPTED' ? (offer.counterAmount ?? offer.amount) : undefined,
             counterAmount: status === OfferResponseStatus.COUNTERED ? counterAmount : null,
         };
 
@@ -408,9 +408,10 @@ export class OffersService {
         let notifTitle = '';
         let notifType = '';
 
+        const agreedAmt = Number(offer.counterAmount ?? offer.amount);
         if (prismaStatus === 'ACCEPTED') {
             notifTitle = '🎉 Offer Accepted!';
-            notifMessage = `Your offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${offer.listing.title}" was accepted! Contact the seller to proceed.`;
+            notifMessage = `Your offer of £${agreedAmt.toLocaleString('en-GB')} on "${offer.listing.title}" was accepted! Contact the seller to proceed.`;
             notifType = 'OFFER_ACCEPTED';
         } else if (prismaStatus === 'REJECTED') {
             notifTitle = 'Offer Declined';
@@ -440,7 +441,7 @@ export class OffersService {
             const buyer = await this.prisma.user.findUnique({ where: { id: offer.buyerId }, select: { email: true, firstName: true } });
             if (buyer?.email) {
                 const slug = offer.listing.slug;
-                const amt = Number(offer.amount);
+                const amt = agreedAmt;
                 if (prismaStatus === 'ACCEPTED') {
                     this.emailService.sendOfferAcceptedEmail(buyer.email, buyer.firstName || 'there', offer.listing.title, amt, slug).catch(console.error);
                 } else if (prismaStatus === 'REJECTED') {
@@ -460,7 +461,7 @@ export class OffersService {
                     userId: offer.listing.sellerId,
                     type: 'DEAL_CLOSED',
                     title: '✅ Offer Accepted',
-                    message: `You accepted an offer of £${Number(offer.amount).toLocaleString('en-GB')} on "${offer.listing.title}". The listing remains active — mark it as Sold from your inventory when the deal is complete.`,
+                    message: `You accepted an offer of £${agreedAmt.toLocaleString('en-GB')} on "${offer.listing.title}". The listing remains active — mark it as Sold from your inventory when the deal is complete.`,
                     link: '/dashboard/seller/offers',
                     entityType: 'OFFER',
                     entityId: offer.id,

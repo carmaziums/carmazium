@@ -132,15 +132,22 @@ function SellerAuctionsPage() {
         setShowForm(true)
         setFormError(null)
         try {
-            const res = await apiClient<{ data: Listing[] }>("/listings/my")
-            const listed = res?.data ?? []
+            const [listingsRes, freshAuctions] = await Promise.all([
+                apiClient<{ data: Listing[] }>("/listings/my"),
+                getMyAuctions(),
+            ])
+            const listed = listingsRes?.data ?? []
             const auctionListingIds = new Set(
-                auctions
+                (freshAuctions ?? [])
                     .filter(a => a.status === "SCHEDULED" || a.status === "ACTIVE")
                     .map(a => a.listingId)
             )
             setEligibleListings(
-                listed.filter(l => l.status === "ACTIVE" && !auctionListingIds.has(l.id))
+                listed.filter(l =>
+                    l.status === "ACTIVE" &&
+                    !auctionListingIds.has(l.id) &&
+                    !(l as any).linkedListingId
+                )
             )
         } catch {
             setFormError("Failed to load your listings.")
