@@ -75,7 +75,7 @@ function MarkAsSoldModal({
     onClose: () => void
     confirming: boolean
 }) {
-    const agreedPrice = Number(offer.counterAmount ?? offer.amount)
+    const agreedPrice = Number(offer.finalAmount ?? offer.counterAmount ?? offer.amount)
     const [soldPrice, setSoldPrice] = React.useState(agreedPrice)
     const [buyerName, setBuyerName] = React.useState(
         [offer.buyer?.firstName, offer.buyer?.lastName].filter(Boolean).join(' ')
@@ -243,11 +243,16 @@ function OfferRow({
                     <StatusBadge status={offer.status} />
                 </div>
                 <p className="text-2xl font-bold text-primary font-mono">
-                    {(offer as any).amountMin && (offer as any).amountMax && formatGBP((offer as any).amountMin) !== formatGBP((offer as any).amountMax)
-                        ? `${formatGBP((offer as any).amountMin)} – ${formatGBP((offer as any).amountMax)}`
-                        : formatGBP(offer.amount)
+                    {offer.status === 'ACCEPTED'
+                        ? formatGBP(offer.finalAmount ?? offer.counterAmount ?? offer.amount)
+                        : (offer as any).amountMin && (offer as any).amountMax && formatGBP((offer as any).amountMin) !== formatGBP((offer as any).amountMax)
+                            ? `${formatGBP((offer as any).amountMin)} – ${formatGBP((offer as any).amountMax)}`
+                            : formatGBP(offer.amount)
                     }
                 </p>
+                {offer.status === 'ACCEPTED' && (
+                    <p className="text-xs text-emerald-400 font-bold mt-0.5">Agreed price</p>
+                )}
                 {offer.status === 'COUNTERED' && offer.lastCounteredBy === 'BUYER' && offer.buyerCounterAmount != null && (
                     <p className="text-xs text-amber-400 font-bold mt-0.5">Buyer re-countered: {formatGBP(offer.buyerCounterAmount)}</p>
                 )}

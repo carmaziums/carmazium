@@ -201,8 +201,11 @@ export default function DealerMyOffersPage() {
                                             </div>
                                             <div className="flex items-center justify-between gap-2">
                                                 <div>
-                                                    <p className="text-base font-black text-white tabular-nums">{formatPrice(offer.amount)}</p>
-                                                    {offer.counterAmount && <p className="text-xs font-black text-blue-400">Counter: {formatPrice(offer.counterAmount)}</p>}
+                                                    <p className="text-base font-black text-white tabular-nums">
+                                                        {formatPrice(offer.status === 'ACCEPTED' ? (offer.finalAmount ?? offer.counterAmount ?? offer.amount) : offer.amount)}
+                                                    </p>
+                                                    {offer.status === 'ACCEPTED' && <p className="text-xs font-black text-emerald-400">Agreed price</p>}
+                                                    {offer.status === 'COUNTERED' && offer.counterAmount && <p className="text-xs font-black text-blue-400">Counter: {formatPrice(offer.counterAmount)}</p>}
                                                     <p className="text-xs text-gray-500">{new Date(offer.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
                                                 </div>
                                                 <div className="flex items-center gap-2 flex-wrap justify-end">
@@ -263,11 +266,14 @@ export default function DealerMyOffersPage() {
                                                     </td>
                                                     <td className="px-6 py-5 text-right">
                                                         <span className="text-base font-black text-white tabular-nums">
-                                                            {formatPrice(offer.amount)}
+                                                            {formatPrice(offer.status === 'ACCEPTED' ? (offer.finalAmount ?? offer.counterAmount ?? offer.amount) : offer.amount)}
                                                         </span>
+                                                        {offer.status === 'ACCEPTED' && (
+                                                            <div className="text-xs text-emerald-400 font-black uppercase tracking-widest mt-0.5">Agreed</div>
+                                                        )}
                                                     </td>
                                                     <td className="px-6 py-5 text-right">
-                                                        {offer.counterAmount ? (
+                                                        {offer.status !== 'ACCEPTED' && offer.counterAmount ? (
                                                             <span className="text-sm font-black text-blue-400 tabular-nums">
                                                                 {formatPrice(offer.counterAmount)}
                                                             </span>

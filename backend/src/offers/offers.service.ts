@@ -528,7 +528,10 @@ export class OffersService {
         return this.prisma.offer.count({
             where: {
                 listingId: { in: listingIds },
-                status: 'PENDING',
+                OR: [
+                    { status: 'PENDING' },
+                    { status: 'COUNTERED', lastCounteredBy: 'BUYER' },
+                ],
             },
         });
     }
@@ -539,7 +542,7 @@ export class OffersService {
      */
     async getBuyerActionCount(buyerId: string): Promise<number> {
         return this.prisma.offer.count({
-            where: { buyerId, status: 'COUNTERED' },
+            where: { buyerId, status: 'COUNTERED', lastCounteredBy: 'SELLER' },
         });
     }
 

@@ -883,6 +883,7 @@ export interface LatestOffer {
     counterAmount: string | number | null
     sellerCounterAmount?: string | number | null
     buyerCounterAmount?: string | number | null
+    finalAmount?: string | number | null
     createdAt: string
     counterAttemptsBuyer?: number
     counterAttemptsSeller?: number

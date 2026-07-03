@@ -57,7 +57,7 @@ export default function DealerOffersPage() {
 
         setConfirmingSale(true)
         try {
-            const soldPrice = Number(offer.counterAmount ?? offer.amount)
+            const soldPrice = Number(offer.finalAmount ?? offer.counterAmount ?? offer.amount)
             await recordSale(offer.listingId, {
                 soldPrice,
                 buyerId: offer.buyerId,
@@ -161,8 +161,11 @@ export default function DealerOffersPage() {
                                                     <p className="text-xs text-gray-400 mt-0.5 truncate">{offer.listing?.title}</p>
                                                 </div>
                                                 <div className="text-right shrink-0">
-                                                    <p className="text-lg font-black text-white tabular-nums">£{offer.amount?.toLocaleString()}</p>
-                                                    {offer.counterAmount && <p className="text-xs text-blue-400 font-black">Ctr: £{offer.counterAmount.toLocaleString()}</p>}
+                                                    <p className="text-lg font-black text-white tabular-nums">
+                                                        £{Number(offer.status === 'ACCEPTED' ? (offer.finalAmount ?? offer.counterAmount ?? offer.amount) : offer.amount).toLocaleString()}
+                                                    </p>
+                                                    {offer.status === 'ACCEPTED' && <p className="text-xs text-emerald-400 font-black">Agreed price</p>}
+                                                    {offer.status === 'COUNTERED' && offer.counterAmount && <p className="text-xs text-blue-400 font-black">Ctr: £{offer.counterAmount.toLocaleString()}</p>}
                                                 </div>
                                             </div>
                                             <div className="flex items-center justify-between gap-2">
@@ -230,8 +233,15 @@ export default function DealerOffersPage() {
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-6 text-right">
-                                                        <span className="text-xl font-black text-white tabular-nums">£{offer.amount?.toLocaleString()}</span>
-                                                        {offer.counterAmount && (
+                                                        <span className="text-xl font-black text-white tabular-nums">
+                                                            £{Number(offer.status === 'ACCEPTED' ? (offer.finalAmount ?? offer.counterAmount ?? offer.amount) : offer.amount).toLocaleString()}
+                                                        </span>
+                                                        {offer.status === 'ACCEPTED' && (
+                                                            <div className="text-xs text-emerald-400 font-black uppercase tracking-widest mt-1">
+                                                                Agreed Price
+                                                            </div>
+                                                        )}
+                                                        {offer.status === 'COUNTERED' && offer.counterAmount && (
                                                             <div className="text-xs text-blue-400 font-black uppercase tracking-widest mt-1">
                                                                 My Counter: £{offer.counterAmount.toLocaleString()}
                                                             </div>

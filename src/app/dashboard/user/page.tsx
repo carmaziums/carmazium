@@ -59,8 +59,9 @@ const ChatWindow = dynamic(() => import("@/components/chat/ChatWindow").then(mod
 import Link from "next/link"
 import Image from "next/image"
 import { 
-    getUnifiedDashboard, 
+    getUnifiedDashboard,
     getEarnings,
+    exportEarningsCsv,
     resetPassword,
     getMyListings,
     deleteListing,
@@ -365,11 +366,6 @@ function WatchlistTab() {
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-black font-heading uppercase tracking-tight">My Watchlist</h2>
-                <Link href="/buy-cars">
-                    <Button variant="outline" size="sm" className="h-9 gap-2">
-                        Browse More
-                    </Button>
-                </Link>
             </div>
 
             {loading ? (
@@ -1398,10 +1394,22 @@ function MessagesTab({ rooms, refreshRooms }: { rooms: ChatRoom[], refreshRooms:
 function EarningsTab() {
     const [data, setData] = React.useState<EarningsResponse | null>(null)
     const [loading, setLoading] = React.useState(true)
+    const [exporting, setExporting] = React.useState(false)
 
     React.useEffect(() => {
         getEarnings().then(setData).finally(() => setLoading(false))
     }, [])
+
+    const handleExport = async () => {
+        setExporting(true)
+        try {
+            await exportEarningsCsv()
+        } catch (err: any) {
+            alert(err.message || 'Failed to export ledger')
+        } finally {
+            setExporting(false)
+        }
+    }
 
     const totalRevenue = Number(data?.totalRevenue || 0)
     const totalSales = Number(data?.totalSales || 0)
@@ -1414,8 +1422,15 @@ function EarningsTab() {
                     <h2 className="text-2xl font-black font-heading uppercase tracking-tight">Earnings History</h2>
                     <p className="text-gray-400 text-sm font-medium">Detailed tracking of your sold assets and revenue.</p>
                 </div>
-                <Button className="flex items-center gap-2 h-10 shadow-neon-small" variant="outline" size="sm">
-                    <Download size={18} /> Export Ledger
+                <Button
+                    className="flex items-center gap-2 h-10 shadow-neon-small"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExport}
+                    disabled={exporting}
+                >
+                    {exporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+                    {exporting ? 'Exporting…' : 'Export Ledger'}
                 </Button>
             </div>
 

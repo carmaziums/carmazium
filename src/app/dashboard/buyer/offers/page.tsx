@@ -333,8 +333,8 @@ export default function BuyerOffersPage() {
         if (!confirm("Accept the seller's counter offer? You can then chat with the seller to finalize the purchase.")) return;
         setAccepting(offerId);
         try {
-            await respondToCounterOffer(offerId, 'ACCEPTED');
-            setOffers(prev => prev.map(o => o.id === offerId ? { ...o, status: 'ACCEPTED' } : o));
+            const updated = await respondToCounterOffer(offerId, 'ACCEPTED');
+            setOffers(prev => prev.map(o => o.id === offerId ? { ...o, ...updated } : o));
         } catch (err: any) {
             console.error("Failed to accept counter offer:", err);
             alert(err.message || "Failed to accept counter offer.");
@@ -485,9 +485,14 @@ export default function BuyerOffersPage() {
                                                         {/* Offer Amount */}
                                                         <td className="px-6 py-5">
                                                             <div className="font-mono text-lg font-bold text-white mb-1">
-                                                                £{Number(offer.amount).toLocaleString('en-GB')}
+                                                                £{Number(offer.status === 'ACCEPTED' ? (offer.finalAmount ?? offer.counterAmount ?? offer.amount) : offer.amount).toLocaleString('en-GB')}
                                                             </div>
-                                                            {offer.counterAmount && (
+                                                            {offer.status === 'ACCEPTED' && (
+                                                                <div className="text-xs text-emerald-400 font-bold mt-0.5">
+                                                                    AGREED PRICE
+                                                                </div>
+                                                            )}
+                                                            {offer.status === 'COUNTERED' && offer.counterAmount && (
                                                                 <div className="text-xs text-blue-400 font-bold mt-0.5">
                                                                     COUNTER: £{Number(offer.counterAmount).toLocaleString('en-GB')}
                                                                 </div>
