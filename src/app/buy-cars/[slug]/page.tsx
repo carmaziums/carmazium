@@ -54,7 +54,7 @@ function OfferStatusChip({ offer, viewerRole }: { offer: LatestOffer; viewerRole
             </div>
         )
         if (offer.status === 'WITHDRAWN') return (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-gray-500/10 border border-gray-500/30 text-gray-300 text-sm">
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-gray-500/10 border border-gray-500/30 text-[var(--text-secondary)] text-sm">
                 <XCircle size={14} className="shrink-0" />
                 <span>Your previous offer of <strong>{amountDisplay}</strong> was withdrawn. You can make a new offer.</span>
             </div>
@@ -91,9 +91,9 @@ function OfferStatusChip({ offer, viewerRole }: { offer: LatestOffer; viewerRole
                     offer.status === 'WITHDRAWN' ? 'withdrawn' : ''
 
     return (
-        <div className="flex items-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 text-sm">
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-[var(--bg-card)] border border-[var(--border-default)] text-[var(--text-muted)] text-sm">
             <Tag size={14} className="shrink-0" />
-            <span>An offer of <strong className="text-white">{amountDisplay}</strong> has been made on this listing{statusLabel ? ` — ${statusLabel}` : ''}.</span>
+            <span>An offer of <strong className="text-[var(--text-primary)]">{amountDisplay}</strong> has been made on this listing{statusLabel ? ` — ${statusLabel}` : ''}.</span>
         </div>
     )
 }
@@ -135,34 +135,34 @@ function OfferModal({
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-5" onClick={onClose}>
             <div className="glass-card p-8 max-w-md w-full relative" onClick={(e) => e.stopPropagation()}>
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary to-red-800 rounded-t-2xl" />
-                <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white"><X size={20} /></button>
+                <button onClick={onClose} className="absolute top-4 right-4 text-[var(--text-muted)] hover:text-primary dark:hover:text-white"><X size={20} /></button>
 
                 <div className="flex items-center gap-3 mb-6">
                     <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary"><Tag size={18} /></div>
                     <div>
-                        <h2 className="text-xl font-bold font-heading text-white">Make an Offer</h2>
-                        <p className="text-xs text-gray-400">{listing.title}</p>
+                        <h2 className="text-xl font-bold font-heading">Make an Offer</h2>
+                        <p className="text-xs text-[var(--text-muted)]">{listing.title}</p>
                     </div>
                 </div>
 
-                <div className="mb-6 p-3 rounded-xl bg-white/5 border border-white/10">
-                    <div className="flex justify-between text-xs text-gray-400">
+                <div className="mb-6 p-3 rounded-xl bg-[var(--bg-card)] border border-[var(--border-default)]">
+                    <div className="flex justify-between text-xs text-[var(--text-muted)]">
                         <span>Seller&apos;s Asking Price</span>
-                        <span className="text-white font-semibold">£{askingPrice.toLocaleString('en-GB')}</span>
+                        <span className="font-semibold">£{askingPrice.toLocaleString('en-GB')}</span>
                     </div>
                 </div>
 
                 <div className="mb-4">
-                    <label className="text-sm font-bold uppercase text-gray-400 mb-2 block">Your Offer</label>
-                    <p className="text-xs text-gray-500 mb-3">Set the amount you&apos;re willing to pay.</p>
+                    <label className="text-sm font-bold uppercase text-[var(--text-muted)] mb-2 block">Your Offer</label>
+                    <p className="text-xs text-[var(--text-muted)] mb-3">Set the amount you&apos;re willing to pay.</p>
                     <div>
                         <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">£</span>
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">£</span>
                             <Input type="number" value={offerAmountStr} step={100}
                                 min={minAllowedOffer}
                                 onChange={(e) => setOfferAmountStr(e.target.value)}
                                 placeholder="0"
-                                className="bg-slate-900/50 border-white/10 text-white pl-8 focus:border-primary" />
+                                className="bg-[var(--bg-input)] border-[var(--border-default)] pl-8 focus:border-primary" />
                         </div>
                         {offerAmountStr && offerAmount < minAllowedOffer && (
                             <p className="text-red-400 text-xs mt-2">
@@ -173,13 +173,13 @@ function OfferModal({
                 </div>
 
                 <div className="mb-6">
-                    <label className="text-sm font-bold uppercase text-gray-400 mb-2 block">
-                        Message <span className="text-gray-600 font-normal normal-case">(optional)</span>
+                    <label className="text-sm font-bold uppercase text-[var(--text-muted)] mb-2 block">
+                        Message <span className="text-[var(--text-secondary)] font-normal normal-case">(optional)</span>
                     </label>
                     <textarea value={message} onChange={(e) => setMessage(e.target.value)}
                         placeholder="e.g. I can collect this weekend..."
                         rows={3} maxLength={500}
-                        className="w-full bg-slate-900/50 border border-white/10 text-white placeholder:text-gray-600 rounded-md p-3 text-sm resize-none focus:outline-none focus:border-primary" />
+                        className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] placeholder:text-[var(--text-secondary)] rounded-md p-3 text-sm resize-none focus:outline-none focus:border-primary" />
                 </div>
 
                 {error && (
@@ -189,7 +189,7 @@ function OfferModal({
                 )}
 
                 <div className="flex gap-3">
-                    <Button variant="outline" className="flex-1 border-white/10 text-gray-400 hover:text-white" onClick={onClose}>Cancel</Button>
+                    <Button variant="outline" className="flex-1 border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white" onClick={onClose}>Cancel</Button>
                     <Button className="flex-1 shadow-neon" disabled={loading || isInvalid} onClick={handleSubmit}>
                         {loading ? <><Loader2 size={16} className="animate-spin mr-2" />Submitting...</> : `Submit Offer`}
                     </Button>
@@ -320,7 +320,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+            <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="w-10 h-10 text-primary animate-spin" />
             </div>
         )
@@ -328,8 +328,8 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
 
     if (error || !listing) {
         return (
-            <div className="min-h-screen bg-slate-900 flex items-center justify-center flex-col">
-                <h1 className="text-2xl text-white mb-4">Vehicle not found</h1>
+            <div className="min-h-screen flex items-center justify-center flex-col">
+                <h1 className="text-2xl mb-4">Vehicle not found</h1>
                 <Link href="/search">
                     <Button>Back to Inventory</Button>
                 </Link>
@@ -455,9 +455,9 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
     }
 
     return (
-        <div className="min-h-screen bg-slate-900 pt-24 pb-36 lg:pb-12 relative">
+        <div className="min-h-screen pt-24 pb-36 lg:pb-12 relative">
             {/* Background gradient */}
-            <div className="fixed inset-0 bg-gradient-to-br from-[#0f172a] to-[#1e293b] -z-10" />
+            <div className="fixed inset-0 -z-10" style={{ background: 'var(--bg-body)' }} />
 
             {/* Offer Modal */}
             {showOfferModal && listing && (
@@ -517,7 +517,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
             <div className="container mx-auto px-5">
                 {/* Breadcrumb & Header */}
                 <div className="mb-8">
-                    <Link href="/search" className="text-gray-400 hover:text-primary text-sm flex items-center mb-4 transition-colors">
+                    <Link href="/search" className="text-[var(--text-muted)] hover:text-primary text-sm flex items-center mb-4 transition-colors">
                         <ArrowLeft size={16} className="mr-1" /> Back to Inventory
                     </Link>
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
@@ -525,12 +525,12 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                             {/* Category badge eyebrow — above H1 */}
                             <div className="flex flex-wrap items-center gap-2 mb-3">
                                 {listing.bodyType && BODY_TYPE_LABELS[listing.bodyType] && (
-                                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold rounded-full px-3 py-1 bg-slate-700 border border-white/10 text-gray-200">
+                                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold rounded-full px-3 py-1 bg-slate-700 border border-[var(--border-default)] text-gray-200">
                                         <CarIcon size={11} /> {BODY_TYPE_LABELS[listing.bodyType]}
                                     </span>
                                 )}
                                 {listing.fuelType && FUEL_TYPE_LABELS[listing.fuelType] && (
-                                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold rounded-full px-3 py-1 bg-slate-700 border border-white/10 text-gray-200">
+                                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold rounded-full px-3 py-1 bg-slate-700 border border-[var(--border-default)] text-gray-200">
                                         <Fuel size={11} /> {FUEL_TYPE_LABELS[listing.fuelType]}
                                     </span>
                                 )}
@@ -540,11 +540,11 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                     </span>
                                 )}
                             </div>
-                            <h1 className="text-3xl md:text-5xl font-bold font-heading text-white mb-2">{vehicle.title}</h1>
-                            <p className="text-gray-300 text-lg">{vehicle.subtitle}</p>
+                            <h1 className="text-3xl md:text-5xl font-bold font-heading mb-2">{vehicle.title}</h1>
+                            <p className="text-[var(--text-secondary)] text-lg">{vehicle.subtitle}</p>
                             {/* Mobile-only price — shown immediately below subtitle so price is above the fold */}
                             <div className="flex items-center gap-3 mt-3 lg:hidden">
-                                <span className="text-3xl font-black text-white">{vehicle.price}</span>
+                                <span className="text-3xl font-black">{vehicle.price}</span>
                                 {String(listing.status) === 'SOLD' && (
                                     <span className="text-xs font-black uppercase tracking-widest bg-red-500/15 text-red-400 border border-red-500/40 px-2.5 py-1 rounded-full">Sold</span>
                                 )}
@@ -619,7 +619,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                         href={listing.importedFromUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1 text-[10px] font-bold bg-slate-500/10 text-slate-300 border border-slate-500/30 px-2.5 py-1 rounded-full hover:bg-slate-500/20 transition-colors"
+                                        className="inline-flex items-center gap-1 text-[10px] font-bold bg-slate-500/10 text-[var(--text-secondary)] border border-slate-500/30 px-2.5 py-1 rounded-full hover:bg-slate-500/20 transition-colors"
                                     >
                                         <Globe size={10} /> See on {listing.importedSource ? { AUTOTRADER: 'AutoTrader', CARGURUS: 'CarGurus', CARWOW: 'CarWow' }[listing.importedSource] ?? listing.importedSource : 'Original Platform'}
                                     </a>
@@ -629,18 +629,18 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                         <div className="hidden lg:flex gap-4">
                             <Button
                                 variant="outline"
-                                className="rounded-full border-gray-600 text-gray-400 hover:text-white hover:border-white"
+                                className="rounded-full border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white hover:border-primary/40"
                                 onClick={handleCompareAndNavigate}
                             >
                                 <Scale size={20} className="mr-2" /> Compare
                             </Button>
-                            <Button variant="outline" size="icon" className="rounded-full border-gray-600 text-gray-400 hover:text-white hover:border-white" onClick={handleShare}>
+                            <Button variant="outline" size="icon" className="rounded-full border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white hover:border-primary/40" onClick={handleShare}>
                                 <Share2 size={20} />
                             </Button>
                             <Button
                                 variant="outline"
                                 size="icon"
-                                className={`rounded-full transition-all ${isWatchlisted ? 'bg-red-500/20 border-red-500/50 text-red-500' : 'border-gray-600 text-gray-400 hover:text-red-500 hover:border-red-500'}`}
+                                className={`rounded-full transition-all ${isWatchlisted ? 'bg-red-500/20 border-red-500/50 text-red-500' : 'border-gray-600 text-[var(--text-muted)] hover:text-red-500 hover:border-red-500'}`}
                                 onClick={handleWatchlist}
                                 disabled={watchlistLoading}
                             >
@@ -654,7 +654,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                     {/* Left Column: Gallery & Details */}
                     <div className="lg:col-span-2 space-y-8">
                         {/* Gallery */}
-                        <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-4">
+                        <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-4">
                             <div className="relative aspect-video bg-black rounded-lg overflow-hidden mb-4 group">
                                 <Image
                                     src={vehicle.images[activeImage] || vehicle.images[0]}
@@ -696,12 +696,12 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
 
                         {/* Mobile Buy Car Box — shown below gallery on small screens */}
                         <div className="block lg:hidden space-y-6">
-                            <div className="bg-slate-800 rounded-xl border border-white/10 overflow-hidden shadow-2xl relative">
+                            <div className="bg-[var(--bg-card)] rounded-xl border border-[var(--border-default)] overflow-hidden shadow-2xl relative">
                                 <div className="h-1 bg-primary w-full absolute top-0" />
                                 <div className="p-6">
                                     {/* Seller Info Block */}
                                     {listing.seller && (
-                                        <Link href={`/seller/${listing.sellerId}`} className="flex items-center gap-3 mb-6 hover:bg-white/5 p-2 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-white/10 -ml-2 group">
+                                        <Link href={`/seller/${listing.sellerId}`} className="flex items-center gap-3 mb-6 hover:bg-[var(--bg-card)] p-2 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-[var(--border-default)] -ml-2 group">
                                             {listing.seller.role === 'DEALER' && listing.seller.dealerProfile?.logo ? (
                                                 <Image src={listing.seller.dealerProfile.logo} alt="Dealer Logo" width={48} height={48} className="w-12 h-12 rounded-full object-cover shrink-0 bg-white" />
                                             ) : listing.seller.profileImage ? (
@@ -712,7 +712,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                                 </div>
                                             )}
                                             <div className="flex-1">
-                                                <h3 className="font-bold text-white text-[15px] leading-tight group-hover:text-primary transition-colors">
+                                                <h3 className="font-bold text-[15px] leading-tight group-hover:text-primary transition-colors">
                                                     {(listing.seller.role === 'DEALER' ? listing.seller.dealerProfile?.companyName : null) || `${listing.seller.firstName || ''} ${listing.seller.lastName || ''}`.trim() || 'Private Seller'}
                                                 </h3>
                                                 <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -737,19 +737,19 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                     
                                     {/* Dealership Info */}
                                     {listing.seller?.role === 'DEALER' && listing.seller?.dealerProfile && (
-                                        <div className="mb-6 space-y-2 text-sm text-gray-300">
+                                        <div className="mb-6 space-y-2 text-sm text-[var(--text-secondary)]">
                                             {listing.seller.dealerProfile.description && (
                                                 <p className="line-clamp-3 text-xs">{listing.seller.dealerProfile.description}</p>
                                             )}
                                             <div className="flex flex-col gap-1 pt-2">
                                                 {listing.seller.dealerProfile.phone && (
-                                                    <a href={`tel:${listing.seller.dealerProfile.phone}`} className="flex items-center gap-2 hover:text-white transition-colors">
-                                                        <Phone size={14} className="text-gray-500" /> {listing.seller.dealerProfile.phone}
+                                                    <a href={`tel:${listing.seller.dealerProfile.phone}`} className="flex items-center gap-2 hover:text-primary dark:hover:text-white transition-colors">
+                                                        <Phone size={14} className="text-[var(--text-muted)]" /> {listing.seller.dealerProfile.phone}
                                                     </a>
                                                 )}
                                                 {listing.seller.dealerProfile.website && (
-                                                    <a href={listing.seller.dealerProfile.website} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-white transition-colors">
-                                                        <Globe size={14} className="text-gray-500" /> Visit Website
+                                                    <a href={listing.seller.dealerProfile.website} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-primary dark:hover:text-white transition-colors">
+                                                        <Globe size={14} className="text-[var(--text-muted)]" /> Visit Website
                                                     </a>
                                                 )}
                                             </div>
@@ -764,7 +764,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                             <Gavel size={16} className="text-amber-400 shrink-0" />
                                             <div className="flex-1 min-w-0">
                                                 <div className="text-amber-300 font-bold text-xs uppercase tracking-wide">Also in Live Auction</div>
-                                                <div className="text-[11px] text-gray-400 mt-0.5">
+                                                <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
                                                     Closes {new Date(listing.linkedListing.auction.endTime).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                                 </div>
                                             </div>
@@ -773,17 +773,17 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                     )}
                                     <div className="mb-6">
                                         <div className="flex items-center gap-1.5 mb-3">
-                                            <Info size={14} className="text-gray-500" />
-                                            <span className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Policies</span>
+                                            <Info size={14} className="text-[var(--text-muted)]" />
+                                            <span className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wider">Policies</span>
                                         </div>
                                         <div>
-                                            <div className="text-4xl font-bold text-white mb-2">{formatPrice(listing.price)}</div>
+                                            <div className="text-4xl font-bold mb-2">{formatPrice(listing.price)}</div>
                                             <span className="inline-block text-[10px] font-bold uppercase tracking-wide bg-primary/10 text-primary border border-primary/30 px-2.5 py-1 rounded-full mb-4">
                                                 Offers Welcome
                                             </span>
                                         </div>
-                                        <p className="text-xs text-gray-400 mt-3">Price includes VAT. Financing available from 19% APR.</p>
-                                        <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+                                        <p className="text-xs text-[var(--text-muted)] mt-3">Price includes VAT. Financing available from 19% APR.</p>
+                                        <p className="text-xs text-[var(--text-muted)] mt-2 flex items-center gap-1">
                                             <Clock size={12} /> Listed on {new Date(listing.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                                         </p>
                                     </div>
@@ -799,10 +799,10 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
 
                                     <div className="space-y-3">
                                         {String(listing.status) === 'SOLD' ? (
-                                            <div className="bg-slate-800/80 border-2 border-red-500/30 rounded-2xl p-6 text-center">
+                                            <div className="bg-[var(--bg-card)] border-2 border-red-500/30 rounded-2xl p-6 text-center">
                                                 <XCircle size={48} className="text-red-500 mx-auto mb-3 opacity-80" />
-                                                <h3 className="text-xl font-black text-white uppercase tracking-tight mb-1">Vehicle Sold</h3>
-                                                <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">This listing is closed</p>
+                                                <h3 className="text-xl font-black uppercase tracking-tight mb-1">Vehicle Sold</h3>
+                                                <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest">This listing is closed</p>
                                             </div>
                                         ) : listing.sellerId !== user?.id && (
                                             <>
@@ -817,14 +817,14 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                                             ? '✓ Offer Accepted'
                                                             : 'Make an Offer'}
                                                 </Button>
-                                                <Button variant="outline" className="w-full py-6 text-lg border-white/20 text-white hover:bg-white/10" onClick={handleEnquire} disabled={enquiring}>
+                                                <Button variant="outline" className="w-full py-6 text-lg border-[var(--border-default)] hover:bg-primary/5 dark:hover:bg-white/10" onClick={handleEnquire} disabled={enquiring}>
                                                     {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2" />Starting Chat...</> : <><MessageCircle className="w-5 h-5 mr-2" />Enquire</>}
                                                 </Button>
                                             </>
                                         )}
                                     </div>
                                 </div>
-                                <div className="bg-white/5 p-4 flex items-center justify-center gap-2 text-gray-400 text-xs">
+                                <div className="bg-[var(--bg-card)] p-4 flex items-center justify-center gap-2 text-[var(--text-muted)] text-xs">
                                     <MapPin size={14} />
                                     <span>{listing.location || 'Location not specified'}</span>
                                 </div>
@@ -834,9 +834,9 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
 
                         {/* Vehicle Description */}
                         {listing.description && (
-                            <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-8">
-                                <h3 className="text-xl font-bold text-white mb-6 border-l-4 border-primary pl-4">Vehicle Description</h3>
-                                <div className={`text-gray-300 leading-relaxed whitespace-pre-wrap relative ${!isDescExpanded ? 'line-clamp-4 overflow-hidden' : ''}`}>
+                            <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-8">
+                                <h3 className="text-xl font-bold mb-6 border-l-4 border-primary pl-4">Vehicle Description</h3>
+                                <div className={`text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap relative ${!isDescExpanded ? 'line-clamp-4 overflow-hidden' : ''}`}>
                                     {listing.description}
                                     {!isDescExpanded && (
                                         <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-slate-800/90 to-transparent"></div>
@@ -855,8 +855,8 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
 
                         {/* Video Embeds */}
                         {listing.videoUrls && listing.videoUrls.length > 0 && (
-                            <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-8">
-                                <h3 className="text-xl font-bold text-white mb-6 border-l-4 border-primary pl-4">Videos</h3>
+                            <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-8">
+                                <h3 className="text-xl font-bold mb-6 border-l-4 border-primary pl-4">Videos</h3>
                                 <div className="space-y-4">
                                     {(listing.videoUrls as string[]).map((url, idx) => {
                                         const platform = getVideoPlatform(url)
@@ -881,16 +881,16 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                                 href={url}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:border-primary/40 hover:bg-primary/5 transition-all group"
+                                                className="flex items-center gap-4 p-4 rounded-xl bg-[var(--bg-card)] border border-[var(--border-default)] hover:border-primary/40 hover:bg-primary/5 transition-all group"
                                             >
                                                 <div className="p-2.5 rounded-lg bg-primary/10 border border-primary/20 shrink-0">
                                                     <Camera size={20} className="text-primary" />
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-xs font-black uppercase tracking-wider text-primary mb-0.5">{platformLabel}</p>
-                                                    <p className="text-sm text-gray-400 truncate">{url}</p>
+                                                    <p className="text-sm text-[var(--text-muted)] truncate">{url}</p>
                                                 </div>
-                                                <ArrowLeft size={16} className="text-gray-500 rotate-180 shrink-0 group-hover:text-primary transition-colors" />
+                                                <ArrowLeft size={16} className="text-[var(--text-muted)] rotate-180 shrink-0 group-hover:text-primary transition-colors" />
                                             </a>
                                         )
                                     })}
@@ -899,44 +899,44 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                         )}
 
                         {/* Features */}
-                        <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-8">
-                            <h3 className="text-xl font-bold text-white mb-6 border-l-4 border-primary pl-4">Vehicle Features</h3>
+                        <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-8">
+                            <h3 className="text-xl font-bold mb-6 border-l-4 border-primary pl-4">Vehicle Features</h3>
                             {listing.features && Array.isArray(listing.features) && listing.features.length > 0 ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {listing.features.map((feature, idx) => (
-                                        <div key={idx} className="flex items-center gap-2 text-gray-300">
+                                        <div key={idx} className="flex items-center gap-2 text-[var(--text-secondary)]">
                                             <CheckCircle size={16} className="text-primary shrink-0" />
                                             <span>{feature}</span>
                                         </div>
                                     ))}
                                 </div>
                             ) : (
-                                <p className="text-gray-400 italic">No features listed.</p>
+                                <p className="text-[var(--text-muted)] italic">No features listed.</p>
                             )}
                         </div>
 
                         {/* Detailed Specifications */}
-                        <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-8">
-                            <h3 className="text-xl font-bold text-white mb-6 border-l-4 border-primary pl-4">Specifications</h3>
+                        <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-8">
+                            <h3 className="text-xl font-bold mb-6 border-l-4 border-primary pl-4">Specifications</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
                                 
                                 {/* Overview */}
                                 <div>
-                                    <h4 className="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4 border-b border-white/10 pb-2">Overview</h4>
+                                    <h4 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-4 border-b border-[var(--border-default)] pb-2">Overview</h4>
                                     <div className="space-y-2">
-                                        {listing.make && <div className="flex justify-between"><span className="text-gray-400 text-sm">Make:</span><span className="text-white font-semibold text-sm">{listing.make}</span></div>}
-                                        {listing.model && <div className="flex justify-between"><span className="text-gray-400 text-sm">Model:</span><span className="text-white font-semibold text-sm">{listing.model}</span></div>}
-                                        {listing.year && <div className="flex justify-between"><span className="text-gray-400 text-sm">Year:</span><span className="text-white font-semibold text-sm">{listing.year}</span></div>}
-                                        {listing.bodyType && <div className="flex justify-between"><span className="text-gray-400 text-sm">Body type:</span><span className="text-white font-semibold text-sm">{listing.bodyType}</span></div>}
-                                        {listing.color && <div className="flex justify-between"><span className="text-gray-400 text-sm">Exterior colour:</span><span className="text-white font-semibold text-sm">{listing.color}</span></div>}
-                                        {listing.mileage !== null && listing.mileage !== undefined && <div className="flex justify-between"><span className="text-gray-400 text-sm">Mileage:</span><span className="text-white font-semibold text-sm">{listing.mileage.toLocaleString('en-GB')} mi</span></div>}
-                                        {listing.condition && <div className="flex justify-between"><span className="text-gray-400 text-sm">Condition:</span><span className="text-white font-semibold text-sm">{listing.condition.replace('_', ' ')}</span></div>}
-                                        {listing.vrm && <div className="flex justify-between"><span className="text-gray-400 text-sm">Registration:</span><span className="text-white font-semibold text-sm">{listing.vrm}</span></div>}
-                                        {listing.monthOfFirstRegistration && <div className="flex justify-between"><span className="text-gray-400 text-sm">Reg. date:</span><span className="text-white font-semibold text-sm">{listing.monthOfFirstRegistration}</span></div>}
+                                        {listing.make && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Make:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.make}</span></div>}
+                                        {listing.model && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Model:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.model}</span></div>}
+                                        {listing.year && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Year:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.year}</span></div>}
+                                        {listing.bodyType && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Body type:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.bodyType}</span></div>}
+                                        {listing.color && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Exterior colour:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.color}</span></div>}
+                                        {listing.mileage !== null && listing.mileage !== undefined && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Mileage:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.mileage.toLocaleString('en-GB')} mi</span></div>}
+                                        {listing.condition && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Condition:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.condition.replace('_', ' ')}</span></div>}
+                                        {listing.vrm && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Registration:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.vrm}</span></div>}
+                                        {listing.monthOfFirstRegistration && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Reg. date:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.monthOfFirstRegistration}</span></div>}
                                         {listing.owners && (
                                             <div className="flex justify-between py-0.5">
-                                                <span className="text-gray-400 text-sm">Previous Owners</span>
-                                                <span className="text-white font-semibold text-sm">
+                                                <span className="text-[var(--text-muted)] text-sm">Previous Owners</span>
+                                                <span className="text-[var(--text-primary)] font-semibold text-sm">
                                                     {listing.owners === '1' ? '1 Owner' : listing.owners === '5+' ? '5+ Owners' : `${listing.owners} Owners`}
                                                 </span>
                                             </div>
@@ -946,44 +946,44 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
 
                                 {/* Fuel Economy */}
                                 <div>
-                                    <h4 className="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4 border-b border-white/10 pb-2">Fuel Economy</h4>
+                                    <h4 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-4 border-b border-[var(--border-default)] pb-2">Fuel Economy</h4>
                                     <div className="space-y-2">
-                                        {listing.fuelType && <div className="flex justify-between"><span className="text-gray-400 text-sm">Fuel type:</span><span className="text-white font-semibold text-sm">{listing.fuelType}</span></div>}
-                                        {listing.co2Emissions && <div className="flex justify-between"><span className="text-gray-400 text-sm">CO2 emissions:</span><span className="text-white font-semibold text-sm">{listing.co2Emissions} g/km</span></div>}
-                                        {listing.ulezCompliant !== null && <div className="flex justify-between"><span className="text-gray-400 text-sm">ULEZ compliant:</span><span className="text-white font-semibold text-sm">{listing.ulezCompliant ? "Yes" : "No"}</span></div>}
-                                        {listing.euroStandard && <div className="flex justify-between"><span className="text-gray-400 text-sm">Euro standard:</span><span className="text-white font-semibold text-sm">{listing.euroStandard.replace('_', ' ')}</span></div>}
+                                        {listing.fuelType && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Fuel type:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.fuelType}</span></div>}
+                                        {listing.co2Emissions && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">CO2 emissions:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.co2Emissions} g/km</span></div>}
+                                        {listing.ulezCompliant !== null && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">ULEZ compliant:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.ulezCompliant ? "Yes" : "No"}</span></div>}
+                                        {listing.euroStandard && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Euro standard:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.euroStandard.replace('_', ' ')}</span></div>}
                                     </div>
                                 </div>
 
                                 {/* Performance */}
                                 <div>
-                                    <h4 className="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4 border-b border-white/10 pb-2">Performance</h4>
+                                    <h4 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-4 border-b border-[var(--border-default)] pb-2">Performance</h4>
                                     <div className="space-y-2">
-                                        {listing.transmission && <div className="flex justify-between"><span className="text-gray-400 text-sm">Gearbox:</span><span className="text-white font-semibold text-sm">{listing.transmission}</span></div>}
-                                        {listing.engineSize && <div className="flex justify-between"><span className="text-gray-400 text-sm">Engine size:</span><span className="text-white font-semibold text-sm">{listing.engineSize} cc</span></div>}
-                                        {listing.bhp && <div className="flex justify-between"><span className="text-gray-400 text-sm">Horsepower:</span><span className="text-white font-semibold text-sm">{listing.bhp} bhp</span></div>}
+                                        {listing.transmission && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Gearbox:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.transmission}</span></div>}
+                                        {listing.engineSize && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Engine size:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.engineSize} cc</span></div>}
+                                        {listing.bhp && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Horsepower:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.bhp} bhp</span></div>}
                                     </div>
                                 </div>
 
                                 {/* Measurements */}
                                 <div>
-                                    <h4 className="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4 border-b border-white/10 pb-2">Measurements</h4>
+                                    <h4 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-4 border-b border-[var(--border-default)] pb-2">Measurements</h4>
                                     <div className="space-y-2">
-                                        {listing.doors && <div className="flex justify-between"><span className="text-gray-400 text-sm">Doors:</span><span className="text-white font-semibold text-sm">{listing.doors}</span></div>}
-                                        {listing.seats && <div className="flex justify-between"><span className="text-gray-400 text-sm">Maximum seating:</span><span className="text-white font-semibold text-sm">{listing.seats}</span></div>}
-                                        {listing.wheelplan && <div className="flex justify-between"><span className="text-gray-400 text-sm">Wheelplan:</span><span className="text-white font-semibold text-sm">{listing.wheelplan}</span></div>}
+                                        {listing.doors && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Doors:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.doors}</span></div>}
+                                        {listing.seats && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Maximum seating:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.seats}</span></div>}
+                                        {listing.wheelplan && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Wheelplan:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.wheelplan}</span></div>}
                                     </div>
                                 </div>
 
                                 {/* DVLA History */}
                                 <div>
-                                    <h4 className="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4 border-b border-white/10 pb-2">History & Status</h4>
+                                    <h4 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-4 border-b border-[var(--border-default)] pb-2">History & Status</h4>
                                     <div className="space-y-2">
-                                        {listing.motStatus && <div className="flex justify-between"><span className="text-gray-400 text-sm">MOT Status:</span><span className={`font-semibold text-sm ${listing.motStatus === 'Valid' ? 'text-emerald-400' : 'text-amber-400'}`}>{listing.motStatus}</span></div>}
-                                        {listing.motExpiryDate && <div className="flex justify-between"><span className="text-gray-400 text-sm">MOT Expiry:</span><span className="text-white font-semibold text-sm">{listing.motExpiryDate}</span></div>}
-                                        {listing.taxStatus && <div className="flex justify-between"><span className="text-gray-400 text-sm">Tax Status:</span><span className={`font-semibold text-sm ${listing.taxStatus === 'Taxed' ? 'text-emerald-400' : 'text-amber-400'}`}>{listing.taxStatus}</span></div>}
-                                        {listing.taxDueDate && <div className="flex justify-between"><span className="text-gray-400 text-sm">Tax Due:</span><span className="text-white font-semibold text-sm">{listing.taxDueDate}</span></div>}
-                                        {listing.markedForExport !== null && <div className="flex justify-between"><span className="text-gray-400 text-sm">Exported:</span><span className="text-white font-semibold text-sm">{listing.markedForExport ? "Yes" : "No"}</span></div>}
+                                        {listing.motStatus && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">MOT Status:</span><span className={`font-semibold text-sm ${listing.motStatus === 'Valid' ? 'text-emerald-400' : 'text-amber-400'}`}>{listing.motStatus}</span></div>}
+                                        {listing.motExpiryDate && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">MOT Expiry:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.motExpiryDate}</span></div>}
+                                        {listing.taxStatus && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Tax Status:</span><span className={`font-semibold text-sm ${listing.taxStatus === 'Taxed' ? 'text-emerald-400' : 'text-amber-400'}`}>{listing.taxStatus}</span></div>}
+                                        {listing.taxDueDate && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Tax Due:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.taxDueDate}</span></div>}
+                                        {listing.markedForExport !== null && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Exported:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.markedForExport ? "Yes" : "No"}</span></div>}
                                     </div>
                                 </div>
                             </div>
@@ -997,14 +997,14 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                             const gradeColor = ['', 'text-emerald-400', 'text-green-400', 'text-yellow-400', 'text-orange-400', 'text-red-400'][grade]
                             const gradeBg = ['', 'bg-emerald-500/10 border-emerald-500/20', 'bg-green-500/10 border-green-500/20', 'bg-yellow-500/10 border-yellow-500/20', 'bg-orange-500/10 border-orange-500/20', 'bg-red-500/10 border-red-500/20'][grade]
                             return (
-                            <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-8">
+                            <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-8">
                                 <div className="flex items-start justify-between mb-2">
-                                    <h3 className="text-xl font-bold text-white border-l-4 border-amber-500 pl-4">Condition &amp; Damage</h3>
+                                    <h3 className="text-xl font-bold border-l-4 border-amber-500 pl-4">Condition &amp; Damage</h3>
                                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-bold ${gradeBg} ${gradeColor}`}>
                                         Grade {grade} — {gradeLabel}
                                     </span>
                                 </div>
-                                <p className="text-xs text-gray-500 mb-4 pl-5">{count} zone{count !== 1 ? 's' : ''} marked by seller — click a zone to see details</p>
+                                <p className="text-xs text-[var(--text-muted)] mb-4 pl-5">{count} zone{count !== 1 ? 's' : ''} marked by seller — click a zone to see details</p>
 
                                 {/* WebGL isn't guaranteed on every device (in-app
                                     browsers, low-power mode, older phones) — wrap
@@ -1015,7 +1015,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                         <div className="w-full rounded-2xl border border-white/8 bg-slate-950/80 flex flex-col items-center justify-center gap-2 text-center px-6" style={{ height: 400 }}>
                                             <AlertTriangle className="text-amber-400" size={22} />
                                             <p className="text-sm font-bold text-white">3D preview isn&apos;t available on this device</p>
-                                            <p className="text-xs text-gray-500 max-w-xs">No problem — the damage details are listed below.</p>
+                                            <p className="text-xs text-[var(--text-muted)] max-w-xs">No problem — the damage details are listed below.</p>
                                         </div>
                                     }
                                 >
@@ -1033,16 +1033,16 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                         <button
                                             key={i}
                                             onClick={() => setSelectedDamageZone(prev => prev === record.part ? null : record.part)}
-                                            className={`w-full text-left flex items-start gap-3 p-3 rounded-lg border transition-colors ${selectedDamageZone === record.part ? 'bg-amber-500/10 border-amber-500/30' : 'bg-slate-900/50 border-white/5 hover:border-white/10'}`}
+                                            className={`w-full text-left flex items-start gap-3 p-3 rounded-lg border transition-colors ${selectedDamageZone === record.part ? 'bg-amber-500/10 border-amber-500/30' : 'bg-[var(--bg-input)] border-[var(--border-default)] hover:border-[var(--border-default)]'}`}
                                         >
                                             {record.imageUrl && (
-                                                <div className="relative w-12 h-12 rounded-md overflow-hidden flex-shrink-0 border border-white/10">
+                                                <div className="relative w-12 h-12 rounded-md overflow-hidden flex-shrink-0 border border-[var(--border-default)]">
                                                     <Image src={record.imageUrl} alt={record.part} fill className="object-cover" sizes="48px" />
                                                 </div>
                                             )}
                                             <div className="min-w-0">
                                                 <p className="text-sm font-semibold text-white">{record.part.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}</p>
-                                                <p className="text-xs text-gray-400">{record.type}{record.size ? ` — ${record.size}` : ''}</p>
+                                                <p className="text-xs text-[var(--text-muted)]">{record.type}{record.size ? ` — ${record.size}` : ''}</p>
                                             </div>
                                         </button>
                                     ))}
@@ -1052,7 +1052,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                         })()}
 
                         {/* HPI Report Section */}
-                        <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-6">
+                        <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-6">
                             <div className="flex items-center justify-between gap-4">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
@@ -1060,7 +1060,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                     </div>
                                     <div>
                                         <p className="font-bold text-white text-sm">HPI History Check</p>
-                                        <p className="text-xs text-gray-400">Comprehensive vehicle history report — stolen, finance, write-off & more</p>
+                                        <p className="text-xs text-[var(--text-muted)]">Comprehensive vehicle history report — stolen, finance, write-off & more</p>
                                     </div>
                                 </div>
                                 <button
@@ -1079,12 +1079,12 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                     {/* Right Column: Sticky Sidebar — desktop only */}
                     <div className="lg:col-span-1 hidden lg:block">
                         <div className="sticky top-28 space-y-6">
-                            <div className="bg-slate-800 rounded-xl border border-white/10 overflow-hidden shadow-2xl relative">
+                            <div className="bg-[var(--bg-card)] rounded-xl border border-[var(--border-default)] overflow-hidden shadow-2xl relative">
                             <div className="h-1 bg-primary w-full absolute top-0" />
                             <div className="p-6">
                                 {/* Seller Info Block */}
                                 {listing.seller && (
-                                    <Link href={`/seller/${listing.sellerId}`} className="flex items-center gap-3 mb-6 hover:bg-white/5 p-2 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-white/10 -ml-2 group">
+                                    <Link href={`/seller/${listing.sellerId}`} className="flex items-center gap-3 mb-6 hover:bg-[var(--bg-card)] p-2 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-[var(--border-default)] -ml-2 group">
                                         {listing.seller.role === 'DEALER' && listing.seller.dealerProfile?.logo ? (
                                             <Image src={listing.seller.dealerProfile.logo} alt="Dealer Logo" width={48} height={48} className="w-12 h-12 rounded-full object-cover shrink-0 bg-white" />
                                         ) : listing.seller.profileImage ? (
@@ -1095,7 +1095,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                             </div>
                                         )}
                                         <div className="flex-1">
-                                            <h3 className="font-bold text-white text-[15px] leading-tight group-hover:text-primary transition-colors">
+                                            <h3 className="font-bold text-[15px] leading-tight group-hover:text-primary transition-colors">
                                                 {(listing.seller.role === 'DEALER' ? listing.seller.dealerProfile?.companyName : null) || `${listing.seller.firstName || ''} ${listing.seller.lastName || ''}`.trim() || 'Private Seller'}
                                             </h3>
                                             <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -1126,7 +1126,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                     <div>
                                         <p className="text-xs font-bold text-emerald-400 leading-tight">Verified</p>
                                         {listing.seller?.listingCount != null && (
-                                            <p className="text-[10px] text-gray-500 mt-0.5">
+                                            <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
                                                 {listing.seller.listingCount} active listing{listing.seller.listingCount !== 1 ? 's' : ''}
                                             </p>
                                         )}
@@ -1135,19 +1135,19 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
 
                                 {/* Dealership Info */}
                                 {listing.seller?.role === 'DEALER' && listing.seller?.dealerProfile && (
-                                    <div className="mb-6 space-y-2 text-sm text-gray-300">
+                                    <div className="mb-6 space-y-2 text-sm text-[var(--text-secondary)]">
                                         {listing.seller.dealerProfile.description && (
                                             <p className="line-clamp-3 text-xs">{listing.seller.dealerProfile.description}</p>
                                         )}
                                         <div className="flex flex-col gap-1 pt-2">
                                             {listing.seller.dealerProfile.phone && (
-                                                <a href={`tel:${listing.seller.dealerProfile.phone}`} className="flex items-center gap-2 hover:text-white transition-colors">
-                                                    <Phone size={14} className="text-gray-500" /> {listing.seller.dealerProfile.phone}
+                                                <a href={`tel:${listing.seller.dealerProfile.phone}`} className="flex items-center gap-2 hover:text-primary dark:hover:text-white transition-colors">
+                                                    <Phone size={14} className="text-[var(--text-muted)]" /> {listing.seller.dealerProfile.phone}
                                                 </a>
                                             )}
                                             {listing.seller.dealerProfile.website && (
-                                                <a href={listing.seller.dealerProfile.website} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-white transition-colors">
-                                                    <Globe size={14} className="text-gray-500" /> Visit Website
+                                                <a href={listing.seller.dealerProfile.website} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-primary dark:hover:text-white transition-colors">
+                                                    <Globe size={14} className="text-[var(--text-muted)]" /> Visit Website
                                                 </a>
                                             )}
                                         </div>
@@ -1158,12 +1158,12 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                     <>
                                         <div className="mb-6 p-6 rounded-xl border-2 border-red-500/30 bg-red-500/10 text-center relative overflow-hidden">
                                             <span className="block text-4xl font-black text-red-500 tracking-tighter mb-1">SOLD</span>
-                                            <p className="text-gray-400 text-xs font-medium uppercase tracking-widest">This vehicle is no longer available</p>
+                                            <p className="text-[var(--text-muted)] text-xs font-medium uppercase tracking-widest">This vehicle is no longer available</p>
                                         </div>
-                                        <div className="bg-slate-800/80 border-2 border-red-500/30 rounded-2xl p-6 text-center">
+                                        <div className="bg-[var(--bg-card)] border-2 border-red-500/30 rounded-2xl p-6 text-center">
                                             <XCircle size={48} className="text-red-500 mx-auto mb-3 opacity-80" />
-                                            <h3 className="text-xl font-black text-white uppercase tracking-tight mb-1">Vehicle Sold</h3>
-                                            <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">This listing is closed</p>
+                                            <h3 className="text-xl font-black uppercase tracking-tight mb-1">Vehicle Sold</h3>
+                                            <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest">This listing is closed</p>
                                         </div>
                                     </>
                                 ) : (
@@ -1176,7 +1176,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                                 <Gavel size={16} className="text-amber-400 shrink-0" />
                                                 <div className="flex-1 min-w-0">
                                                     <div className="text-amber-300 font-bold text-xs uppercase tracking-wide">Also in Live Auction</div>
-                                                    <div className="text-[11px] text-gray-400 mt-0.5">
+                                                    <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
                                                         Closes {new Date(listing.linkedListing.auction.endTime).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                                     </div>
                                                 </div>
@@ -1187,23 +1187,23 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                             {/* Policies tooltip */}
                                             <div className="flex items-center gap-1.5 mb-3">
                                                 <span className="relative group/policy inline-flex items-center cursor-help">
-                                                    <Info size={14} className="text-gray-500 group-hover/policy:text-blue-400 transition-colors" />
-                                                    <span className="absolute bottom-full -left-2 mb-2 w-56 rounded-lg bg-slate-800 border border-white/10 px-3 py-2.5 text-xs text-gray-300 leading-relaxed shadow-xl opacity-0 invisible group-hover/policy:opacity-100 group-hover/policy:visible transition-all duration-200 z-50 pointer-events-none">
-                                                        <span className="font-bold text-white block mb-1">Policies:</span>
+                                                    <Info size={14} className="text-[var(--text-muted)] group-hover/policy:text-blue-400 transition-colors" />
+                                                    <span className="absolute bottom-full -left-2 mb-2 w-56 rounded-lg bg-[var(--bg-card)] border border-[var(--border-default)] px-3 py-2.5 text-xs text-[var(--text-secondary)] leading-relaxed shadow-xl opacity-0 invisible group-hover/policy:opacity-100 group-hover/policy:visible transition-all duration-200 z-50 pointer-events-none">
+                                                        <span className="font-bold text-[var(--text-primary)] block mb-1">Policies:</span>
                                                         Payment will not be made on our platform.
                                                         <span className="absolute top-full left-3 -mt-px border-4 border-transparent border-t-slate-800" />
                                                     </span>
                                                 </span>
-                                                <span className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Policies</span>
+                                                <span className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wider">Policies</span>
                                             </div>
                                             <div>
-                                                <div className="text-4xl font-bold text-white mb-2">{formatPrice(listing.price)}</div>
+                                                <div className="text-4xl font-bold mb-2">{formatPrice(listing.price)}</div>
                                                 <span className="inline-block text-[10px] font-bold uppercase tracking-wide bg-primary/10 text-primary border border-primary/30 px-2.5 py-1 rounded-full mb-4">
                                                     Offers Welcome
                                                 </span>
                                             </div>
-                                            <p className="text-xs text-gray-400 mt-3">Price includes VAT. Financing available from 19% APR.</p>
-                                            <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+                                            <p className="text-xs text-[var(--text-muted)] mt-3">Price includes VAT. Financing available from 19% APR.</p>
+                                            <p className="text-xs text-[var(--text-muted)] mt-2 flex items-center gap-1">
                                                 <Clock size={12} /> Listed on {new Date(listing.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                                             </p>
                                         </div>
@@ -1232,7 +1232,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                                                 ? '✓ Offer Accepted'
                                                                 : 'Make an Offer'}
                                                     </Button>
-                                                    <Button variant="outline" className="w-full py-6 text-lg border-white/20 text-white hover:bg-white/10" onClick={handleEnquire} disabled={enquiring}>
+                                                    <Button variant="outline" className="w-full py-6 text-lg border-[var(--border-default)] hover:bg-primary/5 dark:hover:bg-white/10" onClick={handleEnquire} disabled={enquiring}>
                                                         {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2" />Starting Chat...</> : <><MessageCircle className="w-5 h-5 mr-2" />Enquire</>}
                                                     </Button>
                                                 </>
@@ -1244,9 +1244,9 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                          listing.auction?.status === 'ACTIVE' &&
                                          listing.auction?.buyItNowPrice &&
                                          !reserveMet && (
-                                            <div className="rounded-xl border border-primary/40 bg-slate-900/60 p-4 mt-4">
-                                                <p className="text-xs text-slate-400 mb-1 uppercase tracking-wide">Buy It Now</p>
-                                                <p className="text-2xl font-mono font-bold text-white mb-3">
+                                            <div className="rounded-xl border border-primary/40 bg-[var(--bg-input)] p-4 mt-4">
+                                                <p className="text-xs text-[var(--text-muted)] mb-1 uppercase tracking-wide">Buy It Now</p>
+                                                <p className="text-2xl font-mono font-bold text-[var(--text-primary)] mb-3">
                                                     £{Number(listing.auction.buyItNowPrice).toLocaleString('en-GB')}
                                                 </p>
                                                 <button
@@ -1255,7 +1255,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                                 >
                                                     Buy Now
                                                 </button>
-                                                <p className="text-xs text-slate-500 mt-2 text-center">Seller must confirm within 24h</p>
+                                                <p className="text-xs text-[var(--text-muted)] mt-2 text-center">Seller must confirm within 24h</p>
                                             </div>
                                         )}
 
@@ -1275,12 +1275,12 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                             const feeIncVat = feeExVat != null ? Math.round(feeExVat * 1.2) : null
 
                                             return isOutsideRadius ? (
-                                                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 opacity-60 space-y-1 mt-4">
+                                                <div className="rounded-xl border border-[var(--border-default)] bg-white/[0.03] p-4 opacity-60 space-y-1 mt-4">
                                                     <div className="flex items-center gap-2">
-                                                        <Truck size={16} className="text-gray-500" />
-                                                        <span className="text-sm font-semibold text-gray-400">Delivery not available to your location</span>
+                                                        <Truck size={16} className="text-[var(--text-muted)]" />
+                                                        <span className="text-sm font-semibold text-[var(--text-muted)]">Delivery not available to your location</span>
                                                     </div>
-                                                    <p className="text-xs text-gray-500">Outside the seller&apos;s {listing.deliveryMaxMiles}-mile radius</p>
+                                                    <p className="text-xs text-[var(--text-muted)]">Outside the seller&apos;s {listing.deliveryMaxMiles}-mile radius</p>
                                                 </div>
                                             ) : (
                                                 <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 space-y-2 mt-4">
@@ -1288,18 +1288,18 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                                         <Truck size={16} className="text-emerald-400" />
                                                         <span className="text-sm font-semibold text-emerald-300">Delivery available</span>
                                                         {feeIncVat != null && (
-                                                            <span className="ml-auto text-white font-bold text-sm">£{feeIncVat} <span className="text-gray-400 text-[11px] font-normal">inc. VAT</span></span>
+                                                            <span className="ml-auto text-white font-bold text-sm">£{feeIncVat} <span className="text-[var(--text-muted)] text-[11px] font-normal">inc. VAT</span></span>
                                                         )}
                                                     </div>
                                                     {feeExVat != null ? (
-                                                        <p className="text-xs text-gray-400">
+                                                        <p className="text-xs text-[var(--text-muted)]">
                                                             Estimated delivery: £{Math.round(feeExVat)} ex. VAT · {miles != null ? `${Math.round(miles)} miles` : ''} · Request after making an offer
                                                         </p>
                                                     ) : (
-                                                        <p className="text-xs text-gray-400">Enter your postcode to see a delivery quote · Request after making an offer</p>
+                                                        <p className="text-xs text-[var(--text-muted)]">Enter your postcode to see a delivery quote · Request after making an offer</p>
                                                     )}
                                                     {listing.deliveryMaxMiles && (
-                                                        <p className="text-xs text-gray-500">Max radius: {listing.deliveryMaxMiles} miles</p>
+                                                        <p className="text-xs text-[var(--text-muted)]">Max radius: {listing.deliveryMaxMiles} miles</p>
                                                     )}
                                                 </div>
                                             )
@@ -1309,7 +1309,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                             </div>
 
                             {/* Location Display */}
-                            <div className="bg-white/5 p-4 flex items-center justify-center gap-2 text-gray-400 text-xs">
+                            <div className="bg-[var(--bg-card)] p-4 flex items-center justify-center gap-2 text-[var(--text-muted)] text-xs">
                                 <MapPin size={14} />
                                 <span>
                                     {listing.location || 'Location not specified'}
@@ -1326,7 +1326,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
             </div>
 
             {/* Mobile sticky action bar — lg:hidden */}
-            <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-slate-900/95 backdrop-blur-md border-t border-white/10 p-3 pb-[env(safe-area-inset-bottom)]">
+            <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-slate-900/95 backdrop-blur-md border-t border-[var(--border-default)] p-3 pb-[env(safe-area-inset-bottom)]">
                 <div className="flex items-center gap-2">
                     <Button
                         className="flex-1 py-5"
@@ -1337,7 +1337,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                     <Button
                         variant="outline"
                         size="icon"
-                        className="h-11 w-11 shrink-0 border-white/10 text-gray-400"
+                        className="h-11 w-11 shrink-0 border-[var(--border-default)] text-[var(--text-muted)]"
                         onClick={handleEnquire}
                         title="Enquire"
                     >
@@ -1346,7 +1346,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                     <Button
                         variant="outline"
                         size="icon"
-                        className={`h-11 w-11 shrink-0 transition-all ${isWatchlisted ? 'text-red-400 border-red-500/40 bg-red-500/10' : 'border-white/10 text-gray-400'}`}
+                        className={`h-11 w-11 shrink-0 transition-all ${isWatchlisted ? 'text-red-400 border-red-500/40 bg-red-500/10' : 'border-[var(--border-default)] text-[var(--text-muted)]'}`}
                         onClick={handleWatchlist}
                         title="Save"
                     >
@@ -1355,7 +1355,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                     <Button
                         variant="outline"
                         size="icon"
-                        className="h-11 w-11 shrink-0 border-white/10 text-gray-400"
+                        className="h-11 w-11 shrink-0 border-[var(--border-default)] text-[var(--text-muted)]"
                         onClick={handleShare}
                         title="Share"
                     >
@@ -1364,7 +1364,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                     <Button
                         variant="outline"
                         size="icon"
-                        className="h-11 w-11 shrink-0 border-white/10 text-gray-400"
+                        className="h-11 w-11 shrink-0 border-[var(--border-default)] text-[var(--text-muted)]"
                         onClick={handleCompareAndNavigate}
                         title="Compare"
                     >
@@ -1379,7 +1379,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
 export default function VehicleDetailsPage({ params }: { params: Promise<{ slug: string }> }) {
     return (
         <React.Suspense fallback={
-            <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+            <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="w-10 h-10 text-primary animate-spin" />
             </div>
         }>

@@ -138,7 +138,7 @@ function LoadingScreen() {
     <Html center>
       <div className="flex flex-col items-center gap-3 text-white">
         <Loader2 size={28} className="animate-spin text-primary" />
-        <span className="text-sm font-medium text-gray-300">
+        <span className="text-sm font-medium text-[var(--text-secondary)]">
           Loading model… {Math.round(progress)}%
         </span>
         <div className="w-32 h-1 rounded-full bg-white/10 overflow-hidden">

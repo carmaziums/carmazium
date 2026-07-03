@@ -42,7 +42,7 @@ export function OfferDonutChart({
     if (loading) {
         return (
             <div className="dealer-glass-card p-6">
-                <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-6">{title}</h3>
+                <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-6">{title}</h3>
                 <div className="flex items-center justify-center py-8">
                     <div className="w-44 h-44 rounded-full bg-white/[0.02] animate-pulse" />
                 </div>
@@ -85,7 +85,7 @@ export function OfferDonutChart({
 
     return (
         <div className="dealer-glass-card p-6">
-            <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-6">{title}</h3>
+            <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-6">{title}</h3>
 
             <div className="flex flex-col items-center">
                 {/* Donut */}
@@ -125,11 +125,11 @@ export function OfferDonutChart({
                     {/* Center text */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                         <span className="text-3xl font-black metallic-foil leading-none">{total}</span>
-                        <span className="text-xs font-bold uppercase tracking-widest text-gray-500 mt-1">Total Offers</span>
+                        <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] mt-1">Total Offers</span>
                         <span className={`text-lg font-black leading-none mt-1 ${convRate >= 30 ? 'text-emerald-400' : convRate >= 15 ? 'text-amber-400' : 'text-red-400'}`}>
                             {convRate}%
                         </span>
-                        <span className="text-[8px] font-bold uppercase tracking-widest text-gray-600">Win Rate</span>
+                        <span className="text-[8px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Win Rate</span>
                     </div>
                 </div>
 
@@ -139,7 +139,7 @@ export function OfferDonutChart({
                         <div
                             key={arc.key}
                             className={`flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-all ${
-                                hoveredSegment === arc.key ? 'bg-white/5' : ''
+                                hoveredSegment === arc.key ? 'bg-[var(--bg-card)]' : ''
                             }`}
                             onMouseEnter={() => setHoveredSegment(arc.key)}
                             onMouseLeave={() => setHoveredSegment(null)}
@@ -149,23 +149,23 @@ export function OfferDonutChart({
                                     className="w-2.5 h-2.5 rounded-full shrink-0"
                                     style={{ backgroundColor: arc.color }}
                                 />
-                                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">{arc.label}</span>
+                                <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">{arc.label}</span>
                             </div>
-                            <span className="text-[11px] font-black text-white tabular-nums">{arc.count}</span>
+                            <span className="text-[11px] font-black tabular-nums" style={{ color: 'var(--text-primary)' }}>{arc.count}</span>
                         </div>
                     ))}
                 </div>
 
                 {/* Avg Stats */}
-                <div className="flex items-center gap-4 mt-5 pt-5 border-t border-white/5 w-full">
+                <div className="flex items-center gap-4 mt-5 pt-5 border-t border-[var(--border-default)] w-full">
                     <div className="flex-1 text-center">
-                        <p className="text-lg font-black text-white leading-none">{formatCurrency(data.avgAcceptedAmount)}</p>
-                        <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mt-1">Avg Accepted</p>
+                        <p className="text-lg font-black leading-none" style={{ color: 'var(--text-primary)' }}>{formatCurrency(data.avgAcceptedAmount)}</p>
+                        <p className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] mt-1">Avg Accepted</p>
                     </div>
                     <div className="w-px h-10 bg-white/10" />
                     <div className="flex-1 text-center">
-                        <p className="text-lg font-black text-white leading-none">{data.avgTimeToRespond}h</p>
-                        <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mt-1">Avg Response</p>
+                        <p className="text-lg font-black leading-none" style={{ color: 'var(--text-primary)' }}>{data.avgTimeToRespond}h</p>
+                        <p className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] mt-1">Avg Response</p>
                     </div>
                 </div>
             </div>

@@ -36,20 +36,20 @@ export function MetricCard({
                     <Icon size={18} className={color} />
                 </div>
                 {statusLabel && (
-                    <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+                    <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">
                         {statusLabel}
                     </span>
                 )}
             </div>
-            <h3 className={`text-3xl font-black font-heading text-white relative z-10 ${foilValue ? "metallic-foil" : ""}`}>
+            <h3 className={`text-3xl font-black font-heading relative z-10 ${foilValue ? "metallic-foil" : ""}`} style={!foilValue ? { color: 'var(--text-primary)' } : undefined}>
                 {loading ? "..." : value}
             </h3>
             {subLabel && (
-                <p className="text-gray-500 text-xs mt-0.5 uppercase tracking-widest font-bold relative z-10">
+                <p className="text-[var(--text-muted)] text-xs mt-0.5 uppercase tracking-widest font-bold relative z-10">
                     {subLabel}
                 </p>
             )}
-            <p className="text-gray-400 text-xs mt-1 uppercase tracking-widest font-bold relative z-10">{label}</p>
+            <p className="text-[var(--text-muted)] text-xs mt-1 uppercase tracking-widest font-bold relative z-10">{label}</p>
             {/* Synthetic Sparkline */}
             <svg className="absolute bottom-0 left-0 w-full h-12 opacity-20 pointer-events-none" preserveAspectRatio="none" viewBox="0 0 100 100">
                 <path d="M0,100 L0,80 Q25,90 50,70 T100,50 L100,100 Z" fill="currentColor" className={color} />
@@ -59,7 +59,7 @@ export function MetricCard({
 
     if (href) {
         return (
-            <Link href={href} className={`dealer-glass-card p-6 relative overflow-hidden group block hover:border-white/20 transition-colors cursor-pointer`}>
+            <Link href={href} className={`dealer-glass-card p-6 relative overflow-hidden group block hover:border-primary/30 transition-colors cursor-pointer`}>
                 {inner}
             </Link>
         )

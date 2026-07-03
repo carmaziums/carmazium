@@ -16,7 +16,7 @@ const ThreeDVehicleViewer = dynamic<ThreeDVehicleViewerProps>(
     ssr: false,
     loading: () => (
       <div className="w-full rounded-2xl border border-white/8 bg-slate-950/80 flex items-center justify-center" style={{ height: 380 }}>
-        <p className="text-gray-500 text-sm">Loading 3D model…</p>
+        <p className="text-[var(--text-muted)] text-sm">Loading 3D model…</p>
       </div>
     ),
   }
@@ -195,16 +195,16 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
           <span className={`text-2xl font-black ${gm.color}`}>{grade}</span>
           <div>
             <p className={`text-sm font-bold ${gm.color}`}>{gm.label}</p>
-            <p className="text-[11px] text-gray-400">{gm.desc}</p>
+            <p className="text-[11px] text-[var(--text-muted)]">{gm.desc}</p>
           </div>
         </div>
-        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">{records.length} zone{records.length !== 1 ? 's' : ''} marked</span>
+        <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wide">{records.length} zone{records.length !== 1 ? 's' : ''} marked</span>
       </div>
 
       {/* Instruction banner */}
       <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
         <p className="text-xs font-bold text-blue-300 mb-0.5">How to mark damage</p>
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-[var(--text-muted)]">
           Rotate the 3D model to inspect all angles. Click any <span className="text-white font-bold">+</span> hotspot
           on the vehicle to mark a damage zone, then describe it and optionally add a photo.
           You can also click any zone in the list below the model.
@@ -213,7 +213,7 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
 
       {/* Body type override (in case wizard didn't pass one) */}
       <div className="space-y-2">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Vehicle Type</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Vehicle Type</p>
         <div className="flex gap-2">
           {BODY_TYPES.map(bt => (
             <button
@@ -222,8 +222,8 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
               onClick={() => setBodyType(bt)}
               className={`flex-1 py-2 rounded-xl border text-xs font-bold transition-all ${
                 bodyType === bt
-                  ? "border-primary bg-primary/10 text-white"
-                  : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"
               }`}
             >
               {BODY_TYPE_LABELS[bt]}
@@ -243,8 +243,8 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
             style={{ height: 400 }}
           >
             <AlertTriangle className="text-amber-400" size={22} />
-            <p className="text-sm font-bold text-white">3D preview isn&apos;t available on this device</p>
-            <p className="text-xs text-gray-500 max-w-xs">No problem — just pick the damaged area from the list below to mark it.</p>
+            <p className="text-sm font-bold">3D preview isn&apos;t available on this device</p>
+            <p className="text-xs text-[var(--text-muted)] max-w-xs">No problem — just pick the damaged area from the list below to mark it.</p>
           </div>
         }
       >
@@ -286,7 +286,7 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
         const groupZones = ALL_ZONES.filter(z => group.ids.includes(z.id))
         return (
           <div key={group.label} className="space-y-1">
-            <p className="text-[9px] font-bold uppercase tracking-widest text-gray-600 pt-1">{group.label}</p>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-secondary)] pt-1">{group.label}</p>
             <div className="grid grid-cols-2 gap-1">
               {groupZones.map(z => {
                 const isMarked = records.some(r => r.zone === z.id)
@@ -297,10 +297,10 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
                     onClick={() => handleZoneClick(z.id)}
                     className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[10px] border cursor-pointer transition-colors ${
                       isSelected
-                        ? "bg-primary/15 border-primary/40 text-white"
+                        ? "bg-primary/15 border-primary/40 text-primary"
                         : isMarked
                           ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
-                          : "bg-slate-800/30 border-white/5 text-gray-500 hover:border-white/15 hover:text-gray-300"
+                          : "bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/20 hover:text-[var(--text-secondary)]"
                     }`}
                   >
                     <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSelected ? "bg-primary" : isMarked ? "bg-amber-400" : "bg-gray-600"}`} />
@@ -315,7 +315,7 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
 
       {/* Custom area input */}
       <div className="space-y-1.5">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Other Damage Area</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Other Damage Area</p>
         <div className="flex gap-2">
           <input
             type="text"
@@ -323,7 +323,7 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
             value={customZoneInput}
             onChange={e => setCustomZoneInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleCustomZone()}
-            className="flex-1 rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-primary focus:outline-none"
+            className="flex-1 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm placeholder:text-[var(--text-secondary)] focus:border-primary focus:outline-none"
             maxLength={80}
           />
           <button
@@ -335,7 +335,7 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
             Mark
           </button>
         </div>
-        <p className="text-[10px] text-gray-600">
+        <p className="text-[10px] text-[var(--text-secondary)]">
           Not in the list above? Type any area and press Mark to describe the damage.
         </p>
       </div>
@@ -350,28 +350,28 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
                 Marking: <span className="text-primary">{pendingZone.label}</span>
               </p>
             </div>
-            <button type="button" onClick={() => { setPendingZoneId(null); setCustomZoneInput(''); setPendingCustomLabel('') }} className="text-gray-500 hover:text-white">
+            <button type="button" onClick={() => { setPendingZoneId(null); setCustomZoneInput(''); setPendingCustomLabel('') }} className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white">
               <X size={15} />
             </button>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Damage Description *</label>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Damage Description *</label>
             <textarea
               value={pendingDesc}
               onChange={e => setPendingDesc(e.target.value)}
               placeholder="e.g. Deep scratch approx 10cm, paint chipped to metal…"
               rows={3}
-              className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:border-primary focus:outline-none resize-none"
+              className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-4 py-3 text-sm placeholder:text-[var(--text-secondary)] focus:border-primary focus:outline-none resize-none"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Close-up Photo (optional)</label>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Close-up Photo (optional)</label>
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
             {pendingPhoto ? (
               <div className="relative inline-block">
-                <Image src={pendingPhoto} alt="damage" width={120} height={90} className="rounded-xl object-cover border border-white/10" />
+                <Image src={pendingPhoto} alt="damage" width={120} height={90} className="rounded-xl object-cover border border-[var(--border-default)]" />
                 <button
                   type="button"
                   onClick={() => setPendingPhoto(undefined)}
@@ -385,7 +385,7 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-white/20 text-gray-400 hover:border-white/40 hover:text-white transition-all text-sm"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-white/20 text-[var(--text-muted)] hover:border-white/40 hover:text-white transition-all text-sm"
               >
                 {uploading
                   ? <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -412,30 +412,30 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <CheckCircle2 size={15} className="text-amber-400" />
-            <p className="text-sm font-bold text-white">
+            <p className="text-sm font-bold">
               {records.length} damage area{records.length !== 1 ? "s" : ""} recorded
             </p>
           </div>
           <div className="space-y-2">
             {records.map(rec => (
-              <div key={rec.id} className="flex items-start gap-3 p-3 rounded-xl bg-slate-800/50 border border-white/5">
+              <div key={rec.id} className="flex items-start gap-3 p-3 rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)]">
                 {rec.photoUrl && (
                   <Image
                     src={rec.photoUrl}
                     alt=""
                     width={56}
                     height={42}
-                    className="rounded-lg object-cover shrink-0 border border-white/10"
+                    className="rounded-lg object-cover shrink-0 border border-[var(--border-default)]"
                   />
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold text-amber-300">{zoneLabel(rec.zone)}</p>
-                  <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{rec.description}</p>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5 line-clamp-2">{rec.description}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => removeRecord(rec.id)}
-                  className="text-gray-600 hover:text-red-400 transition-colors shrink-0"
+                  className="text-[var(--text-secondary)] hover:text-red-400 transition-colors shrink-0"
                 >
                   <Trash2 size={13} />
                 </button>

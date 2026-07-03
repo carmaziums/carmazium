@@ -18,7 +18,7 @@ function StatusBadge({ status }: { status: Offer['status'] }) {
         PENDING: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
         ACCEPTED: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
         REJECTED: 'bg-red-500/15 text-red-300 border-red-500/30',
-        WITHDRAWN: 'bg-gray-500/15 text-gray-400 border-gray-500/30',
+        WITHDRAWN: 'bg-gray-500/15 text-[var(--text-muted)] border-gray-500/30',
         COUNTERED: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
     }
     const icons: Record<string, React.ReactNode> = {
@@ -68,7 +68,7 @@ function StatusDeliveryBadge({ status }: { status: DeliveryStatus }) {
         PENDING: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
         ACCEPTED: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
         DECLINED: 'bg-red-500/15 text-red-300 border-red-500/30',
-        CANCELLED: 'bg-gray-500/15 text-gray-400 border-gray-500/30',
+        CANCELLED: 'bg-gray-500/15 text-[var(--text-muted)] border-gray-500/30',
         COMPLETED: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
     }
     const labels: Record<DeliveryStatus, string> = {
@@ -183,7 +183,7 @@ function DeliveryRequestForm({ listing, onSuccess }: { listing: DeliveryFormList
 
     return (
         <form onSubmit={handleSubmit} className="space-y-2 mt-2">
-            <p className="text-xs font-bold text-gray-300 flex items-center gap-1.5"><Truck size={12} /> Delivery Request</p>
+            <p className="text-xs font-bold text-[var(--text-secondary)] flex items-center gap-1.5"><Truck size={12} /> Delivery Request</p>
             {formError && (
                 <p className="text-xs text-red-400">{formError}</p>
             )}
@@ -194,7 +194,7 @@ function DeliveryRequestForm({ listing, onSuccess }: { listing: DeliveryFormList
                         placeholder="Street address"
                         value={street}
                         onChange={(e) => setStreet(e.target.value)}
-                        className="w-full bg-slate-800 border border-white/15 text-white text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-primary/50 placeholder:text-gray-600 transition-colors"
+                        className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-primary/50 placeholder:text-[var(--text-secondary)] transition-colors"
                     />
                 </div>
                 <input
@@ -202,7 +202,7 @@ function DeliveryRequestForm({ listing, onSuccess }: { listing: DeliveryFormList
                     placeholder="City"
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
-                    className="bg-slate-800 border border-white/15 text-white text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-primary/50 placeholder:text-gray-600 transition-colors"
+                    className="bg-[var(--bg-input)] border border-[var(--border-default)] text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-primary/50 placeholder:text-[var(--text-secondary)] transition-colors"
                 />
                 <div>
                     <input
@@ -210,7 +210,7 @@ function DeliveryRequestForm({ listing, onSuccess }: { listing: DeliveryFormList
                         placeholder="Postcode"
                         value={postcode}
                         onChange={(e) => handlePostcodeChange(e.target.value)}
-                        className="w-full bg-slate-800 border border-white/15 text-white text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-primary/50 placeholder:text-gray-600 transition-colors uppercase"
+                        className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-primary/50 placeholder:text-[var(--text-secondary)] transition-colors uppercase"
                     />
                     {postcodeError && <p className="text-xs text-red-400 mt-0.5">{postcodeError}</p>}
                     {outsideRadius && (
@@ -226,7 +226,7 @@ function DeliveryRequestForm({ listing, onSuccess }: { listing: DeliveryFormList
                         </p>
                     )}
                     {!costPreview && !postcodeError && postcode.length >= 3 && (
-                        <p className="text-xs text-gray-500 mt-0.5">Estimating cost...</p>
+                        <p className="text-xs text-[var(--text-muted)] mt-0.5">Estimating cost...</p>
                     )}
                 </div>
                 <div className="col-span-2">
@@ -235,7 +235,7 @@ function DeliveryRequestForm({ listing, onSuccess }: { listing: DeliveryFormList
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
                         rows={2}
-                        className="w-full bg-slate-800 border border-white/15 text-white text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-primary/50 placeholder:text-gray-600 transition-colors resize-none"
+                        className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-primary/50 placeholder:text-[var(--text-secondary)] transition-colors resize-none"
                     />
                 </div>
             </div>
@@ -251,7 +251,7 @@ function DeliveryRequestForm({ listing, onSuccess }: { listing: DeliveryFormList
                 <button
                     type="button"
                     onClick={() => setShowForm(false)}
-                    className="text-xs text-gray-400 hover:text-white transition-colors"
+                    className="text-xs text-[var(--text-muted)] hover:text-white transition-colors"
                 >
                     Cancel
                 </button>
@@ -377,7 +377,7 @@ export default function BuyerOffersPage() {
 
     if (authLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+            <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
             </div>
         )
@@ -386,14 +386,14 @@ export default function BuyerOffersPage() {
     const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "User")
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900">
+        <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="buyer" userName={userName} userType={profile?.role ? `${profile.role} Account` : "Buyer Account"} />
                 <main className="flex-1 space-y-6">
 
                     {/* ── Header ─────────────────────────────────── */}
                     <div className="flex justify-between items-center mb-6">
-                        <h1 className="text-3xl font-bold font-heading text-white flex items-center gap-3">
+                        <h1 className="text-3xl font-bold font-heading flex items-center gap-3">
                             <Tag className="text-primary" size={28} /> My Offers
                         </h1>
                         <Link href="/search" className="bg-primary text-white font-bold py-2.5 px-6 rounded-lg shadow-neon hover:scale-105 transition-all flex items-center gap-2">
@@ -413,7 +413,7 @@ export default function BuyerOffersPage() {
                     <div className="glass-card overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
-                                <thead className="bg-slate-800/80 text-gray-400 text-xs uppercase font-bold tracking-wider">
+                                <thead className="bg-[var(--bg-input)] text-[var(--text-muted)] text-xs uppercase font-bold tracking-wider">
                                     <tr>
                                         <th className="px-6 py-5">Vehicle</th>
                                         <th className="px-6 py-5">Status</th>
@@ -422,22 +422,22 @@ export default function BuyerOffersPage() {
                                         <th className="px-6 py-5 text-right">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-white/5 text-white">
+                                <tbody className="divide-y divide-[var(--border-default)]">
                                     {loading ? (
                                         <tr>
                                             <td colSpan={5} className="px-6 py-16 text-center">
                                                 <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
-                                                <p className="text-gray-400 font-medium">Loading offers...</p>
+                                                <p className="text-[var(--text-muted)] font-medium">Loading offers...</p>
                                             </td>
                                         </tr>
                                     ) : offers.length === 0 && !error ? (
                                         <tr>
                                             <td colSpan={5} className="px-6 py-16 text-center">
-                                                <Tag className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                                                <h2 className="text-xl font-bold text-white mb-2">No Offers Yet</h2>
-                                                <p className="text-gray-400 mb-6 text-sm">Browse listings with offer ranges and make your first offer.</p>
+                                                <Tag className="w-12 h-12 text-[var(--text-secondary)] mx-auto mb-4" />
+                                                <h2 className="text-xl font-bold mb-2">No Offers Yet</h2>
+                                                <p className="text-[var(--text-muted)] mb-6 text-sm">Browse listings with offer ranges and make your first offer.</p>
                                                 <Link href="/search">
-                                                    <button className="bg-white/10 text-white border border-white/20 font-bold px-6 py-2.5 rounded-lg hover:bg-white/20 transition-colors">
+                                                    <button className="bg-[var(--bg-card)] border border-[var(--border-default)] font-bold px-6 py-2.5 rounded-lg hover:bg-[var(--bg-card-hover)] transition-colors">
                                                         Browse Cars
                                                     </button>
                                                 </Link>
@@ -459,18 +459,18 @@ export default function BuyerOffersPage() {
 
                                             return (
                                                 <React.Fragment key={offer.id}>
-                                                    <tr className="hover:bg-white/5 transition-colors group">
+                                                    <tr className="hover:bg-[var(--bg-card)] transition-colors group">
                                                         {/* Vehicle */}
                                                         <td className="px-6 py-5">
                                                             <div className="flex items-center gap-4">
-                                                                <Link href={`/buy-cars/${slug}`} className="shrink-0 relative w-16 h-12 rounded object-cover overflow-hidden bg-slate-800 border border-white/10 group-hover:border-primary/50 transition-colors">
+                                                                <Link href={`/buy-cars/${slug}`} className="shrink-0 relative w-16 h-12 rounded object-cover overflow-hidden bg-[var(--bg-input)] border border-[var(--border-default)] group-hover:border-primary/50 transition-colors">
                                                                     <Image src={image} alt={listing?.title ?? ""} fill className="object-cover" />
                                                                 </Link>
                                                                 <div>
-                                                                    <Link href={`/buy-cars/${slug}`} className="font-bold text-white text-[15px] hover:text-primary transition-colors block mb-1">
+                                                                    <Link href={`/buy-cars/${slug}`} className="font-bold text-[15px] hover:text-primary transition-colors block mb-1">
                                                                         {listing?.title ?? "Listing"}
                                                                     </Link>
-                                                                    <div className="text-xs text-gray-400">
+                                                                    <div className="text-xs text-[var(--text-muted)]">
                                                                         {listing?.year} • {listing?.make} {listing?.model}
                                                                     </div>
                                                                 </div>
@@ -484,7 +484,7 @@ export default function BuyerOffersPage() {
 
                                                         {/* Offer Amount */}
                                                         <td className="px-6 py-5">
-                                                            <div className="font-mono text-lg font-bold text-white mb-1">
+                                                            <div className="font-mono text-lg font-bold mb-1">
                                                                 £{Number(offer.status === 'ACCEPTED' ? (offer.finalAmount ?? offer.counterAmount ?? offer.amount) : offer.amount).toLocaleString('en-GB')}
                                                             </div>
                                                             {offer.status === 'ACCEPTED' && (
@@ -498,7 +498,7 @@ export default function BuyerOffersPage() {
                                                                 </div>
                                                             )}
                                                             {listing?.price && (
-                                                                <div className="text-xs text-gray-500 uppercase tracking-widest font-semibold mt-0.5">
+                                                                <div className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-semibold mt-0.5">
                                                                     ASKING: £{Number(listing.price).toLocaleString('en-GB')}
                                                                 </div>
                                                             )}
@@ -506,10 +506,10 @@ export default function BuyerOffersPage() {
 
                                                         {/* Date */}
                                                         <td className="px-6 py-5">
-                                                            <div className="text-sm font-medium text-white">
+                                                            <div className="text-sm font-medium">
                                                                 {new Date(offer.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                                                             </div>
-                                                            <div className="text-xs text-gray-500 mt-1">
+                                                            <div className="text-xs text-[var(--text-muted)] mt-1">
                                                                 {new Date(offer.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                                                             </div>
                                                         </td>
@@ -557,7 +557,7 @@ export default function BuyerOffersPage() {
                                                                 >
                                                                     {startingChat === offer.listing?.id ? <Loader2 size={16} className="animate-spin" /> : "Message"}
                                                                 </button>
-                                                                <Link href={`/buy-cars/${slug}`} className="inline-flex items-center justify-center w-10 h-10 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]" title="View Listing">
+                                                                <Link href={`/buy-cars/${slug}`} className="inline-flex items-center justify-center w-10 h-10 text-[var(--text-muted)] hover:text-white hover:bg-white/10 rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]" title="View Listing">
                                                                     <Eye size={18} />
                                                                 </Link>
                                                             </div>
@@ -566,15 +566,15 @@ export default function BuyerOffersPage() {
 
                                                     {/* Delivery section row */}
                                                     {listing?.deliveryAvailable && (
-                                                        <tr className="bg-slate-800/30">
-                                                            <td colSpan={5} className="px-6 py-3 border-t border-white/5">
+                                                        <tr className="bg-[var(--bg-input)]">
+                                                            <td colSpan={5} className="px-6 py-3 border-t border-[var(--border-default)]">
                                                                 {deliveryReq && deliveryReq.status !== 'DECLINED' && deliveryReq.status !== 'CANCELLED' ? (
                                                                     <div className="flex items-center justify-between">
                                                                         <StatusDeliveryBadge status={deliveryReq.status} />
                                                                         {deliveryReq.status === 'PENDING' && (
                                                                             <button
                                                                                 onClick={() => handleCancelDelivery(deliveryReq.id)}
-                                                                                className="text-xs text-gray-400 hover:text-white transition-colors underline"
+                                                                                className="text-xs text-[var(--text-muted)] hover:text-white transition-colors underline"
                                                                             >
                                                                                 Cancel request
                                                                             </button>

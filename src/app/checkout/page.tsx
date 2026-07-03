@@ -139,7 +139,7 @@ function CheckoutContent() {
                     <Link href={`/vehicle/${listing.slug}`} className="inline-flex items-center gap-2 text-sm mb-4 transition-colors hover:text-primary" style={{ color: 'var(--text-muted)' }}>
                         <ArrowLeft size={16} /> Back to listing
                     </Link>
-                    <h1 className="text-3xl md:text-4xl font-heading font-bold text-white">Secure Checkout</h1>
+                    <h1 className="text-3xl md:text-4xl font-heading font-bold">Secure Checkout</h1>
                     <p className="mt-2" style={{ color: 'var(--text-muted)' }}>Complete your purchase safely through Stripe</p>
                 </div>
             </div>
@@ -159,7 +159,7 @@ function CheckoutContent() {
                                 <Image src={getListingImage(listing)} alt={listing.title} fill className="object-cover" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/20 to-transparent" />
                                 <div className="absolute bottom-4 left-4">
-                                    <span className="px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 text-primary font-mono text-xl font-bold">
+                                    <span className="px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-[var(--border-default)] text-primary font-mono text-xl font-bold">
                                         {formatPrice(listing.price)}
                                     </span>
                                 </div>

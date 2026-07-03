@@ -22,7 +22,7 @@ export default function AboutPage() {
 
 
     return (
-        <div className="min-h-screen bg-slate-900 pb-20 overflow-x-hidden">
+        <div className="min-h-screen pb-20 overflow-x-hidden">
 
             {/* Cinematic Hero Section */}
             <section className="relative h-[80vh] flex items-center justify-center overflow-hidden select-none">
@@ -73,10 +73,10 @@ export default function AboutPage() {
                             <div className="absolute -left-10 -top-10 w-40 h-40 bg-primary/20 rounded-full blur-3xl" />
                             <h2 className="text-4xl font-bold font-heading mb-8 relative z-10">Driven by <span className="text-primary">Passion</span>, <br />Powered by Tech.</h2>
                         </div>
-                        <p className="text-gray-400 text-lg leading-relaxed mb-6">
+                        <p className="text-[var(--text-muted)] text-lg leading-relaxed mb-6">
                             Founded in 2024, CarMazium emerged from a simple observation: the luxury car market was stuck in the past. High fees, opaque processes, and outdated interfaces were the norm. Use believed there was a better way.
                         </p>
-                        <p className="text-gray-400 text-lg leading-relaxed mb-8">
+                        <p className="text-[var(--text-muted)] text-lg leading-relaxed mb-8">
                             We combined deep automotive expertise with cutting-edge web technology to create a platform that respects your time and intelligence. Real-time auctions, verified verification, and instant financing—all in one place.
                         </p>
 
@@ -84,15 +84,15 @@ export default function AboutPage() {
                             <div className="glass-card p-6 flex flex-col gap-4 group hover:border-primary/50 transition-colors">
                                 <Target className="text-primary h-8 w-8 group-hover:scale-110 transition-transform" />
                                 <div>
-                                    <h4 className="font-bold text-white mb-1">Our Mission</h4>
-                                    <p className="text-sm text-gray-400">To democratize access to premium vehicles through transparency.</p>
+                                    <h4 className="font-bold mb-1">Our Mission</h4>
+                                    <p className="text-sm text-[var(--text-muted)]">To democratize access to premium vehicles through transparency.</p>
                                 </div>
                             </div>
                             <div className="glass-card p-6 flex flex-col gap-4 group hover:border-primary/50 transition-colors">
                                 <Rocket className="text-primary h-8 w-8 group-hover:scale-110 transition-transform" />
                                 <div>
-                                    <h4 className="font-bold text-white mb-1">Our Vision</h4>
-                                    <p className="text-sm text-gray-400">A world where buying a dream car is as easy as ordering a pizza.</p>
+                                    <h4 className="font-bold mb-1">Our Vision</h4>
+                                    <p className="text-sm text-[var(--text-muted)]">A world where buying a dream car is as easy as ordering a pizza.</p>
                                 </div>
                             </div>
                         </div>
@@ -128,7 +128,7 @@ export default function AboutPage() {
             <TestimonialsSection />
 
             {/* Team Section */}
-            <section className="py-24 bg-slate-900/50">
+            <section className="py-24 bg-[var(--bg-card)]">
                 <div className="container mx-auto px-5">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -136,8 +136,8 @@ export default function AboutPage() {
                         viewport={{ once: true }}
                         className="text-center mb-16"
                     >
-                        <h2 className="text-3xl md:text-5xl font-heading font-bold text-white mb-6">Meet The <span className="text-primary">Visionaries</span></h2>
-                        <p className="text-gray-400 max-w-2xl mx-auto text-lg">The diverse team of petrolheads and engineers working behind the scenes.</p>
+                        <h2 className="text-3xl md:text-5xl font-heading font-bold mb-6">Meet The <span className="text-primary">Visionaries</span></h2>
+                        <p className="text-[var(--text-muted)] max-w-2xl mx-auto text-lg">The diverse team of petrolheads and engineers working behind the scenes.</p>
                     </motion.div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
@@ -153,14 +153,14 @@ export default function AboutPage() {
                                 transition={{ delay: member.delay }}
                                 className="glass-card p-6 text-center group hover:-translate-y-2 transition-transform duration-300"
                             >
-                                <div className="relative h-48 w-48 mx-auto bg-slate-800 rounded-full mb-6 overflow-hidden border-4 border-white/5 group-hover:border-primary/50 transition-colors">
-                                    <div className="absolute inset-0 bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center group-hover:bg-slate-700 transition-colors">
-                                        <Users className="text-white/20 h-20 w-20 group-hover:scale-110 transition-transform duration-500" />
+                                <div className="relative h-48 w-48 mx-auto rounded-full mb-6 overflow-hidden border-4 border-[var(--border-default)] group-hover:border-primary/50 transition-colors bg-[var(--bg-input)]">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-slate-700/20 to-slate-800/20 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center group-hover:bg-slate-700/10 dark:group-hover:bg-slate-700 transition-colors">
+                                        <Users className="text-[var(--text-faint)] h-20 w-20 group-hover:scale-110 transition-transform duration-500" />
                                     </div>
                                 </div>
-                                <h3 className="text-2xl font-bold text-white mb-1 group-hover:text-primary transition-colors">{member.name}</h3>
+                                <h3 className="text-2xl font-bold mb-1 group-hover:text-primary transition-colors">{member.name}</h3>
                                 <p className="text-primary/80 font-medium text-sm mb-4 uppercase tracking-wider">{member.role}</p>
-                                <p className="text-gray-400">{member.desc}</p>
+                                <p className="text-[var(--text-muted)]">{member.desc}</p>
                             </motion.div>
                         ))}
                     </div>
@@ -175,8 +175,8 @@ export default function AboutPage() {
                     viewport={{ once: true }}
                     className="text-center mb-12"
                 >
-                    <h2 className="text-3xl md:text-5xl font-heading font-bold text-white mb-4">Get In <span className="text-primary">Touch</span></h2>
-                    <p className="text-gray-400 max-w-xl mx-auto">We&apos;d love to hear from you. Visit us or reach out directly.</p>
+                    <h2 className="text-3xl md:text-5xl font-heading font-bold mb-4">Get In <span className="text-primary">Touch</span></h2>
+                    <p className="text-[var(--text-muted)] max-w-xl mx-auto">We&apos;d love to hear from you. Visit us or reach out directly.</p>
                 </motion.div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
@@ -190,8 +190,8 @@ export default function AboutPage() {
                             <MapPin className="text-primary w-6 h-6" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-bold text-white mb-2">Our Location</h3>
-                            <p className="text-gray-400 leading-relaxed">
+                            <h3 className="text-lg font-bold mb-2">Our Location</h3>
+                            <p className="text-[var(--text-muted)] leading-relaxed">
                                 181-187 Hunters Rd<br />
                                 Lozells, Birmingham<br />
                                 B19 1ES, United Kingdom
@@ -209,11 +209,11 @@ export default function AboutPage() {
                             <Phone className="text-primary w-6 h-6" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-bold text-white mb-2">Contact Us</h3>
-                            <p className="text-gray-400 mb-1">
+                            <h3 className="text-lg font-bold mb-2">Contact Us</h3>
+                            <p className="text-[var(--text-muted)] mb-1">
                                 <a href="tel:+442034757619" className="hover:text-primary transition-colors">+44 2034 757619</a>
                             </p>
-                            <p className="text-gray-500 text-sm">Monday – Friday, 9am – 6pm GMT</p>
+                            <p className="text-[var(--text-faint)] text-sm">Monday – Friday, 9am – 6pm GMT</p>
                         </div>
                     </motion.div>
                 </div>
@@ -228,8 +228,8 @@ export default function AboutPage() {
                         viewport={{ once: true }}
                         className="text-center mb-16"
                     >
-                        <h2 className="text-3xl md:text-5xl font-heading font-bold text-white mb-6">Frequently Asked <span className="text-primary">Questions</span></h2>
-                        <p className="text-gray-400 text-lg">Everything you need to know about the CarMazium experience.</p>
+                        <h2 className="text-3xl md:text-5xl font-heading font-bold mb-6">Frequently Asked <span className="text-primary">Questions</span></h2>
+                        <p className="text-[var(--text-muted)] text-lg">Everything you need to know about the CarMazium experience.</p>
                     </motion.div>
 
                     <motion.div
@@ -239,8 +239,8 @@ export default function AboutPage() {
                         transition={{ delay: 0.2 }}
                     >
                         <AccordionItem title="Is CarMazium involved in the sale of vehicles?" defaultOpen>
-                            <p className="font-semibold text-white mb-2">CarMazium is a marketplace platform only — we are not a buyer or seller.</p>
-                            <p>We provide the tools, technology, and platform that connect private sellers and dealers with buyers. All vehicle purchases, payments, and handover arrangements are made <strong className="text-white">directly between the buyer and seller</strong>. CarMazium is not a party to any vehicle sale and does not hold, process, or handle any vehicle purchase funds.</p>
+                            <p className="font-semibold mb-2 text-[var(--text-primary)]">CarMazium is a marketplace platform only — we are not a buyer or seller.</p>
+                            <p>We provide the tools, technology, and platform that connect private sellers and dealers with buyers. All vehicle purchases, payments, and handover arrangements are made <strong className="text-[var(--text-primary)]">directly between the buyer and seller</strong>. CarMazium is not a party to any vehicle sale and does not hold, process, or handle any vehicle purchase funds.</p>
                         </AccordionItem>
                         <AccordionItem title="How does vehicle verification work?">
                             <p>Sellers on CarMazium can provide DVLA-verified vehicle data (auto-filled from the registration plate), service history, HPI reports, and a detailed damage map. Buyers can review all documentation before making contact. We always recommend arranging an independent inspection before completing any purchase.</p>
@@ -255,7 +255,7 @@ export default function AboutPage() {
                             <p>We partner with finance providers who offer vehicle financing. Applications are submitted directly to the finance provider through our platform. CarMazium facilitates the introduction but is not a party to any finance agreement — all terms are between you and the lender.</p>
                         </AccordionItem>
                         <AccordionItem title="Are there any fees?">
-                            <p>Sellers pay a one-time listing badge fee to boost visibility — ranging from Free up to £25 (Basic £1, Standard £10, Premium £25). Auction winners pay a one-time <strong className="text-white">£125 platform fee</strong> on winning a bid. The vehicle purchase price itself is always agreed and paid <strong className="text-white">directly between buyer and seller</strong> — CarMazium does not handle vehicle sale payments.</p>
+                            <p>Sellers pay a one-time listing badge fee to boost visibility — ranging from Free up to £25 (Basic £1, Standard £10, Premium £25). Auction winners pay a one-time <strong className="text-[var(--text-primary)]">£125 platform fee</strong> on winning a bid. The vehicle purchase price itself is always agreed and paid <strong className="text-[var(--text-primary)]">directly between buyer and seller</strong> — CarMazium does not handle vehicle sale payments.</p>
                         </AccordionItem>
                     </motion.div>
                 </div>
@@ -267,14 +267,14 @@ export default function AboutPage() {
                     initial={{ opacity: 0, scale: 0.95 }}
                     whileInView={{ opacity: 1, scale: 1 }}
                     viewport={{ once: true }}
-                    className="glass-strong rounded-3xl p-16 text-center relative overflow-hidden group border border-white/10"
+                    className="glass-strong rounded-3xl p-16 text-center relative overflow-hidden group border border-[var(--border-default)]"
                 >
                     <div className="absolute top-0 left-0 w-full h-full bg-[url('/assets/images/hero-bg.png')] opacity-10 blur-sm bg-cover" />
                     <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-slate-900/80 to-slate-900/90" />
 
                     <div className="relative z-10 max-w-2xl mx-auto">
                         <h2 className="text-4xl font-bold text-white mb-8">Ready to start your journey?</h2>
-                        <p className="text-gray-300 mb-10 text-lg">Join the fastest growing luxury automotive community today.</p>
+                        <p className="text-[var(--text-secondary)] mb-10 text-lg">Join the fastest growing luxury automotive community today.</p>
                         <div className="flex flex-col sm:flex-row justify-center gap-6">
                             <Link href="/search" className="w-full sm:w-auto">
                                 <Button size="lg" className="px-6 sm:px-10 py-6 text-base sm:text-lg shadow-neon w-full whitespace-nowrap">BROWSE INVENTORY</Button>
@@ -283,7 +283,7 @@ export default function AboutPage() {
                                 <Button size="lg" variant="outline" className="px-6 sm:px-10 py-6 text-base sm:text-lg border-white/20 text-white hover:bg-white/10 w-full whitespace-nowrap">HOW IT WORKS</Button>
                             </Link>
                             <Link href="/auth/signup" className="w-full sm:w-auto">
-                                <Button size="lg" variant="ghost" className="px-6 sm:px-10 py-6 text-base sm:text-lg text-white/70 hover:text-white hover:bg-white/5 w-full whitespace-nowrap">CREATE ACCOUNT</Button>
+                                <Button size="lg" variant="ghost" className="px-6 sm:px-10 py-6 text-base sm:text-lg text-white/70 hover:text-white hover:bg-[var(--bg-card)] w-full whitespace-nowrap">CREATE ACCOUNT</Button>
                             </Link>
                         </div>
                     </div>

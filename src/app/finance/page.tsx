@@ -9,7 +9,7 @@ import { motion } from "framer-motion"
 
 export default function FinanceHubPage() {
     return (
-        <div className="min-h-screen pt-24 pb-20 bg-slate-900">
+        <div className="min-h-screen pt-24 pb-20">
             {/* Hero Section */}
             <div className="container mx-auto px-5 mb-20 text-center relative z-10">
                 <motion.div
@@ -18,15 +18,15 @@ export default function FinanceHubPage() {
                     transition={{ duration: 0.6 }}
                 >
                     <span className="text-primary font-bold tracking-wider uppercase mb-4 block">CarMazium Financial Services</span>
-                    <h1 className="text-4xl md:text-6xl font-heading font-bold mb-6 text-white leading-tight">
+                    <h1 className="text-4xl md:text-6xl font-heading font-bold mb-6 leading-tight">
                         Smart Financing for <br /> Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-orange-500">Dream Car</span>
                     </h1>
-                    <p className="text-xl text-gray-300 max-w-2xl mx-auto mb-10">
+                    <p className="text-xl text-[var(--text-secondary)] max-w-2xl mx-auto mb-10">
                         Competitive rates, transparent terms, and instant pre-approval from the UK's most trusted automotive lenders.
                     </p>
                     <div className="flex justify-center gap-4">
                         <Button size="lg" className="shadow-neon px-8">Get Pre-Approved</Button>
-                        <Button variant="outline" size="lg" className="border-white/10 text-white hover:bg-white/5">View Current Rates</Button>
+                        <Button variant="outline" size="lg" className="border-[var(--border-default)] hover:bg-[var(--bg-card)]">View Current Rates</Button>
                     </div>
                 </motion.div>
 
@@ -46,7 +46,7 @@ export default function FinanceHubPage() {
                                 "Low APR starting from 19% (Subject to status)",
                                 "Zero deposit options available"
                             ].map((item, i) => (
-                                <li key={i} className="flex items-center gap-3 text-gray-300">
+                                <li key={i} className="flex items-center gap-3 text-[var(--text-secondary)]">
                                     <CheckCircle className="text-emerald-400 shrink-0" size={20} />
                                     {item}
                                 </li>
@@ -54,7 +54,7 @@ export default function FinanceHubPage() {
                         </ul>
                         <div className="glass-card p-6 border-l-4 border-l-primary">
                             <h3 className="font-bold text-lg mb-2">Representative Example</h3>
-                            <p className="text-sm text-gray-400">
+                            <p className="text-sm text-[var(--text-muted)]">
                                 Borrowing £20,000 over 48 months with a representative APR of 19%, an annual interest rate of 19% (fixed) and a deposit of £2,000.
                                 The amount payable would be £425.32 per month, with a total cost of credit of £2,415.36 and a total amount payable of £22,415.36.
                             </p>
@@ -68,7 +68,7 @@ export default function FinanceHubPage() {
             </section>
 
             {/* Partners Grid */}
-            <section className="py-20 bg-slate-950/50 border-y border-white/5">
+            <section className="py-20 bg-[var(--bg-card)] border-y border-[var(--border-default)]">
                 <div className="container mx-auto px-5 text-center">
                     <h2 className="text-3xl font-bold font-heading mb-12">Our Trusted Lending Partners</h2>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -83,8 +83,8 @@ export default function FinanceHubPage() {
                             { name: "Alpha Bank", icon: Landmark },
                         ].map((partner, i) => (
                             <div key={i} className="glass-card p-6 flex flex-col items-center justify-center gap-4 h-32 hover:border-primary/30 transition-colors group cursor-pointer">
-                                <partner.icon className="text-gray-500 group-hover:text-white transition-colors h-8 w-8" />
-                                <span className="font-bold text-gray-400 group-hover:text-white transition-colors">{partner.name}</span>
+                                <partner.icon className="text-[var(--text-muted)] group-hover:text-primary dark:group-hover:text-white transition-colors h-8 w-8" />
+                                <span className="font-bold text-[var(--text-muted)] group-hover:text-primary dark:group-hover:text-white transition-colors">{partner.name}</span>
                             </div>
                         ))}
                     </div>
@@ -98,35 +98,35 @@ export default function FinanceHubPage() {
 
                     <div className="relative z-10 text-center mb-10">
                         <h2 className="text-3xl font-bold font-heading mb-4">Start Your Application</h2>
-                        <p className="text-gray-400">Complete this quick form to see your tailored rates. It takes less than 2 minutes.</p>
+                        <p className="text-[var(--text-muted)]">Complete this quick form to see your tailored rates. It takes less than 2 minutes.</p>
                     </div>
 
                     <form className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <label className="text-sm font-bold text-gray-300">Annual Income</label>
+                                <label className="text-sm font-bold text-[var(--text-secondary)]">Annual Income</label>
                                 <div className="glass-card flex items-center px-4 h-12">
-                                    <span className="text-gray-500 mr-2">£</span>
-                                    <input type="number" placeholder="e.g. 45000" className="bg-transparent w-full focus:outline-none text-white placeholder:text-gray-600" />
+                                    <span className="text-[var(--text-muted)] mr-2">£</span>
+                                    <input type="number" placeholder="e.g. 45000" className="bg-transparent w-full focus:outline-none placeholder:text-[var(--text-secondary)]" />
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-bold text-gray-300">Employment Status</label>
+                                <label className="text-sm font-bold text-[var(--text-secondary)]">Employment Status</label>
                                 <div className="glass-card flex items-center px-4 h-12 relative">
-                                    <select className="bg-transparent w-full focus:outline-none text-white appearance-none cursor-pointer [&>option]:bg-slate-900">
+                                    <select className="bg-transparent w-full focus:outline-none appearance-none cursor-pointer [&>option]:bg-[var(--bg-dropdown)]">
                                         <option>Full-time Employed</option>
                                         <option>Self-Employed</option>
                                         <option>Retired</option>
                                         <option>Student</option>
                                     </select>
-                                    <ArrowRight className="absolute right-4 text-gray-500 rotate-90" size={16} />
+                                    <ArrowRight className="absolute right-4 text-[var(--text-muted)] rotate-90" size={16} />
                                 </div>
                             </div>
                         </div>
 
-                        <div className="flex items-start gap-3 mt-8 p-4 bg-white/5 rounded-xl border border-white/5">
+                        <div className="flex items-start gap-3 mt-8 p-4 bg-[var(--bg-card)] rounded-xl border border-[var(--border-default)]">
                             <input type="checkbox" className="mt-1 w-4 h-4 rounded border-gray-600 bg-transparent text-primary focus:ring-primary" />
-                            <p className="text-xs text-gray-400 leading-relaxed">
+                            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
                                 I agree to CarMazium conducting a soft credit check. This will not affect my credit score. I understand that a hard check will only be performed if I proceed with a full application.
                             </p>
                         </div>

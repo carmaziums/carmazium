@@ -39,7 +39,7 @@ export function DiscoverSection() {
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{ duration: 0.7, delay: 0.15 }}
-                        className="text-gray-300 text-center text-lg md:text-xl max-w-2xl mx-auto mb-12"
+                        className="text-[var(--text-secondary)] text-center text-lg md:text-xl max-w-2xl mx-auto mb-12"
                     >
                         Explore thousands of verified vehicles from trusted sellers
                     </motion.p>

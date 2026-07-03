@@ -51,9 +51,9 @@ export default function DashboardPage() {
     }, [user, profile, loading, router, refreshProfile])
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white">
+        <div className="min-h-screen flex flex-col items-center justify-center">
             <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-            <p className="text-gray-400 font-medium">Loading your dashboard...</p>
+            <p className="text-[var(--text-muted)] font-medium">Loading your dashboard...</p>
         </div>
     )
 }

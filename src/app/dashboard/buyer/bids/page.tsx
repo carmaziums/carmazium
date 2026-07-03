@@ -67,21 +67,21 @@ export default function MyBidsPage() {
     }
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900">
+        <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="buyer" />
                 <main className="flex-1 space-y-6">
                     <div className="flex justify-between items-center mb-6">
                         <div>
-                            <h1 className="text-3xl font-bold font-heading text-white">My Bids & Offers</h1>
-                            <p className="text-gray-400 text-sm mt-1">Track your auction bids and listing offers</p>
+                            <h1 className="text-3xl font-bold font-heading">My Bids & Offers</h1>
+                            <p className="text-[var(--text-muted)] text-sm mt-1">Track your auction bids and listing offers</p>
                         </div>
                     </div>
 
                     <div className="glass-card overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
-                                <thead className="bg-slate-800/50 text-gray-400 text-xs uppercase font-bold">
+                                <thead className="bg-[var(--bg-input)] text-[var(--text-muted)] text-xs uppercase font-bold">
                                     <tr>
                                         <th className="px-6 py-4">Vehicle</th>
                                         <th className="px-6 py-4">Your Bid</th>
@@ -90,7 +90,7 @@ export default function MyBidsPage() {
                                         <th className="px-6 py-4 text-right">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-white/5 text-white">
+                                <tbody className="divide-y divide-[var(--border-default)]">
                                     {loading ? (
                                         <tr>
                                             <td colSpan={5} className="px-6 py-12 text-center">
@@ -99,7 +99,7 @@ export default function MyBidsPage() {
                                         </tr>
                                     ) : bids.length === 0 ? (
                                         <tr>
-                                            <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                                            <td colSpan={5} className="px-6 py-12 text-center text-[var(--text-muted)]">
                                                 No bids yet.
                                             </td>
                                         </tr>
@@ -111,7 +111,7 @@ export default function MyBidsPage() {
                                             return (
                                                 <tr
                                                     key={bid.id}
-                                                    className={`hover:bg-white/5 transition-colors ${userWon ? "border-l-2 border-amber-400/40" : ""}`}
+                                                    className={`hover:bg-[var(--bg-card)] transition-colors ${userWon ? "border-l-2 border-amber-400/40" : ""}`}
                                                 >
                                                     {/* Vehicle */}
                                                     <td className="px-6 py-4">
@@ -126,7 +126,7 @@ export default function MyBidsPage() {
                                                                 />
                                                             )}
                                                             <div>
-                                                                <div className="font-bold text-white flex items-center gap-2">
+                                                                <div className="font-bold flex items-center gap-2">
                                                                     {bid.listing.title}
                                                                     {isAuction && (
                                                                         <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-black uppercase tracking-widest bg-primary/10 text-primary border border-primary/20">
@@ -134,7 +134,7 @@ export default function MyBidsPage() {
                                                                         </span>
                                                                     )}
                                                                 </div>
-                                                                <div className="text-xs text-gray-400">
+                                                                <div className="text-xs text-[var(--text-muted)]">
                                                                     {bid.listing.year} {bid.listing.make}
                                                                 </div>
                                                             </div>
@@ -162,7 +162,7 @@ export default function MyBidsPage() {
                                                                 )}
                                                             </span>
                                                         ) : isAuction && auctionEnded && !userWon ? (
-                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-500/10 text-gray-400 border-gray-500/20">
+                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-500/10 text-[var(--text-muted)] border-gray-500/20">
                                                                 Auction Ended
                                                             </span>
                                                         ) : (
@@ -176,7 +176,7 @@ export default function MyBidsPage() {
                                                     </td>
 
                                                     {/* Date */}
-                                                    <td className="px-6 py-4 text-sm text-gray-400">
+                                                    <td className="px-6 py-4 text-sm text-[var(--text-muted)]">
                                                         {new Date(bid.createdAt).toLocaleDateString()}
                                                     </td>
 
@@ -229,19 +229,19 @@ export default function MyBidsPage() {
                         </div>
 
                         {totalPages > 1 && (
-                            <div className="p-4 border-t border-white/10 flex justify-center gap-2">
+                            <div className="p-4 border-t border-[var(--border-default)] flex justify-center gap-2">
                                 <button
                                     onClick={() => setPage(p => Math.max(1, p - 1))}
                                     disabled={page === 1}
-                                    className="px-3 py-1 rounded text-sm bg-slate-800 text-white disabled:opacity-50"
+                                    className="px-3 py-1 rounded text-sm bg-[var(--bg-input)] disabled:opacity-50"
                                 >
                                     Previous
                                 </button>
-                                <span className="px-3 py-1 text-gray-400 text-sm">Page {page} of {totalPages}</span>
+                                <span className="px-3 py-1 text-[var(--text-muted)] text-sm">Page {page} of {totalPages}</span>
                                 <button
                                     onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                                     disabled={page === totalPages}
-                                    className="px-3 py-1 rounded text-sm bg-slate-800 text-white disabled:opacity-50"
+                                    className="px-3 py-1 rounded text-sm bg-[var(--bg-input)] disabled:opacity-50"
                                 >
                                     Next
                                 </button>

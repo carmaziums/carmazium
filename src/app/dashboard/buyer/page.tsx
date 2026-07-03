@@ -60,7 +60,7 @@ export default function BuyerDashboard() {
 
     if (authLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+            <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
             </div>
         )
@@ -69,7 +69,7 @@ export default function BuyerDashboard() {
     const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "User")
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
+        <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
 
                 <DashboardSidebar role="buyer" userName={userName} userType={profile?.role ? `${profile.role} Account` : "Buyer Account"} />
@@ -128,10 +128,10 @@ export default function BuyerDashboard() {
                     {/* Recent Bids */}
                     <div>
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold font-heading text-white flex items-center gap-2">
+                            <h2 className="text-2xl font-bold font-heading flex items-center gap-2">
                                 <TrendingUp size={24} className="text-primary" /> Active Bids
                             </h2>
-                            <Link href="/dashboard/buyer/bids" className="text-primary hover:text-white text-sm font-bold transition-colors">View All</Link>
+                            <Link href="/dashboard/buyer/bids" className="text-primary hover:text-red-600 dark:hover:text-white text-sm font-bold transition-colors">View All</Link>
                         </div>
                         <div className="space-y-4">
                             {loading ? (
@@ -139,22 +139,22 @@ export default function BuyerDashboard() {
                                     <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
                                 </div>
                             ) : recentBids.length === 0 ? (
-                                <div className="glass-card p-8 text-center text-gray-500">
+                                <div className="glass-card p-8 text-center text-[var(--text-muted)]">
                                     No active bids yet. {/* <Link href="/cars" className="text-primary hover:underline">Browse auctions</Link> */}
                                 </div>
                             ) : (
                                 recentBids.map((bid) => (
-                                    <div key={bid.id} className="glass-card p-4 flex flex-col md:flex-row gap-6 items-center group hover:bg-white/5 transition-colors">
-                                        <div className="relative w-full md:w-48 h-32 rounded-lg overflow-hidden shrink-0 bg-slate-800">
+                                    <div key={bid.id} className="glass-card p-4 flex flex-col md:flex-row gap-6 items-center group hover:bg-[var(--bg-card)] transition-colors">
+                                        <div className="relative w-full md:w-48 h-32 rounded-lg overflow-hidden shrink-0 bg-[var(--bg-input)]">
                                             {bid.listing.images?.[0] ? (
                                                 <Image src={bid.listing.images[0]} alt={bid.listing.title} fill className="object-cover group-hover:scale-110 transition-transform duration-500" />
                                             ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-gray-600">No Image</div>
+                                                <div className="w-full h-full flex items-center justify-center text-[var(--text-secondary)]">No Image</div>
                                             )}
                                         </div>
                                         <div className="flex-1 w-full text-center md:text-left">
-                                            <h3 className="font-bold text-lg mb-1 text-white">{bid.listing.title}</h3>
-                                            <p className="text-gray-400 text-sm mb-3">{bid.listing.year} • {bid.listing.make} {bid.listing.model}</p>
+                                            <h3 className="font-bold text-lg mb-1">{bid.listing.title}</h3>
+                                            <p className="text-[var(--text-muted)] text-sm mb-3">{bid.listing.year} • {bid.listing.make} {bid.listing.model}</p>
                                             <div className={`inline-flex items-center gap-2 px-3 py-1 rounded text-sm font-medium border ${bid.isWinning
                                                     ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
                                                     : "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
@@ -163,8 +163,8 @@ export default function BuyerDashboard() {
                                             </div>
                                         </div>
                                         <div className="text-right w-full md:w-auto flex flex-col items-center md:items-end gap-2">
-                                            <p className="text-sm text-gray-400">Your Bid</p>
-                                            <p className="text-2xl font-bold text-white">{formatPrice(bid.amount)}</p>
+                                            <p className="text-sm text-[var(--text-muted)]">Your Bid</p>
+                                            <p className="text-2xl font-bold">{formatPrice(bid.amount)}</p>
                                             <Link href={`/cars/${bid.listing.slug}`}>
                                                 <Button size="sm" className="shadow-neon">View Auction</Button>
                                             </Link>
@@ -178,10 +178,10 @@ export default function BuyerDashboard() {
                     {/* Watchlist Preview */}
                     <div>
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold font-heading text-white flex items-center gap-2">
+                            <h2 className="text-2xl font-bold font-heading flex items-center gap-2">
                                 <Heart size={24} className="text-pink-400" /> Watchlist
                             </h2>
-                            <Link href="/dashboard/buyer/watchlist" className="text-primary hover:text-white text-sm font-bold transition-colors">View All</Link>
+                            <Link href="/dashboard/buyer/watchlist" className="text-primary hover:text-red-600 dark:hover:text-white text-sm font-bold transition-colors">View All</Link>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {loading ? (
@@ -189,20 +189,20 @@ export default function BuyerDashboard() {
                                     <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
                                 </div>
                             ) : watchlist.length === 0 ? (
-                                <div className="col-span-3 glass-card p-8 text-center text-gray-500">
+                                <div className="col-span-3 glass-card p-8 text-center text-[var(--text-muted)]">
                                     Your watchlist is empty. <Link href="/cars" className="text-primary hover:underline">Browse cars</Link>
                                 </div>
                             ) : (
                                 watchlist.map((item) => (
-                                    <Link key={item.id} href={`/cars/${item.listing.slug}`} className="glass-card p-4 group hover:bg-white/5 transition-colors">
-                                        <div className="relative w-full h-32 rounded-lg overflow-hidden mb-3 bg-slate-800">
+                                    <Link key={item.id} href={`/cars/${item.listing.slug}`} className="glass-card p-4 group hover:bg-[var(--bg-card)] transition-colors">
+                                        <div className="relative w-full h-32 rounded-lg overflow-hidden mb-3 bg-[var(--bg-input)]">
                                             {item.listing.images?.[0] ? (
                                                 <Image src={item.listing.images[0]} alt={item.listing.title} fill className="object-cover group-hover:scale-110 transition-transform duration-500" />
                                             ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-gray-600">No Image</div>
+                                                <div className="w-full h-full flex items-center justify-center text-[var(--text-secondary)]">No Image</div>
                                             )}
                                         </div>
-                                        <h3 className="font-bold text-white truncate">{item.listing.title}</h3>
+                                        <h3 className="font-bold truncate">{item.listing.title}</h3>
                                         <p className="text-primary font-bold">{formatPrice(item.listing.price)}</p>
                                     </Link>
                                 ))

@@ -97,8 +97,8 @@ export default function AdminAnalyticsPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-900 pt-24 pb-12">
-            <div className="fixed inset-0 bg-gradient-to-br from-[#0f172a] to-[#1e293b] -z-10" />
+        <div className="min-h-screen pt-24 pb-12">
+            <div className="fixed inset-0 -z-10" style={{ background: 'var(--bg-body)' }} />
 
             <div className="container mx-auto px-5 max-w-7xl">
                 {/* Header */}
@@ -108,7 +108,7 @@ export default function AdminAnalyticsPage() {
                             <BarChart3 className="text-primary" size={32} />
                             Analytics Dashboard
                         </h1>
-                        <p className="text-gray-400 mt-1">Internal data — track user behavior and leads</p>
+                        <p className="text-[var(--text-muted)] mt-1">Internal data — track user behavior and leads</p>
                     </div>
                     <button
                         onClick={fetchData}
@@ -150,7 +150,7 @@ export default function AdminAnalyticsPage() {
                             className={`bg-gradient-to-br ${card.color} border rounded-xl p-6`}
                         >
                             <div className="flex items-center justify-between mb-3">
-                                <span className="text-gray-400 text-sm">{card.label}</span>
+                                <span className="text-[var(--text-muted)] text-sm">{card.label}</span>
                                 <card.icon size={20} className={card.text} />
                             </div>
                             <div className={`text-3xl font-bold ${card.text}`}>
@@ -162,7 +162,7 @@ export default function AdminAnalyticsPage() {
 
                 {/* Events by Type */}
                 {summary && Array.isArray(summary.eventsByType) && summary.eventsByType.length > 0 && (
-                    <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6 mb-8">
+                    <div className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl p-6 mb-8">
                         <h3 className="text-white font-semibold mb-4">Events by Type</h3>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
                             {summary.eventsByType.map((e) => {
@@ -170,11 +170,11 @@ export default function AdminAnalyticsPage() {
                                 return (
                                     <div
                                         key={e.type}
-                                        className="bg-white/5 rounded-lg p-3 text-center"
+                                        className="bg-[var(--bg-card)] rounded-lg p-3 text-center"
                                     >
                                         <Icon size={18} className="mx-auto text-primary mb-1" />
                                         <div className="text-white font-bold text-lg">{e.count}</div>
-                                        <div className="text-gray-400 text-xs truncate">
+                                        <div className="text-[var(--text-muted)] text-xs truncate">
                                             {e.type.replace(/_/g, " ")}
                                         </div>
                                     </div>
@@ -185,14 +185,14 @@ export default function AdminAnalyticsPage() {
                 )}
 
                 {/* Tabs */}
-                <div className="flex gap-1 mb-6 bg-slate-800/50 rounded-lg p-1 w-fit border border-white/10">
+                <div className="flex gap-1 mb-6 bg-[var(--bg-input)] rounded-lg p-1 w-fit border border-[var(--border-default)]">
                     {(["events", "emails"] as const).map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === tab
                                 ? "bg-primary text-white"
-                                : "text-gray-400 hover:text-white"
+                                : "text-[var(--text-muted)] hover:text-primary dark:hover:text-white"
                                 }`}
                         >
                             {tab === "events"
@@ -204,21 +204,21 @@ export default function AdminAnalyticsPage() {
 
                 {/* Events Table */}
                 {activeTab === "events" && (
-                    <div className="bg-slate-800/50 border border-white/10 rounded-xl overflow-hidden">
+                    <div className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead>
-                                    <tr className="border-b border-white/10 text-left">
-                                        <th className="px-4 py-3 text-gray-400 font-medium">Type</th>
-                                        <th className="px-4 py-3 text-gray-400 font-medium">Payload</th>
-                                        <th className="px-4 py-3 text-gray-400 font-medium">Session</th>
-                                        <th className="px-4 py-3 text-gray-400 font-medium">Date</th>
+                                    <tr className="border-b border-[var(--border-default)] text-left">
+                                        <th className="px-4 py-3 text-[var(--text-muted)] font-medium">Type</th>
+                                        <th className="px-4 py-3 text-[var(--text-muted)] font-medium">Payload</th>
+                                        <th className="px-4 py-3 text-[var(--text-muted)] font-medium">Session</th>
+                                        <th className="px-4 py-3 text-[var(--text-muted)] font-medium">Date</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {events.length === 0 ? (
                                         <tr>
-                                            <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                                            <td colSpan={4} className="px-4 py-8 text-center text-[var(--text-muted)]">
                                                 {loading ? "Loading..." : "No events recorded yet"}
                                             </td>
                                         </tr>
@@ -226,20 +226,20 @@ export default function AdminAnalyticsPage() {
                                         events.map((evt) => {
                                             const Icon = EVENT_ICONS[evt.type] || Activity
                                             return (
-                                                <tr key={evt.id} className="border-b border-white/5 hover:bg-white/5">
+                                                <tr key={evt.id} className="border-b border-[var(--border-default)] hover:bg-[var(--bg-card)]">
                                                     <td className="px-4 py-3">
-                                                        <span className="flex items-center gap-2 text-white">
+                                                        <span className="flex items-center gap-2">
                                                             <Icon size={14} className="text-primary" />
                                                             {evt.type.replace(/_/g, " ")}
                                                         </span>
                                                     </td>
-                                                    <td className="px-4 py-3 text-gray-400 max-w-xs truncate font-mono text-xs">
+                                                    <td className="px-4 py-3 text-[var(--text-muted)] max-w-xs truncate font-mono text-xs">
                                                         {JSON.stringify(evt.payload)}
                                                     </td>
-                                                    <td className="px-4 py-3 text-gray-500 font-mono text-xs">
+                                                    <td className="px-4 py-3 text-[var(--text-muted)] font-mono text-xs">
                                                         {evt.sessionId?.slice(0, 8) ?? "—"}
                                                     </td>
-                                                    <td className="px-4 py-3 text-gray-400 whitespace-nowrap">
+                                                    <td className="px-4 py-3 text-[var(--text-muted)] whitespace-nowrap">
                                                         {formatDate(evt.createdAt)}
                                                     </td>
                                                 </tr>
@@ -254,33 +254,33 @@ export default function AdminAnalyticsPage() {
 
                 {/* Emails Table */}
                 {activeTab === "emails" && (
-                    <div className="bg-slate-800/50 border border-white/10 rounded-xl overflow-hidden">
+                    <div className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead>
-                                    <tr className="border-b border-white/10 text-left">
-                                        <th className="px-4 py-3 text-gray-400 font-medium">Email</th>
-                                        <th className="px-4 py-3 text-gray-400 font-medium">Source</th>
-                                        <th className="px-4 py-3 text-gray-400 font-medium">Date</th>
+                                    <tr className="border-b border-[var(--border-default)] text-left">
+                                        <th className="px-4 py-3 text-[var(--text-muted)] font-medium">Email</th>
+                                        <th className="px-4 py-3 text-[var(--text-muted)] font-medium">Source</th>
+                                        <th className="px-4 py-3 text-[var(--text-muted)] font-medium">Date</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {emails.length === 0 ? (
                                         <tr>
-                                            <td colSpan={3} className="px-4 py-8 text-center text-gray-500">
+                                            <td colSpan={3} className="px-4 py-8 text-center text-[var(--text-muted)]">
                                                 {loading ? "Loading..." : "No email leads captured yet"}
                                             </td>
                                         </tr>
                                     ) : (
                                         emails.map((lead) => (
-                                            <tr key={lead.id} className="border-b border-white/5 hover:bg-white/5">
-                                                <td className="px-4 py-3 text-white">{lead.email}</td>
+                                            <tr key={lead.id} className="border-b border-[var(--border-default)] hover:bg-[var(--bg-card)]">
+                                                <td className="px-4 py-3">{lead.email}</td>
                                                 <td className="px-4 py-3">
                                                     <span className="bg-primary/20 text-primary px-2 py-0.5 rounded text-xs">
                                                         {lead.source.replace(/_/g, " ")}
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-3 text-gray-400 whitespace-nowrap">
+                                                <td className="px-4 py-3 text-[var(--text-muted)] whitespace-nowrap">
                                                     {formatDate(lead.createdAt)}
                                                 </td>
                                             </tr>

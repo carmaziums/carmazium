@@ -51,7 +51,7 @@ export function DateRangeFilter({
 
     return (
         <div className="relative flex items-center gap-2" ref={customRef}>
-            <div className="flex items-center gap-1 p-1 bg-slate-800/80 border border-white/[0.06] rounded-xl">
+            <div className="flex items-center gap-1 p-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl">
                 {PRESETS.map(({ key, label }) => (
                     <button
                         key={key}
@@ -59,7 +59,7 @@ export function DateRangeFilter({
                         className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${
                             activeRange === key
                                 ? "bg-gradient-to-r from-primary to-red-700 text-white shadow-lg shadow-primary/20"
-                                : "text-gray-400 hover:text-white hover:bg-white/[0.04]"
+                                : "text-[var(--text-muted)] hover:text-primary dark:hover:text-white hover:bg-white/[0.04]"
                         }`}
                     >
                         <span className="flex items-center gap-1.5">
@@ -72,36 +72,36 @@ export function DateRangeFilter({
 
             {/* Custom Date Picker Flyout */}
             {showCustom && activeRange === "custom" && (
-                <div className="absolute top-full left-0 mt-2 z-50 bg-slate-800/95 backdrop-blur-xl border border-white/10 rounded-xl p-5 shadow-2xl shadow-black/60 min-w-[320px]">
+                <div className="absolute top-full left-0 mt-2 z-50 bg-[var(--bg-dropdown)] backdrop-blur-xl border border-[var(--border-default)] rounded-xl p-5 shadow-2xl shadow-black/60 min-w-[320px]">
                     <div className="flex items-center justify-between mb-4">
-                        <h4 className="text-xs font-bold uppercase tracking-widest text-gray-400">Custom Range</h4>
-                        <button onClick={() => setShowCustom(false)} className="text-gray-500 hover:text-white transition-colors">
+                        <h4 className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Custom Range</h4>
+                        <button onClick={() => setShowCustom(false)} className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors">
                             <X size={14} />
                         </button>
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="flex-1">
-                            <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1.5">From</label>
+                            <label className="block text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1.5">From</label>
                             <input
                                 type="date"
                                 value={customStart || ""}
                                 onChange={(e) => onCustomChange?.(e.target.value, customEnd || "")}
-                                className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
+                                className="w-full bg-black/40 border border-[var(--border-default)] rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
                             />
                         </div>
-                        <span className="text-gray-600 text-xs font-bold mt-5">→</span>
+                        <span className="text-[var(--text-secondary)] text-xs font-bold mt-5">→</span>
                         <div className="flex-1">
-                            <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1.5">To</label>
+                            <label className="block text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1.5">To</label>
                             <input
                                 type="date"
                                 value={customEnd || ""}
                                 onChange={(e) => onCustomChange?.(customStart || "", e.target.value)}
-                                className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
+                                className="w-full bg-black/40 border border-[var(--border-default)] rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
                             />
                         </div>
                     </div>
                     {customStart && customEnd && (
-                        <div className="mt-3 pt-3 border-t border-white/5 text-center">
+                        <div className="mt-3 pt-3 border-t border-[var(--border-default)] text-center">
                             <span className="text-xs font-bold uppercase tracking-widest text-primary">
                                 {new Date(customStart).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                                 {" — "}

@@ -106,9 +106,9 @@ export function HpiReportModal({ listingId, onClose }: Props) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-            <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border border-white/10 rounded-2xl shadow-2xl">
+            <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-2xl shadow-2xl">
                 {/* Header */}
-                <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-slate-900/95 backdrop-blur border-b border-white/5">
+                <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-[var(--bg-dropdown)] backdrop-blur border-b border-[var(--border-default)]">
                     <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
                             <ShieldCheck size={18} className="text-primary" />
@@ -116,7 +116,7 @@ export function HpiReportModal({ listingId, onClose }: Props) {
                         <div>
                             <h2 className="font-bold text-white text-lg">HPI Check Report</h2>
                             {summary && (
-                                <p className="text-xs text-gray-500">
+                                <p className="text-xs text-[var(--text-muted)]">
                                     {summary.vrm} · Generated {new Date(summary.purchasedAt || summary.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
                                 </p>
                             )}
@@ -126,12 +126,12 @@ export function HpiReportModal({ listingId, onClose }: Props) {
                         {summary && (
                             <button
                                 onClick={handlePrint}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-gray-400 hover:text-white text-xs font-bold transition-colors"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--bg-card)] border border-[var(--border-default)] text-[var(--text-muted)] hover:text-white text-xs font-bold transition-colors"
                             >
                                 <Printer size={13} /> Print
                             </button>
                         )}
-                        <button onClick={onClose} className="p-2 text-gray-500 hover:text-white transition-colors">
+                        <button onClick={onClose} className="p-2 text-[var(--text-muted)] hover:text-white transition-colors">
                             <X size={18} />
                         </button>
                     </div>
@@ -179,7 +179,7 @@ export function HpiReportModal({ listingId, onClose }: Props) {
                             <div className="space-y-3">
                                 <div className="flex items-center gap-2">
                                     <Car size={14} className="text-primary" />
-                                    <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Vehicle Details</p>
+                                    <p className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Vehicle Details</p>
                                 </div>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                     {[
@@ -192,9 +192,9 @@ export function HpiReportModal({ listingId, onClose }: Props) {
                                         { label: "Engine Size", value: summary.engineSize },
                                         { label: "Reg. Date", value: summary.registrationDate ? new Date(summary.registrationDate).toLocaleDateString("en-GB") : "" },
                                     ].map(({ label, value }) => value ? (
-                                        <div key={label} className="p-3 rounded-xl bg-slate-800/50 border border-white/5">
-                                            <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">{label}</p>
-                                            <p className="text-sm font-bold text-white">{value}</p>
+                                        <div key={label} className="p-3 rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)]">
+                                            <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest mb-1">{label}</p>
+                                            <p className="text-sm font-bold">{value}</p>
                                         </div>
                                     ) : null)}
                                 </div>
@@ -204,7 +204,7 @@ export function HpiReportModal({ listingId, onClose }: Props) {
                             <div className="space-y-3">
                                 <div className="flex items-center gap-2">
                                     <ShieldCheck size={14} className="text-primary" />
-                                    <p className="text-xs font-bold uppercase tracking-widest text-gray-400">History Checks</p>
+                                    <p className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">History Checks</p>
                                 </div>
                                 <div className="space-y-2">
                                     {allChecks.map(([key, check]) => (
@@ -222,7 +222,7 @@ export function HpiReportModal({ listingId, onClose }: Props) {
                                                 <p className={`text-sm font-bold ${check.passed ? "text-emerald-300" : "text-red-300"}`}>
                                                     {CHECK_LABELS[key] ?? key}
                                                 </p>
-                                                <p className="text-xs text-gray-400 mt-0.5">{check.detail}</p>
+                                                <p className="text-xs text-[var(--text-muted)] mt-0.5">{check.detail}</p>
                                                 {check.category && (
                                                     <p className="text-xs text-amber-400 mt-1 font-semibold">Category: {check.category}</p>
                                                 )}
@@ -238,8 +238,8 @@ export function HpiReportModal({ listingId, onClose }: Props) {
                             </div>
 
                             {/* Disclaimer */}
-                            <div className="p-4 rounded-xl bg-slate-800/30 border border-white/5">
-                                <p className="text-[11px] text-gray-500 leading-relaxed">
+                            <div className="p-4 rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)]">
+                                <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
                                     This HPI check was performed by Carmazium via OneAutoAPI and reflects data available at the time of purchase.
                                     Results are based on DVLA, insurance industry, and finance house records. Carmazium is not liable for any discrepancies.
                                     Report generated: {new Date(summary.purchasedAt || summary.createdAt).toLocaleString("en-GB")}.

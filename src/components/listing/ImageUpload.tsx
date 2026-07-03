@@ -255,23 +255,23 @@ export function ImageUpload({
     return (
         <div className="space-y-6">
             {/* GOAL TRACKER */}
-            <div className="bg-slate-800/80 rounded-xl p-4 border border-white/10">
+            <div className="bg-[var(--bg-card)] rounded-xl p-4 border border-[var(--border-default)]">
                 <div className="flex justify-between items-end mb-2">
                     <div>
                         <h4 className="text-sm font-bold text-white flex items-center gap-2">
                             {currentTotal >= RECOMMENDED_TOTAL ? <CheckCircle2 className="text-emerald-400" size={16} /> : <Camera className="text-primary" size={16} />}
                             Photo Tracker
                         </h4>
-                        <p className="text-xs text-gray-400 mt-1">
+                        <p className="text-xs text-[var(--text-muted)] mt-1">
                             Cars with 20+ photos sell on average 40% faster.
                         </p>
                     </div>
                     <div className="text-right">
                         <span className={`text-2xl font-black font-mono ${currentTotal >= RECOMMENDED_TOTAL ? 'text-emerald-400' : 'text-white'}`}>{currentTotal}</span>
-                        <span className="text-sm text-gray-500 font-bold"> / {RECOMMENDED_TOTAL}</span>
+                        <span className="text-sm text-[var(--text-muted)] font-bold"> / {RECOMMENDED_TOTAL}</span>
                     </div>
                 </div>
-                <div className="h-2 w-full bg-slate-900 rounded-full overflow-hidden">
+                <div className="h-2 w-full bg-[var(--bg-input)] rounded-full overflow-hidden">
                     <div
                         className={`h-full transition-all duration-500 ${currentTotal >= RECOMMENDED_TOTAL ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-primary'}`}
                         style={{ width: `${progressPct}%` }}
@@ -280,7 +280,7 @@ export function ImageUpload({
             </div>
 
             {/* CATEGORY TABS */}
-            <div className="flex bg-slate-900/50 p-1.5 rounded-xl border border-white/5 overflow-x-auto hide-scrollbar">
+            <div className="flex bg-[var(--bg-input)] p-1.5 rounded-xl border border-[var(--border-default)] overflow-x-auto hide-scrollbar">
                 {CATEGORIES.map((cat) => {
                     const count = images.filter(img => img.category === cat.id).length
                     const isActive = activeTab === cat.id
@@ -291,12 +291,12 @@ export function ImageUpload({
                             onClick={() => setActiveTab(cat.id)}
                             className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${isActive
                                 ? 'bg-primary text-white shadow-neon'
-                                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                : 'text-[var(--text-muted)] hover:text-white hover:bg-[var(--bg-card)]'
                                 }`}
                         >
                             {cat.label}
                             {count > 0 && (
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? 'bg-white/20' : 'bg-slate-800'}`}>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? 'bg-white/20' : 'bg-[var(--bg-card)]'}`}>
                                     {count}
                                 </span>
                             )}
@@ -320,7 +320,7 @@ export function ImageUpload({
             <div
                 className={`border-2 border-dashed rounded-xl p-10 text-center transition-all duration-300 cursor-pointer group relative overflow-hidden ${dragActive
                     ? 'border-primary bg-primary/10'
-                    : 'border-white/10 bg-slate-900/50 hover:bg-slate-800'
+                    : 'border-[var(--border-default)] bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)]'
                     } ${uploading ? 'pointer-events-none opacity-50' : ''}`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
@@ -341,31 +341,31 @@ export function ImageUpload({
                 {uploading ? (
                     <div className="space-y-4">
                         <Loader2 className="h-10 w-10 text-primary mx-auto animate-spin" />
-                        <p className="text-lg font-bold text-white">Uploading to {CATEGORIES.find(c => c.id === activeTab)?.label}...</p>
+                        <p className="text-lg font-bold">Uploading to {CATEGORIES.find(c => c.id === activeTab)?.label}...</p>
                         <div className="max-w-xs mx-auto bg-white/10 rounded-full h-2 overflow-hidden">
                             <div
                                 className="bg-primary h-full transition-all duration-300 shadow-neon"
                                 style={{ width: `${uploadProgress}%` }}
                             />
                         </div>
-                        <p className="text-sm text-gray-400">{uploadProgress}% complete</p>
+                        <p className="text-sm text-[var(--text-muted)]">{uploadProgress}% complete</p>
                     </div>
                 ) : (
                     <>
-                        <div className="w-16 h-16 bg-slate-800/80 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/5 group-hover:border-primary/50 group-hover:scale-110 transition-all shadow-xl">
+                        <div className="w-16 h-16 bg-[var(--bg-card)] rounded-2xl flex items-center justify-center mx-auto mb-4 border border-[var(--border-default)] group-hover:border-primary/50 group-hover:scale-110 transition-all shadow-xl">
                             {dragActive ? (
                                 <Upload className="h-7 w-7 text-primary animate-bounce" />
                             ) : (
-                                <Camera className="h-7 w-7 text-gray-400 group-hover:text-primary transition-colors" />
+                                <Camera className="h-7 w-7 text-[var(--text-muted)] group-hover:text-primary transition-colors" />
                             )}
                         </div>
                         <h3 className="text-xl font-bold font-heading text-white mb-2">
                             {dragActive ? 'Drop images here' : `Add ${CATEGORIES.find(c => c.id === activeTab)?.label} Photos`}
                         </h3>
-                        <p className="text-gray-400 text-sm mb-4">
+                        <p className="text-[var(--text-muted)] text-sm mb-4">
                             Drag and drop or click to browse (Max {maxImages} photos)
                         </p>
-                        <div className="inline-flex gap-4 text-xs font-semibold text-gray-500 bg-slate-900/80 px-4 py-2 rounded-full border border-white/5">
+                        <div className="inline-flex gap-4 text-xs font-semibold text-[var(--text-muted)] bg-[var(--bg-card)] px-4 py-2 rounded-full border border-[var(--border-default)]">
                             <span>JPEG, PNG, WebP</span>
                             <span className="w-1 h-1 rounded-full bg-gray-600 self-center"></span>
                             <span>Max 5MB per file</span>
@@ -391,7 +391,7 @@ export function ImageUpload({
             {/* IMAGE PREVIEW GRID */}
             {images.length > 0 && (
                 <div>
-                    <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-2">
+                    <div className="flex items-center justify-between mb-4 border-b border-[var(--border-default)] pb-2">
                         <h3 className="text-sm font-bold uppercase text-white tracking-wider">
                             All Uploaded Photos
                         </h3>
@@ -413,9 +413,9 @@ export function ImageUpload({
                                     onDragOver={(e) => onReorderDragOver(e, index)}
                                     onDrop={(e) => onReorderDrop(e, index)}
                                     onDragEnd={onReorderDragEnd}
-                                    className={`relative aspect-[4/3] bg-slate-800 rounded-xl overflow-hidden border-2 group cursor-grab active:cursor-grabbing transition-all duration-200
+                                    className={`relative aspect-[4/3] bg-[var(--bg-input)] rounded-xl overflow-hidden border-2 group cursor-grab active:cursor-grabbing transition-all duration-200
                                         ${isDragging ? 'opacity-40 scale-95 border-primary/50' : ''}
-                                        ${isOver ? 'border-primary shadow-[0_0_15px_rgba(237,28,36,0.3)] scale-[1.02]' : 'border-white/5 hover:border-white/20'}
+                                        ${isOver ? 'border-primary shadow-[0_0_15px_rgba(237,28,36,0.3)] scale-[1.02]' : 'border-[var(--border-default)] hover:border-white/20'}
                                     `}
                                 >
                                     <Image
@@ -427,7 +427,7 @@ export function ImageUpload({
                                     />
 
                                     {/* Category tag */}
-                                    <div className="absolute top-2 left-2 bg-black/60 text-white/90 text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded backdrop-blur-md border border-white/10">
+                                    <div className="absolute top-2 left-2 bg-black/60 text-white/90 text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded backdrop-blur-md border border-[var(--border-default)]">
                                         {imgObj.category !== 'UNASSIGNED' ? imgObj.category : 'Photo'}
                                     </div>
 

@@ -47,7 +47,7 @@ function OfferStatusChip({ offer, viewerRole }: { offer: LatestOffer; viewerRole
             </div>
         )
         if (offer.status === 'WITHDRAWN') return (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-gray-500/10 border border-gray-500/30 text-gray-300 text-sm">
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-gray-500/10 border border-gray-500/30 text-[var(--text-secondary)] text-sm">
                 <XCircle size={14} className="shrink-0" />
                 <span>Your previous offer of <strong>{amountDisplay}</strong> was withdrawn. You can make a new offer.</span>
             </div>
@@ -95,9 +95,9 @@ function OfferStatusChip({ offer, viewerRole }: { offer: LatestOffer; viewerRole
                         offer.status === 'WITHDRAWN' ? 'withdrawn' : ''
 
     return (
-        <div className="flex items-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 text-sm">
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-[var(--bg-card)] border border-[var(--border-default)] text-[var(--text-muted)] text-sm">
             <Tag size={14} className="shrink-0" />
-            <span>An offer of <strong className="text-white">{amountDisplay}</strong> has been made on this listing{statusLabel ? ` — ${statusLabel}` : ''}.</span>
+            <span>An offer of <strong className="text-[var(--text-primary)]">{amountDisplay}</strong> has been made on this listing{statusLabel ? ` — ${statusLabel}` : ''}.</span>
         </div>
     )
 }
@@ -229,39 +229,39 @@ function BidModal({
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-red-600 to-amber-500 rounded-t-2xl" />
 
                 {/* Header */}
-                <div className="p-6 pb-4 border-b border-white/5">
-                    <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"><X size={20} /></button>
+                <div className="p-6 pb-4 border-b border-[var(--border-default)]">
+                    <button onClick={onClose} className="absolute top-4 right-4 text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors"><X size={20} /></button>
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
                             <Tag size={18} />
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold font-heading text-white">Place a Bid</h2>
-                            <p className="text-xs text-gray-400">{listing.title}</p>
+                            <h2 className="text-xl font-bold font-heading">Place a Bid</h2>
+                            <p className="text-xs text-[var(--text-muted)]">{listing.title}</p>
                         </div>
                     </div>
                 </div>
 
                 {/* Current Auction State */}
-                <div className="px-6 py-5 bg-slate-900/50 border-b border-white/5">
+                <div className="px-6 py-5 bg-[var(--bg-input)] border-b border-[var(--border-default)]">
                     <div className="grid grid-cols-3 gap-4 text-center">
                         <div>
-                            <p className="text-[9px] font-bold uppercase tracking-widest text-gray-500 mb-1">Asking Price</p>
-                            <p className="text-sm font-bold text-gray-300 tabular-nums">£{askingPrice.toLocaleString('en-GB')}</p>
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">Asking Price</p>
+                            <p className="text-sm font-bold text-[var(--text-secondary)] tabular-nums">£{askingPrice.toLocaleString('en-GB')}</p>
                         </div>
                         <div>
                             <p className="text-[9px] font-bold uppercase tracking-widest text-emerald-400 mb-1">Current Bid</p>
-                            <p className="text-2xl font-black text-white tabular-nums">£{currentBid.toLocaleString('en-GB')}</p>
+                            <p className="text-2xl font-black tabular-nums">£{currentBid.toLocaleString('en-GB')}</p>
                         </div>
                         <div>
-                            <p className="text-[9px] font-bold uppercase tracking-widest text-gray-500 mb-1">Bids</p>
-                            <p className="text-sm font-bold text-gray-300 tabular-nums">{bidCount}</p>
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">Bids</p>
+                            <p className="text-sm font-bold text-[var(--text-secondary)] tabular-nums">{bidCount}</p>
                         </div>
                     </div>
                     {/* Increment notice */}
-                    <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-gray-500">
+                    <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-[var(--text-muted)]">
                         <Info size={10} />
-                        <span>Minimum increment: <strong className="text-white">£{increment.toLocaleString('en-GB')}</strong></span>
+                        <span>Minimum increment: <strong className="text-[var(--text-primary)]">£{increment.toLocaleString('en-GB')}</strong></span>
                     </div>
                 </div>
 
@@ -269,18 +269,18 @@ function BidModal({
                 <div className="p-6 space-y-5">
                     {/* Your Bid */}
                     <div>
-                        <label className="text-sm font-bold uppercase text-gray-400 mb-2 block">Your Bid</label>
-                        <p className="text-xs text-gray-500 mb-3">Enter at least <strong className="text-white">£{minimumNextBid.toLocaleString('en-GB')}</strong> (current bid + £{increment.toLocaleString('en-GB')} increment).</p>
+                        <label className="text-sm font-bold uppercase text-[var(--text-muted)] mb-2 block">Your Bid</label>
+                        <p className="text-xs text-[var(--text-muted)] mb-3">Enter at least <strong className="text-[var(--text-primary)]">£{minimumNextBid.toLocaleString('en-GB')}</strong> (current bid + £{increment.toLocaleString('en-GB')} increment).</p>
                         <div className="flex gap-2">
                             <div className="relative flex-1">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg font-bold">£</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-lg font-bold">£</span>
                                 <Input
                                     type="number"
                                     value={bidAmount}
                                     step={increment}
                                     min={minimumNextBid}
                                     onChange={(e) => setBidAmount(Number(e.target.value))}
-                                    className="bg-slate-900/50 border-white/10 text-white pl-8 text-lg h-14 focus:border-primary font-bold tabular-nums"
+                                    className="bg-[var(--bg-input)] border-[var(--border-default)] pl-8 text-lg h-14 focus:border-primary font-bold tabular-nums"
                                 />
                             </div>
                             {/* Quick increment buttons */}
@@ -288,12 +288,12 @@ function BidModal({
                                 <button
                                     type="button"
                                     onClick={() => setBidAmount(prev => prev + increment)}
-                                    className="h-6 px-3 bg-white/5 hover:bg-primary/20 border border-white/10 hover:border-primary/30 rounded-md text-[10px] font-bold text-gray-400 hover:text-primary transition-all"
+                                    className="h-6 px-3 bg-[var(--bg-card)] hover:bg-primary/20 border border-[var(--border-default)] hover:border-primary/30 rounded-md text-[10px] font-bold text-[var(--text-muted)] hover:text-primary transition-all"
                                 >+£{increment >= 1000 ? `${increment / 1000}k` : increment}</button>
                                 <button
                                     type="button"
                                     onClick={() => setBidAmount(prev => Math.max(minimumNextBid, prev - increment))}
-                                    className="h-6 px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md text-[10px] font-bold text-gray-400 hover:text-white transition-all"
+                                    className="h-6 px-3 bg-[var(--bg-card)] hover:bg-white/10 border border-[var(--border-default)] rounded-md text-[10px] font-bold text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-all"
                                 >-£{increment >= 1000 ? `${increment / 1000}k` : increment}</button>
                             </div>
                         </div>
@@ -305,7 +305,7 @@ function BidModal({
                     </div>
 
                     {/* Proxy Bid Toggle */}
-                    <div className="rounded-xl border border-white/10 overflow-hidden">
+                    <div className="rounded-xl border border-[var(--border-default)] overflow-hidden">
                         <button
                             type="button"
                             onClick={() => setShowProxySection(!showProxySection)}
@@ -316,8 +316,8 @@ function BidModal({
                                     <Zap size={14} className="text-blue-400" />
                                 </div>
                                 <div className="text-left">
-                                    <p className="text-sm font-bold text-white">Set Proxy Bid (Max Bid)</p>
-                                    <p className="text-[10px] text-gray-500">We&apos;ll automatically bid on your behalf up to your max</p>
+                                    <p className="text-sm font-bold">Set Proxy Bid (Max Bid)</p>
+                                    <p className="text-[10px] text-[var(--text-muted)]">We&apos;ll automatically bid on your behalf up to your max</p>
                                 </div>
                             </div>
                             <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${showProxySection ? 'bg-blue-500 border-blue-500' : 'border-gray-600'}`}>
@@ -325,13 +325,13 @@ function BidModal({
                             </div>
                         </button>
                         {showProxySection && (
-                            <div className="px-4 pb-4 border-t border-white/5">
+                            <div className="px-4 pb-4 border-t border-[var(--border-default)]">
                                 <div className="bg-blue-500/5 border border-blue-500/10 rounded-lg p-3 mt-3 mb-3">
                                     <p className="text-[10px] text-blue-300 leading-relaxed">
                                         <strong>How proxy bidding works:</strong> Enter the maximum you&apos;re willing to pay. The system will bid the minimum needed to keep you as the highest bidder, up to your max. Other bidders only see the current bid, not your max.
                                     </p>
                                 </div>
-                                <label className="text-xs font-bold uppercase text-gray-400 mb-2 block">Your Maximum (Hidden)</label>
+                                <label className="text-xs font-bold uppercase text-[var(--text-muted)] mb-2 block">Your Maximum (Hidden)</label>
                                 <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-400 font-bold">£</span>
                                     <Input
@@ -340,7 +340,7 @@ function BidModal({
                                         step={increment}
                                         placeholder={`e.g. ${(bidAmount + increment * 5).toLocaleString('en-GB')}`}
                                         onChange={(e) => setMaxBid(e.target.value)}
-                                        className="bg-slate-900/50 border-blue-500/20 text-white pl-8 h-12 focus:border-blue-400 font-bold tabular-nums"
+                                        className="bg-[var(--bg-input)] border-blue-500/20 pl-8 h-12 focus:border-blue-400 font-bold tabular-nums"
                                     />
                                 </div>
                                 {isProxyInvalid && (
@@ -354,8 +354,8 @@ function BidModal({
 
                     {/* Message */}
                     <div>
-                        <label className="text-sm font-bold uppercase text-gray-400 mb-2 block">
-                            Message <span className="text-gray-600 font-normal normal-case">(optional)</span>
+                        <label className="text-sm font-bold uppercase text-[var(--text-muted)] mb-2 block">
+                            Message <span className="text-[var(--text-secondary)] font-normal normal-case">(optional)</span>
                         </label>
                         <textarea
                             value={message}
@@ -363,7 +363,7 @@ function BidModal({
                             placeholder="e.g. I can collect this weekend."
                             rows={2}
                             maxLength={500}
-                            className="w-full bg-slate-900/50 border border-white/10 text-white placeholder:text-gray-600 rounded-md p-3 text-sm resize-none focus:outline-none focus:border-primary"
+                            className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] placeholder:text-[var(--text-secondary)] rounded-md p-3 text-sm resize-none focus:outline-none focus:border-primary"
                         />
                     </div>
 
@@ -375,7 +375,7 @@ function BidModal({
 
                     {/* Submit */}
                     <div className="flex gap-3">
-                        <Button variant="outline" className="flex-1 border-white/10 text-gray-400 hover:text-white" onClick={onClose}>
+                        <Button variant="outline" className="flex-1 border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white" onClick={onClose}>
                             Cancel
                         </Button>
                         <Button
@@ -392,11 +392,11 @@ function BidModal({
                 </div>
 
                 {/* Bid History */}
-                <div className="border-t border-white/5">
+                <div className="border-t border-[var(--border-default)]">
                     <button
                         type="button"
                         onClick={() => setShowHistory(!showHistory)}
-                        className="w-full px-6 py-3 flex items-center justify-between text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-white hover:bg-white/[0.02] transition-colors"
+                        className="w-full px-6 py-3 flex items-center justify-between text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] hover:text-primary dark:hover:text-white hover:bg-white/[0.02] transition-colors"
                     >
                         <span>Bid History ({bidHistory.length})</span>
                         <span className={`transition-transform ${showHistory ? 'rotate-180' : ''}`}>▾</span>
@@ -406,14 +406,14 @@ function BidModal({
                             {[...bidHistory].reverse().map((entry, i) => (
                                 <div key={entry.id} className={`flex items-center justify-between py-2 px-3 rounded-lg text-xs ${i === 0 ? 'bg-emerald-500/5 border border-emerald-500/10' : 'bg-white/[0.02]'}`}>
                                     <div className="flex items-center gap-2">
-                                        <span className={`font-bold ${i === 0 ? 'text-emerald-400' : 'text-gray-400'}`}>{entry.bidder}</span>
+                                        <span className={`font-bold ${i === 0 ? 'text-emerald-400' : 'text-[var(--text-muted)]'}`}>{entry.bidder}</span>
                                         {entry.isProxy && (
                                             <span className="text-[9px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20 font-bold">AUTO</span>
                                         )}
                                     </div>
                                     <div className="flex items-center gap-3">
-                                        <span className={`font-black tabular-nums ${i === 0 ? 'text-white' : 'text-gray-300'}`}>£{entry.amount.toLocaleString('en-GB')}</span>
-                                        <span className="text-gray-600 text-[10px]">
+                                        <span className={`font-black tabular-nums ${i === 0 ? 'text-white' : 'text-[var(--text-secondary)]'}`}>£{entry.amount.toLocaleString('en-GB')}</span>
+                                        <span className="text-[var(--text-secondary)] text-[10px]">
                                             {new Date(entry.timestamp).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                                         </span>
                                     </div>
@@ -590,11 +590,11 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                 <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-6 text-primary shadow-neon">
                     <CarIcon size={40} />
                 </div>
-                <h2 className="text-2xl font-bold font-heading mb-3 text-white text-center">Sign In to Make an Offer</h2>
-                <p className="text-gray-400 mb-6 text-center text-sm">Create an account or log in to negotiate safely with the seller.</p>
+                <h2 className="text-2xl font-bold font-heading mb-3 text-center">Sign In to Make an Offer</h2>
+                <p className="text-[var(--text-muted)] mb-6 text-center text-sm">Create an account or log in to negotiate safely with the seller.</p>
                 <div className="space-y-3">
                     <Button onClick={() => { setShowLoginModal(false); router.push(`/auth/login?redirect=/vehicle/${id}`) }} className="w-full shadow-neon">Log In</Button>
-                    <Button variant="outline" className="w-full border-white/10 text-gray-400 hover:text-white" onClick={() => { setShowLoginModal(false); router.push(`/auth/signup?redirect=/vehicle/${id}`) }}>Create Account</Button>
+                    <Button variant="outline" className="w-full border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white" onClick={() => { setShowLoginModal(false); router.push(`/auth/signup?redirect=/vehicle/${id}`) }}>Create Account</Button>
                 </div>
             </div>
         </div>
@@ -611,7 +611,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
     if (error || !listing) return (
         <div className="min-h-screen flex flex-col items-center justify-center gap-4">
             <AlertTriangle className="w-12 h-12 text-amber-500" />
-            <h1 className="text-xl font-bold text-white">{error || "Listing not found"}</h1>
+            <h1 className="text-xl font-bold">{error || "Listing not found"}</h1>
             <Link href="/search">
                 <Button variant="outline">← Back to search</Button>
             </Link>
@@ -622,7 +622,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
     const SidebarContent = () => (
         <div className="flex flex-col gap-6">
             {/* Price & Actions Card */}
-            <div className="bg-slate-800 rounded-xl border border-white/10 overflow-hidden shadow-2xl relative">
+            <div className="bg-[var(--bg-card)] rounded-xl border border-[var(--border-default)] overflow-hidden shadow-2xl relative">
                 <div className="h-1 bg-gradient-to-r from-primary to-primary/80 w-full absolute top-0" />
                 <div className="p-6">
                     {/* SOLD status banner */}
@@ -631,7 +631,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                             <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent opacity-50" />
                             <div className="relative z-10">
                                 <span className="block text-4xl font-black text-red-500 tracking-tighter mb-1 drop-shadow-sm">SOLD</span>
-                                <p className="text-gray-400 text-xs font-medium uppercase tracking-widest">This vehicle is no longer available</p>
+                                <p className="text-[var(--text-muted)] text-xs font-medium uppercase tracking-widest">This vehicle is no longer available</p>
                             </div>
                             <div className="absolute -right-4 -bottom-4 opacity-10 rotate-12 group-hover:rotate-0 transition-transform duration-700">
                                 <CarIcon size={100} className="text-red-500" />
@@ -641,12 +641,12 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                         <>
                             {/* Price Box */}
                             <div className="mb-4">
-                                <div className="text-4xl font-black text-white tracking-tight mb-2">{formatPrice(listing.price)}</div>
+                                <div className="text-4xl font-black tracking-tight mb-2">{formatPrice(listing.price)}</div>
                                 <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-3 py-1 rounded-full mb-3 border border-red-500/20 bg-red-500/10 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.1)]">
                                     Offers Welcome
                                 </span>
-                                <p className="text-[11px] text-gray-400 mt-1 pb-5 border-b border-white/10">Price includes VAT. Financing available from 19% APR.</p>
-                                <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+                                <p className="text-[11px] text-[var(--text-muted)] mt-1 pb-5 border-b border-[var(--border-default)]">Price includes VAT. Financing available from 19% APR.</p>
+                                <p className="text-xs text-[var(--text-muted)] mt-2 flex items-center gap-1">
                                     <Clock size={12} /> Listed on {new Date(listing.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                                 </p>
                                 {/* Last offer made — visible to public & seller viewers */}
@@ -654,7 +654,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                     <p className="text-xs text-amber-400/80 mt-1.5 flex items-center gap-1">
                                         <Tag size={12} />
                                         Last offer: <strong className="text-amber-300">£{Number(latestOffer.amount).toLocaleString('en-GB')}</strong>
-                                        <span className="text-gray-500 ml-1">
+                                        <span className="text-[var(--text-muted)] ml-1">
                                             · {new Date(latestOffer.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                                         </span>
                                     </p>
@@ -674,17 +674,17 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                             {/* Action Buttons */}
                             <div className="space-y-3">
                                 {String(listing.status) === 'SOLD' ? (
-                                    <div className="bg-slate-800/80 border-2 border-red-500/30 rounded-2xl p-6 text-center">
+                                    <div className="bg-[var(--bg-card)] border-2 border-red-500/30 rounded-2xl p-6 text-center">
                                         <XCircle size={48} className="text-red-500 mx-auto mb-3 opacity-80" />
-                                        <h3 className="text-xl font-black text-white uppercase tracking-tight mb-1">Vehicle Sold</h3>
-                                        <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">This listing is closed</p>
+                                        <h3 className="text-xl font-black uppercase tracking-tight mb-1">Vehicle Sold</h3>
+                                        <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest">This listing is closed</p>
                                     </div>
                                 ) : listing.status !== 'ACTIVE' ? (
-                                    <Button className="w-full py-6 text-lg bg-slate-700 text-gray-300 font-black uppercase rounded-xl cursor-not-allowed" disabled>
+                                    <Button className="w-full py-6 text-lg bg-slate-700 text-[var(--text-secondary)] font-black uppercase rounded-xl cursor-not-allowed" disabled>
                                         {listing.status === 'DRAFT' ? 'Preview Only (Draft)' : listing.status}
                                     </Button>
                                 ) : listing.sellerId === user?.id ? (
-                                    <div className="text-center text-gray-500 text-sm py-2">This is your listing.</div>
+                                    <div className="text-center text-[var(--text-muted)] text-sm py-2">This is your listing.</div>
                                 ) : (
                                     <>
                                         {offerViewerRole === 'buyer' && myOffer?.status === 'COUNTERED' ? (
@@ -703,7 +703,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                                 </Button>
                                                 <Button
                                                     variant="outline"
-                                                    className="w-full py-4 text-xs font-black uppercase border-white/10 text-gray-400 hover:text-white rounded-xl"
+                                                    className="w-full py-4 text-xs font-black uppercase border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white rounded-xl"
                                                     onClick={() => {
                                                         if (confirm('Decline this counter offer?')) {
                                                             respondToCounterOffer(myOffer.id, 'REJECTED')
@@ -741,7 +741,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                             variant="outline"
                                             onClick={handleEnquire}
                                             disabled={enquiring}
-                                            className="w-full py-6 text-[15px] font-black uppercase bg-transparent hover:bg-slate-700 border-white/10 text-white rounded-xl gap-2"
+                                            className="w-full py-6 text-[15px] font-black uppercase bg-transparent hover:bg-slate-700 border-[var(--border-default)] text-white rounded-xl gap-2"
                                         >
                                             {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2" />Starting Chat...</> : <><MessageCircle size={18} /> ENQUIRE NOW</>}
                                         </Button>
@@ -755,12 +755,12 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
 
             {/* Seller Profile Card */}
             {listing.seller && (
-                <div className="bg-slate-800/80 rounded-xl border border-white/10 overflow-hidden shadow-xl">
+                <div className="bg-[var(--bg-card)] rounded-xl border border-[var(--border-default)] overflow-hidden shadow-xl">
                     <div className="p-6">
-                        <h3 className="font-bold text-white text-lg mb-4">Seller Profile</h3>
+                        <h3 className="font-bold text-lg mb-4">Seller Profile</h3>
 
                         {/* Seller Info Block */}
-                        <Link href={`/seller/${listing.sellerId}`} className="flex items-center gap-4 mb-5 hover:bg-white/5 p-2 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-white/10 -ml-2 group">
+                        <Link href={`/seller/${listing.sellerId}`} className="flex items-center gap-4 mb-5 hover:bg-[var(--bg-card)] p-2 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-[var(--border-default)] -ml-2 group">
                             {listing.seller.role === 'DEALER' && listing.seller.dealerProfile?.logo ? (
                                 <Image src={listing.seller.dealerProfile.logo} alt="Dealer Logo" width={56} height={56} className="w-14 h-14 rounded-full object-cover shrink-0 bg-white shadow-md" />
                             ) : listing.seller.profileImage ? (
@@ -771,7 +771,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                 </div>
                             )}
                             <div className="flex-1">
-                                <h4 className="font-bold text-white text-base leading-tight mb-1 group-hover:text-primary transition-colors">
+                                <h4 className="font-bold text-base leading-tight mb-1 group-hover:text-primary transition-colors">
                                     {(listing.seller.role === 'DEALER' ? listing.seller.dealerProfile?.companyName : null) || `${listing.seller.firstName || ''} ${listing.seller.lastName || ''}`.trim() || 'Private Seller'}
                                 </h4>
                                 <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -795,23 +795,23 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                         
                         {/* Dealership Info */}
                         {listing.seller.role === 'DEALER' && listing.seller.dealerProfile && (
-                            <div className="space-y-4 text-sm text-gray-300 border-t border-white/5 pt-4">
+                            <div className="space-y-4 text-sm text-[var(--text-secondary)] border-t border-[var(--border-default)] pt-4">
                                 {listing.seller.dealerProfile.description && (
                                     <p className="line-clamp-4 text-sm leading-relaxed">{listing.seller.dealerProfile.description}</p>
                                 )}
                                 <div className="flex flex-col gap-2.5">
                                     {listing.seller.dealerProfile.phone && (
-                                        <a href={`tel:${listing.seller.dealerProfile.phone}`} className="flex items-center gap-3 hover:text-white transition-colors bg-slate-900/40 p-2.5 rounded-lg border border-white/5 group">
-                                            <div className="bg-slate-800 p-1.5 rounded-md group-hover:bg-primary/20 transition-colors">
-                                                <Phone size={14} className="text-gray-400 group-hover:text-primary transition-colors" />
+                                        <a href={`tel:${listing.seller.dealerProfile.phone}`} className="flex items-center gap-3 hover:text-primary dark:hover:text-white transition-colors bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)] group">
+                                            <div className="bg-[var(--bg-card)] p-1.5 rounded-md group-hover:bg-primary/20 transition-colors">
+                                                <Phone size={14} className="text-[var(--text-muted)] group-hover:text-primary transition-colors" />
                                             </div>
                                             <span className="font-medium">{listing.seller.dealerProfile.phone}</span>
                                         </a>
                                     )}
                                     {listing.seller.dealerProfile.website && (
-                                        <a href={listing.seller.dealerProfile.website} target="_blank" rel="noreferrer" className="flex items-center gap-3 hover:text-white transition-colors bg-slate-900/40 p-2.5 rounded-lg border border-white/5 group">
-                                            <div className="bg-slate-800 p-1.5 rounded-md group-hover:bg-primary/20 transition-colors">
-                                                <Globe size={14} className="text-gray-400 group-hover:text-primary transition-colors" />
+                                        <a href={listing.seller.dealerProfile.website} target="_blank" rel="noreferrer" className="flex items-center gap-3 hover:text-primary dark:hover:text-white transition-colors bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)] group">
+                                            <div className="bg-[var(--bg-card)] p-1.5 rounded-md group-hover:bg-primary/20 transition-colors">
+                                                <Globe size={14} className="text-[var(--text-muted)] group-hover:text-primary transition-colors" />
                                             </div>
                                             <span className="font-medium">Visit Website</span>
                                         </a>
@@ -821,24 +821,24 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                         )}
 
                         {/* Policies */}
-                        <div className="mt-5 pt-4 border-t border-white/5">
+                        <div className="mt-5 pt-4 border-t border-[var(--border-default)]">
                             <div className="flex items-center gap-1.5">
                                 <span className="relative group/policy inline-flex items-center cursor-help">
-                                    <Info size={14} className="text-gray-500 group-hover/policy:text-blue-400 transition-colors" />
-                                    <span className="absolute bottom-full -left-2 mb-2 w-56 rounded-lg bg-slate-800 border border-white/10 px-3 py-2.5 text-xs text-gray-300 leading-relaxed shadow-xl opacity-0 invisible group-hover/policy:opacity-100 group-hover/policy:visible transition-all duration-200 z-50 pointer-events-none">
-                                        <span className="font-bold text-white block mb-1">Policies:</span>
+                                    <Info size={14} className="text-[var(--text-muted)] group-hover/policy:text-blue-400 transition-colors" />
+                                    <span className="absolute bottom-full -left-2 mb-2 w-56 rounded-lg bg-[var(--bg-card)] border border-[var(--border-default)] px-3 py-2.5 text-xs text-[var(--text-secondary)] leading-relaxed shadow-xl opacity-0 invisible group-hover/policy:opacity-100 group-hover/policy:visible transition-all duration-200 z-50 pointer-events-none">
+                                        <span className="font-bold text-[var(--text-primary)] block mb-1">Policies:</span>
                                         Payment will not be made on our platform.
                                         <span className="absolute top-full left-3 -mt-px border-4 border-transparent border-t-slate-800" />
                                     </span>
                                 </span>
-                                <span className="text-xs text-gray-400 uppercase font-semibold tracking-wider">Policies</span>
+                                <span className="text-xs text-[var(--text-muted)] uppercase font-semibold tracking-wider">Policies</span>
                             </div>
                         </div>
 
                     </div>
                     
                     {/* Location Footer */}
-                    <div className="bg-slate-900/50 p-4 border-t border-white/5 flex items-center justify-center gap-2 text-gray-400 text-xs font-medium">
+                    <div className="bg-[var(--bg-input)] p-4 border-t border-[var(--border-default)] flex items-center justify-center gap-2 text-[var(--text-muted)] text-xs font-medium">
                         <MapPin size={14} className="text-primary" /> {listing.location || 'Location not specified'}
                     </div>
                 </div>
@@ -849,8 +849,8 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
     // ─── Render ─────────────────────────────────────────────────────────────
 
     return (
-        <div className="min-h-screen bg-slate-900 pt-24 pb-12 relative">
-            <div className="fixed inset-0 bg-gradient-to-br from-[#0f172a] to-[#1e293b] -z-10" />
+        <div className="min-h-screen pt-24 pb-12 relative">
+            <div className="fixed inset-0 -z-10" style={{ background: 'var(--bg-body)' }} />
 
             <LoginModal />
 
@@ -884,7 +884,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                 <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 px-5 py-3 rounded-xl shadow-2xl animate-in slide-in-from-bottom-4">
                     <CheckCircle size={18} />
                     <span className="text-sm font-semibold">Bid placed successfully! You're in the lead.</span>
-                    <button onClick={() => setOfferSuccess(false)} className="ml-2 text-emerald-400 hover:text-white">
+                    <button onClick={() => setOfferSuccess(false)} className="ml-2 text-emerald-400 hover:text-primary dark:hover:text-white">
                         <X size={14} />
                     </button>
                 </div>
@@ -902,14 +902,14 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
             <div className="container mx-auto px-5">
                 {/* Breadcrumb & Header */}
                 <div className="mb-8">
-                    <Link href="/search" className="text-gray-400 hover:text-primary text-sm flex items-center mb-4 transition-colors">
+                    <Link href="/search" className="text-[var(--text-muted)] hover:text-primary text-sm flex items-center mb-4 transition-colors">
                         <ArrowLeft size={16} className="mr-1" /> Back to Inventory
                     </Link>
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                         <div>
-                            <h1 className="text-3xl md:text-5xl font-bold font-heading text-white mb-2">{listing.title}</h1>
+                            <h1 className="text-3xl md:text-5xl font-bold font-heading mb-2">{listing.title}</h1>
                             {listing.make && listing.model && (
-                                <p className="text-gray-300 text-lg">{listing.make} {listing.model} {listing.year}</p>
+                                <p className="text-[var(--text-secondary)] text-lg">{listing.make} {listing.model} {listing.year}</p>
                             )}
                             {/* Badges Row */}
                             <div className="flex flex-wrap items-center gap-2 mt-3">
@@ -962,18 +962,18 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                         <div className="flex gap-3">
                             <Button
                                 variant="outline"
-                                className="rounded-full border-gray-600 text-gray-400 hover:text-white hover:border-white"
+                                className="rounded-full border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white hover:border-primary/40"
                                 onClick={handleCompare}
                             >
                                 <Scale size={18} className="mr-2" /> Compare
                             </Button>
-                            <Button variant="outline" size="icon" className="rounded-full border-gray-600 text-gray-400 hover:text-white hover:border-white" onClick={handleShare}>
+                            <Button variant="outline" size="icon" className="rounded-full border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white hover:border-primary/40" onClick={handleShare}>
                                 <Share2 size={18} />
                             </Button>
                             <Button
                                 variant="outline"
                                 size="icon"
-                                className={`rounded-full transition-all ${isWatchlisted ? 'bg-red-500/20 border-red-500/50 text-red-500' : 'border-gray-600 text-gray-400 hover:text-red-500 hover:border-red-500'}`}
+                                className={`rounded-full transition-all ${isWatchlisted ? 'bg-red-500/20 border-red-500/50 text-red-500' : 'border-gray-600 text-[var(--text-muted)] hover:text-red-500 hover:border-red-500'}`}
                                 onClick={handleWatchlist}
                                 disabled={watchlistLoading}
                             >
@@ -987,7 +987,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                     {/* Left Column: Gallery & Details */}
                     <div className="lg:col-span-2 space-y-8">
                         {/* Gallery */}
-                        <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-4">
+                        <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-4">
                             <div className="relative aspect-video bg-black rounded-lg overflow-hidden mb-4 group">
                                 <Image
                                     src={images[activeImage]}
@@ -1033,9 +1033,9 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
 
                         {/* Description */}
                         {listing.description && (
-                            <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-8 mb-8">
-                                <h3 className="text-xl font-bold text-white mb-4 border-l-4 border-primary pl-4">Description</h3>
-                                <div className={`text-gray-300 leading-relaxed whitespace-pre-wrap relative ${!isDescExpanded ? 'line-clamp-4 overflow-hidden' : ''}`}>
+                            <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-8 mb-8">
+                                <h3 className="text-xl font-bold mb-4 border-l-4 border-primary pl-4">Description</h3>
+                                <div className={`text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap relative ${!isDescExpanded ? 'line-clamp-4 overflow-hidden' : ''}`}>
                                     {listing.description}
                                     {!isDescExpanded && (
                                         <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-slate-800/90 to-transparent pointer-events-none"></div>
@@ -1053,74 +1053,74 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                         )}
 
                         {/* Detailed Specifications */}
-                        <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-8">
-                            <h3 className="text-xl font-bold text-white mb-6 border-l-4 border-primary pl-4">Specifications</h3>
+                        <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-8">
+                            <h3 className="text-xl font-bold mb-6 border-l-4 border-primary pl-4">Specifications</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
                                 
                                 {/* Overview */}
                                 <div>
-                                    <h4 className="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4 border-b border-white/10 pb-2">Overview</h4>
+                                    <h4 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-4 border-b border-[var(--border-default)] pb-2">Overview</h4>
                                     <div className="space-y-2">
-                                        {listing.make && <div className="flex justify-between"><span className="text-gray-400 text-sm">Make:</span><span className="text-white font-semibold text-sm">{listing.make}</span></div>}
-                                        {listing.model && <div className="flex justify-between"><span className="text-gray-400 text-sm">Model:</span><span className="text-white font-semibold text-sm">{listing.model}</span></div>}
-                                        {listing.year && <div className="flex justify-between"><span className="text-gray-400 text-sm">Year:</span><span className="text-white font-semibold text-sm">{listing.year}</span></div>}
-                                        {listing.bodyType && <div className="flex justify-between"><span className="text-gray-400 text-sm">Body type:</span><span className="text-white font-semibold text-sm">{listing.bodyType}</span></div>}
-                                        {listing.color && <div className="flex justify-between"><span className="text-gray-400 text-sm">Exterior colour:</span><span className="text-white font-semibold text-sm">{listing.color}</span></div>}
-                                        {listing.mileage !== null && listing.mileage !== undefined && <div className="flex justify-between"><span className="text-gray-400 text-sm">Mileage:</span><span className="text-white font-semibold text-sm">{listing.mileage.toLocaleString('en-GB')} mi</span></div>}
-                                        {listing.condition && <div className="flex justify-between"><span className="text-gray-400 text-sm">Condition:</span><span className="text-white font-semibold text-sm">{listing.condition.replace('_', ' ')}</span></div>}
-                                        {listing.vrm && <div className="flex justify-between"><span className="text-gray-400 text-sm">Registration:</span><span className="text-white font-semibold text-sm">{listing.vrm}</span></div>}
-                                        {listing.monthOfFirstRegistration && <div className="flex justify-between"><span className="text-gray-400 text-sm">Reg. date:</span><span className="text-white font-semibold text-sm">{listing.monthOfFirstRegistration}</span></div>}
+                                        {listing.make && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Make:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.make}</span></div>}
+                                        {listing.model && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Model:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.model}</span></div>}
+                                        {listing.year && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Year:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.year}</span></div>}
+                                        {listing.bodyType && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Body type:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.bodyType}</span></div>}
+                                        {listing.color && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Exterior colour:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.color}</span></div>}
+                                        {listing.mileage !== null && listing.mileage !== undefined && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Mileage:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.mileage.toLocaleString('en-GB')} mi</span></div>}
+                                        {listing.condition && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Condition:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.condition.replace('_', ' ')}</span></div>}
+                                        {listing.vrm && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Registration:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.vrm}</span></div>}
+                                        {listing.monthOfFirstRegistration && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Reg. date:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.monthOfFirstRegistration}</span></div>}
                                     </div>
                                 </div>
 
                                 {/* Fuel Economy */}
                                 <div>
-                                    <h4 className="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4 border-b border-white/10 pb-2">Fuel Economy</h4>
+                                    <h4 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-4 border-b border-[var(--border-default)] pb-2">Fuel Economy</h4>
                                     <div className="space-y-2">
-                                        {listing.fuelType && <div className="flex justify-between"><span className="text-gray-400 text-sm">Fuel type:</span><span className="text-white font-semibold text-sm">{listing.fuelType}</span></div>}
-                                        {listing.co2Emissions && <div className="flex justify-between"><span className="text-gray-400 text-sm">CO2 emissions:</span><span className="text-white font-semibold text-sm">{listing.co2Emissions} g/km</span></div>}
-                                        {listing.ulezCompliant !== null && <div className="flex justify-between"><span className="text-gray-400 text-sm">ULEZ compliant:</span><span className="text-white font-semibold text-sm">{listing.ulezCompliant ? "Yes" : "No"}</span></div>}
-                                        {listing.euroStandard && <div className="flex justify-between"><span className="text-gray-400 text-sm">Euro standard:</span><span className="text-white font-semibold text-sm">{listing.euroStandard.replace('_', ' ')}</span></div>}
+                                        {listing.fuelType && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Fuel type:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.fuelType}</span></div>}
+                                        {listing.co2Emissions && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">CO2 emissions:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.co2Emissions} g/km</span></div>}
+                                        {listing.ulezCompliant !== null && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">ULEZ compliant:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.ulezCompliant ? "Yes" : "No"}</span></div>}
+                                        {listing.euroStandard && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Euro standard:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.euroStandard.replace('_', ' ')}</span></div>}
                                     </div>
                                 </div>
 
                                 {/* Performance */}
                                 <div>
-                                    <h4 className="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4 border-b border-white/10 pb-2">Performance</h4>
+                                    <h4 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-4 border-b border-[var(--border-default)] pb-2">Performance</h4>
                                     <div className="space-y-2">
-                                        {listing.transmission && <div className="flex justify-between"><span className="text-gray-400 text-sm">Gearbox:</span><span className="text-white font-semibold text-sm">{listing.transmission}</span></div>}
-                                        {listing.engineSize && <div className="flex justify-between"><span className="text-gray-400 text-sm">Engine size:</span><span className="text-white font-semibold text-sm">{listing.engineSize} cc</span></div>}
-                                        {listing.bhp && <div className="flex justify-between"><span className="text-gray-400 text-sm">Horsepower:</span><span className="text-white font-semibold text-sm">{listing.bhp} bhp</span></div>}
+                                        {listing.transmission && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Gearbox:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.transmission}</span></div>}
+                                        {listing.engineSize && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Engine size:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.engineSize} cc</span></div>}
+                                        {listing.bhp && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Horsepower:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.bhp} bhp</span></div>}
                                     </div>
                                 </div>
 
                                 {/* Measurements */}
                                 <div>
-                                    <h4 className="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4 border-b border-white/10 pb-2">Measurements</h4>
+                                    <h4 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-4 border-b border-[var(--border-default)] pb-2">Measurements</h4>
                                     <div className="space-y-2">
-                                        {listing.doors && <div className="flex justify-between"><span className="text-gray-400 text-sm">Doors:</span><span className="text-white font-semibold text-sm">{listing.doors}</span></div>}
-                                        {listing.seats && <div className="flex justify-between"><span className="text-gray-400 text-sm">Maximum seating:</span><span className="text-white font-semibold text-sm">{listing.seats}</span></div>}
-                                        {listing.wheelplan && <div className="flex justify-between"><span className="text-gray-400 text-sm">Wheelplan:</span><span className="text-white font-semibold text-sm">{listing.wheelplan}</span></div>}
+                                        {listing.doors && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Doors:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.doors}</span></div>}
+                                        {listing.seats && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Maximum seating:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.seats}</span></div>}
+                                        {listing.wheelplan && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Wheelplan:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.wheelplan}</span></div>}
                                     </div>
                                 </div>
 
                                 {/* DVLA History */}
                                 <div>
-                                    <h4 className="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4 border-b border-white/10 pb-2">History &amp; Status</h4>
+                                    <h4 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-4 border-b border-[var(--border-default)] pb-2">History &amp; Status</h4>
                                     <div className="space-y-2">
-                                        {listing.motStatus && <div className="flex justify-between"><span className="text-gray-400 text-sm">MOT Status:</span><span className={`font-semibold text-sm ${listing.motStatus === 'Valid' ? 'text-emerald-400' : 'text-amber-400'}`}>{listing.motStatus}</span></div>}
-                                        {listing.motExpiryDate && <div className="flex justify-between"><span className="text-gray-400 text-sm">MOT Expiry:</span><span className="text-white font-semibold text-sm">{listing.motExpiryDate}</span></div>}
-                                        {listing.taxStatus && <div className="flex justify-between"><span className="text-gray-400 text-sm">Tax Status:</span><span className={`font-semibold text-sm ${listing.taxStatus === 'Taxed' ? 'text-emerald-400' : 'text-amber-400'}`}>{listing.taxStatus}</span></div>}
-                                        {listing.taxDueDate && <div className="flex justify-between"><span className="text-gray-400 text-sm">Tax Due:</span><span className="text-white font-semibold text-sm">{listing.taxDueDate}</span></div>}
-                                        {listing.markedForExport !== null && <div className="flex justify-between"><span className="text-gray-400 text-sm">Exported:</span><span className="text-white font-semibold text-sm">{listing.markedForExport ? "Yes" : "No"}</span></div>}
+                                        {listing.motStatus && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">MOT Status:</span><span className={`font-semibold text-sm ${listing.motStatus === 'Valid' ? 'text-emerald-400' : 'text-amber-400'}`}>{listing.motStatus}</span></div>}
+                                        {listing.motExpiryDate && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">MOT Expiry:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.motExpiryDate}</span></div>}
+                                        {listing.taxStatus && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Tax Status:</span><span className={`font-semibold text-sm ${listing.taxStatus === 'Taxed' ? 'text-emerald-400' : 'text-amber-400'}`}>{listing.taxStatus}</span></div>}
+                                        {listing.taxDueDate && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Tax Due:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.taxDueDate}</span></div>}
+                                        {listing.markedForExport !== null && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Exported:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.markedForExport ? "Yes" : "No"}</span></div>}
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         {/* Key Information */}
-                        <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-8">
-                            <h3 className="text-xl font-bold text-white mb-6 border-l-4 border-primary pl-4">Key Information</h3>
+                        <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-8">
+                            <h3 className="text-xl font-bold mb-6 border-l-4 border-primary pl-4">Key Information</h3>
                             <div className="grid grid-cols-2 gap-6">
                                 {[
                                     { label: "Year", value: listing.year },
@@ -1141,9 +1141,9 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                     { label: "Type Approval", value: listing.typeApproval },
                                     { label: "Wheelplan", value: listing.wheelplan },
                                 ].filter(i => i.value != null).map((item, i) => (
-                                    <div key={i} className="flex justify-between border-b border-white/5 pb-2">
-                                        <span className="text-gray-400 text-sm">{item.label}</span>
-                                        <span className="text-white font-semibold text-sm">{String(item.value)}</span>
+                                    <div key={i} className="flex justify-between border-b border-[var(--border-default)] pb-2">
+                                        <span className="text-[var(--text-muted)] text-sm">{item.label}</span>
+                                        <span className="text-[var(--text-primary)] font-semibold text-sm">{String(item.value)}</span>
                                     </div>
                                 ))}
                             </div>
@@ -1151,13 +1151,13 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
 
                         {/* Features */}
                         {listing.features && Array.isArray(listing.features) && listing.features.length > 0 && (
-                            <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-8">
-                                <h3 className="text-xl font-bold text-white mb-6 border-l-4 border-primary pl-4">Vehicle Features</h3>
+                            <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-8">
+                                <h3 className="text-xl font-bold mb-6 border-l-4 border-primary pl-4">Vehicle Features</h3>
                                 <div className="space-y-1">
                                     <AccordionItem title="Included Features" icon={<CarIcon size={18} />}>
                                         <div className="grid grid-cols-2 gap-2">
                                             {(listing.features as string[]).map((feat, i) => (
-                                                <div key={i} className="flex items-center gap-2 text-sm text-gray-300">
+                                                <div key={i} className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
                                                     <CheckCircle size={12} className="text-emerald-400 shrink-0" />
                                                     {feat}
                                                 </div>
@@ -1190,12 +1190,12 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
 
                         {/* Seller-Reported Damage */}
                         {Array.isArray((listing as any).damageRecords) && (listing as any).damageRecords.length > 0 && (
-                            <div className="bg-slate-800/50 backdrop-blur-md border border-amber-500/20 rounded-xl p-8">
-                                <h3 className="text-xl font-bold text-white mb-1 border-l-4 border-amber-500 pl-4 flex items-center gap-2">
+                            <div className="bg-[var(--bg-card)] backdrop-blur-md border border-amber-500/20 rounded-xl p-8">
+                                <h3 className="text-xl font-bold mb-1 border-l-4 border-amber-500 pl-4 flex items-center gap-2">
                                     <Wrench size={18} className="text-amber-400" />
                                     Seller-Reported Damage
                                 </h3>
-                                <p className="text-xs text-gray-500 mb-6 pl-6">The seller has disclosed the following known damage areas.</p>
+                                <p className="text-xs text-[var(--text-muted)] mb-6 pl-6">The seller has disclosed the following known damage areas.</p>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     {((listing as any).damageRecords as any[]).map((record: any, i: number) => {
                                         const isKebabId = /^[a-z][a-z-]*$/.test(record.part ?? '')
@@ -1208,7 +1208,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                         return (
                                             <div key={record.id ?? i} className="flex gap-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/15">
                                                 {record.imageUrl && (
-                                                    <div className="w-20 h-16 rounded-lg overflow-hidden shrink-0 border border-white/10">
+                                                    <div className="w-20 h-16 rounded-lg overflow-hidden shrink-0 border border-[var(--border-default)]">
                                                         <img src={record.imageUrl} alt={zoneLabel} className="w-full h-full object-cover" />
                                                     </div>
                                                 )}
@@ -1218,13 +1218,13 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                                             {zoneLabel}
                                                         </span>
                                                         {record.size && record.size !== 'MEDIUM' && (
-                                                            <span className="text-[10px] text-gray-600 font-medium">{record.size}</span>
+                                                            <span className="text-[10px] text-[var(--text-secondary)] font-medium">{record.size}</span>
                                                         )}
                                                         {view && (
                                                             <span className="text-[10px] text-gray-700">{view}</span>
                                                         )}
                                                     </div>
-                                                    <p className="text-sm text-gray-300 leading-snug line-clamp-3">
+                                                    <p className="text-sm text-[var(--text-secondary)] leading-snug line-clamp-3">
                                                         {record.type || 'No description provided.'}
                                                     </p>
                                                 </div>
@@ -1238,13 +1238,13 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
 
 
                         {/* HPI Check Report */}
-                        <div className="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-8 relative overflow-hidden">
+                        <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-8 relative overflow-hidden">
                             <div className="flex items-center justify-between mb-6">
-                                <h3 className="text-xl font-bold text-white border-l-4 border-primary pl-4 flex items-center gap-2">
+                                <h3 className="text-xl font-bold border-l-4 border-primary pl-4 flex items-center gap-2">
                                     <FileSearch className="text-primary" size={20} />
                                     Comprehensive Vehicle Check
                                 </h3>
-                                <div className="text-xs font-semibold px-2.5 py-1 bg-white/10 text-gray-300 rounded-md border border-white/10">
+                                <div className="text-xs font-semibold px-2.5 py-1 bg-white/10 text-[var(--text-secondary)] rounded-md border border-[var(--border-default)]">
                                     Powered by CarMazium
                                 </div>
                             </div>
@@ -1285,13 +1285,13 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                             </div>
 
                             {/* Blurred Report Section */}
-                            <div className="relative rounded-xl border border-white/10 overflow-hidden bg-white/5">
+                            <div className="relative rounded-xl border border-[var(--border-default)] overflow-hidden bg-[var(--bg-card)]">
                                 <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/60 backdrop-blur-[3px] p-6 text-center">
                                     <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center text-primary mb-4 shadow-neon">
                                         <Lock size={28} />
                                     </div>
-                                    <h4 className="text-xl font-bold text-white mb-2">Detailed Report Locked</h4>
-                                    <p className="text-sm text-gray-300 max-w-sm mb-6">
+                                    <h4 className="text-xl font-bold mb-2">Detailed Report Locked</h4>
+                                    <p className="text-sm text-[var(--text-secondary)] max-w-sm mb-6">
                                         Unlock the full 50+ point vehicle history check including MOT history, keeper changes, and hidden issues.
                                     </p>
                                     <Button className="shadow-neon px-8 hover:scale-105 transition-transform">
@@ -1316,7 +1316,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
 
                     {/* Right Column: Sticky Sidebar — desktop only */}
                     <div className="lg:col-span-1 hidden lg:block">
-                        <div className="sticky top-28 bg-slate-800 rounded-xl border border-white/10 overflow-hidden shadow-2xl relative">
+                        <div className="sticky top-28 bg-[var(--bg-card)] rounded-xl border border-[var(--border-default)] overflow-hidden shadow-2xl relative">
                             <div className="h-1 bg-gradient-to-r from-primary to-red-800 w-full absolute top-0" />
                             <div className="p-6">
                                 {/* Price */}
@@ -1324,30 +1324,30 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                     {/* Policies tooltip */}
                                     <div className="flex items-center gap-1.5 mb-3">
                                         <span className="relative group/policy inline-flex items-center cursor-help">
-                                            <Info size={14} className="text-gray-500 group-hover/policy:text-blue-400 transition-colors" />
-                                            <span className="absolute bottom-full -left-2 mb-2 w-56 rounded-lg bg-slate-800 border border-white/10 px-3 py-2.5 text-xs text-gray-300 leading-relaxed shadow-xl opacity-0 invisible group-hover/policy:opacity-100 group-hover/policy:visible transition-all duration-200 z-50 pointer-events-none">
-                                                <span className="font-bold text-white block mb-1">Policies:</span>
+                                            <Info size={14} className="text-[var(--text-muted)] group-hover/policy:text-blue-400 transition-colors" />
+                                            <span className="absolute bottom-full -left-2 mb-2 w-56 rounded-lg bg-[var(--bg-card)] border border-[var(--border-default)] px-3 py-2.5 text-xs text-[var(--text-secondary)] leading-relaxed shadow-xl opacity-0 invisible group-hover/policy:opacity-100 group-hover/policy:visible transition-all duration-200 z-50 pointer-events-none">
+                                                <span className="font-bold text-[var(--text-primary)] block mb-1">Policies:</span>
                                                 Payment will not be made on our platform.
                                                 <span className="absolute top-full left-3 -mt-px border-4 border-transparent border-t-slate-800" />
                                             </span>
                                         </span>
-                                        <span className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Policies</span>
+                                        <span className="text-[10px] text-[var(--text-muted)] uppercase font-semibold tracking-wider">Policies</span>
                                     </div>
                                     <div>
-                                        <div className="text-4xl font-bold text-white mb-2">{formatPrice(listing.price)}</div>
+                                        <div className="text-4xl font-bold mb-2">{formatPrice(listing.price)}</div>
                                         <span className="inline-block text-[10px] font-bold uppercase tracking-wide bg-primary/10 text-primary border border-primary/30 px-2.5 py-1 rounded-full mb-4">
                                             Offers Welcome
                                         </span>
                                     </div>
-                                    <p className="text-xs text-gray-400 mt-3">Price includes VAT. Financing available from 19% APR.</p>
-                                    <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+                                    <p className="text-xs text-[var(--text-muted)] mt-3">Price includes VAT. Financing available from 19% APR.</p>
+                                    <p className="text-xs text-[var(--text-muted)] mt-2 flex items-center gap-1">
                                         <Clock size={12} /> Listed on {new Date(listing.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                                     </p>
                                 </div>
 
                                 {/* Seller Info Block */}
                                 {listing.seller && (
-                                    <Link href={`/seller/${listing.sellerId}`} className="flex items-center gap-3 mb-6 hover:bg-white/5 p-2 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-white/10 -ml-2 group">
+                                    <Link href={`/seller/${listing.sellerId}`} className="flex items-center gap-3 mb-6 hover:bg-[var(--bg-card)] p-2 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-[var(--border-default)] -ml-2 group">
                                         {listing.seller.role === 'DEALER' && listing.seller.dealerProfile?.logo ? (
                                             <Image src={listing.seller.dealerProfile.logo} alt="Dealer Logo" width={48} height={48} className="w-12 h-12 rounded-full object-cover shrink-0 bg-white" />
                                         ) : listing.seller.profileImage ? (
@@ -1358,7 +1358,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                             </div>
                                         )}
                                         <div className="flex-1">
-                                            <h3 className="font-bold text-white text-[15px] leading-tight group-hover:text-primary transition-colors">
+                                            <h3 className="font-bold text-[15px] leading-tight group-hover:text-primary transition-colors">
                                                 {(listing.seller.role === 'DEALER' ? listing.seller.dealerProfile?.companyName : null) || `${listing.seller.firstName || ''} ${listing.seller.lastName || ''}`.trim() || 'Private Seller'}
                                             </h3>
                                             <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -1383,19 +1383,19 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                 
                                 {/* Dealership Info */}
                                 {listing.seller?.role === 'DEALER' && listing.seller?.dealerProfile && (
-                                    <div className="mb-6 space-y-2 text-sm text-gray-300">
+                                    <div className="mb-6 space-y-2 text-sm text-[var(--text-secondary)]">
                                         {listing.seller.dealerProfile.description && (
                                             <p className="line-clamp-3 text-xs">{listing.seller.dealerProfile.description}</p>
                                         )}
                                         <div className="flex flex-col gap-1 pt-2">
                                             {listing.seller.dealerProfile.phone && (
-                                                <a href={`tel:${listing.seller.dealerProfile.phone}`} className="flex items-center gap-2 hover:text-white transition-colors">
-                                                    <Phone size={14} className="text-gray-500" /> {listing.seller.dealerProfile.phone}
+                                                <a href={`tel:${listing.seller.dealerProfile.phone}`} className="flex items-center gap-2 hover:text-primary dark:hover:text-white transition-colors">
+                                                    <Phone size={14} className="text-[var(--text-muted)]" /> {listing.seller.dealerProfile.phone}
                                                 </a>
                                             )}
                                             {listing.seller.dealerProfile.website && (
-                                                <a href={listing.seller.dealerProfile.website} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-white transition-colors">
-                                                    <Globe size={14} className="text-gray-500" /> Visit Website
+                                                <a href={listing.seller.dealerProfile.website} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-primary dark:hover:text-white transition-colors">
+                                                    <Globe size={14} className="text-[var(--text-muted)]" /> Visit Website
                                                 </a>
                                             )}
                                         </div>
@@ -1416,12 +1416,12 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                 {/* Action Buttons */}
                                 <div className="space-y-3">
                                     {listing.status !== 'ACTIVE' ? (
-                                        <Button className="w-full py-6 text-lg bg-slate-700 text-gray-300 cursor-not-allowed uppercase" disabled>
+                                        <Button className="w-full py-6 text-lg bg-slate-700 text-[var(--text-secondary)] cursor-not-allowed uppercase" disabled>
                                             {listing.status === 'DRAFT' ? 'Preview Only (Draft)' : listing.status}
                                         </Button>
                                     ) : listing.sellerId === user?.id ? (
                                         // Seller sees no offer/enquire buttons on their own listing
-                                        <div className="text-center text-gray-500 text-sm py-2">This is your listing.</div>
+                                        <div className="text-center text-[var(--text-muted)] text-sm py-2">This is your listing.</div>
                                     ) : (
                                         <>
                                             <Button
@@ -1442,7 +1442,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                                 variant="outline"
                                                 onClick={handleEnquire}
                                                 disabled={enquiring}
-                                                className="w-full py-6 text-lg border-white/20 text-white hover:bg-white/10 gap-2"
+                                                className="w-full py-6 text-lg border-[var(--border-default)] hover:bg-primary/5 dark:hover:bg-white/10 gap-2"
                                             >
                                                 {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2 inline" /> Starting Chat...</> : <><MessageCircle size={18} /> Enquire Now</>}
                                             </Button>
@@ -1452,7 +1452,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                             </div>
 
                             {listing.location && (
-                                <div className="bg-white/5 p-4 flex items-center justify-center gap-2 text-gray-400 text-xs hover:text-white cursor-pointer transition-colors border-t border-white/5">
+                                <div className="bg-[var(--bg-card)] p-4 flex items-center justify-center gap-2 text-[var(--text-muted)] text-xs hover:text-primary dark:hover:text-white cursor-pointer transition-colors border-t border-[var(--border-default)]">
                                     <MapPin size={14} /> {listing.location}
                                 </div>
                             )}

@@ -25,7 +25,7 @@ const ICON_MAP: Record<string, React.ReactNode> = {
     OFFER_ACCEPTED:        <CheckCircle size={14} className="text-emerald-400" />,
     OFFER_REJECTED:        <XCircle size={14} className="text-red-400" />,
     OFFER_COUNTERED:       <RefreshCw size={14} className="text-blue-400" />,
-    OFFER_WITHDRAWN:       <MinusCircle size={14} className="text-gray-400" />,
+    OFFER_WITHDRAWN:       <MinusCircle size={14} className="text-[var(--text-muted)]" />,
     // Messages
     NEW_MESSAGE:           <MessageSquare size={14} className="text-blue-400" />,
     MESSAGE_RECEIVED:      <MessageSquare size={14} className="text-blue-400" />,
@@ -38,8 +38,8 @@ const ICON_MAP: Record<string, React.ReactNode> = {
     AUCTION_BID_PLACED:    <Gavel size={14} className="text-orange-400" />,
     AUCTION_OUTBID:        <TrendingDown size={14} className="text-red-400" />,
     AUCTION_WON:           <Trophy size={14} className="text-amber-400" />,
-    AUCTION_ENDED:         <Gavel size={14} className="text-slate-400" />,
-    AUCTION_ENDED_NO_SALE: <AlertCircle size={14} className="text-slate-400" />,
+    AUCTION_ENDED:         <Gavel size={14} className="text-[var(--text-muted)]" />,
+    AUCTION_ENDED_NO_SALE: <AlertCircle size={14} className="text-[var(--text-muted)]" />,
     AUCTION_STARTED:       <Zap size={14} className="text-emerald-400" />,
     AUCTION_ENDING_SOON:   <Timer size={14} className="text-amber-400" />,
     AUCTION_CANCELLED:     <XCircle size={14} className="text-red-400" />,
@@ -47,7 +47,7 @@ const ICON_MAP: Record<string, React.ReactNode> = {
 }
 
 function getIcon(type: string) {
-    return ICON_MAP[type] ?? <Bell size={14} className="text-gray-400" />
+    return ICON_MAP[type] ?? <Bell size={14} className="text-[var(--text-muted)]" />
 }
 
 /** Map legacy dashboard URLs to unified `/dashboard/user` tab deep-links */
@@ -217,10 +217,10 @@ export function NotificationBell() {
         <div className="relative" ref={ref}>
             <button
                 onClick={() => setOpen(o => !o)}
-                className="relative flex items-center justify-center w-10 h-10 rounded-xl border border-white/10 bg-slate-800/60 hover:bg-slate-700/80 transition-all"
+                className="relative flex items-center justify-center w-10 h-10 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-hover)] transition-all"
                 aria-label="Notifications"
             >
-                <Bell size={18} className="text-gray-300" />
+                <Bell size={18} className="text-[var(--text-secondary)]" />
                 {totalUnread > 0 && (
                     <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-primary text-white text-[9px] font-black rounded-full flex items-center justify-center border border-slate-900 shadow-sm animate-pulse">
                         {totalUnread > 99 ? '99+' : totalUnread}
@@ -229,9 +229,9 @@ export function NotificationBell() {
             </button>
 
             {open && (
-                <div className="fixed sm:absolute top-20 sm:top-full left-2 right-2 sm:left-auto sm:right-0 sm:mt-2 sm:w-80 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                <div className="fixed sm:absolute top-20 sm:top-full left-2 right-2 sm:left-auto sm:right-0 sm:mt-2 sm:w-80 bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                     {/* Header */}
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-default)]">
                         <div className="flex items-center gap-2">
                             <Bell size={14} className="text-primary" />
                             <span className="font-bold text-white text-sm">Notifications</span>
@@ -244,7 +244,7 @@ export function NotificationBell() {
                         {unreadNotifs > 0 && (
                             <button
                                 onClick={handleMarkAll}
-                                className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-white transition-colors font-bold uppercase tracking-widest"
+                                className="flex items-center gap-1 text-[10px] text-[var(--text-muted)] hover:text-white transition-colors font-bold uppercase tracking-widest"
                             >
                                 <Check size={10} /> Mark all read
                             </button>
@@ -260,7 +260,7 @@ export function NotificationBell() {
                         ) : notifications.length === 0 ? (
                             <div className="text-center py-12">
                                 <Bell size={28} className="text-gray-700 mx-auto mb-3" />
-                                <p className="text-gray-500 text-xs font-semibold">No notifications yet</p>
+                                <p className="text-[var(--text-muted)] text-xs font-semibold">No notifications yet</p>
                             </div>
                         ) : (
                             notifications.map(n => {
@@ -269,21 +269,21 @@ export function NotificationBell() {
                                     <button
                                         key={n.id}
                                         onClick={() => handleClickNotif(n)}
-                                        className={`w-full text-left flex items-start gap-3 px-4 py-3 hover:bg-white/5 transition-colors border-b border-white/5 last:border-0 ${!n.isRead ? 'bg-primary/5' : ''}`}
+                                        className={`w-full text-left flex items-start gap-3 px-4 py-3 hover:bg-[var(--bg-card)] transition-colors border-b border-[var(--border-default)] last:border-0 ${!n.isRead ? 'bg-primary/5' : ''}`}
                                     >
                                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
                                             !n.isRead
                                                 ? isAuction ? 'bg-orange-500/10' : 'bg-primary/10'
-                                                : 'bg-white/5'
+                                                : 'bg-[var(--bg-card)]'
                                         }`}>
                                             {getIcon(n.type)}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className={`text-xs font-bold mb-0.5 ${!n.isRead ? 'text-white' : 'text-gray-300'}`}>
+                                            <p className={`text-xs font-bold mb-0.5 ${!n.isRead ? 'text-white' : 'text-[var(--text-secondary)]'}`}>
                                                 {n.title}
                                             </p>
-                                            <p className="text-[11px] text-gray-500 leading-relaxed line-clamp-2">{n.body ?? n.message}</p>
-                                            <p className="text-[10px] text-gray-600 mt-1">{timeAgo(n.createdAt)}</p>
+                                            <p className="text-[11px] text-[var(--text-muted)] leading-relaxed line-clamp-2">{n.body ?? n.message}</p>
+                                            <p className="text-[10px] text-[var(--text-secondary)] mt-1">{timeAgo(n.createdAt)}</p>
                                         </div>
                                         {!n.isRead && (
                                             <div className={`w-2 h-2 rounded-full shrink-0 mt-2 ${isAuction ? 'bg-orange-400' : 'bg-primary'}`} />
@@ -295,11 +295,11 @@ export function NotificationBell() {
                     </div>
 
                     {/* Footer */}
-                    <div className="px-4 py-3 border-t border-white/10 bg-slate-800/30">
+                    <div className="px-4 py-3 border-t border-[var(--border-default)] bg-[var(--bg-input)]">
                         <Link
                             href="/dashboard/user?tab=overview"
                             onClick={() => setOpen(false)}
-                            className="text-[11px] text-gray-500 hover:text-white transition-colors font-bold uppercase tracking-widest flex items-center justify-center gap-1"
+                            className="text-[11px] text-[var(--text-muted)] hover:text-white transition-colors font-bold uppercase tracking-widest flex items-center justify-center gap-1"
                         >
                             View Dashboard →
                         </Link>

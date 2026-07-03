@@ -69,15 +69,15 @@ export function ChatRoomList({ onSelectRoom, selectedRoomId }: ChatRoomListProps
     return (
         <div className="flex flex-col h-full">
             {/* Search */}
-            <div className="p-4 border-b border-white/10">
+            <div className="p-4 border-b border-[var(--border-default)]">
                 <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
                     <input
                         type="text"
                         placeholder="Search conversations..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-slate-800 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg pl-10 pr-4 py-2 placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-primary/50"
                     />
                 </div>
             </div>
@@ -85,7 +85,7 @@ export function ChatRoomList({ onSelectRoom, selectedRoomId }: ChatRoomListProps
             {/* Room List */}
             <div className="flex-1 overflow-y-auto">
                 {filteredRooms.length === 0 ? (
-                    <div className="text-center text-gray-500 py-12">
+                    <div className="text-center text-[var(--text-muted)] py-12">
                         <MessageSquare className="w-12 h-12 mx-auto mb-2 opacity-50" />
                         <p>No conversations yet</p>
                         <p className="text-sm mt-1">
@@ -93,16 +93,16 @@ export function ChatRoomList({ onSelectRoom, selectedRoomId }: ChatRoomListProps
                         </p>
                     </div>
                 ) : (
-                    <div className="divide-y divide-white/5">
+                    <div className="divide-y divide-[var(--border-default)]">
                         {filteredRooms.map((room) => (
                             <button
                                 key={room.id}
                                 onClick={() => onSelectRoom(room)}
-                                className={`w-full p-4 text-left hover:bg-white/5 transition-colors flex gap-3 ${selectedRoomId === room.id ? 'bg-primary/10 border-l-2 border-primary' : ''
+                                className={`w-full p-4 text-left hover:bg-[var(--bg-card)] transition-colors flex gap-3 ${selectedRoomId === room.id ? 'bg-primary/10 border-l-2 border-primary' : ''
                                     }`}
                             >
                                 {/* Avatar */}
-                                <div className="w-12 h-12 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                <div className="w-12 h-12 rounded-full bg-[var(--bg-card)] flex items-center justify-center flex-shrink-0 overflow-hidden">
                                     {room.otherUser.profileImage ? (
                                         <img
                                             src={room.otherUser.profileImage}
@@ -110,7 +110,7 @@ export function ChatRoomList({ onSelectRoom, selectedRoomId }: ChatRoomListProps
                                             className="w-full h-full object-cover"
                                         />
                                     ) : (
-                                        <User className="text-gray-400" size={24} />
+                                        <User className="text-[var(--text-muted)]" size={24} />
                                     )}
                                 </div>
 
@@ -121,7 +121,7 @@ export function ChatRoomList({ onSelectRoom, selectedRoomId }: ChatRoomListProps
                                             {room.otherUser.firstName} {room.otherUser.lastName}
                                         </h4>
                                         {room.lastMessage && (
-                                            <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
+                                            <span className="text-xs text-[var(--text-muted)] flex-shrink-0 ml-2">
                                                 {formatTime(room.lastMessage.createdAt)}
                                             </span>
                                         )}
@@ -134,7 +134,7 @@ export function ChatRoomList({ onSelectRoom, selectedRoomId }: ChatRoomListProps
                                     )}
 
                                     <div className="flex items-center justify-between">
-                                        <p className="text-sm text-gray-400 truncate">
+                                        <p className="text-sm text-[var(--text-muted)] truncate">
                                             {room.lastMessage
                                                 ? truncateMessage(room.lastMessage.content)
                                                 : 'No messages yet'}

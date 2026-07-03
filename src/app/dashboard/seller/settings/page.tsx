@@ -132,7 +132,7 @@ export default function SellerSettingsPage() {
 
     if (authLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+            <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
             </div>
         )
@@ -141,18 +141,18 @@ export default function SellerSettingsPage() {
     const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "User")
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900">
+        <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="seller" userName={userName} userType={profile?.role ? `${profile.role} Account` : "Seller"} />
                 <main className="flex-1 space-y-6">
-                    <h1 className="text-3xl font-bold font-heading text-white mb-6">Seller Settings</h1>
+                    <h1 className="text-3xl font-bold font-heading mb-6">Seller Settings</h1>
 
                     <div className="glass-card p-8">
                         <div className="flex flex-col md:flex-row gap-8">
                             <div className="md:w-1/3">
                                 <div 
                                     onClick={() => fileInputRef.current?.click()}
-                                    className="w-32 h-32 rounded-full bg-slate-800 mx-auto md:mx-0 flex items-center justify-center text-4xl font-bold text-gray-500 mb-4 border-2 border-dashed border-gray-600 relative overflow-hidden group cursor-pointer hover:border-primary transition-colors"
+                                    className="w-32 h-32 rounded-full bg-[var(--bg-input)] mx-auto md:mx-0 flex items-center justify-center text-4xl font-bold text-[var(--text-muted)] mb-4 border-2 border-dashed border-[var(--border-default)] relative overflow-hidden group cursor-pointer hover:border-primary transition-colors"
                                 >
                                     {uploadingImage ? (
                                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -175,48 +175,48 @@ export default function SellerSettingsPage() {
                                     accept="image/*"
                                     onChange={handleImageUpload} 
                                 />
-                                <p className="text-center md:text-left text-xs text-gray-500 mt-2">Recommended: 256x256px JPG or PNG</p>
+                                <p className="text-center md:text-left text-xs text-[var(--text-muted)] mt-2">Recommended: 256x256px JPG or PNG</p>
                             </div>
                             <div className="md:w-2/3 space-y-6">
                                 <section>
-                                    <h3 className="text-xl font-bold text-white mb-4 border-b border-white/10 pb-2">Profile Information</h3>
+                                    <h3 className="text-xl font-bold mb-4 border-b border-[var(--border-default)] pb-2">Profile Information</h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-1">
-                                            <label className="text-sm text-gray-400">First Name</label>
-                                            <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} className="w-full bg-slate-800 border border-white/10 rounded px-4 py-2 text-white focus:border-primary outline-none transition-colors" />
+                                            <label className="text-sm text-[var(--text-muted)]">First Name</label>
+                                            <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded px-4 py-2 focus:border-primary outline-none transition-colors" />
                                         </div>
                                         <div className="space-y-1">
-                                            <label className="text-sm text-gray-400">Last Name</label>
-                                            <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} className="w-full bg-slate-800 border border-white/10 rounded px-4 py-2 text-white focus:border-primary outline-none transition-colors" />
+                                            <label className="text-sm text-[var(--text-muted)]">Last Name</label>
+                                            <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded px-4 py-2 focus:border-primary outline-none transition-colors" />
                                         </div>
                                         <div className="space-y-1 md:col-span-2">
-                                            <label className="text-sm text-gray-400">Email Address</label>
-                                            <input type="email" value={email} readOnly className="w-full bg-slate-800/50 border border-white/10 rounded px-4 py-2 text-gray-400 cursor-not-allowed outline-none" />
-                                            <p className="text-xs text-gray-500">Email is managed through your authentication provider</p>
+                                            <label className="text-sm text-[var(--text-muted)]">Email Address</label>
+                                            <input type="email" value={email} readOnly className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded px-4 py-2 text-[var(--text-muted)] cursor-not-allowed outline-none" />
+                                            <p className="text-xs text-[var(--text-muted)]">Email is managed through your authentication provider</p>
                                         </div>
                                     </div>
                                 </section>
 
                                 <section>
-                                    <h3 className="text-xl font-bold text-white mb-4 border-b border-white/10 pb-2">Seller Preferences</h3>
+                                    <h3 className="text-xl font-bold mb-4 border-b border-[var(--border-default)] pb-2">Seller Preferences</h3>
                                     <div className="space-y-3">
                                         <label className="flex items-center gap-3 cursor-pointer group">
                                             <input
                                                 type="checkbox"
                                                 checked={notifyOnSale}
                                                 onChange={e => setNotifyOnSale(e.target.checked)}
-                                                className="w-5 h-5 rounded border-gray-600 text-primary focus:ring-primary bg-slate-800"
+                                                className="w-5 h-5 rounded border-[var(--border-default)] text-primary focus:ring-primary bg-[var(--bg-input)]"
                                             />
-                                            <span className="text-gray-300 group-hover:text-white transition-colors">Email me when a listing is sold</span>
+                                            <span className="text-[var(--text-secondary)] group-hover:text-primary dark:group-hover:text-white transition-colors">Email me when a listing is sold</span>
                                         </label>
                                         <label className="flex items-center gap-3 cursor-pointer group">
                                             <input
                                                 type="checkbox"
                                                 checked={showPublicProfile}
                                                 onChange={e => setShowPublicProfile(e.target.checked)}
-                                                className="w-5 h-5 rounded border-gray-600 text-primary focus:ring-primary bg-slate-800"
+                                                className="w-5 h-5 rounded border-[var(--border-default)] text-primary focus:ring-primary bg-[var(--bg-input)]"
                                             />
-                                            <span className="text-gray-300 group-hover:text-white transition-colors">Show my profile publicly</span>
+                                            <span className="text-[var(--text-secondary)] group-hover:text-primary dark:group-hover:text-white transition-colors">Show my profile publicly</span>
                                         </label>
                                     </div>
                                 </section>
@@ -233,11 +233,11 @@ export default function SellerSettingsPage() {
                     </div>
 
                     {/* Payouts */}
-                    <div className="glass-card p-8 border border-white/5 bg-white/5 rounded-2xl">
-                        <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                    <div className="glass-card p-8 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
+                        <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
                             <CreditCard className="text-primary" size={20} /> Payouts
                         </h3>
-                        <p className="text-sm text-gray-400 mb-6">
+                        <p className="text-sm text-[var(--text-muted)] mb-6">
                             Connect a bank account to receive your £100 seller bonus after a successful auction handover is verified.
                         </p>
 
@@ -246,7 +246,7 @@ export default function SellerSettingsPage() {
                                 <BadgeCheck size={20} className="text-emerald-400 shrink-0" />
                                 <div>
                                     <p className="text-sm font-bold text-emerald-300">Bank account connected</p>
-                                    <p className="text-xs text-gray-400 mt-0.5">Payouts are enabled. Your bonuses will transfer automatically after handover approval.</p>
+                                    <p className="text-xs text-[var(--text-muted)] mt-0.5">Payouts are enabled. Your bonuses will transfer automatically after handover approval.</p>
                                 </div>
                             </div>
                         ) : (
@@ -270,50 +270,50 @@ export default function SellerSettingsPage() {
                                         : <><ExternalLink size={16} /> Connect Bank Account</>
                                     }
                                 </button>
-                                <p className="text-xs text-gray-500">You will be taken to Stripe's secure onboarding — this takes about 2 minutes.</p>
+                                <p className="text-xs text-[var(--text-muted)]">You will be taken to Stripe's secure onboarding — this takes about 2 minutes.</p>
                             </div>
                         )}
                     </div>
 
                     {/* Bank Account Details (manual payout fallback — always visible) */}
-                    <div className="glass-card p-8 border border-white/5 bg-white/5 rounded-2xl">
-                        <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                    <div className="glass-card p-8 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
+                        <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
                             <Landmark className="text-amber-400" size={20} /> Bank Account Details
                         </h3>
-                        <p className="text-sm text-gray-400 mb-6">
+                        <p className="text-sm text-[var(--text-muted)] mb-6">
                             Provide your UK bank details as a fallback. Carmazium can manually transfer your £100 bonus if Stripe Connect isn&apos;t available.
                         </p>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-1 md:col-span-2">
-                                    <label className="text-sm text-gray-400">Account Holder Name</label>
+                                    <label className="text-sm text-[var(--text-muted)]">Account Holder Name</label>
                                     <input
                                         type="text"
                                         value={bankName}
                                         onChange={e => setBankName(e.target.value)}
                                         placeholder="e.g. John Smith"
-                                        className="w-full bg-slate-800 border border-white/10 rounded px-4 py-2 text-white focus:border-amber-400 outline-none transition-colors"
+                                        className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded px-4 py-2 focus:border-amber-400 outline-none transition-colors"
                                     />
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-sm text-gray-400">Sort Code</label>
+                                    <label className="text-sm text-[var(--text-muted)]">Sort Code</label>
                                     <input
                                         type="text"
                                         value={bankSortCode}
                                         onChange={e => setBankSortCode(e.target.value)}
                                         placeholder="e.g. 00-00-00"
                                         maxLength={8}
-                                        className="w-full bg-slate-800 border border-white/10 rounded px-4 py-2 text-white focus:border-amber-400 outline-none transition-colors font-mono"
+                                        className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded px-4 py-2 focus:border-amber-400 outline-none transition-colors font-mono"
                                     />
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-sm text-gray-400">Account Number</label>
+                                    <label className="text-sm text-[var(--text-muted)]">Account Number</label>
                                     <input
                                         type="text"
                                         value={bankAccountNumber}
                                         onChange={e => setBankAccountNumber(e.target.value)}
                                         placeholder="e.g. 12345678"
                                         maxLength={8}
-                                        className="w-full bg-slate-800 border border-white/10 rounded px-4 py-2 text-white focus:border-amber-400 outline-none transition-colors font-mono"
+                                        className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded px-4 py-2 focus:border-amber-400 outline-none transition-colors font-mono"
                                     />
                                 </div>
                             </div>

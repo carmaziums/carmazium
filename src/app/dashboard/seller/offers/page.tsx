@@ -31,7 +31,7 @@ function CountdownTimer({ expiresAt }: { expiresAt: Date }) {
         const id = setInterval(update, 60000)
         return () => clearInterval(id)
     }, [expiresAt])
-    return <p className="text-white/40 text-xs">{timeLeft}</p>
+    return <p className="text-[var(--text-faint)] text-xs">{timeLeft}</p>
 }
 
 function StatusBadge({ status }: { status: Offer['status'] }) {
@@ -39,7 +39,7 @@ function StatusBadge({ status }: { status: Offer['status'] }) {
         PENDING: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
         ACCEPTED: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
         REJECTED: 'bg-red-500/15 text-red-300 border-red-500/30',
-        WITHDRAWN: 'bg-gray-500/15 text-gray-400 border-gray-500/30',
+        WITHDRAWN: 'bg-gray-500/15 text-[var(--text-muted)] border-gray-500/30',
         COUNTERED: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
     }
     const icons: Record<string, React.ReactNode> = {
@@ -84,16 +84,16 @@ function MarkAsSoldModal({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-            <div className="bg-slate-900 border border-white/10 rounded-2xl p-8 w-full max-w-md shadow-2xl">
+            <div className="bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-2xl p-8 w-full max-w-md shadow-2xl">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
                     <div>
-                        <h2 className="text-xl font-black font-heading uppercase tracking-tight text-white">Confirm Sale</h2>
-                        <p className="text-xs text-gray-500 mt-0.5">This will mark the listing as sold and record it in your earnings.</p>
+                        <h2 className="text-xl font-black font-heading uppercase tracking-tight">Confirm Sale</h2>
+                        <p className="text-xs text-[var(--text-muted)] mt-0.5">This will mark the listing as sold and record it in your earnings.</p>
                     </div>
                     <button
                         onClick={onClose}
-                        className="text-gray-400 hover:text-white transition-colors ml-4 shrink-0"
+                        className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors ml-4 shrink-0"
                         disabled={confirming}
                     >
                         <X size={20} />
@@ -101,34 +101,34 @@ function MarkAsSoldModal({
                 </div>
 
                 {/* Vehicle preview */}
-                <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10 mb-6">
+                <div className="flex items-center gap-3 p-3 bg-[var(--bg-card)] rounded-xl border border-[var(--border-default)] mb-6">
                     {listing.images?.[0] ? (
                         <div className="relative w-16 h-12 rounded-lg overflow-hidden shrink-0">
                             <Image src={listing.images[0]} alt={listing.title} fill className="object-cover" />
                         </div>
                     ) : (
-                        <div className="w-16 h-12 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center shrink-0">
-                            <Car size={18} className="text-gray-600" />
+                        <div className="w-16 h-12 rounded-lg bg-[var(--bg-input)] border border-[var(--border-default)] flex items-center justify-center shrink-0">
+                            <Car size={18} className="text-[var(--text-secondary)]" />
                         </div>
                     )}
                     <div className="min-w-0">
-                        <p className="font-bold text-white text-sm truncate">{listing.title}</p>
-                        <p className="text-xs text-gray-400">Agreed offer: <span className="text-primary font-bold">{formatGBP(agreedPrice)}</span></p>
+                        <p className="font-bold text-sm truncate">{listing.title}</p>
+                        <p className="text-xs text-[var(--text-muted)]">Agreed offer: <span className="text-primary font-bold">{formatGBP(agreedPrice)}</span></p>
                     </div>
                 </div>
 
                 {/* Form fields */}
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-1.5">
+                        <label className="block text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-1.5">
                             Final Sale Price
                         </label>
                         <div className="relative">
-                            <DollarSign size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <DollarSign size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
                             <input
                                 type="number"
                                 min={0}
-                                className="w-full bg-slate-800 border border-white/20 text-white rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors"
+                                className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors"
                                 value={soldPrice}
                                 onChange={e => setSoldPrice(Number(e.target.value))}
                             />
@@ -136,14 +136,14 @@ function MarkAsSoldModal({
                     </div>
 
                     <div>
-                        <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-1.5">
+                        <label className="block text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-1.5">
                             Buyer Name
                         </label>
                         <div className="relative">
-                            <User size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <User size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
                             <input
                                 type="text"
-                                className="w-full bg-slate-800 border border-white/20 text-white rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors placeholder:text-gray-600"
+                                className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors placeholder:text-[var(--text-secondary)]"
                                 placeholder="Buyer's full name"
                                 value={buyerName}
                                 onChange={e => setBuyerName(e.target.value)}
@@ -152,14 +152,14 @@ function MarkAsSoldModal({
                     </div>
 
                     <div>
-                        <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-1.5">
-                            Buyer Email <span className="text-gray-600 normal-case font-medium">(optional)</span>
+                        <label className="block text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-1.5">
+                            Buyer Email <span className="text-[var(--text-secondary)] normal-case font-medium">(optional)</span>
                         </label>
                         <div className="relative">
-                            <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
                             <input
                                 type="email"
-                                className="w-full bg-slate-800 border border-white/20 text-white rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors placeholder:text-gray-600"
+                                className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors placeholder:text-[var(--text-secondary)]"
                                 placeholder="buyer@example.com"
                                 value={buyerEmail}
                                 onChange={e => setBuyerEmail(e.target.value)}
@@ -173,7 +173,7 @@ function MarkAsSoldModal({
                     <button
                         onClick={onClose}
                         disabled={confirming}
-                        className="flex-1 py-2.5 rounded-xl border border-white/15 text-gray-400 hover:text-white hover:border-white/30 text-sm font-bold transition-colors disabled:opacity-50"
+                        className="flex-1 py-2.5 rounded-xl border border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white hover:border-primary/30 text-sm font-bold transition-colors disabled:opacity-50"
                     >
                         Cancel
                     </button>
@@ -237,7 +237,7 @@ function OfferRow({
             {/* Offer details */}
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                    <p className="font-bold text-white text-sm">
+                    <p className="font-bold text-sm">
                         {buyer?.firstName} {buyer?.lastName}
                     </p>
                     <StatusBadge status={offer.status} />
@@ -260,12 +260,12 @@ function OfferRow({
                     <p className="text-xs text-blue-400/70 mt-0.5">Your counter: {formatGBP(offer.sellerCounterAmount)} — awaiting buyer</p>
                 )}
                 {offer.message && (
-                    <div className="mt-2 flex items-start gap-1.5 text-xs text-gray-400">
-                        <MessageSquare size={11} className="mt-0.5 shrink-0 text-gray-500" />
+                    <div className="mt-2 flex items-start gap-1.5 text-xs text-[var(--text-muted)]">
+                        <MessageSquare size={11} className="mt-0.5 shrink-0 text-[var(--text-muted)]" />
                         <span className="italic">&ldquo;{offer.message}&rdquo;</span>
                     </div>
                 )}
-                <p className="text-xs text-gray-600 mt-1">
+                <p className="text-xs text-[var(--text-secondary)] mt-1">
                     {new Date(offer.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </p>
             </div>
@@ -275,7 +275,7 @@ function OfferRow({
                 <div className="flex flex-col gap-2 shrink-0">
                     {/* Remaining count */}
                     {!isSellerLocked && (
-                        <p className="text-xs text-white/50 text-right">
+                        <p className="text-xs text-[var(--text-muted)] text-right">
                             {sellerRemaining} counter-offer{sellerRemaining !== 1 ? 's' : ''} remaining
                         </p>
                     )}
@@ -324,10 +324,10 @@ function OfferRow({
                         ) : isPending && isCountering ? (
                             <div className="flex items-center gap-2">
                                 <div className="relative">
-                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">£</span>
+                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-sm">£</span>
                                     <input
                                         type="number"
-                                        className="bg-slate-900 border border-white/20 text-white rounded-md pl-6 pr-3 py-1.5 w-24 text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                                        className="bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-md pl-6 pr-3 py-1.5 w-24 text-sm focus:outline-none focus:border-blue-500 transition-colors"
                                         placeholder="Amount"
                                         value={counterAmount || ''}
                                         onChange={e => setCounterAmount(Number(e.target.value))}
@@ -344,7 +344,7 @@ function OfferRow({
                                 <Button
                                     size="sm"
                                     variant="outline"
-                                    className="border-white/20 text-gray-400 hover:text-white"
+                                    className="border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:"
                                     disabled={isResponding}
                                     onClick={() => setIsCountering(false)}
                                 >
@@ -387,10 +387,10 @@ function OfferRow({
                             ) : (
                                 <div className="flex items-center gap-2">
                                     <div className="relative">
-                                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">£</span>
+                                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-sm">£</span>
                                         <input
                                             type="number"
-                                            className="bg-slate-900 border border-white/20 text-white rounded-md pl-6 pr-3 py-1.5 w-24 text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                                            className="bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-md pl-6 pr-3 py-1.5 w-24 text-sm focus:outline-none focus:border-blue-500 transition-colors"
                                             placeholder="Amount"
                                             value={counterAmount || ''}
                                             onChange={e => setCounterAmount(Number(e.target.value))}
@@ -407,7 +407,7 @@ function OfferRow({
                                     <Button
                                         size="sm"
                                         variant="outline"
-                                        className="border-white/20 text-gray-400 hover:text-white"
+                                        className="border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:"
                                         disabled={isResponding}
                                         onClick={() => setIsCountering(false)}
                                     >
@@ -650,14 +650,14 @@ export default function SellerOffersPage() {
     }
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900">
+        <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="seller" />
                 <main className="flex-1 space-y-6">
                     <div className="max-w-4xl mx-auto">
                         {/* Toast */}
                         {toast && (
-                            <div className="fixed bottom-6 right-6 z-50 bg-slate-800 border border-white/10 text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-medium animate-in slide-in-from-bottom-4">
+                            <div className="fixed bottom-6 right-6 z-50 bg-[var(--bg-input)] border border-[var(--border-default)] px-5 py-3 rounded-xl shadow-2xl text-sm font-medium animate-in slide-in-from-bottom-4">
                                 {toast}
                             </div>
                         )}
@@ -676,15 +676,15 @@ export default function SellerOffersPage() {
                         {/* Header */}
                         <div className="mb-8 flex items-start justify-between gap-4">
                             <div>
-                                <h1 className="text-2xl md:text-3xl font-bold font-heading text-white mb-1 flex items-center gap-3">
+                                <h1 className="text-2xl md:text-3xl font-bold font-heading mb-1 flex items-center gap-3">
                                     <Tag className="text-primary" size={24} /> Incoming Offers
                                 </h1>
-                                <p className="text-gray-400 text-sm">Review and respond to buyer offers on your listings.</p>
+                                <p className="text-[var(--text-muted)] text-sm">Review and respond to buyer offers on your listings.</p>
                             </div>
                             <Button
                                 size="sm"
                                 variant="outline"
-                                className="border-white/10 text-gray-400 hover:text-white gap-1 shrink-0 mt-1"
+                                className="border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white gap-1 shrink-0 mt-1"
                                 onClick={silentRefreshOffers}
                             >
                                 <RefreshCw size={13} /> Refresh
@@ -700,16 +700,16 @@ export default function SellerOffersPage() {
                         {error && (
                             <div className="glass-card p-8 text-center">
                                 <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
-                                <p className="text-white font-bold mb-2">Failed to load listings</p>
-                                <p className="text-gray-400 text-sm">{error}</p>
+                                <p className="font-bold mb-2">Failed to load listings</p>
+                                <p className="text-[var(--text-muted)] text-sm">{error}</p>
                             </div>
                         )}
 
                         {!loadingListings && !error && listings.length === 0 && (
                             <div className="glass-card p-10 text-center">
-                                <Car className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                                <h2 className="text-xl font-bold text-white mb-2">No Listings Yet</h2>
-                                <p className="text-gray-400 mb-6 text-sm">Create your first listing to start receiving offers.</p>
+                                <Car className="w-12 h-12 text-[var(--text-secondary)] mx-auto mb-4" />
+                                <h2 className="text-xl font-bold mb-2">No Listings Yet</h2>
+                                <p className="text-[var(--text-muted)] mb-6 text-sm">Create your first listing to start receiving offers.</p>
                                 <Link href="/sell">
                                     <Button className="shadow-neon">List My Car</Button>
                                 </Link>
@@ -729,14 +729,14 @@ export default function SellerOffersPage() {
                                         {/* Listing row (clickable header) */}
                                         <button
                                             onClick={() => toggleExpand(listing.id)}
-                                            className="w-full flex items-center gap-4 p-5 hover:bg-white/5 transition-colors text-left"
+                                            className="w-full flex items-center gap-4 p-5 hover:bg-[var(--bg-card)] transition-colors text-left"
                                         >
-                                            <div className="relative w-16 h-12 rounded-lg overflow-hidden shrink-0 bg-slate-800 border border-white/10">
+                                            <div className="relative w-16 h-12 rounded-lg overflow-hidden shrink-0 bg-[var(--bg-input)] border border-[var(--border-default)]">
                                                 <Image src={image} alt={listing.title} fill className="object-cover" />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="font-bold text-white truncate">{listing.title}</p>
-                                                <p className="text-xs text-gray-400">
+                                                <p className="font-bold truncate">{listing.title}</p>
+                                                <p className="text-xs text-[var(--text-muted)]">
                                                     {listing.priceMin && listing.priceMax
                                                         ? `£${Number(listing.priceMin).toLocaleString('en-GB')} – £${Number(listing.priceMax).toLocaleString('en-GB')}`
                                                         : `£${Number(listing.price).toLocaleString('en-GB')}`}
@@ -747,18 +747,18 @@ export default function SellerOffersPage() {
                                                     {pendingCount} pending
                                                 </span>
                                             )}
-                                            <ChevronRight size={18} className={`text-gray-500 transition-transform shrink-0 ${isOpen ? 'rotate-90' : ''}`} />
+                                            <ChevronRight size={18} className={`text-[var(--text-muted)] transition-transform shrink-0 ${isOpen ? 'rotate-90' : ''}`} />
                                         </button>
 
                                         {/* Offers section */}
                                         {isOpen && (
-                                            <div className="border-t border-white/10 bg-black/20">
+                                            <div className="border-t border-[var(--border-default)] bg-black/20">
                                                 {loadingOffers[listing.id] ? (
                                                     <div className="flex justify-center py-8">
                                                         <Loader2 className="animate-spin text-primary w-7 h-7" />
                                                     </div>
                                                 ) : listingOffers.length === 0 ? (
-                                                    <div className="py-8 text-center text-gray-500 text-sm">
+                                                    <div className="py-8 text-center text-[var(--text-muted)] text-sm">
                                                         No offers yet on this listing.
                                                     </div>
                                                 ) : (
@@ -779,9 +779,9 @@ export default function SellerOffersPage() {
                                                                         responding={responding}
                                                                     />
                                                                     {delivReq && (
-                                                                        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-white/5 pl-14">
-                                                                            <Truck size={12} className="text-gray-400 shrink-0" />
-                                                                            <span className="text-xs text-gray-400">Delivery: {delivReq.status}</span>
+                                                                        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-[var(--border-default)] pl-14">
+                                                                            <Truck size={12} className="text-[var(--text-muted)] shrink-0" />
+                                                                            <span className="text-xs text-[var(--text-muted)]">Delivery: {delivReq.status}</span>
                                                                             {delivReq.status === 'PENDING' && (
                                                                                 <>
                                                                                     <button

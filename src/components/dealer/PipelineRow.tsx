@@ -89,7 +89,7 @@ export function PipelineRow({ item, onViewSummary, onViewSeller }: PipelineRowPr
         <div className="dealer-glass-card p-0 group hover:border-white/8">
             <div className="flex items-center gap-4 p-4 md:p-5">
                 {/* Vehicle Thumbnail */}
-                <div className="w-16 h-16 md:w-20 md:h-16 rounded-xl overflow-hidden bg-slate-800 shrink-0 border border-white/5">
+                <div className="w-16 h-16 md:w-20 md:h-16 rounded-xl overflow-hidden bg-[var(--bg-input)] shrink-0 border border-[var(--border-default)]">
                     {item.imageUrl ? (
                         <img src={item.imageUrl} alt={item.vehicleTitle} className="w-full h-full object-cover" />
                     ) : (
@@ -101,27 +101,27 @@ export function PipelineRow({ item, onViewSummary, onViewSeller }: PipelineRowPr
 
                 {/* Vehicle Info */}
                 <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-black text-white tracking-tight truncate group-hover:text-primary transition-colors">
+                    <h3 className="text-sm font-black  tracking-tight truncate group-hover:text-primary transition-colors">
                         {item.vehicleTitle}
                     </h3>
                     {item.vehicleSubtitle && (
-                        <p className="text-xs text-gray-500 font-medium mt-0.5 truncate">{item.vehicleSubtitle}</p>
+                        <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5 truncate">{item.vehicleSubtitle}</p>
                     )}
-                    <p className="text-xs text-gray-600 mt-1 font-medium">
+                    <p className="text-xs text-[var(--text-muted)] mt-1 font-medium">
                         Purchased {new Date(item.purchaseDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                     </p>
                 </div>
 
                 {/* Price */}
                 <div className="hidden md:block text-right shrink-0">
-                    <span className="text-xs font-bold uppercase tracking-widest text-gray-500 block">Price</span>
-                    <span className="text-lg font-black text-white tabular-nums">£{item.purchasePrice.toLocaleString()}</span>
+                    <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block">Price</span>
+                    <span className="text-lg font-black  tabular-nums">£{item.purchasePrice.toLocaleString()}</span>
                 </div>
 
                 {/* Document Progress (if reviewing) */}
                 {item.status === "reviewing_docs" && item.documentsReceived !== undefined && item.documentsTotal !== undefined && (
                     <div className="hidden lg:flex flex-col items-center gap-1 shrink-0">
-                        <span className="text-xs font-bold uppercase tracking-widest text-gray-500">Docs</span>
+                        <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Docs</span>
                         <div className="flex items-center gap-1">
                             <div className="w-16 h-1.5 bg-black/40 rounded-full overflow-hidden">
                                 <div
@@ -139,7 +139,7 @@ export function PipelineRow({ item, onViewSummary, onViewSeller }: PipelineRowPr
                 {/* Estimated Delivery */}
                 {item.status === "delivery_requested" && item.estimatedDelivery && (
                     <div className="hidden lg:block text-right shrink-0">
-                        <span className="text-xs font-bold uppercase tracking-widest text-gray-500 block">ETA</span>
+                        <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block">ETA</span>
                         <span className="text-xs font-bold text-violet-400">
                             {new Date(item.estimatedDelivery).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                         </span>
@@ -156,29 +156,29 @@ export function PipelineRow({ item, onViewSummary, onViewSeller }: PipelineRowPr
                 <div className="relative shrink-0" ref={menuRef}>
                     <button
                         onClick={() => setMenuOpen(!menuOpen)}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 transition-colors text-gray-500 hover:text-white"
+                        className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-card)] transition-colors text-[var(--text-muted)] hover:text-primary dark:hover:text-white"
                     >
                         <MoreHorizontal size={16} />
                     </button>
 
                     {menuOpen && (
-                        <div className="absolute right-0 top-full mt-1 z-50 w-52 bg-slate-800/98 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl shadow-black/60 overflow-hidden">
+                        <div className="absolute right-0 top-full mt-1 z-50 w-52 bg-[var(--bg-dropdown)] backdrop-blur-xl border border-[var(--border-default)] rounded-xl shadow-2xl shadow-black/60 overflow-hidden">
                             <div className="py-1">
                                 <button
                                     onClick={() => { onViewSummary?.(item); setMenuOpen(false) }}
-                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[var(--text-secondary)] hover:text-primary dark:hover:text-white hover:bg-[var(--bg-card)] transition-colors"
                                 >
-                                    <FileText size={14} className="text-gray-500" />
+                                    <FileText size={14} className="text-[var(--text-muted)]" />
                                     Purchase Summary
-                                    <ChevronRight size={12} className="ml-auto text-gray-600" />
+                                    <ChevronRight size={12} className="ml-auto text-[var(--text-muted)]" />
                                 </button>
                                 <button
                                     onClick={() => { onViewSeller?.(item); setMenuOpen(false) }}
-                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[var(--text-secondary)] hover:text-primary dark:hover:text-white hover:bg-[var(--bg-card)] transition-colors"
                                 >
-                                    <User size={14} className="text-gray-500" />
+                                    <User size={14} className="text-[var(--text-muted)]" />
                                     Seller Details
-                                    <ChevronRight size={12} className="ml-auto text-gray-600" />
+                                    <ChevronRight size={12} className="ml-auto text-[var(--text-muted)]" />
                                 </button>
                             </div>
                         </div>
@@ -204,12 +204,12 @@ export function ModalOverlay({ open, onClose, title, children }: ModalOverlayPro
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative bg-slate-800/98 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
-                <div className="flex items-center justify-between p-6 border-b border-white/5">
-                    <h2 className="text-lg font-black text-white uppercase tracking-tight">{title}</h2>
+            <div className="relative bg-[var(--bg-dropdown)] backdrop-blur-xl border border-[var(--border-default)] rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
+                <div className="flex items-center justify-between p-6 border-b border-[var(--border-default)]">
+                    <h2 className="text-lg font-black  uppercase tracking-tight">{title}</h2>
                     <button
                         onClick={onClose}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                        className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors"
                     >
                         <X size={16} />
                     </button>

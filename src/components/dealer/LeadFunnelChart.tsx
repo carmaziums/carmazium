@@ -42,7 +42,7 @@ export function LeadFunnelChart({
     if (loading) {
         return (
             <div className="dealer-glass-card p-6">
-                <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-6">{title}</h3>
+                <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-6">{title}</h3>
                 <div className="space-y-4">
                     {[1, 2, 3, 4, 5, 6].map((i) => (
                         <div key={i} className="h-10 bg-white/[0.02] rounded-lg animate-pulse" />
@@ -61,10 +61,10 @@ export function LeadFunnelChart({
     return (
         <div className="dealer-glass-card p-6">
             <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">{title}</h3>
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-white/[0.03] rounded-lg border border-white/5">
-                    <span className="text-xs font-bold uppercase tracking-widest text-gray-500">Total</span>
-                    <span className="text-sm font-black text-white">{total}</span>
+                <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">{title}</h3>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-white/[0.03] rounded-lg border border-[var(--border-default)]">
+                    <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Total</span>
+                    <span className="text-sm font-black">{total}</span>
                 </div>
             </div>
 
@@ -86,14 +86,14 @@ export function LeadFunnelChart({
                         >
                             <div className="flex items-center justify-between mb-1.5">
                                 <div className="flex items-center gap-2">
-                                    <span className={`text-[11px] font-bold uppercase tracking-wider ${isHovered ? stage.textColor : 'text-gray-300'} transition-colors`}>
+                                    <span className={`text-[11px] font-bold uppercase tracking-wider ${isHovered ? stage.textColor : 'text-[var(--text-secondary)]'} transition-colors`}>
                                         {stage.label}
                                     </span>
                                     {convFromPrev !== null && (
                                         <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${
                                             stage.key === 'LOST'
                                                 ? 'bg-red-500/10 text-red-400 border border-red-500/20'
-                                                : 'bg-white/5 text-gray-500 border border-white/5'
+                                                : 'bg-[var(--bg-card)] text-[var(--text-muted)] border border-[var(--border-default)]'
                                         }`}>
                                             {convFromPrev}% from prev
                                         </span>
@@ -128,10 +128,10 @@ export function LeadFunnelChart({
 
             {/* Win/Loss Summary Bar */}
             {(data.WON > 0 || data.LOST > 0) && (
-                <div className="mt-5 pt-5 border-t border-white/5">
+                <div className="mt-5 pt-5 border-t border-[var(--border-default)]">
                     <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest mb-2">
-                        <span className="text-gray-500">Outcome Split</span>
-                        <span className="text-gray-500">{data.WON + data.LOST} resolved</span>
+                        <span className="text-[var(--text-muted)]">Outcome Split</span>
+                        <span className="text-[var(--text-muted)]">{data.WON + data.LOST} resolved</span>
                     </div>
                     <div className="flex h-3 gap-0.5 rounded-full overflow-hidden">
                         <div

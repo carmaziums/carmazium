@@ -49,7 +49,7 @@ export default function GlobalError({
                             </svg>
                         </div>
                         <h1 className="text-xl font-bold">Something went wrong</h1>
-                        <p className="text-sm text-gray-400 leading-relaxed">
+                        <p className="text-sm text-[var(--text-muted)] leading-relaxed">
                             CarMazium hit an unexpected error loading this page. Please
                             try again — if it keeps happening, try reloading in a
                             different browser.
@@ -64,7 +64,7 @@ export default function GlobalError({
                             </button>
                             <Link
                                 href="/"
-                                className="px-5 py-2.5 rounded-xl border border-white/10 hover:border-white/20 text-white font-bold text-sm transition-colors"
+                                className="px-5 py-2.5 rounded-xl border border-[var(--border-default)] hover:border-white/20 text-white font-bold text-sm transition-colors"
                             >
                                 Go home
                             </Link>

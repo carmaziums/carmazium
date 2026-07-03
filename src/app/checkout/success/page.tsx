@@ -104,7 +104,7 @@ function CheckoutSuccessContent() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
                 >
-                    <h1 className="text-3xl md:text-4xl font-heading font-bold text-white">
+                    <h1 className="text-3xl md:text-4xl font-heading font-bold">
                         {sessionData?.metadata?.type === 'LISTING_FEE'
                             ? 'Your Listing is Live!'
                             : sessionData?.metadata?.type === 'COMMISSION'
@@ -166,7 +166,7 @@ function CheckoutSuccessContent() {
                                     <LayoutDashboard size={18} /> View My Listings <ArrowRight size={14} />
                                 </Link>
                             </Button>
-                            <Button asChild variant="outline" className="gap-2 border-white/20 hover:bg-white/5">
+                            <Button asChild variant="outline" className="gap-2 border-white/20 hover:bg-[var(--bg-card)]">
                                 <Link href="/sell">
                                     <Car size={18} /> List Another
                                 </Link>
@@ -179,7 +179,7 @@ function CheckoutSuccessContent() {
                                     <LayoutDashboard size={18} /> Go to My Auctions <ArrowRight size={14} />
                                 </Link>
                             </Button>
-                            <Button asChild variant="outline" className="gap-2 border-white/20 hover:bg-white/5">
+                            <Button asChild variant="outline" className="gap-2 border-white/20 hover:bg-[var(--bg-card)]">
                                 <Link href="/">
                                     <Home size={18} /> Return Home
                                 </Link>
@@ -198,7 +198,7 @@ function CheckoutSuccessContent() {
                                     <Car size={18} /> View Dashboard <ArrowRight size={14} />
                                 </Link>
                             </Button>
-                            <Button asChild variant="outline" className="gap-2 border-white/20 hover:bg-white/5">
+                            <Button asChild variant="outline" className="gap-2 border-white/20 hover:bg-[var(--bg-card)]">
                                 <Link href="/">
                                     <Home size={18} /> Return Home
                                 </Link>

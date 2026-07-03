@@ -54,57 +54,57 @@ export default function AdminTransactionsPage() {
     }, [profile, page])
 
     if (authLoading || (user && !profile) || (loading && transactions.length === 0)) {
-        return <div className="min-h-screen flex items-center justify-center bg-slate-900"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>
+        return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>
     }
     if (!user || profile?.role !== 'ADMIN') return null
 
     const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "Admin")
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
+        <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="admin" userName={userName} userType="Super Admin" />
 
                 <main className="flex-1 space-y-8 min-w-0">
-                    <div className="bg-slate-800/50 p-6 rounded-2xl border border-white/10 backdrop-blur-md">
-                        <Link href="/dashboard/admin" className="inline-flex items-center text-gray-400 hover:text-white mb-2 text-sm transition-colors">
+                    <div className="bg-[var(--bg-input)] p-6 rounded-2xl border border-[var(--border-default)] backdrop-blur-md">
+                        <Link href="/dashboard/admin" className="inline-flex items-center text-[var(--text-muted)] hover:text-primary dark:hover:text-white mb-2 text-sm transition-colors">
                             <ArrowLeft size={16} className="mr-1" /> Back to Overview
                         </Link>
-                        <h1 className="text-3xl font-black font-heading text-white uppercase tracking-tight flex items-center gap-3">
+                        <h1 className="text-3xl font-black font-heading uppercase tracking-tight flex items-center gap-3">
                             <Receipt className="text-emerald-400 hidden sm:block" size={28} />
                             Transaction Ledger
                         </h1>
-                        <p className="text-gray-400 mt-1 text-sm">{total} total transactions</p>
+                        <p className="text-[var(--text-muted)] mt-1 text-sm">{total} total transactions</p>
                     </div>
 
                     {error && <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200"><strong>Error:</strong> {error}</div>}
 
-                    <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl">
+                    <div className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
 
                         {/* ── Mobile cards (< sm) ── */}
-                        <div className="sm:hidden divide-y divide-white/5">
+                        <div className="sm:hidden divide-y divide-[var(--border-default)]">
                             {transactions.map((t) => (
                                 <div key={t.id} className="p-4">
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0 flex-1">
-                                            <p className="text-sm font-bold text-white truncate">{t.user?.firstName} {t.user?.lastName}</p>
-                                            <p className="text-xs text-gray-400 truncate">{t.user?.email}</p>
+                                            <p className="text-sm font-bold truncate">{t.user?.firstName} {t.user?.lastName}</p>
+                                            <p className="text-xs text-[var(--text-muted)] truncate">{t.user?.email}</p>
                                         </div>
-                                        <span className={`text-sm font-black shrink-0 ${t.type === 'REFUND' ? 'text-red-400' : 'text-white'}`}>
+                                        <span className={`text-sm font-black shrink-0 ${t.type === 'REFUND' ? 'text-red-400' : ''}`}>
                                             {t.type === 'REFUND' ? '-' : ''}{formatPrice(Number(t.amount))}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                        <span className="inline-flex px-2 py-0.5 rounded border border-white/10 bg-white/5 text-xs font-bold text-gray-300">
+                                        <span className="inline-flex px-2 py-0.5 rounded border border-[var(--border-default)] bg-[var(--bg-card)] text-xs font-bold text-[var(--text-secondary)]">
                                             {TYPE_LABELS[t.type] || t.type}
                                         </span>
                                         <span className={`inline-flex px-2 py-0.5 rounded border text-xs font-bold ${STATUS_STYLES[t.status] || STATUS_STYLES.PENDING}`}>
                                             {t.status}
                                         </span>
-                                        <span className="text-xs text-gray-600">{new Date(t.createdAt).toLocaleDateString()}</span>
+                                        <span className="text-xs text-[var(--text-secondary)]">{new Date(t.createdAt).toLocaleDateString()}</span>
                                     </div>
                                     {t.listing && (
-                                        <p className="text-xs text-gray-500 mt-1 truncate">{t.listing.title}</p>
+                                        <p className="text-xs text-[var(--text-muted)] mt-1 truncate">{t.listing.title}</p>
                                     )}
                                 </div>
                             ))}
@@ -113,7 +113,7 @@ export default function AdminTransactionsPage() {
                         {/* ── Desktop table (≥ sm) ── */}
                         <div className="hidden sm:block overflow-x-auto">
                             <table className="w-full text-left">
-                                <thead className="bg-slate-800/50 text-gray-400 text-xs uppercase font-black tracking-widest border-b border-white/10">
+                                <thead className="bg-[var(--bg-input)] text-[var(--text-muted)] text-xs uppercase font-black tracking-widest border-b border-[var(--border-default)]">
                                     <tr>
                                         <th className="px-6 py-4">User</th>
                                         <th className="px-6 py-4">Vehicle</th>
@@ -123,23 +123,23 @@ export default function AdminTransactionsPage() {
                                         <th className="px-6 py-4 text-right">Date</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-white/5 text-white/80">
+                                <tbody className="divide-y divide-[var(--border-default)]/80">
                                     {transactions.map((t) => (
-                                        <tr key={t.id} className="hover:bg-white/5 transition-colors">
+                                        <tr key={t.id} className="hover:bg-[var(--bg-card)] transition-colors">
                                             <td className="px-6 py-4 text-xs">
-                                                <p className="text-white font-medium">{t.user?.firstName} {t.user?.lastName}</p>
-                                                <p className="text-gray-400">{t.user?.email}</p>
+                                                <p className="font-medium">{t.user?.firstName} {t.user?.lastName}</p>
+                                                <p className="text-[var(--text-muted)]">{t.user?.email}</p>
                                             </td>
                                             <td className="px-6 py-4 text-xs max-w-[160px]">
                                                 {t.listing ? (
                                                     <div>
-                                                        <p className="text-white truncate">{t.listing.title}</p>
-                                                        <p className="text-gray-400">{t.listing.year} {t.listing.make}</p>
+                                                        <p className="truncate">{t.listing.title}</p>
+                                                        <p className="text-[var(--text-muted)]">{t.listing.year} {t.listing.make}</p>
                                                     </div>
-                                                ) : <span className="text-gray-500">—</span>}
+                                                ) : <span className="text-[var(--text-muted)]">—</span>}
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <span className="inline-flex px-2 py-1 rounded border border-white/10 bg-white/5 text-xs font-bold text-gray-300">
+                                                <span className="inline-flex px-2 py-1 rounded border border-[var(--border-default)] bg-[var(--bg-card)] text-xs font-bold text-[var(--text-secondary)]">
                                                     {TYPE_LABELS[t.type] || t.type}
                                                 </span>
                                             </td>
@@ -149,11 +149,11 @@ export default function AdminTransactionsPage() {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-right font-bold text-sm">
-                                                <span className={t.type === 'REFUND' ? 'text-red-400' : 'text-white'}>
+                                                <span className={t.type === 'REFUND' ? 'text-red-400' : ''}>
                                                     {t.type === 'REFUND' ? '-' : ''}{formatPrice(Number(t.amount))}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-right text-xs text-gray-400">
+                                            <td className="px-6 py-4 text-right text-xs text-[var(--text-muted)]">
                                                 {new Date(t.createdAt).toLocaleDateString()}
                                             </td>
                                         </tr>
@@ -162,11 +162,11 @@ export default function AdminTransactionsPage() {
                             </table>
                         </div>{/* end hidden sm:block */}
 
-                        <div className="p-4 border-t border-white/10 bg-slate-800/30 flex items-center justify-between text-xs font-medium text-gray-400">
+                        <div className="p-4 border-t border-[var(--border-default)] bg-[var(--bg-input)] flex items-center justify-between text-xs font-medium text-[var(--text-muted)]">
                             <span>Showing {(page - 1) * limit + 1}–{Math.min(page * limit, total)} of {total}</span>
                             <div className="flex gap-2">
-                                <button className="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded disabled:opacity-50" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Prev</button>
-                                <button className="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded disabled:opacity-50" onClick={() => setPage(p => p + 1)} disabled={page * limit >= total}>Next</button>
+                                <button className="px-3 py-1 bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)] rounded disabled:opacity-50" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Prev</button>
+                                <button className="px-3 py-1 bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)] rounded disabled:opacity-50" onClick={() => setPage(p => p + 1)} disabled={page * limit >= total}>Next</button>
                             </div>
                         </div>
                     </div>

@@ -11,6 +11,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
 import { getPendingOffersCount } from "@/lib/listingApi"
 import { NotificationBell } from "@/components/layout/NotificationBell"
+import { ThemeToggle } from "@/components/ui/ThemeToggle"
 
 
 const navLinks: { name: string; href: string; prefetch?: boolean; badge?: string }[] = [
@@ -55,7 +56,7 @@ export function Header() {
             }}
         >
             <div 
-                className="absolute inset-0 -z-10 backdrop-blur-xl bg-slate-900/90"
+                className="absolute inset-0 -z-10 backdrop-blur-xl"
                 style={{ 
                     background: 'var(--bg-header)',
                     WebkitTransform: 'translate3d(0,0,0)',
@@ -108,6 +109,8 @@ export function Header() {
 
                 {/* Action Buttons */}
                 <div className="flex-1 flex items-center justify-end gap-3">
+                    <ThemeToggle />
+
                     {!loading && user && (
                         <NotificationBell />
                     )}
@@ -215,6 +218,9 @@ export function Header() {
                     }}
                 >
                     <nav className="flex flex-col p-6 gap-4 text-center">
+                        <div className="flex items-center justify-center pb-2">
+                            <ThemeToggle />
+                        </div>
                         {navLinks.map((link) => (
                             <Link
                                 key={link.name}
@@ -240,7 +246,7 @@ export function Header() {
 
                         {!user ? (
                             <>
-                                <Button asChild variant="outline" className="w-full mt-4 border-white/20 hover:bg-primary/5">
+                                <Button asChild variant="outline" className="w-full mt-4 hover:bg-primary/5">
                                     <Link href="/auth/signup" onClick={() => setIsMobileMenuOpen(false)}>
                                         Sign Up
                                     </Link>
@@ -252,7 +258,7 @@ export function Header() {
                                 </Button>
                             </>
                         ) : (
-                            <Button variant="outline" className="w-full mt-4 border-white/20 text-red-400 hover:bg-red-500/10" onClick={handleSignOut}>
+                            <Button variant="outline" className="w-full mt-4 text-red-400 hover:bg-red-500/10" onClick={handleSignOut}>
                                 Sign Out
                             </Button>
                         )}

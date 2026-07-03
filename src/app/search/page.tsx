@@ -142,9 +142,9 @@ function FilterSection({ title, children, defaultOpen = false }: {
 }) {
     const [open, setOpen] = React.useState(defaultOpen)
     return (
-        <div className="border-b border-white/5 pb-4">
+        <div className="border-b border-[var(--border-default)] pb-4">
             <button type="button" onClick={() => setOpen(!open)}
-                className="w-full flex items-center justify-between text-sm font-bold uppercase text-gray-400 tracking-wide hover:text-gray-300 transition-colors cursor-pointer py-1"
+                className="w-full flex items-center justify-between text-sm font-bold uppercase text-[var(--text-muted)] tracking-wide hover:text-[var(--text-secondary)] transition-colors cursor-pointer py-1"
             >
                 {title}
                 <ChevronDown size={16} className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
@@ -181,10 +181,10 @@ function RangeInputs({ minVal, maxVal, onMinChange, onMaxChange, minPlaceholder 
             <div className="flex gap-2">
                 <Input type="number" placeholder={minPlaceholder} value={minVal}
                     onChange={(e) => onMinChange(e.target.value)}
-                    className="h-9 text-sm bg-slate-800 border-white/10 text-white" />
+                    className="h-9 text-sm" />
                 <Input type="number" placeholder={maxPlaceholder} value={maxVal}
                     onChange={(e) => onMaxChange(e.target.value)}
-                    className="h-9 text-sm bg-slate-800 border-white/10 text-white" />
+                    className="h-9 text-sm" />
             </div>
             {sliderMin !== undefined && sliderMax !== undefined && (
                 <div className="px-2 pb-2">
@@ -532,18 +532,18 @@ function SearchPageContent() {
     return (
         <div className="min-h-screen pb-20">
             {/* Search Header */}
-            <div className="glass-strong text-white py-12 px-5 border-b border-white/5">
+            <div className="glass-strong py-12 px-5 border-b border-[var(--border-default)]">
                 <div className="container mx-auto">
                     <h1 className="text-3xl md:text-4xl font-heading font-bold mb-6">Find Your Perfect Car</h1>
-                    <div className="flex gap-4 max-w-4xl bg-white/10 p-2 rounded-lg backdrop-blur-md border border-white/10 flex-col md:flex-row">
+                    <div className="flex gap-4 max-w-4xl bg-[var(--bg-card)] p-2 rounded-lg backdrop-blur-md border border-[var(--border-default)] flex-col md:flex-row">
                         <div className="flex-1 relative">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
                             <Input
                                 placeholder="Search make, model, or keywords..."
                                 value={filters.search}
                                 onChange={(e) => set('search', e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                className="pl-12 bg-white/5 border-white/10 text-white placeholder:text-gray-400 focus:bg-white/10 h-12"
+                                className="pl-12 h-12"
                             />
                         </div>
                         <Button size="lg" className="h-12 px-8" onClick={handleSearch}>Search</Button>
@@ -574,12 +574,12 @@ function SearchPageContent() {
 
                 {/* ── Sidebar ──────────────────────────────────────────────────── */}
                 <aside className={`
-                    fixed inset-x-0 bottom-0 z-[60] lg:z-10 flex flex-col h-[85vh] bg-slate-900 border-t border-white/10 rounded-t-3xl shadow-2xl transition-transform duration-300
+                    fixed inset-x-0 bottom-0 z-[60] lg:z-10 flex flex-col h-[85vh] bg-[var(--bg-dropdown)] border-t border-[var(--border-default)] rounded-t-3xl shadow-2xl transition-transform duration-300
                     lg:static lg:w-72 lg:flex-shrink-0 lg:glass-card lg:border lg:rounded-2xl lg:shadow-none lg:translate-y-0 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:flex lg:flex-col lg:overflow-visible lg:p-0
                     ${isFilterOpen ? 'translate-y-0' : 'translate-y-full lg:translate-y-0'}
                 `}>
-                    <div className="flex justify-between items-center p-6 pb-4 border-b border-white/10 lg:px-6 lg:pt-6 lg:pb-4 lg:border-b lg:border-white/5 shrink-0">
-                        <h3 className="font-heading font-bold text-xl text-white">Filters</h3>
+                    <div className="flex justify-between items-center p-6 pb-4 border-b border-[var(--border-default)] lg:px-6 lg:pt-6 lg:pb-4 lg:border-b lg:border-[var(--border-default)] shrink-0">
+                        <h3 className="font-heading font-bold text-xl">Filters</h3>
                         <div className="flex items-center gap-4">
                             {activeFilterCount > 0 && (
                                 <button onClick={handleResetFilters} className="text-xs text-primary font-normal cursor-pointer hover:underline flex items-center gap-1">
@@ -588,7 +588,7 @@ function SearchPageContent() {
                             )}
                             <button
                                 onClick={() => setIsFilterOpen(false)}
-                                className="lg:hidden text-gray-400 hover:text-white bg-white/5 w-8 h-8 rounded-full flex items-center justify-center"
+                                className="lg:hidden text-[var(--text-muted)] hover:text-primary dark:hover:text-white bg-[var(--bg-card)] w-8 h-8 rounded-full flex items-center justify-center"
                             >
                                 <X size={20} />
                             </button>
@@ -598,8 +598,8 @@ function SearchPageContent() {
                     <div className="px-6 py-4 overflow-y-auto flex-1 scrollbar-hide">
                         <div className="space-y-4">
                             {/* Vehicle Category */}
-                            <div className="pb-4 border-b border-white/5">
-                                <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">Vehicle Category</p>
+                            <div className="pb-4 border-b border-[var(--border-default)]">
+                                <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3">Vehicle Category</p>
                                 <div className="grid grid-cols-3 gap-2">
                                     {[
                                         { value: 'CAR', label: '🚗 Cars' },
@@ -612,8 +612,8 @@ function SearchPageContent() {
                                                 onClick={() => setFilters(prev => ({ ...prev, vehicleType: opt.value }))}
                                                 className={`py-2.5 rounded-lg border text-sm font-semibold transition-all text-center ${
                                                     active
-                                                        ? 'border-primary bg-primary/10 text-white shadow-[0_0_12px_rgba(237,28,36,0.15)]'
-                                                        : 'border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20 hover:text-gray-300'
+                                                        ? 'border-primary bg-primary/10 text-primary shadow-[0_0_12px_rgba(237,28,36,0.15)]'
+                                                        : 'border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30 hover:text-[var(--text-secondary)]'
                                                 }`}
                                             >
                                                 {opt.label}
@@ -633,7 +633,7 @@ function SearchPageContent() {
                                         return (
                                             <button key={key} type="button"
                                                 onClick={() => set('bodyType', filters.bodyType === key ? '' : key)}
-                                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${isActive ? 'bg-primary/15 text-primary border border-primary/30' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200 border border-transparent'}`}
+                                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${isActive ? 'bg-primary/15 text-primary border border-primary/30' : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-gray-200 border border-transparent'}`}
                                             >
                                                 <Icon className="w-8 h-4 shrink-0" />{BODY_TYPE_LABELS[key]}
                                             </button>
@@ -656,7 +656,7 @@ function SearchPageContent() {
                                                 set('make', e.target.value)
                                                 set('model', '') // reset model when make changes
                                             }}
-                                            className="h-9 w-full rounded-md border border-white/10 bg-slate-800 px-3 text-sm text-white placeholder:text-gray-500 focus:border-primary focus:outline-none"
+                                            className="h-9 w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 text-sm placeholder:text-[var(--text-muted)] focus:border-primary focus:outline-none"
                                         />
                                         <datalist id="make-options">
                                             {CAR_MAKES.map(m => <option key={m} value={m} />)}
@@ -666,11 +666,11 @@ function SearchPageContent() {
                                     {(() => {
                                         const models = getModelsForMake(filters.make)
                                         return models.length > 0 ? (
-                                            <div className="max-h-44 overflow-y-auto rounded-md border border-white/10 bg-slate-800/60 space-y-0.5 p-1">
+                                            <div className="max-h-44 overflow-y-auto rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] space-y-0.5 p-1">
                                                 <button
                                                     type="button"
                                                     onClick={() => set('model', '')}
-                                                    className={`w-full text-left px-3 py-2 rounded text-sm transition-all ${!filters.model ? 'bg-primary/15 text-primary font-semibold' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'}`}
+                                                    className={`w-full text-left px-3 py-2 rounded text-sm transition-all ${!filters.model ? 'bg-primary/15 text-primary font-semibold' : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-gray-200'}`}
                                                 >
                                                     All {filters.make} models
                                                 </button>
@@ -679,7 +679,7 @@ function SearchPageContent() {
                                                         key={m}
                                                         type="button"
                                                         onClick={() => set('model', m)}
-                                                        className={`w-full text-left px-3 py-2 rounded text-sm transition-all ${filters.model === m ? 'bg-primary/15 text-primary font-semibold' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'}`}
+                                                        className={`w-full text-left px-3 py-2 rounded text-sm transition-all ${filters.model === m ? 'bg-primary/15 text-primary font-semibold' : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-gray-200'}`}
                                                     >
                                                         {m}
                                                     </button>
@@ -690,7 +690,7 @@ function SearchPageContent() {
                                                 placeholder="Model (e.g. M4)"
                                                 value={filters.model}
                                                 onChange={(e) => set('model', e.target.value)}
-                                                className="h-9 text-sm bg-slate-800 border-white/10 text-white placeholder:text-gray-500"
+                                                className="h-9 text-sm bg-[var(--bg-input)] border-[var(--border-default)] placeholder:text-[var(--text-muted)]"
                                             />
                                         )
                                     })()}
@@ -725,9 +725,9 @@ function SearchPageContent() {
                             <FilterSection title="Fuel Type">
                                 <div className="space-y-2">
                                     {FUEL_TYPES.map(fuel => (
-                                        <label key={fuel} className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer hover:text-primary transition-colors">
+                                        <label key={fuel} className="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer hover:text-primary transition-colors">
                                             <input type="checkbox" checked={filters.fuelTypes.includes(fuel)} onChange={() => toggleFuelType(fuel)}
-                                                className="accent-primary rounded w-4 h-4 bg-slate-800 border-white/10" />
+                                                className="accent-primary rounded w-4 h-4 bg-[var(--bg-input)] border-[var(--border-default)]" />
                                             {fuel}
                                         </label>
                                     ))}
@@ -738,9 +738,9 @@ function SearchPageContent() {
                             <FilterSection title="Transmission">
                                 <div className="space-y-2">
                                     {TRANSMISSION_TYPES.map(trans => (
-                                        <label key={trans} className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer hover:text-primary transition-colors">
+                                        <label key={trans} className="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer hover:text-primary transition-colors">
                                             <input type="checkbox" checked={filters.transmissions.includes(trans)} onChange={() => toggleTransmission(trans)}
-                                                className="accent-primary rounded w-4 h-4 bg-slate-800 border-white/10" />
+                                                className="accent-primary rounded w-4 h-4 bg-[var(--bg-input)] border-[var(--border-default)]" />
                                             {trans}
                                         </label>
                                     ))}
@@ -751,7 +751,7 @@ function SearchPageContent() {
                             <FilterSection title="Colour">
                                 <Input placeholder="e.g. White, Black, Blue" value={filters.color}
                                     onChange={(e) => set('color', e.target.value)}
-                                    className="h-9 text-sm bg-slate-800 border-white/10 text-white placeholder:text-gray-500" />
+                                    className="h-9 text-sm bg-[var(--bg-input)] border-[var(--border-default)] placeholder:text-[var(--text-muted)]" />
                             </FilterSection>
 
                             {/* Doors */}
@@ -760,7 +760,7 @@ function SearchPageContent() {
                                     {['2', '3', '4', '5'].map(d => (
                                         <button key={d} type="button"
                                             onClick={() => set('minDoors', filters.minDoors === d ? '' : d)}
-                                            className={`flex-1 py-2 rounded-lg border text-sm font-semibold transition-all cursor-pointer ${filters.minDoors === d ? 'border-primary bg-primary/15 text-primary' : 'border-white/10 text-gray-400 hover:border-white/20'}`}
+                                            className={`flex-1 py-2 rounded-lg border text-sm font-semibold transition-all cursor-pointer ${filters.minDoors === d ? 'border-primary bg-primary/15 text-primary' : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'}`}
                                         >{d}+</button>
                                     ))}
                                 </div>
@@ -772,7 +772,7 @@ function SearchPageContent() {
                                     {['2', '4', '5', '7'].map(s => (
                                         <button key={s} type="button"
                                             onClick={() => set('minSeats', filters.minSeats === s ? '' : s)}
-                                            className={`flex-1 py-2 rounded-lg border text-sm font-semibold transition-all cursor-pointer ${filters.minSeats === s ? 'border-primary bg-primary/15 text-primary' : 'border-white/10 text-gray-400 hover:border-white/20'}`}
+                                            className={`flex-1 py-2 rounded-lg border text-sm font-semibold transition-all cursor-pointer ${filters.minSeats === s ? 'border-primary bg-primary/15 text-primary' : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'}`}
                                         >{s}+</button>
                                     ))}
                                 </div>
@@ -791,12 +791,12 @@ function SearchPageContent() {
                                 <div className="space-y-2">
                                     <Input placeholder="Max g/km" type="number" value={filters.maxCo2}
                                         onChange={(e) => set('maxCo2', e.target.value)}
-                                        className="h-9 text-sm bg-slate-800 border-white/10 text-white placeholder:text-gray-500" />
+                                        className="h-9 text-sm bg-[var(--bg-input)] border-[var(--border-default)] placeholder:text-[var(--text-muted)]" />
                                     <div className="flex gap-2">
                                         {['100', '120', '150', '200'].map(v => (
                                             <button key={v} type="button"
                                                 onClick={() => set('maxCo2', filters.maxCo2 === v ? '' : v)}
-                                                className={`flex-1 py-1.5 rounded-md border text-xs font-semibold transition-all cursor-pointer ${filters.maxCo2 === v ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300' : 'border-white/10 text-gray-500 hover:border-white/20'}`}
+                                                className={`flex-1 py-1.5 rounded-md border text-xs font-semibold transition-all cursor-pointer ${filters.maxCo2 === v ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300' : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'}`}
                                             >≤{v}</button>
                                         ))}
                                     </div>
@@ -815,7 +815,7 @@ function SearchPageContent() {
                                                     ? filters.conditions.filter(c => c !== opt.value)
                                                     : [...filters.conditions, opt.value]
                                                 )}
-                                                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all cursor-pointer flex items-center gap-2 ${isActive ? 'bg-primary/15 text-primary border border-primary/30' : isCat ? 'text-amber-500/70 hover:bg-amber-500/10 border border-transparent' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200 border border-transparent'}`}
+                                                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all cursor-pointer flex items-center gap-2 ${isActive ? 'bg-primary/15 text-primary border border-primary/30' : isCat ? 'text-amber-500/70 hover:bg-amber-500/10 border border-transparent' : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-gray-200 border border-transparent'}`}
                                             >
                                                 <span className={`w-4 h-4 shrink-0 rounded border flex items-center justify-center ${isActive ? 'bg-primary border-primary' : 'border-white/20'}`}>
                                                     {isActive && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
@@ -831,12 +831,12 @@ function SearchPageContent() {
                             <FilterSection title="UK Compliance">
                                 <div className="space-y-3">
                                     <div>
-                                        <p className="text-xs text-gray-500 mb-1.5 flex items-center gap-1"><ShieldCheck size={11} /> ULEZ / CAZ</p>
+                                        <p className="text-xs text-[var(--text-muted)] mb-1.5 flex items-center gap-1"><ShieldCheck size={11} /> ULEZ / CAZ</p>
                                         <div className="flex gap-2">
                                             {(['yes', 'no', ''] as const).map((v) => (
                                                 <button key={v} type="button"
                                                     onClick={() => set('ulezCompliant', v)}
-                                                    className={`flex-1 py-1.5 rounded-md border text-xs font-semibold transition-all ${filters.ulezCompliant === v && v !== '' ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300' : v === '' ? filters.ulezCompliant === '' ? 'border-primary bg-primary/10 text-primary' : 'border-white/10 text-gray-500' : 'border-white/10 text-gray-400 hover:border-white/20'}`}
+                                                    className={`flex-1 py-1.5 rounded-md border text-xs font-semibold transition-all ${filters.ulezCompliant === v && v !== '' ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300' : v === '' ? filters.ulezCompliant === '' ? 'border-primary bg-primary/10 text-primary' : 'border-[var(--border-default)] text-[var(--text-muted)]' : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'}`}
                                                 >
                                                     {v === 'yes' ? '✓ ULEZ' : v === 'no' ? '✗ Non' : 'Either'}
                                                 </button>
@@ -844,14 +844,14 @@ function SearchPageContent() {
                                         </div>
                                     </div>
                                     <div>
-                                        <p className="text-xs text-gray-500 mb-1.5">Euro Standard</p>
+                                        <p className="text-xs text-[var(--text-muted)] mb-1.5">Euro Standard</p>
                                         <div className="flex flex-wrap gap-1.5">
                                             {([{ value: '' as EuroStandardValue | '', label: 'Any' }, ...EURO_OPTIONS]).map(o => (
                                                 <button
                                                     key={o.value}
                                                     type="button"
                                                     onClick={() => set('euroStandard', o.value as EuroStandardValue | '')}
-                                                    className={`px-3 py-1.5 rounded-md border text-xs font-semibold transition-all cursor-pointer ${filters.euroStandard === o.value ? 'border-primary bg-primary/15 text-primary' : 'border-white/10 text-gray-400 hover:border-white/20 hover:text-gray-300'}`}
+                                                    className={`px-3 py-1.5 rounded-md border text-xs font-semibold transition-all cursor-pointer ${filters.euroStandard === o.value ? 'border-primary bg-primary/15 text-primary' : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30 hover:text-[var(--text-secondary)]'}`}
                                                 >
                                                     {o.label}
                                                 </button>
@@ -874,7 +874,7 @@ function SearchPageContent() {
                             <FilterSection title="Features / Options">
                                 <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                                     {POPULAR_FEATURES.map(feat => (
-                                        <label key={feat} className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer hover:text-primary transition-colors">
+                                        <label key={feat} className="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer hover:text-primary transition-colors">
                                             <input
                                                 type="checkbox"
                                                 checked={filters.features.includes(feat)}
@@ -884,7 +884,7 @@ function SearchPageContent() {
                                                         ? prev.features.filter(f => f !== feat)
                                                         : [...prev.features, feat]
                                                 }))}
-                                                className="accent-primary rounded w-4 h-4 bg-slate-800 border-white/10"
+                                                className="accent-primary rounded w-4 h-4 bg-[var(--bg-input)] border-[var(--border-default)]"
                                             />
                                             {feat}
                                         </label>
@@ -900,14 +900,14 @@ function SearchPageContent() {
                                             placeholder="e.g. London, Manchester, B1…"
                                             value={filters.location}
                                             onChange={(e) => set('location', e.target.value)}
-                                            className="h-9 text-sm bg-slate-800 border-white/10 text-white placeholder:text-gray-500 flex-1"
+                                            className="h-9 text-sm bg-[var(--bg-input)] border-[var(--border-default)] placeholder:text-[var(--text-muted)] flex-1"
                                         />
                                         <button
                                             type="button"
                                             onClick={handleDetectLocation}
                                             disabled={detectingLocation}
                                             title="Use my location"
-                                            className="h-9 w-9 flex items-center justify-center rounded-md border border-white/10 bg-slate-800 text-gray-400 hover:text-primary hover:border-primary/40 transition-colors disabled:opacity-50 shrink-0"
+                                            className="h-9 w-9 flex items-center justify-center rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:text-primary hover:border-primary/40 transition-colors disabled:opacity-50 shrink-0"
                                         >
                                             {detectingLocation
                                                 ? <Loader2 size={14} className="animate-spin" />
@@ -915,7 +915,7 @@ function SearchPageContent() {
                                             }
                                         </button>
                                     </div>
-                                    <p className="text-[10px] text-gray-600">Matches listings by city or postcode area</p>
+                                    <p className="text-[10px] text-[var(--text-secondary)]">Matches listings by city or postcode area</p>
                                 </div>
                             </FilterSection>
 
@@ -924,12 +924,12 @@ function SearchPageContent() {
                                 <div className="space-y-2">
                                     {!userLocation?.lat && (
                                         <div className="space-y-2">
-                                            <p className="text-xs text-gray-500">Allow location or enter your postcode:</p>
+                                            <p className="text-xs text-[var(--text-muted)]">Allow location or enter your postcode:</p>
                                             <div className="flex gap-2">
                                                 <input
                                                     type="text"
                                                     placeholder="e.g. M1 1AA"
-                                                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder:text-gray-600 focus:outline-none focus:border-primary/50"
+                                                    className="flex-1 bg-[var(--bg-card)] border border-[var(--border-default)] rounded-lg px-3 py-2 text-xs placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-primary/50"
                                                     onKeyDown={(e) => {
                                                         if (e.key === 'Enter') setPostcode((e.target as HTMLInputElement).value)
                                                     }}
@@ -947,14 +947,14 @@ function SearchPageContent() {
                                                 className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors disabled:opacity-40 disabled:cursor-not-allowed
                                                     ${filters.maxDistanceMi === d
                                                         ? 'bg-primary/20 border-primary/40 text-primary'
-                                                        : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/20'}`}
+                                                        : 'bg-[var(--bg-card)] border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'}`}
                                             >
                                                 {d} mi
                                             </button>
                                         ))}
                                     </div>
                                     {userLocation?.lat && userLocation.source === 'postcode' && userLocation.postcode && (
-                                        <p className="text-[10px] text-gray-600">Using: {userLocation.postcode}</p>
+                                        <p className="text-[10px] text-[var(--text-secondary)]">Using: {userLocation.postcode}</p>
                                     )}
                                 </div>
                             </FilterSection>
@@ -969,7 +969,7 @@ function SearchPageContent() {
                                     ]).map(opt => (
                                         <button key={opt.value} type="button"
                                             onClick={() => set('listingType', opt.value)}
-                                            className={`flex-1 py-1.5 rounded-md border text-xs font-semibold transition-all cursor-pointer ${filters.listingType === opt.value ? 'border-primary bg-primary/15 text-primary' : 'border-white/10 text-gray-400 hover:border-white/20'}`}
+                                            className={`flex-1 py-1.5 rounded-md border text-xs font-semibold transition-all cursor-pointer ${filters.listingType === opt.value ? 'border-primary bg-primary/15 text-primary' : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'}`}
                                         >{opt.label}</button>
                                     ))}
                                 </div>
@@ -985,7 +985,7 @@ function SearchPageContent() {
                                     ]).map(opt => (
                                         <button key={opt.value} type="button"
                                             onClick={() => set('sellerType', opt.value)}
-                                            className={`flex-1 py-1.5 rounded-md border text-xs font-semibold transition-all cursor-pointer ${filters.sellerType === opt.value ? 'border-primary bg-primary/15 text-primary' : 'border-white/10 text-gray-400 hover:border-white/20'}`}
+                                            className={`flex-1 py-1.5 rounded-md border text-xs font-semibold transition-all cursor-pointer ${filters.sellerType === opt.value ? 'border-primary bg-primary/15 text-primary' : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'}`}
                                         >{opt.label}</button>
                                     ))}
                                 </div>
@@ -999,7 +999,7 @@ function SearchPageContent() {
                                     className={`flex items-center gap-2 w-full py-1.5 px-2.5 rounded-md border text-xs font-semibold transition-all ${
                                         filters.deliveryAvailable
                                             ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300'
-                                            : 'border-white/10 text-gray-400 hover:border-white/20'
+                                            : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'
                                     }`}
                                 >
                                     <Truck size={12} />
@@ -1010,13 +1010,13 @@ function SearchPageContent() {
                         </div>
 
                         {/* Auction Promo Card */}
-                        <div className="hidden lg:block mt-8 p-5 rounded-2xl bg-white/5 border border-white/10 relative overflow-hidden group">
+                        <div className="hidden lg:block mt-8 p-5 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-default)] relative overflow-hidden group">
                             <div className="absolute top-0 right-0 w-20 h-20 bg-primary/20 rounded-full blur-2xl -z-10" />
                             <div className="flex items-center gap-2 mb-3">
                                 <Gavel className="text-primary" size={20} />
-                                <h3 className="font-bold text-white text-lg">Live Auctions</h3>
+                                <h3 className="font-bold text-lg">Live Auctions</h3>
                             </div>
-                            <p className="text-xs text-gray-400 mb-3 leading-relaxed">Live marketplace for verified buyers and sellers — coming soon.</p>
+                            <p className="text-xs text-[var(--text-muted)] mb-3 leading-relaxed">Live marketplace for verified buyers and sellers — coming soon.</p>
                             <div className="bg-amber-900/20 border border-amber-500/20 rounded-lg p-3">
                                 <h4 className="text-amber-500 font-bold text-xs mb-1 flex items-center gap-1">
                                     <AlertTriangle size={12} /> Verification Required
@@ -1027,7 +1027,7 @@ function SearchPageContent() {
                     </div>
 
                     {/* Footer — pinned Apply button (visible on both mobile and desktop) */}
-                    <div className="p-4 border-t border-white/10 bg-slate-900 shrink-0 lg:bg-transparent lg:border-white/5">
+                    <div className="p-4 border-t border-[var(--border-default)] bg-[var(--bg-dropdown)] shrink-0 lg:bg-transparent lg:border-[var(--border-default)]">
                         <Button className="w-full shadow-neon py-6 text-lg lg:py-3 lg:text-sm" onClick={handleApplyFilters}>
                             <span className="lg:hidden">Show Results</span>
                             <span className="hidden lg:inline">Apply Filters</span>
@@ -1039,17 +1039,17 @@ function SearchPageContent() {
                 <div className="flex-1 min-w-0">
                     {/* Sort Bar */}
                     <div className="flex justify-between items-center mb-6 gap-4 flex-wrap">
-                        <p className="text-gray-400 text-sm">
+                        <p className="text-[var(--text-muted)] text-sm">
                             {loading ? <span>Loading...</span> : appliedFilters.maxDistanceMi ? (
-                                <span className="text-xs text-gray-500">Filtered results ({listings.length} within {appliedFilters.maxDistanceMi} mi)</span>
+                                <span className="text-xs text-[var(--text-muted)]">Filtered results ({listings.length} within {appliedFilters.maxDistanceMi} mi)</span>
                             ) : (
-                                <>Showing <span className="font-bold text-white">{listings.length}</span> of <span className="font-bold text-white">{totalCount}</span> vehicles</>
+                                <>Showing <span className="font-bold">{listings.length}</span> of <span className="font-bold">{totalCount}</span> vehicles</>
                             )}
                         </p>
                         <select value={appliedFilters.sortBy} onChange={(e) => handleSortChange(e.target.value)}
-                            className="bg-transparent border border-white/10 rounded-lg px-3 py-2 text-sm font-bold text-white cursor-pointer outline-none hover:border-white/20">
+                            className="bg-transparent border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm font-bold cursor-pointer outline-none hover:border-primary/30">
                             {SORT_OPTIONS.map(opt => (
-                                <option key={opt.value} value={opt.value} className="bg-slate-800 text-white">{opt.label}</option>
+                                <option key={opt.value} value={opt.value} className="bg-[var(--bg-dropdown)] text-[var(--text-primary)]">{opt.label}</option>
                             ))}
                         </select>
                     </div>
@@ -1095,7 +1095,7 @@ function SearchPageContent() {
                     {loading && (
                         <div className="flex flex-col items-center justify-center py-20">
                             <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
-                            <p className="text-gray-400">Loading listings...</p>
+                            <p className="text-[var(--text-muted)]">Loading listings...</p>
                         </div>
                     )}
 
@@ -1103,8 +1103,8 @@ function SearchPageContent() {
                     {error && !loading && (
                         <div className="glass-card p-8 text-center">
                             <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
-                            <h3 className="text-xl font-bold text-white mb-2">Failed to Load Listings</h3>
-                            <p className="text-gray-400 mb-4">{error}</p>
+                            <h3 className="text-xl font-bold mb-2">Failed to Load Listings</h3>
+                            <p className="text-[var(--text-muted)] mb-4">{error}</p>
                             <Button onClick={() => fetchListings(appliedFilters)}>Try Again</Button>
                         </div>
                     )}
@@ -1112,9 +1112,9 @@ function SearchPageContent() {
                     {/* Empty */}
                     {!loading && !error && listings.length === 0 && (
                         <div className="glass-card p-8 text-center">
-                            <Search className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-                            <h3 className="text-xl font-bold text-white mb-2">No Listings Found</h3>
-                            <p className="text-gray-400 mb-4">
+                            <Search className="w-12 h-12 text-[var(--text-muted)] mx-auto mb-4" />
+                            <h3 className="text-xl font-bold mb-2">No Listings Found</h3>
+                            <p className="text-[var(--text-muted)] mb-4">
                                 {activeFilterCount > 0 ? 'Try adjusting your filters.' : 'Be the first to list your car!'}
                             </p>
                             {activeFilterCount > 0
@@ -1160,8 +1160,8 @@ function SearchPageContent() {
                                     />
                                 ))}
                             </div>
-                            <div className="mt-6 border-b border-white/5" />
-                            <p className="text-xs text-gray-600 mt-3 mb-6">All listings below</p>
+                            <div className="mt-6 border-b border-[var(--border-default)]" />
+                            <p className="text-xs text-[var(--text-secondary)] mt-3 mb-6">All listings below</p>
                         </div>
                     )}
 
@@ -1205,7 +1205,7 @@ function SearchPageContent() {
                                 size="lg"
                                 disabled={loadingMore}
                                 onClick={() => fetchListings(appliedFilters, currentPage + 1, true)}
-                                className="border-white/20 text-gray-300 hover:text-white hover:border-white/40 hover:bg-white/5 font-bold"
+                                className="border-[var(--border-default)] text-[var(--text-secondary)] hover:text-primary dark:hover:text-white hover:border-primary/40 hover:bg-[var(--bg-card)] font-bold"
                             >
                                 {loadingMore ? (
                                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading...</>
@@ -1220,12 +1220,12 @@ function SearchPageContent() {
 
             {/* Compare Options Banner */}
             <div className="container mx-auto px-5 mt-16 mb-8">
-                <div className="bg-gradient-to-r from-[#1e293b] to-slate-900 border border-white/10 rounded-3xl p-8 md:p-12 text-center relative overflow-hidden group shadow-2xl">
+                <div className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-3xl p-8 md:p-12 text-center relative overflow-hidden group shadow-2xl">
                     <div className="absolute inset-0 bg-primary/5 group-hover:bg-primary/10 transition-colors duration-500" />
                     <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 blur-[100px] rounded-full pointer-events-none" />
                     <div className="relative z-10 flex flex-col items-center">
-                        <h2 className="text-3xl font-heading font-bold text-white mb-3 tracking-tight">Still not sure what to Buy?</h2>
-                        <p className="text-gray-400 mb-8 max-w-xl mx-auto text-lg leading-relaxed">
+                        <h2 className="text-3xl font-heading font-bold mb-3 tracking-tight">Still not sure what to Buy?</h2>
+                        <p className="text-[var(--text-muted)] mb-8 max-w-xl mx-auto text-lg leading-relaxed">
                             Compare your options side-by-side and find the exact vehicle that suits your needs.
                         </p>
                         <Button
@@ -1250,7 +1250,7 @@ function FilterTag({ label, onRemove }: { label: string; onRemove: () => void })
     return (
         <span className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/30 text-primary text-xs font-bold px-3 py-1.5 rounded-full">
             {label}
-            <button onClick={onRemove} className="ml-1 hover:text-white cursor-pointer"><X size={12} /></button>
+            <button onClick={onRemove} className="ml-1 hover:opacity-60 cursor-pointer"><X size={12} /></button>
         </span>
     )
 }

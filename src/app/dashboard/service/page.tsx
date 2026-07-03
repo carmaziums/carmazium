@@ -55,7 +55,7 @@ export default function ServiceDashboard() {
 
     if (authLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+            <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
             </div>
         )
@@ -64,7 +64,7 @@ export default function ServiceDashboard() {
     const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "User")
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
+        <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
 
                 <DashboardSidebar role="provider" userName={userName} userType={profile?.role ? `${profile.role} Account` : "Service Provider"} />
@@ -76,8 +76,8 @@ export default function ServiceDashboard() {
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="p-2 bg-yellow-500/20 rounded-lg"><Clock size={18} className="text-yellow-400" /></div>
                             </div>
-                            <p className="text-gray-400 text-xs mb-1 uppercase tracking-widest font-bold">Pending</p>
-                            <h3 className="text-3xl font-black font-heading text-white">
+                            <p className="text-[var(--text-muted)] text-xs mb-1 uppercase tracking-widest font-bold">Pending</p>
+                            <h3 className="text-3xl font-black font-heading">
                                 {loading ? "..." : stats?.pendingJobs || 0}
                             </h3>
                         </div>
@@ -85,8 +85,8 @@ export default function ServiceDashboard() {
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="p-2 bg-blue-500/20 rounded-lg"><Wrench size={18} className="text-blue-400" /></div>
                             </div>
-                            <p className="text-gray-400 text-xs mb-1 uppercase tracking-widest font-bold">Active Jobs</p>
-                            <h3 className="text-3xl font-black font-heading text-white">
+                            <p className="text-[var(--text-muted)] text-xs mb-1 uppercase tracking-widest font-bold">Active Jobs</p>
+                            <h3 className="text-3xl font-black font-heading">
                                 {loading ? "..." : stats?.activeJobs || 0}
                             </h3>
                         </div>
@@ -94,7 +94,7 @@ export default function ServiceDashboard() {
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="p-2 bg-emerald-500/20 rounded-lg"><CheckCircle size={18} className="text-emerald-400" /></div>
                             </div>
-                            <p className="text-gray-400 text-xs mb-1 uppercase tracking-widest font-bold">Completed</p>
+                            <p className="text-[var(--text-muted)] text-xs mb-1 uppercase tracking-widest font-bold">Completed</p>
                             <h3 className="text-3xl font-black font-heading text-emerald-400">
                                 {loading ? "..." : stats?.completedJobs || 0}
                             </h3>
@@ -103,7 +103,7 @@ export default function ServiceDashboard() {
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="p-2 bg-primary/20 rounded-lg"><DollarSign size={18} className="text-primary" /></div>
                             </div>
-                            <p className="text-gray-400 text-xs mb-1 uppercase tracking-widest font-bold">Earnings</p>
+                            <p className="text-[var(--text-muted)] text-xs mb-1 uppercase tracking-widest font-bold">Earnings</p>
                             <h3 className="text-2xl font-black font-heading text-primary">
                                 {loading ? "..." : formatPrice(stats?.totalEarnings || 0)}
                             </h3>
@@ -112,15 +112,15 @@ export default function ServiceDashboard() {
 
                     {/* Recent Requests Table */}
                     <div className="glass-card overflow-hidden">
-                        <div className="p-6 border-b border-white/10 flex justify-between items-center">
-                            <h2 className="text-xl font-bold font-heading text-white flex items-center gap-2">
+                        <div className="p-6 border-b border-[var(--border-default)] flex justify-between items-center">
+                            <h2 className="text-xl font-bold font-heading flex items-center gap-2">
                                 <Briefcase className="text-primary" /> Service Requests
                             </h2>
-                            <Link href="/dashboard/service/jobs" className="text-primary hover:text-white text-sm font-bold transition-colors">View All</Link>
+                            <Link href="/dashboard/service/jobs" className="text-primary hover:text-primary dark:hover:text-white text-sm font-bold transition-colors">View All</Link>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
-                                <thead className="bg-slate-800/50 text-gray-400 text-xs uppercase font-bold">
+                                <thead className="bg-[var(--bg-input)] text-[var(--text-muted)] text-xs uppercase font-bold">
                                     <tr>
                                         <th className="px-6 py-4">Client</th>
                                         <th className="px-6 py-4">Service Type</th>
@@ -129,7 +129,7 @@ export default function ServiceDashboard() {
                                         <th className="px-6 py-4">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-white/5 text-white">
+                                <tbody className="divide-y divide-[var(--border-default)]">
                                     {loading ? (
                                         <tr>
                                             <td colSpan={5} className="px-6 py-12 text-center">
@@ -138,19 +138,19 @@ export default function ServiceDashboard() {
                                         </tr>
                                     ) : jobs.length === 0 ? (
                                         <tr>
-                                            <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                                            <td colSpan={5} className="px-6 py-12 text-center text-[var(--text-muted)]">
                                                 No service requests yet. Complete your contractor profile to receive jobs.
                                             </td>
                                         </tr>
                                     ) : (
                                         jobs.map((job) => (
-                                            <tr key={job.id} className="hover:bg-white/5 transition-colors">
+                                            <tr key={job.id} className="hover:bg-[var(--bg-card)] transition-colors">
                                                 <td className="px-6 py-4">
                                                     <div className="font-bold">{job.requester.firstName} {job.requester.lastName}</div>
-                                                    <div className="text-xs text-gray-400">{job.requester.email}</div>
+                                                    <div className="text-xs text-[var(--text-muted)]">{job.requester.email}</div>
                                                 </td>
                                                 <td className="px-6 py-4">{job.serviceType}</td>
-                                                <td className="px-6 py-4 text-sm text-gray-300">
+                                                <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">
                                                     {new Date(job.createdAt).toLocaleDateString()}
                                                 </td>
                                                 <td className="px-6 py-4">
@@ -172,7 +172,7 @@ export default function ServiceDashboard() {
                                                         <>
                                                             <Button
                                                                 size="icon"
-                                                                className="h-8 w-8 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white border border-emerald-500/20"
+                                                                className="h-8 w-8 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-primary dark:hover:text-white border border-emerald-500/20"
                                                                 onClick={() => handleStatusUpdate(job.id, 'ACCEPTED')}
                                                             >
                                                                 <CheckCircle size={16} />

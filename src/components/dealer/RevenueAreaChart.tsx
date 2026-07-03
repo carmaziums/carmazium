@@ -47,8 +47,8 @@ export function RevenueAreaChart({
             <div className="dealer-glass-card p-6">
                 <div className="flex items-center justify-between mb-6">
                     <div>
-                        <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">{title}</h3>
-                        {subtitle && <p className="text-xs text-gray-600 mt-0.5">{subtitle}</p>}
+                        <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">{title}</h3>
+                        {subtitle && <p className="text-xs text-[var(--text-muted)] mt-0.5">{subtitle}</p>}
                     </div>
                 </div>
                 <div className="animate-pulse" style={{ height }}>
@@ -125,8 +125,8 @@ export function RevenueAreaChart({
         <div className="dealer-glass-card p-6">
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">{title}</h3>
-                    {subtitle && <p className="text-xs text-gray-600 mt-0.5">{subtitle}</p>}
+                    <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">{title}</h3>
+                    {subtitle && <p className="text-xs text-[var(--text-muted)] mt-0.5">{subtitle}</p>}
                 </div>
                 <div className="flex items-center gap-4">
                     {/* Legend */}
@@ -163,10 +163,10 @@ export function RevenueAreaChart({
                                 y1={y}
                                 x2={pad.left + w}
                                 y2={y}
-                                stroke="rgba(255,255,255,0.04)"
+                                stroke="var(--border-default)"
                                 strokeDasharray="4 4"
                             />
-                            <text x={pad.left - 8} y={y + 3} textAnchor="end" fill="#4b5563" fontSize={9} fontWeight={700}>
+                            <text x={pad.left - 8} y={y + 3} textAnchor="end" fill="var(--text-muted)" fontSize={9} fontWeight={700}>
                                 {formatCurrency(val)}
                             </text>
                         </g>
@@ -245,7 +245,7 @@ export function RevenueAreaChart({
                                 x={p.x}
                                 y={pad.top + h + 24}
                                 textAnchor="middle"
-                                fill="#4b5563"
+                                fill="var(--text-muted)"
                                 fontSize={9}
                                 fontWeight={700}
                                 style={{ textTransform: "uppercase", letterSpacing: "0.05em" }}
@@ -259,23 +259,23 @@ export function RevenueAreaChart({
                 {/* Tooltip */}
                 {tooltip && (
                     <div
-                        className="absolute pointer-events-none z-20 bg-slate-800/95 border border-white/10 rounded-xl px-4 py-3 shadow-2xl backdrop-blur-lg transition-all duration-150"
+                        className="absolute pointer-events-none z-20 bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-xl px-4 py-3 shadow-2xl backdrop-blur-lg transition-all duration-150"
                         style={{
                             left: tooltip.x,
                             top: tooltip.y - 75,
                             transform: "translateX(-50%)",
                         }}
                     >
-                        <p className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-1">{formatMonth(tooltip.point.month)}</p>
+                        <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold mb-1">{formatMonth(tooltip.point.month)}</p>
                         <div className="flex items-center gap-3">
                             <div>
                                 <p className="text-emerald-400 font-black text-lg leading-none">{formatCurrency(tooltip.point.revenue)}</p>
-                                <p className="text-xs text-gray-500 font-bold uppercase mt-0.5">Revenue</p>
+                                <p className="text-xs text-[var(--text-muted)] font-bold uppercase mt-0.5">Revenue</p>
                             </div>
                             <div className="w-px h-8 bg-white/10" />
                             <div>
                                 <p className="text-blue-400 font-black text-lg leading-none">{tooltip.point.unitsSold}</p>
-                                <p className="text-xs text-gray-500 font-bold uppercase mt-0.5">Units</p>
+                                <p className="text-xs text-[var(--text-muted)] font-bold uppercase mt-0.5">Units</p>
                             </div>
                         </div>
                     </div>

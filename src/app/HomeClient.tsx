@@ -117,7 +117,7 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Ask AI: e.g. red SUV under £30k..."
-                className="flex-1 min-w-0 bg-transparent px-8 py-4 text-white placeholder:text-gray-400 focus:outline-none text-lg truncate"
+                className="flex-1 min-w-0 bg-transparent px-8 py-4 text-white placeholder:text-[var(--text-muted)] focus:outline-none text-lg truncate"
               />
               <Button
                 type="submit"
@@ -137,7 +137,7 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
             </form>
 
             {/* Powered by AI badge */}
-            <div className="text-xs text-gray-400 mb-6 flex items-start justify-center gap-1.5 text-left md:text-center max-w-[260px] md:max-w-none mx-auto md:items-center">
+            <div className="text-xs text-[var(--text-muted)] mb-6 flex items-start justify-center gap-1.5 text-left md:text-center max-w-[260px] md:max-w-none mx-auto md:items-center">
               <Sparkles size={14} className="text-primary shrink-0 mt-0.5 md:mt-0" />
               <span>Powered by Mazium AI — describe your dream car in your own words</span>
             </div>
@@ -189,7 +189,7 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
                             <Search size={18} className="text-primary" />
                           </div>
                           <div className="text-left flex-1">
-                            <p className="text-xs font-bold uppercase tracking-wider text-gray-400">View matching cars</p>
+                            <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">View matching cars</p>
                             <p className="text-base font-semibold text-white">{aiResult.filterCard.label}</p>
                           </div>
                           <ArrowRight size={18} className="text-primary group-hover:translate-x-1 transition-transform" />
@@ -230,7 +230,7 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
               </Button>
             </Link> */}
             <Link href="/search">
-              <Button size="lg" shape="pill" variant="dark" className="w-full sm:w-auto min-w-[280px] py-7 text-xl hover:bg-slate-800 hover:border-white/30 border border-white/10 backdrop-blur-md">
+              <Button size="lg" shape="pill" variant="dark" className="w-full sm:w-auto min-w-[280px] py-7 text-xl hover:bg-slate-800 hover:border-white/30 border border-[var(--border-default)] backdrop-blur-md">
                 Retail Listings
               </Button>
             </Link>
@@ -239,18 +239,18 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
           {/* Middle Row: Sell Action */}
           <div>
             <Link href="/sell">
-              <Button variant="outline" shape="pill" className="px-12 py-6 text-base border-primary/50 text-white hover:bg-primary hover:text-white uppercase tracking-wider font-semibold hover:tracking-widest transition-all duration-300">
+              <Button variant="outline" shape="pill" className="px-12 py-6 text-base border-primary/50 hover:bg-primary hover:text-white uppercase tracking-wider font-semibold hover:tracking-widest transition-all duration-300">
                 Sell My Car
               </Button>
             </Link>
           </div>
 
           {/* Bottom Row: Trust Indicators */}
-          <div className="flex flex-wrap justify-center gap-8 mt-8 text-gray-400 font-medium">
-            <div className="flex items-center gap-2 group cursor-default"><ShieldCheck className="text-primary h-5 w-5 group-hover:scale-110 transition-transform" /> <span className="group-hover:text-white transition-colors">RLS-secured</span></div>
-            <div className="flex items-center gap-2 group cursor-default"><UserCheck className="text-primary h-5 w-5 group-hover:scale-110 transition-transform" /> <span className="group-hover:text-white transition-colors">Verified sellers</span></div>
-            <div className="flex items-center gap-2 group cursor-default"><FileText className="text-primary h-5 w-5 group-hover:scale-110 transition-transform" /> <span className="group-hover:text-white transition-colors">HPI-ready</span></div>
-            <div className="flex items-center gap-2 group cursor-default"><CheckCircle className="text-primary h-5 w-5 group-hover:scale-110 transition-transform" /> <span className="group-hover:text-white transition-colors">Buyer protection</span></div>
+          <div className="flex flex-wrap justify-center gap-8 mt-8 font-medium" style={{ color: 'var(--text-muted)' }}>
+            <div className="flex items-center gap-2 group cursor-default"><ShieldCheck className="text-primary h-5 w-5 group-hover:scale-110 transition-transform" /> <span className="group-hover:text-primary dark:group-hover:text-white transition-colors">RLS-secured</span></div>
+            <div className="flex items-center gap-2 group cursor-default"><UserCheck className="text-primary h-5 w-5 group-hover:scale-110 transition-transform" /> <span className="group-hover:text-primary dark:group-hover:text-white transition-colors">Verified sellers</span></div>
+            <div className="flex items-center gap-2 group cursor-default"><FileText className="text-primary h-5 w-5 group-hover:scale-110 transition-transform" /> <span className="group-hover:text-primary dark:group-hover:text-white transition-colors">HPI-ready</span></div>
+            <div className="flex items-center gap-2 group cursor-default"><CheckCircle className="text-primary h-5 w-5 group-hover:scale-110 transition-transform" /> <span className="group-hover:text-primary dark:group-hover:text-white transition-colors">Buyer protection</span></div>
           </div>
         </motion.div>
       </section>
@@ -269,7 +269,7 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
                 <Sparkles className="text-amber-400" size={32} strokeWidth={1.25} />
                 <span style={{ background: 'linear-gradient(135deg,#fbbf24,#f59e0b)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Featured Listings</span>
               </h2>
-              <p className="text-gray-400 text-sm mt-1">Handpicked, seller-boosted cars — verified &amp; ready to go</p>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Handpicked, seller-boosted cars — verified &amp; ready to go</p>
             </div>
             <Link href="/search" className="text-sm text-amber-400 hover:text-amber-300 flex items-center gap-1 font-medium">
               View All <ArrowRight size={14} />
@@ -324,7 +324,7 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
                 <Gavel className="text-red-500" size={28} strokeWidth={1.5} />
                 Live Auctions
               </h2>
-              <p className="text-gray-400 text-sm mt-1">Real-time bidding — place your bid before the gavel drops</p>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Real-time bidding — place your bid before the gavel drops</p>
             </div>
             <Link href="/auctions" className="text-sm text-red-500 hover:text-red-400 flex items-center gap-1 font-medium">
               View All <ArrowRight size={14} />
@@ -345,7 +345,7 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
                   viewport={{ once: true }}
                   transition={{ duration: 0.4, delay: i * 0.07 }}
                 >
-                  <Link href={`/auctions/live/${auction.id}`} className="group block bg-slate-900/80 rounded-2xl overflow-hidden border border-white/5 hover:border-red-500/30 transition-all duration-300 hover:shadow-[0_8px_30px_rgba(220,38,38,0.12)]">
+                  <Link href={`/auctions/live/${auction.id}`} className="group block bg-slate-900/80 rounded-2xl overflow-hidden border border-[var(--border-default)] hover:border-red-500/30 transition-all duration-300 hover:shadow-[0_8px_30px_rgba(220,38,38,0.12)]">
                     <div className="relative h-44 overflow-hidden">
                       <Image src={image} alt={auction.listing.title} fill sizes="(max-width: 640px) 100vw, 25vw" className="object-cover transition-transform duration-500 group-hover:scale-105" />
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/20 to-transparent" />
@@ -389,7 +389,7 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
       <TestimonialsSection />
 
       {/* Steps Section */}
-      <section className="py-24 bg-slate-900/50 border-y border-white/5">
+      <section className="py-24 border-y" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-default)' }}>
         <div className="container mx-auto px-5 text-center">
           <h2 className="text-3xl font-bold mb-16 font-heading">Simple Steps to Buy, Sell, or Auction</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -408,11 +408,11 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
                 whileHover={{ y: -10 }}
                 className="flex flex-col items-center group"
               >
-                <div className="w-20 h-20 rounded-2xl bg-slate-800 flex items-center justify-center mb-6 text-primary border border-white/5 shadow-lg group-hover:border-primary/30 group-hover:shadow-[0_0_20px_rgba(237,28,36,0.2)] transition-all duration-300">
+                <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6 text-primary border shadow-lg group-hover:border-primary/30 group-hover:shadow-[0_0_20px_rgba(237,28,36,0.2)] transition-all duration-300" style={{ background: 'var(--bg-input)', borderColor: 'var(--border-default)' }}>
                   <step.icon size={36} />
                 </div>
-                <h3 className="text-xl font-bold mb-3 group-hover:text-white transition-colors">{step.title}</h3>
-                <p className="text-gray-400 text-sm leading-relaxed max-w-[200px]">{step.desc}</p>
+                <h3 className="text-xl font-bold mb-3 group-hover:text-primary transition-colors">{step.title}</h3>
+                <p className="text-sm leading-relaxed max-w-[200px]" style={{ color: 'var(--text-muted)' }}>{step.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -423,7 +423,7 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
             viewport={{ once: true }}
             className="mt-16"
           >
-            <Button asChild variant="outline" shape="pill" className="px-8 py-4 border-white/10 text-white hover:bg-white/5 hover:border-white/30 text-lg">
+            <Button asChild variant="outline" shape="pill" className="px-8 py-4 hover:bg-primary/5 dark:hover:bg-[var(--bg-card)] text-lg">
               <Link href="/how-it-works">
                 See Exactly How It Works <ArrowRight className="ml-2 w-5 h-5" />
               </Link>
@@ -441,8 +441,8 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
             viewport={{ once: true }}
           >
             <h2 className="text-3xl font-bold mb-2">Secure & Trusted Platform</h2>
-            <p className="text-gray-400 mb-8">Your safety and security are our top priorities</p>
-            <div className="inline-flex flex-wrap justify-center gap-4 bg-emerald-500/5 border border-emerald-500/10 text-emerald-400 px-8 py-4 rounded-full font-semibold">
+            <p className="mb-8" style={{ color: 'var(--text-muted)' }}>Your safety and security are our top priorities</p>
+            <div className="inline-flex flex-wrap justify-center gap-4 bg-emerald-500/5 border border-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-8 py-4 rounded-full font-semibold">
               <span className="flex items-center gap-2"><ShieldCheck size={18} /> SSL Secured</span>
               <div className="w-1 h-1 bg-emerald-500/30 rounded-full self-center hidden sm:block" />
               <span className="flex items-center gap-2"><Shield size={18} /> 256-bit Encryption</span>
@@ -456,14 +456,15 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="w-full max-w-4xl bg-gradient-to-br from-slate-800 to-slate-900 p-12 rounded-3xl border border-white/10 relative overflow-hidden shadow-2xl group"
+            className="w-full max-w-4xl p-12 rounded-3xl border relative overflow-hidden shadow-2xl group"
+            style={{ background: 'var(--bg-card)', borderColor: 'var(--border-default)' }}
           >
             <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 blur-[100px] rounded-full group-hover:bg-indigo-500/30 transition-colors duration-500" />
 
             <div className="relative z-10 flex flex-col items-center text-center w-full">
               <Lightbulb className="text-primary h-12 w-12 mb-6 mx-auto animate-pulse" />
               <h3 className="text-3xl font-bold mb-4">Get personalised car recommendations</h3>
-              <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
+              <p className="mb-8 max-w-2xl mx-auto" style={{ color: 'var(--text-muted)' }}>
                 Sign in or create a free account and we'll highlight cars based on your browsing and interests.
               </p>
               <div className="flex justify-center w-full">
@@ -506,7 +507,7 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
               </div>
               <div className="p-6">
                 <h3 className="text-lg font-bold mb-3 group-hover:text-primary transition-colors line-clamp-2">{blog.title}</h3>
-                <p className="text-gray-400 text-sm mb-4">Discover more about automotive trends...</p>
+                <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>Discover more about automotive trends...</p>
                 <Button variant="link" className="p-0 h-auto text-primary group-hover:translate-x-2 transition-transform">Read More <ArrowRight className="ml-1 h-4 w-4" /></Button>
               </div>
             </motion.div>

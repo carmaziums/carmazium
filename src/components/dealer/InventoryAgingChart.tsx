@@ -27,7 +27,7 @@ interface InventoryAgingChartProps {
 
 const STATUS_CONFIG = [
     { key: "ACTIVE", label: "Active", color: "bg-emerald-500", textColor: "text-emerald-400", dotColor: "#10b981" },
-    { key: "DRAFT", label: "Draft", color: "bg-gray-500", textColor: "text-gray-400", dotColor: "#6b7280" },
+    { key: "DRAFT", label: "Draft", color: "bg-gray-500", textColor: "text-[var(--text-muted)]", dotColor: "#6b7280" },
     { key: "OFFER_ACCEPTED", label: "Offer Accepted", color: "bg-amber-500", textColor: "text-amber-400", dotColor: "#f59e0b" },
     { key: "SOLD", label: "Sold", color: "bg-blue-500", textColor: "text-blue-400", dotColor: "#3b82f6" },
     { key: "WITHDRAWN", label: "Withdrawn", color: "bg-red-500", textColor: "text-red-400", dotColor: "#ef4444" },
@@ -55,7 +55,7 @@ export function InventoryAgingChart({
     if (loading) {
         return (
             <div className="dealer-glass-card p-6">
-                <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-6">{title}</h3>
+                <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-6">{title}</h3>
                 <div className="space-y-4">
                     {[1, 2, 3, 4].map((i) => (
                         <div key={i} className="h-10 bg-white/[0.02] rounded-lg animate-pulse" />
@@ -73,7 +73,7 @@ export function InventoryAgingChart({
     return (
         <div className="dealer-glass-card p-6">
             <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">{title}</h3>
+                <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">{title}</h3>
                 {data.staleCount > 0 && (
                     <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20">
                         <AlertTriangle size={12} />
@@ -85,8 +85,8 @@ export function InventoryAgingChart({
             {/* Status Distribution Bar */}
             <div className="mb-6">
                 <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold uppercase tracking-widest text-gray-500">Stock Distribution</span>
-                    <span className="text-xs font-bold text-gray-400">{totalStock} total</span>
+                    <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Stock Distribution</span>
+                    <span className="text-xs font-bold text-[var(--text-muted)]">{totalStock} total</span>
                 </div>
                 <div className="flex h-5 gap-0.5 rounded-lg overflow-hidden">
                     {STATUS_CONFIG.map((status) => {
@@ -116,7 +116,7 @@ export function InventoryAgingChart({
                         return (
                             <div key={status.key} className="flex items-center gap-1.5">
                                 <span className={`w-2 h-2 rounded-full`} style={{ backgroundColor: status.dotColor }} />
-                                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{status.label}</span>
+                                <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">{status.label}</span>
                                 <span className={`text-xs font-black ${status.textColor}`}>{count}</span>
                             </div>
                         )
@@ -125,10 +125,10 @@ export function InventoryAgingChart({
             </div>
 
             {/* Aging Heatmap Bars */}
-            <div className="pt-5 border-t border-white/5">
+            <div className="pt-5 border-t border-[var(--border-default)]">
                 <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold uppercase tracking-widest text-gray-500">Active Listing Age</span>
-                    <span className="text-xs font-bold text-gray-500">Avg {data.avgAge}d</span>
+                    <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Active Listing Age</span>
+                    <span className="text-xs font-bold text-[var(--text-muted)]">Avg {data.avgAge}d</span>
                 </div>
                 <div className="space-y-2.5">
                     {BUCKET_CONFIG.map((bucket) => {
@@ -139,10 +139,10 @@ export function InventoryAgingChart({
                         return (
                             <div key={bucket.key}>
                                 <div className="flex items-center justify-between mb-1">
-                                    <span className="text-xs font-bold text-gray-400">{bucket.label}</span>
+                                    <span className="text-xs font-bold text-[var(--text-muted)]">{bucket.label}</span>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-xs font-bold text-gray-600">{pctOfTotal}%</span>
-                                        <span className="text-[11px] font-black text-white tabular-nums">{count}</span>
+                                        <span className="text-xs font-bold text-[var(--text-muted)]">{pctOfTotal}%</span>
+                                        <span className="text-[11px] font-black tabular-nums" style={{ color: 'var(--text-primary)' }}>{count}</span>
                                     </div>
                                 </div>
                                 <div className="h-6 rounded-md overflow-hidden bg-black/30">

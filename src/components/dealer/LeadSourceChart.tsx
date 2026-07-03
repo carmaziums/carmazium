@@ -52,10 +52,10 @@ export function LeadSourceChart({ data, title = "Lead Sources" }: Props) {
 
     return (
         <div className="dealer-glass-card p-5">
-            <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-4">{title}</h3>
+            <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-4">{title}</h3>
 
             {total === 0 ? (
-                <p className="text-xs text-gray-600 font-bold text-center py-8">No leads yet</p>
+                <p className="text-xs text-[var(--text-muted)] font-bold text-center py-8">No leads yet</p>
             ) : (
                 <div className="flex flex-col items-center">
                     <div className="relative">
@@ -80,7 +80,7 @@ export function LeadSourceChart({ data, title = "Lead Sources" }: Props) {
                         </svg>
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
                             <span className="text-2xl font-black metallic-foil">{total}</span>
-                            <span className="text-xs font-bold uppercase tracking-widest text-gray-500">Total Leads</span>
+                            <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Total Leads</span>
                         </div>
                     </div>
 
@@ -88,19 +88,19 @@ export function LeadSourceChart({ data, title = "Lead Sources" }: Props) {
                         {arcs.map(arc => (
                             <div
                                 key={arc.source}
-                                className={`flex items-center justify-between px-2 py-1.5 rounded-lg cursor-pointer transition-all ${hovered === arc.source ? 'bg-white/5' : ''}`}
+                                className={`flex items-center justify-between px-2 py-1.5 rounded-lg cursor-pointer transition-all ${hovered === arc.source ? 'bg-[var(--bg-card)]' : ''}`}
                                 onMouseEnter={() => setHovered(arc.source)}
                                 onMouseLeave={() => setHovered(null)}
                             >
                                 <div className="flex items-center gap-2">
                                     <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: arc.color }} />
-                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                    <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
                                         {SOURCE_LABELS[arc.source] ?? arc.source}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <span className="text-xs text-gray-600 font-medium">{Math.round(arc.pct * 100)}%</span>
-                                    <span className="text-xs font-black text-white tabular-nums">{arc.count}</span>
+                                    <span className="text-xs text-[var(--text-muted)] font-medium">{Math.round(arc.pct * 100)}%</span>
+                                    <span className="text-xs font-black tabular-nums" style={{ color: 'var(--text-primary)' }}>{arc.count}</span>
                                 </div>
                             </div>
                         ))}

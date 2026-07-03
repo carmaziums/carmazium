@@ -50,7 +50,7 @@ function CheckoutCancelContent() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
                 >
-                    <h1 className="text-3xl md:text-4xl font-heading font-bold text-white">Payment Cancelled</h1>
+                    <h1 className="text-3xl md:text-4xl font-heading font-bold">Payment Cancelled</h1>
                     <p className="mt-3 text-lg" style={{ color: 'var(--text-muted)' }}>
                         No worries — your payment was not processed and no charges were made.
                     </p>
@@ -64,7 +64,7 @@ function CheckoutCancelContent() {
                     className="rounded-2xl border p-5 text-sm text-left"
                     style={{ background: 'var(--bg-card)', borderColor: 'var(--border-default)', color: 'var(--text-muted)' }}
                 >
-                    <p>Your card has <strong className="text-white">not been charged</strong>. The vehicle is still available if you&apos;d like to try again.</p>
+                    <p>Your card has <strong className="text-[var(--text-primary)]">not been charged</strong>. The vehicle is still available if you&apos;d like to try again.</p>
                 </motion.div>
 
                 {/* CTAs */}
@@ -81,12 +81,12 @@ function CheckoutCancelContent() {
                             </Link>
                         </Button>
                     )}
-                    <Button asChild variant="outline" className="gap-2 border-white/20 hover:bg-white/5">
+                    <Button asChild variant="outline" className="gap-2 border-white/20 hover:bg-[var(--bg-card)]">
                         <Link href="/search">
                             <RefreshCw size={18} /> Browse More Cars
                         </Link>
                     </Button>
-                    <Button asChild variant="outline" className="gap-2 border-white/20 hover:bg-white/5">
+                    <Button asChild variant="outline" className="gap-2 border-white/20 hover:bg-[var(--bg-card)]">
                         <Link href="/">
                             <Home size={18} /> Home
                         </Link>

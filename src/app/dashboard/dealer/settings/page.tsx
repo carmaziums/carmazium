@@ -153,7 +153,7 @@ export default function DealerSettingsPage() {
     ]
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
+        <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
@@ -164,7 +164,7 @@ export default function DealerSettingsPage() {
                     />
 
                     {/* Tab Selector */}
-                    <div className="flex gap-1 bg-white/5 p-1 rounded-xl border border-white/5 w-full max-w-full overflow-x-auto hide-scrollbar">
+                    <div className="flex gap-1 bg-[var(--bg-card)] p-1 rounded-xl border border-[var(--border-default)] w-full max-w-full overflow-x-auto hide-scrollbar">
                         {tabs.map(tab => (
                             <button
                                 key={tab.key}
@@ -172,7 +172,7 @@ export default function DealerSettingsPage() {
                                 className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors whitespace-nowrap shrink-0 ${
                                     activeTab === tab.key
                                         ? 'bg-primary text-white shadow-neon'
-                                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                        : 'text-[var(--text-muted)] hover:text-primary dark:hover:text-white hover:bg-[var(--bg-card)]'
                                 }`}
                             >
                                 <tab.icon size={14} />
@@ -188,105 +188,105 @@ export default function DealerSettingsPage() {
                     ) : (
                         <>
                             {activeTab === "profile" && (
-                                <div className="bg-white/5 border border-white/5 rounded-2xl p-8 space-y-6">
+                                <div className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-2xl p-8 space-y-6">
                                     {/* Logo Upload */}
-                                    <div className="flex items-center gap-6 pb-6 border-b border-white/5">
+                                    <div className="flex items-center gap-6 pb-6 border-b border-[var(--border-default)]">
                                         <label className="relative block">
                                             <input type="file" className="hidden" accept="image/png, image/jpeg, image/webp" onChange={handleLogoUpload} disabled={uploadingLogo} />
-                                            <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center border-2 border-dashed border-white/10 cursor-pointer hover:border-primary/50 transition-colors overflow-hidden group">
+                                            <div className="w-20 h-20 bg-[var(--bg-input)] rounded-2xl flex items-center justify-center border-2 border-dashed border-[var(--border-default)] cursor-pointer hover:border-primary/50 transition-colors overflow-hidden group">
                                                 {uploadingLogo ? (
                                                     <Loader2 size={24} className="text-primary animate-spin" />
                                                 ) : form.logo ? (
                                                     <img src={form.logo} alt="Logo" className="w-full h-full object-cover" />
                                                 ) : (
-                                                    <Building2 size={28} className="text-gray-600 group-hover:text-primary transition-colors" />
+                                                    <Building2 size={28} className="text-[var(--text-secondary)] group-hover:text-primary transition-colors" />
                                                 )}
                                             </div>
                                         </label>
                                         <div>
-                                            <p className="font-bold text-white">Dealership Logo</p>
-                                            <p className="text-xs text-gray-500 mt-0.5">Click to upload • PNG, JPG up to 2MB</p>
+                                            <p className="font-bold">Dealership Logo</p>
+                                            <p className="text-xs text-[var(--text-muted)] mt-0.5">Click to upload • PNG, JPG up to 2MB</p>
                                         </div>
                                     </div>
 
                                     {/* Form Fields */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                         <div className="space-y-2">
-                                            <label className="text-xs font-bold uppercase tracking-wide text-gray-400 flex items-center gap-2">
+                                            <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)] flex items-center gap-2">
                                                 <Building2 size={12} /> Company Name
                                             </label>
                                             <Input
                                                 value={form.companyName}
                                                 onChange={e => setForm(f => ({ ...f, companyName: e.target.value }))}
                                                 placeholder="Your Dealership Ltd"
-                                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-600"
+                                                className="bg-[var(--bg-card)] border-[var(--border-default)] placeholder:text-[var(--text-secondary)]"
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-xs font-bold uppercase tracking-wide text-gray-400">VAT Number</label>
+                                            <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">VAT Number</label>
                                             <Input
                                                 value={form.vatNumber}
                                                 onChange={e => setForm(f => ({ ...f, vatNumber: e.target.value }))}
                                                 placeholder="GB123456789"
-                                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-600"
+                                                className="bg-[var(--bg-card)] border-[var(--border-default)] placeholder:text-[var(--text-secondary)]"
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-xs font-bold uppercase tracking-wide text-gray-400">Registration Number</label>
+                                            <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Registration Number</label>
                                             <Input
                                                 value={form.registrationNumber}
                                                 onChange={e => setForm(f => ({ ...f, registrationNumber: e.target.value }))}
                                                 placeholder="Company house number"
-                                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-600"
+                                                className="bg-[var(--bg-card)] border-[var(--border-default)] placeholder:text-[var(--text-secondary)]"
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-xs font-bold uppercase tracking-wide text-gray-400 flex items-center gap-2">
+                                            <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)] flex items-center gap-2">
                                                 <Phone size={12} /> Phone
                                             </label>
                                             <Input
                                                 value={form.phone}
                                                 onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
                                                 placeholder="+44 20 1234 5678"
-                                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-600"
+                                                className="bg-[var(--bg-card)] border-[var(--border-default)] placeholder:text-[var(--text-secondary)]"
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-xs font-bold uppercase tracking-wide text-gray-400 flex items-center gap-2">
+                                            <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)] flex items-center gap-2">
                                                 <Globe size={12} /> Website
                                             </label>
                                             <Input
                                                 value={form.website}
                                                 onChange={e => setForm(f => ({ ...f, website: e.target.value }))}
                                                 placeholder="https://yourdealership.co.uk"
-                                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-600"
+                                                className="bg-[var(--bg-card)] border-[var(--border-default)] placeholder:text-[var(--text-secondary)]"
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-xs font-bold uppercase tracking-wide text-gray-400 flex items-center gap-2">
+                                            <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)] flex items-center gap-2">
                                                 <MapPin size={12} /> Business Address
                                             </label>
                                             <Input
                                                 value={form.businessAddress}
                                                 onChange={e => setForm(f => ({ ...f, businessAddress: e.target.value }))}
                                                 placeholder="123 High Street, London"
-                                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-600"
+                                                className="bg-[var(--bg-card)] border-[var(--border-default)] placeholder:text-[var(--text-secondary)]"
                                             />
                                         </div>
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-xs font-bold uppercase tracking-wide text-gray-400">Description / Tagline</label>
+                                        <label className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Description / Tagline</label>
                                         <textarea
                                             value={form.description}
                                             onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                                             rows={3}
                                             placeholder="Tell buyers about your dealership..."
-                                            className="w-full bg-white/5 border border-white/10 text-white placeholder:text-gray-600 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                            className="w-full bg-[var(--bg-card)] border border-[var(--border-default)] placeholder:text-[var(--text-secondary)] rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
                                         />
                                     </div>
 
-                                    <div className="pt-4 border-t border-white/5 space-y-3">
+                                    <div className="pt-4 border-t border-[var(--border-default)] space-y-3">
                                         {saveStatus === 'success' && (
                                             <div className="flex items-center gap-2 p-3 bg-emerald-500/15 border border-emerald-500/40 rounded-xl text-emerald-300 text-sm">
                                                 <CheckCircle size={15} className="shrink-0" />
@@ -310,7 +310,7 @@ export default function DealerSettingsPage() {
                             )}
 
                             {activeTab === "notifications" && (
-                                <div className="bg-white/5 border border-white/5 rounded-2xl p-8">
+                                <div className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-2xl p-8">
                                     <h3 className="font-black uppercase tracking-tight mb-6">Notification Preferences</h3>
                                     <div className="space-y-4">
                                         {[
@@ -319,10 +319,10 @@ export default function DealerSettingsPage() {
                                             { label: "Finance applications", desc: "When a buyer applies for finance" },
                                             { label: "Messages", desc: "New messages from buyers or team" },
                                         ].map(pref => (
-                                            <div key={pref.label} className="flex items-center justify-between py-3 border-b border-white/5 last:border-0">
+                                            <div key={pref.label} className="flex items-center justify-between py-3 border-b border-[var(--border-default)] last:border-0">
                                                 <div>
-                                                    <p className="font-bold text-white text-sm">{pref.label}</p>
-                                                    <p className="text-xs text-gray-500">{pref.desc}</p>
+                                                    <p className="font-bold text-sm">{pref.label}</p>
+                                                    <p className="text-xs text-[var(--text-muted)]">{pref.desc}</p>
                                                 </div>
                                                 <label className="relative inline-flex items-center cursor-pointer">
                                                     <input type="checkbox" className="sr-only peer" defaultChecked />
@@ -335,12 +335,12 @@ export default function DealerSettingsPage() {
                             )}
 
                             {activeTab === "account" && (
-                                <div className="bg-white/5 border border-white/5 rounded-2xl p-8 space-y-6">
+                                <div className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-2xl p-8 space-y-6">
                                     <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/20">
                                         <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
                                         <div>
                                             <p className="text-sm font-bold text-amber-300 mb-1">Change Account Type</p>
-                                            <p className="text-xs text-gray-400 leading-relaxed">
+                                            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
                                                 Switching your account type will remove your dealer profile and move you to the standard buyer/seller dashboard.
                                                 This action cannot be undone without re-registering as a dealer.
                                             </p>
@@ -357,13 +357,13 @@ export default function DealerSettingsPage() {
                                                 key={role}
                                                 onClick={() => handleSwitchRole(role)}
                                                 disabled={switchingRole}
-                                                className="flex flex-col items-start gap-2 p-5 rounded-xl border border-white/10 bg-white/5 hover:border-primary/40 hover:bg-primary/5 transition-all text-left disabled:opacity-50"
+                                                className="flex flex-col items-start gap-2 p-5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] hover:border-primary/40 hover:bg-primary/5 transition-all text-left disabled:opacity-50"
                                             >
-                                                <p className="text-sm font-black text-white uppercase tracking-wide">
+                                                <p className="text-sm font-black uppercase tracking-wide">
                                                     {switchingRole ? <Loader2 size={14} className="animate-spin inline mr-1" /> : null}
                                                     Become a {role.charAt(0) + role.slice(1).toLowerCase()}
                                                 </p>
-                                                <p className="text-xs text-gray-400">
+                                                <p className="text-xs text-[var(--text-muted)]">
                                                     {role === 'BUYER'
                                                         ? 'Browse and purchase vehicles. No listing permissions.'
                                                         : 'List and sell vehicles without dealer features.'}

@@ -22,7 +22,7 @@ export function CancellationChart({
     if (loading || data.length === 0) {
         return (
             <div className="dealer-glass-card p-6">
-                <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-6">{title}</h3>
+                <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-6">{title}</h3>
                 <div className="space-y-4">
                     {[1, 2, 3, 4].map((i) => (
                         <div key={i} className="h-8 bg-white/[0.02] rounded-lg animate-pulse" />
@@ -37,7 +37,7 @@ export function CancellationChart({
     return (
         <div className="dealer-glass-card p-6">
             <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">{title}</h3>
+                <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">{title}</h3>
                 <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest">
                     <span className="flex items-center gap-1.5">
                         <span className="w-2.5 h-2.5 rounded-sm bg-red-500/60" /> Cancelled
@@ -57,7 +57,7 @@ export function CancellationChart({
                     return (
                         <div key={i} className="group">
                             <div className="flex items-center justify-between mb-1.5">
-                                <span className="text-[11px] font-bold text-gray-300 uppercase tracking-wider">{item.label}</span>
+                                <span className="text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">{item.label}</span>
                                 <span className={`text-[11px] font-black tabular-nums ${
                                     rate > 15 ? "text-red-400" : rate > 5 ? "text-amber-400" : "text-emerald-400"
                                 }`}>
@@ -66,7 +66,7 @@ export function CancellationChart({
                             </div>
                             <div className="flex h-7 gap-0.5 rounded-lg overflow-hidden bg-black/30">
                                 <div
-                                    className="bg-emerald-500/25 border-r border-white/5 transition-all duration-700 ease-out flex items-center justify-end pr-1.5"
+                                    className="bg-emerald-500/25 border-r border-[var(--border-default)] transition-all duration-700 ease-out flex items-center justify-end pr-1.5"
                                     style={{ width: `${completedWidth}%` }}
                                 >
                                     <span className="text-xs font-bold text-emerald-400/80 tabular-nums">

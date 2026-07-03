@@ -194,7 +194,7 @@ export default function DealerAnalyticsPage() {
         {
             id: "aging_stock", label: "Aging Stock (60d+)", value: analytics.inventoryHealth.staleCount,
             icon: Clock,
-            accentColor: analytics.inventoryHealth.staleCount > 0 ? "text-red-400" : "text-gray-400",
+            accentColor: analytics.inventoryHealth.staleCount > 0 ? "text-red-400" : "text-[var(--text-muted)]",
             accentBg: analytics.inventoryHealth.staleCount > 0 ? "bg-red-500/10" : "bg-gray-500/10",
             accentBorder: analytics.inventoryHealth.staleCount > 0 ? "border-red-500/20" : "border-gray-500/20",
         },
@@ -211,7 +211,7 @@ export default function DealerAnalyticsPage() {
     ] : []
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
+        <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
@@ -239,7 +239,7 @@ export default function DealerAnalyticsPage() {
                     {loading ? (
                         <div className="flex flex-col items-center justify-center py-24 gap-4">
                             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                            <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">Crunching your dealership data…</p>
+                            <p className="text-[var(--text-muted)] text-xs font-bold uppercase tracking-widest">Crunching your dealership data…</p>
                         </div>
                     ) : analytics ? (
                         <>
@@ -305,19 +305,19 @@ export default function DealerAnalyticsPage() {
                             <div>
                                 <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-600 mb-3 px-1">Vehicle Engagement</p>
                                 <div className="dealer-glass-card overflow-hidden">
-                                    <div className="p-5 border-b border-white/5 flex items-center justify-between bg-black/20">
+                                    <div className="p-5 border-b border-[var(--border-default)] flex items-center justify-between bg-black/20">
                                         <div>
-                                            <h3 className="text-xs font-black uppercase tracking-widest text-gray-300">Top Performing Vehicles</h3>
+                                            <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-secondary)]">Top Performing Vehicles</h3>
                                             <p className="text-xs text-gray-600 mt-0.5 font-medium">Ranked by total views and engagement</p>
                                         </div>
-                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-white/[0.03] rounded-lg border border-white/5">
-                                            <span className="text-xs font-bold uppercase tracking-widest text-gray-500">Showing</span>
-                                            <span className="text-xs font-black text-white">{analytics.topVehicles.length}</span>
+                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-white/[0.03] rounded-lg border border-[var(--border-default)]">
+                                            <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Showing</span>
+                                            <span className="text-xs font-black">{analytics.topVehicles.length}</span>
                                         </div>
                                     </div>
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-left border-collapse">
-                                            <thead className="bg-[#0A0A0C]/80 text-gray-400 text-xs uppercase font-black tracking-widest border-b border-white/5">
+                                            <thead className="bg-[var(--bg-input)] text-[var(--text-muted)] text-xs uppercase font-black tracking-widest border-b border-[var(--border-default)]">
                                                 <tr>
                                                     <th className="px-6 py-4 w-8">#</th>
                                                     <th className="px-6 py-4">Vehicle</th>
@@ -331,7 +331,7 @@ export default function DealerAnalyticsPage() {
                                             <tbody className="divide-y divide-white/[0.03]">
                                                 {analytics.topVehicles.length === 0 ? (
                                                     <tr>
-                                                        <td colSpan={7} className="px-6 py-16 text-center text-gray-500">
+                                                        <td colSpan={7} className="px-6 py-16 text-center text-[var(--text-muted)]">
                                                             <div className="flex flex-col items-center gap-3">
                                                                 <Car size={40} className="opacity-10" />
                                                                 <p className="text-sm font-bold">No vehicles in your inventory yet.</p>
@@ -341,43 +341,43 @@ export default function DealerAnalyticsPage() {
                                                 ) : analytics.topVehicles.map((v, i) => (
                                                     <tr key={v.id} className="group hover:bg-white/[0.02] transition-colors">
                                                         <td className="px-6 py-4">
-                                                            <span className={`text-xs font-black tabular-nums ${i === 0 ? 'text-amber-400' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-amber-600' : 'text-gray-600'}`}>{i + 1}</span>
+                                                            <span className={`text-xs font-black tabular-nums ${i === 0 ? 'text-amber-400' : i === 1 ? 'text-[var(--text-secondary)]' : i === 2 ? 'text-amber-600' : 'text-gray-600'}`}>{i + 1}</span>
                                                         </td>
                                                         <td className="px-6 py-4">
                                                             <div className="flex items-center gap-3">
-                                                                <div className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-white/10 group-hover:border-primary/40 transition-colors">
+                                                                <div className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-[var(--border-default)] group-hover:border-primary/40 transition-colors">
                                                                     {v.image ? (
                                                                         <Image src={v.image} alt="" fill className="object-cover" />
                                                                     ) : (
-                                                                        <div className="w-full h-full bg-slate-800 flex items-center justify-center text-gray-700"><Car size={16} /></div>
+                                                                        <div className="w-full h-full bg-[var(--bg-input)] flex items-center justify-center text-[var(--text-muted)]"><Car size={16} /></div>
                                                                     )}
                                                                 </div>
-                                                                <span className="text-sm font-bold text-white group-hover:text-primary transition-colors truncate max-w-[200px]">{v.title}</span>
+                                                                <span className="text-sm font-bold group-hover:text-primary transition-colors truncate max-w-[200px]">{v.title}</span>
                                                             </div>
                                                         </td>
                                                         <td className="px-6 py-4 text-right">
                                                             <div className="flex items-center justify-end gap-1">
                                                                 <Eye size={12} className="text-gray-600" />
-                                                                <span className="text-sm font-black text-white tabular-nums">{v.views.toLocaleString()}</span>
+                                                                <span className="text-sm font-black tabular-nums">{v.views.toLocaleString()}</span>
                                                             </div>
                                                         </td>
                                                         <td className="px-6 py-4 text-right">
                                                             <span className={`text-sm font-black tabular-nums ${v.offerCount > 0 ? 'text-amber-400' : 'text-gray-600'}`}>{v.offerCount}</span>
                                                         </td>
                                                         <td className="px-6 py-4 text-right">
-                                                            <span className="text-sm font-black text-white tabular-nums">{formatPrice(v.price)}</span>
+                                                            <span className="text-sm font-black tabular-nums">{formatPrice(v.price)}</span>
                                                         </td>
                                                         <td className="px-6 py-4 text-center">
                                                             <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-black tracking-widest uppercase border ${
                                                                 v.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
                                                                 v.status === 'SOLD' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
                                                                 v.status === 'OFFER_ACCEPTED' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                                                                v.status === 'DRAFT' ? 'bg-gray-500/10 text-gray-400 border-gray-500/20' :
+                                                                v.status === 'DRAFT' ? 'bg-gray-500/10 text-[var(--text-muted)] border-gray-500/20' :
                                                                 'bg-red-500/10 text-red-400 border-red-500/20'
                                                             }`}>{v.status.replace('_', ' ')}</span>
                                                         </td>
                                                         <td className="px-6 py-4 text-right">
-                                                            <span className={`text-sm font-bold tabular-nums ${v.daysListed > 60 ? 'text-red-400' : v.daysListed > 30 ? 'text-amber-400' : 'text-gray-400'}`}>{v.daysListed}d</span>
+                                                            <span className={`text-sm font-bold tabular-nums ${v.daysListed > 60 ? 'text-red-400' : v.daysListed > 30 ? 'text-amber-400' : 'text-[var(--text-muted)]'}`}>{v.daysListed}d</span>
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -389,10 +389,10 @@ export default function DealerAnalyticsPage() {
                         </>
                     ) : (
                         <div className="flex flex-col items-center justify-center py-24 gap-4">
-                            <div className="w-20 h-20 bg-white/5 rounded-3xl flex items-center justify-center border border-white/5">
+                            <div className="w-20 h-20 bg-[var(--bg-card)] rounded-3xl flex items-center justify-center border border-[var(--border-default)]">
                                 <ArrowUpRight size={32} className="opacity-10" />
                             </div>
-                            <p className="text-gray-500 text-sm font-bold">Unable to load analytics data.</p>
+                            <p className="text-[var(--text-muted)] text-sm font-bold">Unable to load analytics data.</p>
                             <Button onClick={fetchAnalytics} variant="outline" size="sm">Retry</Button>
                         </div>
                     )}

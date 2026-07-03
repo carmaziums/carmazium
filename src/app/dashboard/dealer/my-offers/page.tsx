@@ -24,7 +24,7 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; border: string; 
     PENDING: { bg: "bg-amber-500/10", text: "text-amber-400", border: "border-amber-500/20", label: "Pending" },
     ACCEPTED: { bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-emerald-500/20", label: "Accepted" },
     REJECTED: { bg: "bg-red-500/10", text: "text-red-400", border: "border-red-500/20", label: "Declined" },
-    WITHDRAWN: { bg: "bg-slate-500/10", text: "text-gray-400", border: "border-white/10", label: "Withdrawn" },
+    WITHDRAWN: { bg: "bg-slate-500/10", text: "text-[var(--text-muted)]", border: "border-[var(--border-default)]", label: "Withdrawn" },
     COUNTERED: { bg: "bg-blue-500/10", text: "text-blue-400", border: "border-blue-500/20", label: "Countered" },
 }
 
@@ -96,7 +96,7 @@ export default function DealerMyOffersPage() {
     })
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
+        <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
@@ -141,14 +141,14 @@ export default function DealerMyOffersPage() {
                     </div>
 
                     <div className="dealer-glass-card overflow-hidden">
-                        <div className="p-6 border-b border-white/5 bg-black/20 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                            <h3 className="text-sm font-black uppercase tracking-widest text-gray-300">Outgoing Bids</h3>
+                        <div className="p-6 border-b border-[var(--border-default)] bg-black/20 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                            <h3 className="text-sm font-black uppercase tracking-widest text-[var(--text-secondary)]">Outgoing Bids</h3>
                             <div className="relative w-full md:w-64">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={16} />
                                 <input
                                     type="text"
                                     placeholder="Search vehicle..."
-                                    className="w-full bg-slate-800/60 border border-white/10 rounded-xl py-2 pl-9 pr-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
+                                    className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl py-2 pl-9 pr-3 text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
                                     value={searchTerm}
                                     onChange={e => setSearchTerm(e.target.value)}
                                 />
@@ -162,7 +162,7 @@ export default function DealerMyOffersPage() {
                         ) : filtered.length === 0 ? (
                             <div className="p-16 text-center">
                                 <Gavel className="h-12 w-12 text-gray-700 mx-auto mb-3" />
-                                <p className="text-gray-500 font-bold">
+                                <p className="text-[var(--text-muted)] font-bold">
                                     {searchTerm ? "No outgoing offers match your search." : "No outgoing offers yet"}
                                 </p>
                                 <p className="text-gray-600 text-sm mt-1">
@@ -190,12 +190,12 @@ export default function DealerMyOffersPage() {
                                     return (
                                         <div key={offer.id} className="p-4 space-y-2">
                                             <div className="flex items-center gap-3">
-                                                <div className="relative w-14 h-10 rounded-lg overflow-hidden border border-white/10 shrink-0 bg-slate-800">
+                                                <div className="relative w-14 h-10 rounded-lg overflow-hidden border border-[var(--border-default)] shrink-0 bg-[var(--bg-input)]">
                                                     {image ? <Image src={image} alt={offer.listing?.title || ''} fill className="object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-600"><Car size={16} /></div>}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <Link href={`/vehicle/${slug}`} className="font-black text-white text-sm truncate block hover:text-primary transition-colors">{offer.listing?.title || 'Listing'}</Link>
-                                                    <p className="text-xs text-gray-500 font-bold uppercase truncate">{offer.listing?.year} {offer.listing?.make} {offer.listing?.model}</p>
+                                                    <p className="text-xs text-[var(--text-muted)] font-bold uppercase truncate">{offer.listing?.year} {offer.listing?.make} {offer.listing?.model}</p>
                                                 </div>
                                                 <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-black tracking-widest uppercase border shrink-0 ${style.bg} ${style.text} ${style.border}`}>{style.label}</span>
                                             </div>
@@ -206,7 +206,7 @@ export default function DealerMyOffersPage() {
                                                     </p>
                                                     {offer.status === 'ACCEPTED' && <p className="text-xs font-black text-emerald-400">Agreed price</p>}
                                                     {offer.status === 'COUNTERED' && offer.counterAmount && <p className="text-xs font-black text-blue-400">Counter: {formatPrice(offer.counterAmount)}</p>}
-                                                    <p className="text-xs text-gray-500">{new Date(offer.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
+                                                    <p className="text-xs text-[var(--text-muted)]">{new Date(offer.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
                                                 </div>
                                                 <div className="flex items-center gap-2 flex-wrap justify-end">
                                                     {offer.status === 'PENDING' && <button onClick={() => handleWithdraw(offer.id)} disabled={isActioning} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl disabled:opacity-50">{isActioning ? <Loader2 size={12} className="animate-spin" /> : 'Withdraw'}</button>}
@@ -224,7 +224,7 @@ export default function DealerMyOffersPage() {
                             {/* ── Desktop table (≥ sm) ── */}
                             <div className="hidden sm:block overflow-x-auto">
                                 <table className="w-full text-left">
-                                    <thead className="vip-table-header text-xs uppercase font-black tracking-widest text-gray-400 border-b border-white/5">
+                                    <thead className="vip-table-header text-xs uppercase font-black tracking-widest text-[var(--text-muted)] border-b border-[var(--border-default)]">
                                         <tr>
                                             <th className="px-6 py-5">Vehicle</th>
                                             <th className="px-6 py-5 text-right">My Offer</th>
@@ -244,7 +244,7 @@ export default function DealerMyOffersPage() {
                                                 <tr key={offer.id} className="group hover:bg-white/[0.02] transition-colors">
                                                     <td className="px-6 py-5">
                                                         <Link href={`/vehicle/${slug}`} className="flex items-center gap-3 group/link">
-                                                            <div className="relative w-14 h-10 rounded-lg overflow-hidden border border-white/10 shrink-0 bg-slate-800">
+                                                            <div className="relative w-14 h-10 rounded-lg overflow-hidden border border-[var(--border-default)] shrink-0 bg-[var(--bg-input)]">
                                                                 {image ? (
                                                                     <Image src={image} alt={offer.listing?.title || ''} fill className="object-cover" />
                                                                 ) : (
@@ -257,7 +257,7 @@ export default function DealerMyOffersPage() {
                                                                 <p className="font-black text-white truncate group-hover/link:text-primary transition-colors text-sm">
                                                                     {offer.listing?.title || 'Listing'}
                                                                 </p>
-                                                                <p className="text-xs text-gray-500 font-bold uppercase tracking-wider truncate">
+                                                                <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-wider truncate">
                                                                     {offer.listing?.year ? `${offer.listing.year} ` : ''}
                                                                     {offer.listing?.make || ''} {offer.listing?.model || ''}
                                                                 </p>
@@ -287,10 +287,10 @@ export default function DealerMyOffersPage() {
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-5 text-center">
-                                                        <p className="text-xs font-bold text-gray-300">
+                                                        <p className="text-xs font-bold text-[var(--text-secondary)]">
                                                             {new Date(offer.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
                                                         </p>
-                                                        <p className="text-xs text-gray-500">
+                                                        <p className="text-xs text-[var(--text-muted)]">
                                                             {new Date(offer.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                                                         </p>
                                                     </td>

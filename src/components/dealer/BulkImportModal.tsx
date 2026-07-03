@@ -217,22 +217,22 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
 
     return (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-[#0A0A0C] border border-white/10 rounded-2xl w-full max-w-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-2xl w-full max-w-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col max-h-[90vh]">
                 {/* Header */}
-                <div className="p-6 border-b border-white/10 flex items-center justify-between bg-slate-900/50">
+                <div className="p-6 border-b border-[var(--border-default)] flex items-center justify-between bg-[var(--bg-input)]">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center border border-blue-500/30">
                             <FileSpreadsheet size={20} className="text-blue-400" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold font-heading text-white tracking-tight">Bulk Inventory Import</h2>
-                            <p className="text-xs text-gray-400 tracking-wide mt-0.5">Automate your stock sync via CSV</p>
+                            <h2 className="text-xl font-bold font-heading  tracking-tight">Bulk Inventory Import</h2>
+                            <p className="text-xs text-[var(--text-muted)] tracking-wide mt-0.5">Automate your stock sync via CSV</p>
                         </div>
                     </div>
                     <button 
                         onClick={onClose} 
                         disabled={status === "importing"}
-                        className="text-gray-500 hover:text-white transition-colors disabled:opacity-50"
+                        className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors disabled:opacity-50"
                     >
                         <X size={24} />
                     </button>
@@ -247,12 +247,12 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
                             <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 flex gap-3 text-sm text-blue-200/80 leading-relaxed">
                                 <Settings2 size={18} className="text-blue-400 shrink-0 mt-0.5" />
                                 <p>
-                                    Instantly generate <strong className="text-white">Draft Listings</strong> using just the vehicle registration (VRM). Our engine systematically pulls all deep technical specifications from the DVLA, leaving you to only upload images and publish.
+                                    Instantly generate <strong className="text-[var(--text-primary)]">Draft Listings</strong> using just the vehicle registration (VRM). Our engine systematically pulls all deep technical specifications from the DVLA, leaving you to only upload images and publish.
                                 </p>
                             </div>
 
                             <div 
-                                className="border-2 border-dashed border-white/10 rounded-2xl p-10 flex flex-col items-center justify-center text-center hover:border-primary/50 hover:bg-white/[0.02] transition-colors cursor-pointer group"
+                                className="border-2 border-dashed border-[var(--border-default)] rounded-2xl p-10 flex flex-col items-center justify-center text-center hover:border-primary/50 hover:bg-white/[0.02] transition-colors cursor-pointer group"
                                 onClick={() => fileInputRef.current?.click()}
                             >
                                 <input 
@@ -263,20 +263,20 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
                                     onChange={handleFileUpload}
                                 />
                                 
-                                <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-xl border border-white/5">
+                                <div className="w-16 h-16 bg-[var(--bg-input)] rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-xl border border-[var(--border-default)]">
                                     {status === "parsing" ? (
                                         <Loader2 size={28} className="text-primary animate-spin" />
                                     ) : (
-                                        <Upload size={28} className="text-gray-400 group-hover:text-primary transition-colors" />
+                                        <Upload size={28} className="text-[var(--text-muted)] group-hover:text-primary transition-colors" />
                                     )}
                                 </div>
-                                <h3 className="text-lg font-bold text-white mb-1">Click to Upload CSV Document</h3>
-                                <p className="text-sm text-gray-500 mb-6 max-w-sm">Spreadsheets must contain columns for VRM, price, and mileage. You can also include 'image_urls' separated by a pipe (|).</p>
+                                <h3 className="text-lg font-bold  mb-1">Click to Upload CSV Document</h3>
+                                <p className="text-sm text-[var(--text-muted)] mb-6 max-w-sm">Spreadsheets must contain columns for VRM, price, and mileage. You can also include 'image_urls' separated by a pipe (|).</p>
                                 
                                 <Button 
                                     variant="outline" 
                                     size="sm"
-                                    className="border-white/10 text-gray-400 hover:text-white gap-2 bg-black"
+                                    className="border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white gap-2"
                                     onClick={(e) => {
                                         e.stopPropagation()
                                         downloadCsvTemplate()
@@ -301,13 +301,13 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
                                 </div>
                             </div>
                             
-                            <h3 className="text-xl font-bold text-white mb-2 tracking-tight">Syncing Inventory...</h3>
-                            <p className="text-sm text-gray-400 mb-6 text-center">
+                            <h3 className="text-xl font-bold  mb-2 tracking-tight">Syncing Inventory...</h3>
+                            <p className="text-sm text-[var(--text-muted)] mb-6 text-center">
                                 Processing {progress.current} of {progress.total} vehicles<br/>
                                 <span className="text-xs uppercase tracking-widest text-emerald-500/70">Connecting to UK DVLA</span>
                             </p>
                             
-                            <div className="w-full max-w-sm bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                            <div className="w-full max-w-sm bg-[var(--bg-input)] rounded-full h-1.5 overflow-hidden">
                                 <div 
                                     className="bg-gradient-to-r from-red-600 to-red-400 h-full shadow-neon transition-all duration-300"
                                     style={{ width: `${(progress.current / progress.total) * 100}%` }}
@@ -323,9 +323,9 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
                                 <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mb-4 border border-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
                                     <CheckCircle size={36} className="text-emerald-400" />
                                 </div>
-                                <h3 className="text-2xl font-bold text-white mb-2">Import Finished</h3>
-                                <p className="text-gray-400 text-sm">
-                                    Successfully created <strong className="text-white">{importedCount} draft listings</strong>.
+                                <h3 className="text-2xl font-bold  mb-2">Import Finished</h3>
+                                <p className="text-[var(--text-muted)] text-sm">
+                                    Successfully created <strong className="text-[var(--text-primary)]">{importedCount} draft listings</strong>.
                                 </p>
                             </div>
 
@@ -344,7 +344,7 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
                                                     <th className="px-3 py-2 font-semibold">Reason</th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-amber-500/10 text-gray-300">
+                                            <tbody className="divide-y divide-amber-500/10 text-[var(--text-secondary)]">
                                                 {errorRows.map((err, i) => (
                                                     <tr key={i}>
                                                         <td className="px-3 py-2 font-mono">{err.vrm}</td>

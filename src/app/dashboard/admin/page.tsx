@@ -51,7 +51,7 @@ export default function AdminDashboard() {
 
     if (authLoading || (user && !profile) || (!stats && loading)) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+            <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
             </div>
         )
@@ -110,23 +110,23 @@ export default function AdminDashboard() {
     }
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
+        <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="admin" userName={userName} userType="Super Admin" />
 
                 <main className="flex-1 space-y-8 min-w-0">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-800/50 p-6 rounded-2xl border border-white/10 backdrop-blur-md">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[var(--bg-input)] p-6 rounded-2xl border border-[var(--border-default)] backdrop-blur-md">
                         <div>
                             <h1 className="text-3xl font-black font-heading text-white uppercase tracking-tight flex items-center gap-3">
                                 <ShieldAlert className="text-primary hidden sm:block" size={28} />
                                 System Overview
                             </h1>
-                            <p className="text-gray-400 mt-1">Super Admin Dashboard</p>
+                            <p className="text-[var(--text-muted)] mt-1">Super Admin Dashboard</p>
                         </div>
                         <Button
                             onClick={fetchStats}
                             disabled={loading}
-                            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border-white/10 text-white"
+                            className="flex items-center gap-2 bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)] border-[var(--border-default)]"
                             variant="outline"
                         >
                             <RefreshCw size={16} className={loading ? "animate-spin" : ""} /> Refresh
@@ -158,14 +158,14 @@ export default function AdminDashboard() {
                             const Icon = card.icon
                             const [textColor, bgColor] = colorMap[card.color].split(' ')
                             return (
-                                <div key={card.label} className="glass-card p-5 border border-white/5 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl relative overflow-hidden group">
+                                <div key={card.label} className="glass-card p-5 border border-[var(--border-default)] bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl relative overflow-hidden group">
                                     <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
                                         <Icon size={56} />
                                     </div>
                                     <div className={`inline-flex p-2 ${bgColor} rounded-lg mb-2`}>
                                         <Icon size={16} className={textColor} />
                                     </div>
-                                    <p className="text-gray-400 text-xs uppercase tracking-widest font-bold">{card.label}</p>
+                                    <p className="text-[var(--text-muted)] text-xs uppercase tracking-widest font-bold">{card.label}</p>
                                     <h3 className={`text-3xl font-black font-heading ${card.color === 'emerald' ? 'text-emerald-400' : card.color === 'yellow' ? 'text-white' : 'text-white'} mt-1 truncate`}>
                                         {loading ? "..." : card.value}
                                     </h3>
@@ -242,12 +242,12 @@ export default function AdminDashboard() {
                                 yellow: "bg-yellow-500/20 text-yellow-400",
                             }
                             return (
-                                <div key={item.href} className="glass-card p-6 border border-white/5 bg-white/5 hover:bg-white/10 transition-colors rounded-2xl flex flex-col">
+                                <div key={item.href} className="glass-card p-6 border border-[var(--border-default)] bg-[var(--bg-card)] hover:bg-white/10 transition-colors rounded-2xl flex flex-col">
                                     <div className={`w-14 h-14 ${iconColor[item.color]} rounded-full flex items-center justify-center mb-4 ring-1 ring-white/10`}>
                                         <Icon size={26} />
                                     </div>
                                     <h3 className="text-lg font-bold font-heading uppercase mb-1">{item.title}</h3>
-                                    <p className="text-sm text-gray-400 mb-5 flex-1">{item.desc}</p>
+                                    <p className="text-sm text-[var(--text-muted)] mb-5 flex-1">{item.desc}</p>
                                     <Link href={item.href} className="mt-auto">
                                         <Button className={`w-full ${item.ctaClass} text-white`}>{item.cta}</Button>
                                     </Link>

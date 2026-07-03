@@ -65,19 +65,19 @@ const FAQS = [
 // ─── Components ────────────────────────────────────────────────────────────────
 
 function FeatureCell({ value }: { value: boolean | string }) {
-    if (value === true) return <CheckCircle size={18} className="text-emerald-400 mx-auto" />
-    if (value === false) return <XCircle size={18} className="text-gray-700 mx-auto" />
-    return <span className="text-xs font-bold text-gray-300 text-center block">{value}</span>
+    if (value === true) return <CheckCircle size={18} className="text-emerald-500 dark:text-emerald-400 mx-auto" />
+    if (value === false) return <XCircle size={18} className="text-[var(--text-faint)] mx-auto" />
+    return <span className="text-xs font-bold text-[var(--text-secondary)] text-center block">{value}</span>
 }
 
 function FaqItem({ q, a }: { q: string; a: string }) {
     return (
-        <details className="group border border-white/10 rounded-xl overflow-hidden">
-            <summary className="flex items-center justify-between gap-4 px-6 py-5 cursor-pointer list-none hover:bg-white/5 transition-colors">
-                <span className="font-semibold text-white text-sm">{q}</span>
-                <ChevronDown size={18} className="text-gray-500 shrink-0 transition-transform group-open:rotate-180" />
+        <details className="group border border-[var(--border-default)] rounded-xl overflow-hidden">
+            <summary className="flex items-center justify-between gap-4 px-6 py-5 cursor-pointer list-none hover:bg-primary/5 dark:hover:bg-[var(--bg-card)] transition-colors">
+                <span className="font-semibold text-sm">{q}</span>
+                <ChevronDown size={18} className="text-[var(--text-muted)] shrink-0 transition-transform group-open:rotate-180" />
             </summary>
-            <div className="px-6 pb-5 text-sm text-gray-400 leading-relaxed border-t border-white/5 pt-4">
+            <div className="px-6 pb-5 text-sm text-[var(--text-muted)] leading-relaxed border-t border-[var(--border-default)] pt-4">
                 {a}
             </div>
         </details>
@@ -88,17 +88,17 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 
 export default function PricingPage() {
     return (
-        <main className="min-h-screen bg-slate-900 text-white pt-24 pb-24">
+        <main className="min-h-screen pt-24 pb-24">
 
             {/* ── Hero ─────────────────────────────────────────────────── */}
             <section className="container mx-auto px-6 text-center mb-20">
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest mb-6">
                     <Sparkles size={12} /> Transparent Pricing
                 </div>
-                <h1 className="text-5xl md:text-6xl font-black font-heading tracking-tight text-white mb-5">
+                <h1 className="text-5xl md:text-6xl font-black font-heading tracking-tight mb-5">
                     Simple, Honest Pricing
                 </h1>
-                <p className="text-gray-400 text-lg max-w-2xl mx-auto leading-relaxed">
+                <p className="text-[var(--text-muted)] text-lg max-w-2xl mx-auto leading-relaxed">
                     List your car for free, or upgrade for more reach. No subscriptions. No surprises.
                 </p>
             </section>
@@ -108,28 +108,28 @@ export default function PricingPage() {
                 <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
 
                     {/* Auction — Free */}
-                    <div className="relative bg-gradient-to-b from-orange-500/10 to-slate-800/50 border border-orange-500/30 rounded-2xl p-8 flex flex-col shadow-[0_0_30px_rgba(249,115,22,0.1)]">
+                    <div className="relative bg-gradient-to-b from-orange-500/10 to-[var(--bg-card)] border border-orange-500/30 rounded-2xl p-8 flex flex-col shadow-[0_0_30px_rgba(249,115,22,0.1)]">
                         <div className="mb-6">
                             <div className="flex items-center gap-2 mb-2">
                                 <Gavel size={14} className="text-orange-400" />
                                 <p className="text-xs font-bold uppercase tracking-widest text-orange-400">Auction</p>
                             </div>
                             <div className="flex items-end gap-2 mb-1">
-                                <span className="text-5xl font-black text-white">Free</span>
+                                <span className="text-5xl font-black">Free</span>
                             </div>
-                            <p className="text-gray-500 text-sm">24-hour live open auction</p>
+                            <p className="text-[var(--text-muted)] text-sm">24-hour live open auction</p>
                         </div>
                         <ul className="space-y-3 mb-8 flex-1">
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Live bidding marketplace</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Open to all buyers</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> 24-hour auction duration</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Anti-snipe protection</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Real-time bid feed</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Post-auction seller chat</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Live bidding marketplace</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Open to all buyers</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-orange-400 shrink-0" /> 24-hour auction duration</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Anti-snipe protection</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Real-time bid feed</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-orange-400 shrink-0" /> Post-auction seller chat</li>
                         </ul>
                         <div className="flex items-start gap-2 mb-4 px-3 py-2.5 rounded-lg border bg-amber-500/5 border-amber-500/20">
                             <Lock size={12} className="text-amber-500/70 shrink-0 mt-0.5" />
-                            <p className="text-[11px] text-amber-400/80 leading-snug">Only <strong className="text-amber-300">verified dealers</strong> can bid on or buy auction vehicles.</p>
+                            <p className="text-[11px] text-amber-600 dark:text-amber-400/80 leading-snug">Only <strong className="text-amber-700 dark:text-amber-300">verified dealers</strong> can bid on or buy auction vehicles.</p>
                         </div>
                         <Link href="/sell" className="block w-full py-3 rounded-xl border border-orange-500/40 bg-orange-500/10 text-center text-sm font-bold text-orange-300 hover:bg-orange-500/20 transition-all">
                             Start Auction
@@ -137,55 +137,55 @@ export default function PricingPage() {
                     </div>
 
                     {/* Basic */}
-                    <div className="relative bg-slate-800/50 border border-white/10 rounded-2xl p-8 flex flex-col">
+                    <div className="relative glass-card !rounded-2xl p-8 flex flex-col">
                         <div className="mb-6">
-                            <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Basic</p>
+                            <p className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] mb-2">Basic</p>
                             <div className="flex items-end gap-2 mb-1">
-                                <span className="text-5xl font-black text-white">£{PRICING.listing.basic.price}</span>
-                                <span className="text-gray-500 text-sm mb-1.5">one-off</span>
+                                <span className="text-5xl font-black">£{PRICING.listing.basic.price}</span>
+                                <span className="text-[var(--text-muted)] text-sm mb-1.5">one-off</span>
                             </div>
-                            <p className="text-gray-500 text-sm">Standard listing, quick to list</p>
+                            <p className="text-[var(--text-muted)] text-sm">Standard listing, quick to list</p>
                         </div>
                         <ul className="space-y-3 mb-8 flex-1">
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Public marketplace listing</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Up to 20 photos</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Offer & negotiation system</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Direct buyer chat</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> DVLA auto-fill</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><XCircle size={15} className="text-gray-700 shrink-0" /> Analytics</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><XCircle size={15} className="text-gray-700 shrink-0" /> Priority placement</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-emerald-500 dark:text-emerald-400 shrink-0" /> Public marketplace listing</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-emerald-500 dark:text-emerald-400 shrink-0" /> Up to 20 photos</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-emerald-500 dark:text-emerald-400 shrink-0" /> Offer & negotiation system</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-emerald-500 dark:text-emerald-400 shrink-0" /> Direct buyer chat</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-emerald-500 dark:text-emerald-400 shrink-0" /> DVLA auto-fill</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><XCircle size={15} className="text-[var(--text-faint)] shrink-0" /> Analytics</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><XCircle size={15} className="text-[var(--text-faint)] shrink-0" /> Priority placement</li>
                         </ul>
-                        <Link href="/sell" className="block w-full py-3 rounded-xl border border-white/20 text-center text-sm font-bold text-white hover:bg-white/10 transition-all">
+                        <Link href="/sell" className="block w-full py-3 rounded-xl border border-[var(--border-default)] text-center text-sm font-bold hover:bg-primary/5 dark:hover:bg-white/10 transition-all">
                             Get Basic
                         </Link>
                     </div>
 
                     {/* Standard */}
-                    <div className="relative bg-slate-800/50 border border-white/10 rounded-2xl p-8 flex flex-col">
+                    <div className="relative glass-card !rounded-2xl p-8 flex flex-col">
                         <div className="mb-6">
-                            <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Standard</p>
+                            <p className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] mb-2">Standard</p>
                             <div className="flex items-end gap-2 mb-1">
-                                <span className="text-5xl font-black text-white">£{PRICING.listing.standard.price}</span>
-                                <span className="text-gray-500 text-sm mb-1.5">one-off</span>
+                                <span className="text-5xl font-black">£{PRICING.listing.standard.price}</span>
+                                <span className="text-[var(--text-muted)] text-sm mb-1.5">one-off</span>
                             </div>
-                            <p className="text-gray-500 text-sm">30-day listing, more reach</p>
+                            <p className="text-[var(--text-muted)] text-sm">30-day listing, more reach</p>
                         </div>
                         <ul className="space-y-3 mb-8 flex-1">
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Everything in Basic</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Up to 50 photos</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Performance analytics</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Featured boost eligible</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> 30-day listing duration</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><XCircle size={15} className="text-gray-700 shrink-0" /> Priority search placement</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><XCircle size={15} className="text-gray-700 shrink-0" /> Free HPI included</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-emerald-500 dark:text-emerald-400 shrink-0" /> Everything in Basic</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-emerald-500 dark:text-emerald-400 shrink-0" /> Up to 50 photos</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-emerald-500 dark:text-emerald-400 shrink-0" /> Performance analytics</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-emerald-500 dark:text-emerald-400 shrink-0" /> Featured boost eligible</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-emerald-500 dark:text-emerald-400 shrink-0" /> 30-day listing duration</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><XCircle size={15} className="text-[var(--text-faint)] shrink-0" /> Priority search placement</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><XCircle size={15} className="text-[var(--text-faint)] shrink-0" /> Free HPI included</li>
                         </ul>
-                        <Link href="/sell" className="block w-full py-3 rounded-xl border border-white/20 text-center text-sm font-bold text-white hover:bg-white/10 transition-all">
+                        <Link href="/sell" className="block w-full py-3 rounded-xl border border-[var(--border-default)] text-center text-sm font-bold hover:bg-primary/5 dark:hover:bg-white/10 transition-all">
                             Get Standard
                         </Link>
                     </div>
 
                     {/* Premium — highlighted */}
-                    <div className="relative bg-gradient-to-b from-primary/10 to-slate-800/50 border-2 border-primary/50 rounded-2xl p-8 flex flex-col shadow-[0_0_40px_rgba(237,28,36,0.15)]">
+                    <div className="relative bg-gradient-to-b from-primary/10 to-[var(--bg-card)] border-2 border-primary/50 rounded-2xl p-8 flex flex-col shadow-[0_0_40px_rgba(237,28,36,0.15)]">
                         <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
                             <span className="inline-flex items-center gap-1 bg-primary text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-neon">
                                 <Star size={10} /> Most Popular
@@ -194,19 +194,19 @@ export default function PricingPage() {
                         <div className="mb-6">
                             <p className="text-xs font-bold uppercase tracking-widest text-primary mb-2">Premium</p>
                             <div className="flex items-end gap-2 mb-1">
-                                <span className="text-5xl font-black text-white">£{PRICING.listing.premium.price}</span>
-                                <span className="text-gray-500 text-sm mb-1.5">one-off</span>
+                                <span className="text-5xl font-black">£{PRICING.listing.premium.price}</span>
+                                <span className="text-[var(--text-muted)] text-sm mb-1.5">one-off</span>
                             </div>
-                            <p className="text-gray-500 text-sm">Advertise until sold, maximum exposure</p>
+                            <p className="text-[var(--text-muted)] text-sm">Advertise until sold, maximum exposure</p>
                         </div>
                         <ul className="space-y-3 mb-8 flex-1">
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Everything in Standard</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Up to 100 photos</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Priority search placement</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> HPI Verified badge included</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Advertise until sold</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Featured boost eligible</li>
-                            <li className="flex items-center gap-2.5 text-sm text-gray-300"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Analytics: views, enquiries, offers & earnings</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-emerald-500 dark:text-emerald-400 shrink-0" /> Everything in Standard</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-emerald-500 dark:text-emerald-400 shrink-0" /> Up to 100 photos</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-emerald-500 dark:text-emerald-400 shrink-0" /> Priority search placement</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-emerald-500 dark:text-emerald-400 shrink-0" /> HPI Verified badge included</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-emerald-500 dark:text-emerald-400 shrink-0" /> Advertise until sold</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-emerald-500 dark:text-emerald-400 shrink-0" /> Featured boost eligible</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-emerald-500 dark:text-emerald-400 shrink-0" /> Analytics: views, enquiries, offers & earnings</li>
                         </ul>
                         <Link href="/sell" className="block w-full py-3 rounded-xl bg-primary hover:bg-red-600 text-center text-sm font-bold text-white transition-all shadow-neon">
                             Get Premium
@@ -218,21 +218,21 @@ export default function PricingPage() {
             {/* ── Feature Comparison Table ─────────────────────────────── */}
             <section className="container mx-auto px-6 mb-24">
                 <div className="max-w-5xl mx-auto">
-                    <h2 className="text-2xl font-black text-white text-center mb-8">Full Feature Comparison</h2>
-                    <div className="overflow-x-auto rounded-2xl border border-white/10">
+                    <h2 className="text-2xl font-black text-center mb-8">Full Feature Comparison</h2>
+                    <div className="overflow-x-auto rounded-2xl border border-[var(--border-default)]">
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="bg-slate-800/80">
-                                    <th className="text-left px-6 py-4 text-gray-400 font-bold w-1/2">Feature</th>
-                                    <th className="text-center px-4 py-4 text-gray-400 font-bold">Basic</th>
-                                    <th className="text-center px-4 py-4 text-gray-400 font-bold">Standard</th>
+                                <tr className="bg-[var(--bg-input)]">
+                                    <th className="text-left px-6 py-4 text-[var(--text-muted)] font-bold w-1/2">Feature</th>
+                                    <th className="text-center px-4 py-4 text-[var(--text-muted)] font-bold">Basic</th>
+                                    <th className="text-center px-4 py-4 text-[var(--text-muted)] font-bold">Standard</th>
                                     <th className="text-center px-4 py-4 text-primary font-bold">Premium</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-white/5">
+                            <tbody className="divide-y divide-[var(--border-default)]">
                                 {TIER_FEATURES.map((row) => (
-                                    <tr key={row.label} className="hover:bg-white/[0.02] transition-colors">
-                                        <td className="px-6 py-4 text-gray-300">{row.label}</td>
+                                    <tr key={row.label} className="hover:bg-primary/[0.02] dark:hover:bg-white/[0.02] transition-colors">
+                                        <td className="px-6 py-4 text-[var(--text-secondary)]">{row.label}</td>
                                         <td className="px-4 py-4 text-center"><FeatureCell value={row.basic} /></td>
                                         <td className="px-4 py-4 text-center"><FeatureCell value={row.standard} /></td>
                                         <td className="px-4 py-4 text-center bg-primary/5"><FeatureCell value={row.premium} /></td>
@@ -248,28 +248,28 @@ export default function PricingPage() {
             <section className="container mx-auto px-6 mb-24">
                 <div className="max-w-5xl mx-auto">
                     <div className="text-center mb-10">
-                        <h2 className="text-2xl font-black text-white mb-2">Optional Add-Ons</h2>
-                        <p className="text-gray-500 text-sm">Enhance any listing at any time — buy once, apply instantly.</p>
+                        <h2 className="text-2xl font-black mb-2">Optional Add-Ons</h2>
+                        <p className="text-[var(--text-muted)] text-sm">Enhance any listing at any time — buy once, apply instantly.</p>
                     </div>
                     <div className="grid md:grid-cols-2 gap-6">
 
                         {/* HPI Check */}
-                        <div className="group bg-slate-800/50 border border-white/10 hover:border-emerald-500/30 rounded-2xl p-8 flex gap-6 transition-all hover:shadow-[0_0_30px_rgba(52,211,153,0.08)]">
+                        <div className="group glass-card !rounded-2xl hover:border-emerald-500/30 p-8 flex gap-6 hover:shadow-[0_0_30px_rgba(52,211,153,0.08)]">
                             <div className="w-14 h-14 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                                <Shield size={24} className="text-emerald-400" />
+                                <Shield size={24} className="text-emerald-500 dark:text-emerald-400" />
                             </div>
                             <div className="flex-1">
                                 <div className="flex items-start justify-between mb-2">
-                                    <h3 className="font-black text-white text-lg">HPI Vehicle Check</h3>
-                                    <span className="text-2xl font-black text-white">£{PRICING.hpiReport.price}</span>
+                                    <h3 className="font-black text-lg">HPI Vehicle Check</h3>
+                                    <span className="text-2xl font-black">£{PRICING.hpiReport.price}</span>
                                 </div>
-                                <p className="text-gray-400 text-sm mb-4 leading-relaxed">
+                                <p className="text-[var(--text-muted)] text-sm mb-4 leading-relaxed">
                                     Official HPI report covering outstanding finance, write-off history, mileage anomalies, stolen records, and plate changes. Adds a verified badge to your listing.
                                 </p>
                                 <ul className="space-y-1.5">
                                     {["Outstanding finance check", "Write-off & salvage history", "Stolen vehicle check", "Mileage discrepancy", "✓ Verified badge on listing"].map(f => (
-                                        <li key={f} className="flex items-center gap-2 text-xs text-gray-400">
-                                            <CheckCircle size={11} className="text-emerald-400 shrink-0" /> {f}
+                                        <li key={f} className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
+                                            <CheckCircle size={11} className="text-emerald-500 dark:text-emerald-400 shrink-0" /> {f}
                                         </li>
                                     ))}
                                 </ul>
@@ -277,24 +277,24 @@ export default function PricingPage() {
                         </div>
 
                         {/* Featured Boost */}
-                        <div className="group bg-slate-800/50 border border-white/10 hover:border-amber-500/30 rounded-2xl p-8 flex gap-6 transition-all hover:shadow-[0_0_30px_rgba(251,191,36,0.08)]">
+                        <div className="group glass-card !rounded-2xl hover:border-amber-500/30 p-8 flex gap-6 hover:shadow-[0_0_30px_rgba(251,191,36,0.08)]">
                             <div className="w-14 h-14 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                                 <Zap size={24} className="text-amber-400" />
                             </div>
                             <div className="flex-1">
                                 <div className="flex items-start justify-between mb-2">
-                                    <h3 className="font-black text-white text-lg">Featured Boost</h3>
+                                    <h3 className="font-black text-lg">Featured Boost</h3>
                                     <div className="text-right">
-                                        <span className="text-2xl font-black text-white">£{PRICING.featuredBoost.price}</span>
-                                        <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">{PRICING.featuredBoost.durationDays} days</p>
+                                        <span className="text-2xl font-black">£{PRICING.featuredBoost.price}</span>
+                                        <p className="text-[var(--text-muted)] text-[10px] font-bold uppercase tracking-widest">{PRICING.featuredBoost.durationDays} days</p>
                                     </div>
                                 </div>
-                                <p className="text-gray-400 text-sm mb-4 leading-relaxed">
+                                <p className="text-[var(--text-muted)] text-sm mb-4 leading-relaxed">
                                     Pin your listing to the Featured carousel on the homepage and top of all relevant search results for 28 days. Cancel at any time.
                                 </p>
                                 <ul className="space-y-1.5">
                                     {["Homepage featured carousel", "Search results priority pin", "28-day duration", "Renewable at any time", "Instant activation"].map(f => (
-                                        <li key={f} className="flex items-center gap-2 text-xs text-gray-400">
+                                        <li key={f} className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
                                             <CheckCircle size={11} className="text-amber-400 shrink-0" /> {f}
                                         </li>
                                     ))}
@@ -308,7 +308,7 @@ export default function PricingPage() {
             {/* ── Dealer CTA ───────────────────────────────────────────── */}
             <section className="container mx-auto px-6 mb-24">
                 <div className="max-w-5xl mx-auto">
-                    <div className="relative bg-gradient-to-r from-slate-800 to-slate-800/80 border border-white/10 rounded-2xl p-10 overflow-hidden">
+                    <div className="relative glass-card !rounded-2xl p-10 overflow-hidden">
                         <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent pointer-events-none" />
                         <div className="relative flex flex-col md:flex-row items-center gap-8 justify-between">
                             <div>
@@ -316,14 +316,14 @@ export default function PricingPage() {
                                     <BadgeCheck size={20} className="text-primary" />
                                     <span className="text-xs font-black uppercase tracking-widest text-primary">For Dealerships</span>
                                 </div>
-                                <h2 className="text-2xl font-black text-white mb-2">Need to list multiple vehicles?</h2>
-                                <p className="text-gray-400 text-sm max-w-md leading-relaxed">
+                                <h2 className="text-2xl font-black mb-2">Need to list multiple vehicles?</h2>
+                                <p className="text-[var(--text-muted)] text-sm max-w-md leading-relaxed">
                                     Dealers get a dedicated dashboard with CRM, inventory management, team accounts, analytics, and finance application tracking. Ask us about volume listing rates.
                                 </p>
                             </div>
                             <div className="flex flex-col gap-3 shrink-0">
                                 <DealerCtaButton />
-                                <Link href="/contact" className="text-center text-sm text-gray-400 hover:text-white transition-colors">
+                                <Link href="/contact" className="text-center text-sm text-[var(--text-muted)] hover:text-primary transition-colors">
                                     Contact sales →
                                 </Link>
                             </div>
@@ -337,10 +337,10 @@ export default function PricingPage() {
                 <div className="max-w-3xl mx-auto">
                     <div className="text-center mb-10">
                         <div className="inline-flex items-center gap-2 mb-3">
-                            <HelpCircle size={18} className="text-gray-500" />
-                            <h2 className="text-2xl font-black text-white">Frequently Asked Questions</h2>
+                            <HelpCircle size={18} className="text-[var(--text-muted)]" />
+                            <h2 className="text-2xl font-black">Frequently Asked Questions</h2>
                         </div>
-                        <p className="text-gray-500 text-sm">Can&apos;t find your answer? <Link href="/contact" className="text-primary hover:underline">Get in touch</Link>.</p>
+                        <p className="text-[var(--text-muted)] text-sm">Can&apos;t find your answer? <Link href="/contact" className="text-primary hover:underline">Get in touch</Link>.</p>
                     </div>
                     <div className="space-y-3">
                         {FAQS.map((faq) => (

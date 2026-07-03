@@ -14,7 +14,7 @@ export default function InsuranceSettingsPage() {
 
     if (authLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+            <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
             </div>
         )
@@ -28,7 +28,7 @@ export default function InsuranceSettingsPage() {
     }
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
+        <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="insurance" userName={userName} userType="Insurance Partner" />
 
@@ -38,35 +38,35 @@ export default function InsuranceSettingsPage() {
                     </h1>
 
                     {/* Company Info */}
-                    <div className="glass-card border border-white/5 bg-white/5 rounded-2xl p-6 space-y-6">
-                        <h2 className="text-lg font-bold flex items-center gap-2 text-white">
+                    <div className="glass-card border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl p-6 space-y-6">
+                        <h2 className="text-lg font-bold flex items-center gap-2">
                             <Building2 size={18} className="text-primary" /> Company Information
                         </h2>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Company Name</label>
+                                <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2">Company Name</label>
                                 <input
                                     type="text"
                                     value={companyName}
                                     onChange={(e) => setCompanyName(e.target.value)}
                                     placeholder="Your insurance company name"
-                                    className="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                    className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-4 py-3 placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-primary/50"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Contact Email</label>
+                                <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2">Contact Email</label>
                                 <input
                                     type="email"
                                     value={user?.email || ""}
                                     disabled
-                                    className="w-full bg-slate-800/50 border border-white/5 rounded-xl px-4 py-3 text-gray-400 cursor-not-allowed"
+                                    className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-4 py-3 text-[var(--text-muted)] cursor-not-allowed"
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Coverage Types Offered</label>
+                            <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2">Coverage Types Offered</label>
                             <div className="flex flex-wrap gap-2">
                                 {["Comprehensive", "Third Party", "Third Party, Fire & Theft", "Temporary"].map(type => (
                                     <span key={type} className="bg-primary/10 text-primary border border-primary/20 px-3 py-1.5 rounded-lg text-xs font-bold">
@@ -78,33 +78,33 @@ export default function InsuranceSettingsPage() {
                     </div>
 
                     {/* Integration Settings */}
-                    <div className="glass-card border border-white/5 bg-white/5 rounded-2xl p-6 space-y-6">
-                        <h2 className="text-lg font-bold flex items-center gap-2 text-white">
+                    <div className="glass-card border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl p-6 space-y-6">
+                        <h2 className="text-lg font-bold flex items-center gap-2">
                             <Globe size={18} className="text-primary" /> Integration Settings
                         </h2>
 
                         <div>
-                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Callback URL</label>
+                            <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2">Callback URL</label>
                             <input
                                 type="url"
                                 value={callbackUrl}
                                 onChange={(e) => setCallbackUrl(e.target.value)}
                                 placeholder="https://your-api.example.com/webhook"
-                                className="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-4 py-3 placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-primary/50"
                             />
-                            <p className="text-xs text-gray-500 mt-2">We&apos;ll send quote status webhooks to this URL</p>
+                            <p className="text-xs text-[var(--text-muted)] mt-2">We&apos;ll send quote status webhooks to this URL</p>
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">API Key</label>
+                            <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2">API Key</label>
                             <div className="flex gap-2">
                                 <input
                                     type="text"
                                     value="••••••••••••••••"
                                     disabled
-                                    className="flex-1 bg-slate-800/50 border border-white/5 rounded-xl px-4 py-3 text-gray-400 cursor-not-allowed font-mono"
+                                    className="flex-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-4 py-3 text-[var(--text-muted)] cursor-not-allowed font-mono"
                                 />
-                                <Button variant="outline" className="border-white/10 text-gray-400 hover:text-white">
+                                <Button variant="outline" className="border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:">
                                     <Key size={16} className="mr-2" /> Regenerate
                                 </Button>
                             </div>

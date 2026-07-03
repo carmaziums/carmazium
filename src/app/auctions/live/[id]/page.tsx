@@ -384,17 +384,17 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
         <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-body)' }}>
             <div className="flex flex-col items-center gap-3">
                 <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Loading auction…</p>
+                <p className="text-[var(--text-muted)] text-xs font-bold uppercase tracking-widest">Loading auction…</p>
             </div>
         </div>
     )
 
     if (loadError || !auction) return (
         <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ background: 'var(--bg-body)' }}>
-            <div className="w-16 h-16 rounded-2xl bg-slate-800 border border-white/5 flex items-center justify-center">
-                <Gavel size={24} className="text-slate-500" />
+            <div className="w-16 h-16 rounded-2xl bg-[var(--bg-input)] border border-[var(--border-default)] flex items-center justify-center">
+                <Gavel size={24} className="text-[var(--text-muted)]" />
             </div>
-            <p className="text-slate-400 text-sm">{loadError ?? "Auction not found."}</p>
+            <p className="text-[var(--text-muted)] text-sm">{loadError ?? "Auction not found."}</p>
             <div className="flex items-center gap-3">
                 <button
                     onClick={loadAuction}
@@ -402,7 +402,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                 >
                     <RefreshCw size={13} /> Try Again
                 </button>
-                <Link href="/auctions" className="text-slate-500 text-xs font-bold hover:text-white transition-colors flex items-center gap-1">
+                <Link href="/auctions" className="text-[var(--text-muted)] text-xs font-bold hover:text-white transition-colors flex items-center gap-1">
                     <ArrowLeft size={13} /> All Auctions
                 </Link>
             </div>
@@ -426,7 +426,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     // ─────────────────────────────────────────────────────────────────────────
 
     return (
-        <div className="min-h-screen text-white flex flex-col" style={{ background: 'var(--bg-body)' }}>
+        <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg-body)' }}>
 
             {/* ── Accept Bid Confirmation Modal ─────────────────────────────── */}
             <AnimatePresence>
@@ -441,25 +441,25 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                             initial={{ scale: 0.93, y: 16 }}
                             animate={{ scale: 1, y: 0 }}
                             exit={{ scale: 0.93, y: 16 }}
-                            className="bg-[#0A0A0C] border border-white/10 rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-5"
+                            className="bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-5"
                         >
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shrink-0">
                                     <Gavel size={18} className="text-emerald-400" />
                                 </div>
                                 <div>
-                                    <p className="text-white font-bold text-sm">Accept this bid?</p>
-                                    <p className="text-slate-500 text-xs">This will end the auction immediately</p>
+                                    <p className="font-bold text-sm">Accept this bid?</p>
+                                    <p className="text-[var(--text-muted)] text-xs">This will end the auction immediately</p>
                                 </div>
                             </div>
 
                             <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl px-4 py-3 text-center">
-                                <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Winning Bid</p>
+                                <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold mb-1">Winning Bid</p>
                                 <p className="text-2xl font-black text-emerald-300 font-mono">£{acceptingBid.amount.toLocaleString()}</p>
-                                <p className="text-[10px] text-slate-600 mt-1">from {acceptingBid.initials}</p>
+                                <p className="text-[10px] text-[var(--text-muted)] mt-1">from {acceptingBid.initials}</p>
                             </div>
 
-                            <p className="text-slate-400 text-xs leading-relaxed text-center">
+                            <p className="text-[var(--text-muted)] text-xs leading-relaxed text-center">
                                 Accepting this bid will end the auction right now — regardless of reserve price — and the bidder will be declared the winner.
                             </p>
 
@@ -471,7 +471,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                 <button
                                     onClick={() => { setAcceptingBid(null); setAcceptError(null) }}
                                     disabled={acceptLoading}
-                                    className="flex-1 h-10 rounded-xl border border-white/10 text-slate-400 text-xs font-bold hover:bg-white/5 transition-colors disabled:opacity-50"
+                                    className="flex-1 h-10 rounded-xl border border-[var(--border-default)] text-[var(--text-muted)] text-xs font-bold hover:bg-[var(--bg-card)] transition-colors disabled:opacity-50"
                                 >
                                     Cancel
                                 </button>
@@ -505,12 +505,12 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                             initial={{ scale: 0.95, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.95, opacity: 0 }}
-                            className="rounded-2xl bg-[#0A0A0C] border border-white/10 p-6 w-80 shadow-xl"
+                            className="rounded-2xl bg-[var(--bg-dropdown)] border border-[var(--border-default)] p-6 w-80 shadow-xl"
                         >
-                            <h3 className="text-lg font-semibold text-white mb-2">Confirm Buy It Now</h3>
-                            <p className="text-slate-400 text-sm mb-4">
+                            <h3 className="text-lg font-semibold mb-2">Confirm Buy It Now</h3>
+                            <p className="text-[var(--text-muted)] text-sm mb-4">
                                 Buy this vehicle now for{' '}
-                                <span className="font-mono text-white">
+                                <span className="font-mono text-[var(--text-primary)]">
                                     £{Number(auction?.buyItNowPrice).toLocaleString('en-GB')}
                                 </span>
                                 ? The seller must accept within 24 hours.
@@ -518,7 +518,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                             <div className="flex gap-3">
                                 <button
                                     onClick={() => setShowBinModal(false)}
-                                    className="flex-1 rounded-lg border border-white/10 py-2 text-sm text-slate-400 hover:text-white transition-colors"
+                                    className="flex-1 rounded-lg border border-[var(--border-default)] py-2 text-sm text-[var(--text-muted)] hover:text-white transition-colors"
                                 >
                                     Cancel
                                 </button>
@@ -553,7 +553,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             <div className="sticky top-[80px] z-30 backdrop-blur-xl border-b" style={{ background: 'var(--bg-header)', borderColor: 'var(--border-default)' }}>
                 <div className="container mx-auto px-6 h-14 flex items-center justify-between">
                     <div className="flex items-center gap-3 min-w-0">
-                        <Link href="/auctions" className="text-slate-500 hover:text-white transition-colors shrink-0">
+                        <Link href="/auctions" className="text-[var(--text-muted)] hover:text-white transition-colors shrink-0">
                             <ArrowLeft size={16} />
                         </Link>
                         <div className="w-px h-4 bg-white/10 shrink-0" />
@@ -569,7 +569,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                 </span>
                             )}
                             {isEnded && (
-                                <span className="bg-slate-700 text-slate-400 text-[9px] font-black px-2.5 py-1 rounded-full tracking-widest uppercase shrink-0">Ended</span>
+                                <span className="bg-slate-700 text-[var(--text-muted)] text-[9px] font-black px-2.5 py-1 rounded-full tracking-widest uppercase shrink-0">Ended</span>
                             )}
                             {isCancelled && (
                                 <span className="flex items-center gap-1 bg-red-500/20 text-red-400 text-[9px] font-black px-2.5 py-1 rounded-full shrink-0">
@@ -590,27 +590,27 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     <div className="flex items-center gap-3 shrink-0">
                         {isLive && endTime && (
                             <div className="hidden sm:flex flex-col items-end">
-                                <p className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Ends In</p>
+                                <p className="text-[9px] text-[var(--text-muted)] uppercase tracking-widest font-bold">Ends In</p>
                                 <CountdownTimer targetDate={endTime} minimal />
                             </div>
                         )}
                         {isScheduled && startTime && (
                             <div className="hidden sm:flex flex-col items-end">
-                                <p className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Starts In</p>
+                                <p className="text-[9px] text-[var(--text-muted)] uppercase tracking-widest font-bold">Starts In</p>
                                 <CountdownTimer targetDate={startTime} minimal />
                             </div>
                         )}
-                        <div className="flex items-center gap-1.5 bg-slate-800 border border-white/10 px-3 py-1.5 rounded-full">
+                        <div className="flex items-center gap-1.5 bg-[var(--bg-input)] border border-[var(--border-default)] px-3 py-1.5 rounded-full">
                             <Users size={11} className="text-primary" />
                             <span className="text-xs font-bold">{watchers}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                             <span className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-emerald-500" : "bg-red-500"}`} />
-                            <span className="text-[9px] text-slate-500 hidden sm:inline">{connected ? "Live" : "Offline"}</span>
+                            <span className="text-[9px] text-[var(--text-muted)] hidden sm:inline">{connected ? "Live" : "Offline"}</span>
                         </div>
                         <button
                             onClick={handleShare}
-                            className="text-slate-500 hover:text-white transition-colors relative"
+                            className="text-[var(--text-muted)] hover:text-white transition-colors relative"
                             title="Copy link"
                         >
                             <Share2 size={15} />
@@ -631,7 +631,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                         <Ban size={16} className="text-red-400 shrink-0" />
                         <div>
                             <p className="text-red-400 font-bold text-sm">This auction has been cancelled</p>
-                            <p className="text-slate-500 text-xs">The seller has cancelled this auction before it started.</p>
+                            <p className="text-[var(--text-muted)] text-xs">The seller has cancelled this auction before it started.</p>
                         </div>
                         <Link href="/auctions" className="ml-auto text-xs font-bold text-primary hover:text-red-400 transition-colors shrink-0">
                             Browse Auctions →
@@ -675,7 +675,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     <motion.div
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: "auto", opacity: 1 }}
-                        className={`border-b ${userWon ? "bg-emerald-500/10 border-emerald-500/20" : "bg-slate-800/40 border-white/5"}`}
+                        className={`border-b ${userWon ? "bg-emerald-500/10 border-emerald-500/20" : "bg-[var(--bg-input)] border-[var(--border-default)]"}`}
                     >
                         <div className="container mx-auto px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
                             {userWon ? (
@@ -686,7 +686,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         </div>
                                         <div className="min-w-0">
                                             <p className="text-emerald-400 font-black text-sm uppercase tracking-wider">You won this auction!</p>
-                                            <p className="text-slate-400 text-xs">Winning bid: <span className="text-white font-bold">£{Number(endedPayload?.winningBidAmount).toLocaleString()}</span></p>
+                                            <p className="text-[var(--text-muted)] text-xs">Winning bid: <span className="text-white font-bold">£{Number(endedPayload?.winningBidAmount).toLocaleString()}</span></p>
                                         </div>
                                     </div>
                                     {/* Buyer fee + chat actions */}
@@ -705,7 +705,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             </Link>
                                             <Button
                                                 variant="outline"
-                                                className="w-full border-white/10 text-slate-400 font-bold text-xs h-9 flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                                                className="w-full border-[var(--border-default)] text-[var(--text-muted)] font-bold text-xs h-9 flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
                                                 disabled={connectingChat || !auction.buyerFeePaid}
                                                 title={!auction.buyerFeePaid ? 'Pay the £125 fee first to unlock messaging' : undefined}
                                                 onClick={async () => {
@@ -729,17 +729,17 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                     </div>
                                 </>
                             ) : endedPayload?.reserveMet === false ? (
-                                <div className="flex items-center gap-2 text-slate-400 text-sm">
+                                <div className="flex items-center gap-2 text-[var(--text-muted)] text-sm">
                                     <AlertCircle size={15} className="text-amber-400 shrink-0" />
-                                    <p>Auction ended — reserve price was not met. <span className="text-slate-500 text-xs">No sale was completed.</span></p>
+                                    <p>Auction ended — reserve price was not met. <span className="text-[var(--text-muted)] text-xs">No sale was completed.</span></p>
                                 </div>
                             ) : endedPayload?.winnerId ? (
-                                <div className="flex items-center gap-2 text-slate-400 text-sm">
+                                <div className="flex items-center gap-2 text-[var(--text-muted)] text-sm">
                                     <Gavel size={15} className="shrink-0" />
                                     <p>Auction ended. Winning bid: <span className="text-white font-bold">£{Number(endedPayload?.winningBidAmount ?? 0).toLocaleString()}</span></p>
                                 </div>
                             ) : (
-                                <div className="flex items-center gap-2 text-slate-400 text-sm">
+                                <div className="flex items-center gap-2 text-[var(--text-muted)] text-sm">
                                     <Gavel size={15} className="shrink-0" />
                                     <p>Auction ended with no bids placed.</p>
                                 </div>
@@ -768,9 +768,9 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
 
             {/* ── Mobile Sticky Bid Bar ─────────────────────────────────────── */}
             {isLive && !isSeller && user && profile?.role === 'DEALER' && !isEnded && (
-                <div className="lg:hidden sticky top-[80px] z-40 bg-slate-900/95 backdrop-blur-md border-b border-white/10 px-4 py-2.5 flex items-center gap-3">
+                <div className="lg:hidden sticky top-[80px] z-40 bg-[var(--bg-dropdown)] backdrop-blur-md border-b border-[var(--border-default)] px-4 py-2.5 flex items-center gap-3">
                     <div className="flex-1 min-w-0">
-                        <p className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Current Bid</p>
+                        <p className="text-[9px] text-[var(--text-muted)] uppercase tracking-widest font-bold">Current Bid</p>
                         <p className="text-xl font-black text-white font-mono leading-none">£{currentBid.toLocaleString()}</p>
                     </div>
                     {isWinning ? (
@@ -788,7 +788,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     )}
                     {endTime && (
                         <div className="text-right shrink-0">
-                            <p className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Ends In</p>
+                            <p className="text-[9px] text-[var(--text-muted)] uppercase tracking-widest font-bold">Ends In</p>
                             <CountdownTimer targetDate={endTime} minimal />
                         </div>
                     )}
@@ -802,7 +802,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                 <div className="space-y-5 min-w-0">
 
                     {/* Vehicle image */}
-                    <div className="relative aspect-video rounded-2xl overflow-hidden bg-slate-800 border border-white/5 shadow-xl">
+                    <div className="relative aspect-video rounded-2xl overflow-hidden bg-[var(--bg-input)] border border-[var(--border-default)] shadow-xl">
                         <Image src={image} alt={auction.listing.title} fill className="object-cover" />
                         <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent" />
 
@@ -817,7 +817,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                             </div>
                         )}
                         {isCancelled && (
-                            <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-slate-700 text-slate-300 text-[10px] font-black px-3 py-1.5 rounded-full z-10">
+                            <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-slate-700 text-[var(--text-secondary)] text-[10px] font-black px-3 py-1.5 rounded-full z-10">
                                 <Ban size={11} /> Cancelled
                             </div>
                         )}
@@ -850,7 +850,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                     </div>
                                 )}
                                 {isLive && endTime && (
-                                    <div className="bg-slate-900/80 backdrop-blur border border-white/10 rounded-xl px-3 py-2 text-center">
+                                    <div className="bg-[var(--bg-card)] backdrop-blur border border-[var(--border-default)] rounded-xl px-3 py-2 text-center">
                                         <p className="text-[8px] text-white/40 uppercase tracking-widest font-bold mb-0.5">Ends In</p>
                                         <div className="text-white font-mono font-black text-lg leading-none">
                                             <CountdownTimer targetDate={endTime} minimal />
@@ -885,8 +885,8 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     </AnimatePresence>
 
                     {/* Tabs */}
-                    <div className="bg-slate-800/60 border border-white/10 rounded-2xl overflow-hidden">
-                        <div className="flex border-b border-white/5">
+                    <div className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl overflow-hidden">
+                        <div className="flex border-b border-[var(--border-default)]">
                             {[
                                 { id: "details", label: "Details", icon: Info },
                                 { id: "bids", label: `Bids (${bidCount})`, icon: Timer },
@@ -895,7 +895,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                                    className={`relative flex-1 sm:flex-none px-5 py-3.5 text-[10px] font-black uppercase tracking-widest flex items-center justify-center sm:justify-start gap-1.5 transition-colors ${activeTab === tab.id ? "text-white" : "text-slate-500 hover:text-slate-300"}`}
+                                    className={`relative flex-1 sm:flex-none px-5 py-3.5 text-[10px] font-black uppercase tracking-widest flex items-center justify-center sm:justify-start gap-1.5 transition-colors ${activeTab === tab.id ? "text-primary" : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"}`}
                                 >
                                     <tab.icon size={11} /> {tab.label}
                                     {activeTab === tab.id && (
@@ -917,8 +917,8 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                 { label: "Fuel",    value: auction.listing.fuelType?.replace(/_/g, " ") ?? "—" },
                                                 { label: "Gearbox", value: auction.listing.transmission?.replace(/_/g, " ") ?? "—" },
                                             ].map(s => (
-                                                <div key={s.label} className="bg-slate-900/70 border border-white/8 rounded-xl p-3 text-center">
-                                                    <p className="text-[9px] text-slate-500 uppercase tracking-widest mb-1">{s.label}</p>
+                                                <div key={s.label} className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-xl p-3 text-center">
+                                                    <p className="text-[9px] text-[var(--text-muted)] uppercase tracking-widest mb-1">{s.label}</p>
                                                     <p className="text-sm font-bold text-white capitalize leading-tight">{s.value}</p>
                                                 </div>
                                             ))}
@@ -928,7 +928,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         {auction.listing.description && (
                                             <div>
                                                 <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-2 border-l-2 border-primary pl-2.5">Description</h4>
-                                                <p className="text-sm text-slate-400 leading-relaxed whitespace-pre-line">{auction.listing.description}</p>
+                                                <p className="text-sm text-[var(--text-muted)] leading-relaxed whitespace-pre-line">{auction.listing.description}</p>
                                             </div>
                                         )}
 
@@ -956,7 +956,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                             : 'X'
                                                         if (ytEmbedUrl) {
                                                             return (
-                                                                <div key={i} className="rounded-xl overflow-hidden border border-white/10 bg-black">
+                                                                <div key={i} className="rounded-xl overflow-hidden border border-[var(--border-default)] bg-black">
                                                                     <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
                                                                         <iframe
                                                                             src={ytEmbedUrl}
@@ -971,7 +971,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                         }
                                                         return (
                                                             <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-                                                                className="flex items-center gap-2 p-3 rounded-lg bg-slate-900/50 border border-white/10 hover:border-white/20 transition-colors">
+                                                                className="flex items-center gap-2 p-3 rounded-lg bg-[var(--bg-input)] border border-[var(--border-default)] hover:border-primary/30 transition-colors">
                                                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-500/20 text-orange-300 border border-orange-500/20 shrink-0">{platform}</span>
                                                                 <span className="text-xs text-blue-400 truncate flex-1 hover:text-blue-300">{url}</span>
                                                             </a>
@@ -990,13 +990,13 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         )}
 
                                         {/* ── Specifications: 2-column sub-section grid ─────── */}
-                                        <div className="rounded-xl border border-white/8 bg-slate-900/40 p-4">
+                                        <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4">
                                             <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-4 border-l-2 border-primary pl-2.5">Specifications</h4>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
 
                                                 {/* Overview */}
                                                 <div>
-                                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 pb-1.5 border-b border-white/5">Overview</p>
+                                                    <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-2 pb-1.5 border-b border-[var(--border-default)]">Overview</p>
                                                     <div className="space-y-1.5">
                                                         {[
                                                             ["Make",        auction.listing.make],
@@ -1011,7 +1011,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                             ["Location",    auction.listing.location],
                                                         ].filter(([, v]) => v != null && v !== "").map(([k, v]) => (
                                                             <div key={k as string} className="flex justify-between gap-2 text-xs">
-                                                                <span className="text-slate-500 shrink-0">{k}</span>
+                                                                <span className="text-[var(--text-muted)] shrink-0">{k}</span>
                                                                 <span className="text-white font-semibold text-right capitalize">{String(v)}</span>
                                                             </div>
                                                         ))}
@@ -1020,7 +1020,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
 
                                                 {/* Performance */}
                                                 <div>
-                                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 pb-1.5 border-b border-white/5">Performance</p>
+                                                    <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-2 pb-1.5 border-b border-[var(--border-default)]">Performance</p>
                                                     <div className="space-y-1.5">
                                                         {[
                                                             ["Fuel Type",    auction.listing.fuelType?.replace(/_/g, " ")],
@@ -1031,7 +1031,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                             ["Seats",        auction.listing.seats],
                                                         ].filter(([, v]) => v != null && v !== "").map(([k, v]) => (
                                                             <div key={k as string} className="flex justify-between gap-2 text-xs">
-                                                                <span className="text-slate-500 shrink-0">{k}</span>
+                                                                <span className="text-[var(--text-muted)] shrink-0">{k}</span>
                                                                 <span className="text-white font-semibold text-right capitalize">{String(v)}</span>
                                                             </div>
                                                         ))}
@@ -1040,7 +1040,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                     {/* Compliance inline */}
                                                     {(auction.listing.ulezCompliant != null || auction.listing.euroStandard || auction.listing.co2Emissions) && (
                                                         <>
-                                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-4 mb-2 pb-1.5 border-b border-white/5">Compliance</p>
+                                                            <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-4 mb-2 pb-1.5 border-b border-[var(--border-default)]">Compliance</p>
                                                             <div className="space-y-1.5">
                                                                 {[
                                                                     ["ULEZ / CAZ", auction.listing.ulezCompliant == null ? null : auction.listing.ulezCompliant ? "Compliant" : "Non-compliant"],
@@ -1048,8 +1048,8 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                                     ["CO₂",        auction.listing.co2Emissions ? `${auction.listing.co2Emissions} g/km` : null],
                                                                 ].filter(([, v]) => v != null).map(([k, v]) => (
                                                                     <div key={k as string} className="flex justify-between gap-2 text-xs">
-                                                                        <span className="text-slate-500 shrink-0">{k}</span>
-                                                                        <span className={`font-semibold ${String(v) === "Compliant" ? "text-emerald-400" : String(v) === "Non-compliant" ? "text-red-400" : "text-white"}`}>{String(v)}</span>
+                                                                        <span className="text-[var(--text-muted)] shrink-0">{k}</span>
+                                                                        <span className={`font-semibold ${String(v) === "Compliant" ? "text-emerald-400" : String(v) === "Non-compliant" ? "text-red-400" : "text-[var(--text-primary)]"}`}>{String(v)}</span>
                                                                     </div>
                                                                 ))}
                                                             </div>
@@ -1059,7 +1059,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                     {/* MOT & Tax inline */}
                                                     {(auction.listing.motStatus || auction.listing.taxStatus) && (
                                                         <>
-                                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-4 mb-2 pb-1.5 border-b border-white/5">MOT &amp; Tax</p>
+                                                            <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-4 mb-2 pb-1.5 border-b border-[var(--border-default)]">MOT &amp; Tax</p>
                                                             <div className="space-y-1.5">
                                                                 {[
                                                                     ["MOT Status", auction.listing.motStatus],
@@ -1068,8 +1068,8 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                                     ["Tax Due",    auction.listing.taxDueDate],
                                                                 ].filter(([, v]) => v != null && v !== "").map(([k, v]) => (
                                                                     <div key={k as string} className="flex justify-between gap-2 text-xs">
-                                                                        <span className="text-slate-500 shrink-0">{k}</span>
-                                                                        <span className={`font-semibold ${String(v) === "Valid" || String(v) === "Taxed" ? "text-emerald-400" : "text-white"}`}>{String(v)}</span>
+                                                                        <span className="text-[var(--text-muted)] shrink-0">{k}</span>
+                                                                        <span className={`font-semibold ${String(v) === "Valid" || String(v) === "Taxed" ? "text-emerald-400" : "text-[var(--text-primary)]"}`}>{String(v)}</span>
                                                                     </div>
                                                                 ))}
                                                             </div>
@@ -1095,19 +1095,19 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
 
                                         {/* ── Damage Report ───────────────────────────────── */}
                                         {damageRecords.length > 0 && (
-                                            <div className="rounded-xl border border-amber-500/20 bg-slate-900/40 p-4">
+                                            <div className="rounded-xl border border-amber-500/20 bg-[var(--bg-input)] p-4">
                                                 <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-1 border-l-2 border-amber-500 pl-2.5">
                                                     Reported Damage
                                                 </h4>
-                                                <p className="text-[10px] text-slate-500 mb-4 pl-3">
+                                                <p className="text-[10px] text-[var(--text-muted)] mb-4 pl-3">
                                                     {damageRecords.length} zone{damageRecords.length !== 1 ? "s" : ""} marked by seller — click a zone to see details
                                                 </p>
                                                 <ThreeDErrorBoundary
                                                     fallback={
-                                                        <div className="w-full rounded-xl border border-white/8 bg-slate-950/80 flex flex-col items-center justify-center gap-2 text-center px-6 py-10">
+                                                        <div className="w-full rounded-xl border border-[var(--border-default)] bg-slate-950/80 flex flex-col items-center justify-center gap-2 text-center px-6 py-10">
                                                             <TriangleAlert className="text-amber-400" size={20} />
                                                             <p className="text-sm font-bold text-white">3D preview unavailable on this device</p>
-                                                            <p className="text-xs text-slate-500">Damage details are listed below.</p>
+                                                            <p className="text-xs text-[var(--text-muted)]">Damage details are listed below.</p>
                                                         </div>
                                                     }
                                                 >
@@ -1123,10 +1123,10 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                         <button
                                                             key={i}
                                                             onClick={() => setSelectedDamageZone(prev => prev === record.part ? null : record.part)}
-                                                            className={`w-full text-left flex items-start gap-3 p-3 rounded-lg border transition-colors ${selectedDamageZone === record.part ? "bg-amber-500/10 border-amber-500/30" : "bg-slate-900/50 border-white/5 hover:border-white/10"}`}
+                                                            className={`w-full text-left flex items-start gap-3 p-3 rounded-lg border transition-colors ${selectedDamageZone === record.part ? "bg-amber-500/10 border-amber-500/30" : "bg-[var(--bg-input)] border-[var(--border-default)] hover:border-[var(--border-default)]"}`}
                                                         >
                                                             {record.imageUrl && (
-                                                                <div className="relative w-12 h-12 rounded-md overflow-hidden shrink-0 border border-white/10">
+                                                                <div className="relative w-12 h-12 rounded-md overflow-hidden shrink-0 border border-[var(--border-default)]">
                                                                     <Image src={record.imageUrl} alt={record.part} fill className="object-cover" sizes="48px" />
                                                                 </div>
                                                             )}
@@ -1134,7 +1134,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                                 <p className="text-sm font-semibold text-white capitalize">
                                                                     {record.part.replace(/-/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
                                                                 </p>
-                                                                <p className="text-xs text-slate-400">
+                                                                <p className="text-xs text-[var(--text-muted)]">
                                                                     {record.type}{record.size ? ` — ${record.size}` : ""}
                                                                 </p>
                                                             </div>
@@ -1156,15 +1156,15 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                     ["Ends",          endTime   ? endTime.toLocaleString("en-GB")   : "—"],
                                                 ].map(([k, v]) => (
                                                     <div key={k} className="text-xs">
-                                                        <p className="text-slate-500 mb-0.5">{k}</p>
-                                                        <p className="text-white font-bold font-mono">{v}</p>
+                                                        <p className="text-[var(--text-muted)] mb-0.5">{k}</p>
+                                                        <p className="text-[var(--text-primary)] font-bold font-mono">{v}</p>
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
 
                                         {/* ── Trust note ──────────────────────────────────── */}
-                                        <div className="flex items-start gap-2 text-slate-600 text-xs leading-relaxed">
+                                        <div className="flex items-start gap-2 text-[var(--text-muted)] text-xs leading-relaxed">
                                             <Info size={11} className="shrink-0 mt-0.5" />
                                             <p>All transactions are arranged directly between buyer and seller. A chat opens automatically when the auction ends with the winner.</p>
                                         </div>
@@ -1174,12 +1174,12 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                     <motion.div key="bids" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-1">
                                         {bidHistory.length === 0 ? (
                                             <div className="py-12 text-center">
-                                                <Gavel size={24} className="text-slate-600 mx-auto mb-2" />
-                                                <p className="text-slate-500 text-xs">No bids yet — be the first.</p>
+                                                <Gavel size={24} className="text-[var(--text-muted)] mx-auto mb-2" />
+                                                <p className="text-[var(--text-muted)] text-xs">No bids yet — be the first.</p>
                                             </div>
                                         ) : (
                                             <>
-                                                <div className="flex justify-between text-[9px] text-slate-600 uppercase tracking-widest px-2 pb-2">
+                                                <div className="flex justify-between text-[9px] text-[var(--text-muted)] uppercase tracking-widest px-2 pb-2">
                                                     <span>Bidder</span><span>Amount</span>
                                                 </div>
                                                 {(showAllBids ? bidHistory : bidHistory.slice(0, 20)).map((bid, i) => (
@@ -1187,25 +1187,25 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                         key={i}
                                                         initial={bid.isNew ? { opacity: 0, x: -8 } : false}
                                                         animate={{ opacity: 1, x: 0 }}
-                                                        className={`flex justify-between items-center px-3 py-2.5 rounded-xl transition-colors ${i === 0 ? "bg-primary/5 border border-primary/20" : "hover:bg-white/5"}`}
+                                                        className={`flex justify-between items-center px-3 py-2.5 rounded-xl transition-colors ${i === 0 ? "bg-primary/5 border border-primary/20" : "hover:bg-[var(--bg-card)]"}`}
                                                     >
                                                         <div className="flex items-center gap-2.5">
-                                                            <div className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-[9px] font-black text-slate-400">
+                                                            <div className="w-7 h-7 rounded-full bg-[var(--bg-card)] flex items-center justify-center text-[9px] font-black text-[var(--text-muted)]">
                                                                 {bid.initials}
                                                             </div>
-                                                            <span className="text-xs font-bold text-slate-400">{bid.initials}</span>
+                                                            <span className="text-xs font-bold text-[var(--text-muted)]">{bid.initials}</span>
                                                             {i === 0 && <span className="text-[9px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-black uppercase">Leader</span>}
                                                         </div>
                                                         <div className="text-right">
-                                                            <p className="font-mono font-black text-white text-sm">£{bid.amount.toLocaleString()}</p>
-                                                            <p className="text-[9px] text-slate-600">{bid.time}</p>
+                                                            <p className="font-mono font-black text-[var(--text-primary)] text-sm">£{bid.amount.toLocaleString()}</p>
+                                                            <p className="text-[9px] text-[var(--text-muted)]">{bid.time}</p>
                                                         </div>
                                                     </motion.div>
                                                 ))}
                                                 {!showAllBids && bidHistory.length > 20 && (
                                                     <button
                                                         onClick={() => setShowAllBids(true)}
-                                                        className="w-full py-2 text-[10px] font-bold text-slate-500 hover:text-slate-300 transition-colors"
+                                                        className="w-full py-2 text-[10px] font-bold text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
                                                     >
                                                         Show all {bidHistory.length} bids
                                                     </button>
@@ -1216,7 +1216,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                 )}
                                 {activeTab === "seller" && (
                                     <motion.div key="seller" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                                        <div className="flex items-center gap-4 p-4 bg-slate-900/40 border border-white/5 rounded-xl">
+                                        <div className="flex items-center gap-4 p-4 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl">
                                             <div className="w-14 h-14 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-black shrink-0">
                                                 {getSellerInitials(auction)}
                                             </div>
@@ -1225,7 +1225,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                 <div className="flex items-center gap-1 text-emerald-400 text-xs font-bold mt-0.5">
                                                     <ShieldCheck size={11} /> Verified Seller
                                                 </div>
-                                                <p className="text-slate-500 text-xs mt-2 leading-relaxed">
+                                                <p className="text-[var(--text-muted)] text-xs mt-2 leading-relaxed">
                                                     Win the auction and a direct chat with this seller opens automatically to arrange the deal.
                                                 </p>
                                             </div>
@@ -1241,9 +1241,9 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                 <aside className="flex flex-col gap-4">
 
                     {/* Live feed */}
-                    <div className="bg-slate-800/60 border border-white/10 rounded-2xl overflow-hidden flex flex-col" style={{ height: 380 }}>
-                        <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between bg-slate-900/30 shrink-0">
-                            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400">
+                    <div className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl overflow-hidden flex flex-col" style={{ height: 380 }}>
+                        <div className="px-4 py-3 border-b border-[var(--border-default)] flex items-center justify-between bg-[var(--bg-input)] shrink-0">
+                            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">
                                 <Flame size={12} className="text-primary" /> Live Feed
                                 {bidCount > 0 && (
                                     <span className="text-[9px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-black">{bidCount}</span>
@@ -1251,7 +1251,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                             </div>
                             <div className="flex items-center gap-1.5">
                                 {connected
-                                    ? <><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /><span className="text-[9px] text-slate-500">Live</span></>
+                                    ? <><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /><span className="text-[9px] text-[var(--text-muted)]">Live</span></>
                                     : <><WifiOff size={10} className="text-red-500" /><span className="text-[9px] text-red-500">Offline</span></>
                                 }
                             </div>
@@ -1259,7 +1259,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
 
                         <div ref={feedRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-1.5">
                             {bidHistory.length === 0 ? (
-                                <div className="h-full flex flex-col items-center justify-center gap-2 text-slate-600">
+                                <div className="h-full flex flex-col items-center justify-center gap-2 text-[var(--text-muted)]">
                                     <Gavel size={20} />
                                     <p className="text-xs text-center leading-relaxed">
                                         {isScheduled ? "Bidding opens when the auction starts." : "Waiting for first bid…"}
@@ -1271,16 +1271,16 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         <motion.div
                                             initial={bid.isNew ? { opacity: 0, y: -8 } : false}
                                             animate={{ opacity: 1, y: 0 }}
-                                            className={`group relative flex items-center gap-2 px-3 py-2 rounded-xl transition-colors ${i === 0 ? "bg-primary/5 border border-primary/15" : "hover:bg-white/5"} ${isSeller && isLive && bid.bidId ? "cursor-pointer" : ""}`}
+                                            className={`group relative flex items-center gap-2 px-3 py-2 rounded-xl transition-colors ${i === 0 ? "bg-primary/5 border border-primary/15" : "hover:bg-[var(--bg-card)]"} ${isSeller && isLive && bid.bidId ? "cursor-pointer" : ""}`}
                                             onClick={isSeller && isLive && bid.bidId ? () => { setAcceptingBid(bid); setAcceptError(null) } : undefined}
                                         >
-                                            <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center shrink-0">
-                                                <span className="text-[9px] font-black text-slate-400">{bid.initials}</span>
+                                            <div className="w-6 h-6 rounded-full bg-[var(--bg-card)] flex items-center justify-center shrink-0">
+                                                <span className="text-[9px] font-black text-[var(--text-muted)]">{bid.initials}</span>
                                             </div>
-                                            <span className="text-slate-500 text-[10px]">bid</span>
-                                            <span className="font-mono font-black text-white text-xs">£{bid.amount.toLocaleString()}</span>
+                                            <span className="text-[var(--text-muted)] text-[10px]">bid</span>
+                                            <span className="font-mono font-black text-[var(--text-primary)] text-xs">£{bid.amount.toLocaleString()}</span>
                                             {i === 0 && <TrendingUp size={10} className="text-emerald-400 shrink-0" />}
-                                            <span className="ml-auto text-[9px] text-slate-600 shrink-0">{bid.time}</span>
+                                            <span className="ml-auto text-[9px] text-[var(--text-muted)] shrink-0">{bid.time}</span>
                                             {isSeller && isLive && bid.bidId && (
                                                 <span className="hidden group-hover:flex items-center gap-1 absolute right-2 top-1/2 -translate-y-1/2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[9px] font-black px-1.5 py-0.5 rounded-lg pointer-events-none">
                                                     <CheckCircle size={9} /> Accept
@@ -1291,7 +1291,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         {bid.bidId === cancelableBidId && !isSeller && (
                                             <div className="flex items-center gap-2 mt-1 ml-2">
                                                 <svg width="24" height="24" viewBox="0 0 24 24" className="-rotate-90">
-                                                    <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-700" />
+                                                    <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2" className="text-[var(--border-default)]" />
                                                     <circle
                                                         cx="12" cy="12" r="10"
                                                         fill="none"
@@ -1319,16 +1319,16 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     </div>
 
                     {/* Bid controls */}
-                    <div className="bg-slate-800/60 border border-white/10 rounded-2xl p-5 space-y-4">
+                    <div className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl p-5 space-y-4">
                         {isCancelled ? (
                             <div className="text-center py-4 space-y-2">
-                                <Ban size={20} className="text-slate-500 mx-auto" />
-                                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Auction Cancelled</p>
+                                <Ban size={20} className="text-[var(--text-muted)] mx-auto" />
+                                <p className="text-[var(--text-muted)] text-xs font-bold uppercase tracking-widest">Auction Cancelled</p>
                             </div>
                         ) : isEnded ? (
                             <div className="text-center py-4 space-y-2">
-                                <Gavel size={20} className="text-slate-500 mx-auto" />
-                                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">
+                                <Gavel size={20} className="text-[var(--text-muted)] mx-auto" />
+                                <p className="text-[var(--text-muted)] text-xs font-bold uppercase tracking-widest">
                                     {userWon ? "You won! 🏆" : "Auction Ended"}
                                 </p>
                                 {userWon && (
@@ -1344,7 +1344,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                 <CalendarClock size={20} className="text-blue-400 mx-auto" />
                                 <p className="text-blue-300 text-xs font-bold uppercase tracking-widest">Bidding Opens Soon</p>
                                 {startTime && (
-                                    <p className="text-slate-500 text-xs">
+                                    <p className="text-[var(--text-muted)] text-xs">
                                         {startTime.toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                                     </p>
                                 )}
@@ -1353,21 +1353,21 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                             <div className="text-center py-4 space-y-2">
                                 <Info size={20} className="text-blue-400 mx-auto" />
                                 <p className="text-blue-300 text-xs font-bold">This is your auction</p>
-                                <p className="text-slate-500 text-xs leading-relaxed">You cannot bid on your own listing. Watchers and bids appear in real time.</p>
+                                <p className="text-[var(--text-muted)] text-xs leading-relaxed">You cannot bid on your own listing. Watchers and bids appear in real time.</p>
                                 {isLive && (
                                     <p className="text-emerald-400/70 text-[10px] leading-relaxed">
                                         Tap any bid in the live feed to accept it and end the auction immediately.
                                     </p>
                                 )}
                                 <Link href="/dashboard/seller/auctions">
-                                    <Button variant="outline" className="w-full mt-2 text-xs h-9 border-white/10 text-slate-400">
+                                    <Button variant="outline" className="w-full mt-2 text-xs h-9 border-[var(--border-default)] text-[var(--text-muted)]">
                                         Manage Auction
                                     </Button>
                                 </Link>
                             </div>
                         ) : !user ? (
                             <div className="space-y-3">
-                                <p className="text-slate-400 text-xs text-center leading-relaxed">
+                                <p className="text-[var(--text-muted)] text-xs text-center leading-relaxed">
                                     Sign in to place bids and participate in live auctions.
                                 </p>
                                 <Link href={`/auth/login?redirect=/auctions/live/${params.id}`}>
@@ -1375,7 +1375,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         Sign In to Bid
                                     </Button>
                                 </Link>
-                                <Link href="/auth/signup" className="block text-center text-xs text-slate-500 hover:text-slate-300 transition-colors">
+                                <Link href="/auth/signup" className="block text-center text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors">
                                     Don't have an account? <span className="text-primary underline">Sign up free</span>
                                 </Link>
                             </div>
@@ -1383,15 +1383,15 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                             <div className="text-center py-4 space-y-2">
                                 <Ban size={20} className="text-amber-400 mx-auto" />
                                 <p className="text-amber-300 text-xs font-bold">Dealer accounts only</p>
-                                <p className="text-slate-500 text-xs leading-relaxed">Only verified dealers can place bids on CarMazium auctions. Upgrade your account to participate.</p>
+                                <p className="text-[var(--text-muted)] text-xs leading-relaxed">Only verified dealers can place bids on CarMazium auctions. Upgrade your account to participate.</p>
                             </div>
                         ) : (
                             <>
                                 {/* Status */}
-                                <div className="text-center pb-3 border-b border-white/5">
-                                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Current Bid</p>
+                                <div className="text-center pb-3 border-b border-[var(--border-default)]">
+                                    <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold mb-1">Current Bid</p>
                                     <p className="text-2xl font-black text-white font-mono">£{currentBid.toLocaleString()}</p>
-                                    <p className="text-[10px] text-slate-500 mt-1">
+                                    <p className="text-[10px] text-[var(--text-muted)] mt-1">
                                         Min next bid: <span className="text-white font-bold">£{(currentBid + minIncrement).toLocaleString()}</span>
                                     </p>
                                 </div>
@@ -1403,9 +1403,9 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             key={inc}
                                             onClick={() => handleBid(currentBid + inc)}
                                             disabled={bidLoading}
-                                            className="bg-slate-900/60 hover:bg-primary/10 hover:border-primary/30 border border-white/10 rounded-xl py-3 flex flex-col items-center gap-0.5 transition-all active:scale-95 disabled:opacity-40 group"
+                                            className="bg-[var(--bg-input)] hover:bg-primary/10 hover:border-primary/30 border border-[var(--border-default)] rounded-xl py-3 flex flex-col items-center gap-0.5 transition-all active:scale-95 disabled:opacity-40 group"
                                         >
-                                            <span className="text-[9px] text-slate-500 group-hover:text-slate-400 font-bold transition-colors">
+                                            <span className="text-[9px] text-[var(--text-muted)] group-hover:text-[var(--text-muted)] font-bold transition-colors">
                                                 +£{inc >= 1000 ? `${inc / 1000}k` : inc}
                                             </span>
                                             <span className="text-sm text-white font-black font-mono">£{(currentBid + inc).toLocaleString()}</span>
@@ -1416,11 +1416,11 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                 {/* Custom bid */}
                                 <div className="flex gap-2">
                                     <div className="relative flex-1">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-black">£</span>
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-xs font-black">£</span>
                                         <Input
                                             type="number"
                                             placeholder="Custom amount"
-                                            className="bg-slate-900/60 border-white/10 focus:border-primary/50 text-white pl-6 h-11 text-sm font-mono"
+                                            className="bg-[var(--bg-input)] border-[var(--border-default)] focus:border-primary/50 text-white pl-6 h-11 text-sm font-mono"
                                             value={bidAmount}
                                             onChange={e => { setBidAmount(e.target.value); setBidError(null) }}
                                             onKeyDown={e => { if (e.key === "Enter" && bidAmount) handleBid(Number(bidAmount)) }}
@@ -1454,8 +1454,8 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
 
                     {/* Buy It Now card */}
                     {showBin && (
-                        <div className="rounded-xl border border-primary/40 bg-slate-800/60 p-4">
-                            <p className="text-sm text-slate-400 mb-1">Buy It Now</p>
+                        <div className="rounded-xl border border-primary/40 bg-[var(--bg-input)] p-4">
+                            <p className="text-sm text-[var(--text-muted)] mb-1">Buy It Now</p>
                             <p className="text-2xl font-mono font-bold text-white mb-3">
                                 £{Number(auction.buyItNowPrice!).toLocaleString('en-GB')}
                             </p>
@@ -1491,7 +1491,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                 <button
                                     onClick={handleBinDecline}
                                     disabled={binLoading}
-                                    className="flex-1 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-50 py-2 text-sm font-semibold text-slate-200 transition-colors"
+                                    className="flex-1 rounded-lg bg-[var(--bg-card)] hover:bg-[var(--bg-card-hover)] disabled:opacity-50 py-2 text-sm font-semibold transition-colors"
                                 >
                                     Decline
                                 </button>
@@ -1501,7 +1501,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
 
                     {/* Trust note */}
                     {!isCancelled && !isSeller && (
-                        <div className="flex items-start gap-2.5 px-3 py-2.5 bg-slate-800/40 border border-white/5 rounded-xl text-xs text-slate-500">
+                        <div className="flex items-start gap-2.5 px-3 py-2.5 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl text-xs text-[var(--text-muted)]">
                             <ShieldCheck size={13} className="shrink-0 mt-0.5 text-emerald-500" />
                             All deals are arranged directly between buyer and seller via Carmazium secure chat.
                         </div>
@@ -1514,10 +1514,10 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                 <CreditCard size={11} /> Buyer Fee
                             </p>
                             <div className="flex items-center justify-between text-xs">
-                                <span className="text-slate-400">Fee on winning</span>
+                                <span className="text-[var(--text-muted)]">Fee on winning</span>
                                 <span className="text-white font-black text-base">£125</span>
                             </div>
-                            <p className="text-[10px] text-slate-500">One-time fee payable after the auction closes if you win.</p>
+                            <p className="text-[10px] text-[var(--text-muted)]">One-time fee payable after the auction closes if you win.</p>
                         </div>
                     )}
                 </aside>

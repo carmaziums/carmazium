@@ -85,7 +85,7 @@ export default function DealerPurchasesPage() {
     const totalValue = purchases.reduce((sum, p) => sum + p.purchasePrice, 0)
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
+        <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
@@ -97,13 +97,13 @@ export default function DealerPurchasesPage() {
                         />
 
                         {/* View Toggle */}
-                        <div className="flex items-center gap-1 p-1 bg-slate-800/80 border border-white/[0.06] rounded-xl shrink-0">
+                        <div className="flex items-center gap-1 p-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl shrink-0">
                             <button
                                 onClick={() => setViewMode("list")}
                                 className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all ${
                                     viewMode === "list"
                                         ? "bg-gradient-to-r from-primary to-red-700 text-white shadow-lg shadow-primary/20"
-                                        : "text-gray-400 hover:text-white hover:bg-white/[0.04]"
+                                        : "text-[var(--text-muted)] hover:text-white hover:bg-white/[0.04]"
                                 }`}
                             >
                                 <LayoutList size={14} /> List
@@ -113,7 +113,7 @@ export default function DealerPurchasesPage() {
                                 className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all ${
                                     viewMode === "kanban"
                                         ? "bg-gradient-to-r from-primary to-red-700 text-white shadow-lg shadow-primary/20"
-                                        : "text-gray-400 hover:text-white hover:bg-white/[0.04]"
+                                        : "text-[var(--text-muted)] hover:text-white hover:bg-white/[0.04]"
                                 }`}
                             >
                                 <Columns3 size={14} /> Kanban
@@ -186,10 +186,10 @@ export default function DealerPurchasesPage() {
                                             <div className={`p-1.5 rounded-lg ${config.color.replace("text-", "bg-").replace("400", "500/10")} border ${config.color.replace("text-", "border-").replace("400", "500/20")}`}>
                                                 <Icon size={14} className={config.color} />
                                             </div>
-                                            <h2 className="text-xs font-black uppercase tracking-widest text-gray-400">
+                                            <h2 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">
                                                 {config.label}
                                             </h2>
-                                            <span className="px-2 py-0.5 rounded-md bg-white/5 text-xs font-bold text-gray-500 tabular-nums">
+                                            <span className="px-2 py-0.5 rounded-md bg-[var(--bg-card)] text-xs font-bold text-[var(--text-muted)] tabular-nums">
                                                 {items.length}
                                             </span>
                                         </div>
@@ -226,14 +226,14 @@ export default function DealerPurchasesPage() {
                                 const Icon = config.icon
 
                                 return (
-                                    <div key={status} className="bg-slate-800/30 border border-white/[0.04] rounded-2xl p-4 min-h-[200px]">
+                                    <div key={status} className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl p-4 min-h-[200px]">
                                         {/* Column Header */}
-                                        <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/5">
+                                        <div className="flex items-center gap-2 mb-4 pb-3 border-b border-[var(--border-default)]">
                                             <Icon size={14} className={config.color} />
-                                            <span className="text-xs font-black uppercase tracking-widest text-gray-400 flex-1">
+                                            <span className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] flex-1">
                                                 {config.label}
                                             </span>
-                                            <span className={`min-w-[20px] h-5 flex items-center justify-center rounded-md text-xs font-black tabular-nums bg-white/5 text-gray-500`}>
+                                            <span className={`min-w-[20px] h-5 flex items-center justify-center rounded-md text-xs font-black tabular-nums bg-[var(--bg-card)] text-[var(--text-muted)]`}>
                                                 {items.length}
                                             </span>
                                         </div>
@@ -246,16 +246,16 @@ export default function DealerPurchasesPage() {
                                                         {item.vehicleTitle}
                                                     </h4>
                                                     {item.vehicleSubtitle && (
-                                                        <p className="text-xs text-gray-500 mt-0.5 truncate">{item.vehicleSubtitle}</p>
+                                                        <p className="text-xs text-[var(--text-muted)] mt-0.5 truncate">{item.vehicleSubtitle}</p>
                                                     )}
-                                                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
+                                                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-[var(--border-default)]">
                                                         <span className="text-sm font-black text-white tabular-nums">
                                                             £{item.purchasePrice.toLocaleString()}
                                                         </span>
                                                         <div className="flex items-center gap-1">
                                                             <button
                                                                 onClick={() => setSummaryItem(item)}
-                                                                className="text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-primary transition-colors px-2 py-1 rounded hover:bg-white/5"
+                                                                className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] hover:text-primary transition-colors px-2 py-1 rounded hover:bg-[var(--bg-card)]"
                                                             >
                                                                 Details
                                                             </button>
@@ -264,9 +264,9 @@ export default function DealerPurchasesPage() {
 
                                                     {/* Docs progress for reviewing */}
                                                     {item.status === "reviewing_docs" && item.documentsReceived !== undefined && item.documentsTotal !== undefined && (
-                                                        <div className="mt-2.5 pt-2.5 border-t border-white/5">
+                                                        <div className="mt-2.5 pt-2.5 border-t border-[var(--border-default)]">
                                                             <div className="flex items-center justify-between mb-1">
-                                                                <span className="text-xs font-bold uppercase tracking-widest text-gray-500">Documents</span>
+                                                                <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Documents</span>
                                                                 <span className="text-xs font-bold text-blue-400 tabular-nums">{item.documentsReceived}/{item.documentsTotal}</span>
                                                             </div>
                                                             <div className="w-full h-1 bg-black/40 rounded-full overflow-hidden">
@@ -280,7 +280,7 @@ export default function DealerPurchasesPage() {
 
                                                     {/* ETA for delivery */}
                                                     {item.status === "delivery_requested" && item.estimatedDelivery && (
-                                                        <div className="mt-2.5 pt-2.5 border-t border-white/5">
+                                                        <div className="mt-2.5 pt-2.5 border-t border-[var(--border-default)]">
                                                             <div className="flex items-center gap-1.5">
                                                                 <Truck size={10} className="text-violet-400" />
                                                                 <span className="text-xs font-bold text-violet-400">
@@ -315,32 +315,32 @@ export default function DealerPurchasesPage() {
                 {summaryItem && (
                     <div className="space-y-5">
                         <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-xl bg-slate-700 border border-white/5 flex items-center justify-center shrink-0">
+                            <div className="w-16 h-16 rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] flex items-center justify-center shrink-0">
                                 <Package size={24} className="text-gray-600" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-black text-white">{summaryItem.vehicleTitle}</h3>
+                                <h3 className="text-lg font-black">{summaryItem.vehicleTitle}</h3>
                                 {summaryItem.vehicleSubtitle && (
-                                    <p className="text-sm text-gray-400">{summaryItem.vehicleSubtitle}</p>
+                                    <p className="text-sm text-[var(--text-muted)]">{summaryItem.vehicleSubtitle}</p>
                                 )}
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-black/20 rounded-xl p-4 border border-white/5">
-                                <span className="text-xs font-bold uppercase tracking-widest text-gray-500 block mb-1">Purchase Price</span>
+                            <div className="bg-black/20 rounded-xl p-4 border border-[var(--border-default)]">
+                                <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block mb-1">Purchase Price</span>
                                 <span className="text-xl font-black text-white tabular-nums">£{summaryItem.purchasePrice.toLocaleString()}</span>
                             </div>
-                            <div className="bg-black/20 rounded-xl p-4 border border-white/5">
-                                <span className="text-xs font-bold uppercase tracking-widest text-gray-500 block mb-1">Purchase Date</span>
-                                <span className="text-sm font-bold text-white">
+                            <div className="bg-black/20 rounded-xl p-4 border border-[var(--border-default)]">
+                                <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block mb-1">Purchase Date</span>
+                                <span className="text-sm font-bold">
                                     {new Date(summaryItem.purchaseDate).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
                                 </span>
                             </div>
                         </div>
 
-                        <div className="bg-black/20 rounded-xl p-4 border border-white/5">
-                            <span className="text-xs font-bold uppercase tracking-widest text-gray-500 block mb-1">Current Status</span>
+                        <div className="bg-black/20 rounded-xl p-4 border border-[var(--border-default)]">
+                            <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block mb-1">Current Status</span>
                             <span className={`inline-flex items-center gap-2 text-sm font-bold ${
                                 STATUS_LABELS[summaryItem.status].color
                             }`}>
@@ -349,9 +349,9 @@ export default function DealerPurchasesPage() {
                             </span>
                         </div>
 
-                        <div className="bg-black/20 rounded-xl p-4 border border-white/5">
-                            <span className="text-xs font-bold uppercase tracking-widest text-gray-500 block mb-1">Reference</span>
-                            <span className="text-sm text-gray-300 font-mono">{summaryItem.id}</span>
+                        <div className="bg-black/20 rounded-xl p-4 border border-[var(--border-default)]">
+                            <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block mb-1">Reference</span>
+                            <span className="text-sm text-[var(--text-secondary)] font-mono">{summaryItem.id}</span>
                         </div>
 
                         {summaryItem.estimatedDelivery && (
@@ -374,37 +374,37 @@ export default function DealerPurchasesPage() {
             >
                 {sellerItem && (
                     <div className="space-y-5">
-                        <div className="bg-black/20 rounded-xl p-5 border border-white/5">
+                        <div className="bg-black/20 rounded-xl p-5 border border-[var(--border-default)]">
                             <div className="flex items-center gap-4 mb-4">
                                 <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-black text-lg">
                                     {sellerItem.sellerName?.charAt(0) || "S"}
                                 </div>
                                 <div>
-                                    <h3 className="text-base font-black text-white">{sellerItem.sellerName}</h3>
-                                    <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">Verified Seller</p>
+                                    <h3 className="text-base font-black">{sellerItem.sellerName}</h3>
+                                    <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold">Verified Seller</p>
                                 </div>
                             </div>
                         </div>
 
                         <div className="space-y-3">
-                            <div className="bg-black/20 rounded-xl p-4 border border-white/5">
-                                <span className="text-xs font-bold uppercase tracking-widest text-gray-500 block mb-1">Email</span>
+                            <div className="bg-black/20 rounded-xl p-4 border border-[var(--border-default)]">
+                                <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block mb-1">Email</span>
                                 <a href={`mailto:${sellerItem.sellerEmail}`} className="text-sm text-primary hover:text-white transition-colors font-medium">
                                     {sellerItem.sellerEmail}
                                 </a>
                             </div>
-                            <div className="bg-black/20 rounded-xl p-4 border border-white/5">
-                                <span className="text-xs font-bold uppercase tracking-widest text-gray-500 block mb-1">Phone</span>
+                            <div className="bg-black/20 rounded-xl p-4 border border-[var(--border-default)]">
+                                <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block mb-1">Phone</span>
                                 <a href={`tel:${sellerItem.sellerPhone}`} className="text-sm text-primary hover:text-white transition-colors font-medium">
                                     {sellerItem.sellerPhone}
                                 </a>
                             </div>
                         </div>
 
-                        <div className="bg-black/20 rounded-xl p-4 border border-white/5">
-                            <span className="text-xs font-bold uppercase tracking-widest text-gray-500 block mb-1">Vehicle</span>
-                            <span className="text-sm font-bold text-white">{sellerItem.vehicleTitle}</span>
-                            <span className="text-xs text-gray-400 block mt-0.5">{sellerItem.vehicleSubtitle}</span>
+                        <div className="bg-black/20 rounded-xl p-4 border border-[var(--border-default)]">
+                            <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block mb-1">Vehicle</span>
+                            <span className="text-sm font-bold">{sellerItem.vehicleTitle}</span>
+                            <span className="text-xs text-[var(--text-muted)] block mt-0.5">{sellerItem.vehicleSubtitle}</span>
                         </div>
                     </div>
                 )}

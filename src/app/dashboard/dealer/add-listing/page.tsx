@@ -7,11 +7,11 @@ import { Loader2 } from "lucide-react"
 
 export default function DashboardAddListingPage() {
     return (
-        <div className="min-h-screen pt-20 bg-slate-900 relative">
-            <div className="fixed inset-0 bg-gradient-to-br from-[#0f172a] to-[#1e293b] -z-10" />
+        <div className="min-h-screen pt-20 relative">
+            <div className="fixed inset-0 -z-10" style={{ background: 'var(--bg-body)' }} />
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8 pb-24 lg:pb-12">
                 <DashboardSidebar role="dealer" />
-                <main className="flex-1 bg-slate-900/40 rounded-2xl border border-white/5 overflow-hidden">
+                <main className="flex-1 bg-[var(--bg-card)] rounded-2xl border border-[var(--border-default)] overflow-hidden">
                     <React.Suspense fallback={
                         <div className="p-10 flex items-center justify-center">
                             <Loader2 className="animate-spin text-primary" size={32} />

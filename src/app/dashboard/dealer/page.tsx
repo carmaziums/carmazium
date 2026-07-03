@@ -106,14 +106,14 @@ export default function DealerDashboard() {
 
     if (authLoading) {
         return (
-            <div className="min-h-screen pt-20 pb-12 bg-[#0A0A0C] flex flex-col lg:flex-row gap-8 px-5 container mx-auto">
-                <div className="w-full lg:w-64 h-[600px] shrink-0 rounded-2xl bg-slate-900/40 border border-white/5 animate-pulse"></div>
+            <div className="min-h-screen pt-20 pb-12 flex flex-col lg:flex-row gap-8 px-5 container mx-auto">
+                <div className="w-full lg:w-64 h-[600px] shrink-0 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-default)] animate-pulse"></div>
                 <div className="flex-1 space-y-8">
-                    <div className="h-36 rounded-2xl bg-slate-900/40 border border-white/5 relative overflow-hidden"><div className="absolute inset-0 metallic-foil opacity-5"></div></div>
+                    <div className="h-36 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-default)] relative overflow-hidden"><div className="absolute inset-0 metallic-foil opacity-5"></div></div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {[1, 2, 3, 4].map(i => <div key={i} className="h-32 rounded-2xl bg-slate-900/40 border border-white/5 relative overflow-hidden"><div className="absolute inset-0 animate-shimmer-sweep bg-gradient-to-r from-transparent via-white/5 to-transparent"></div></div>)}
+                        {[1, 2, 3, 4].map(i => <div key={i} className="h-32 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-default)] relative overflow-hidden"><div className="absolute inset-0 animate-shimmer-sweep bg-gradient-to-r from-transparent via-white/5 to-transparent"></div></div>)}
                     </div>
-                    <div className="h-64 rounded-2xl bg-slate-900/40 border border-white/5 animate-pulse"></div>
+                    <div className="h-64 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-default)] animate-pulse"></div>
                 </div>
             </div>
         )
@@ -124,7 +124,7 @@ export default function DealerDashboard() {
         : (user?.email?.split('@')[0] || "Dealer")
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
+        <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
 
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account">
@@ -146,10 +146,10 @@ export default function DealerDashboard() {
                                     <Mail className="h-10 w-10 text-amber-400" />
                                 </div>
                                 <h2 className="text-2xl font-black font-heading tracking-tight mb-2">Verify Your Email</h2>
-                                <p className="text-gray-400 text-sm mb-1">
-                                    We&apos;ve sent a verification link to <strong className="text-white">{user?.email}</strong>
+                                <p className="text-[var(--text-muted)] text-sm mb-1">
+                                    We&apos;ve sent a verification link to <strong className="text-[var(--text-primary)]">{user?.email}</strong>
                                 </p>
-                                <p className="text-gray-500 text-sm mb-6">
+                                <p className="text-[var(--text-muted)] text-sm mb-6">
                                     Please verify your email address to access your dealer dashboard and start managing your dealership.
                                 </p>
 
@@ -183,14 +183,14 @@ export default function DealerDashboard() {
                             <div className="relative z-10">
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3">
                                     <div className="flex items-center gap-3">
-                                        <div className="p-3 bg-[#0A0A0C] rounded-xl border border-white/5 shadow-2xl">
-                                            <Building2 className="text-white" size={24} />
+                                        <div className="p-3 bg-[var(--bg-input)] rounded-xl border border-[var(--border-default)] shadow-2xl">
+                                            <Building2 className="text-[var(--text-primary)]" size={24} />
                                         </div>
                                         <div>
                                             <h1 className="text-3xl font-black font-heading uppercase tracking-tighter metallic-foil">
                                                 {DEALER_ROUTE_CONFIG[0].title}
                                             </h1>
-                                            <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1 opacity-70">
+                                            <p className="text-[var(--text-muted)] text-xs font-bold uppercase tracking-widest mt-1 opacity-70">
                                                 {DEALER_ROUTE_CONFIG[0].subHeader}, {userName}
                                             </p>
                                             {stats?.isVerified && (
@@ -269,7 +269,7 @@ export default function DealerDashboard() {
                                 <div className="p-2.5 bg-primary/10 border border-primary/20 rounded-xl"><Car size={20} className="text-primary group-hover:scale-110 transition-transform" /></div>
                                 <div>
                                     <p className="font-bold text-white text-sm relative">Inventory<span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all"></span></p>
-                                    <p className="text-gray-500 text-xs uppercase font-bold tracking-wider mt-0.5">Manage Stock</p>
+                                    <p className="text-[var(--text-muted)] text-xs uppercase font-bold tracking-wider mt-0.5">Manage Stock</p>
                                 </div>
                             </div>
                         </Link>
@@ -278,13 +278,13 @@ export default function DealerDashboard() {
                                 <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl"><Kanban size={20} className="text-amber-400 group-hover:scale-110 transition-transform" /></div>
                                 <div>
                                      <p className="font-bold text-white text-sm relative">Leads<span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-amber-400 group-hover:w-full transition-all"></span></p>
-                                     <p className="text-gray-500 text-xs uppercase font-bold tracking-wider mt-0.5">Sales Pipeline</p>
+                                     <p className="text-[var(--text-muted)] text-xs uppercase font-bold tracking-wider mt-0.5">Sales Pipeline</p>
                                 </div>
                             </div>
                         </Link>
                         
                         <div className="dealer-glass-card p-5 group flex items-center justify-center col-span-1 md:col-span-2">
-                            <p className="text-gray-400 text-sm">Dashboard Overview initialized successfully.</p>
+                            <p className="text-[var(--text-muted)] text-sm">Dashboard Overview initialized successfully.</p>
                         </div>
                     </div>
 
@@ -292,20 +292,20 @@ export default function DealerDashboard() {
                     <div className="flex flex-col lg:flex-row gap-8">
                         {/* Recent Leads (Takes 2/3 width) */}
                         <div className="dealer-glass-card flex-[2] flex flex-col">
-                            <div className="p-6 border-b border-white/5 flex justify-between items-center bg-[#0A0A0C]/40">
-                                <h2 className="text-xl font-black font-heading text-white uppercase tracking-tight">Recent Leads</h2>
-                                <Link href="/dashboard/dealer/crm" className="text-primary hover:text-white text-xs font-bold transition-colors uppercase tracking-widest border border-primary/20 px-3 py-1.5 rounded-md hover:bg-primary/10">View All</Link>
+                            <div className="p-6 border-b border-[var(--border-default)] flex justify-between items-center bg-[var(--bg-input)]">
+                                <h2 className="text-xl font-black font-heading uppercase tracking-tight">Recent Leads</h2>
+                                <Link href="/dashboard/dealer/crm" className="text-primary hover:text-red-600 dark:hover:text-white text-xs font-bold transition-colors uppercase tracking-widest border border-primary/20 px-3 py-1.5 rounded-md hover:bg-primary/10">View All</Link>
                             </div>
                             <div className="overflow-x-auto flex-1">
                                 <table className="w-full text-left h-full">
-                                    <thead className="bg-[#0A0A0C]/80 text-gray-400 text-xs uppercase font-black tracking-widest border-b border-white/5">
+                                    <thead className="bg-[var(--bg-input)] text-[var(--text-muted)] text-xs uppercase font-black tracking-widest border-b border-[var(--border-default)]">
                                         <tr>
                                             <th className="px-6 py-4">Name</th>
                                             <th className="px-6 py-4">Vehicle</th>
                                             <th className="px-6 py-4 text-center">Status</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-white/5 text-white/80 bg-slate-900/20">
+                                    <tbody className="divide-y divide-[var(--border-default)] text-[var(--text-secondary)] bg-[var(--bg-input)]">
                                         {loading ? (
                                             <tr>
                                                 <td colSpan={3} className="px-6 py-8 text-center">
@@ -314,7 +314,7 @@ export default function DealerDashboard() {
                                             </tr>
                                         ) : !stats?.recentLeads?.length ? (
                                             <tr>
-                                                <td colSpan={3} className="px-6 py-12 text-center text-gray-500 text-sm">
+                                                <td colSpan={3} className="px-6 py-12 text-center text-[var(--text-muted)] text-sm">
                                                     No leads yet. As buyers interact with your listings, leads will appear here.
                                                 </td>
                                             </tr>
@@ -322,16 +322,16 @@ export default function DealerDashboard() {
                                             stats.recentLeads.slice(0, 4).map((lead: any) => (
                                                 <tr key={lead.id} className="hover:bg-white/[0.02] transition-colors group">
                                                     <td className="px-6 py-4">
-                                                        <p className="font-bold text-white group-hover:text-primary transition-colors">{lead.buyerName}</p>
-                                                        <p className="text-xs text-gray-400 font-medium">{lead.buyerEmail}</p>
+                                                        <p className="font-bold group-hover:text-primary transition-colors">{lead.buyerName}</p>
+                                                        <p className="text-xs text-[var(--text-muted)] font-medium">{lead.buyerEmail}</p>
                                                     </td>
-                                                    <td className="px-6 py-4 text-sm text-gray-300 font-medium">{lead.listing?.title || '—'}</td>
+                                                    <td className="px-6 py-4 text-sm text-[var(--text-secondary)] font-medium">{lead.listing?.title || '—'}</td>
                                                     <td className="px-6 py-4 text-center">
                                                         <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs uppercase tracking-wider font-bold ${
                                                             lead.status === 'NEW' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
                                                             lead.status === 'CONTACTED' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
                                                             lead.status === 'WON' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                                                            'bg-gray-500/10 text-gray-400 border border-gray-500/20'
+                                                            'bg-gray-500/10 text-[var(--text-muted)] border border-gray-500/20'
                                                         }`}>
                                                             {lead.status}
                                                         </span>

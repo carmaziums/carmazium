@@ -51,9 +51,9 @@ export default function DealerDashboardLayout({
 
     if (loading) {
         return (
-            <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950 text-white">
+            <div className="fixed inset-0 z-50 flex flex-col items-center justify-center" style={{ background: 'var(--bg-body)' }}>
                 <Loader2 className="animate-spin text-primary mb-4" size={48} />
-                <p className="text-sm tracking-wider uppercase text-slate-400 font-semibold font-heading">
+                <p className="text-sm tracking-wider uppercase text-[var(--text-muted)] font-semibold font-heading">
                     Synchronizing Dealer Portal...
                 </p>
             </div>
@@ -83,18 +83,18 @@ export default function DealerDashboardLayout({
                     <div className="w-24 h-24 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shadow-[0_0_40px_rgba(245,158,11,0.15)]">
                         <Lock size={40} className="text-amber-400" />
                     </div>
-                    <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-slate-950 border border-white/10 flex items-center justify-center">
-                        <ShieldCheck size={16} className="text-gray-500" />
+                    <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-slate-950 border border-[var(--border-default)] flex items-center justify-center">
+                        <ShieldCheck size={16} className="text-[var(--text-muted)]" />
                     </div>
                 </div>
 
                 <h1 className="text-3xl font-black font-heading text-white mb-3 tracking-tight">
                     Dealer Features Locked
                 </h1>
-                <p className="text-gray-400 max-w-md mb-2 leading-relaxed">
+                <p className="text-[var(--text-muted)] max-w-md mb-2 leading-relaxed">
                     Complete KYC verification to unlock your dealer dashboard and start listing vehicles, managing inventory, and accessing auction tools.
                 </p>
-                <p className="text-xs text-gray-600 uppercase tracking-widest mb-10">
+                <p className="text-xs text-[var(--text-secondary)] uppercase tracking-widest mb-10">
                     Verification typically takes less than 24 hours
                 </p>
 
@@ -108,9 +108,9 @@ export default function DealerDashboardLayout({
                         "Analytics",
                         "Offer Management",
                     ].map(f => (
-                        <div key={f} className="flex items-center gap-2 p-3 rounded-xl bg-slate-900/60 border border-white/5 opacity-50">
+                        <div key={f} className="flex items-center gap-2 p-3 rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] opacity-50">
                             <Lock size={12} className="text-amber-400 shrink-0" />
-                            <span className="text-xs text-gray-400 font-semibold">{f}</span>
+                            <span className="text-xs text-[var(--text-muted)] font-semibold">{f}</span>
                         </div>
                     ))}
                 </div>
@@ -122,12 +122,12 @@ export default function DealerDashboardLayout({
                     Start KYC Verification <ArrowRight size={20} />
                 </button>
 
-                <p className="text-xs text-gray-600 mt-6">
+                <p className="text-xs text-[var(--text-secondary)] mt-6">
                     Changed your mind?{' '}
                     <button
                         onClick={handleSwitchToBuyer}
                         disabled={switchingRole}
-                        className="text-gray-500 hover:text-gray-300 underline transition-colors disabled:opacity-50"
+                        className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] underline transition-colors disabled:opacity-50"
                     >
                         {switchingRole ? 'Switching...' : 'Go to buyer dashboard'}
                     </button>

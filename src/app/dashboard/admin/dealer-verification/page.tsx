@@ -92,21 +92,21 @@ function DocumentLightbox({
             ) : (
               <FileImage size={16} className="text-primary" />
             )}
-            <span className="text-xs font-extrabold uppercase tracking-widest text-slate-300">{label}</span>
+            <span className="text-xs font-extrabold uppercase tracking-widest text-[var(--text-secondary)]">{label}</span>
           </div>
           <div className="flex items-center gap-2">
             <a
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-white/10 text-xs font-bold text-slate-300 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)] border border-[var(--border-default)] text-xs font-bold text-[var(--text-secondary)] transition-colors"
             >
               <ExternalLink size={12} />
               Open in Tab
             </a>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg bg-slate-800 hover:bg-red-500/20 border border-white/10 hover:border-red-500/30 text-slate-400 hover:text-red-400 transition-all"
+              className="p-1.5 rounded-lg bg-[var(--bg-input)] hover:bg-red-500/20 border border-[var(--border-default)] hover:border-red-500/30 text-[var(--text-muted)] hover:text-red-400 transition-all"
             >
               <X size={16} />
             </button>
@@ -114,7 +114,7 @@ function DocumentLightbox({
         </div>
 
         {/* Document viewer */}
-        <div className="w-full rounded-2xl border border-white/10 overflow-hidden bg-slate-900/80 shadow-2xl shadow-black/60 max-h-[75vh]">
+        <div className="w-full rounded-2xl border border-[var(--border-default)] overflow-hidden bg-[var(--bg-card)] shadow-2xl shadow-black/60 max-h-[75vh]">
           {isImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -132,7 +132,7 @@ function DocumentLightbox({
           )}
         </div>
 
-        <p className="text-xs text-slate-500 font-semibold uppercase tracking-widest">
+        <p className="text-xs text-[var(--text-muted)] font-semibold uppercase tracking-widest">
           Press ESC or click outside to close
         </p>
       </div>
@@ -161,15 +161,15 @@ function ProofThumbnail({
       className="group relative flex items-center gap-2.5 px-3 py-2 rounded-lg border border-primary/20 bg-primary/5 hover:bg-primary/10 hover:border-primary/40 transition-all text-left w-full"
     >
       {isImage ? (
-        <div className="relative shrink-0 w-10 h-10 rounded-lg overflow-hidden border border-white/10 bg-slate-900">
+        <div className="relative shrink-0 w-10 h-10 rounded-lg overflow-hidden border border-[var(--border-default)] bg-[var(--bg-dropdown)]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={url} alt="preview" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
-            <ZoomIn size={12} className="text-white" />
+            <ZoomIn size={12} className="" />
           </div>
         </div>
       ) : (
-        <div className="shrink-0 w-10 h-10 rounded-lg bg-slate-900 border border-white/10 flex items-center justify-center">
+        <div className="shrink-0 w-10 h-10 rounded-lg bg-[var(--bg-dropdown)] border border-[var(--border-default)] flex items-center justify-center">
           <FileText size={16} className="text-primary" />
         </div>
       )}
@@ -178,7 +178,7 @@ function ProofThumbnail({
           <ZoomIn size={9} />
           Click to Review
         </p>
-        <p className="text-xs font-semibold text-slate-300 truncate">{url.split("/").pop()}</p>
+        <p className="text-xs font-semibold text-[var(--text-secondary)] truncate">{url.split("/").pop()}</p>
       </div>
     </button>
   );
@@ -298,7 +298,7 @@ export default function AdminDealerVerificationPage() {
 
   if (authLoading || (user && !profile) || (loading && pendingList.length === 0)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+      <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
@@ -321,24 +321,24 @@ export default function AdminDealerVerificationPage() {
         />
       )}
 
-      <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
+      <div className="min-h-screen pt-20 pb-12">
         <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
           <DashboardSidebar role="admin" userName={userName} userType="Super Admin" />
 
           <main className="flex-1 space-y-8 min-w-0">
             {/* Page Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-800/50 p-6 rounded-2xl border border-white/10 backdrop-blur-md">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[var(--bg-input)] p-6 rounded-2xl border border-[var(--border-default)] backdrop-blur-md">
               <div>
-                <h1 className="text-3xl font-black font-heading text-white uppercase tracking-tight flex items-center gap-3">
+                <h1 className="text-3xl font-black font-heading uppercase tracking-tight flex items-center gap-3">
                   <ShieldCheck className="text-primary hidden sm:block" size={28} />
                   Dealer KYC Reviews
                 </h1>
-                <p className="text-gray-400 mt-1">Granular field verification portal for dealership requests</p>
+                <p className="text-[var(--text-muted)] mt-1">Granular field verification portal for dealership requests</p>
               </div>
               <Button
                 onClick={loadPendingKyc}
                 disabled={loading}
-                className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border-white/10 text-white"
+                className="flex items-center gap-2 bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)] border-[var(--border-default)]"
                 variant="outline"
               >
                 <RefreshCw size={16} className={loading ? "animate-spin" : ""} /> Refresh
@@ -361,19 +361,19 @@ export default function AdminDealerVerificationPage() {
 
             {/* KYC List */}
             {pendingList.length === 0 ? (
-              <div className="dealer-glass-card p-12 text-center border border-white/5 flex flex-col items-center">
+              <div className="dealer-glass-card p-12 text-center border border-[var(--border-default)] flex flex-col items-center">
                 <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-4 text-emerald-400">
                   <Check size={28} />
                 </div>
-                <h3 className="text-lg font-extrabold uppercase font-heading text-white">All Caught Up!</h3>
-                <p className="text-gray-400 text-xs mt-2 max-w-sm">
+                <h3 className="text-lg font-extrabold uppercase font-heading">All Caught Up!</h3>
+                <p className="text-[var(--text-muted)] text-xs mt-2 max-w-sm">
                   No dealer registrations require document verification at this moment.
                 </p>
               </div>
             ) : (
               <div className="space-y-4">
                 <div className="flex items-center justify-between px-2">
-                  <span className="text-xs uppercase font-extrabold text-slate-400 tracking-wider flex items-center gap-2">
+                  <span className="text-xs uppercase font-extrabold text-[var(--text-muted)] tracking-wider flex items-center gap-2">
                     <Clock size={14} className="text-primary animate-pulse" />
                     Awaiting Superadmin Review ({pendingList.length})
                   </span>
@@ -389,30 +389,30 @@ export default function AdminDealerVerificationPage() {
                     <div
                       key={item.id}
                       className={`dealer-glass-card border transition-all duration-300 overflow-hidden ${
-                        isExpanded ? "border-primary/40 shadow-[0_0_25px_rgba(237,28,36,0.15)]" : "border-white/5"
+                        isExpanded ? "border-primary/40 shadow-[0_0_25px_rgba(237,28,36,0.15)]" : "border-[var(--border-default)]"
                       }`}
                     >
                       {/* Collapsed Header */}
                       <div
                         onClick={() => toggleExpand(item)}
-                        className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 cursor-pointer hover:bg-white/5 transition-colors"
+                        className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 cursor-pointer hover:bg-[var(--bg-card)] transition-colors"
                       >
                         <div className="flex items-start gap-4">
-                          <div className="p-3 rounded-xl bg-slate-900 border border-white/5 text-primary shrink-0">
+                          <div className="p-3 rounded-xl bg-[var(--bg-dropdown)] border border-[var(--border-default)] text-primary shrink-0">
                             <Building2 size={24} />
                           </div>
                           <div>
-                            <h3 className="text-base font-black font-heading text-white tracking-tight uppercase">
+                            <h3 className="text-base font-black font-heading tracking-tight uppercase">
                               {companyName}
                             </h3>
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-gray-400 font-semibold">
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-[var(--text-muted)] font-semibold">
                               <span>Owner: {item.representativeName}</span>
                               <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
                               <span>Email: {ownerEmail}</span>
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3 shrink-0 self-stretch sm:self-auto justify-end border-t sm:border-t-0 border-white/5 pt-3 sm:pt-0">
+                        <div className="flex items-center gap-3 shrink-0 self-stretch sm:self-auto justify-end border-t sm:border-t-0 border-[var(--border-default)] pt-3 sm:pt-0">
                           {item.status === "REJECTED" ? (
                             <span className="px-2.5 py-1 rounded-md text-xs font-extrabold uppercase tracking-wider border bg-red-500/10 border-red-500/20 text-red-400 flex items-center gap-1.5">
                               <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
@@ -430,16 +430,16 @@ export default function AdminDealerVerificationPage() {
 
                       {/* Expanded Review Panel */}
                       {isExpanded && (
-                        <div className="border-t border-white/5 bg-slate-950/40 p-4 md:p-8 space-y-6 md:space-y-8 animate-fadeIn">
+                        <div className="border-t border-[var(--border-default)] bg-[var(--bg-input)] p-4 md:p-8 space-y-6 md:space-y-8 animate-fadeIn">
                           {/* Summary Meta */}
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-slate-900/60 border border-white/5 text-xs">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-[var(--bg-card)] border border-[var(--border-default)] text-xs">
                             <div>
-                              <p className="text-slate-500 uppercase font-extrabold text-xs tracking-wider">Representative Role</p>
-                              <p className="font-bold text-white mt-0.5">{item.representativePosition}</p>
+                              <p className="text-[var(--text-muted)] uppercase font-extrabold text-xs tracking-wider">Representative Role</p>
+                              <p className="font-bold mt-0.5">{item.representativePosition}</p>
                             </div>
                             <div>
-                              <p className="text-slate-500 uppercase font-extrabold text-xs tracking-wider">Submitted On</p>
-                              <p className="font-bold text-white mt-0.5">
+                              <p className="text-[var(--text-muted)] uppercase font-extrabold text-xs tracking-wider">Submitted On</p>
+                              <p className="font-bold mt-0.5">
                                 {new Date(item.submittedAt).toLocaleDateString("en-GB", {
                                   day: "numeric", month: "short", year: "numeric",
                                   hour: "2-digit", minute: "2-digit",
@@ -447,8 +447,8 @@ export default function AdminDealerVerificationPage() {
                               </p>
                             </div>
                             <div>
-                              <p className="text-slate-500 uppercase font-extrabold text-xs tracking-wider">Record ID</p>
-                              <p className="font-bold text-slate-400 truncate mt-0.5">{item.id}</p>
+                              <p className="text-[var(--text-muted)] uppercase font-extrabold text-xs tracking-wider">Record ID</p>
+                              <p className="font-bold text-[var(--text-muted)] truncate mt-0.5">{item.id}</p>
                             </div>
                           </div>
 
@@ -456,8 +456,8 @@ export default function AdminDealerVerificationPage() {
                           {renderFieldsGrouped(item)}
 
                           {/* Submit Block */}
-                          <div className="pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
-                            <div className="flex items-start gap-2.5 text-xs text-slate-400">
+                          <div className="pt-6 border-t border-[var(--border-default)] flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <div className="flex items-start gap-2.5 text-xs text-[var(--text-muted)]">
                               <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
                               <p className="max-w-md">
                                 Approving all fields will immediately set overall status to{" "}
@@ -468,7 +468,7 @@ export default function AdminDealerVerificationPage() {
                             <button
                               onClick={() => submitReview(item.id)}
                               disabled={isSubmitting}
-                              className="w-full sm:w-auto px-8 py-3 rounded-lg bg-primary hover:bg-primary/95 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold text-xs uppercase tracking-widest transition-all cursor-pointer shadow-neon flex items-center justify-center gap-2"
+                              className="w-full sm:w-auto px-8 py-3 rounded-lg bg-primary hover:bg-primary/95 disabled:bg-[var(--bg-input)] disabled:text-[var(--text-muted)] text-white font-bold text-xs uppercase tracking-widest transition-all cursor-pointer shadow-neon flex items-center justify-center gap-2"
                             >
                               {isSubmitting ? (
                                 <><Loader2 className="animate-spin" size={14} /> Submitting Decision...</>
@@ -521,11 +521,11 @@ export default function AdminDealerVerificationPage() {
                       <p className="text-xs font-extrabold text-emerald-400 uppercase tracking-widest">
                         Stripe Verified · Auto-Approved
                       </p>
-                      <p className="text-xs text-slate-300 font-mono mt-0.5">
+                      <p className="text-xs text-[var(--text-secondary)] font-mono mt-0.5">
                         {item.stripePaymentIntentId}
                       </p>
                       {item.stripeChargedAt && (
-                        <p className="text-xs text-slate-500 mt-0.5">
+                        <p className="text-xs text-[var(--text-muted)] mt-0.5">
                           Charged {new Date(item.stripeChargedAt).toLocaleDateString('en-GB', {
                             day: 'numeric', month: 'short', year: 'numeric',
                           })}
@@ -557,14 +557,14 @@ export default function AdminDealerVerificationPage() {
                     <div
                       key={field.id}
                       className={`p-3 sm:p-4 rounded-xl border transition-all duration-300 ${
-                        isApproved ? "bg-slate-900/40 border-white/5" : "bg-red-500/5 border-red-500/20"
+                        isApproved ? "bg-[var(--bg-input)] border-[var(--border-default)]" : "bg-red-500/5 border-red-500/20"
                       }`}
                     >
                       {/* Top row: label + field value left, approve/reject buttons right */}
                       <div className="flex items-start justify-between gap-3">
                         {/* Left: Content */}
                         <div className="space-y-1.5 min-w-0 flex-1">
-                          <p className="text-xs text-slate-500 font-extrabold uppercase tracking-wider">
+                          <p className="text-xs text-[var(--text-muted)] font-extrabold uppercase tracking-wider">
                             {field.label}
                           </p>
 
@@ -576,9 +576,9 @@ export default function AdminDealerVerificationPage() {
                                 onView={(url, label) => setLightbox({ url, label })}
                               />
                             ) : (
-                              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-white/10 bg-slate-900/40">
-                                <FileImage size={14} className="text-slate-600" />
-                                <span className="text-[11px] text-slate-500 font-semibold italic">
+                              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[var(--border-default)] bg-[var(--bg-input)]">
+                                <FileImage size={14} className="text-[var(--text-muted)]" />
+                                <span className="text-[11px] text-[var(--text-muted)] font-semibold italic">
                                   No document uploaded
                                 </span>
                               </div>
@@ -594,12 +594,12 @@ export default function AdminDealerVerificationPage() {
                               <ExternalLink size={11} className="shrink-0" />
                             </a>
                           ) : field.isTextarea ? (
-                            <p className="text-xs font-semibold text-slate-200 leading-relaxed whitespace-pre-line">
+                            <p className="text-xs font-semibold text-[var(--text-secondary)] leading-relaxed whitespace-pre-line">
                               {val || "—"}
                             </p>
                           ) : (
-                            <p className="text-xs font-semibold text-slate-200 truncate">
-                              {hasValue ? val : <span className="text-slate-500 italic">Not provided</span>}
+                            <p className="text-xs font-semibold text-[var(--text-secondary)] truncate">
+                              {hasValue ? val : <span className="text-[var(--text-muted)] italic">Not provided</span>}
                             </p>
                           )}
                         </div>
@@ -612,7 +612,7 @@ export default function AdminDealerVerificationPage() {
                             className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider border transition-all flex items-center gap-1 cursor-pointer ${
                               isApproved
                                 ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]"
-                                : "bg-slate-950/60 border-white/5 text-slate-500 hover:text-slate-300"
+                                : "bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
                             }`}
                           >
                             <Check size={11} />
@@ -624,7 +624,7 @@ export default function AdminDealerVerificationPage() {
                             className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider border transition-all flex items-center gap-1 cursor-pointer ${
                               isRejected
                                 ? "bg-red-500/10 border-red-500/30 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.1)]"
-                                : "bg-slate-950/60 border-white/5 text-slate-500 hover:text-slate-300"
+                                : "bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
                             }`}
                           >
                             <X size={11} />
@@ -644,7 +644,7 @@ export default function AdminDealerVerificationPage() {
                             value={decision.note}
                             onChange={(e) => handleNoteChange(field.id, e.target.value)}
                             placeholder="Reason for rejection..."
-                            className="w-full pl-8 pr-3 py-1.5 bg-slate-950 border border-red-500/40 focus:border-red-500 rounded-lg text-[11px] font-semibold text-slate-300 placeholder:text-slate-600 focus:ring-1 focus:ring-red-500 transition-all"
+                            className="w-full pl-8 pr-3 py-1.5 bg-[var(--bg-input)] border border-red-500/40 focus:border-red-500 rounded-lg text-[11px] font-semibold text-[var(--text-secondary)] placeholder:text-[var(--text-muted)] focus:ring-1 focus:ring-red-500 transition-all"
                           />
                         </div>
                       )}

@@ -35,7 +35,7 @@ export function TestimonialCard({
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-[50px] rounded-full group-hover:bg-primary/10 transition-colors duration-500" />
 
             {/* Quote Icon */}
-            <Quote className="absolute top-6 right-6 text-white/10 h-10 w-10 rotate-180 group-hover:text-primary/20 transition-colors duration-300" />
+            <Quote className="absolute top-6 right-6 h-10 w-10 rotate-180 opacity-10 group-hover:text-primary group-hover:opacity-20 transition-colors duration-300" />
 
             {/* Rating */}
             <div className="flex gap-1 mb-6">
@@ -43,20 +43,20 @@ export function TestimonialCard({
                     <Star
                         key={i}
                         size={16}
-                        className={`${i < rating ? "fill-primary text-primary" : "text-gray-600"} transition-all duration-300 group-hover:scale-110`}
-                        style={{ transitionDelay: `${i * 50}ms` }}
+                        className={i < rating ? "fill-primary text-primary transition-all duration-300 group-hover:scale-110" : "transition-all duration-300 group-hover:scale-110"}
+                        style={{ transitionDelay: `${i * 50}ms`, ...(i >= rating ? { color: 'var(--text-faint)' } : {}) }}
                     />
                 ))}
             </div>
 
             {/* Content */}
-            <p className="text-gray-300 text-lg leading-relaxed mb-8 italic flex-grow">
+            <p className="text-lg leading-relaxed mb-8 italic flex-grow" style={{ color: 'var(--text-secondary)' }}>
                 "{content}"
             </p>
 
             {/* User Info */}
-            <div className="flex items-center gap-4 mt-auto border-t border-white/5 pt-6">
-                <div className="relative w-12 h-12 rounded-full overflow-hidden border border-white/10 group-hover:border-primary/50 transition-colors">
+            <div className="flex items-center gap-4 mt-auto border-t pt-6" style={{ borderColor: 'var(--border-default)' }}>
+                <div className="relative w-12 h-12 rounded-full overflow-hidden border group-hover:border-primary/50 transition-colors" style={{ borderColor: 'var(--border-default)' }}>
                     <Image
                         src={image}
                         alt={name}
@@ -66,7 +66,7 @@ export function TestimonialCard({
                     />
                 </div>
                 <div>
-                    <h4 className="font-bold text-white flex items-center gap-2">
+                    <h4 className="font-bold flex items-center gap-2">
                         {name}
                         {verified && (
                             <CheckCircle className="text-emerald-400 h-4 w-4" aria-label="Verified Buyer" />

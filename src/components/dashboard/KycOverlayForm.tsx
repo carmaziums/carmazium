@@ -115,13 +115,13 @@ function FileUploadField({
     ? "border-red-500/30 bg-red-500/5"
     : dragging
     ? "border-primary/60 bg-primary/5"
-    : "border-white/10 bg-slate-950/50";
+    : "border-[var(--border-default)] bg-[var(--bg-input)]";
 
   return (
     <div className="space-y-1.5 text-left">
-      <label className="text-xs font-extrabold uppercase text-slate-400 tracking-wider flex items-center justify-between">
+      <label className="text-xs font-extrabold uppercase text-[var(--text-muted)] tracking-wider flex items-center justify-between">
         <span className="flex items-center gap-1.5">
-          <Icon size={11} className={isApproved ? "text-emerald-500" : rejectionNote ? "text-red-400" : "text-slate-500"} />
+          <Icon size={11} className={isApproved ? "text-emerald-500" : rejectionNote ? "text-red-400" : "text-[var(--text-muted)]"} />
           {label}
         </span>
         {isApproved && (
@@ -135,7 +135,7 @@ function FileUploadField({
         /* ── Preview Block ── */
         <div className={`rounded-xl border p-3 transition-all ${borderClass}`}>
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${isApproved ? "bg-emerald-500/10" : "bg-slate-900"}`}>
+            <div className={`p-2 rounded-lg ${isApproved ? "bg-emerald-500/10" : "bg-[var(--bg-input)]"}`}>
               {isImage ? (
                 <FileImage size={18} className={isApproved ? "text-emerald-400" : "text-primary"} />
               ) : (
@@ -143,17 +143,17 @@ function FileUploadField({
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-slate-200 truncate">
+              <p className="text-xs font-semibold text-[var(--text-secondary)] truncate">
                 {isApproved ? "✓ Document Verified" : "Document Uploaded"}
               </p>
-              <p className="text-xs text-slate-500 truncate">{value.split("/").pop()}</p>
+              <p className="text-xs text-[var(--text-muted)] truncate">{value.split("/").pop()}</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <a
                 href={value}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+                className="p-1.5 rounded-lg bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors"
                 title="Preview"
               >
                 <Eye size={13} />
@@ -171,7 +171,7 @@ function FileUploadField({
             </div>
           </div>
           {isImage && (
-            <div className="mt-2.5 rounded-lg overflow-hidden border border-white/5 max-h-24">
+            <div className="mt-2.5 rounded-lg overflow-hidden border border-[var(--border-default)] max-h-24">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={value} alt="Document preview" className="w-full h-24 object-cover opacity-80" />
             </div>
@@ -201,18 +201,18 @@ function FileUploadField({
             {uploading ? (
               <>
                 <Loader2 size={22} className="animate-spin text-primary" />
-                <p className="text-xs font-semibold text-slate-300">Uploading securely...</p>
+                <p className="text-xs font-semibold text-[var(--text-secondary)]">Uploading securely...</p>
               </>
             ) : (
               <>
-                <div className="p-2 rounded-lg bg-slate-900 border border-white/5">
-                  <Upload size={16} className="text-slate-400" />
+                <div className="p-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-default)]">
+                  <Upload size={16} className="text-[var(--text-muted)]" />
                 </div>
                 <div className="text-center">
-                  <p className="text-xs font-bold text-slate-300">
+                  <p className="text-xs font-bold text-[var(--text-secondary)]">
                     {dragging ? "Drop file here" : "Click or drag to upload"}
                   </p>
-                  <p className="text-xs text-slate-500 mt-0.5">{hint}</p>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">{hint}</p>
                 </div>
               </>
             )}
@@ -464,9 +464,9 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
   // ─── Render Loading ───────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/90 backdrop-blur-md text-white">
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-md" style={{ background: 'var(--bg-body)' }}>
         <Loader2 className="animate-spin text-primary mb-4" size={48} />
-        <p className="text-sm tracking-wider uppercase text-slate-400 font-semibold font-heading">
+        <p className="text-sm tracking-wider uppercase text-[var(--text-muted)] font-semibold font-heading">
           Loading Security Profiles...
         </p>
       </div>
@@ -479,7 +479,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
   // and push to the dashboard so the layout re-evaluates the guard.
   if (kycData && kycData.status === "APPROVED") {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-4 overflow-y-auto">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-body)] backdrop-blur-xl p-4 overflow-y-auto">
         <div className="dealer-glass-card max-w-xl w-full p-8 md:p-10 border border-emerald-500/20 relative overflow-hidden flex flex-col items-center text-center">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-primary to-emerald-500" />
           <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mb-6">
@@ -488,7 +488,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
           <h2 className="text-2xl md:text-3xl font-black font-heading text-white tracking-tight mb-3">
             KYC APPROVED
           </h2>
-          <p className="text-slate-300 text-sm leading-relaxed mb-8">
+          <p className="text-[var(--text-secondary)] text-sm leading-relaxed mb-8">
             Your dealership has been fully verified. Click below to access your dashboard.
           </p>
           <button
@@ -509,23 +509,23 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
   // the form below so they can retry payment, not get stuck behind this hard gate.
   if (kycData && kycData.status === "PENDING" && kycData.stripeChargedAt) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-4 overflow-y-auto">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-body)] backdrop-blur-xl p-4 overflow-y-auto">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
 
-        <div className="dealer-glass-card max-w-xl w-full p-8 md:p-10 border border-white/5 relative overflow-hidden flex flex-col items-center text-center">
+        <div className="dealer-glass-card max-w-xl w-full p-8 md:p-10 border border-[var(--border-default)] relative overflow-hidden flex flex-col items-center text-center">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 via-primary to-amber-500 animate-pulse" />
 
           <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
             <button
               onClick={handleSkip}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 text-xs font-bold text-slate-400 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] hover:bg-white/10 text-xs font-bold text-[var(--text-muted)] transition-colors"
             >
               Skip for now
             </button>
             <button
               onClick={handleSignOut}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 text-xs font-bold text-slate-300 transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] hover:bg-white/10 text-xs font-bold text-[var(--text-secondary)] transition-colors"
             >
               <LogOut size={14} />
               Sign Out
@@ -544,17 +544,17 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
             VERIFICATION IN PROGRESS
           </h2>
 
-          <p className="text-slate-300 text-sm leading-relaxed mb-6">
+          <p className="text-[var(--text-secondary)] text-sm leading-relaxed mb-6">
             Your KYC application has been received and is currently under review by our superadmin team.
             Verification typically takes between 1–2 hours during business operations.
           </p>
 
-          <div className="w-full bg-slate-900/60 border border-white/5 rounded-xl p-5 mb-8 text-left">
+          <div className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl p-5 mb-8 text-left">
             <div className="flex items-center gap-3 mb-3">
               <CheckCircle2 size={16} className="text-primary" />
-              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Submitted Items Locker</span>
+              <span className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">Submitted Items Locker</span>
             </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
               All uploaded legal forms, company registry credentials, director IDs, and transfer statements are encrypted
               and locked. You will receive an automated email response as soon as our superadmin reviews your submission.
             </p>
@@ -594,7 +594,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
 
   // ─── Render 3-Step Form Overlay ──────────────────────────────────────────────
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-xl overflow-y-auto custom-scrollbar">
+    <div className="fixed inset-0 z-50 bg-[var(--bg-body)] backdrop-blur-xl overflow-y-auto custom-scrollbar">
       <div className="absolute top-10 left-10 w-96 h-96 bg-primary/10 rounded-full blur-[140px] pointer-events-none" />
       <div className="absolute bottom-10 right-10 w-96 h-96 bg-blue-500/10 rounded-full blur-[140px] pointer-events-none" />
 
@@ -609,7 +609,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
               <h1 className="text-lg sm:text-xl md:text-2xl font-black font-heading text-white tracking-tight uppercase leading-tight">
                 Dealer KYC Portal
               </h1>
-              <p className="text-xs sm:text-xs text-slate-400 uppercase tracking-widest font-bold truncate">
+              <p className="text-xs sm:text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold truncate">
                 Verification Required for Dashboard Access
               </p>
             </div>
@@ -618,7 +618,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handleSkip}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-lg border border-white/5 bg-slate-900/60 hover:bg-slate-900/80 text-xs font-bold text-slate-400 transition-colors"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)] text-xs font-bold text-[var(--text-muted)] transition-colors"
             >
               Skip for now
             </button>
@@ -632,7 +632,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
             </button>
             <button
               onClick={handleSignOut}
-              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg border border-white/5 bg-slate-900/60 hover:bg-slate-900/80 text-xs font-bold text-slate-300 transition-colors"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)] text-xs font-bold text-[var(--text-secondary)] transition-colors"
             >
               <LogOut size={13} />
               <span className="hidden xs:inline sm:inline">Sign Out</span>
@@ -648,7 +648,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
               <h3 className="text-xs font-extrabold uppercase text-red-500 tracking-wider">
                 Submission Requires Attention
               </h3>
-              <p className="text-slate-300 text-xs mt-1 leading-relaxed">
+              <p className="text-[var(--text-secondary)] text-xs mt-1 leading-relaxed">
                 Superadmins have completed a review of your application. Specific fields were rejected and require
                 revision. Previously approved fields are locked and marked with a verified badge. Please update the
                 fields highlighted in red below.
@@ -672,10 +672,10 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
                 key={item.step}
                 className={`p-2.5 sm:p-3.5 rounded-xl border transition-all duration-300 flex items-center gap-2 sm:gap-3 ${
                   isActive
-                    ? "border-primary bg-primary/5 text-white"
+                    ? "border-primary bg-primary/5 text-primary"
                     : isCompleted
                     ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-400"
-                    : "border-white/5 bg-slate-900/40 text-slate-500"
+                    : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)]"
                 }`}
               >
                 <div
@@ -684,7 +684,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
                       ? "border-primary bg-primary text-white"
                       : isCompleted
                       ? "border-emerald-500 bg-emerald-500 text-slate-950"
-                      : "border-white/10 bg-slate-950 text-slate-500"
+                      : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)]"
                   }`}
                 >
                   {isCompleted ? <Check size={14} /> : <StepIcon size={14} />}
@@ -702,7 +702,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
         </div>
 
         {/* Form Container */}
-        <form onSubmit={handleSubmit} className="dealer-glass-card p-6 md:p-8 border border-white/5">
+        <form onSubmit={handleSubmit} className="dealer-glass-card p-6 md:p-8 border border-[var(--border-default)]">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeStep}
@@ -714,7 +714,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
               {/* ── STEP 1: CORPORATE DETAILS ── */}
               {activeStep === 1 && (
                 <div className="space-y-5">
-                  <h3 className="text-base font-extrabold uppercase text-white tracking-tight border-b border-white/5 pb-2">
+                  <h3 className="text-base font-extrabold uppercase text-white tracking-tight border-b border-[var(--border-default)] pb-2">
                     Step 1: Representative &amp; Company Details
                   </h3>
 
@@ -730,7 +730,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
                   </div>
 
                   {/* Director ID Upload */}
-                  <div className="pt-2 border-t border-white/5">
+                  <div className="pt-2 border-t border-[var(--border-default)]">
                     <p className="text-xs font-extrabold uppercase text-primary tracking-widest mb-3 flex items-center gap-1.5">
                       <IdCard size={11} />
                       Supporting Document Upload
@@ -754,7 +754,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
               {/* ── STEP 2: COMMERCIAL REGISTRATIONS ── */}
               {activeStep === 2 && (
                 <div className="space-y-5">
-                  <h3 className="text-base font-extrabold uppercase text-white tracking-tight border-b border-white/5 pb-2">
+                  <h3 className="text-base font-extrabold uppercase text-white tracking-tight border-b border-[var(--border-default)] pb-2">
                     Step 2: Registrations &amp; Business Address
                   </h3>
 
@@ -773,7 +773,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
                   </div>
 
                   {/* Document Proof Uploads */}
-                  <div className="pt-2 border-t border-white/5 space-y-4">
+                  <div className="pt-2 border-t border-[var(--border-default)] space-y-4">
                     <p className="text-xs font-extrabold uppercase text-primary tracking-widest flex items-center gap-1.5">
                       <FileCheck size={11} />
                       Supporting Document Uploads
@@ -815,7 +815,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
                     <h3 className="text-sm font-extrabold text-white uppercase tracking-widest mb-1">
                       Step 3: Payment Verification
                     </h3>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-[var(--text-muted)]">
                       Verify your identity with a £1 charge. This fee is non-refundable and covers the cost of your KYC review.
                     </p>
                   </div>
@@ -826,7 +826,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
                       <CheckCircle size={20} className="text-emerald-400 shrink-0" />
                       <div>
                         <p className="text-sm font-extrabold text-emerald-400">Verification fee paid</p>
-                        <p className="text-xs text-slate-400 mt-0.5">
+                        <p className="text-xs text-[var(--text-muted)] mt-0.5">
                           £1 charged
                           {paidAt ? ` on ${new Date(paidAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
                         </p>
@@ -835,21 +835,21 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
                   ) : (
                     /* Not yet paid — explain the redirect, the actual button lives in Form Actions below */
                     <div className="space-y-3">
-                      <div className="p-3 rounded-lg border border-white/5 bg-slate-900/60">
-                        <p className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-0.5">
+                      <div className="p-3 rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)]">
+                        <p className="text-xs font-extrabold text-[var(--text-muted)] uppercase tracking-widest mb-0.5">
                           Verification Fee
                         </p>
-                        <p className="text-lg font-extrabold text-white">£1.00</p>
-                        <p className="text-[11px] text-slate-500">Non-refundable · charged once per dealer account</p>
+                        <p className="text-lg font-extrabold">£1.00</p>
+                        <p className="text-[11px] text-[var(--text-muted)]">Non-refundable · charged once per dealer account</p>
                       </div>
 
-                      <div className="p-4 rounded-xl border border-white/10 bg-slate-900/60 flex items-start gap-3">
+                      <div className="p-4 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] flex items-start gap-3">
                         <Lock size={16} className="text-primary shrink-0 mt-0.5" />
                         <div>
-                          <p className="text-xs font-extrabold text-slate-300 uppercase tracking-widest mb-1">
+                          <p className="text-xs font-extrabold text-[var(--text-secondary)] uppercase tracking-widest mb-1">
                             Secure payment via Stripe
                           </p>
-                          <p className="text-xs text-slate-400 leading-relaxed">
+                          <p className="text-xs text-[var(--text-muted)] leading-relaxed">
                             Your form details are saved first. Clicking &ldquo;Pay £1 &amp; Submit&rdquo; below takes you to Stripe&rsquo;s
                             secure checkout page to complete the charge — card details are never entered on this site.
                           </p>
@@ -857,7 +857,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
                       </div>
 
                       {errorMsg === '' && checkoutLoading && (
-                        <div className="flex items-center justify-center gap-3 py-2 text-slate-400">
+                        <div className="flex items-center justify-center gap-3 py-2 text-[var(--text-muted)]">
                           <Loader2 size={16} className="animate-spin" />
                           <span className="text-xs font-semibold">Redirecting you to Stripe...</span>
                         </div>
@@ -884,13 +884,13 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
           )}
 
           {/* Form Actions */}
-          <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-between">
+          <div className="mt-8 pt-6 border-t border-[var(--border-default)] flex items-center justify-between">
             {activeStep > 1 ? (
               <button
                 type="button"
                 onClick={prevStep}
                 disabled={submitting}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-lg border border-white/10 bg-slate-900/60 hover:bg-slate-900 text-xs font-bold text-slate-300 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)] text-xs font-bold text-[var(--text-secondary)] transition-colors disabled:opacity-50"
               >
                 <ArrowLeft size={14} />
                 Back
@@ -912,7 +912,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold text-xs uppercase tracking-widest transition-all cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:bg-[var(--bg-input)] disabled:text-[var(--text-muted)] text-white font-bold text-xs uppercase tracking-widest transition-all cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.3)]"
               >
                 {submitting ? (
                   <>
@@ -952,7 +952,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
     const rejectionNote = getFieldRejectionNote(name);
     return (
       <div className="space-y-1.5 text-left">
-        <label className="text-xs font-extrabold uppercase text-slate-400 tracking-wider flex items-center justify-between">
+        <label className="text-xs font-extrabold uppercase text-[var(--text-muted)] tracking-wider flex items-center justify-between">
           <span>{label}</span>
           {isApproved && (
             <span className="flex items-center gap-1 text-[8px] font-black text-emerald-400 uppercase tracking-widest px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
@@ -961,7 +961,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
           )}
         </label>
         <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[var(--text-muted)]">
             <Icon size={14} className={isApproved ? "text-emerald-500" : rejectionNote ? "text-red-500" : ""} />
           </div>
           <input
@@ -971,12 +971,12 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
             onChange={handleInputChange}
             disabled={isApproved || submitting}
             placeholder={placeholder}
-            className={`w-full pl-10 pr-4 py-2.5 rounded-lg border text-slate-200 text-xs font-semibold placeholder:text-slate-600 transition-all ${
+            className={`w-full pl-10 pr-4 py-2.5 rounded-lg border text-[var(--text-secondary)] text-xs font-semibold placeholder:text-[var(--text-muted)] transition-all ${
               isApproved
-                ? "bg-slate-950/40 border-emerald-500/30 text-slate-400 select-none pointer-events-none"
+                ? "bg-[var(--bg-input)] border-emerald-500/30 text-[var(--text-muted)] select-none pointer-events-none"
                 : rejectionNote
                 ? "bg-red-500/5 border-red-500/40 focus:border-red-500 focus:ring-1 focus:ring-red-500"
-                : "bg-slate-950/70 border-white/5 focus:border-primary focus:ring-1 focus:ring-primary"
+                : "bg-[var(--bg-input)] border-[var(--border-default)] focus:border-primary focus:ring-1 focus:ring-primary"
             }`}
           />
         </div>
@@ -1004,7 +1004,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
     const rejectionNote = getFieldRejectionNote(name);
     return (
       <div className="space-y-1.5 text-left">
-        <label className="text-xs font-extrabold uppercase text-slate-400 tracking-wider flex items-center justify-between">
+        <label className="text-xs font-extrabold uppercase text-[var(--text-muted)] tracking-wider flex items-center justify-between">
           <span>{label}</span>
           {isApproved && (
             <span className="flex items-center gap-1 text-[8px] font-black text-emerald-400 uppercase tracking-widest px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
@@ -1013,7 +1013,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
           )}
         </label>
         <div className="relative">
-          <div className="absolute top-3 left-3.5 flex items-start pointer-events-none text-slate-500">
+          <div className="absolute top-3 left-3.5 flex items-start pointer-events-none text-[var(--text-muted)]">
             <Icon size={14} className={isApproved ? "text-emerald-500" : rejectionNote ? "text-red-500" : ""} />
           </div>
           <textarea
@@ -1023,12 +1023,12 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
             disabled={isApproved || submitting}
             placeholder={placeholder}
             rows={2}
-            className={`w-full pl-10 pr-4 py-2.5 rounded-lg border text-slate-200 text-xs font-semibold placeholder:text-slate-600 transition-all resize-none ${
+            className={`w-full pl-10 pr-4 py-2.5 rounded-lg border text-[var(--text-secondary)] text-xs font-semibold placeholder:text-[var(--text-muted)] transition-all resize-none ${
               isApproved
-                ? "bg-slate-950/40 border-emerald-500/30 text-slate-400 select-none pointer-events-none"
+                ? "bg-[var(--bg-input)] border-emerald-500/30 text-[var(--text-muted)] select-none pointer-events-none"
                 : rejectionNote
                 ? "bg-red-500/5 border-red-500/40 focus:border-red-500 focus:ring-1 focus:ring-red-500"
-                : "bg-slate-950/70 border-white/5 focus:border-primary focus:ring-1 focus:ring-primary"
+                : "bg-[var(--bg-input)] border-[var(--border-default)] focus:border-primary focus:ring-1 focus:ring-primary"
             }`}
           />
         </div>

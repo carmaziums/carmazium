@@ -46,7 +46,7 @@ function getListingCompleteness(listing: any) {
 
 const STATUS_COLORS: Record<string, string> = {
     ACTIVE: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-    DRAFT:  "bg-gray-500/10 text-gray-400 border-gray-500/20",
+    DRAFT:  "bg-gray-500/10 text-[var(--text-muted)] border-gray-500/20",
     SOLD:   "bg-blue-500/10 text-blue-400 border-blue-500/20",
     IN_PREP:"bg-amber-500/10 text-amber-400 border-amber-500/20",
 }
@@ -197,7 +197,7 @@ export default function DealerInventoryPage() {
     }, [listings, searchQuery, statusFilter])
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
+        <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
@@ -209,14 +209,14 @@ export default function DealerInventoryPage() {
                     >
                         <Button
                             variant="outline"
-                            className="border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 gap-2 h-11 px-6 rounded-xl transition-all"
+                            className="border-[var(--border-default)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:bg-white/10 gap-2 h-11 px-6 rounded-xl transition-all"
                             onClick={() => setIsImportModalOpen(true)}
                         >
                             <ExternalLink size={16} /> Import Listing
                         </Button>
                         <Button
                             variant="outline"
-                            className="border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 gap-2 h-11 px-6 rounded-xl transition-all"
+                            className="border-[var(--border-default)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:bg-white/10 gap-2 h-11 px-6 rounded-xl transition-all"
                             onClick={() => setIsBulkImportOpen(true)}
                         >
                             <Upload size={16} /> Bulk Import
@@ -231,21 +231,21 @@ export default function DealerInventoryPage() {
                     {/* Filters */}
                     <div className="flex flex-col lg:flex-row gap-4 items-center">
                         <div className="relative flex-1 w-full">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={18} />
                             <Input
                                 placeholder="Search by make, model, VRM..."
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
-                                className="pl-12 bg-[#0A0A0C] border-white/5 text-white placeholder:text-gray-500 h-12 rounded-xl focus:ring-1 focus:ring-primary/50"
+                                className="pl-12 bg-[var(--bg-input)] border-[var(--border-default)]  placeholder:text-[var(--text-muted)] h-12 rounded-xl focus:ring-1 focus:ring-primary/50"
                             />
                         </div>
-                        <div className="flex gap-2 p-1 bg-[#0A0A0C] border border-white/5 rounded-xl w-full lg:w-auto overflow-x-auto">
+                        <div className="flex gap-2 p-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl w-full lg:w-auto overflow-x-auto">
                             {["ALL", "ACTIVE", "DRAFT", "SOLD"].map(s => (
                                 <button
                                     key={s}
                                     onClick={() => setStatusFilter(s)}
                                     className={`px-5 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${
-                                        statusFilter === s ? 'vip-tab-active' : 'text-gray-500 hover:text-gray-300'
+                                        statusFilter === s ? 'vip-tab-active' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
                                     }`}
                                 >
                                     {s}
@@ -264,14 +264,14 @@ export default function DealerInventoryPage() {
                             ) : !filteredListings.length ? (
                                 <div className="flex flex-col items-center justify-center py-12 gap-2">
                                     <Car className="h-10 w-10 text-gray-700" />
-                                    <p className="text-gray-500 font-bold text-sm">No vehicles found</p>
+                                    <p className="text-[var(--text-muted)] font-bold text-sm">No vehicles found</p>
                                 </div>
                             ) : filteredListings.map((listing: any) => {
                                 const comp = listing.status === 'DRAFT' ? getListingCompleteness(listing) : null
                                 return (
                                     <div key={listing.id} className="flex items-center gap-3 p-4">
                                         {/* Thumbnail */}
-                                        <div className="w-16 h-12 bg-black/40 rounded-xl overflow-hidden border border-white/10 shrink-0 relative">
+                                        <div className="w-16 h-12 bg-black/40 rounded-xl overflow-hidden border border-[var(--border-default)] shrink-0 relative">
                                             {listing.images?.[0] ? (
                                                 <img src={listing.images[0]} alt="" className={`w-full h-full object-cover ${listing.status === 'SOLD' ? 'opacity-40' : 'opacity-80'}`} />
                                             ) : (
@@ -286,13 +286,13 @@ export default function DealerInventoryPage() {
 
                                         {/* Info */}
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-black text-white text-sm truncate">{listing.title}</p>
+                                            <p className="font-black text-sm truncate">{listing.title}</p>
                                             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                                <span className="text-xs font-bold text-gray-500 uppercase tracking-widest px-1.5 py-0.5 bg-white/5 rounded border border-white/5">{listing.vrm || 'PRIVATE'}</span>
+                                                <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest px-1.5 py-0.5 bg-[var(--bg-card)] rounded border border-[var(--border-default)]">{listing.vrm || 'PRIVATE'}</span>
                                                 <span className={`inline-flex px-2 py-0.5 rounded text-xs font-black tracking-widest border ${STATUS_COLORS[listing.status] || STATUS_COLORS.DRAFT}`}>{listing.status}</span>
                                                 {comp && !comp.isComplete && <span className="text-xs text-amber-400 font-bold">{comp.complete}/{comp.total} fields</span>}
                                             </div>
-                                            <p className="text-sm font-black text-white mt-1">£{listing.price?.toLocaleString()}</p>
+                                            <p className="text-sm font-black  mt-1">£{listing.price?.toLocaleString()}</p>
                                         </div>
 
                                         {/* Quick actions */}
@@ -303,9 +303,9 @@ export default function DealerInventoryPage() {
                                                 </button>
                                             )}
                                             {listing.status !== 'SOLD' && (
-                                                <button onClick={() => openSoldModal(listing)} className="p-2.5 bg-white/5 rounded-lg text-gray-400 hover:bg-emerald-500/10 hover:text-emerald-400 transition-colors"><CheckCircle2 size={15} /></button>
+                                                <button onClick={() => openSoldModal(listing)} className="p-2.5 bg-[var(--bg-card)] rounded-lg text-[var(--text-muted)] hover:bg-emerald-500/10 hover:text-emerald-400 transition-colors"><CheckCircle2 size={15} /></button>
                                             )}
-                                            <Link href={`/dashboard/dealer/add-listing?id=${listing.id}`} className="p-2.5 bg-white/5 rounded-lg text-gray-400 hover:bg-white/10 transition-colors"><Pencil size={15} /></Link>
+                                            <Link href={`/dashboard/dealer/add-listing?id=${listing.id}`} className="p-2.5 bg-[var(--bg-card)] rounded-lg text-[var(--text-muted)] hover:bg-white/10 transition-colors"><Pencil size={15} /></Link>
                                         </div>
                                     </div>
                                 )
@@ -313,7 +313,7 @@ export default function DealerInventoryPage() {
                         </div>
 
                         {/* ── Desktop table (≥ sm) ── */}
-                        <div className="hidden sm:block overflow-x-auto border-t border-white/5">
+                        <div className="hidden sm:block overflow-x-auto border-t border-[var(--border-default)]">
                             <table className="w-full text-left border-collapse">
                                 <thead className="vip-table-header">
                                     <tr>
@@ -336,7 +336,7 @@ export default function DealerInventoryPage() {
                                         <tr>
                                             <td colSpan={6} className="px-6 py-16 text-center">
                                                 <Car className="h-12 w-12 text-gray-700 mx-auto mb-3" />
-                                                <p className="text-gray-500 font-bold">No vehicles found</p>
+                                                <p className="text-[var(--text-muted)] font-bold">No vehicles found</p>
                                                 <p className="text-gray-600 text-sm mt-1">Try adjusting your filters or add a new vehicle</p>
                                             </td>
                                         </tr>
@@ -348,7 +348,7 @@ export default function DealerInventoryPage() {
                                                     {/* Vehicle Showcase */}
                                                     <td className="px-8 py-6">
                                                         <div className="flex items-center gap-5">
-                                                            <div className="w-20 h-14 bg-black/40 rounded-xl overflow-hidden border border-white/10 flex-shrink-0 group-hover:scale-105 transition-transform duration-500 shadow-2xl relative">
+                                                            <div className="w-20 h-14 bg-black/40 rounded-xl overflow-hidden border border-[var(--border-default)] flex-shrink-0 group-hover:scale-105 transition-transform duration-500 shadow-2xl relative">
                                                                 {listing.images?.[0] ? (
                                                                     <img src={listing.images[0]} alt="" className={`w-full h-full object-cover transition-opacity ${listing.status === 'SOLD' ? 'opacity-40' : 'opacity-80 group-hover:opacity-100'}`} />
                                                                 ) : (
@@ -364,9 +364,9 @@ export default function DealerInventoryPage() {
                                                                 )}
                                                             </div>
                                                             <div>
-                                                                <p className="font-black text-white text-base tracking-tight group-hover:text-primary transition-colors">{listing.title}</p>
+                                                                <p className="font-black text-base tracking-tight group-hover:text-primary transition-colors">{listing.title}</p>
                                                                 <div className="flex items-center gap-2 mt-1">
-                                                                    <span className="text-xs font-bold text-gray-500 uppercase tracking-widest px-2 py-0.5 bg-white/5 rounded border border-white/5">{listing.vrm || "PRIVATE"}</span>
+                                                                    <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest px-2 py-0.5 bg-[var(--bg-card)] rounded border border-[var(--border-default)]">{listing.vrm || "PRIVATE"}</span>
                                                                     <span className="text-xs font-bold text-primary italic uppercase tracking-widest">{listing.make}</span>
                                                                     <span className="text-xs text-gray-600 font-bold">• {listing.mileage?.toLocaleString()} mi</span>
                                                                 </div>
@@ -377,7 +377,7 @@ export default function DealerInventoryPage() {
                                                     {/* Price */}
                                                     <td className="px-6 py-6">
                                                         <div className="flex flex-col">
-                                                            <span className="font-black text-white text-lg tracking-tight">£{listing.price?.toLocaleString()}</span>
+                                                            <span className="font-black text-lg tracking-tight">£{listing.price?.toLocaleString()}</span>
                                                             <span className="text-xs text-emerald-400 font-black uppercase tracking-widest inline-flex items-center gap-1">
                                                                 <TrendingUp size={8} /> Market Value Plus
                                                             </span>
@@ -413,8 +413,8 @@ export default function DealerInventoryPage() {
                                                     {/* Engagement */}
                                                     <td className="px-6 py-6 text-center">
                                                         <div className="flex flex-col items-center gap-1">
-                                                            <span className="text-white font-black text-sm">{listing.viewCount || 0}</span>
-                                                            <div className="w-16 h-1 bg-white/5 rounded-full overflow-hidden">
+                                                            <span className="font-black text-sm">{listing.viewCount || 0}</span>
+                                                            <div className="w-16 h-1 bg-[var(--bg-card)] rounded-full overflow-hidden">
                                                                 <div className="h-full bg-blue-500/50" style={{ width: `${Math.min((listing.viewCount || 0) / 10, 100)}%` }} />
                                                             </div>
                                                         </div>
@@ -424,7 +424,7 @@ export default function DealerInventoryPage() {
                                                     <td className="px-6 py-6 text-center">
                                                         <div className="flex flex-col items-center gap-1">
                                                             <span className="text-red-400 font-black text-sm">0</span>
-                                                            <div className="w-16 h-1 bg-white/5 rounded-full overflow-hidden">
+                                                            <div className="w-16 h-1 bg-[var(--bg-card)] rounded-full overflow-hidden">
                                                                 <div className="h-full bg-red-500/50 pulse-glow" style={{ width: '0%' }} />
                                                             </div>
                                                         </div>
@@ -453,16 +453,16 @@ export default function DealerInventoryPage() {
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
-                                                                    className="bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/5"
+                                                                    className="bg-[var(--bg-card)] hover:bg-white/10 text-[var(--text-muted)] hover:text-primary dark:hover:text-white border border-[var(--border-default)]"
                                                                 >
                                                                     <MoreVertical size={16} />
                                                                 </Button>
 
-                                                                <div className="absolute right-0 top-full mt-1 w-36 bg-slate-800 border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover/menu:opacity-100 group-hover/menu:visible transition-all z-20 flex flex-col py-1">
-                                                                    <Link href={`/dashboard/dealer/add-listing?editId=${listing.id}&editSlug=${encodeURIComponent(listing.slug)}`} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
+                                                                <div className="absolute right-0 top-full mt-1 w-36 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg shadow-xl opacity-0 invisible group-hover/menu:opacity-100 group-hover/menu:visible transition-all z-20 flex flex-col py-1">
+                                                                    <Link href={`/dashboard/dealer/add-listing?editId=${listing.id}&editSlug=${encodeURIComponent(listing.slug)}`} className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)] hover:text-primary dark:hover:text-white transition-colors">
                                                                         <Pencil size={14} /> Edit
                                                                     </Link>
-                                                                    <Link href={`/buy-cars/${listing.slug}`} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors">
+                                                                    <Link href={`/buy-cars/${listing.slug}`} className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)] hover:text-primary dark:hover:text-white transition-colors">
                                                                         <Eye size={14} /> View
                                                                     </Link>
                                                                     {/* Dual-channel: AUCTION listing → add retail listing */}
@@ -516,7 +516,7 @@ export default function DealerInventoryPage() {
                                                                     {listing.status !== 'SOLD' && (
                                                                         <button
                                                                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); openSoldModal(listing) }}
-                                                                            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-emerald-500/10 hover:text-emerald-400 transition-colors w-full text-left"
+                                                                            className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-emerald-500/10 hover:text-emerald-400 transition-colors w-full text-left"
                                                                         >
                                                                             <CheckCircle2 size={14} /> Mark Sold
                                                                         </button>
@@ -532,14 +532,14 @@ export default function DealerInventoryPage() {
                                                                                 }).catch(() => null)
                                                                                 if (res !== null) fetchListings(searchQuery)
                                                                             }}
-                                                                            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-blue-500/10 hover:text-blue-400 transition-colors w-full text-left"
+                                                                            className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-blue-500/10 hover:text-blue-400 transition-colors w-full text-left"
                                                                         >
                                                                             <RefreshCcw size={14} /> Relist
                                                                         </button>
                                                                     )}
                                                                     <button
                                                                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteListing(listing.id) }}
-                                                                        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-red-500/10 hover:text-red-400 transition-colors w-full text-left"
+                                                                        className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-red-500/10 hover:text-red-400 transition-colors w-full text-left"
                                                                     >
                                                                         <Trash2 size={14} /> Delete
                                                                     </button>
@@ -561,26 +561,26 @@ export default function DealerInventoryPage() {
             {/* ── Mark as Sold modal ─────────────────────────────────── */}
             {soldModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-                    <div className="bg-[#0A0A0C] border border-white/10 rounded-2xl w-full max-w-sm p-6 space-y-5 shadow-2xl">
+                    <div className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl w-full max-w-sm p-6 space-y-5 shadow-2xl">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
                                     <CheckCircle2 size={16} className="text-emerald-400" />
                                 </div>
                                 <div>
-                                    <p className="text-white font-bold text-sm">Mark as Sold</p>
-                                    <p className="text-slate-500 text-xs truncate max-w-[180px]">{soldModal.title}</p>
+                                    <p className="font-bold text-sm">Mark as Sold</p>
+                                    <p className="text-[var(--text-muted)] text-xs truncate max-w-[180px]">{soldModal.title}</p>
                                 </div>
                             </div>
-                            <button onClick={() => setSoldModal(null)} className="text-slate-500 hover:text-white transition-colors">
+                            <button onClick={() => setSoldModal(null)} className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors">
                                 <X size={18} />
                             </button>
                         </div>
 
                         <div>
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+                            <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
                                 <MapPin size={11} className="text-rose-400" /> Buyer Postcode
-                                <span className="text-slate-600 normal-case font-medium tracking-normal ml-1">(optional)</span>
+                                <span className="text-[var(--text-muted)] normal-case font-medium tracking-normal ml-1">(optional)</span>
                             </label>
                             <input
                                 type="text"
@@ -588,15 +588,15 @@ export default function DealerInventoryPage() {
                                 maxLength={8}
                                 value={soldModalPostcode}
                                 onChange={e => setSoldModalPostcode(e.target.value.toUpperCase())}
-                                className="w-full bg-slate-800 border border-white/10 text-white rounded-xl px-3 py-2 text-sm font-bold placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition-colors uppercase placeholder:normal-case"
+                                className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-3 py-2 text-sm font-bold placeholder:text-[var(--text-muted)] focus:outline-none focus:border-emerald-500 transition-colors uppercase placeholder:normal-case"
                             />
-                            <p className="text-xs text-slate-600 mt-1.5 font-medium">
+                            <p className="text-xs text-[var(--text-muted)] mt-1.5 font-medium">
                                 UK postcode recorded for buyer area analytics. Leave blank if not available.
                             </p>
                         </div>
 
                         <div className="flex gap-3 pt-1">
-                            <Button variant="outline" className="flex-1 border-white/10 text-slate-400 hover:text-white h-10"
+                            <Button variant="outline" className="flex-1 border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white h-10"
                                 onClick={() => setSoldModal(null)} disabled={soldModalLoading}>
                                 Cancel
                             </Button>
@@ -626,39 +626,39 @@ export default function DealerInventoryPage() {
             {/* ── Also List for Retail modal ──────────────────────────────── */}
             {alsoRetailListing && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-                    <div className="bg-[#0A0A0C] border border-white/10 rounded-2xl w-full max-w-sm p-6 space-y-5 shadow-2xl">
+                    <div className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl w-full max-w-sm p-6 space-y-5 shadow-2xl">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
                                     <Tag size={16} className="text-blue-400" />
                                 </div>
                                 <div>
-                                    <p className="text-white font-bold text-sm">Also List for Retail</p>
-                                    <p className="text-slate-500 text-xs truncate max-w-[160px]">{alsoRetailListing.title}</p>
+                                    <p className="font-bold text-sm">Also List for Retail</p>
+                                    <p className="text-[var(--text-muted)] text-xs truncate max-w-[160px]">{alsoRetailListing.title}</p>
                                 </div>
                             </div>
-                            <button onClick={() => setAlsoRetailListing(null)} className="text-slate-500 hover:text-white transition-colors"><X size={18} /></button>
+                            <button onClick={() => setAlsoRetailListing(null)} className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors"><X size={18} /></button>
                         </div>
 
                         <div className="space-y-3">
                             <div>
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Retail Price (£)</label>
+                                <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1.5">Retail Price (£)</label>
                                 <Input
                                     type="number"
                                     placeholder="e.g. 18500"
                                     value={alsoRetailPrice}
                                     onChange={e => setAlsoRetailPrice(e.target.value)}
-                                    className="bg-slate-800 border-white/10 text-white h-10"
+                                    className="bg-[var(--bg-input)] border-[var(--border-default)] h-10"
                                 />
                             </div>
                             <div>
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Listing Plan</label>
+                                <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1.5">Listing Plan</label>
                                 <div className="grid grid-cols-3 gap-2">
                                     {([['BASIC', '£1'], ['STANDARD', '£10'], ['PREMIUM', '£25']] as const).map(([tier, price]) => (
                                         <button
                                             key={tier}
                                             onClick={() => setAlsoRetailTier(tier)}
-                                            className={`py-2.5 rounded-xl border text-xs font-bold transition-all ${alsoRetailTier === tier ? 'bg-primary/15 border-primary/40 text-primary' : 'bg-slate-800/60 border-white/10 text-slate-400 hover:border-white/20'}`}
+                                            className={`py-2.5 rounded-xl border text-xs font-bold transition-all ${alsoRetailTier === tier ? 'bg-primary/15 border-primary/40 text-primary' : 'bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'}`}
                                         >
                                             {tier}<br /><span className="text-xs font-normal">{price}</span>
                                         </button>
@@ -683,19 +683,19 @@ export default function DealerInventoryPage() {
             {/* ─── Plan Selection Modal ──────────────────────────────────────── */}
             {planSelectListing && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-                    <div className="relative w-full max-w-lg bg-[#0A0A0C] border border-white/10 rounded-2xl p-6 shadow-2xl">
+                    <div className="relative w-full max-w-lg bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl p-6 shadow-2xl">
                         <button
                             onClick={closePlanModal}
-                            className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-white/10 text-gray-500 hover:text-white transition-colors"
+                            className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-white/10 text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors"
                         >
                             <X size={18} />
                         </button>
 
-                        <h2 className="text-lg font-black text-white font-heading uppercase tracking-tight mb-1">
+                        <h2 className="text-lg font-black  font-heading uppercase tracking-tight mb-1">
                             Choose a Listing Plan
                         </h2>
-                        <p className="text-xs text-gray-500 mb-4">
-                            Select a tier for <span className="text-gray-300 font-semibold">{planSelectListing.title || `${planSelectListing.make} ${planSelectListing.model}`}</span>
+                        <p className="text-xs text-[var(--text-muted)] mb-4">
+                            Select a tier for <span className="text-[var(--text-secondary)] font-semibold">{planSelectListing.title || `${planSelectListing.make} ${planSelectListing.model}`}</span>
                         </p>
 
                         {/* Completeness status */}
@@ -709,7 +709,7 @@ export default function DealerInventoryPage() {
                                         </span>
                                         <span className={`text-xs font-black ${comp.isComplete ? 'text-emerald-400' : 'text-amber-400'}`}>{comp.percent}%</span>
                                     </div>
-                                    <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden mb-2">
+                                    <div className="w-full h-1.5 bg-[var(--bg-card)] rounded-full overflow-hidden mb-2">
                                         <div
                                             className={`h-full rounded-full transition-all ${comp.isComplete ? 'bg-emerald-500' : comp.percent >= 60 ? 'bg-amber-500' : 'bg-red-500'}`}
                                             style={{ width: `${comp.percent}%` }}
@@ -767,11 +767,11 @@ export default function DealerInventoryPage() {
                             {/* BASIC */}
                             <button
                                 onClick={() => handlePlanConfirm('BASIC')}
-                                className="flex flex-col p-4 rounded-xl border border-white/10 bg-white/[0.02] hover:border-white/25 hover:bg-white/5 transition-all text-left"
+                                className="flex flex-col p-4 rounded-xl border border-[var(--border-default)] bg-white/[0.02] hover:border-white/25 hover:bg-[var(--bg-card)] transition-all text-left"
                             >
-                                <p className="text-white font-bold text-sm mb-1">Basic</p>
-                                <p className="text-2xl font-black text-white mb-3">£1</p>
-                                <ul className="space-y-1 text-[11px] text-gray-400">
+                                <p className="font-bold text-sm mb-1">Basic</p>
+                                <p className="text-2xl font-black  mb-3">£1</p>
+                                <ul className="space-y-1 text-[11px] text-[var(--text-muted)]">
                                     <li className="flex items-center gap-1.5"><CheckCircle2 size={11} className="text-emerald-400" /> Basic listing</li>
                                     <li className="flex items-center gap-1.5"><CheckCircle2 size={11} className="text-emerald-400" /> Offer system</li>
                                     <li className="flex items-center gap-1.5 text-gray-600"><X size={11} /> No trust badges</li>
@@ -784,8 +784,8 @@ export default function DealerInventoryPage() {
                                 className="relative flex flex-col p-4 rounded-xl border border-blue-500/30 bg-blue-500/5 hover:border-blue-500/60 hover:bg-blue-500/10 transition-all text-left"
                             >
                                 <p className="text-blue-400 font-bold text-sm mb-1 flex items-center gap-1"><Shield size={12} /> Standard</p>
-                                <p className="text-2xl font-black text-white mb-3">£10</p>
-                                <ul className="space-y-1 text-[11px] text-gray-400">
+                                <p className="text-2xl font-black  mb-3">£10</p>
+                                <ul className="space-y-1 text-[11px] text-[var(--text-muted)]">
                                     <li className="flex items-center gap-1.5"><BadgeCheck size={11} className="text-blue-400" /> VIN Report badge</li>
                                     <li className="flex items-center gap-1.5"><BadgeCheck size={11} className="text-blue-400" /> Verified Seller badge</li>
                                     <li className="flex items-center gap-1.5 text-gray-600"><X size={11} /> No featured boost</li>
@@ -803,9 +803,9 @@ export default function DealerInventoryPage() {
                             </span>
                             <div className="flex-1">
                                 <p className="text-amber-400 font-bold text-sm flex items-center gap-1"><Star size={12} /> Premium</p>
-                                <p className="text-lg font-black text-white">£25</p>
+                                <p className="text-lg font-black">£25</p>
                             </div>
-                            <ul className="space-y-1 text-[11px] text-gray-400">
+                            <ul className="space-y-1 text-[11px] text-[var(--text-muted)]">
                                 <li className="flex items-center gap-1.5"><Zap size={11} className="text-amber-400" /> Featured boost (28 days)</li>
                                 <li className="flex items-center gap-1.5"><Zap size={11} className="text-amber-400" /> Priority in search results</li>
                                 <li className="flex items-center gap-1.5"><Zap size={11} className="text-amber-400" /> Featured badge</li>

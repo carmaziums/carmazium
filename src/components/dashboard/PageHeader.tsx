@@ -14,7 +14,7 @@ export function PageHeader({ title, subHeader, children }: PageHeaderProps) {
                 <h1 className="text-3xl font-black font-heading uppercase tracking-tighter metallic-foil">
                     {title}
                 </h1>
-                <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1 opacity-70">
+                <p className="text-xs font-bold uppercase tracking-widest mt-1 opacity-70" style={{ color: 'var(--text-muted)' }}>
                     {subHeader}
                 </p>
             </div>

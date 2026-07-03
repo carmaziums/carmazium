@@ -48,8 +48,8 @@ export function BidVolumeChart({
             <div className="dealer-glass-card p-6">
                 <div className="flex items-center justify-between mb-6">
                     <div>
-                        <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">{title}</h3>
-                        {subtitle && <p className="text-xs text-gray-600 mt-0.5">{subtitle}</p>}
+                        <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">{title}</h3>
+                        {subtitle && <p className="text-xs text-[var(--text-muted)] mt-0.5">{subtitle}</p>}
                     </div>
                 </div>
                 <div className="animate-pulse" style={{ height }}>
@@ -101,8 +101,8 @@ export function BidVolumeChart({
         <div className="dealer-glass-card p-6">
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">{title}</h3>
-                    {subtitle && <p className="text-xs text-gray-600 mt-0.5">{subtitle}</p>}
+                    <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">{title}</h3>
+                    {subtitle && <p className="text-xs text-[var(--text-muted)] mt-0.5">{subtitle}</p>}
                 </div>
                 <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold ${
                     trendPct >= 0 ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"
@@ -128,10 +128,10 @@ export function BidVolumeChart({
                                 y1={y}
                                 x2={pad.left + w}
                                 y2={y}
-                                stroke="rgba(255,255,255,0.04)"
+                                stroke="var(--border-default)"
                                 strokeDasharray="4 4"
                             />
-                            <text x={pad.left - 8} y={y + 3} textAnchor="end" fill="#4b5563" fontSize={10} fontWeight={600}>
+                            <text x={pad.left - 8} y={y + 3} textAnchor="end" fill="var(--text-muted)" fontSize={10} fontWeight={600}>
                                 {val}
                             </text>
                         </g>
@@ -183,7 +183,7 @@ export function BidVolumeChart({
                                 x={p.x}
                                 y={pad.top + h + 24}
                                 textAnchor="middle"
-                                fill="#4b5563"
+                                fill="var(--text-muted)"
                                 fontSize={9}
                                 fontWeight={700}
                                 style={{ textTransform: "uppercase", letterSpacing: "0.05em" }}
@@ -197,15 +197,15 @@ export function BidVolumeChart({
                 {/* Tooltip */}
                 {tooltip && (
                     <div
-                        className="absolute pointer-events-none z-20 bg-slate-800/95 border border-white/10 rounded-lg px-3 py-2 shadow-xl backdrop-blur-lg transition-all duration-150"
+                        className="absolute pointer-events-none z-20 bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-lg px-3 py-2 shadow-xl backdrop-blur-lg transition-all duration-150"
                         style={{
                             left: tooltip.x,
                             top: tooltip.y - 50,
                             transform: "translateX(-50%)",
                         }}
                     >
-                        <p className="text-xs text-gray-400 uppercase tracking-widest font-bold">{tooltip.point.label}</p>
-                        <p className="text-white font-black text-lg">{tooltip.point.value}</p>
+                        <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold">{tooltip.point.label}</p>
+                        <p className="font-black text-lg">{tooltip.point.value}</p>
                     </div>
                 )}
             </div>

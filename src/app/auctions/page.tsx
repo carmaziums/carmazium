@@ -44,7 +44,7 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
         >
             <Link
                 href={`/auctions/live/${auction.id}`}
-                className="group block bg-slate-900/80 rounded-2xl overflow-hidden border border-white/5 hover:border-red-500/30 transition-all duration-300 hover:shadow-[0_8px_30px_rgba(220,38,38,0.12)] hover:-translate-y-1"
+                className="group block bg-[var(--bg-card)] rounded-2xl overflow-hidden border border-[var(--border-default)] hover:border-red-500/30 transition-all duration-300 hover:shadow-[0_8px_30px_rgba(220,38,38,0.12)] hover:-translate-y-1"
             >
                 {/* Image */}
                 <div className="relative h-52 overflow-hidden">
@@ -64,7 +64,7 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
                                 <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" /> LIVE
                             </span>
                         ) : (
-                            <span className="flex items-center gap-1.5 bg-black/60 backdrop-blur text-slate-300 text-[10px] font-bold px-2.5 py-1 rounded-full border border-white/10">
+                            <span className="flex items-center gap-1.5 bg-black/60 backdrop-blur text-slate-300 text-[10px] font-bold px-2.5 py-1 rounded-full border border-[var(--border-default)]">
                                 <Clock size={9} /> {formatStartsIn(auction.startTime)}
                             </span>
                         )}
@@ -76,7 +76,7 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
                     </div>
 
                     {/* Bid count */}
-                    <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-black/50 backdrop-blur px-2.5 py-1 rounded-full border border-white/10 text-white text-[10px] font-bold">
+                    <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-black/50 backdrop-blur px-2.5 py-1 rounded-full border border-[var(--border-default)] text-white text-[10px] font-bold">
                         <Users size={10} className="text-slate-400" /> {bidCount}
                     </div>
 
@@ -91,33 +91,33 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
                 <div className="px-4 pt-3 pb-4">
                     <div className="flex items-center justify-between mb-3">
                         <div>
-                            <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">
+                            <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold">
                                 {bidCount > 0 ? "Current Bid" : "Starting Bid"}
                             </p>
-                            <p className="text-2xl font-black text-white font-mono mt-0.5">
+                            <p className="text-2xl font-black text-[var(--text-primary)] font-mono mt-0.5">
                                 £{currentBid.toLocaleString()}
                             </p>
                         </div>
                         <div className="text-right">
                             {isActive ? (
                                 <>
-                                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Ends In</p>
+                                    <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold">Ends In</p>
                                     <div className="text-red-400 font-mono font-bold text-sm mt-0.5">
                                         <CountdownTimer targetDate={new Date(auction.endTime)} minimal />
                                     </div>
                                 </>
                             ) : (
                                 <>
-                                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Starts In</p>
-                                    <p className="text-slate-300 font-mono font-bold text-sm mt-0.5">{formatStartsIn(auction.startTime)}</p>
+                                    <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold">Starts In</p>
+                                    <p className="text-[var(--text-secondary)] font-mono font-bold text-sm mt-0.5">{formatStartsIn(auction.startTime)}</p>
                                 </>
                             )}
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                        <span className="text-[10px] text-slate-500">Reserve: £{Number(auction.reservePrice).toLocaleString()}</span>
-                        <span className={`flex items-center gap-1 text-xs font-bold transition-colors ${isActive ? "text-primary group-hover:text-red-400" : "text-slate-400 group-hover:text-slate-300"}`}>
+                    <div className="flex items-center justify-between pt-3 border-t border-[var(--border-default)]">
+                        <span className="text-[10px] text-[var(--text-muted)]">Reserve: £{Number(auction.reservePrice).toLocaleString()}</span>
+                        <span className={`flex items-center gap-1 text-xs font-bold transition-colors ${isActive ? "text-primary group-hover:text-red-400" : "text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]"}`}>
                             {isActive ? "Bid Now" : "View"} <ChevronRight size={12} />
                         </span>
                     </div>
@@ -131,15 +131,15 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
 
 function SkeletonCard() {
     return (
-        <div className="bg-slate-900/80 border border-white/5 rounded-2xl overflow-hidden animate-pulse">
-            <div className="h-52 bg-slate-800/60" />
+        <div className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-2xl overflow-hidden animate-pulse">
+            <div className="h-52 bg-[var(--bg-input)]" />
             <div className="p-4 space-y-3">
-                <div className="h-3 bg-slate-800 rounded w-1/3" />
-                <div className="h-6 bg-slate-800 rounded w-1/2" />
-                <div className="h-px bg-white/5" />
+                <div className="h-3 bg-[var(--bg-input)] rounded w-1/3" />
+                <div className="h-6 bg-[var(--bg-input)] rounded w-1/2" />
+                <div className="h-px bg-[var(--bg-card)]" />
                 <div className="flex justify-between">
-                    <div className="h-3 bg-slate-800 rounded w-1/4" />
-                    <div className="h-3 bg-slate-800 rounded w-1/5" />
+                    <div className="h-3 bg-[var(--bg-input)] rounded w-1/4" />
+                    <div className="h-3 bg-[var(--bg-input)] rounded w-1/5" />
                 </div>
             </div>
         </div>
@@ -151,13 +151,13 @@ function SkeletonCard() {
 function EmptyState({ tab }: { tab: "live" | "upcoming" }) {
     return (
         <div className="col-span-full flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-slate-800 border border-white/5 flex items-center justify-center mb-4 shadow-lg">
-                {tab === "live" ? <Flame size={24} className="text-slate-500" /> : <Calendar size={24} className="text-slate-500" />}
+            <div className="w-16 h-16 rounded-2xl bg-[var(--bg-input)] border border-[var(--border-default)] flex items-center justify-center mb-4 shadow-lg">
+                {tab === "live" ? <Flame size={24} className="text-[var(--text-muted)]" /> : <Calendar size={24} className="text-[var(--text-muted)]" />}
             </div>
-            <p className="text-slate-300 font-bold text-sm">
+            <p className="text-[var(--text-secondary)] font-bold text-sm">
                 {tab === "live" ? "No live auctions right now" : "No upcoming auctions"}
             </p>
-            <p className="text-slate-600 text-xs mt-1.5 max-w-xs leading-relaxed">
+            <p className="text-[var(--text-muted)] text-xs mt-1.5 max-w-xs leading-relaxed">
                 {tab === "live"
                     ? "Auctions go live automatically at their scheduled time. Check back soon."
                     : "New auctions are added regularly — check back to catch the next one."}
@@ -208,10 +208,10 @@ export default function AuctionsPage() {
     })
 
     return (
-        <div className="min-h-screen text-white" style={{ background: 'var(--bg-body)' }}>
+        <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>
 
             {/* ── Hero ─────────────────────────────────────────────────────── */}
-            <section className="relative overflow-hidden" style={{ marginTop: '-80px', paddingTop: '80px' }}>
+            <section className="relative overflow-hidden text-white" style={{ marginTop: '-80px', paddingTop: '80px' }}>
                 {/* Hero image */}
                 <Image
                     src="/assets/images/live-auction-hero.jpg"
@@ -289,13 +289,13 @@ export default function AuctionsPage() {
             <div className="sticky top-[80px] z-30 backdrop-blur-xl border-b" style={{ background: 'var(--bg-header)', borderColor: 'var(--border-default)' }}>
                 <div className="container mx-auto px-6 h-14 flex items-center justify-between gap-4">
                     {/* Tabs */}
-                    <div className="flex items-center gap-1 bg-slate-800/60 border border-white/10 rounded-xl p-1">
+                    <div className="flex items-center gap-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl p-1">
                         {(["live", "upcoming"] as const).map(tab => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
                                 className={`relative px-5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
-                                    activeTab === tab ? "text-white" : "text-slate-500 hover:text-slate-300"
+                                    activeTab === tab ? "text-primary" : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
                                 }`}
                             >
                                 {activeTab === tab && (
@@ -308,7 +308,7 @@ export default function AuctionsPage() {
                                 <span className="relative z-10 flex items-center gap-2">
                                     {tab === "live" ? <Flame size={11} className={activeTab === tab ? "text-red-400" : ""} /> : <Calendar size={11} />}
                                     {tab}
-                                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${activeTab === tab ? "bg-primary/30 text-red-300" : "bg-white/5 text-slate-500"}`}>
+                                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${activeTab === tab ? "bg-primary/30 text-red-300" : "bg-[var(--bg-card)] text-[var(--text-muted)]"}`}>
                                         {tab === "live" ? liveAuctions.length : scheduledAuctions.length}
                                     </span>
                                 </span>
@@ -319,19 +319,19 @@ export default function AuctionsPage() {
                     {/* Search + refresh */}
                     <div className="flex items-center gap-2 flex-1 max-w-xs">
                         <div className="relative flex-1">
-                            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
                             <input
                                 type="text"
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
                                 placeholder="Search make, model…"
-                                className="w-full bg-slate-800/60 border border-white/10 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-primary/40 transition-colors"
+                                className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl pl-9 pr-3 py-1.5 text-xs placeholder-[var(--text-muted)] focus:outline-none focus:border-primary/40 transition-colors"
                             />
                         </div>
                         <button
                             onClick={load}
                             disabled={loading}
-                            className="p-2 rounded-xl border border-white/10 text-slate-500 hover:text-white hover:border-white/20 transition-all"
+                            className="p-2 rounded-xl border border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white hover:border-primary/30 transition-all"
                             title="Refresh"
                         >
                             <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
@@ -377,19 +377,19 @@ export default function AuctionsPage() {
                 )}
 
                 {!loading && (
-                    <p className="text-center text-slate-700 text-[10px] mt-8 font-mono">
+                    <p className="text-center text-[var(--text-muted)] text-[10px] mt-8 font-mono">
                         Updated {new Date(lastRefresh).toLocaleTimeString("en-GB")}
                     </p>
                 )}
             </div>
 
             {/* ── How It Works ─────────────────────────────────────────────── */}
-            <section className="border-t border-white/5 bg-slate-900/50 mt-8">
+            <section className="border-t border-[var(--border-default)] bg-[var(--bg-card)] mt-8">
                 <div className="container mx-auto px-6 py-20">
                     <div className="text-center mb-12">
                         <p className="text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-3">How It Works</p>
                         <h2 className="text-3xl md:text-4xl font-black text-white font-heading">Bid. Win. Connect.</h2>
-                        <p className="text-slate-500 text-sm mt-3 max-w-md mx-auto">Three simple steps from browsing to owning your next car.</p>
+                        <p className="text-[var(--text-muted)] text-sm mt-3 max-w-md mx-auto">Three simple steps from browsing to owning your next car.</p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-14">
@@ -404,15 +404,15 @@ export default function AuctionsPage() {
                                 emerald: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
                             }
                             return (
-                                <div key={step} className="group bg-slate-800/40 border border-white/5 rounded-2xl p-6 hover:border-white/10 transition-all hover:bg-slate-800/60">
+                                <div key={step} className="group bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl p-6 hover:border-[var(--border-default)] transition-all hover:bg-[var(--bg-input)]">
                                     <div className="flex items-start gap-4">
                                         <div className={`w-11 h-11 rounded-xl border flex items-center justify-center shrink-0 ${styles[color]}`}>
                                             <Icon size={18} />
                                         </div>
                                         <div>
-                                            <p className="text-[10px] font-black text-slate-600 tracking-widest mb-1">{step}</p>
+                                            <p className="text-[10px] font-black text-[var(--text-muted)] tracking-widest mb-1">{step}</p>
                                             <h3 className="text-white font-bold mb-2">{title}</h3>
-                                            <p className="text-slate-500 text-sm leading-relaxed">{desc}</p>
+                                            <p className="text-[var(--text-muted)] text-sm leading-relaxed">{desc}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -427,20 +427,20 @@ export default function AuctionsPage() {
                             { icon: Trophy, title: "Exclusive Vehicles", desc: "Access rare and sought-after cars that rarely appear in standard listings.", color: "text-amber-400" },
                             { icon: Users, title: "Live Audience", desc: "Real-time watcher counts show genuine demand as it happens.", color: "text-primary" },
                         ].map(({ icon: Icon, title, desc, color }) => (
-                            <div key={title} className="flex gap-4 p-5 bg-slate-800/30 border border-white/5 rounded-2xl hover:border-white/10 transition-all">
-                                <div className={`w-10 h-10 rounded-xl bg-slate-800 border border-white/5 flex items-center justify-center shrink-0 ${color}`}>
+                            <div key={title} className="flex gap-4 p-5 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl hover:border-[var(--border-default)] transition-all">
+                                <div className={`w-10 h-10 rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] flex items-center justify-center shrink-0 ${color}`}>
                                     <Icon size={17} />
                                 </div>
                                 <div>
                                     <p className="text-white font-bold text-sm mb-1">{title}</p>
-                                    <p className="text-slate-500 text-xs leading-relaxed">{desc}</p>
+                                    <p className="text-[var(--text-muted)] text-xs leading-relaxed">{desc}</p>
                                 </div>
                             </div>
                         ))}
                     </div>
 
                     {/* CTA banner */}
-                    <div className="relative rounded-3xl overflow-hidden border border-white/10 p-10 md:p-14 text-center bg-gradient-to-br from-slate-800 to-slate-900 shadow-2xl">
+                    <div className="relative rounded-3xl overflow-hidden border border-[var(--border-default)] p-10 md:p-14 text-center bg-gradient-to-br from-slate-800 to-slate-900 shadow-2xl">
                         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(237,28,36,0.1)_0%,transparent_55%)]" />
                         <div className="absolute top-0 left-0 w-96 h-96 bg-primary/5 blur-[100px] rounded-full -translate-x-1/2 -translate-y-1/2" />
                         <div className="relative z-10">
@@ -448,12 +448,12 @@ export default function AuctionsPage() {
                             <h2 className="text-2xl md:text-3xl font-black text-white font-heading mb-3">
                                 Put your car under the gavel
                             </h2>
-                            <p className="text-slate-400 text-sm max-w-md mx-auto mb-6 leading-relaxed">
+                            <p className="text-[var(--text-muted)] text-sm max-w-md mx-auto mb-6 leading-relaxed">
                                 Free to list. 6-hour sprint. Set your reserve, schedule your time, and let buyers compete for your car.
                             </p>
                             <div className="flex flex-wrap items-center justify-center gap-2 mb-7">
                                 {["Free to list", "Set your reserve", "Anti-snipe protection", "Auto-connect with winner"].map(f => (
-                                    <span key={f} className="flex items-center gap-1.5 text-xs text-slate-400 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full">
+                                    <span key={f} className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] bg-[var(--bg-card)] border border-[var(--border-default)] px-3 py-1.5 rounded-full">
                                         <CheckCircle size={11} className="text-emerald-500" /> {f}
                                     </span>
                                 ))}

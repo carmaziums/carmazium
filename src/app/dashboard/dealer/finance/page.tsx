@@ -66,9 +66,9 @@ export default function DealerFinancePage() {
         : (user?.email?.split('@')[0] || "Dealer")
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
+        <div className="min-h-screen pt-20 pb-12">
             {toast && (
-                <div className="fixed bottom-6 right-6 z-50 bg-slate-800 border border-white/10 text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-medium animate-in slide-in-from-bottom-4">
+                <div className="fixed bottom-6 right-6 z-50 bg-[var(--bg-input)] border border-[var(--border-default)] px-5 py-3 rounded-xl shadow-2xl text-sm font-medium animate-in slide-in-from-bottom-4">
                     {toast}
                 </div>
             )}
@@ -105,10 +105,10 @@ export default function DealerFinancePage() {
 
                     {/* Applications Table */}
                     <div className="dealer-glass-card overflow-hidden">
-                        <div className="p-8 border-b border-white/5 bg-[#0A0A0C]/40 flex items-center justify-between">
+                        <div className="p-8 border-b border-[var(--border-default)] bg-[var(--bg-input)] flex items-center justify-between">
                             <div>
-                                <h2 className="text-base font-black font-heading text-white uppercase tracking-tight">Active Applications</h2>
-                                <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-1">Live underwriting ledger</p>
+                                <h2 className="text-base font-black font-heading uppercase tracking-tight">Active Applications</h2>
+                                <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest mt-1">Live underwriting ledger</p>
                             </div>
                             <div className="flex items-center gap-2 text-primary font-black text-xs uppercase tracking-widest p-2 bg-primary/5 rounded-lg border border-primary/10">
                                 <TrendingUp size={12} /> Real-time Pricing
@@ -137,8 +137,8 @@ export default function DealerFinancePage() {
                                     ) : !applications.length ? (
                                         <tr>
                                             <td colSpan={6} className="px-6 py-16 text-center">
-                                                <FileText className="h-12 w-12 text-gray-700 mx-auto mb-3" />
-                                                <p className="text-gray-500 font-bold">No finance applications</p>
+                                                <FileText className="h-12 w-12 text-[var(--text-muted)] mx-auto mb-3" />
+                                                <p className="text-[var(--text-muted)] font-bold">No finance applications</p>
                                                 <p className="text-gray-600 text-sm mt-1">Applications will appear when buyers apply for finance on your vehicles</p>
                                             </td>
                                         </tr>
@@ -147,22 +147,22 @@ export default function DealerFinancePage() {
                                             <tr key={app.id} className="group hover:bg-white/[0.02] transition-colors relative">
                                                 <td className="px-8 py-6">
                                                     <div className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 bg-black/60 rounded-xl flex items-center justify-center border border-white/10 group-hover:border-primary/30 transition-colors">
-                                                            <Activity size={18} className="text-gray-500 group-hover:text-primary" />
+                                                        <div className="w-10 h-10 bg-black/60 rounded-xl flex items-center justify-center border border-[var(--border-default)] group-hover:border-primary/30 transition-colors">
+                                                            <Activity size={18} className="text-[var(--text-muted)] group-hover:text-primary" />
                                                         </div>
                                                         <div>
-                                                            <p className="font-black text-white text-sm tracking-tight">{app.user?.firstName} {app.user?.lastName}</p>
+                                                            <p className="font-black text-sm tracking-tight">{app.user?.firstName} {app.user?.lastName}</p>
                                                             <p className="text-xs font-bold text-gray-600 uppercase tracking-widest">ID: {app.id.slice(0, 8)}</p>
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-6 font-bold text-white tracking-tight uppercase text-xs">{app.listing?.title}</td>
-                                                <td className="px-6 py-6 text-right font-black text-white text-sm tracking-tighter">£{app.depositAmount?.toLocaleString()}</td>
-                                                <td className="px-6 py-6 text-center text-xs font-black uppercase tracking-widest text-gray-400">{app.termMonths} Months</td>
+                                                <td className="px-6 py-6 font-bold tracking-tight uppercase text-xs">{app.listing?.title}</td>
+                                                <td className="px-6 py-6 text-right font-black text-sm tracking-tighter">£{app.depositAmount?.toLocaleString()}</td>
+                                                <td className="px-6 py-6 text-center text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">{app.termMonths} Months</td>
                                                 <td className="px-6 py-6 text-right">
                                                     <div className="flex flex-col items-end">
-                                                        <span className="text-sm font-black text-white tracking-tighter">{app.monthlyPayment ? `£${app.monthlyPayment}` : '—'}</span>
-                                                        <span className="text-xs text-gray-500 uppercase tracking-widest leading-none mt-1">Estim. P&I</span>
+                                                        <span className="text-sm font-black tracking-tighter">{app.monthlyPayment ? `£${app.monthlyPayment}` : '—'}</span>
+                                                        <span className="text-xs text-[var(--text-muted)] uppercase tracking-widest leading-none mt-1">Estim. P&I</span>
                                                     </div>
                                                 </td>
                                                 <td className="px-8 py-6 text-center">

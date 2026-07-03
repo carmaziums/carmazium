@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-primary: #ed1c24;
   --color-secondary: #1e293b;
@@ -188,11 +190,11 @@
 
   /* VIP Dealer Utilities */
   .dealer-glass-card {
-    background: rgba(15, 23, 42, 0.4);
+    background: var(--bg-card);
     backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-default);
     border-radius: 1rem;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+    box-shadow: var(--shadow-card);
     position: relative;
     overflow: hidden;
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -200,17 +202,25 @@
 
   .dealer-glass-card:hover {
     transform: translateY(-2px);
-    border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(59, 130, 246, 0.1) inset;
+    border-color: var(--border-hover);
+    box-shadow: var(--shadow-card-hover);
   }
 
   .metallic-foil {
-    background: linear-gradient(135deg, #e3e8ef 0%, #94a3b8 20%, #e3e8ef 40%, #ffffff 50%, #94a3b8 70%, #e3e8ef 100%);
+    background: linear-gradient(135deg, #1e293b 0%, #475569 20%, #1e293b 40%, #0f172a 50%, #475569 70%, #1e293b 100%);
     background-size: 200% 200%;
     color: transparent;
     -webkit-background-clip: text;
     background-clip: text;
     animation: shimmer-sweep 3s infinite linear;
+  }
+
+  .dark .metallic-foil {
+    background: linear-gradient(135deg, #e3e8ef 0%, #94a3b8 20%, #e3e8ef 40%, #ffffff 50%, #94a3b8 70%, #e3e8ef 100%);
+    background-size: 200% 200%;
+    color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
   }
 
   /* Secondary VIP Utilities */
@@ -221,13 +231,13 @@
   }
 
   .vip-table-header {
-    background: rgba(0, 0, 0, 0.4);
+    background: var(--bg-input);
     text-transform: uppercase;
     font-weight: 800;
     letter-spacing: 0.1em;
     font-size: 0.65rem;
-    color: #94a3b8;
-    border-bottom: 2px solid rgba(255, 255, 255, 0.05);
+    color: var(--text-muted);
+    border-bottom: 2px solid var(--border-default);
   }
 
   .shimmer-bg {

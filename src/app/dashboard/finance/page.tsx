@@ -58,7 +58,7 @@ export default function FinanceDashboard() {
 
     if (authLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+            <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
             </div>
         )
@@ -67,45 +67,45 @@ export default function FinanceDashboard() {
     const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "User")
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
+        <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="finance" userName={userName} userType="Finance Partner" />
 
                 <main className="flex-1 space-y-8">
                     {/* Stats Row */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="glass-card p-6 border border-white/5 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors">
+                        <div className="glass-card p-6 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl hover:bg-white/10 transition-colors">
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="p-2 bg-yellow-500/20 rounded-lg"><Clock size={18} className="text-yellow-400" /></div>
                             </div>
-                            <p className="text-gray-400 text-xs mb-1 uppercase tracking-widest font-bold">Pending</p>
-                            <h3 className="text-3xl font-black font-heading text-white">
+                            <p className="text-[var(--text-muted)] text-xs mb-1 uppercase tracking-widest font-bold">Pending</p>
+                            <h3 className="text-3xl font-black font-heading">
                                 {loading ? "..." : stats?.pending || 0}
                             </h3>
                         </div>
-                        <div className="glass-card p-6 border border-white/5 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors">
+                        <div className="glass-card p-6 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl hover:bg-white/10 transition-colors">
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="p-2 bg-emerald-500/20 rounded-lg"><CheckCircle size={18} className="text-emerald-400" /></div>
                             </div>
-                            <p className="text-gray-400 text-xs mb-1 uppercase tracking-widest font-bold">Approved</p>
+                            <p className="text-[var(--text-muted)] text-xs mb-1 uppercase tracking-widest font-bold">Approved</p>
                             <h3 className="text-3xl font-black font-heading text-emerald-400">
                                 {loading ? "..." : stats?.approved || 0}
                             </h3>
                         </div>
-                        <div className="glass-card p-6 border border-white/5 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors">
+                        <div className="glass-card p-6 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl hover:bg-white/10 transition-colors">
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="p-2 bg-red-500/20 rounded-lg"><XCircle size={18} className="text-red-400" /></div>
                             </div>
-                            <p className="text-gray-400 text-xs mb-1 uppercase tracking-widest font-bold">Rejected</p>
+                            <p className="text-[var(--text-muted)] text-xs mb-1 uppercase tracking-widest font-bold">Rejected</p>
                             <h3 className="text-3xl font-black font-heading text-red-400">
                                 {loading ? "..." : stats?.rejected || 0}
                             </h3>
                         </div>
-                        <div className="glass-card p-6 border border-white/5 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors">
+                        <div className="glass-card p-6 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl hover:bg-white/10 transition-colors">
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="p-2 bg-primary/20 rounded-lg"><Banknote size={18} className="text-primary" /></div>
                             </div>
-                            <p className="text-gray-400 text-xs mb-1 uppercase tracking-widest font-bold">Total Value</p>
+                            <p className="text-[var(--text-muted)] text-xs mb-1 uppercase tracking-widest font-bold">Total Value</p>
                             <h3 className="text-2xl font-black font-heading text-primary">
                                 {loading ? "..." : formatCurrency(stats?.totalValue || 0)}
                             </h3>
@@ -113,8 +113,8 @@ export default function FinanceDashboard() {
                     </div>
 
                     {/* Recent Applications Table */}
-                    <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl">
-                        <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+                    <div className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
+                        <div className="p-6 border-b border-[var(--border-default)] flex justify-between items-center bg-[var(--bg-card)]">
                             <h2 className="text-xl font-black font-heading text-white uppercase tracking-tight flex items-center gap-2">
                                 <FileText className="text-primary" /> Recent Applications
                             </h2>
@@ -122,7 +122,7 @@ export default function FinanceDashboard() {
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
-                                <thead className="bg-slate-800/50 text-gray-400 text-xs uppercase font-black tracking-widest">
+                                <thead className="bg-[var(--bg-input)] text-[var(--text-muted)] text-xs uppercase font-black tracking-widest">
                                     <tr>
                                         <th className="px-6 py-4">Applicant</th>
                                         <th className="px-6 py-4">Vehicle</th>
@@ -132,7 +132,7 @@ export default function FinanceDashboard() {
                                         <th className="px-6 py-4 text-right">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-white/5 text-white/80">
+                                <tbody className="divide-y divide-[var(--border-default)] text-white/80">
                                     {loading ? (
                                         <tr>
                                             <td colSpan={6} className="px-6 py-12 text-center">
@@ -141,20 +141,20 @@ export default function FinanceDashboard() {
                                         </tr>
                                     ) : applications.length === 0 ? (
                                         <tr>
-                                            <td colSpan={6} className="px-6 py-12 text-center text-gray-500 italic">
+                                            <td colSpan={6} className="px-6 py-12 text-center text-[var(--text-muted)] italic">
                                                 No finance applications yet. Applications will appear here once buyers apply.
                                             </td>
                                         </tr>
                                     ) : (
                                         applications.map((app) => (
-                                            <tr key={app.id} className="hover:bg-white/5 transition-colors">
+                                            <tr key={app.id} className="hover:bg-[var(--bg-card)] transition-colors">
                                                 <td className="px-6 py-4">
-                                                    <div className="font-bold text-white">{app.user?.firstName} {app.user?.lastName}</div>
-                                                    <div className="text-xs text-gray-400">{app.user?.email}</div>
+                                                    <div className="font-bold">{app.user?.firstName} {app.user?.lastName}</div>
+                                                    <div className="text-xs text-[var(--text-muted)]">{app.user?.email}</div>
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="text-sm">{app.listing?.title || 'Unknown Vehicle'}</div>
-                                                    <div className="text-xs text-gray-400">{formatCurrency(app.listing?.price || 0)}</div>
+                                                    <div className="text-xs text-[var(--text-muted)]">{formatCurrency(app.listing?.price || 0)}</div>
                                                 </td>
                                                 <td className="px-6 py-4 text-right font-bold">{formatCurrency(app.depositAmount)}</td>
                                                 <td className="px-6 py-4 text-center">{app.termMonths} mo</td>

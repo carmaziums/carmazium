@@ -31,8 +31,8 @@ function getTier(score: number): { label: string; color: string; bg: string } {
     if (score >= 4.5) return { label: "Top Seller", color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20" }
     if (score >= 3.5) return { label: "Trusted", color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20" }
     if (score >= 2.5) return { label: "Good", color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/20" }
-    if (score > 0) return { label: "New", color: "text-gray-400", bg: "bg-white/5 border-white/10" }
-    return { label: "No reviews", color: "text-gray-500", bg: "bg-white/5 border-white/10" }
+    if (score > 0) return { label: "New", color: "text-slate-500 dark:text-[var(--text-muted)]", bg: "bg-slate-500/10 border-slate-500/20 dark:bg-[var(--bg-card)] dark:border-[var(--border-default)]" }
+    return { label: "No reviews", color: "text-slate-400 dark:text-[var(--text-muted)]", bg: "bg-slate-500/10 border-slate-500/20 dark:bg-[var(--bg-card)] dark:border-[var(--border-default)]" }
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────

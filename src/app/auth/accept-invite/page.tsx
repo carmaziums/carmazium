@@ -63,7 +63,7 @@ function AcceptInviteContent() {
         return (
             <div className="flex flex-col items-center gap-4 text-center">
                 <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
-                <p className="text-sm text-gray-500">Verifying your session…</p>
+                <p className="text-sm text-[var(--text-muted)]">Verifying your session…</p>
             </div>
         )
     }
@@ -72,7 +72,7 @@ function AcceptInviteContent() {
         return (
             <div className="flex flex-col items-center gap-4 text-center">
                 <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
-                <p className="text-sm text-gray-500">Accepting your invitation…</p>
+                <p className="text-sm text-[var(--text-muted)]">Accepting your invitation…</p>
             </div>
         )
     }
@@ -83,7 +83,7 @@ function AcceptInviteContent() {
                 <CheckCircle className="w-14 h-14 text-green-500" />
                 <div>
                     <h2 className="text-xl font-semibold text-gray-900">Invitation accepted</h2>
-                    <p className="mt-1 text-sm text-gray-500">{message}</p>
+                    <p className="mt-1 text-sm text-[var(--text-muted)]">{message}</p>
                 </div>
                 <Button onClick={handleGoToDashboard} className="w-full">
                     Go to dashboard
@@ -98,7 +98,7 @@ function AcceptInviteContent() {
             <XCircle className="w-14 h-14 text-red-500" />
             <div>
                 <h2 className="text-xl font-semibold text-gray-900">Invitation failed</h2>
-                <p className="mt-1 text-sm text-gray-500">{message}</p>
+                <p className="mt-1 text-sm text-[var(--text-muted)]">{message}</p>
             </div>
             <Link href="/auth/login" className="text-sm text-blue-600 hover:underline">
                 Back to login
@@ -117,7 +117,7 @@ export default function AcceptInvitePage() {
                     </div>
                     <div className="text-center">
                         <h1 className="text-2xl font-bold text-gray-900">Staff invitation</h1>
-                        <p className="text-sm text-gray-500 mt-1">Join your dealership team on Carmazium</p>
+                        <p className="text-sm text-[var(--text-muted)] mt-1">Join your dealership team on Carmazium</p>
                     </div>
                 </div>
 

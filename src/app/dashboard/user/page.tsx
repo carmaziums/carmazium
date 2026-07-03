@@ -97,7 +97,7 @@ import { ImportListingModal } from "@/components/features/ImportListingModal"
 export default function UnifiedUserDashboard() {
     return (
         <React.Suspense fallback={
-            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+            <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
             </div>
         }>
@@ -142,7 +142,7 @@ function UnifiedUserDashboardContent() {
 
     if (authLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+            <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
             </div>
         )
@@ -163,7 +163,7 @@ function UnifiedUserDashboardContent() {
     ]
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
+        <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 {/* Unified Sidebar */}
                 <DashboardSidebar
@@ -210,7 +210,7 @@ function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | n
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h2 className="text-2xl font-black font-heading uppercase tracking-tight">Unified Overview</h2>
-                    <p className="text-gray-400 text-sm font-medium">Your combined activity as a buyer and seller.</p>
+                    <p className="text-[var(--text-muted)] text-sm font-medium">Your combined activity as a buyer and seller.</p>
                 </div>
             </div>
 
@@ -256,31 +256,31 @@ function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | n
 
             {/* Recent Activity / Next Steps */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="glass-card p-6 border-white/10 bg-white/5 rounded-2xl">
+                <div className="glass-card p-6 border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                     <h3 className="text-lg font-black font-heading uppercase tracking-tight flex items-center gap-2 mb-6">
                         <TrendingUp className="text-primary" size={20} /> Seller Insights
                     </h3>
                     <div className="space-y-4">
-                        <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5 group hover:border-primary/30 transition-all">
+                        <div className="flex items-center justify-between p-4 bg-[var(--bg-card)] rounded-xl border border-[var(--border-default)] group hover:border-primary/30 transition-all">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary border border-primary/20">
                                     <Tag size={18} />
                                 </div>
                                 <div>
                                     <p className="font-bold text-sm">Incoming Offers</p>
-                                    <p className="text-xs text-gray-500">You have {data?.seller?.incomingOffers || 0} pending offers to review.</p>
+                                    <p className="text-xs text-[var(--text-muted)]">You have {data?.seller?.incomingOffers || 0} pending offers to review.</p>
                                 </div>
                             </div>
                             <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10" onClick={() => setTab('offers')}>View All</Button>
                         </div>
-                        <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5 group hover:border-emerald-500/30 transition-all">
+                        <div className="flex items-center justify-between p-4 bg-[var(--bg-card)] rounded-xl border border-[var(--border-default)] group hover:border-emerald-500/30 transition-all">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-400 border border-emerald-500/20">
                                     <DollarSign size={18} />
                                 </div>
                                 <div>
                                     <p className="font-bold text-sm">Earnings Status</p>
-                                    <p className="text-xs text-gray-500">Your total realized revenue is {formatPrice(data?.seller?.totalRevenue || 0)}.</p>
+                                    <p className="text-xs text-[var(--text-muted)]">Your total realized revenue is {formatPrice(data?.seller?.totalRevenue || 0)}.</p>
                                 </div>
                             </div>
                             <Button variant="ghost" size="sm" className="text-emerald-400 hover:bg-emerald-500/10" onClick={() => setTab('earnings')}>History</Button>
@@ -288,31 +288,31 @@ function OverviewTab({ data, loading, setTab }: { data: UnifiedDashboardData | n
                     </div>
                 </div>
 
-                <div className="glass-card p-6 border-white/10 bg-white/5 rounded-2xl">
+                <div className="glass-card p-6 border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                     <h3 className="text-lg font-black font-heading uppercase tracking-tight flex items-center gap-2 mb-6">
                         <Gavel className="text-blue-400" size={20} /> Buyer Insights
                     </h3>
                     <div className="space-y-4">
-                        <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5 group hover:border-blue-500/30 transition-all">
+                        <div className="flex items-center justify-between p-4 bg-[var(--bg-card)] rounded-xl border border-[var(--border-default)] group hover:border-blue-500/30 transition-all">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-400 border border-blue-500/20">
                                     <Tag size={18} />
                                 </div>
                                 <div>
                                     <p className="font-bold text-sm">My Sent Offers</p>
-                                    <p className="text-xs text-gray-500">Track the offers you've made on vehicles.</p>
+                                    <p className="text-xs text-[var(--text-muted)]">Track the offers you've made on vehicles.</p>
                                 </div>
                             </div>
                             <Button variant="ghost" size="sm" className="text-blue-400 hover:bg-blue-500/10" onClick={() => setTab('bids')}>Manage</Button>
                         </div>
-                        <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5 group hover:border-yellow-500/30 transition-all">
+                        <div className="flex items-center justify-between p-4 bg-[var(--bg-card)] rounded-xl border border-[var(--border-default)] group hover:border-yellow-500/30 transition-all">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-yellow-500/10 rounded-full flex items-center justify-center text-yellow-400 border border-yellow-500/20">
                                     <Heart size={18} />
                                 </div>
                                 <div>
                                     <p className="font-bold text-sm">Watchlist</p>
-                                    <p className="text-xs text-gray-500">You are tracking {data?.buyer?.watchlistCount || 0} vehicles.</p>
+                                    <p className="text-xs text-[var(--text-muted)]">You are tracking {data?.buyer?.watchlistCount || 0} vehicles.</p>
                                 </div>
                             </div>
                             <Button variant="ghost" size="sm" className="text-yellow-400 hover:bg-yellow-500/10">Browse</Button>
@@ -371,16 +371,16 @@ function WatchlistTab() {
             {loading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} className="bg-white/5 rounded-2xl h-64 animate-pulse border border-white/10" />
+                        <div key={i} className="bg-[var(--bg-card)] rounded-2xl h-64 animate-pulse border border-[var(--border-default)]" />
                     ))}
                 </div>
             ) : items.length === 0 ? (
-                <div className="glass-card p-20 text-center border-white/10 bg-white/5 rounded-2xl border-dashed">
+                <div className="glass-card p-20 text-center border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl border-dashed">
                     <div className="w-20 h-20 bg-pink-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-pink-500/20">
                         <Heart size={40} className="text-pink-400/50" />
                     </div>
                     <h3 className="text-xl font-black text-white uppercase mb-2">Your Watchlist is Empty</h3>
-                    <p className="text-gray-400 text-sm max-w-md mx-auto mb-8">
+                    <p className="text-[var(--text-muted)] text-sm max-w-md mx-auto mb-8">
                         Save the vehicles you're interested in by clicking the heart icon on any listing.
                     </p>
                     <Link href="/buy-cars">
@@ -393,12 +393,12 @@ function WatchlistTab() {
                 <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {items.map((item) => (
-                            <div key={item.id} className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:border-primary/30 transition-all group">
-                                <div className="relative h-44 bg-slate-800">
+                            <div key={item.id} className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-2xl overflow-hidden hover:border-primary/30 transition-all group">
+                                <div className="relative h-44 bg-[var(--bg-input)]">
                                     {item.listing.images?.[0] ? (
                                         <Image src={item.listing.images[0]} alt={item.listing.title} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
                                     ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-gray-600"><Car size={32} /></div>
+                                        <div className="w-full h-full flex items-center justify-center text-[var(--text-secondary)]"><Car size={32} /></div>
                                     )}
                                     {item.listing.status !== 'ACTIVE' && (
                                         <div className="absolute top-2 left-2 bg-red-500/90 text-white text-xs font-black uppercase tracking-widest px-2 py-1 rounded-lg">
@@ -420,7 +420,7 @@ function WatchlistTab() {
                                     <p className="font-black text-white text-sm uppercase tracking-tight truncate group-hover:text-primary transition-colors">
                                         {item.listing.title}
                                     </p>
-                                    <p className="text-xs text-gray-500 mt-0.5">
+                                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
                                         {[item.listing.year, item.listing.mileage ? `${item.listing.mileage.toLocaleString()} mi` : null].filter(Boolean).join(' · ')}
                                     </p>
                                     <div className="flex items-center justify-between mt-3">
@@ -439,7 +439,7 @@ function WatchlistTab() {
                     {totalPages > 1 && (
                         <div className="flex justify-center gap-2">
                             <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Previous</Button>
-                            <span className="text-sm text-gray-400 flex items-center px-2">Page {page} of {totalPages}</span>
+                            <span className="text-sm text-[var(--text-muted)] flex items-center px-2">Page {page} of {totalPages}</span>
                             <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next</Button>
                         </div>
                     )}
@@ -559,7 +559,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                     <Button
                         variant="outline"
                         size="sm"
-                        className="flex items-center gap-2 h-10 border-white/20 text-gray-300 hover:text-white"
+                        className="flex items-center gap-2 h-10 border-[var(--border-default)] text-[var(--text-secondary)] hover:text-primary dark:hover:text-white"
                         onClick={() => setShowImportModal(true)}
                     >
                         <ExternalLink size={16} /> Import Listing
@@ -572,10 +572,10 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                 </div>
             </div>
 
-            <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl">
+            <div className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
-                        <thead className="bg-slate-800/50 text-gray-400 text-xs uppercase font-black tracking-widest border-b border-white/5">
+                        <thead className="bg-[var(--bg-input)] text-[var(--text-muted)] text-xs uppercase font-black tracking-widest border-b border-[var(--border-default)]">
                             <tr>
                                 <th className="px-6 py-4">Vehicle</th>
                                 <th className="px-6 py-4">Status</th>
@@ -584,7 +584,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                 <th className="px-6 py-4 text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/5">
+                        <tbody className="divide-y divide-[var(--border-default)]">
                             {loading ? (
                                 <tr>
                                     <td colSpan={5} className="px-6 py-20 text-center">
@@ -593,7 +593,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                 </tr>
                             ) : listings.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-20 text-center text-gray-500 italic">
+                                    <td colSpan={5} className="px-6 py-20 text-center text-[var(--text-muted)] italic">
                                         No listings found. Start selling today!
                                     </td>
                                 </tr>
@@ -602,11 +602,11 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                     <tr key={listing.id} className="hover:bg-white/[0.03] transition-all">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="relative w-12 h-9 rounded overflow-hidden border border-white/10 shrink-0">
+                                                <div className="relative w-12 h-9 rounded overflow-hidden border border-[var(--border-default)] shrink-0">
                                                     {listing.images?.[0] ? (
                                                         <Image src={listing.images[0]} alt="" fill className="object-cover" />
                                                     ) : (
-                                                        <div className="w-full h-full bg-slate-800 flex items-center justify-center"><Car size={14} className="text-gray-600" /></div>
+                                                        <div className="w-full h-full bg-[var(--bg-input)] flex items-center justify-center"><Car size={14} className="text-[var(--text-secondary)]" /></div>
                                                     )}
                                                 </div>
                                                 <div className="min-w-0">
@@ -614,7 +614,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                         <p className="font-bold text-sm truncate uppercase">{listing.title}</p>
                                                         {listing.isFeatured && <Zap size={12} className="text-amber-400 fill-amber-400" />}
                                                     </div>
-                                                    <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">{listing.year} • {listing.mileage?.toLocaleString()} miles</p>
+                                                    <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest">{listing.year} • {listing.mileage?.toLocaleString()} miles</p>
                                                 </div>
                                             </div>
                                         </td>
@@ -623,14 +623,14 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                 listing.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
                                                 listing.status === 'SOLD' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
                                                 listing.status === 'DRAFT' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                                                'bg-slate-700/50 text-gray-400 border-white/5'
+                                                'bg-slate-700/50 text-[var(--text-muted)] border-[var(--border-default)]'
                                             }`}>
                                                 {listing.status}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 font-black text-sm">{formatPrice(listing.price)}</td>
                                         <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3 text-xs text-gray-400">
+                                            <div className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
                                                 <span className="flex items-center gap-1"><Eye size={12} /> {listing.viewCount || 0}</span>
                                             </div>
                                         </td>
@@ -657,10 +657,10 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                     </Button>
                                                 )}
                                                 <div className="relative group">
-                                                    <button className="p-2.5 text-gray-500 hover:text-white transition-colors">
+                                                    <button className="p-2.5 text-[var(--text-muted)] hover:text-white transition-colors">
                                                         <MoreVertical size={16} />
                                                     </button>
-                                                    <div className="absolute right-0 top-full mt-1 w-44 bg-slate-800 border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 py-2">
+                                                    <div className="absolute right-0 top-full mt-1 w-44 bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 py-2">
                                                         {listing.status === 'DRAFT' && (
                                                             <button
                                                                 onClick={() => handlePublish(listing)}
@@ -670,7 +670,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                                 <Upload size={14} /> Publish Listing
                                                             </button>
                                                         )}
-                                                        <Link href={`/dashboard/seller/add-listing?editId=${listing.id}`} className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-white/5">
+                                                        <Link href={`/dashboard/seller/add-listing?editId=${listing.id}`} className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-[var(--bg-card)]">
                                                             <Pencil size={14} /> Edit
                                                         </Link>
                                                         {listing.status === 'ACTIVE' && (
@@ -712,8 +712,8 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                     </table>
                 </div>
                 {totalPages > 1 && (
-                    <div className="p-4 border-t border-white/5 flex items-center justify-between">
-                        <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Page {page} of {totalPages}</p>
+                    <div className="p-4 border-t border-[var(--border-default)] flex items-center justify-between">
+                        <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest">Page {page} of {totalPages}</p>
                         <div className="flex gap-2">
                             <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}>Prev</Button>
                             <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page === totalPages}>Next</Button>
@@ -835,7 +835,7 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
             {loading ? (
                 <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary w-10 h-10" /></div>
             ) : listings.length === 0 ? (
-                <div className="text-center py-20 text-gray-500 italic">No listings to receive offers for.</div>
+                <div className="text-center py-20 text-[var(--text-muted)] italic">No listings to receive offers for.</div>
             ) : (
                 <div className="space-y-4">
                     {listings.map(listing => {
@@ -844,29 +844,29 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                         const isExpanded = expanded.has(listing.id)
                         
                         return (
-                            <div key={listing.id} className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl">
+                            <div key={listing.id} className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                                 <button 
                                     onClick={() => toggleExpand(listing.id)}
-                                    className="w-full flex items-center gap-4 p-5 hover:bg-white/5 transition-all text-left"
+                                    className="w-full flex items-center gap-4 p-5 hover:bg-[var(--bg-card)] transition-all text-left"
                                 >
-                                    <div className="relative w-16 h-12 rounded-lg overflow-hidden shrink-0 border border-white/10">
+                                    <div className="relative w-16 h-12 rounded-lg overflow-hidden shrink-0 border border-[var(--border-default)]">
                                         <Image src={listing.images?.[0] || ""} alt="" fill className="object-cover" />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="font-bold text-white truncate uppercase">{listing.title}</p>
-                                        <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">{listingOffers.length} TOTAL OFFERS</p>
+                                        <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest">{listingOffers.length} TOTAL OFFERS</p>
                                     </div>
                                     {pending > 0 && <span className="bg-primary text-white text-xs font-black px-3 py-1 rounded-full">{pending} PENDING</span>}
-                                    <ChevronRight className={`text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`} size={20} />
+                                    <ChevronRight className={`text-[var(--text-muted)] transition-transform ${isExpanded ? 'rotate-90' : ''}`} size={20} />
                                 </button>
 
                                 {isExpanded && (
-                                    <div className="p-4 bg-black/20 space-y-3 border-t border-white/5">
+                                    <div className="p-4 bg-black/20 space-y-3 border-t border-[var(--border-default)]">
                                         {listingOffers.length === 0 ? (
-                                            <p className="text-center py-6 text-xs text-gray-600 italic">No offers on this vehicle yet.</p>
+                                            <p className="text-center py-6 text-xs text-[var(--text-secondary)] italic">No offers on this vehicle yet.</p>
                                         ) : (
                                             listingOffers.map(offer => (
-                                                <div key={offer.id} className={`flex flex-col p-4 rounded-xl border gap-3 ${offer.status === 'COUNTERED' && offer.lastCounteredBy === 'BUYER' ? 'bg-blue-500/5 border-blue-500/30' : 'bg-white/5 border-white/5'}`}>
+                                                <div key={offer.id} className={`flex flex-col p-4 rounded-xl border gap-3 ${offer.status === 'COUNTERED' && offer.lastCounteredBy === 'BUYER' ? 'bg-blue-500/5 border-blue-500/30' : 'bg-[var(--bg-card)] border-[var(--border-default)]'}`}>
                                                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                                                         <div className="flex items-center gap-3">
                                                             <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary font-black shrink-0">{offer.buyer?.firstName?.[0] || '?'}</div>
@@ -898,7 +898,7 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                                 <span className="text-xs font-black uppercase tracking-widest text-blue-400/70">Awaiting buyer response</span>
                                                             ) : (
                                                                 <div className="flex items-center gap-2 flex-wrap">
-                                                                    <span className="text-xs font-black uppercase tracking-widest text-gray-500">{offer.status}</span>
+                                                                    <span className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">{offer.status}</span>
                                                                     {offer.status === 'ACCEPTED' && (
                                                                         <>
                                                                             <Button size="sm" variant="ghost" className="h-8 text-blue-400" onClick={() => handleMessage(offer.buyerId, listing.id)}>Message</Button>
@@ -910,12 +910,12 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                         </div>
                                                     </div>
                                                     {countering?.id === offer.id && (
-                                                        <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-blue-500/30 animate-in zoom-in-95 duration-200">
+                                                        <div className="flex items-center gap-3 p-3 bg-[var(--bg-card)] rounded-xl border border-blue-500/30 animate-in zoom-in-95 duration-200">
                                                             <div className="relative flex-1">
-                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">£</span>
+                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] font-bold">£</span>
                                                                 <Input
                                                                     placeholder="Enter counter amount..."
-                                                                    className="pl-8 bg-transparent border-white/10 h-10"
+                                                                    className="pl-8 bg-transparent border-[var(--border-default)] h-10"
                                                                     value={countering.amount}
                                                                     onChange={(e) => setCountering({ ...countering, amount: e.target.value })}
                                                                     type="number"
@@ -932,7 +932,7 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                             >
                                                                 Send Counter
                                                             </Button>
-                                                            <Button size="sm" variant="ghost" className="h-10 text-gray-400" onClick={() => setCountering(null)}>Cancel</Button>
+                                                            <Button size="sm" variant="ghost" className="h-10 text-[var(--text-muted)]" onClick={() => setCountering(null)}>Cancel</Button>
                                                         </div>
                                                     )}
                                                 </div>
@@ -980,8 +980,8 @@ function outgoingOfferStatusClass(status: Offer['status']) {
         case 'PENDING': return 'text-amber-400'
         case 'COUNTERED': return 'text-blue-400'
         case 'REJECTED': return 'text-red-400'
-        case 'WITHDRAWN': return 'text-gray-500'
-        default: return 'text-gray-500'
+        case 'WITHDRAWN': return 'text-[var(--text-muted)]'
+        default: return 'text-[var(--text-muted)]'
     }
 }
 
@@ -1096,13 +1096,13 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
             
             {/* Active Offers Section */}
             <div className="space-y-4">
-                <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                <h3 className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-2">
                     <Tag size={14} /> Outgoing Offers
                 </h3>
-                <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl">
+                <div className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
-                            <thead className="bg-slate-800/50 text-xs text-gray-500 uppercase font-black tracking-widest">
+                            <thead className="bg-[var(--bg-input)] text-xs text-[var(--text-muted)] uppercase font-black tracking-widest">
                                 <tr>
                                     <th className="px-6 py-4">Vehicle</th>
                                     <th className="px-6 py-4">My Offer</th>
@@ -1110,11 +1110,11 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                     <th className="px-6 py-4 text-right">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-white/5">
+                            <tbody className="divide-y divide-[var(--border-default)]">
                                 {loading ? (
                                     <tr><td colSpan={4} className="px-6 py-10 text-center"><Loader2 className="animate-spin mx-auto text-primary" /></td></tr>
                                 ) : offers.length === 0 ? (
-                                    <tr><td colSpan={4} className="px-6 py-10 text-center text-gray-600 italic">No outgoing offers.</td></tr>
+                                    <tr><td colSpan={4} className="px-6 py-10 text-center text-[var(--text-secondary)] italic">No outgoing offers.</td></tr>
                                 ) : (
                                     offers.map(offer => {
                                         const thumb = offer.listing?.images?.[0] || '/assets/images/featured-sports.png'
@@ -1126,14 +1126,14 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                         <tr key={offer.id} className="hover:bg-white/[0.02]">
                                             <td className="px-6 py-4">
                                                 <Link href={`/vehicle/${offer.listing?.slug}`} className="flex items-center gap-3 group">
-                                                    <div className="relative w-10 h-8 rounded border border-white/10 overflow-hidden shrink-0">
+                                                    <div className="relative w-10 h-8 rounded border border-[var(--border-default)] overflow-hidden shrink-0">
                                                         <Image src={thumb} alt="" fill className="object-cover" />
                                                     </div>
                                                     <span className="font-bold text-sm uppercase group-hover:text-primary transition-colors">{offer.listing?.title}</span>
                                                 </Link>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="font-black font-mono text-white">{formatPrice(offer.amount)}</div>
+                                                <div className="font-black font-mono">{formatPrice(offer.amount)}</div>
                                                 {offer.status === 'COUNTERED' && offer.sellerCounterAmount != null && (
                                                     <div className="text-xs font-black uppercase tracking-widest text-blue-400 mt-1">
                                                         Seller counter: {formatPrice(offer.sellerCounterAmount)}
@@ -1174,7 +1174,7 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                                         placeholder="Your counter (£)"
                                                                         value={counterAmounts[offer.id] ?? ''}
                                                                         onChange={(e) => setCounterAmounts(prev => ({ ...prev, [offer.id]: e.target.value }))}
-                                                                        className="w-36 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm"
+                                                                        className="w-36 px-3 py-1.5 rounded-lg bg-[var(--bg-card)] border border-[var(--border-default)] text-white text-sm"
                                                                     />
                                                                     <Button
                                                                         size="sm"
@@ -1287,19 +1287,19 @@ function StatsTab() {
                 />
             </div>
 
-            <div className="glass-card p-8 border border-white/5 bg-white/5 rounded-2xl">
+            <div className="glass-card p-8 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                 <h3 className="text-lg font-black font-heading uppercase tracking-tight mb-8">Top Performing Vehicles</h3>
                 {!performance?.recentListingViews?.length ? (
-                    <div className="text-center py-10 text-gray-600 italic">No listing data available.</div>
+                    <div className="text-center py-10 text-[var(--text-secondary)] italic">No listing data available.</div>
                 ) : (
                     <div className="space-y-6">
                         {performance.recentListingViews.map(l => (
                             <div key={l.id} className="space-y-2">
                                 <div className="flex justify-between items-center text-xs font-black uppercase tracking-widest">
-                                    <span className="text-gray-400">{l.title}</span>
-                                    <span className="text-white">{l.views} VIEWS</span>
+                                    <span className="text-[var(--text-muted)]">{l.title}</span>
+                                    <span>{l.views} VIEWS</span>
                                 </div>
-                                <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                                <div className="h-2 bg-[var(--bg-card)] rounded-full overflow-hidden">
                                     <div 
                                         className="h-full bg-primary rounded-full shadow-neon transition-all duration-1000" 
                                         style={{ width: `${(l.views / maxViews) * 100}%` }}
@@ -1336,19 +1336,19 @@ function MessagesTab({ rooms, refreshRooms }: { rooms: ChatRoom[], refreshRooms:
 
     return (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 w-full min-w-0">
-            <div className="glass-card overflow-hidden w-full min-w-0 min-h-0 h-[min(900px,calc(100vh-200px))] min-h-[440px] flex flex-col border border-white/5 bg-white/5 rounded-2xl">
-                <div className="shrink-0 px-5 py-4 md:px-6 md:py-5 border-b border-white/10 flex items-center justify-between gap-3">
+            <div className="glass-card overflow-hidden w-full min-w-0 min-h-0 h-[min(900px,calc(100vh-200px))] min-h-[440px] flex flex-col border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
+                <div className="shrink-0 px-5 py-4 md:px-6 md:py-5 border-b border-[var(--border-default)] flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
                         <MessageSquare className="text-primary shrink-0" size={22} />
                         <div className="min-w-0">
                             <h2 className="text-lg md:text-xl font-bold font-heading text-white tracking-tight">Messages</h2>
-                            <p className="text-[11px] text-gray-500 font-medium truncate">Conversations with buyers and sellers</p>
+                            <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">Conversations with buyers and sellers</p>
                         </div>
                     </div>
                     <button
                         type="button"
                         onClick={refreshRooms}
-                        className="shrink-0 p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+                        className="shrink-0 p-2 rounded-lg text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition-colors"
                         title="Refresh conversations"
                     >
                         <RefreshCw size={18} />
@@ -1358,7 +1358,7 @@ function MessagesTab({ rooms, refreshRooms }: { rooms: ChatRoom[], refreshRooms:
                 <div className="flex flex-1 flex-row min-h-0 min-w-0">
                     {/* Room list — fixed width on desktop, full width on mobile when visible */}
                     <div
-                        className={`flex shrink-0 flex-col min-h-0 min-w-0 w-full max-w-full border-r border-white/10 bg-slate-900/20 lg:w-80 lg:max-w-[20rem] lg:shrink-0 ${
+                        className={`flex shrink-0 flex-col min-h-0 min-w-0 w-full max-w-full border-r border-[var(--border-default)] bg-[var(--bg-card)] lg:w-80 lg:max-w-[20rem] lg:shrink-0 ${
                             selectedRoom ? "hidden lg:flex" : "flex"
                         }`}
                     >
@@ -1367,7 +1367,7 @@ function MessagesTab({ rooms, refreshRooms }: { rooms: ChatRoom[], refreshRooms:
 
                     {/* Chat pane — grows to fill remaining main column */}
                     <div
-                        className={`flex min-h-0 min-w-0 flex-1 flex-col bg-slate-900/30 ${
+                        className={`flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--bg-body)] ${
                             !selectedRoom ? "hidden w-full lg:flex lg:items-center lg:justify-center" : "flex w-full"
                         }`}
                     >
@@ -1375,9 +1375,9 @@ function MessagesTab({ rooms, refreshRooms }: { rooms: ChatRoom[], refreshRooms:
                             <ChatWindow room={selectedRoom} onBack={() => setSelectedRoom(null)} />
                         ) : (
                             <div className="flex max-w-md flex-col items-center justify-center px-6 text-center">
-                                <MessageSquare className="mb-4 h-16 w-16 text-gray-600 opacity-40" />
-                                <p className="text-base font-semibold text-gray-400">Select a conversation</p>
-                                <p className="mt-1 text-sm text-gray-500">Choose a thread from the list to read and reply</p>
+                                <MessageSquare className="mb-4 h-16 w-16 text-[var(--text-secondary)] opacity-40" />
+                                <p className="text-base font-semibold text-[var(--text-muted)]">Select a conversation</p>
+                                <p className="mt-1 text-sm text-[var(--text-muted)]">Choose a thread from the list to read and reply</p>
                             </div>
                         )}
                     </div>
@@ -1420,7 +1420,7 @@ function EarningsTab() {
              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-2xl font-black font-heading uppercase tracking-tight">Earnings History</h2>
-                    <p className="text-gray-400 text-sm font-medium">Detailed tracking of your sold assets and revenue.</p>
+                    <p className="text-[var(--text-muted)] text-sm font-medium">Detailed tracking of your sold assets and revenue.</p>
                 </div>
                 <Button
                     className="flex items-center gap-2 h-10 shadow-neon-small"
@@ -1436,39 +1436,39 @@ function EarningsTab() {
 
             {/* KPI summary — Total Earnings stays in sync with /listings/earnings */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="glass-card p-5 border border-white/5 bg-white/5 rounded-2xl">
+                <div className="glass-card p-5 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                     <p className="text-xs font-black uppercase tracking-widest text-emerald-400 mb-2">Total Earnings</p>
                     <p className="text-3xl font-black text-white tabular-nums">
                         {loading ? "—" : formatPrice(totalRevenue)}
                     </p>
-                    <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-2">
+                    <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest mt-2">
                         Sourced from finalized sales
                     </p>
                 </div>
-                <div className="glass-card p-5 border border-white/5 bg-white/5 rounded-2xl">
+                <div className="glass-card p-5 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                     <p className="text-xs font-black uppercase tracking-widest text-primary mb-2">Vehicles Sold</p>
                     <p className="text-3xl font-black text-white tabular-nums">
                         {loading ? "—" : totalSales}
                     </p>
-                    <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-2">
+                    <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest mt-2">
                         Lifetime
                     </p>
                 </div>
-                <div className="glass-card p-5 border border-white/5 bg-white/5 rounded-2xl">
+                <div className="glass-card p-5 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                     <p className="text-xs font-black uppercase tracking-widest text-blue-400 mb-2">Avg. Sale Price</p>
                     <p className="text-3xl font-black text-white tabular-nums">
                         {loading ? "—" : formatPrice(avgSale)}
                     </p>
-                    <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-2">
+                    <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest mt-2">
                         Mean across all sales
                     </p>
                 </div>
             </div>
 
-            <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl">
+            <div className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
-                        <thead className="bg-slate-800/80 text-gray-400 text-xs uppercase font-black tracking-widest border-b border-white/5">
+                        <thead className="bg-[var(--bg-input)] text-[var(--text-muted)] text-xs uppercase font-black tracking-widest border-b border-[var(--border-default)]">
                             <tr>
                                 <th className="px-6 py-5">Vehicle</th>
                                 <th className="px-6 py-5">Buyer</th>
@@ -1476,12 +1476,12 @@ function EarningsTab() {
                                 <th className="px-6 py-5 text-center">Date</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/5">
+                        <tbody className="divide-y divide-[var(--border-default)]">
                             {loading ? (
                                 <tr><td colSpan={4} className="px-6 py-20 text-center"><Loader2 className="animate-spin mx-auto text-primary" /></td></tr>
                             ) : !data || data.sales.length === 0 ? (
                                 <tr>
-                                    <td colSpan={4} className="px-6 py-20 text-center text-gray-500 italic">
+                                    <td colSpan={4} className="px-6 py-20 text-center text-[var(--text-muted)] italic">
                                         No sales records found.
                                     </td>
                                 </tr>
@@ -1490,16 +1490,16 @@ function EarningsTab() {
                                     <tr key={sale.id} className="hover:bg-white/[0.03] transition-all">
                                         <td className="px-6 py-5">
                                             <div className="flex items-center gap-3">
-                                                <div className="relative w-10 h-10 rounded-lg overflow-hidden border border-white/10 shrink-0">
+                                                <div className="relative w-10 h-10 rounded-lg overflow-hidden border border-[var(--border-default)] shrink-0">
                                                     {sale.listing.images?.[0] ? (
                                                         <Image src={sale.listing.images[0]} alt="" fill className="object-cover" />
                                                     ) : (
-                                                        <div className="w-full h-full bg-slate-800 flex items-center justify-center"><Car size={14} className="text-gray-600" /></div>
+                                                        <div className="w-full h-full bg-[var(--bg-input)] flex items-center justify-center"><Car size={14} className="text-[var(--text-secondary)]" /></div>
                                                     )}
                                                 </div>
                                                 <div className="min-w-0">
                                                     <p className="font-bold text-sm text-white truncate uppercase">{sale.listing.title}</p>
-                                                    <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">{sale.listing.vrm || "N/A"}</p>
+                                                    <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest">{sale.listing.vrm || "N/A"}</p>
                                                 </div>
                                             </div>
                                         </td>
@@ -1509,14 +1509,14 @@ function EarningsTab() {
                                                     ? `${sale.buyer.firstName} ${sale.buyer.lastName || ""}`.trim()
                                                     : (sale as any).buyerName || "Direct Buyer"}
                                             </p>
-                                            <p className="text-xs text-gray-500 truncate">
+                                            <p className="text-xs text-[var(--text-muted)] truncate">
                                                 {sale.buyer?.email || (sale as any).buyerEmail || ""}
                                             </p>
                                         </td>
                                         <td className="px-6 py-5 text-right font-black text-emerald-400 text-sm">
                                             {formatPrice(sale.soldPrice)}
                                         </td>
-                                        <td className="px-6 py-5 text-center text-xs text-gray-500 font-bold">
+                                        <td className="px-6 py-5 text-center text-xs text-[var(--text-muted)] font-bold">
                                             {new Date(sale.createdAt).toLocaleDateString('en-GB')}
                                         </td>
                                     </tr>
@@ -1621,63 +1621,63 @@ function SettingsTab({ profile }: { profile: any }) {
 
     return (
         <div className="max-w-2xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="glass-card p-8 border border-white/5 bg-white/5 rounded-2xl">
+            <div className="glass-card p-8 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                 <h3 className="text-xl font-black font-heading uppercase tracking-tight flex items-center gap-2 mb-6">
                     <UserIcon className="text-primary" size={24} /> Profile Information
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-1">
-                        <p className="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                        <p className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-2">
                             <Mail size={12} /> Email Address
                         </p>
-                        <p className="text-sm font-black text-white">{profile?.email}</p>
+                        <p className="text-sm font-black">{profile?.email}</p>
                     </div>
                     <div className="space-y-1">
-                        <p className="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                        <p className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-2">
                             <Phone size={12} /> Phone Number
                         </p>
-                        <p className="text-sm font-black text-white">{profile?.phone || "Not set"}</p>
+                        <p className="text-sm font-black">{profile?.phone || "Not set"}</p>
                     </div>
                 </div>
             </div>
 
-            <div className="glass-card p-8 border border-white/5 bg-white/5 rounded-2xl shadow-neon-small">
+            <div className="glass-card p-8 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl shadow-neon-small">
                 <h3 className="text-xl font-black font-heading uppercase tracking-tight flex items-center gap-2 mb-6">
                     <Lock className="text-primary" size={24} /> Security & Password
                 </h3>
                 <form onSubmit={handleResetPassword} className="space-y-6">
                     <div className="space-y-2">
-                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Current Password</label>
+                        <label className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest">Current Password</label>
                         <Input 
                             type="password" 
                             placeholder="••••••••" 
                             value={oldPassword}
                             onChange={(e) => setOldPassword(e.target.value)}
                             required
-                            className="bg-white/5 border-white/10 focus:border-primary text-white h-12" 
+                            className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-primary text-white h-12" 
                         />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <label className="text-xs font-black text-gray-400 uppercase tracking-widest">New Password</label>
+                            <label className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest">New Password</label>
                             <Input 
                                 type="password" 
                                 placeholder="Min. 8 characters" 
                                 value={newPassword}
                                 onChange={(e) => setNewPassword(e.target.value)}
                                 required
-                                className="bg-white/5 border-white/10 focus:border-primary text-white h-12" 
+                                className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-primary text-white h-12" 
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Confirm New Password</label>
+                            <label className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest">Confirm New Password</label>
                             <Input 
                                 type="password" 
                                 placeholder="••••••••" 
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
                                 required
-                                className="bg-white/5 border-white/10 focus:border-primary text-white h-12" 
+                                className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-primary text-white h-12" 
                             />
                         </div>
                     </div>
@@ -1702,11 +1702,11 @@ function SettingsTab({ profile }: { profile: any }) {
             </div>
 
             {/* Payouts */}
-            <div className="glass-card p-8 border border-white/5 bg-white/5 rounded-2xl">
+            <div className="glass-card p-8 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                 <h3 className="text-xl font-black font-heading uppercase tracking-tight flex items-center gap-2 mb-2">
                     <CreditCard className="text-primary" size={24} /> Payouts
                 </h3>
-                <p className="text-sm text-gray-400 mb-6">
+                <p className="text-sm text-[var(--text-muted)] mb-6">
                     Connect a bank account to receive your £100 seller bonus after a successful auction handover is verified.
                 </p>
 
@@ -1715,7 +1715,7 @@ function SettingsTab({ profile }: { profile: any }) {
                         <BadgeCheck size={20} className="text-emerald-400 shrink-0" />
                         <div>
                             <p className="text-sm font-bold text-emerald-300">Bank account connected</p>
-                            <p className="text-xs text-gray-400 mt-0.5">Payouts are enabled. Your bonuses will transfer automatically after handover approval.</p>
+                            <p className="text-xs text-[var(--text-muted)] mt-0.5">Payouts are enabled. Your bonuses will transfer automatically after handover approval.</p>
                         </div>
                     </div>
                 ) : (
@@ -1739,50 +1739,50 @@ function SettingsTab({ profile }: { profile: any }) {
                                 : <><ExternalLink size={16} /> Connect Bank Account</>
                             }
                         </Button>
-                        <p className="text-xs text-gray-500">You will be taken to Stripe's secure onboarding — this takes about 2 minutes.</p>
+                        <p className="text-xs text-[var(--text-muted)]">You will be taken to Stripe's secure onboarding — this takes about 2 minutes.</p>
                     </div>
                 )}
             </div>
 
             {/* Bank Account Details — always visible as fallback payout method */}
-            <div className="glass-card p-8 border border-white/5 bg-white/5 rounded-2xl">
+            <div className="glass-card p-8 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                 <h3 className="text-xl font-black font-heading uppercase tracking-tight flex items-center gap-2 mb-2">
                     <Landmark className="text-amber-400" size={24} /> Bank Account Details
                 </h3>
-                <p className="text-sm text-gray-400 mb-6">
+                <p className="text-sm text-[var(--text-muted)] mb-6">
                     Provide your UK bank details as a fallback. Carmazium can manually transfer your £100 bonus if Stripe Connect isn&apos;t available.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2 md:col-span-2">
-                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Account Holder Name</label>
+                        <label className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest">Account Holder Name</label>
                         <Input
                             type="text"
                             value={bankName}
                             onChange={e => setBankName(e.target.value)}
                             placeholder="e.g. John Smith"
-                            className="bg-white/5 border-white/10 focus:border-amber-400 text-white h-12"
+                            className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-amber-400 text-white h-12"
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Sort Code</label>
+                        <label className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest">Sort Code</label>
                         <Input
                             type="text"
                             value={bankSortCode}
                             onChange={e => setBankSortCode(e.target.value)}
                             placeholder="e.g. 00-00-00"
                             maxLength={8}
-                            className="bg-white/5 border-white/10 focus:border-amber-400 text-white h-12 font-mono"
+                            className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-amber-400 text-white h-12 font-mono"
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Account Number</label>
+                        <label className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest">Account Number</label>
                         <Input
                             type="text"
                             value={bankAccountNumber}
                             onChange={e => setBankAccountNumber(e.target.value)}
                             placeholder="e.g. 12345678"
                             maxLength={8}
-                            className="bg-white/5 border-white/10 focus:border-amber-400 text-white h-12 font-mono"
+                            className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-amber-400 text-white h-12 font-mono"
                         />
                     </div>
                 </div>

@@ -98,7 +98,7 @@ export default function AdminUsersPage() {
 
     if (authLoading || (user && !profile) || (loading && users.length === 0)) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+            <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
             </div>
         )
@@ -109,21 +109,21 @@ export default function AdminUsersPage() {
     const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "Admin")
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
+        <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="admin" userName={userName} userType="Super Admin" />
 
                 <main className="flex-1 space-y-8 min-w-0">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-800/50 p-6 rounded-2xl border border-white/10 backdrop-blur-md">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[var(--bg-input)] p-6 rounded-2xl border border-[var(--border-default)] backdrop-blur-md">
                         <div>
-                            <Link href="/dashboard/admin" className="inline-flex items-center text-gray-400 hover:text-white mb-2 text-sm transition-colors">
+                            <Link href="/dashboard/admin" className="inline-flex items-center text-[var(--text-muted)] hover:text-primary dark:hover:text-white mb-2 text-sm transition-colors">
                                 <ArrowLeft size={16} className="mr-1" /> Back to Overview
                             </Link>
-                            <h1 className="text-3xl font-black font-heading text-white uppercase tracking-tight flex items-center gap-3">
+                            <h1 className="text-3xl font-black font-heading uppercase tracking-tight flex items-center gap-3">
                                 <Users className="text-blue-400 hidden sm:block" size={28} />
                                 Account Management
                             </h1>
-                            <p className="text-gray-500 text-sm mt-1">{total.toLocaleString()} total users</p>
+                            <p className="text-[var(--text-muted)] text-sm mt-1">{total.toLocaleString()} total users</p>
                         </div>
 
                         {/* Search */}
@@ -132,13 +132,13 @@ export default function AdminUsersPage() {
                             className="flex items-center gap-2 w-full sm:w-auto"
                         >
                             <div className="relative flex-1 sm:w-64">
-                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
                                 <input
                                     type="text"
                                     placeholder="Search name or email…"
                                     value={searchInput}
                                     onChange={e => setSearchInput(e.target.value)}
-                                    className="w-full bg-slate-800 border border-white/10 text-white text-sm rounded-xl pl-9 pr-3 py-2 placeholder:text-gray-600 focus:outline-none focus:border-blue-500 transition-colors"
+                                    className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] text-sm rounded-xl pl-9 pr-3 py-2 placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-blue-500 transition-colors"
                                 />
                             </div>
                             <button
@@ -151,7 +151,7 @@ export default function AdminUsersPage() {
                                 <button
                                     type="button"
                                     onClick={() => { setSearchInput(""); setSearch(""); setPage(1) }}
-                                    className="p-2.5 text-gray-500 hover:text-white transition-colors"
+                                    className="p-2.5 text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors"
                                     title="Clear search"
                                 >
                                     <X size={16} />
@@ -166,10 +166,10 @@ export default function AdminUsersPage() {
                         </div>
                     )}
 
-                    <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl">
+                    <div className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
 
                         {/* ── Mobile cards (< sm) ── */}
-                        <div className="sm:hidden divide-y divide-white/5">
+                        <div className="sm:hidden divide-y divide-[var(--border-default)]">
                             {users.map((u) => {
                                 const isBanned = !!u.deletedAt
                                 const isLocked = !isBanned && !!u.lockoutUntil && new Date(u.lockoutUntil) > new Date()
@@ -182,12 +182,12 @@ export default function AdminUsersPage() {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2">
-                                                    <p className="font-bold text-white text-sm truncate">{u.firstName} {u.lastName}</p>
+                                                    <p className="font-bold text-sm truncate">{u.firstName} {u.lastName}</p>
                                                     <span className={`inline-flex px-1.5 py-0.5 rounded text-xs font-bold border shrink-0 ${isBanned ? 'bg-red-500/10 text-red-400 border-red-500/20' : isLocked ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
                                                         {isBanned ? 'BAN' : isLocked ? 'LOCK' : 'OK'}
                                                     </span>
                                                 </div>
-                                                <p className="text-xs text-gray-400 truncate">{u.email}</p>
+                                                <p className="text-xs text-[var(--text-muted)] truncate">{u.email}</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2 mt-3">
@@ -195,7 +195,7 @@ export default function AdminUsersPage() {
                                                 <Loader2 size={14} className="animate-spin text-primary" />
                                             ) : (
                                                 <select
-                                                    className="flex-1 bg-slate-800 border border-white/10 text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary text-white"
+                                                    className="flex-1 bg-[var(--bg-input)] border border-[var(--border-default)] text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
                                                     value={u.role}
                                                     onChange={(e) => handleRoleChange(u.id, e.target.value)}
                                                     disabled={isSelf}
@@ -234,7 +234,7 @@ export default function AdminUsersPage() {
                         {/* ── Desktop table (≥ sm) ── */}
                         <div className="hidden sm:block overflow-x-auto">
                             <table className="w-full text-left">
-                                <thead className="bg-slate-800/50 text-gray-400 text-xs uppercase font-black tracking-widest border-b border-white/10">
+                                <thead className="bg-[var(--bg-input)] text-[var(--text-muted)] text-xs uppercase font-black tracking-widest border-b border-[var(--border-default)]">
                                     <tr>
                                         <th className="px-6 py-4">User</th>
                                         <th className="px-6 py-4">Role</th>
@@ -244,26 +244,26 @@ export default function AdminUsersPage() {
                                         <th className="px-6 py-4 text-right">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-white/5 text-white/80">
+                                <tbody className="divide-y divide-[var(--border-default)]/80">
                                     {users.map((u) => {
                                         const isBanned = !!u.deletedAt
                                         const isLocked = !isBanned && !!u.lockoutUntil && new Date(u.lockoutUntil) > new Date()
                                         const isActive = !isBanned && !isLocked
                                         const isSelf = u.id === user?.id
                                         return (
-                                            <tr key={u.id} className={`transition-colors ${isBanned ? 'bg-red-500/5' : ''} hover:bg-white/5`}>
+                                            <tr key={u.id} className={`transition-colors ${isBanned ? 'bg-red-500/5' : ''} hover:bg-[var(--bg-card)]`}>
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-3">
                                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs ring-1 ring-white/10 ${isBanned ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}`}>
                                                             {(u.firstName?.[0] || u.email[0]).toUpperCase()}
                                                         </div>
                                                         <div>
-                                                            <p className="font-bold text-white flex items-center gap-2">
+                                                            <p className="font-bold flex items-center gap-2">
                                                                 {u.firstName} {u.lastName}
                                                                 {u.role === 'ADMIN' && <ShieldAlert size={14} className="text-yellow-400" />}
                                                                 {u.dealerProfile?.isVerified && <BadgeCheck size={14} className="text-blue-400" />}
                                                             </p>
-                                                            <p className="text-xs text-gray-400">{u.email}</p>
+                                                            <p className="text-xs text-[var(--text-muted)]">{u.email}</p>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -272,7 +272,7 @@ export default function AdminUsersPage() {
                                                         <Loader2 size={16} className="animate-spin text-primary" />
                                                     ) : (
                                                         <select
-                                                            className="bg-slate-800 border-white/10 text-xs px-2 py-1 rounded focus:outline-none focus:ring-1 focus:ring-primary"
+                                                            className="bg-[var(--bg-input)] border-[var(--border-default)] text-xs px-2 py-1 rounded focus:outline-none focus:ring-1 focus:ring-primary"
                                                             value={u.role}
                                                             onChange={(e) => handleRoleChange(u.id, e.target.value)}
                                                             disabled={isSelf}
@@ -307,7 +307,7 @@ export default function AdminUsersPage() {
                                                                 <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
                                                                     <Landmark size={10} /> Bank Transfer
                                                                 </span>
-                                                                <div className="text-xs text-gray-400 font-mono">
+                                                                <div className="text-xs text-[var(--text-muted)] font-mono">
                                                                     <div>{u.bankAccountName}</div>
                                                                     <div>Sort: {u.bankSortCode} · ****{u.bankAccountNumber.slice(-4)}</div>
                                                                 </div>
@@ -318,10 +318,10 @@ export default function AdminUsersPage() {
                                                             </span>
                                                         )
                                                     ) : (
-                                                        <span className="text-xs text-gray-600">—</span>
+                                                        <span className="text-xs text-[var(--text-secondary)]">—</span>
                                                     )}
                                                 </td>
-                                                <td className="px-6 py-4 text-xs text-gray-400">
+                                                <td className="px-6 py-4 text-xs text-[var(--text-muted)]">
                                                     {new Date(u.createdAt).toLocaleDateString()}
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
@@ -329,7 +329,7 @@ export default function AdminUsersPage() {
                                                         <div className="relative inline-block" ref={openMenu === u.id ? menuRef : undefined}>
                                                             <button
                                                                 onClick={() => setOpenMenu(openMenu === u.id ? null : u.id)}
-                                                                className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
+                                                                className="p-2 hover:bg-white/10 rounded-lg transition-colors text-[var(--text-muted)] hover:text-primary dark:hover:"
                                                             >
                                                                 {updating === u.id
                                                                     ? <Loader2 size={18} className="animate-spin" />
@@ -337,7 +337,7 @@ export default function AdminUsersPage() {
                                                                 }
                                                             </button>
                                                             {openMenu === u.id && (
-                                                                <div className="absolute right-0 top-full mt-1 w-44 bg-slate-800 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+                                                                <div className="absolute right-0 top-full mt-1 w-44 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl shadow-2xl z-50 overflow-hidden">
                                                                     {isBanned ? (
                                                                         <button
                                                                             onClick={() => handleUserAction(u.id, 'unban')}
@@ -371,7 +371,7 @@ export default function AdminUsersPage() {
                                                                                             setOpenMenu(null)
                                                                                         }
                                                                                     }}
-                                                                                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors border-t border-white/5"
+                                                                                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors border-t border-[var(--border-default)]"
                                                                                 >
                                                                                     <Ban size={14} /> Ban User
                                                                                 </button>
@@ -390,20 +390,20 @@ export default function AdminUsersPage() {
                             </table>
                         </div>{/* end hidden sm:block */}
 
-                        <div className="p-4 border-t border-white/10 bg-slate-800/30 flex items-center justify-between text-xs font-medium text-gray-400">
+                        <div className="p-4 border-t border-[var(--border-default)] bg-[var(--bg-input)] flex items-center justify-between text-xs font-medium text-[var(--text-muted)]">
                             <span>
                                 {total === 0 ? "No users found" : `Showing ${(page - 1) * limit + 1}–${Math.min(page * limit, total)} of ${total.toLocaleString()}`}
                                 {search && <span className="ml-2 text-blue-400">· filtered by "{search}"</span>}
                             </span>
                             <div className="flex items-center gap-2">
                                 <button
-                                    className="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded disabled:opacity-40 transition-colors"
+                                    className="px-3 py-1 bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)] rounded disabled:opacity-40 transition-colors"
                                     onClick={() => setPage(p => Math.max(1, p - 1))}
                                     disabled={page === 1}
                                 >Prev</button>
-                                <span className="text-gray-600">pg {page} / {Math.max(1, Math.ceil(total / limit))}</span>
+                                <span className="text-[var(--text-secondary)]">pg {page} / {Math.max(1, Math.ceil(total / limit))}</span>
                                 <button
-                                    className="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded disabled:opacity-40 transition-colors"
+                                    className="px-3 py-1 bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)] rounded disabled:opacity-40 transition-colors"
                                     onClick={() => setPage(p => p + 1)}
                                     disabled={page * limit >= total}
                                 >Next</button>

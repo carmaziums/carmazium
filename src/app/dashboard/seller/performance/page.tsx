@@ -35,7 +35,7 @@ export default function SellerPerformancePage() {
 
     if (authLoading || loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+            <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
             </div>
         )
@@ -51,11 +51,11 @@ export default function SellerPerformancePage() {
     const maxViews = Math.max(...(performance?.recentListingViews?.map(l => l.views) || [1]), 1)
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900">
+        <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="seller" userName={userName} userType="Seller" />
                 <main className="flex-1 space-y-6">
-                    <h1 className="text-3xl font-bold font-heading text-white mb-6">Performance</h1>
+                    <h1 className="text-3xl font-bold font-heading mb-6">Performance</h1>
 
                     {error && (
                         <div className="glass-card p-4 border border-red-500/30 flex items-center gap-3 text-red-400">
@@ -79,9 +79,9 @@ export default function SellerPerformancePage() {
                     </div>
 
                     <div className="glass-card p-6">
-                        <h2 className="text-xl font-bold text-white mb-6">Listing Views</h2>
+                        <h2 className="text-xl font-bold mb-6">Listing Views</h2>
                         {!performance?.recentListingViews?.length ? (
-                            <div className="text-center py-12 text-gray-400">
+                            <div className="text-center py-12 text-[var(--text-muted)]">
                                 <BarChart3 size={48} className="mx-auto mb-4 opacity-30" />
                                 <p className="text-lg">No listing data yet</p>
                                 <p className="text-sm mt-1">Create listings to see view analytics here</p>
@@ -90,16 +90,16 @@ export default function SellerPerformancePage() {
                             <div className="space-y-3">
                                 {performance.recentListingViews.map(listing => (
                                     <div key={listing.id} className="flex items-center gap-4">
-                                        <div className="w-40 text-sm text-gray-300 truncate shrink-0" title={listing.title}>
+                                        <div className="w-40 text-sm text-[var(--text-secondary)] truncate shrink-0" title={listing.title}>
                                             {listing.title}
                                         </div>
-                                        <div className="flex-1 h-6 bg-slate-800 rounded overflow-hidden">
+                                        <div className="flex-1 h-6 bg-[var(--bg-input)] rounded overflow-hidden">
                                             <div
                                                 className="h-full bg-gradient-to-r from-primary/80 to-primary rounded transition-all duration-500"
                                                 style={{ width: `${Math.max((listing.views / maxViews) * 100, 2)}%` }}
                                             />
                                         </div>
-                                        <span className="text-sm text-gray-400 w-16 text-right shrink-0">{listing.views} views</span>
+                                        <span className="text-sm text-[var(--text-muted)] w-16 text-right shrink-0">{listing.views} views</span>
                                     </div>
                                 ))}
                             </div>

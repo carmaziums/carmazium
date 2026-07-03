@@ -43,14 +43,14 @@ export function DamageAnalysisTool({ images, onComplete }: DamageAnalysisToolPro
 
   if (analyzing) {
     return (
-      <div className="bg-slate-900/80 border border-primary/20 rounded-2xl p-12 text-center space-y-6">
+      <div className="bg-[var(--bg-card)] border border-primary/20 rounded-2xl p-12 text-center space-y-6">
         <div className="relative w-24 h-24 mx-auto">
           <Loader2 className="w-24 h-24 text-primary animate-spin" />
           <Sparkles className="absolute inset-0 m-auto w-10 h-10 text-amber-400 animate-pulse" />
         </div>
         <div className="space-y-2">
           <h3 className="text-xl font-bold text-white font-heading">AI Damage Assessment in Progress</h3>
-          <p className="text-gray-400 max-w-md mx-auto">
+          <p className="text-[var(--text-muted)] max-w-md mx-auto">
             Our computer vision model is scanning your photos for scratches, scuffs, and dents using YOLOv8...
           </p>
         </div>
@@ -72,7 +72,7 @@ export function DamageAnalysisTool({ images, onComplete }: DamageAnalysisToolPro
               <CheckCircle2 className="text-emerald-400" size={18} />
               AI Analysis Complete
             </h3>
-            <p className="text-sm text-gray-400">{results.length} issues detected across {damageImages.length} photos.</p>
+            <p className="text-sm text-[var(--text-muted)]">{results.length} issues detected across {damageImages.length} photos.</p>
           </div>
           <button 
             onClick={() => onComplete(results)}
@@ -90,7 +90,7 @@ export function DamageAnalysisTool({ images, onComplete }: DamageAnalysisToolPro
                 <button
                   key={v}
                   onClick={() => setCurrentView(v)}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border ${currentView === v ? 'bg-primary border-primary text-white' : 'bg-slate-900 border-white/10 text-gray-400 hover:border-white/30'}`}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border ${currentView === v ? 'bg-primary border-primary text-white' : 'bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'}`}
                 >
                   {v}
                 </button>
@@ -107,8 +107,8 @@ export function DamageAnalysisTool({ images, onComplete }: DamageAnalysisToolPro
             />
             
             {/* Legend/Info */}
-            <div className="bg-slate-800/50 rounded-xl p-4 border border-white/5 space-y-3">
-              <h4 className="text-xs font-bold uppercase text-gray-500 tracking-wider">Detection Report</h4>
+            <div className="bg-[var(--bg-input)] rounded-xl p-4 border border-[var(--border-default)] space-y-3">
+              <h4 className="text-xs font-bold uppercase text-[var(--text-muted)] tracking-wider">Detection Report</h4>
               <div className="space-y-2">
                 {results.map((r, idx) => (
                   <button
@@ -117,7 +117,7 @@ export function DamageAnalysisTool({ images, onComplete }: DamageAnalysisToolPro
                       setActivePoint(r)
                       setCurrentView(r.coords.view)
                     }}
-                    className={`w-full flex items-center justify-between p-3 rounded-lg border transition-all ${activePoint === r ? 'bg-primary/10 border-primary/30 text-white' : 'bg-slate-900/50 border-white/5 text-gray-400 hover:bg-slate-900'}`}
+                    className={`w-full flex items-center justify-between p-3 rounded-lg border transition-all ${activePoint === r ? 'bg-primary/10 border-primary/30 text-primary' : 'bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-muted)] hover:bg-[var(--bg-card-hover)]'}`}
                   >
                     <div className="flex items-center gap-3">
                       <div className={`w-2 h-2 rounded-full ${r.type === 'Scratch' ? 'bg-amber-400' : 'bg-red-500'}`} />
@@ -135,10 +135,10 @@ export function DamageAnalysisTool({ images, onComplete }: DamageAnalysisToolPro
 
           {/* Right: Evidence */}
           <div className="space-y-4">
-            <h4 className="text-xs font-bold uppercase text-gray-500 tracking-wider">Visual Evidence</h4>
+            <h4 className="text-xs font-bold uppercase text-[var(--text-muted)] tracking-wider">Visual Evidence</h4>
             {activePoint ? (
               <div className="space-y-4">
-                <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-white/10 group">
+                <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-[var(--border-default)] group">
                   {/* `imageUrl` is declared optional on DamagePoint — passing
                       `undefined`/empty string to next/image throws synchronously
                       ("Image is missing required src property"), which crashes
@@ -152,24 +152,24 @@ export function DamageAnalysisTool({ images, onComplete }: DamageAnalysisToolPro
                       className="object-cover"
                     />
                   ) : (
-                    <div className="absolute inset-0 flex items-center justify-center bg-slate-900">
+                    <div className="absolute inset-0 flex items-center justify-center bg-[var(--bg-input)]">
                       <Camera className="text-gray-700" size={32} />
                     </div>
                   )}
                   <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-all" />
-                  <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white uppercase tracking-widest">
+                  <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md border border-[var(--border-default)] px-3 py-1.5 rounded-lg text-[10px] font-bold text-white uppercase tracking-widest">
                     Source Photo
                   </div>
                 </div>
                 <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl space-y-1">
                   <p className="text-xs font-bold text-amber-400 uppercase tracking-widest">AI Assessment</p>
-                  <p className="text-sm text-gray-300">
+                  <p className="text-sm text-[var(--text-secondary)]">
                     Detected a <span className="text-white font-bold">{activePoint.size.toLowerCase()} {activePoint.type.toLowerCase()}</span> on the <span className="text-white font-bold">{activePoint.part.toLowerCase()}</span>.
                   </p>
                 </div>
               </div>
             ) : (
-              <div className="aspect-[4/3] rounded-2xl border-2 border-dashed border-white/5 flex flex-col items-center justify-center text-gray-600">
+              <div className="aspect-[4/3] rounded-2xl border-2 border-dashed border-[var(--border-default)] flex flex-col items-center justify-center text-[var(--text-secondary)]">
                 <Search size={48} className="mb-2 opacity-20" />
                 <p className="text-sm">Select an issue to see evidence</p>
               </div>
@@ -181,25 +181,25 @@ export function DamageAnalysisTool({ images, onComplete }: DamageAnalysisToolPro
   }
 
   return (
-    <div className="bg-slate-900/50 border border-white/10 rounded-2xl p-8 text-center space-y-6">
+    <div className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl p-8 text-center space-y-6">
       <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-2">
         <Sparkles className="text-primary w-8 h-8" />
       </div>
       <div className="space-y-2">
         <h3 className="text-xl font-bold text-white font-heading">AI Damage Scanning</h3>
-        <p className="text-gray-400 max-w-md mx-auto text-sm">
+        <p className="text-[var(--text-muted)] max-w-md mx-auto text-sm">
           Run our automated visual inspection tool to identify bodywork issues, plot them on a map, and categorize severity automatically.
         </p>
       </div>
       <button
         onClick={runAnalysis}
         disabled={damageImages.length === 0}
-        className={`px-8 py-3 rounded-xl font-bold transition-all shadow-xl flex items-center gap-2 mx-auto ${damageImages.length > 0 ? 'bg-primary hover:bg-red-600 text-white shadow-primary/20 hover:scale-105' : 'bg-slate-800 text-gray-500 cursor-not-allowed opacity-50'}`}
+        className={`px-8 py-3 rounded-xl font-bold transition-all shadow-xl flex items-center gap-2 mx-auto ${damageImages.length > 0 ? 'bg-primary hover:bg-red-600 text-white shadow-primary/20 hover:scale-105' : 'bg-[var(--bg-input)] text-[var(--text-muted)] cursor-not-allowed opacity-50'}`}
       >
         <Search size={18} />
         {damageImages.length === 0 ? 'Upload Photos First' : `Scan ${damageImages.length} Photos`}
       </button>
-      <p className="text-[10px] text-gray-500 uppercase tracking-widest">Powered by YOLOv8 Computer Vision</p>
+      <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest">Powered by YOLOv8 Computer Vision</p>
     </div>
   )
 }

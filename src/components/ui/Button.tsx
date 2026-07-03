@@ -15,8 +15,8 @@ const buttonVariants = cva(
                     "bg-gradient-to-r from-primary to-[#d9161d] text-white hover:from-[#ff4d4d] hover:to-primary shadow-lg shadow-primary/25 border-0",
                 outline:
                     "border-2 border-primary text-primary hover:bg-primary hover:text-white bg-transparent shadow-neon",
-                dark: "bg-slate-800/80 border border-white/10 text-white hover:bg-slate-700 hover:border-white/20 backdrop-blur-md",
-                ghost: "hover:bg-white/10 hover:text-white",
+                dark: "bg-slate-800/80 border border-[var(--border-default)] text-white hover:bg-slate-700 hover:border-white/20 backdrop-blur-md",
+                ghost: "hover:bg-primary/10 dark:hover:bg-white/10",
                 link: "text-primary underline-offset-4 hover:underline",
             },
             size: {

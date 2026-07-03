@@ -201,27 +201,27 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     }, [messages])
 
     return (
-        <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col bg-slate-900/50 rounded-xl border border-white/10">
+        <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col bg-[var(--bg-input)] rounded-xl border border-[var(--border-default)]">
             {/* Header */}
-            <div className="flex items-center gap-3 p-4 border-b border-white/10">
+            <div className="flex items-center gap-3 p-4 border-b border-[var(--border-default)]">
                 {onBack && (
-                    <button onClick={onBack} className="text-gray-400 hover:text-white transition-colors">
+                    <button onClick={onBack} className="text-[var(--text-muted)] hover:text-white transition-colors">
                         <ArrowLeft size={20} />
                     </button>
                 )}
-                <div className="relative w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center overflow-hidden">
+                <div className="relative w-10 h-10 rounded-full bg-[var(--bg-card)] flex items-center justify-center overflow-hidden">
                     {room.otherUser.profileImage ? (
                         <Image src={room.otherUser.profileImage} alt="" fill sizes="40px" className="object-cover" />
                     ) : (
-                        <User size={20} className="text-gray-400" />
+                        <User size={20} className="text-[var(--text-muted)]" />
                     )}
                 </div>
                 <div className="flex-1">
-                    <h3 className="font-bold text-white">
+                    <h3 className="font-bold">
                         {room.otherUser.firstName} {room.otherUser.lastName}
                     </h3>
                     {room.listing && (
-                        <p className="text-xs text-gray-400 truncate">
+                        <p className="text-xs text-[var(--text-muted)] truncate">
                             Re: {room.listing.title}
                         </p>
                     )}
@@ -248,7 +248,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     </div>
                 ) : messages.length === 0 ? (
-                    <div className="text-center text-gray-500 py-8">
+                    <div className="text-center text-[var(--text-muted)] py-8">
                         <MessageSquare className="w-12 h-12 mx-auto mb-2 opacity-50" />
                         <p>No messages yet</p>
                         <p className="text-sm">Send a message to start the conversation</p>
@@ -257,7 +257,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                     groupedMessages.map((group, gi) => (
                         <div key={gi}>
                             <div className="flex justify-center my-4">
-                                <span className="text-xs text-gray-500 bg-slate-800 px-3 py-1 rounded-full">
+                                <span className="text-xs text-[var(--text-muted)] bg-[var(--bg-card)] px-3 py-1 rounded-full">
                                     {group.date}
                                 </span>
                             </div>
@@ -271,11 +271,11 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                         <div
                                             className={`max-w-[75%] px-4 py-2 rounded-2xl ${isOwn
                                                 ? 'bg-primary text-white rounded-br-sm'
-                                                : 'bg-slate-700 text-white rounded-bl-sm'
+                                                : 'bg-[var(--bg-card)] text-[var(--text-primary)] rounded-bl-sm'
                                                 }`}
                                         >
                                             <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
-                                            <p className={`text-[10px] mt-1 ${isOwn ? 'text-white/70' : 'text-gray-400'}`}>
+                                            <p className={`text-[10px] mt-1 ${isOwn ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>
                                                 {formatTime(msg.createdAt)}
                                                 {isOwn && msg.isRead && ' ✓✓'}
                                             </p>
@@ -289,7 +289,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
 
                 {isTyping && (
                     <div className="flex justify-start">
-                        <div className="bg-slate-700 text-gray-400 px-4 py-2 rounded-2xl rounded-bl-sm">
+                        <div className="bg-[var(--bg-card)] text-[var(--text-muted)] px-4 py-2 rounded-2xl rounded-bl-sm">
                             <span className="flex gap-1">
                                 <span className="animate-bounce">.</span>
                                 <span className="animate-bounce" style={{ animationDelay: '0.1s' }}>.</span>
@@ -303,7 +303,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
             </div>
 
             {/* Input */}
-            <div className="p-4 border-t border-white/10">
+            <div className="p-4 border-t border-[var(--border-default)]">
                 <div className="flex gap-2">
                     <input
                         type="text"
@@ -311,7 +311,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                         onChange={(e) => setNewMessage(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder="Type a message..."
-                        className="flex-1 bg-slate-800 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        className="flex-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-4 py-3 placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-primary/50"
                         disabled={sending}
                     />
                     <Button

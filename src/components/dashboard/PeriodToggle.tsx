@@ -7,7 +7,7 @@ export interface PeriodToggleProps {
 
 export function PeriodToggle({ value, onChange }: PeriodToggleProps) {
   return (
-    <div className="inline-flex rounded-lg overflow-hidden border border-white/10">
+    <div className="inline-flex rounded-lg overflow-hidden border" style={{ borderColor: 'var(--border-default)' }}>
       {(['7d', '30d'] as const).map((p) => (
         <button
           key={p}
@@ -15,8 +15,9 @@ export function PeriodToggle({ value, onChange }: PeriodToggleProps) {
           className={`px-4 py-2 text-xs font-bold uppercase tracking-widest transition-colors ${
             value === p
               ? 'bg-primary text-white'
-              : 'bg-transparent text-gray-400 hover:text-white'
+              : 'bg-transparent hover:text-primary dark:hover:text-white'
           }`}
+          style={value !== p ? { color: 'var(--text-muted)' } : undefined}
         >
           {p === '7d' ? '7 Days' : '30 Days'}
         </button>

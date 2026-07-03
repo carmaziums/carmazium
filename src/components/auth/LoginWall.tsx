@@ -31,13 +31,13 @@ export function LoginWall({
             onClick={onClose}
         >
             <div
-                className="w-full max-w-sm bg-slate-900 border border-white/10 rounded-2xl p-8 shadow-2xl relative animate-in zoom-in-95 duration-200"
+                className="w-full max-w-sm bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-2xl p-8 shadow-2xl relative animate-in zoom-in-95 duration-200"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Close */}
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors"
+                    className="absolute top-4 right-4 text-[var(--text-muted)] hover:text-white transition-colors"
                 >
                     <X size={18} />
                 </button>
@@ -48,7 +48,7 @@ export function LoginWall({
                 </div>
 
                 <h3 className="text-lg font-bold text-center text-white mb-2">Login Required</h3>
-                <p className="text-sm text-gray-400 text-center mb-6">{message}</p>
+                <p className="text-sm text-[var(--text-muted)] text-center mb-6">{message}</p>
 
                 <div className="space-y-3">
                     <Button
@@ -60,7 +60,7 @@ export function LoginWall({
                     <Button
                         variant="outline"
                         onClick={() => { onClose(); router.push(`/auth/signup?redirect=${encodeURIComponent(redirect)}`) }}
-                        className="w-full border-white/10 text-gray-400 hover:text-white gap-2"
+                        className="w-full border-[var(--border-default)] text-[var(--text-muted)] hover:text-white gap-2"
                     >
                         <UserPlus size={16} /> Create Account
                     </Button>

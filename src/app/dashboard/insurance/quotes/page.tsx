@@ -53,7 +53,7 @@ export default function InsuranceQuotesPage() {
 
     if (authLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+            <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
             </div>
         )
@@ -68,7 +68,7 @@ export default function InsuranceQuotesPage() {
     const totalPages = Math.ceil(total / limit)
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
+        <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="insurance" userName={userName} userType="Insurance Partner" />
 
@@ -85,7 +85,7 @@ export default function InsuranceQuotesPage() {
                                     onClick={() => setStatusFilter(s)}
                                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${statusFilter === s
                                         ? 'bg-primary text-white'
-                                        : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'}`}
+                                        : 'bg-[var(--bg-card)] text-[var(--text-muted)] hover:bg-white/10 hover:text-primary dark:hover:'}`}
                                 >
                                     {s === "ALL" ? "All" : s.charAt(0) + s.slice(1).toLowerCase()}
                                 </button>
@@ -93,10 +93,10 @@ export default function InsuranceQuotesPage() {
                         </div>
                     </div>
 
-                    <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl">
+                    <div className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
-                                <thead className="bg-slate-800/50 text-gray-400 text-xs uppercase font-black tracking-widest">
+                                <thead className="bg-[var(--bg-input)] text-[var(--text-muted)] text-xs uppercase font-black tracking-widest">
                                     <tr>
                                         <th className="px-6 py-4">Applicant</th>
                                         <th className="px-6 py-4">Vehicle</th>
@@ -108,21 +108,21 @@ export default function InsuranceQuotesPage() {
                                         <th className="px-6 py-4 text-right">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-white/5 text-white/80">
+                                <tbody className="divide-y divide-[var(--border-default)]/80">
                                     {loading ? (
                                         <tr><td colSpan={8} className="px-6 py-12 text-center"><Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" /></td></tr>
                                     ) : filtered.length === 0 ? (
-                                        <tr><td colSpan={8} className="px-6 py-12 text-center text-gray-500 italic">No quotes found.</td></tr>
+                                        <tr><td colSpan={8} className="px-6 py-12 text-center text-[var(--text-muted)] italic">No quotes found.</td></tr>
                                     ) : (
                                         filtered.map((quote) => (
-                                            <tr key={quote.id} className="hover:bg-white/5 transition-colors">
+                                            <tr key={quote.id} className="hover:bg-[var(--bg-card)] transition-colors">
                                                 <td className="px-6 py-4">
-                                                    <div className="font-bold text-white">{quote.user?.firstName} {quote.user?.lastName}</div>
-                                                    <div className="text-xs text-gray-400">{quote.user?.email}</div>
+                                                    <div className="font-bold">{quote.user?.firstName} {quote.user?.lastName}</div>
+                                                    <div className="text-xs text-[var(--text-muted)]">{quote.user?.email}</div>
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="text-sm">{quote.listing?.title || 'Unknown'}</div>
-                                                    <div className="text-xs text-gray-400">{formatCurrency(quote.listing?.price || 0)}</div>
+                                                    <div className="text-xs text-[var(--text-muted)]">{formatCurrency(quote.listing?.price || 0)}</div>
                                                 </td>
                                                 <td className="px-6 py-4 text-center">{quote.driverAge}</td>
                                                 <td className="px-6 py-4 text-center">{quote.ncbYears}</td>
@@ -137,7 +137,7 @@ export default function InsuranceQuotesPage() {
                                                     <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border ${quote.status === 'PENDING' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
                                                         quote.status === 'QUOTED' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
                                                             quote.status === 'ACCEPTED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                                                quote.status === 'EXPIRED' ? 'bg-gray-500/10 text-gray-400 border-gray-500/20' :
+                                                                quote.status === 'EXPIRED' ? 'bg-gray-500/10 text-[var(--text-muted)] border-gray-500/20' :
                                                                     'bg-red-500/10 text-red-400 border-red-500/20'}`}>
                                                         {quote.status === 'PENDING' && <Clock size={10} />}
                                                         {quote.status === 'ACCEPTED' && <CheckCircle size={10} />}
@@ -145,7 +145,7 @@ export default function InsuranceQuotesPage() {
                                                         {quote.status}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4 text-sm text-gray-300">
+                                                <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">
                                                     {new Date(quote.createdAt).toLocaleDateString()}
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
@@ -153,7 +153,7 @@ export default function InsuranceQuotesPage() {
                                                         <Loader2 size={16} className="animate-spin text-primary inline" />
                                                     ) : quote.status === 'PENDING' ? (
                                                         <div className="flex gap-2 justify-end">
-                                                            <Button size="sm" className="bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white border border-blue-500/20 h-8 text-xs"
+                                                            <Button size="sm" className="bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-primary dark:hover:text-white border border-blue-500/20 h-8 text-xs"
                                                                 onClick={() => handleStatusUpdate(quote.id, 'QUOTED')}>Quote</Button>
                                                             <Button size="sm" variant="outline" className="border-red-500/20 text-red-500 hover:bg-red-500/10 h-8 text-xs"
                                                                 onClick={() => handleStatusUpdate(quote.id, 'REJECTED')}>Reject</Button>
@@ -168,8 +168,8 @@ export default function InsuranceQuotesPage() {
                         </div>
 
                         {totalPages > 1 && (
-                            <div className="p-4 border-t border-white/10 flex justify-between items-center">
-                                <span className="text-sm text-gray-400">Page {page} of {totalPages} ({total} total)</span>
+                            <div className="p-4 border-t border-[var(--border-default)] flex justify-between items-center">
+                                <span className="text-sm text-[var(--text-muted)]">Page {page} of {totalPages} ({total} total)</span>
                                 <div className="flex gap-2">
                                     <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="text-xs">Previous</Button>
                                     <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="text-xs">Next</Button>

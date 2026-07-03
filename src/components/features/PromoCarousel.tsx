@@ -99,7 +99,7 @@ export function PromoCarousel() {
                     {/* Navigation Buttons - Absolute positioned or side-by-side depending on mobile */}
                     <button
                         onClick={prevSlide}
-                        className="absolute left-0 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-white/5 hover:bg-primary/20 hover:text-primary transition-all backdrop-blur-md hidden md:block"
+                        className="absolute left-0 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-[var(--bg-card)] hover:bg-primary/20 hover:text-primary transition-all backdrop-blur-md hidden md:block"
                         aria-label="Previous slide"
                     >
                         <ChevronLeft size={24} />
@@ -107,7 +107,7 @@ export function PromoCarousel() {
 
                     <button
                         onClick={nextSlide}
-                        className="absolute right-0 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-white/5 hover:bg-primary/20 hover:text-primary transition-all backdrop-blur-md hidden md:block"
+                        className="absolute right-0 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-[var(--bg-card)] hover:bg-primary/20 hover:text-primary transition-all backdrop-blur-md hidden md:block"
                         aria-label="Next slide"
                     >
                         <ChevronRight size={24} />
@@ -128,9 +128,9 @@ export function PromoCarousel() {
                                 {/* Media Side */}
                                 <div className="flex-1 relative w-full">
                                     {/* Glow effect */}
-                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-white/5 blur-[120px] rounded-full -z-10" />
+                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-[var(--bg-card)] blur-[120px] rounded-full -z-10" />
 
-                                    <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-white/10 group aspect-video bg-slate-900">
+                                    <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-[var(--border-default)] group aspect-video bg-[var(--bg-input)]">
                                         <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-10 pointer-events-none" />
 
                                         {slides[current].type === 'video' ? (
@@ -167,7 +167,7 @@ export function PromoCarousel() {
                                             {slides[current].title}
                                         </h2>
 
-                                        <p className="text-gray-300 mb-10 leading-relaxed text-lg max-w-xl">
+                                        <p className="text-[var(--text-secondary)] mb-10 leading-relaxed text-lg max-w-xl">
                                             {slides[current].description}
                                         </p>
 

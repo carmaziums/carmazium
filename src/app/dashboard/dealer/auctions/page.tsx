@@ -25,7 +25,7 @@ import type { Listing } from "@/lib/listingApi"
 const STATUS_STYLES: Record<string, string> = {
     SCHEDULED: "bg-blue-500/10 text-blue-400 border-blue-500/20",
     ACTIVE: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-    ENDED: "bg-gray-500/10 text-gray-400 border-gray-500/20",
+    ENDED: "bg-gray-500/10 text-[var(--text-muted)] border-gray-500/20",
     CANCELLED: "bg-red-500/10 text-red-400 border-red-500/20",
 }
 
@@ -55,7 +55,7 @@ function addHours(iso: string, hours: number): string {
 
 export default function DealerAuctionsPageWrapper() {
     return (
-        <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-900"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}>
+        <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}>
             <DealerAuctionsPage />
         </React.Suspense>
     )
@@ -196,7 +196,7 @@ function DealerAuctionsPage() {
     const auctionRoute = DEALER_ROUTE_CONFIG.find(r => r.href === "/dashboard/dealer/auctions")
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
+        <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
@@ -238,16 +238,16 @@ function DealerAuctionsPage() {
                                 exit={{ opacity: 0, height: 0 }}
                                 className="dealer-glass-card overflow-hidden"
                             >
-                                <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                                <div className="p-6 border-b border-[var(--border-default)] flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 rounded-lg bg-primary/10">
                                             <Gavel size={18} className="text-primary" />
                                         </div>
-                                        <h2 className="font-black text-white text-lg tracking-tight">New Auction</h2>
+                                        <h2 className="font-black text-lg tracking-tight">New Auction</h2>
                                     </div>
                                     <button
                                         onClick={() => setShowForm(false)}
-                                        className="text-gray-500 hover:text-white transition-colors"
+                                        className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors"
                                     >
                                         <X size={20} />
                                     </button>
@@ -264,13 +264,13 @@ function DealerAuctionsPage() {
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                                         {/* Listing select */}
                                         <div className="lg:col-span-2">
-                                            <label className="block text-xs font-black uppercase tracking-widest text-gray-500 mb-2">
+                                            <label className="block text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-2">
                                                 Select Listing (AUCTION type)
                                             </label>
                                             <select
                                                 value={formListingId}
                                                 onChange={e => setFormListingId(e.target.value)}
-                                                className="w-full bg-[#0A0A0C] border border-white/5 text-white rounded-xl h-12 px-4 text-sm focus:ring-1 focus:ring-primary/50 focus:outline-none"
+                                                className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl h-12 px-4 text-sm focus:ring-1 focus:ring-primary/50 focus:outline-none"
                                             >
                                                 <option value="">— Select a listing —</option>
                                                 {eligibleListings.map(l => (
@@ -280,7 +280,7 @@ function DealerAuctionsPage() {
                                                 ))}
                                             </select>
                                             {eligibleListings.length === 0 && (
-                                                <p className="text-xs text-gray-500 mt-1.5">
+                                                <p className="text-xs text-[var(--text-muted)] mt-1.5">
                                                     No eligible AUCTION-type listings. Create an auction listing first.
                                                 </p>
                                             )}
@@ -288,7 +288,7 @@ function DealerAuctionsPage() {
 
                                         {/* Start time */}
                                         <div>
-                                            <label className="block text-xs font-black uppercase tracking-widest text-gray-500 mb-2">
+                                            <label className="block text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-2">
                                                 Start Date & Time
                                             </label>
                                             <Input
@@ -296,16 +296,16 @@ function DealerAuctionsPage() {
                                                 value={formStartTime}
                                                 onChange={e => setFormStartTime(e.target.value)}
                                                 min={new Date(Date.now() + 3_600_000).toISOString().slice(0, 16)}
-                                                className="bg-[#0A0A0C] border-white/5 text-white h-12 rounded-xl focus:ring-1 focus:ring-primary/50"
+                                                className="bg-[var(--bg-input)] border-[var(--border-default)] h-12 rounded-xl focus:ring-1 focus:ring-primary/50"
                                             />
                                         </div>
 
                                         {/* Duration (read-only) */}
                                         <div>
-                                            <label className="block text-xs font-black uppercase tracking-widest text-gray-500 mb-2">
+                                            <label className="block text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-2">
                                                 Duration
                                             </label>
-                                            <div className="flex items-center gap-2 h-12 px-4 bg-white/[0.03] border border-white/5 rounded-xl text-gray-400 text-sm">
+                                            <div className="flex items-center gap-2 h-12 px-4 bg-white/[0.03] border border-[var(--border-default)] rounded-xl text-[var(--text-muted)] text-sm">
                                                 <Clock size={14} className="text-primary" />
                                                 24 hours (fixed)
                                                 {formStartTime && (
@@ -318,7 +318,7 @@ function DealerAuctionsPage() {
 
                                         {/* Reserve price */}
                                         <div>
-                                            <label className="block text-xs font-black uppercase tracking-widest text-gray-500 mb-2">
+                                            <label className="block text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-2">
                                                 Reserve Price (£)
                                             </label>
                                             <Input
@@ -328,13 +328,13 @@ function DealerAuctionsPage() {
                                                 placeholder="e.g. 15000"
                                                 value={formReservePrice}
                                                 onChange={e => setFormReservePrice(e.target.value)}
-                                                className="bg-[#0A0A0C] border-white/5 text-white h-12 rounded-xl focus:ring-1 focus:ring-primary/50"
+                                                className="bg-[var(--bg-input)] border-[var(--border-default)] h-12 rounded-xl focus:ring-1 focus:ring-primary/50"
                                             />
                                         </div>
 
                                         {/* Buy It Now price (optional) */}
                                         <div>
-                                            <label className="block text-xs font-black uppercase tracking-widest text-gray-500 mb-2">
+                                            <label className="block text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-2">
                                                 Buy It Now Price (optional)
                                             </label>
                                             <Input
@@ -344,7 +344,7 @@ function DealerAuctionsPage() {
                                                 placeholder="Leave blank to disable"
                                                 value={formBuyItNowPrice}
                                                 onChange={e => setFormBuyItNowPrice(e.target.value)}
-                                                className="bg-[#0A0A0C] border-white/5 text-white h-12 rounded-xl focus:ring-1 focus:ring-primary/50"
+                                                className="bg-[var(--bg-input)] border-[var(--border-default)] h-12 rounded-xl focus:ring-1 focus:ring-primary/50"
                                             />
                                             <p className="text-xs text-gray-600 mt-1">
                                                 Buyers can request to buy at this price. Locked once auction goes live.
@@ -353,7 +353,7 @@ function DealerAuctionsPage() {
 
                                         {/* Starting bid */}
                                         <div>
-                                            <label className="block text-xs font-black uppercase tracking-widest text-gray-500 mb-2">
+                                            <label className="block text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-2">
                                                 Starting Bid (£)
                                             </label>
                                             <Input
@@ -363,13 +363,13 @@ function DealerAuctionsPage() {
                                                 placeholder="e.g. 10000"
                                                 value={formStartingBid}
                                                 onChange={e => setFormStartingBid(e.target.value)}
-                                                className="bg-[#0A0A0C] border-white/5 text-white h-12 rounded-xl focus:ring-1 focus:ring-primary/50"
+                                                className="bg-[var(--bg-input)] border-[var(--border-default)] h-12 rounded-xl focus:ring-1 focus:ring-primary/50"
                                             />
                                         </div>
 
                                         {/* Min increment */}
                                         <div>
-                                            <label className="block text-xs font-black uppercase tracking-widest text-gray-500 mb-2">
+                                            <label className="block text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-2">
                                                 Minimum Increment (£)
                                             </label>
                                             <Input
@@ -378,7 +378,7 @@ function DealerAuctionsPage() {
                                                 step={1}
                                                 value={formMinIncrement}
                                                 onChange={e => setFormMinIncrement(e.target.value)}
-                                                className="bg-[#0A0A0C] border-white/5 text-white h-12 rounded-xl focus:ring-1 focus:ring-primary/50"
+                                                className="bg-[var(--bg-input)] border-[var(--border-default)] h-12 rounded-xl focus:ring-1 focus:ring-primary/50"
                                             />
                                         </div>
                                     </div>
@@ -388,7 +388,7 @@ function DealerAuctionsPage() {
                                             type="button"
                                             variant="outline"
                                             onClick={() => setShowForm(false)}
-                                            className="border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 h-10 px-5 rounded-xl"
+                                            className="border-[var(--border-default)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:bg-white/10 h-10 px-5 rounded-xl"
                                         >
                                             Cancel
                                         </Button>
@@ -414,16 +414,16 @@ function DealerAuctionsPage() {
                             {auctions.map(auction => (
                                 <div key={auction.id} className="p-4 space-y-2">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-16 h-11 bg-black/40 rounded-xl overflow-hidden border border-white/10 shrink-0">
+                                        <div className="w-16 h-11 bg-black/40 rounded-xl overflow-hidden border border-[var(--border-default)] shrink-0">
                                             {auction.listing.images?.[0] ? (
                                                 <img src={auction.listing.images[0]} alt="" className="w-full h-full object-cover opacity-80" />
                                             ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-gray-700"><Gavel size={18} /></div>
+                                                <div className="w-full h-full flex items-center justify-center text-[var(--text-muted)]"><Gavel size={18} /></div>
                                             )}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-black text-white text-sm truncate">{auction.listing.title}</p>
-                                            <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">{auction.listing.year} · {auction.listing.make}</p>
+                                            <p className="font-black text-sm truncate">{auction.listing.title}</p>
+                                            <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest">{auction.listing.year} · {auction.listing.make}</p>
                                         </div>
                                         <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-black tracking-widest border shrink-0 ${STATUS_STYLES[auction.status] ?? STATUS_STYLES.ENDED}`}>
                                             {auction.status}
@@ -431,10 +431,10 @@ function DealerAuctionsPage() {
                                     </div>
                                     <div className="flex items-center justify-between gap-2 text-sm">
                                         <div>
-                                            <p className="font-black text-white">£{getCurrentBid(auction).toLocaleString()}</p>
+                                            <p className="font-black">£{getCurrentBid(auction).toLocaleString()}</p>
                                             <p className="text-xs text-gray-600 font-bold uppercase">{getBidCount(auction) === 0 ? 'starting bid' : `${getBidCount(auction)} bids`}</p>
                                         </div>
-                                        <div className="text-right text-xs text-gray-400">
+                                        <div className="text-right text-xs text-[var(--text-muted)]">
                                             {auction.status === "ACTIVE" ? (
                                                 <p className="text-primary font-black" key={tick}>{formatCountdown(new Date(auction.endTime))}</p>
                                             ) : auction.status === "SCHEDULED" ? (
@@ -453,7 +453,7 @@ function DealerAuctionsPage() {
                                                 </button>
                                             )}
                                             {(auction.status === "ENDED" || auction.status === "CANCELLED") && (
-                                                <Link href={`/auctions/live/${auction.id}`} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-white/5 text-gray-400 border border-white/5 rounded-lg">Results</Link>
+                                                <Link href={`/auctions/live/${auction.id}`} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-[var(--bg-card)] text-[var(--text-muted)] border border-[var(--border-default)] rounded-lg">Results</Link>
                                             )}
                                         </div>
                                     </div>
@@ -462,7 +462,7 @@ function DealerAuctionsPage() {
                         </div>
 
                         {/* ── Desktop table (≥ sm) ── */}
-                        <div className="hidden sm:block overflow-x-auto border-t border-white/5">
+                        <div className="hidden sm:block overflow-x-auto border-t border-[var(--border-default)]">
                             <table className="w-full text-left border-collapse">
                                 <thead className="vip-table-header">
                                     <tr>
@@ -493,8 +493,8 @@ function DealerAuctionsPage() {
                                     ) : auctions.length === 0 ? (
                                         <tr>
                                             <td colSpan={6} className="px-6 py-16 text-center">
-                                                <Gavel className="h-12 w-12 text-gray-700 mx-auto mb-3" />
-                                                <p className="text-gray-500 font-bold">No auctions yet</p>
+                                                <Gavel className="h-12 w-12 text-[var(--text-muted)] mx-auto mb-3" />
+                                                <p className="text-[var(--text-muted)] font-bold">No auctions yet</p>
                                                 <p className="text-gray-600 text-sm mt-1">Create your first auction to start selling</p>
                                                 <Button
                                                     onClick={openForm}
@@ -510,7 +510,7 @@ function DealerAuctionsPage() {
                                                 {/* Vehicle */}
                                                 <td className="px-8 py-6">
                                                     <div className="flex items-center gap-5">
-                                                        <div className="w-20 h-14 bg-black/40 rounded-xl overflow-hidden border border-white/10 flex-shrink-0 group-hover:scale-105 transition-transform duration-500 shadow-2xl">
+                                                        <div className="w-20 h-14 bg-black/40 rounded-xl overflow-hidden border border-[var(--border-default)] flex-shrink-0 group-hover:scale-105 transition-transform duration-500 shadow-2xl">
                                                             {auction.listing.images?.[0] ? (
                                                                 <img
                                                                     src={auction.listing.images[0]}
@@ -518,16 +518,16 @@ function DealerAuctionsPage() {
                                                                     className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
                                                                 />
                                                             ) : (
-                                                                <div className="w-full h-full flex items-center justify-center text-gray-700">
+                                                                <div className="w-full h-full flex items-center justify-center text-[var(--text-muted)]">
                                                                     <Gavel size={20} />
                                                                 </div>
                                                             )}
                                                         </div>
                                                         <div>
-                                                            <p className="font-black text-white text-base tracking-tight group-hover:text-primary transition-colors">
+                                                            <p className="font-black text-base tracking-tight group-hover:text-primary transition-colors">
                                                                 {auction.listing.title}
                                                             </p>
-                                                            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-0.5">
+                                                            <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mt-0.5">
                                                                 {auction.listing.year} · {auction.listing.make} {auction.listing.model}
                                                             </p>
                                                         </div>
@@ -545,7 +545,7 @@ function DealerAuctionsPage() {
                                                 {/* Schedule */}
                                                 <td className="px-6 py-6">
                                                     <div className="flex flex-col gap-1">
-                                                        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                                                        <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
                                                             <Calendar size={11} className="text-gray-600" />
                                                             <span>{formatDate(auction.startTime)}</span>
                                                         </div>
@@ -568,7 +568,7 @@ function DealerAuctionsPage() {
                                                 {/* Current bid */}
                                                 <td className="px-6 py-6 text-right">
                                                     <div className="flex flex-col items-end">
-                                                        <span className="font-black text-white text-lg tracking-tight">
+                                                        <span className="font-black text-lg tracking-tight">
                                                             £{getCurrentBid(auction).toLocaleString()}
                                                         </span>
                                                         <span className="text-xs text-gray-600 font-bold uppercase tracking-widest">
@@ -580,8 +580,8 @@ function DealerAuctionsPage() {
                                                 {/* Bid count */}
                                                 <td className="px-6 py-6 text-center">
                                                     <div className="flex flex-col items-center gap-1">
-                                                        <span className="font-black text-white text-sm">{getBidCount(auction)}</span>
-                                                        <div className="w-12 h-1 bg-white/5 rounded-full overflow-hidden">
+                                                        <span className="font-black text-sm">{getBidCount(auction)}</span>
+                                                        <div className="w-12 h-1 bg-[var(--bg-card)] rounded-full overflow-hidden">
                                                             <div
                                                                 className="h-full bg-primary/50"
                                                                 style={{ width: `${Math.min(getBidCount(auction) * 10, 100)}%` }}
@@ -624,7 +624,7 @@ function DealerAuctionsPage() {
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
-                                                                    className="gap-1.5 bg-white/5 hover:bg-white/10 text-gray-400 border border-white/5"
+                                                                    className="gap-1.5 bg-[var(--bg-card)] hover:bg-white/10 text-[var(--text-muted)] border border-[var(--border-default)]"
                                                                 >
                                                                     <ChevronUp size={14} /> View Results
                                                                 </Button>

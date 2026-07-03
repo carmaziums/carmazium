@@ -145,8 +145,8 @@ export function ReceiptsTab({ isDealer = false }: { isDealer?: boolean }) {
 
     if (receipts.length === 0) {
         return (
-            <div className="flex flex-col items-center gap-4 py-24 text-gray-500">
-                <div className="w-20 h-20 bg-white/5 rounded-3xl flex items-center justify-center border border-white/5">
+            <div className="flex flex-col items-center gap-4 py-24 text-[var(--text-muted)]">
+                <div className="w-20 h-20 bg-[var(--bg-card)] rounded-3xl flex items-center justify-center border border-[var(--border-default)]">
                     <Receipt size={36} className="opacity-20" />
                 </div>
                 <p className="font-bold text-lg">No receipts yet</p>
@@ -168,7 +168,7 @@ export function ReceiptsTab({ isDealer = false }: { isDealer?: boolean }) {
                 return (
                     <div
                         key={receipt.id}
-                        className="flex items-center gap-4 p-4 rounded-2xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-all group"
+                        className="flex items-center gap-4 p-4 rounded-2xl border border-[var(--border-default)] bg-white/[0.02] hover:bg-white/[0.04] transition-all group"
                     >
                         {/* Receipt index */}
                         <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 text-primary text-xs font-black">
@@ -177,16 +177,16 @@ export function ReceiptsTab({ isDealer = false }: { isDealer?: boolean }) {
 
                         {/* Icon / vehicle thumbnail */}
                         {receipt.vehicle?.image ? (
-                            <div className="relative w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-white/10">
+                            <div className="relative w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-[var(--border-default)]">
                                 <Image src={receipt.vehicle.image} alt="" fill className="object-cover" />
                             </div>
                         ) : (
-                            <div className="w-14 h-14 rounded-xl bg-slate-800 border border-white/10 flex items-center justify-center shrink-0">
+                            <div className="w-14 h-14 rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] flex items-center justify-center shrink-0">
                                 {isKyc
                                     ? <Shield size={22} className="text-blue-400" />
                                     : receipt.type === 'HPI_REPORT'
                                         ? <FileText size={22} className="text-amber-400" />
-                                        : <Car size={22} className="text-gray-500" />
+                                        : <Car size={22} className="text-[var(--text-muted)]" />
                                 }
                             </div>
                         )}
@@ -194,7 +194,7 @@ export function ReceiptsTab({ isDealer = false }: { isDealer?: boolean }) {
                         {/* Details */}
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                                <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest">
+                                <span className="text-[11px] font-black text-[var(--text-muted)] uppercase tracking-widest">
                                     {TYPE_LABELS[receipt.type] || receipt.type}
                                 </span>
                                 <span className={`inline-flex items-center gap-1 text-xs font-black px-2 py-0.5 rounded-full border ${status.bg} ${status.color}`}>
@@ -204,7 +204,7 @@ export function ReceiptsTab({ isDealer = false }: { isDealer?: boolean }) {
                             <p className="text-sm font-bold text-white truncate">
                                 {receipt.vehicle?.title || receipt.description || TYPE_LABELS[receipt.type]}
                             </p>
-                            <p className="text-[11px] text-gray-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                            <p className="text-[11px] text-[var(--text-muted)] mt-0.5 flex items-center gap-1.5 flex-wrap">
                                 <span>{new Date(receipt.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                                 <span className="text-gray-700">·</span>
                                 <span>{new Date(receipt.date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
@@ -219,10 +219,10 @@ export function ReceiptsTab({ isDealer = false }: { isDealer?: boolean }) {
 
                         {/* Amount + print */}
                         <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
-                            <p className="text-lg font-black text-white">{formatPrice(receipt.amount)}</p>
+                            <p className="text-lg font-black">{formatPrice(receipt.amount)}</p>
                             <button
                                 onClick={() => printReceipt(receipt, receiptNum)}
-                                className="flex items-center gap-1 text-xs text-gray-500 hover:text-primary transition-colors"
+                                className="flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-primary transition-colors"
                             >
                                 <Download size={10} /> Print receipt
                             </button>

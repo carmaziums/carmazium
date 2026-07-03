@@ -181,11 +181,11 @@ function SelectField({
 }) {
     return (
         <div className="space-y-2">
-            <label className="text-sm font-bold uppercase text-gray-400">{label}{required && " *"}</label>
+            <label className="text-sm font-bold uppercase text-[var(--text-muted)]">{label}{required && " *"}</label>
             <select
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                className={`w-full h-10 rounded-md border bg-slate-900/50 px-3 text-base md:text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary ${error ? 'border-red-500' : 'border-white/10'}`}
+                className={`w-full h-10 rounded-md border bg-[var(--bg-input)] px-3 text-base md:text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary ${error ? 'border-red-500' : 'border-[var(--border-default)]'}`}
             >
                 <option value="">Select {label.toLowerCase()}</option>
                 {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -198,8 +198,8 @@ function SelectField({
 function InfoTooltip({ text }: { text: string }) {
     return (
         <span className="relative group/tip inline-flex items-center ml-1 cursor-help">
-            <Info size={12} className="text-gray-500 group-hover/tip:text-blue-400 transition-colors" />
-            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 rounded-lg bg-slate-800 border border-white/10 px-3 py-2.5 text-xs text-gray-300 leading-relaxed shadow-xl opacity-0 invisible group-hover/tip:opacity-100 group-hover/tip:visible transition-all duration-200 z-50 pointer-events-none">
+            <Info size={12} className="text-[var(--text-muted)] group-hover/tip:text-blue-400 transition-colors" />
+            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 rounded-lg bg-[var(--bg-input)] border border-[var(--border-default)] px-3 py-2.5 text-xs text-[var(--text-secondary)] leading-relaxed shadow-xl opacity-0 invisible group-hover/tip:opacity-100 group-hover/tip:visible transition-all duration-200 z-50 pointer-events-none">
                 {text}
                 <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-slate-800" />
             </span>
@@ -223,7 +223,7 @@ function HpiBaitSection({ isUnlocked, onUnlock }: { isUnlocked: boolean, onUnloc
 
     return (
         <div className="mt-8">
-            <div className="rounded-xl border border-white/10 bg-slate-900/50 overflow-hidden flex flex-col md:flex-row shadow-2xl">
+            <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] overflow-hidden flex flex-col md:flex-row shadow-2xl">
                 {/* Left side: Image with blur */}
                 <div className="relative w-full md:w-2/5 aspect-[4/3] md:aspect-auto cursor-pointer group" onClick={onUnlock}>
                     <Image
@@ -248,15 +248,15 @@ function HpiBaitSection({ isUnlocked, onUnlock }: { isUnlocked: boolean, onUnloc
                         <h3 className="text-white font-bold text-xl">Official HPI Vehicle Check</h3>
                     </div>
                     
-                    <p className="text-gray-300 mb-6 leading-relaxed">
-                        We've found an official HPI record for this vehicle. Unlocking the full report gives you a <strong className="text-white">Premium Verification Badge</strong> on your listing.
+                    <p className="text-[var(--text-secondary)] mb-6 leading-relaxed">
+                        We've found an official HPI record for this vehicle. Unlocking the full report gives you a <strong className="text-[var(--text-primary)]">Premium Verification Badge</strong> on your listing.
                     </p>
                     
                     <div className="flex flex-col items-center md:items-start gap-3 mt-auto">
                         <Button type="button" onClick={onUnlock} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold px-8 py-6 text-base shadow-neon shrink-0 w-full sm:w-auto border-0">
                             Unlock Full HPI Report
                         </Button>
-                        <p className="text-xs text-gray-400 italic flex items-center gap-1.5">
+                        <p className="text-xs text-[var(--text-muted)] italic flex items-center gap-1.5">
                             <BadgeCheck size={14} className="text-emerald-400" />
                             *Proven to help cars sell up to 2x faster!
                         </p>
@@ -850,7 +850,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
     // ─── Shared ──────────────────────────────────────────────────────────────────
 
-    const inputCls = "bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary text-base md:text-sm"
+    const inputCls = "bg-[var(--bg-input)] border-[var(--border-default)] placeholder:text-[var(--text-secondary)] focus:border-primary text-base md:text-sm"
 
     // ─── Login Modal ─────────────────────────────────────────────────────────────
 
@@ -860,11 +860,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-6 text-primary shadow-neon">
                     <Car size={40} />
                 </div>
-                <h2 className="text-2xl font-bold font-heading mb-3 text-white text-center">Sign In to List</h2>
-                <p className="text-gray-400 mb-6 text-center text-sm">Create an account to add your listing safely.</p>
+                <h2 className="text-2xl font-bold font-heading mb-3 text-center">Sign In to List</h2>
+                <p className="text-[var(--text-muted)] mb-6 text-center text-sm">Create an account to add your listing safely.</p>
                 <div className="space-y-3">
                     <Button onClick={() => { setShowLoginModal(false); router.push("/auth/login?redirect=/sell") }} className="w-full shadow-neon">Log In</Button>
-                    <Button variant="outline" className="w-full border-white/10 text-gray-400 hover:text-white" onClick={() => { setShowLoginModal(false); router.push("/auth/signup?redirect=/sell") }}>Create Account</Button>
+                    <Button variant="outline" className="w-full border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white" onClick={() => { setShowLoginModal(false); router.push("/auth/signup?redirect=/sell") }}>Create Account</Button>
                 </div>
             </div>
         </div>
@@ -876,9 +876,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-5" onClick={() => !isProcessingPayment && setShowHpiModal(false)}>
             <div className="glass-card p-0 max-w-md w-full relative overflow-hidden flex flex-col text-left" onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
-                <div className="bg-slate-900/80 p-5 border-b border-white/10 flex justify-between items-center">
+                <div className="bg-[var(--bg-card)] p-5 border-b border-[var(--border-default)] flex justify-between items-center">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2"><CreditCard size={18} className="text-primary"/> Secure Checkout</h3>
-                    <button disabled={isProcessingPayment} type="button" onClick={() => setShowHpiModal(false)} className="text-gray-400 hover:text-white transition-colors">
+                    <button disabled={isProcessingPayment} type="button" onClick={() => setShowHpiModal(false)} className="text-[var(--text-muted)] hover:text-white transition-colors">
                         <X size={20} />
                     </button>
                 </div>
@@ -888,18 +888,18 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                      <div className="flex justify-between items-center mb-6">
                          <div>
                              <p className="text-white font-bold">Comprehensive HPI Report</p>
-                             <p className="text-xs text-gray-400 mt-1 uppercase font-bold tracking-wider">Powered by OneAuto API</p>
+                             <p className="text-xs text-[var(--text-muted)] mt-1 uppercase font-bold tracking-wider">Powered by OneAuto API</p>
                          </div>
-                         <div className="text-xl font-black text-white">£9.99</div>
+                         <div className="text-xl font-black">£9.99</div>
                      </div>
                      
                      <div className="space-y-4 mb-6">
                           {/* Card Input */}
-                          <div className="space-y-1.5 bg-slate-900/50 p-4 rounded-xl border border-white/5">
-                              <label className="text-xs font-bold text-gray-500 uppercase">Card Details</label>
-                              <div className="h-10 bg-black/20 rounded border border-white/10 flex items-center px-3">
-                                  <Lock size={14} className="text-gray-500 mr-2" />
-                                  <span className="text-gray-500 text-sm">•••• •••• •••• ••••</span>
+                          <div className="space-y-1.5 bg-[var(--bg-input)] p-4 rounded-xl border border-[var(--border-default)]">
+                              <label className="text-xs font-bold text-[var(--text-muted)] uppercase">Card Details</label>
+                              <div className="h-10 bg-black/20 rounded border border-[var(--border-default)] flex items-center px-3">
+                                  <Lock size={14} className="text-[var(--text-muted)] mr-2" />
+                                  <span className="text-[var(--text-muted)] text-sm">•••• •••• •••• ••••</span>
                               </div>
                           </div>
                           
@@ -963,13 +963,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             <>
                 <LoginModal />
                 <HpiPaymentModal />
-                <div className={`relative ${isDashboard ? 'pb-12 w-full' : 'min-h-screen bg-slate-900 pt-24 pb-12'}`}>
+                <div className={`relative ${isDashboard ? 'pb-12 w-full' : 'min-h-screen pt-24 pb-12'}`}>
                     {/* Background Effects */}
-                    {!isDashboard && <div className="fixed inset-0 bg-gradient-to-br from-[#0f172a] to-[#1e293b] -z-10" />}
+                    {!isDashboard && <div className="fixed inset-0 -z-10" style={{ background: 'var(--bg-body)' }} />}
                     <div className="container mx-auto px-5 max-w-4xl">
                         <div className="text-center mb-14">
-                            <h1 className="text-4xl md:text-5xl font-black font-heading mb-4 text-white tracking-tight uppercase">CURATE YOUR LISTING</h1>
-                            <p className="text-lg text-gray-400 max-w-lg mx-auto">Present your vehicle to thousands of high-intent buyers seeking premium quality.</p>
+                            <h1 className="text-4xl md:text-5xl font-black font-heading mb-4 tracking-tight uppercase">CURATE YOUR LISTING</h1>
+                            <p className="text-lg text-[var(--text-muted)] max-w-lg mx-auto">Present your vehicle to thousands of high-intent buyers seeking premium quality.</p>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
@@ -978,14 +978,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 onClick={handleMethodClick}
                                 className="relative cursor-pointer group"
                             >
-                                <div className="relative dealer-glass-card p-8 border-white/10 hover:border-primary/40 transition-all duration-300 overflow-hidden hover:shadow-[0_10px_40px_rgba(237,28,36,0.15)] rounded-2xl bg-[#0A0A0C]/80 h-full flex flex-col">
+                                <div className="relative dealer-glass-card p-8 border-[var(--border-default)] hover:border-primary/40 transition-all duration-300 overflow-hidden hover:shadow-[0_10px_40px_rgba(237,28,36,0.15)] rounded-2xl h-full flex flex-col">
                                     <div className="absolute top-0 right-0 w-40 h-40 bg-primary/10 rounded-full blur-3xl -z-10 group-hover:bg-primary/20 transition-colors" />
-                                    <div className="w-16 h-16 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl flex items-center justify-center mb-6 border border-white/10 group-hover:border-primary/50 group-hover:shadow-[0_0_30px_rgba(237,28,36,0.2)] transition-all">
+                                    <div className="w-16 h-16 bg-[var(--bg-input)] rounded-2xl flex items-center justify-center mb-6 border border-[var(--border-default)] group-hover:border-primary/50 group-hover:shadow-[0_0_30px_rgba(237,28,36,0.2)] transition-all">
                                         <List className="text-primary w-8 h-8" />
                                     </div>
                                     <h2 className="text-2xl font-bold mb-2 font-heading">Retail Listing</h2>
-                                    <p className="text-gray-400 mb-6 text-sm">Set your asking price and let buyers submit offers. You choose who to accept.</p>
-                                    <ul className="space-y-2.5 mb-6 text-gray-300 flex-1">
+                                    <p className="text-[var(--text-muted)] mb-6 text-sm">Set your asking price and let buyers submit offers. You choose who to accept.</p>
+                                    <ul className="space-y-2.5 mb-6 text-[var(--text-secondary)] flex-1">
                                         <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Free to list</li>
                                         <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> DVLA-verified vehicle data</li>
                                         <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Instant estimated valuation</li>
@@ -1012,24 +1012,24 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 }}
                                 className="relative group cursor-pointer"
                             >
-                                <div className="relative dealer-glass-card p-8 transition-all duration-300 overflow-hidden rounded-2xl bg-[#0A0A0C]/80 h-full flex flex-col border-orange-500/20 hover:border-orange-500/50 hover:shadow-[0_10px_40px_rgba(249,115,22,0.15)]">
+                                <div className="relative dealer-glass-card p-8 transition-all duration-300 overflow-hidden rounded-2xl h-full flex flex-col border-orange-500/20 hover:border-orange-500/50 hover:shadow-[0_10px_40px_rgba(249,115,22,0.15)]">
                                     <div className="absolute top-0 right-0 w-40 h-40 bg-orange-500/10 rounded-full blur-3xl -z-10 group-hover:bg-orange-500/20 transition-colors" />
                                     <div className="absolute top-3 right-3 z-10">
                                         <span className="flex items-center gap-1 bg-orange-500/20 border border-orange-500/40 text-orange-400 text-[10px] font-bold px-2.5 py-1 rounded-full">
                                             <span className="w-1.5 h-1.5 bg-orange-400 rounded-full animate-pulse" /> LIVE BIDDING
                                         </span>
                                     </div>
-                                    <div className="w-16 h-16 bg-gradient-to-br from-orange-900/40 to-slate-900 rounded-2xl flex items-center justify-center mb-6 border border-orange-500/20 group-hover:border-orange-500/50 group-hover:shadow-[0_0_30px_rgba(249,115,22,0.2)] transition-all">
+                                    <div className="w-16 h-16 bg-orange-500/10 rounded-2xl flex items-center justify-center mb-6 border border-orange-500/20 group-hover:border-orange-500/50 group-hover:shadow-[0_0_30px_rgba(249,115,22,0.2)] transition-all">
                                         <Gavel className="w-8 h-8 text-orange-400" />
                                     </div>
                                     <h2 className="text-2xl font-bold mb-2 font-heading">Auction</h2>
-                                    <p className="text-gray-400 mb-4 text-sm">Let buyers bid in real-time. Live auctions with anti-snipe protection.</p>
+                                    <p className="text-[var(--text-muted)] mb-4 text-sm">Let buyers bid in real-time. Live auctions with anti-snipe protection.</p>
                                     {/* Bidding notice */}
                                     <div className="flex items-start gap-2 mb-5 px-3 py-2.5 rounded-lg border text-xs bg-orange-500/5 border-orange-500/20 text-orange-300/80">
                                         <Shield size={12} className="shrink-0 mt-0.5" />
                                         <span>Only <strong>verified dealers</strong> can bid. Open to all registered sellers to list.</span>
                                     </div>
-                                    <ul className="space-y-2.5 mb-6 text-gray-300 flex-1">
+                                    <ul className="space-y-2.5 mb-6 text-[var(--text-secondary)] flex-1">
                                         <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="shrink-0 text-orange-400" /> Real-time live bidding</li>
                                         <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="shrink-0 text-orange-400" /> Anti-snipe protection</li>
                                         <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="shrink-0 text-orange-400" /> Set your reserve price</li>
@@ -1069,7 +1069,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                 {/* Back link */}
                 <div className="mb-6 flex items-center">
-                    <Button variant="ghost" className="text-gray-400 hover:text-white group px-2"
+                    <Button variant="ghost" className="text-[var(--text-muted)] hover:text-white group px-2"
                         onClick={() => {
                             if (currentStep > 1) {
                                 handleBack()
@@ -1084,39 +1084,39 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 </div>
 
                 <div className="text-center mb-10">
-                    <h1 className="text-3xl md:text-4xl font-heading font-bold text-white">
+                    <h1 className="text-3xl md:text-4xl font-heading font-bold">
                         {formData.listingType === "AUCTION" ? "List for Auction" : "List Your Car"}
                     </h1>
-                    <p className="text-gray-400 mt-2">Step {currentStep} of {totalSteps}</p>
+                    <p className="text-[var(--text-muted)] mt-2">Step {currentStep} of {totalSteps}</p>
                 </div>
 
                 {/* Progress stepper */}
                 <div className="glass-card px-6 py-5 mb-8 flex justify-between relative overflow-hidden">
                     {WIZARD_STEPS.map((step) => (
-                        <div key={step.id} className={`flex flex-col items-center relative z-10 flex-1 ${currentStep >= step.id ? "text-primary" : "text-gray-500"}`}>
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-1.5 border transition-all ${currentStep >= step.id ? "bg-primary text-white shadow-neon border-primary" : "bg-slate-800 border-white/5"}`}>
+                        <div key={step.id} className={`flex flex-col items-center relative z-10 flex-1 ${currentStep >= step.id ? "text-primary" : "text-[var(--text-muted)]"}`}>
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-1.5 border transition-all ${currentStep >= step.id ? "bg-primary text-white shadow-neon border-primary" : "bg-[var(--bg-input)] border-[var(--border-default)]"}`}>
                                 <step.icon size={16} />
                             </div>
                             <span className="text-[9px] md:text-[11px] font-bold uppercase tracking-wide">{step.title}</span>
                         </div>
                     ))}
-                    <div className="absolute top-[36px] left-0 w-full h-0.5 bg-white/5 -z-0">
+                    <div className="absolute top-[36px] left-0 w-full h-0.5 bg-[var(--bg-card)] -z-0">
                         <div className="h-full bg-primary transition-all duration-500 shadow-neon" style={{ width: `${(currentStep - 1) / (totalSteps - 1) * 100}%` }} />
                     </div>
                 </div>
 
                 {/* Form card */}
-                <div className="dealer-glass-card p-10 md:p-14 relative overflow-hidden border-white/5 bg-[#0A0A0C]">
+                <div className="dealer-glass-card p-10 md:p-14 relative overflow-hidden border-[var(--border-default)]">
                     <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl -z-10 opacity-60" />
 
                     {/* ── STEP 1: Identity ──────────────────────────────────────────────── */}
                     {currentStep === 1 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                            <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Vehicle Details</h2>
+                            <h2 className="text-xl font-bold font-heading border-b border-[var(--border-default)] pb-4">Vehicle Details</h2>
 
                             {/* Vehicle Type Selector */}
                             <div className="space-y-2">
-                                <label className="text-sm font-bold uppercase text-gray-400">Vehicle Type *</label>
+                                <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Vehicle Type *</label>
                                 <div className="flex gap-3">
                                     {(["CAR", "HGV", "MOTORCYCLE"] as const).map((vt) => {
                                         const labels: Record<string, string> = { CAR: "Car", HGV: "HGV / Commercial", MOTORCYCLE: "Motorcycle" }
@@ -1124,7 +1124,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         return (
                                             <button key={vt} type="button"
                                                 onClick={() => set("vehicleType", vt)}
-                                                className={`flex-1 py-3 px-2 sm:px-3 rounded-xl border text-xs sm:text-sm font-bold transition-all flex items-center justify-center text-center ${active ? "border-primary bg-primary/10 text-white shadow-[0_0_15px_rgba(237,28,36,0.2)]" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"}`}
+                                                className={`flex-1 py-3 px-2 sm:px-3 rounded-xl border text-xs sm:text-sm font-bold transition-all flex items-center justify-center text-center ${active ? "border-primary bg-primary/10 text-primary shadow-[0_0_15px_rgba(237,28,36,0.2)]" : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"}`}
                                             >
                                                 <span className="whitespace-normal break-words leading-tight">{labels[vt]}</span>
                                             </button>
@@ -1135,11 +1135,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                             {/* VRM + Lookup */}
                             <div className="space-y-2">
-                                <label className="text-sm font-bold uppercase text-gray-400">Registration (VRM) *</label>
+                                <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Registration (VRM) *</label>
                                 <div className="flex flex-col sm:flex-row gap-3">
                                     <Input placeholder="e.g. AB12 CDE" value={formData.vrm}
                                         onChange={(e) => { set("vrm", e.target.value.toUpperCase()); setDvlaSuccess(false); setDvlaError(null) }}
-                                        className={`${inputCls} uppercase font-mono tracking-widest text-lg h-14 bg-black flex-1 ${hasAttemptedNext && !formData.vrm ? 'border-red-500' : 'border-primary/20 focus:border-primary'}`} />
+                                        className={`${inputCls} uppercase font-mono tracking-widest text-lg h-14 flex-1 ${hasAttemptedNext && !formData.vrm ? 'border-red-500' : 'border-primary/20 focus:border-primary'}`} />
                                     <Button type="button" disabled={!formData.vrm || dvlaLoading}
                                         className="bg-primary hover:bg-primary/90 text-white font-bold px-8 h-14 uppercase tracking-widest gap-2 shadow-neon transition-transform active:scale-95 w-full sm:w-auto"
                                         onClick={async () => {
@@ -1221,55 +1221,55 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         Analyze DVLA
                                     </Button>
                                 </div>
-                                <p className="text-xs text-gray-600">UK number plate — click Look Up to auto-fill vehicle details.</p>
+                                <p className="text-xs text-[var(--text-secondary)]">UK number plate — click Look Up to auto-fill vehicle details.</p>
                                 {dvlaSuccess && <p className="text-xs text-emerald-400 flex items-center gap-1"><BadgeCheck size={12} /> Vehicle data loaded — review and edit below.</p>}
                                 {dvlaError && <p className="text-xs text-red-400">{dvlaError}</p>}
                             </div>
 
                             {/* Registration & Compliance Details */}
                             <div className="mt-8">
-                                <h3 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white flex items-center gap-2">
+                                <h3 className="text-xl font-bold font-heading border-b border-[var(--border-default)] pb-4 flex items-center gap-2">
                                     <Shield size={20} className="text-blue-400" />
                                     Registration & Compliance
                                 </h3>
-                                <p className="text-xs text-gray-500 mt-2 mb-6">
+                                <p className="text-xs text-[var(--text-muted)] mt-2 mb-6">
                                     These fields are auto-filled from the DVLA and MOT databases, but can be manually adjusted.
                                 </p>
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                     {/* Last V5C Issued */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-gray-400">Last V5C Issued</label>
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Last V5C Issued</label>
                                         <Input type="date" min="1972-01-01" max={new Date().toISOString().split('T')[0]} value={formData.dateOfLastV5CIssued} onChange={(e) => set("dateOfLastV5CIssued", e.target.value)} className={inputCls} />
                                     </div>
                                     {/* MOT Status */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-gray-400">MOT Status</label>
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">MOT Status</label>
                                         <Input placeholder="e.g. Valid" value={formData.motStatus} onChange={(e) => set("motStatus", e.target.value)} className={inputCls} />
                                     </div>
                                     {/* MOT Expiry */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-gray-400">MOT Expiry Date</label>
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">MOT Expiry Date</label>
                                         <Input type="date" min="1972-01-01" max="2100-12-31" value={formData.motExpiryDate} onChange={(e) => set("motExpiryDate", e.target.value)} className={inputCls} />
                                     </div>
                                     {/* Tax Status */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-gray-400">Tax Status</label>
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Tax Status</label>
                                         <Input placeholder="e.g. Taxed" value={formData.taxStatus} onChange={(e) => set("taxStatus", e.target.value)} className={inputCls} />
                                     </div>
                                     {/* Tax Due Date */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-gray-400">Tax Due Date</label>
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Tax Due Date</label>
                                         <Input type="date" min="1972-01-01" max="2100-12-31" value={formData.taxDueDate} onChange={(e) => set("taxDueDate", e.target.value)} className={inputCls} />
                                     </div>
                                     {/* Type Approval */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-gray-400">Type Approval</label>
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Type Approval</label>
                                         <Input placeholder="e.g. M1" value={formData.typeApproval} onChange={(e) => set("typeApproval", e.target.value)} className={inputCls} />
                                     </div>
                                     {/* Wheelplan */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-gray-400">Wheelplan</label>
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Wheelplan</label>
                                         <Input placeholder="e.g. 2 AXLE RIGID BODY" value={formData.wheelplan} onChange={(e) => set("wheelplan", e.target.value)} className={inputCls} />
                                     </div>
                                 </div>
@@ -1281,12 +1281,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         </h4>
                                         <div className="space-y-2 max-h-48 overflow-y-auto pr-2 scrollbar-hide">
                                             {formData.motHistory.slice(0, 5).map((test: any, idx: number) => (
-                                                <div key={idx} className="bg-slate-900/40 rounded-lg p-3 border border-white/5">
+                                                <div key={idx} className="bg-[var(--bg-input)] rounded-lg p-3 border border-[var(--border-default)]">
                                                     <div className="flex justify-between items-start mb-1">
                                                         <div>
-                                                            <p className="text-xs font-bold text-white">{new Date(test.completedDate).toLocaleDateString('en-GB')}</p>
+                                                            <p className="text-xs font-bold text-[var(--text-primary)]">{new Date(test.completedDate).toLocaleDateString('en-GB')}</p>
                                                             {test.odometerValue && (
-                                                                <p className="text-[10px] text-gray-500">{Number(test.odometerValue).toLocaleString()} {test.odometerUnit}</p>
+                                                                <p className="text-[10px] text-[var(--text-muted)]">{Number(test.odometerValue).toLocaleString()} {test.odometerUnit}</p>
                                                             )}
                                                         </div>
                                                         <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${test.testResult === 'PASSED' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
@@ -1310,7 +1310,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 </div>
                                             ))}
                                             {formData.motHistory.length > 5 && (
-                                                <p className="text-[10px] text-gray-500 text-center pt-2 italic">Showing latest 5 records of {formData.motHistory.length}</p>
+                                                <p className="text-[10px] text-[var(--text-muted)] text-center pt-2 italic">Showing latest 5 records of {formData.motHistory.length}</p>
                                             )}
                                         </div>
                                     </div>
@@ -1319,18 +1319,18 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                             {/* VIN */}
                             <div className="space-y-2">
-                                <label className="text-sm font-bold uppercase text-gray-400 flex items-center gap-1.5">VIN <span className="text-gray-600 normal-case font-normal text-xs">(optional)</span></label>
+                                <label className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-1.5">VIN <span className="text-[var(--text-secondary)] normal-case font-normal text-xs">(optional)</span></label>
                                 <Input placeholder="17-character VIN" value={formData.vin}
                                     maxLength={17}
                                     onChange={(e) => set("vin", e.target.value.toUpperCase())}
                                     className={`${inputCls} font-mono tracking-wider`} />
-                                <p className="text-xs text-gray-600">Vehicle Identification Number — increases buyer trust.</p>
+                                <p className="text-xs text-[var(--text-secondary)]">Vehicle Identification Number — increases buyer trust.</p>
                             </div>
 
                             {/* Make / Model / Year */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-gray-400">Make *</label>
+                                    <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Make *</label>
                                     {(() => {
                                         // Case-insensitive match — DVLA returns uppercase (e.g. "TOYOTA")
                                         const matchedMake = CAR_MAKES.find(m => m.toLowerCase() === formData.make.trim().toLowerCase())
@@ -1345,7 +1345,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                         // Store canonical casing from CAR_MAKES
                                                         else { set("make", e.target.value); set("model", ""); set("variant", "") }
                                                     }}
-                                                    className="w-full h-10 rounded-md border bg-slate-900/50 px-3 text-base md:text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary border-white/10"
+                                                    className="w-full h-10 rounded-md border bg-[var(--bg-input)] px-3 text-base md:text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary border-[var(--border-default)]"
                                                 >
                                                     <option value="">Select make</option>
                                                     {CAR_MAKES.map(m => <option key={m} value={m}>{m}</option>)}
@@ -1360,7 +1360,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     })()}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-gray-400">Model *</label>
+                                    <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Model *</label>
                                     {(() => {
                                         // getModelsForMake is already case-insensitive
                                         const models = getModelsForMake(formData.make)
@@ -1381,7 +1381,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                         if (e.target.value === "__other__") { set("model", ""); set("variant", "") }
                                                         else { set("model", e.target.value); set("variant", "") }
                                                     }}
-                                                    className="w-full h-10 rounded-md border bg-slate-900/50 px-3 text-base md:text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary border-white/10"
+                                                    className="w-full h-10 rounded-md border bg-[var(--bg-input)] px-3 text-base md:text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary border-[var(--border-default)]"
                                                 >
                                                     <option value="">Select model</option>
                                                     {models.map(m => <option key={m} value={m}>{m}</option>)}
@@ -1396,20 +1396,20 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     })()}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-gray-400">Year *</label>
+                                    <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Year *</label>
                                     <Input type="number" placeholder="2023" value={formData.year} onChange={(e) => set("year", e.target.value)} className={inputCls} />
                                 </div>
                             </div>
 
                             {/* ── Model & Variant ───────────────────────────────────────── */}
-                            <div className="border border-white/5 bg-slate-900/40 rounded-xl p-5 space-y-4">
-                                <h3 className="text-sm font-bold uppercase text-gray-400 tracking-wider flex items-center gap-2">
+                            <div className="border border-[var(--border-default)] bg-[var(--bg-input)] rounded-xl p-5 space-y-4">
+                                <h3 className="text-sm font-bold uppercase text-[var(--text-muted)] tracking-wider flex items-center gap-2">
                                     <Car size={14} /> Model Details
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     {/* Variant/Trim */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-gray-400">Variant / Trim</label>
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Variant / Trim</label>
                                         {(() => {
                                             const knownVariants = getVariantsForModel(formData.make, formData.model)
                                             if (knownVariants.length === 0) {
@@ -1429,7 +1429,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                             if (e.target.value === "__other__") { set("variant", "") }
                                                             else { set("variant", e.target.value) }
                                                         }}
-                                                        className="w-full h-10 rounded-md border bg-slate-900/50 px-3 text-base md:text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary border-white/10"
+                                                        className="w-full h-10 rounded-md border bg-[var(--bg-input)] px-3 text-base md:text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary border-[var(--border-default)]"
                                                     >
                                                         <option value="">Select variant / trim</option>
                                                         {knownVariants.map(v => <option key={v} value={v}>{v}</option>)}
@@ -1445,36 +1445,36 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </div>
                                     {/* Drive Type */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-gray-400">Drive Type</label>
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Drive Type</label>
                                         <div className="grid grid-cols-4 gap-2">
                                             {(["FWD", "RWD", "AWD", "4WD"] as const).map((dt) => (
                                                 <button key={dt} type="button"
                                                     onClick={() => set("driveType", formData.driveType === dt ? "" : dt)}
-                                                    className={`py-2 rounded-lg border text-xs font-bold transition-all ${formData.driveType === dt ? "border-primary bg-primary/10 text-white" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"}`}
+                                                    className={`py-2 rounded-lg border text-xs font-bold transition-all ${formData.driveType === dt ? "border-primary bg-primary/10 text-primary" : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"}`}
                                                 >{dt}</button>
                                             ))}
                                         </div>
                                     </div>
                                     {/* Service History */}
                                     <div className="space-y-2 md:col-span-2">
-                                        <label className="text-sm font-bold uppercase text-gray-400">Service History</label>
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Service History</label>
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                                             {(["Full Main Dealer", "Full Independent", "Partial", "None"] as const).map((sh) => (
                                                 <button key={sh} type="button"
                                                     onClick={() => set("serviceHistory", formData.serviceHistory === sh ? "" : sh)}
-                                                    className={`py-2.5 px-2 rounded-lg border text-xs font-semibold transition-all text-center ${formData.serviceHistory === sh ? "border-primary bg-primary/10 text-white" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"}`}
+                                                    className={`py-2.5 px-2 rounded-lg border text-xs font-semibold transition-all text-center ${formData.serviceHistory === sh ? "border-primary bg-primary/10 text-primary" : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"}`}
                                                 >{sh}</button>
                                             ))}
                                         </div>
                                     </div>
                                     {/* Number of Keys */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-gray-400">Number of Keys</label>
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Number of Keys</label>
                                         <div className="flex gap-2">
                                             {(["1", "2", "3"] as const).map((k) => (
                                                 <button key={k} type="button"
                                                     onClick={() => set("numberOfKeys", formData.numberOfKeys === k ? "" : k)}
-                                                    className={`flex-1 py-2.5 rounded-lg border text-sm font-bold transition-all ${formData.numberOfKeys === k ? "border-primary bg-primary/10 text-white" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"}`}
+                                                    className={`flex-1 py-2.5 rounded-lg border text-sm font-bold transition-all ${formData.numberOfKeys === k ? "border-primary bg-primary/10 text-primary" : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"}`}
                                                 >{k} {k === "3" ? "+" : ""} {parseInt(k) === 1 ? "Key" : "Keys"}</button>
                                             ))}
                                         </div>
@@ -1483,56 +1483,56 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             </div>
 
                             {/* ── Performance & Economy ─────────────────────────────────── */}
-                            <div className="border border-white/5 bg-slate-900/40 rounded-xl p-5 space-y-4">
-                                <h3 className="text-sm font-bold uppercase text-gray-400 tracking-wider flex items-center gap-2">
+                            <div className="border border-[var(--border-default)] bg-[var(--bg-input)] rounded-xl p-5 space-y-4">
+                                <h3 className="text-sm font-bold uppercase text-[var(--text-muted)] tracking-wider flex items-center gap-2">
                                     <Zap size={14} /> Performance & Economy
                                 </h3>
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
                                     {/* 0-60 */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-gray-400">0–60 mph (secs)</label>
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">0–60 mph (secs)</label>
                                         <Input type="number" step="0.1" placeholder="e.g. 4.5" value={formData.zeroTo60Mph}
                                             onChange={(e) => set("zeroTo60Mph", e.target.value)} className={inputCls} />
                                     </div>
                                     {/* Top Speed */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-gray-400">Top Speed (mph)</label>
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Top Speed (mph)</label>
                                         <Input type="number" placeholder="e.g. 155" value={formData.topSpeedMph}
                                             onChange={(e) => set("topSpeedMph", e.target.value)} className={inputCls} />
                                     </div>
                                     {/* Torque */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-gray-400">Torque (Nm)</label>
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Torque (Nm)</label>
                                         <Input type="number" placeholder="e.g. 400" value={formData.torqueNm}
                                             onChange={(e) => set("torqueNm", e.target.value)} className={inputCls} />
                                     </div>
                                     {/* Combined MPG */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-gray-400">Combined MPG</label>
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Combined MPG</label>
                                         <Input type="number" step="0.1" placeholder="e.g. 38.2" value={formData.combinedMpg}
                                             onChange={(e) => set("combinedMpg", e.target.value)} className={inputCls} />
                                     </div>
                                     {/* Extra Urban MPG */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-gray-400">Extra Urban MPG</label>
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Extra Urban MPG</label>
                                         <Input type="number" step="0.1" placeholder="e.g. 45.6" value={formData.extraUrbanMpg}
                                             onChange={(e) => set("extraUrbanMpg", e.target.value)} className={inputCls} />
                                     </div>
                                 </div>
-                                <p className="text-[10px] text-gray-600">All performance figures are optional — check your vehicle handbook or manufacturer spec sheet.</p>
+                                <p className="text-[10px] text-[var(--text-secondary)]">All performance figures are optional — check your vehicle handbook or manufacturer spec sheet.</p>
                             </div>
 
                             {/* Body Type (not for motorcycles) */}
                             {formData.vehicleType !== 'MOTORCYCLE' && (
                                 <div className="space-y-3">
-                                    <label className="text-sm font-bold uppercase text-gray-400">Body Type</label>
+                                    <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Body Type</label>
                                     <div className="grid grid-cols-3 md:grid-cols-5 gap-2.5">
                                         {BODY_TYPE_KEYS.map((key) => {
                                             const Icon = BODY_TYPE_ICONS[key]
                                             return (
                                                 <button key={key} type="button"
                                                     onClick={() => set("bodyType", key as BodyTypeValue)}
-                                                    className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all ${formData.bodyType === key ? "border-primary bg-primary/10 text-white shadow-[0_0_15px_rgba(237,28,36,0.2)]" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/30"}`}
+                                                    className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all ${formData.bodyType === key ? "border-primary bg-primary/10 text-primary shadow-[0_0_15px_rgba(237,28,36,0.2)]" : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-white/30"}`}
                                                 >
                                                     <Icon className="w-10 h-5" />
                                                     <span className="text-[9px] font-bold uppercase tracking-wide">{BODY_TYPE_LABELS[key]}</span>
@@ -1545,7 +1545,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                             {/* Location */}
                             <div className="space-y-2">
-                                <label className="text-sm font-bold uppercase text-gray-400 flex items-center gap-1.5"><MapPin size={13} /> Location</label>
+                                <label className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-1.5"><MapPin size={13} /> Location</label>
                                 <div className="flex gap-3">
                                     <Input placeholder="e.g. London, Manchester" value={formData.location} onChange={(e) => set("location", e.target.value)} className={`${inputCls} flex-1`} />
                                     <Button type="button" variant="outline" disabled={geoLoading}
@@ -1567,7 +1567,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 { timeout: 10000 }
                                             )
                                         }}
-                                        className="border-white/10 text-gray-400 hover:text-white gap-1.5 px-4"
+                                        className="border-[var(--border-default)] text-[var(--text-muted)] hover:text-white gap-1.5 px-4"
                                     >
                                         {geoLoading ? <Loader2 size={14} className="animate-spin" /> : <LocateFixed size={14} />}
                                         <span className="hidden md:inline">Use my location</span>
@@ -1581,8 +1581,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     {currentStep === 2 && (
                         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
                             <div className="space-y-4">
-                                <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Photos *</h2>
-                                <p className="text-sm text-gray-400">Upload up to 100 photos. Aim for at least 20 for the best results, and organise them by selecting the relevant category below.</p>
+                                <h2 className="text-xl font-bold font-heading border-b border-[var(--border-default)] pb-4">Photos *</h2>
+                                <p className="text-sm text-[var(--text-muted)]">Upload up to 100 photos. Aim for at least 20 for the best results, and organise them by selecting the relevant category below.</p>
                                 {/* Photo counter and progress bar — wizard form only */}
                                 {(() => {
                                     const photoCount = formData.images.length
@@ -1620,14 +1620,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             </div>
 
                             {/* Damage Mapping Section */}
-                            <div className="pt-8 border-t border-white/5">
+                            <div className="pt-8 border-t border-[var(--border-default)]">
                                 <div className="flex items-center gap-3 mb-6">
                                     <div className="p-2 bg-amber-500/10 rounded-lg border border-amber-500/20">
                                         <AlertTriangle className="text-amber-400 w-5 h-5" />
                                     </div>
                                     <div>
-                                        <h3 className="text-lg font-bold text-white">Damage Map</h3>
-                                        <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">Select damaged areas on your vehicle</p>
+                                        <h3 className="text-lg font-bold">Damage Map</h3>
+                                        <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold">Select damaged areas on your vehicle</p>
                                     </div>
                                 </div>
                                 <VehicleDamageMapper
@@ -1638,14 +1638,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             </div>
 
                             {/* Video Embeds */}
-                            <div className="pt-8 border-t border-white/5">
+                            <div className="pt-8 border-t border-[var(--border-default)]">
                                 <div className="flex items-center gap-3 mb-4">
                                     <div className="p-2 bg-primary/10 rounded-lg border border-primary/20">
                                         <Camera className="text-primary w-5 h-5" />
                                     </div>
                                     <div>
-                                        <h3 className="text-lg font-bold text-white">Video Links</h3>
-                                        <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">YouTube, Instagram, Facebook or X — up to 5</p>
+                                        <h3 className="text-lg font-bold">Video Links</h3>
+                                        <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold">YouTube, Instagram, Facebook or X — up to 5</p>
                                     </div>
                                 </div>
                                 <div className="flex gap-2 mb-3">
@@ -1653,12 +1653,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         placeholder="Paste a YouTube, Instagram, Facebook or X video URL"
                                         value={videoUrlInput}
                                         onChange={e => { setVideoUrlInput(e.target.value); setVideoUrlError("") }}
-                                        className="bg-white/5 border-white/10 text-white placeholder:text-gray-600 flex-1"
+                                        className="bg-[var(--bg-card)] border-[var(--border-default)] text-white placeholder:text-[var(--text-secondary)] flex-1"
                                     />
                                     <Button
                                         type="button"
                                         variant="outline"
-                                        className="border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 shrink-0"
+                                        className="border-[var(--border-default)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:bg-white/10 shrink-0"
                                         onClick={() => {
                                             const url = videoUrlInput.trim()
                                             if (!url) return
@@ -1682,13 +1682,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 : url.includes('facebook.com') || url.includes('fb.watch') ? 'Facebook'
                                                 : 'X'
                                             return (
-                                                <div key={idx} className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-lg px-3 py-2">
+                                                <div key={idx} className="flex items-center gap-3 bg-[var(--bg-card)] border border-[var(--border-default)] rounded-lg px-3 py-2">
                                                     <span className="text-[10px] font-black uppercase tracking-wider text-primary shrink-0">{platform}</span>
-                                                    <span className="text-xs text-gray-400 truncate flex-1">{url}</span>
+                                                    <span className="text-xs text-[var(--text-muted)] truncate flex-1">{url}</span>
                                                     <button
                                                         type="button"
                                                         onClick={() => set("videoUrls", formData.videoUrls.filter((_, i) => i !== idx))}
-                                                        className="text-gray-500 hover:text-red-400 transition-colors shrink-0"
+                                                        className="text-[var(--text-muted)] hover:text-red-400 transition-colors shrink-0"
                                                     >
                                                         <X size={14} />
                                                     </button>
@@ -1704,12 +1704,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     {/* ── STEP 1 (continued): Technical Specs ─────────────────────── */}
                     {currentStep === 1 && (
                         <div className="space-y-7">
-                            <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white mt-8">Technical Specs</h2>
+                            <h2 className="text-xl font-bold font-heading border-b border-[var(--border-default)] pb-4 mt-8">Technical Specs</h2>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 {/* Mileage */}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-gray-400">Mileage *</label>
+                                    <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Mileage *</label>
                                     <Input type="number" placeholder="e.g. 45000" value={formData.mileage} onChange={(e) => set("mileage", e.target.value)} className={`${inputCls} ${hasAttemptedNext && !formData.mileage ? 'border-red-500' : ''}`} />
                                 </div>
 
@@ -1738,26 +1738,26 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                                 {/* Colour */}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-gray-400">Colour</label>
+                                    <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Colour</label>
                                     <Input placeholder="e.g. Alpine White" value={formData.color} onChange={(e) => set("color", e.target.value)} className={inputCls} />
                                 </div>
 
                                 {/* Engine */}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-gray-400">Engine Size (cc)</label>
+                                    <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Engine Size (cc)</label>
                                     <Input type="number" placeholder="e.g. 2993" value={formData.engineSize} onChange={(e) => set("engineSize", e.target.value)} className={inputCls} />
                                 </div>
 
                                 {/* BHP */}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-gray-400">Power (BHP)</label>
+                                    <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Power (BHP)</label>
                                     <Input type="number" placeholder="e.g. 503" value={formData.bhp} onChange={(e) => set("bhp", e.target.value)} className={inputCls} />
                                 </div>
 
                                 {/* Doors (not for motorcycles) */}
                                 {formData.vehicleType !== 'MOTORCYCLE' && (
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-gray-400">Doors</label>
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Doors</label>
                                         <Input type="number" placeholder="e.g. 4" min={2} max={8} value={formData.doors} onChange={(e) => set("doors", e.target.value)} className={inputCls} />
                                     </div>
                                 )}
@@ -1765,7 +1765,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 {/* Seats (not for motorcycles) */}
                                 {formData.vehicleType !== 'MOTORCYCLE' && (
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-gray-400">Seats</label>
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Seats</label>
                                         <Input type="number" placeholder="e.g. 5" min={1} max={20} value={formData.seats} onChange={(e) => set("seats", e.target.value)} className={inputCls} />
                                     </div>
                                 )}
@@ -1779,7 +1779,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     {/* ULEZ */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-gray-400">ULEZ / CAZ Compliant?</label>
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">ULEZ / CAZ Compliant?</label>
                                         <div className="flex gap-3">
                                             {(["Yes", "No", "Unknown"] as const).map((opt) => {
                                                 const val = opt === "Yes" ? true : opt === "No" ? false : null
@@ -1787,7 +1787,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 return (
                                                     <button key={opt} type="button"
                                                         onClick={() => set("ulezCompliant", val)}
-                                                        className={`flex-1 py-2 rounded-lg border text-sm font-semibold transition-all ${active ? "border-emerald-500 bg-emerald-500/20 text-emerald-300" : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"}`}
+                                                        className={`flex-1 py-2 rounded-lg border text-sm font-semibold transition-all ${active ? "border-emerald-500 bg-emerald-500/20 text-emerald-300" : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"}`}
                                                     >
                                                         {opt}
                                                     </button>
@@ -1808,17 +1808,17 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                                     {/* CO2 Emissions */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-gray-400">CO₂ Emissions (g/km)</label>
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">CO₂ Emissions (g/km)</label>
                                         <Input type="number" placeholder="e.g. 142" value={formData.co2Emissions}
                                             onChange={(e) => set("co2Emissions", e.target.value)} className={inputCls} />
-                                        <p className="text-xs text-gray-600">Auto-filled from DVLA when available.</p>
+                                        <p className="text-xs text-[var(--text-secondary)]">Auto-filled from DVLA when available.</p>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Features */}
                             <div className="space-y-3">
-                                <label className="text-sm font-bold uppercase text-gray-400">Features</label>
+                                <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Features</label>
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
                                     {PRESET_FEATURES.map((f) => (
                                         <div key={f}
@@ -1827,7 +1827,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                     ? formData.features.filter(x => x !== f)
                                                     : [...formData.features, f]
                                             )}
-                                            className={`p-3 rounded-lg border cursor-pointer transition-all flex items-center justify-between ${formData.features.includes(f) ? "bg-primary/20 border-primary text-primary" : "bg-slate-900/50 border-white/10 text-gray-400 hover:border-white/20"}`}
+                                            className={`p-3 rounded-lg border cursor-pointer transition-all flex items-center justify-between ${formData.features.includes(f) ? "bg-primary/20 border-primary text-primary" : "bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30"}`}
                                         >
                                             <span className="text-sm font-medium">{f}</span>
                                             {formData.features.includes(f) && <CheckCircle size={14} />}
@@ -1871,7 +1871,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 input.value = '';
                                             }
                                         }}
-                                        className="border-white/10 text-white hover:border-primary shrink-0"
+                                        className="border-[var(--border-default)] text-white hover:border-primary shrink-0"
                                     >
                                         Add
                                     </Button>
@@ -1880,11 +1880,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                             {/* Title & Description */}
                             <div className="space-y-2">
-                                <label className="text-sm font-bold uppercase text-gray-400">Listing Title *</label>
+                                <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Listing Title *</label>
                                 <Input placeholder="e.g. BMW M4 Competition 2023" value={formData.title} onChange={(e) => set("title", e.target.value)} className={`${inputCls} ${hasAttemptedNext && !formData.title ? 'border-red-500' : ''}`} />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-bold uppercase text-gray-400">Description</label>
+                                <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Description</label>
                                 <Textarea
                                     placeholder="Describe service history, any extras, reason for selling..."
                                     value={formData.description}
@@ -1892,7 +1892,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     rows={5}
                                     className={`${inputCls} resize-none`}
                                 />
-                                <p className="text-xs text-gray-600">{formData.description.length}/1000 characters</p>
+                                <p className="text-xs text-[var(--text-secondary)]">{formData.description.length}/1000 characters</p>
                                 {/* AI-Assisted Description */}
                                 <Button
                                     type="button"
@@ -1944,7 +1944,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                             {/* Ownership */}
                             <div className="space-y-3">
-                                <label className="text-sm font-bold uppercase text-gray-400">Number of Owners *</label>
+                                <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Number of Owners *</label>
                                 <div className="flex flex-wrap gap-2">
                                     {(['1', '2', '3', '4', '5+'] as const).map((opt) => (
                                         <button
@@ -1954,7 +1954,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
                                                 formData.owners === opt
                                                     ? 'bg-blue-600 border-blue-500 text-white'
-                                                    : 'border-white/10 text-white/60 hover:border-white/30'
+                                                    : 'border-[var(--border-default)] text-white/60 hover:border-white/30'
                                             }`}
                                         >
                                             {opt === '5+' ? '5+ Owners' : `${opt} Owner${opt !== '1' ? 's' : ''}`}
@@ -1975,7 +1975,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 set('departedRelationship', '')
                                             }
                                         }}
-                                        className="w-4 h-4 rounded border-white/20 bg-white/5 accent-blue-500"
+                                        className="w-4 h-4 rounded border-white/20 bg-[var(--bg-card)] accent-blue-500"
                                     />
                                     <label htmlFor="isDepartedSale" className="text-sm text-white/70 cursor-pointer">
                                         This is a departed/estate sale
@@ -2003,7 +2003,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 placeholder="Please specify your relationship"
                                                 value={departedRelOther}
                                                 onChange={(e) => handleRelOtherChange(e.target.value)}
-                                                className="mt-2 w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
+                                                className="mt-2 w-full px-4 py-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-default)] text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
                                             />
                                         )}
                                     </div>
@@ -2020,13 +2020,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </div>
                                     <div>
                                         <h3 className="text-base font-bold text-red-300 uppercase tracking-wider">Write-Off &amp; Legal Declaration</h3>
-                                        <p className="text-xs text-gray-400 mt-1">Required by law. False declarations void the listing and may be reported to relevant authorities.</p>
+                                        <p className="text-xs text-[var(--text-muted)] mt-1">Required by law. False declarations void the listing and may be reported to relevant authorities.</p>
                                     </div>
                                 </div>
 
                                 {/* Write-Off Category */}
                                 <div className="space-y-3">
-                                    <label className="text-sm font-bold uppercase text-gray-300 flex items-center gap-1.5">
+                                    <label className="text-sm font-bold uppercase text-[var(--text-secondary)] flex items-center gap-1.5">
                                         Insurance Write-Off Status *
                                         <InfoTooltip text="Cat S/N have been repaired after a write-off and can still be re-registered. Cat A/B are total-loss write-offs (structural or body-salvage) — these cannot be re-registered and are only available when listing via Auction." />
                                     </label>
@@ -2046,11 +2046,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             if (isLocked) {
                                                 return (
                                                     <div key={opt.value} title="Only available for Auction listings"
-                                                        className="p-3 rounded-xl border border-white/5 bg-slate-950/60 text-center flex flex-col gap-0.5 opacity-50 cursor-not-allowed select-none relative"
+                                                        className="p-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] text-center flex flex-col gap-0.5 opacity-50 cursor-not-allowed select-none relative"
                                                     >
-                                                        <Lock size={10} className="absolute top-2 right-2 text-slate-500" />
-                                                        <span className="text-sm font-bold text-slate-500">{opt.label}</span>
-                                                        <span className="text-[10px] leading-tight text-slate-600">Auction only</span>
+                                                        <Lock size={10} className="absolute top-2 right-2 text-[var(--text-muted)]" />
+                                                        <span className="text-sm font-bold text-[var(--text-muted)]">{opt.label}</span>
+                                                        <span className="text-[10px] leading-tight text-[var(--text-muted)]">Auction only</span>
                                                     </div>
                                                 )
                                             }
@@ -2062,7 +2062,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                         ? isAuctionOnly
                                                             ? "border-amber-500 bg-amber-500/10 text-amber-300"
                                                             : "border-emerald-500 bg-emerald-500/10 text-emerald-300"
-                                                        : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"
+                                                        : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"
                                                     }`}
                                                 >
                                                     <span className="text-sm font-bold">{opt.label}</span>
@@ -2073,8 +2073,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </div>
                                     {/* Context-aware hint */}
                                     {formData.listingType !== 'AUCTION' && (
-                                        <p className="text-[11px] text-slate-500 flex items-center gap-1.5">
-                                            <Lock size={10} /> Cat A and Cat B are locked — they require an <strong className="text-slate-400">Auction listing</strong> to enable.
+                                        <p className="text-[11px] text-[var(--text-muted)] flex items-center gap-1.5">
+                                            <Lock size={10} /> Cat A and Cat B are locked — they require an <strong className="text-[var(--text-secondary)]">Auction listing</strong> to enable.
                                         </p>
                                     )}
                                     {formData.listingType === 'AUCTION' && (formData.writeOffCategory === 'CAT_A' || formData.writeOffCategory === 'CAT_B') && (
@@ -2086,14 +2086,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                                 {/* Stolen / Recovered */}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-gray-300">Has this vehicle ever been reported stolen or recovered? *</label>
+                                    <label className="text-sm font-bold uppercase text-[var(--text-secondary)]">Has this vehicle ever been reported stolen or recovered? *</label>
                                     <div className="flex gap-3">
                                         {([{ label: 'Yes', val: true }, { label: 'No', val: false }] as const).map(({ label, val }) => (
                                             <button key={label} type="button"
                                                 onClick={() => set("stolenRecovered", val)}
                                                 className={`flex-1 py-2.5 rounded-xl border text-sm font-semibold transition-all ${formData.stolenRecovered === val
                                                     ? val ? "border-amber-500 bg-amber-500/10 text-amber-300" : "border-emerald-500 bg-emerald-500/10 text-emerald-300"
-                                                    : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"
+                                                    : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"
                                                     }`}
                                             >
                                                 {label}
@@ -2104,14 +2104,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                                 {/* Outstanding Finance */}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-gray-300">Is there currently outstanding finance on this vehicle? *</label>
+                                    <label className="text-sm font-bold uppercase text-[var(--text-secondary)]">Is there currently outstanding finance on this vehicle? *</label>
                                     <div className="flex gap-3">
                                         {([{ label: 'Yes', val: true }, { label: 'No', val: false }] as const).map(({ label, val }) => (
                                             <button key={label} type="button"
                                                 onClick={() => set("hasOutstandingFinance", val)}
                                                 className={`flex-1 py-2.5 rounded-xl border text-sm font-semibold transition-all ${formData.hasOutstandingFinance === val
                                                     ? val ? "border-amber-500 bg-amber-500/10 text-amber-300" : "border-emerald-500 bg-emerald-500/10 text-emerald-300"
-                                                    : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"
+                                                    : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"
                                                     }`}
                                             >
                                                 {label}
@@ -2127,14 +2127,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                                 {/* Legal Registered Keeper */}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-gray-300">Are you the legal registered keeper of this vehicle? *</label>
+                                    <label className="text-sm font-bold uppercase text-[var(--text-secondary)]">Are you the legal registered keeper of this vehicle? *</label>
                                     <div className="flex gap-3">
                                         {([{ label: 'Yes', val: true }, { label: 'No — I am not the keeper', val: false }] as const).map(({ label, val }) => (
                                             <button key={label} type="button"
                                                 onClick={() => set("isLegalRegisteredKeeper", val)}
                                                 className={`flex-1 py-2.5 rounded-xl border text-sm font-semibold transition-all ${formData.isLegalRegisteredKeeper === val
                                                     ? val ? "border-emerald-500 bg-emerald-500/10 text-emerald-300" : "border-red-500 bg-red-500/10 text-red-300"
-                                                    : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"
+                                                    : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"
                                                     }`}
                                             >
                                                 {label}
@@ -2152,11 +2152,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <label className="flex items-start gap-3 cursor-pointer group">
                                     <div
                                         onClick={() => set("declarationAcknowledged", !formData.declarationAcknowledged)}
-                                        className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-all ${formData.declarationAcknowledged ? "bg-emerald-500 border-emerald-500" : "border-white/20 bg-slate-900/50 group-hover:border-white/40"}`}
+                                        className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-all ${formData.declarationAcknowledged ? "bg-emerald-500 border-emerald-500" : "border-[var(--border-default)] bg-[var(--bg-input)] group-hover:border-primary/40"}`}
                                     >
                                         {formData.declarationAcknowledged && <CheckCircle size={12} className="text-white" />}
                                     </div>
-                                    <span className="text-xs text-gray-400 leading-relaxed">
+                                    <span className="text-xs text-[var(--text-muted)] leading-relaxed">
                                         I confirm that the above declarations are true and accurate to the best of my knowledge. I understand that false declarations void the listing and may result in legal action.
                                     </span>
                                 </label>
@@ -2169,8 +2169,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             </div>
 
                             {/* Delivery Options */}
-                            <div className="border-t border-white/5 pt-4 space-y-3">
-                                <h3 className="text-sm font-bold text-gray-300 uppercase tracking-wide">
+                            <div className="border-t border-[var(--border-default)] pt-4 space-y-3">
+                                <h3 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wide">
                                     Delivery Options
                                 </h3>
                                 <label className="flex items-center gap-3 cursor-pointer">
@@ -2178,18 +2178,18 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         type="checkbox"
                                         checked={formData.deliveryAvailable}
                                         onChange={(e) => set('deliveryAvailable', e.target.checked)}
-                                        className="w-4 h-4 rounded border-white/20 bg-white/5 text-primary focus:ring-primary"
+                                        className="w-4 h-4 rounded border-white/20 bg-[var(--bg-card)] text-primary focus:ring-primary"
                                     />
-                                    <span className="text-sm text-gray-300">Offer delivery for this listing</span>
+                                    <span className="text-sm text-[var(--text-secondary)]">Offer delivery for this listing</span>
                                 </label>
                                 {formData.deliveryAvailable && (
                                     <div className="space-y-3 pl-7">
                                         <div>
-                                            <label className="block text-xs text-gray-400 mb-1">
-                                                Price per mile <span className="text-gray-500">(e.g. 0.50)</span>
+                                            <label className="block text-xs text-[var(--text-muted)] mb-1">
+                                                Price per mile <span className="text-[var(--text-muted)]">(e.g. 0.50)</span>
                                             </label>
                                             <div className="relative">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">£</span>
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-sm">£</span>
                                                 <Input
                                                     type="number"
                                                     step="0.01"
@@ -2202,8 +2202,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-xs text-gray-400 mb-1">
-                                                Maximum delivery radius <span className="text-gray-500">(miles — leave blank for UK-wide)</span>
+                                            <label className="block text-xs text-[var(--text-muted)] mb-1">
+                                                Maximum delivery radius <span className="text-[var(--text-muted)]">(miles — leave blank for UK-wide)</span>
                                             </label>
                                             <Input
                                                 type="number"
@@ -2232,29 +2232,29 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     {/* ── STEP 3: Pricing ───────────────────────────────────────────────── */}
                     {currentStep === 3 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                            <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Pricing</h2>
+                            <h2 className="text-xl font-bold font-heading border-b border-[var(--border-default)] pb-4">Pricing</h2>
 
 
 
                             <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
                                 <p className="text-xs text-primary font-semibold mb-1">💰 Set Your Price Range</p>
-                                <p className="text-xs text-gray-400">Define your price points for your vehicle. The <strong className="text-white">Asking Price</strong> is displayed publicly. The <strong className="text-white">Lower (Min)</strong> defines your acceptable offer floor.</p>
+                                <p className="text-xs text-[var(--text-muted)]">Define your price points for your vehicle. The <strong className="text-[var(--text-primary)]">Asking Price</strong> is displayed publicly. The <strong className="text-[var(--text-primary)]">Lower (Min)</strong> defines your acceptable offer floor.</p>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Lower (Minimum) */}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-gray-400 flex items-center gap-1">
+                                    <label className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-1">
                                         Lower (Min)
                                         <InfoTooltip text="The minimum price you'd accept. Bids below this are rejected. Not shown publicly." />
                                     </label>
                                     <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">£</span>
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-lg">£</span>
                                         <Input type="number" placeholder="e.g. 18000" value={formData.priceMin}
                                             onChange={(e) => set("priceMin", e.target.value)}
                                             className={`${inputCls} pl-8 text-lg h-14 ${formData.priceMin && formData.priceAsking && parseFloat(formData.priceMin) > parseFloat(formData.priceAsking) ? 'border-red-500' : ''}`} />
                                     </div>
-                                    <p className="text-[10px] text-gray-600">Floor price — not visible to buyers</p>
+                                    <p className="text-[10px] text-[var(--text-secondary)]">Floor price — not visible to buyers</p>
                                 </div>
 
                                 {/* Asking Price (Main) */}
@@ -2282,13 +2282,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 const pAsk = parseFloat(formData.priceAsking) || 0
                                 if (pAsk <= 0) return null
                                 return (
-                                    <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
-                                        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-3">
+                                    <div className="p-4 rounded-xl bg-white/[0.02] border border-[var(--border-default)]">
+                                        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-3">
                                             <span>Your Price Range</span>
                                             <span className="text-emerald-400">✓ Valid</span>
                                         </div>
                                         {/* Visual bar */}
-                                        <div className="relative h-3 bg-slate-800 rounded-full overflow-hidden">
+                                        <div className="relative h-3 bg-[var(--bg-input)] rounded-full overflow-hidden">
                                             {pMin > 0 && pAsk > pMin && (
                                                 <div className="absolute inset-y-0 bg-gradient-to-r from-amber-500/40 to-primary/60 rounded-full" style={{ left: '5%', right: '5%' }} />
                                             )}
@@ -2298,7 +2298,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             <span className="text-sm text-primary font-black tabular-nums">{formatPrice(pAsk)}</span>
                                         </div>
                                         <div className="flex items-center justify-between mt-0.5">
-                                            <span className="text-[9px] text-gray-600 uppercase">Lower</span>
+                                            <span className="text-[9px] text-[var(--text-secondary)] uppercase">Lower</span>
                                             <span className="text-[9px] text-primary/60 uppercase font-bold">Asking</span>
                                         </div>
                                     </div>
@@ -2307,10 +2307,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                             {/* ── Badge Plan Cards ───────────────────────────────── */}
                             <div className="pt-2">
-                                <h3 className="text-sm font-bold uppercase text-gray-400 mb-3 flex items-center gap-2">
+                                <h3 className="text-sm font-bold uppercase text-[var(--text-muted)] mb-3 flex items-center gap-2">
                                     <Shield size={16} className="text-primary" /> Seller Badges
                                 </h3>
-                                <p className="text-xs text-gray-500 mb-4">Boost buyer confidence with trust badges on your listing. Badges increase buyer engagement and sell rates.</p>
+                                <p className="text-xs text-[var(--text-muted)] mb-4">Boost buyer confidence with trust badges on your listing. Badges increase buyer engagement and sell rates.</p>
 
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                                     {/* Auction */}
@@ -2318,22 +2318,22 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         onClick={() => { set('badgeTier', 'FREE'); set('listingType', 'AUCTION') }}
                                         className={`relative rounded-xl border p-4 text-left transition-all ${formData.listingType === 'AUCTION'
                                             ? 'border-orange-500 bg-orange-500/10 ring-1 ring-orange-500/50'
-                                            : 'border-white/10 bg-white/[0.02] hover:border-white/20'
+                                            : 'border-[var(--border-default)] bg-white/[0.02] hover:border-primary/30'
                                             }`}
                                     >
                                         {formData.listingType === 'AUCTION' && <span className="absolute top-2 right-2 text-[10px] bg-orange-500 text-white font-bold px-2 py-0.5 rounded-full">Selected</span>}
                                         <p className="text-orange-400 font-bold text-sm mb-1 flex items-center gap-1"><Gavel size={14} /> Auction</p>
                                         <div className="mb-3">
-                                            <p className="text-2xl font-black text-white">Free</p>
+                                            <p className="text-2xl font-black">Free</p>
                                             <p className="text-[10px] text-orange-400/70 font-semibold">£0 seller listing fee</p>
                                         </div>
-                                        <ul className="space-y-1.5 text-xs text-gray-400">
+                                        <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
                                             <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Open bidding</li>
                                             <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> 24-hour auction</li>
                                             <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Anyone can bid</li>
-                                            <li className="flex items-center gap-1.5 text-gray-600"><X size={12} /> No trust badges</li>
+                                            <li className="flex items-center gap-1.5 text-[var(--text-secondary)]"><X size={12} /> No trust badges</li>
                                         </ul>
-                                        <div className="flex items-start gap-1.5 mt-3 pt-3 border-t border-white/5">
+                                        <div className="flex items-start gap-1.5 mt-3 pt-3 border-t border-[var(--border-default)]">
                                             <Lock size={10} className="text-amber-500/70 shrink-0 mt-0.5" />
                                             <p className="text-[10px] text-amber-500/70 leading-tight">Only verified dealers can list for auction</p>
                                         </div>
@@ -2344,17 +2344,17 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         onClick={() => { set('badgeTier', 'BASIC'); set('listingType', 'CLASSIFIED') }}
                                         className={`relative rounded-xl border p-4 text-left transition-all ${formData.badgeTier === 'BASIC'
                                             ? 'border-primary bg-primary/10 ring-1 ring-primary/50'
-                                            : 'border-white/10 bg-white/[0.02] hover:border-white/20'
+                                            : 'border-[var(--border-default)] bg-white/[0.02] hover:border-primary/30'
                                             }`}
                                     >
                                         {formData.badgeTier === 'BASIC' && <span className="absolute top-2 right-2 text-[10px] bg-primary text-black font-bold px-2 py-0.5 rounded-full">Selected</span>}
                                         <p className="text-white font-bold text-sm mb-1">Basic</p>
                                         <p className="text-2xl font-black text-white mb-3">£1</p>
-                                        <ul className="space-y-1.5 text-xs text-gray-400">
+                                        <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
                                             <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Standard listing</li>
                                             <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Offer range system</li>
-                                            <li className="flex items-center gap-1.5 text-gray-600"><X size={12} /> No trust badges</li>
-                                            <li className="flex items-center gap-1.5 text-gray-600"><X size={12} /> No featured boost</li>
+                                            <li className="flex items-center gap-1.5 text-[var(--text-secondary)]"><X size={12} /> No trust badges</li>
+                                            <li className="flex items-center gap-1.5 text-[var(--text-secondary)]"><X size={12} /> No featured boost</li>
                                         </ul>
                                     </button>
 
@@ -2363,17 +2363,17 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         onClick={() => { set('badgeTier', 'STANDARD'); set('listingType', 'CLASSIFIED') }}
                                         className={`relative rounded-xl border p-4 text-left transition-all ${formData.badgeTier === 'STANDARD'
                                             ? 'border-blue-500 bg-blue-500/10 ring-1 ring-blue-500/50'
-                                            : 'border-white/10 bg-white/[0.02] hover:border-white/20'
+                                            : 'border-[var(--border-default)] bg-white/[0.02] hover:border-primary/30'
                                             }`}
                                     >
                                         {formData.badgeTier === 'STANDARD' && <span className="absolute top-2 right-2 text-[10px] bg-blue-500 text-white font-bold px-2 py-0.5 rounded-full">Selected</span>}
                                         <p className="text-blue-400 font-bold text-sm mb-1 flex items-center gap-1"><Shield size={14} /> Standard</p>
                                         <p className="text-2xl font-black text-white mb-3">£10</p>
-                                        <ul className="space-y-1.5 text-xs text-gray-400">
+                                        <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
                                             <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Everything in Basic</li>
                                             <li className="flex items-center gap-1.5"><BadgeCheck size={12} className="text-blue-400" /> VIN Report badge</li>
                                             <li className="flex items-center gap-1.5"><BadgeCheck size={12} className="text-blue-400" /> Verified Seller badge</li>
-                                            <li className="flex items-center gap-1.5 text-gray-600"><X size={12} /> No featured boost</li>
+                                            <li className="flex items-center gap-1.5 text-[var(--text-secondary)]"><X size={12} /> No featured boost</li>
                                         </ul>
                                     </button>
 
@@ -2382,14 +2382,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         onClick={() => { set('badgeTier', 'PREMIUM'); set('listingType', 'CLASSIFIED') }}
                                         className={`relative rounded-xl border p-4 text-left transition-all ${formData.badgeTier === 'PREMIUM'
                                             ? 'border-amber-500 bg-amber-500/10 ring-1 ring-amber-500/50'
-                                            : 'border-white/10 bg-white/[0.02] hover:border-white/20'
+                                            : 'border-[var(--border-default)] bg-white/[0.02] hover:border-primary/30'
                                             }`}
                                     >
                                         <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold px-3 py-0.5 rounded-full flex items-center gap-1"><Sparkles size={10} /> Best Value</span>
                                         {formData.badgeTier === 'PREMIUM' && <span className="absolute top-2 right-2 text-[10px] bg-amber-500 text-black font-bold px-2 py-0.5 rounded-full">Selected</span>}
                                         <p className="text-amber-400 font-bold text-sm mb-1 mt-1 flex items-center gap-1"><Star size={14} /> Premium</p>
                                         <p className="text-2xl font-black text-white mb-3">£25</p>
-                                        <ul className="space-y-1.5 text-xs text-gray-400">
+                                        <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
                                             <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Everything in Standard</li>
                                             <li className="flex items-center gap-1.5"><Zap size={12} className="text-amber-400" /> Featured boost (28 days)</li>
                                             <li className="flex items-center gap-1.5"><Zap size={12} className="text-amber-400" /> Priority in search results</li>
@@ -2401,13 +2401,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             </div>
 
                             {/* ── Attention Label ─────────────────────────────────── */}
-                            <div className="border border-white/5 bg-slate-900/40 rounded-xl p-5 space-y-4">
+                            <div className="border border-[var(--border-default)] bg-[var(--bg-input)] rounded-xl p-5 space-y-4">
                                 <div>
-                                    <h3 className="text-sm font-bold uppercase text-gray-400 tracking-wider flex items-center gap-2">
+                                    <h3 className="text-sm font-bold uppercase text-[var(--text-muted)] tracking-wider flex items-center gap-2">
                                         <Sparkles size={14} className="text-amber-400" /> Attention Label
-                                        <span className="text-[10px] text-gray-600 normal-case font-normal">(optional)</span>
+                                        <span className="text-[10px] text-[var(--text-secondary)] normal-case font-normal">(optional)</span>
                                     </h3>
-                                    <p className="text-xs text-gray-500 mt-1">Add a promotional ribbon to your listing card to grab buyer attention.</p>
+                                    <p className="text-xs text-[var(--text-muted)] mt-1">Add a promotional ribbon to your listing card to grab buyer attention.</p>
                                 </div>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                     {BANNER_LABELS.map(({ value, color }) => {
@@ -2415,7 +2415,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         return (
                                             <button key={value} type="button"
                                                 onClick={() => set("bannerLabel", active ? "" : value)}
-                                                className={`relative flex items-center gap-2 px-3 py-2.5 rounded-lg border text-xs font-semibold transition-all text-left ${active ? 'border-primary bg-primary/10 text-white' : 'border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20 hover:text-gray-200'}`}
+                                                className={`relative flex items-center gap-2 px-3 py-2.5 rounded-lg border text-xs font-semibold transition-all text-left ${active ? 'border-primary bg-primary/10 text-primary' : 'border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30 hover:text-gray-200'}`}
                                             >
                                                 <span className={`w-2.5 h-2.5 rounded-sm shrink-0 ${color}`} />
                                                 {value}
@@ -2426,11 +2426,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 </div>
                                 {formData.bannerLabel && (
                                     <div className="flex items-center gap-2">
-                                        <span className="text-xs text-gray-400">Preview:</span>
+                                        <span className="text-xs text-[var(--text-muted)]">Preview:</span>
                                         <span className={`text-[10px] font-bold uppercase tracking-wider text-white px-2.5 py-1 rounded-md ${BANNER_LABELS.find(b => b.value === formData.bannerLabel)?.color ?? 'bg-primary/90'}`}>
                                             {formData.bannerLabel}
                                         </span>
-                                        <button type="button" onClick={() => set("bannerLabel", "")} className="text-gray-600 hover:text-gray-400 transition-colors ml-1">
+                                        <button type="button" onClick={() => set("bannerLabel", "")} className="text-[var(--text-secondary)] hover:text-[var(--text-muted)] transition-colors ml-1">
                                             <X size={12} />
                                         </button>
                                     </div>
@@ -2442,29 +2442,29 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     {/* ── STEP 4: Auction Schedule (auction listings only) ──────────────── */}
                     {currentStep === 4 && isAuction && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                            <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white flex items-center gap-2">
+                            <h2 className="text-xl font-bold font-heading border-b border-[var(--border-default)] pb-4 flex items-center gap-2">
                                 <Gavel size={20} className="text-orange-400" /> Schedule Your Auction
                             </h2>
 
                             <div className="p-4 rounded-xl bg-orange-500/5 border border-orange-500/20">
                                 <p className="text-xs text-orange-400 font-bold mb-1">Live Auction — 24-Hour Fixed Duration</p>
-                                <p className="text-xs text-gray-400">Your auction will run for exactly 24 hours. Anti-snipe protection automatically extends bidding by 3 minutes if a bid arrives in the final 3 minutes.</p>
+                                <p className="text-xs text-[var(--text-muted)]">Your auction will run for exactly 24 hours. Anti-snipe protection automatically extends bidding by 3 minutes if a bid arrives in the final 3 minutes.</p>
                             </div>
 
                             {/* Start Mode Toggle */}
                             <div className="space-y-3">
-                                <label className="text-sm font-bold uppercase text-gray-400">When to Start *</label>
+                                <label className="text-sm font-bold uppercase text-[var(--text-muted)]">When to Start *</label>
                                 <div className="grid grid-cols-2 gap-3">
                                     <button type="button"
                                         onClick={() => setAuctionSchedule(prev => ({ ...prev, startTime: 'NOW' }))}
-                                        className={`p-4 rounded-xl border text-left transition-all ${auctionSchedule.startTime === 'NOW' ? 'border-orange-500 bg-orange-500/10 text-orange-300' : 'border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20'}`}
+                                        className={`p-4 rounded-xl border text-left transition-all ${auctionSchedule.startTime === 'NOW' ? 'border-orange-500 bg-orange-500/10 text-orange-300' : 'border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30'}`}
                                     >
                                         <p className="font-bold text-sm mb-0.5">⚡ Start Immediately</p>
                                         <p className="text-[10px] opacity-70">Auction goes live right now</p>
                                     </button>
                                     <button type="button"
                                         onClick={() => setAuctionSchedule(prev => ({ ...prev, startTime: prev.startTime === 'NOW' ? '' : prev.startTime }))}
-                                        className={`p-4 rounded-xl border text-left transition-all ${auctionSchedule.startTime !== 'NOW' ? 'border-orange-500 bg-orange-500/10 text-orange-300' : 'border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20'}`}
+                                        className={`p-4 rounded-xl border text-left transition-all ${auctionSchedule.startTime !== 'NOW' ? 'border-orange-500 bg-orange-500/10 text-orange-300' : 'border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30'}`}
                                     >
                                         <p className="font-bold text-sm mb-0.5">📅 Schedule for Later</p>
                                         <p className="text-[10px] opacity-70">Pick a specific date &amp; time</p>
@@ -2474,7 +2474,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                             {/* Start Date & Time — only shown for scheduled mode */}
                             {auctionSchedule.startTime !== 'NOW' && (<div className="space-y-2">
-                                <label className="text-sm font-bold uppercase text-gray-400">Start Date &amp; Time *</label>
+                                <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Start Date &amp; Time *</label>
                                 <Input
                                     type="datetime-local"
                                     value={auctionSchedule.startTime === 'NOW' ? '' : auctionSchedule.startTime}
@@ -2492,51 +2492,51 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             {/* Auction Parameters */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-gray-400 flex items-center gap-1">
+                                    <label className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-1">
                                         Reserve Price *
                                         <InfoTooltip text="The minimum price you'll accept. If bidding doesn't reach this, the auction ends with no sale. Hidden from buyers." />
                                     </label>
                                     <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">£</span>
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-lg">£</span>
                                         <Input type="number" placeholder="e.g. 15000"
                                             value={auctionSchedule.reservePrice}
                                             onChange={e => setAuctionSchedule(prev => ({ ...prev, reservePrice: e.target.value }))}
                                             className={`${inputCls} pl-8 h-14 ${hasAttemptedNext && !auctionSchedule.reservePrice ? 'border-red-500' : ''}`}
                                         />
                                     </div>
-                                    <p className="text-[10px] text-gray-600">Hidden from buyers — minimum you'll accept</p>
+                                    <p className="text-[10px] text-[var(--text-secondary)]">Hidden from buyers — minimum you'll accept</p>
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-gray-400 flex items-center gap-1">
+                                    <label className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-1">
                                         Starting Bid *
                                         <InfoTooltip text="The opening bid price shown to buyers. Should be at or below your reserve price." />
                                     </label>
                                     <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">£</span>
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-lg">£</span>
                                         <Input type="number" placeholder="e.g. 10000"
                                             value={auctionSchedule.startingBid}
                                             onChange={e => setAuctionSchedule(prev => ({ ...prev, startingBid: e.target.value }))}
                                             className={`${inputCls} pl-8 h-14 ${hasAttemptedNext && !auctionSchedule.startingBid ? 'border-red-500' : ''}`}
                                         />
                                     </div>
-                                    <p className="text-[10px] text-gray-600">Opening bid shown publicly</p>
+                                    <p className="text-[10px] text-[var(--text-secondary)]">Opening bid shown publicly</p>
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-gray-400 flex items-center gap-1">
+                                    <label className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-1">
                                         Min. Bid Increment *
                                         <InfoTooltip text="Each new bid must exceed the current highest bid by at least this amount." />
                                     </label>
                                     <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">£</span>
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-lg">£</span>
                                         <Input type="number" placeholder="e.g. 100"
                                             value={auctionSchedule.minIncrement}
                                             onChange={e => setAuctionSchedule(prev => ({ ...prev, minIncrement: e.target.value }))}
                                             className={`${inputCls} pl-8 h-14 ${hasAttemptedNext && !auctionSchedule.minIncrement ? 'border-red-500' : ''}`}
                                         />
                                     </div>
-                                    <p className="text-[10px] text-gray-600">Minimum amount each bid must exceed by</p>
+                                    <p className="text-[10px] text-[var(--text-secondary)]">Minimum amount each bid must exceed by</p>
                                 </div>
                             </div>
 
@@ -2546,23 +2546,23 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     <p className="text-xs font-bold uppercase tracking-wider text-orange-400 flex items-center gap-1.5"><Gavel size={12} /> Auction Summary</p>
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
                                         <div>
-                                            <p className="text-[10px] text-gray-500 uppercase mb-0.5">Reserve</p>
+                                            <p className="text-[10px] text-[var(--text-muted)] uppercase mb-0.5">Reserve</p>
                                             <p className="text-white font-black">{formatPrice(parseFloat(auctionSchedule.reservePrice))}</p>
                                         </div>
                                         <div>
-                                            <p className="text-[10px] text-gray-500 uppercase mb-0.5">Opening Bid</p>
+                                            <p className="text-[10px] text-[var(--text-muted)] uppercase mb-0.5">Opening Bid</p>
                                             <p className="text-white font-bold">{formatPrice(parseFloat(auctionSchedule.startingBid))}</p>
                                         </div>
                                         <div>
-                                            <p className="text-[10px] text-gray-500 uppercase mb-0.5">Min. Increment</p>
+                                            <p className="text-[10px] text-[var(--text-muted)] uppercase mb-0.5">Min. Increment</p>
                                             <p className="text-white font-bold">{formatPrice(parseFloat(auctionSchedule.minIncrement || '0'))}</p>
                                         </div>
                                         <div>
-                                            <p className="text-[10px] text-gray-500 uppercase mb-0.5">Duration</p>
+                                            <p className="text-[10px] text-[var(--text-muted)] uppercase mb-0.5">Duration</p>
                                             <p className="text-orange-400 font-bold">24 hours</p>
                                         </div>
                                     </div>
-                                    <div className="border-t border-white/5 pt-2 flex items-center justify-between text-xs text-gray-500">
+                                    <div className="border-t border-[var(--border-default)] pt-2 flex items-center justify-between text-xs text-[var(--text-muted)]">
                                         {auctionSchedule.startTime === 'NOW' ? (
                                             <span className="flex items-center gap-1"><Clock size={10} /> Starts: Immediately</span>
                                         ) : (
@@ -2582,7 +2582,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     {/* ── STEP 4/5: Review ─────────────────────────────────────────────── */}
                     {currentStep === (isAuction ? 5 : 4) && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                            <h2 className="text-xl font-bold font-heading border-b border-white/10 pb-4 text-white">Review Your Listing</h2>
+                            <h2 className="text-xl font-bold font-heading border-b border-[var(--border-default)] pb-4">Review Your Listing</h2>
 
                             {/* Vehicle Info */}
                             <SummarySection title="Vehicle Identity" onEdit={() => goToStep(1)}>
@@ -2607,7 +2607,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             <SummarySection title={`Photos (${formData.images.length})`} onEdit={() => goToStep(2)}>
                                 <div className="grid grid-cols-4 md:grid-cols-6 gap-2">
                                     {formData.images.slice(0, 12).map((img, i) => (
-                                        <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-white/10">
+                                        <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-[var(--border-default)]">
                                             <Image src={img} alt={`Photo ${i + 1}`} fill className="object-cover" sizes="80px" />
                                         </div>
                                     ))}
@@ -2641,7 +2641,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                                             if (ytEmbedUrl) {
                                                 return (
-                                                    <div key={i} className="rounded-xl overflow-hidden border border-white/10 bg-black">
+                                                    <div key={i} className="rounded-xl overflow-hidden border border-[var(--border-default)] bg-black">
                                                         <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
                                                             <iframe
                                                                 src={ytEmbedUrl}
@@ -2657,10 +2657,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                                             return (
                                                 <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-                                                    className="flex items-center gap-2 p-3 rounded-lg bg-slate-900/50 border border-white/10 hover:border-white/20 transition-colors group">
+                                                    className="flex items-center gap-2 p-3 rounded-lg bg-[var(--bg-input)] border border-[var(--border-default)] hover:border-primary/30 transition-colors group">
                                                     <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-500/20 text-orange-300 border border-orange-500/20 shrink-0">{platform}</span>
                                                     <span className="text-xs text-blue-400 truncate flex-1 group-hover:text-blue-300">{url}</span>
-                                                    <ArrowRight size={12} className="text-gray-500 shrink-0" />
+                                                    <ArrowRight size={12} className="text-[var(--text-muted)] shrink-0" />
                                                 </a>
                                             )
                                         })}
@@ -2673,16 +2673,16 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <SummarySection title={`Reported Damage (${damageRecords.length} zone${damageRecords.length !== 1 ? 's' : ''})`} onEdit={() => goToStep(2)}>
                                     <div className="space-y-2">
                                         {damageRecords.map((record, i) => (
-                                            <div key={i} className="flex items-start gap-3 p-2 rounded-lg bg-slate-900/50 border border-white/5">
+                                            <div key={i} className="flex items-start gap-3 p-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-default)]">
                                                 {record.photoUrl && (
-                                                    <div className="relative w-12 h-12 rounded-md overflow-hidden flex-shrink-0 border border-white/10">
+                                                    <div className="relative w-12 h-12 rounded-md overflow-hidden flex-shrink-0 border border-[var(--border-default)]">
                                                         <Image src={record.photoUrl} alt={record.zone} fill className="object-cover" sizes="48px" />
                                                     </div>
                                                 )}
                                                 <div className="min-w-0">
-                                                    <p className="text-sm font-semibold text-white">{record.zone}</p>
-                                                    <p className="text-xs text-gray-400">{record.description}</p>
-                                                    <p className="text-[10px] text-gray-600 uppercase tracking-wide mt-0.5">{record.view} view</p>
+                                                    <p className="text-sm font-semibold text-[var(--text-primary)]">{record.zone}</p>
+                                                    <p className="text-xs text-[var(--text-muted)]">{record.description}</p>
+                                                    <p className="text-[10px] text-[var(--text-secondary)] uppercase tracking-wide mt-0.5">{record.view} view</p>
                                                 </div>
                                             </div>
                                         ))}
@@ -2707,7 +2707,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 </div>
                                 {/* DVLA Data */}
                                 {(formData.motStatus || formData.taxStatus || formData.monthOfFirstRegistration) && (
-                                    <div className="mt-3 pt-3 border-t border-white/5">
+                                    <div className="mt-3 pt-3 border-t border-[var(--border-default)]">
                                         <p className="text-[10px] text-blue-400 uppercase font-bold mb-2 flex items-center gap-1"><Shield size={10} /> DVLA Data</p>
                                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                                             {formData.motStatus && <SummaryField label="MOT Status" value={formData.motStatus} />}
@@ -2726,19 +2726,19 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 {formData.features.length > 0 && (
                                     <div className="mt-3 flex flex-wrap gap-1.5">
                                         {formData.features.map((f, i) => (
-                                            <span key={i} className="text-xs bg-slate-800 text-gray-300 px-2 py-1 rounded-md border border-white/10">{f}</span>
+                                            <span key={i} className="text-xs bg-[var(--bg-input)] text-[var(--text-secondary)] px-2 py-1 rounded-md border border-[var(--border-default)]">{f}</span>
                                         ))}
                                     </div>
                                 )}
-                                {formData.title && <div className="mt-3 pt-3 border-t border-white/5"><p className="text-xs text-gray-500 uppercase mb-1">Title</p><p className="text-white font-semibold">{formData.title}</p></div>}
-                                {formData.description && <p className="text-sm text-gray-400 mt-2">{formData.description}</p>}
+                                {formData.title && <div className="mt-3 pt-3 border-t border-[var(--border-default)]"><p className="text-xs text-[var(--text-muted)] uppercase mb-1">Title</p><p className="text-white font-semibold">{formData.title}</p></div>}
+                                {formData.description && <p className="text-sm text-[var(--text-muted)] mt-2">{formData.description}</p>}
                             </SummarySection>
 
                             <SummarySection title="Pricing" onEdit={() => goToStep(3)}>
                                 <div className="flex flex-col gap-3">
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <p className="text-[10px] text-gray-500 uppercase mb-0.5">{isAuction ? 'Guide Price' : 'Lower'}</p>
+                                            <p className="text-[10px] text-[var(--text-muted)] uppercase mb-0.5">{isAuction ? 'Guide Price' : 'Lower'}</p>
                                             <p className="text-white font-bold text-lg tabular-nums">{isAuction ? '—' : formData.priceMin ? formatPrice(formData.priceMin) : '—'}</p>
                                         </div>
                                         <div className="text-right">
@@ -2752,7 +2752,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             <span className="text-xs bg-orange-500/15 text-orange-400 border border-orange-500/20 px-2 py-0.5 rounded-md flex items-center gap-1">🔨 For Auction — Free</span>
                                         )}
                                         {formData.badgeTier === 'BASIC' && (
-                                            <span className="text-xs bg-white/10 text-gray-400 px-2 py-0.5 rounded-md">Basic — £1</span>
+                                            <span className="text-xs bg-white/10 text-[var(--text-muted)] px-2 py-0.5 rounded-md">Basic — £1</span>
                                         )}
                                         {formData.badgeTier === 'STANDARD' && (
                                             <>
@@ -2796,9 +2796,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     )}
 
                     {/* Navigation */}
-                    <div className="flex justify-between mt-10 pt-6 border-t border-white/10">
+                    <div className="flex justify-between mt-10 pt-6 border-t border-[var(--border-default)]">
                         {currentStep > 1
-                            ? <Button variant="outline" onClick={handleBack} className="px-7 border-white/20 text-white hover:bg-white/10"><ArrowLeft className="mr-2 h-4 w-4" /> Back</Button>
+                            ? <Button variant="outline" onClick={handleBack} className="px-7 hover:bg-primary/5 dark:hover:bg-white/10"><ArrowLeft className="mr-2 h-4 w-4" /> Back</Button>
                             : <div />
                         }
                         {currentStep < totalSteps
@@ -2821,7 +2821,7 @@ function SummarySection({ title, onEdit, children }: { title: string; onEdit: ()
     return (
         <div className="space-y-3">
             <div className="flex items-center justify-between">
-                <h3 className="font-bold text-white">{title}</h3>
+                <h3 className="font-bold">{title}</h3>
                 <button type="button" onClick={onEdit} className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors">
                     <Edit size={12} /> Edit
                 </button>
@@ -2835,7 +2835,7 @@ function SummaryField({ label, value, mono = false }: { label: string; value: st
     if (!value) return null
     return (
         <div>
-            <p className="text-[10px] text-gray-500 uppercase mb-0.5">{label}</p>
+            <p className="text-[10px] text-[var(--text-muted)] uppercase mb-0.5">{label}</p>
             <p className={`text-white font-medium text-sm ${mono ? "font-mono tracking-wide" : ""}`}>{value}</p>
         </div>
     )

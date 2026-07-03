@@ -53,7 +53,7 @@ export default function EarningsPage() {
 
     if (authLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+            <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
             </div>
         )
@@ -69,15 +69,15 @@ export default function EarningsPage() {
     const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "User")
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
+        <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="seller" userName={userName} userType={profile?.role ? `${profile.role} Account` : "Seller Account"} />
 
                 <main className="flex-1 space-y-8 min-w-0">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
-                            <h1 className="text-3xl font-black font-heading text-white uppercase tracking-tight">Revenue & Earnings</h1>
-                            <p className="text-gray-400 mt-1 font-medium text-sm">Track your sales performance and platform revenue.</p>
+                            <h1 className="text-3xl font-black font-heading uppercase tracking-tight">Revenue & Earnings</h1>
+                            <p className="text-[var(--text-muted)] mt-1 font-medium text-sm">Track your sales performance and platform revenue.</p>
                         </div>
                         <Button
                             className="flex items-center gap-2 shadow-neon h-12"
@@ -125,12 +125,12 @@ export default function EarningsPage() {
                     </div>
 
                     {/* Tab switcher */}
-                    <div className="flex gap-1 bg-slate-800/50 p-1 rounded-xl border border-white/5 w-fit">
+                    <div className="flex gap-1 bg-[var(--bg-input)] p-1 rounded-xl border border-[var(--border-default)] w-fit">
                         {(['sales', 'receipts'] as const).map(tab => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
-                                className={`px-5 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-primary text-white shadow-neon-small' : 'text-gray-400 hover:text-white'}`}
+                                className={`px-5 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-primary text-white shadow-neon-small' : 'text-[var(--text-muted)] hover:text-primary dark:hover:text-white'}`}
                             >
                                 {tab === 'sales' ? 'Sales History' : 'Receipts'}
                             </button>
@@ -139,29 +139,29 @@ export default function EarningsPage() {
 
                     {/* Receipts tab */}
                     {activeTab === 'receipts' && (
-                        <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl shadow-2xl">
-                            <div className="p-6 border-b border-white/10 bg-white/2">
-                                <h2 className="text-xl font-black font-heading text-white uppercase tracking-tight flex items-center gap-2">
+                        <div className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl shadow-2xl">
+                            <div className="p-6 border-b border-[var(--border-default)] bg-white/2">
+                                <h2 className="text-xl font-black font-heading uppercase tracking-tight flex items-center gap-2">
                                     Payment Receipts
                                 </h2>
-                                <p className="text-xs text-gray-400 mt-1">All payments made or received through CarMazium.</p>
+                                <p className="text-xs text-[var(--text-muted)] mt-1">All payments made or received through CarMazium.</p>
                             </div>
                             <ReceiptsTab isDealer={false} />
                         </div>
                     )}
 
                     {/* Sales Table */}
-                    {activeTab === 'sales' && <div className="glass-card overflow-hidden border border-white/5 bg-white/5 rounded-2xl shadow-2xl">
-                        <div className="p-6 border-b border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/2">
-                            <h2 className="text-xl font-black font-heading text-white uppercase tracking-tight flex items-center gap-2">
+                    {activeTab === 'sales' && <div className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl shadow-2xl">
+                        <div className="p-6 border-b border-[var(--border-default)] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/2">
+                            <h2 className="text-xl font-black font-heading uppercase tracking-tight flex items-center gap-2">
                                 <Calendar className="text-primary" size={20} /> Sales History
                             </h2>
                             <div className="relative w-full md:w-64 group">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary transition-colors" size={18} />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-primary transition-colors" size={18} />
                                 <input 
                                     type="text" 
                                     placeholder="Search listings or buyers..." 
-                                    className="w-full bg-slate-800/50 border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-white placeholder:text-gray-500"
+                                    className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-[var(--text-muted)]"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
@@ -170,7 +170,7 @@ export default function EarningsPage() {
 
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
-                                <thead className="bg-slate-800/80 text-gray-400 text-xs uppercase font-black tracking-widest border-b border-white/5">
+                                <thead className="bg-[var(--bg-input)] text-[var(--text-muted)] text-xs uppercase font-black tracking-widest border-b border-[var(--border-default)]">
                                     <tr>
                                         <th className="px-6 py-5">Vehicle Details</th>
                                         <th className="px-6 py-5">Buyer</th>
@@ -180,7 +180,7 @@ export default function EarningsPage() {
                                         <th className="px-6 py-5 text-center">Date</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-white/5 text-white/80">
+                                <tbody className="divide-y divide-[var(--border-default)]/80">
                                     {loading ? (
                                         <tr>
                                             <td colSpan={6} className="px-6 py-12 text-center">
@@ -190,8 +190,8 @@ export default function EarningsPage() {
                                     ) : filteredSales.length === 0 ? (
                                         <tr>
                                             <td colSpan={6} className="px-6 py-20 text-center">
-                                                <div className="flex flex-col items-center gap-3 text-gray-500 italic">
-                                                    <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-2">
+                                                <div className="flex flex-col items-center gap-3 text-[var(--text-muted)] italic">
+                                                    <div className="w-16 h-16 bg-[var(--bg-card)] rounded-full flex items-center justify-center mb-2">
                                                         <Car size={32} className="opacity-20" />
                                                     </div>
                                                     <p>No sales records found.</p>
@@ -204,22 +204,22 @@ export default function EarningsPage() {
                                             <tr key={sale.id} className="hover:bg-white/[0.03] transition-all group">
                                                 <td className="px-6 py-5">
                                                     <div className="flex items-center gap-4">
-                                                        <div className="relative w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-white/10 group-hover:border-primary/30 transition-colors">
+                                                        <div className="relative w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-[var(--border-default)] group-hover:border-primary/30 transition-colors">
                                                             {sale.listing.images?.[0] ? (
                                                                 <Image src={sale.listing.images[0]} alt="" fill className="object-cover" />
                                                             ) : (
-                                                                <div className="w-full h-full bg-slate-800 flex items-center justify-center text-gray-600"><Car size={20} /></div>
+                                                                <div className="w-full h-full bg-[var(--bg-input)] flex items-center justify-center text-[var(--text-secondary)]"><Car size={20} /></div>
                                                             )}
                                                         </div>
                                                         <div className="min-w-0">
-                                                            <p className="font-black text-white group-hover:text-primary transition-colors truncate uppercase tracking-tight">{sale.listing.title}</p>
-                                                            <p className="text-xs text-gray-500 font-bold tracking-widest uppercase mt-0.5">{sale.listing.vrm || "Private Plate"}</p>
+                                                            <p className="font-black group-hover:text-primary transition-colors truncate uppercase tracking-tight">{sale.listing.title}</p>
+                                                            <p className="text-xs text-[var(--text-muted)] font-bold tracking-widest uppercase mt-0.5">{sale.listing.vrm || "Private Plate"}</p>
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-5">
                                                     <div className="flex items-center gap-2.5">
-                                                        <div className="w-8 h-8 bg-white/5 rounded-full flex items-center justify-center border border-white/10 shrink-0 text-gray-400">
+                                                        <div className="w-8 h-8 bg-[var(--bg-card)] rounded-full flex items-center justify-center border border-[var(--border-default)] shrink-0 text-[var(--text-muted)]">
                                                             <UserIcon size={14} />
                                                         </div>
                                                         <div className="min-w-0">
@@ -228,17 +228,17 @@ export default function EarningsPage() {
                                                                     ? `${sale.buyer.firstName} ${sale.buyer.lastName || ""}`.trim()
                                                                     : (sale as any).buyerName || "Private Buyer"}
                                                             </p>
-                                                            <p className="text-xs text-gray-500 truncate">
+                                                            <p className="text-xs text-[var(--text-muted)] truncate">
                                                                 {sale.buyer?.email || (sale as any).buyerEmail || "No email recorded"}
                                                             </p>
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-5 text-right font-medium text-gray-400 text-sm">
+                                                <td className="px-6 py-5 text-right font-medium text-[var(--text-muted)] text-sm">
                                                     {formatPrice((sale as any).listing?.price ?? sale.listedPrice ?? 0)}
                                                 </td>
                                                 <td className="px-6 py-5 text-right">
-                                                    <p className="font-black text-white text-base">{formatPrice(sale.soldPrice)}</p>
+                                                    <p className="font-black text-base">{formatPrice(sale.soldPrice)}</p>
                                                     {(() => {
                                                         const listed = Number((sale as any).listing?.price ?? sale.listedPrice ?? 0)
                                                         const sold = Number(sale.soldPrice)
@@ -252,20 +252,20 @@ export default function EarningsPage() {
                                                                 <ArrowDownRight size={10} /> -{formatPrice(listed - sold)}
                                                             </span>
                                                         )
-                                                        return <span className="text-xs text-gray-500 font-bold uppercase tracking-widest">Asking Price</span>
+                                                        return <span className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest">Asking Price</span>
                                                     })()}
                                                 </td>
                                                 <td className="px-6 py-5 text-right">
                                                     <div className="inline-flex flex-col items-end">
                                                         <span className="text-emerald-400 font-black text-base">{formatPrice(sale.soldPrice)}</span>
-                                                        <span className="text-xs text-gray-500 font-bold uppercase tracking-tighter">After 0% Fee</span>
+                                                        <span className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-tighter">After 0% Fee</span>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-5 text-center">
-                                                    <p className="text-sm font-bold text-gray-300">
+                                                    <p className="text-sm font-bold text-[var(--text-secondary)]">
                                                         {new Date(sale.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                                                     </p>
-                                                    <p className="text-xs text-gray-500">{new Date(sale.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</p>
+                                                    <p className="text-xs text-[var(--text-muted)]">{new Date(sale.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</p>
                                                 </td>
                                             </tr>
                                         ))
@@ -274,7 +274,7 @@ export default function EarningsPage() {
                             </table>
                         </div>
                         
-                        <div className="p-6 bg-white/[0.02] border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-400">
+                        <div className="p-6 bg-white/[0.02] border-t border-[var(--border-default)] flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-[var(--text-muted)]">
                             <p className="font-medium">Showing {filteredSales.length} of {data?.totalSales || 0} sales records</p>
                             <div className="flex items-center gap-2">
                                 <Button variant="outline" size="sm" disabled className="h-9 opacity-50">Previous</Button>

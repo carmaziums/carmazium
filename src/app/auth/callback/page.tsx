@@ -256,7 +256,7 @@ function AuthCallbackContent() {
 
   if (status === "error") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-900 text-white p-6">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6">
         <p className="text-red-400 text-center">{errorMessage}</p>
         <a href="/auth/login" className="text-primary hover:underline">
           Back to login
@@ -266,9 +266,9 @@ function AuthCallbackContent() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-900 text-white">
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4">
       <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      <p className="text-slate-300">Completing sign in…</p>
+      <p className="text-[var(--text-muted)]">Completing sign in…</p>
     </div>
   )
 }
@@ -277,9 +277,9 @@ export default function AuthCallbackPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-900 text-white">
+        <div className="min-h-screen flex flex-col items-center justify-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <p className="text-slate-300">Completing sign in…</p>
+          <p className="text-[var(--text-muted)]">Completing sign in…</p>
         </div>
       }
     >

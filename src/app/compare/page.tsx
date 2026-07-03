@@ -141,7 +141,7 @@ function CompareContent() {
 
     const SectionHeader = ({ icon: Icon, label }: { icon: React.ComponentType<{ size?: number; className?: string }>; label: string }) => (
         <tr>
-            <td colSpan={3} className="pt-8 pb-4 px-6 sticky left-0 z-10 bg-slate-900/60 backdrop-blur-md border-y" style={{ borderColor: 'var(--border-default)' }}>
+            <td colSpan={3} className="pt-8 pb-4 px-6 sticky left-0 z-10 backdrop-blur-md border-y" style={{ borderColor: 'var(--border-default)', background: 'var(--bg-card)' }}>
                 <div className="flex items-center gap-3 justify-center">
                     <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20 shrink-0">
                         <Icon size={18} className="text-primary" />
@@ -212,7 +212,7 @@ function CompareContent() {
                         <h1 className="text-4xl md:text-5xl lg:text-6xl font-heading font-bold text-white mb-6 tracking-tight">
                             Compare Vehicles <span className="text-primary">Head-to-Head</span>
                         </h1>
-                        <p className="text-lg text-gray-400 max-w-2xl mx-auto leading-relaxed">
+                        <p className="text-lg text-[var(--text-muted)] max-w-2xl mx-auto leading-relaxed">
                             Make an informed decision. Select up to 3 live listings to compare features, specifications, and pricing — all in one view.
                         </p>
                     </motion.div>
@@ -266,14 +266,14 @@ function CompareContent() {
                                                                 <Image src={getListingImage(car)} alt={car.title} fill className="object-cover" />
                                                                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/20 to-transparent" />
                                                                 {/* Price tag */}
-                                                                <div className="absolute bottom-3 left-3 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/10">
+                                                                <div className="absolute bottom-3 left-3 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-[var(--border-default)]">
                                                                     <span className="text-primary font-mono text-lg font-bold">{formatPrice(car.price)}</span>
                                                                 </div>
                                                             </div>
 
                                                             {/* Info */}
                                                             <div className="p-4 text-left space-y-3">
-                                                                <h3 className="text-white font-bold text-base leading-tight line-clamp-2 min-h-[2.5rem]">{car.title}</h3>
+                                                                <h3 className="font-bold text-base leading-tight line-clamp-2 min-h-[2.5rem]" style={{ color: 'var(--text-primary)' }}>{car.title}</h3>
 
                                                                 {/* At-a-glance badges */}
                                                                 {badges.get(idx)!.length > 0 && (
@@ -294,7 +294,7 @@ function CompareContent() {
                                                                 </div>
 
                                                                 <Link href={`/vehicle/${car.slug}`}>
-                                                                    <Button variant="outline" size="sm" className="w-full mt-1 text-xs border-white/10 hover:bg-primary/10 hover:border-primary/30 hover:text-primary text-white group/btn">
+                                                                    <Button variant="outline" size="sm" className="w-full mt-1 text-xs border-[var(--border-default)] hover:bg-primary/10 hover:border-primary/30 hover:text-primary group/btn">
                                                                         View Details <ArrowRight size={12} className="ml-1 transition-transform group-hover/btn:translate-x-0.5" />
                                                                     </Button>
                                                                 </Link>
@@ -308,26 +308,26 @@ function CompareContent() {
                                                             className="h-[340px] rounded-2xl border-2 border-dashed flex flex-col items-center justify-center text-center p-6 transition-all cursor-pointer group"
                                                             style={{
                                                                 borderColor: 'var(--border-default)',
-                                                                background: 'linear-gradient(135deg, rgba(15,23,42,0.3) 0%, rgba(30,41,59,0.3) 100%)',
+                                                                background: 'var(--bg-card)',
                                                             }}
                                                             onClick={() => openSelector(idx)}
                                                             onMouseEnter={e => {
                                                                 e.currentTarget.style.borderColor = 'rgba(237,28,36,0.4)'
-                                                                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(237,28,36,0.05) 0%, rgba(30,41,59,0.4) 100%)'
+                                                                e.currentTarget.style.background = 'rgba(237,28,36,0.05)'
                                                             }}
                                                             onMouseLeave={e => {
                                                                 e.currentTarget.style.borderColor = 'var(--border-default)'
-                                                                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(15,23,42,0.3) 0%, rgba(30,41,59,0.3) 100%)'
+                                                                e.currentTarget.style.background = 'var(--bg-card)'
                                                             }}
                                                         >
                                                             {/* Pulsing ring */}
                                                             <div className="relative mb-5">
                                                                 <div className="absolute inset-0 w-16 h-16 rounded-full bg-primary/20 animate-ping opacity-20" />
-                                                                <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-slate-800 to-slate-700 flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform group-hover:border-primary/40">
+                                                                <div className="relative w-16 h-16 rounded-full flex items-center justify-center border border-[var(--border-default)] group-hover:scale-110 transition-transform group-hover:border-primary/40" style={{ background: 'var(--bg-input)' }}>
                                                                     <Plus size={24} className="transition-colors group-hover:text-primary" style={{ color: 'var(--text-muted)' }} />
                                                                 </div>
                                                             </div>
-                                                            <p className="font-bold transition-colors group-hover:text-white text-base" style={{ color: 'var(--text-muted)' }}>Add Vehicle</p>
+                                                            <p className="font-bold transition-colors group-hover:text-primary text-base" style={{ color: 'var(--text-muted)' }}>Add Vehicle</p>
                                                             <p className="text-xs mt-2" style={{ color: 'var(--text-faint)' }}>Click to select a car</p>
                                                         </motion.div>
                                                     )}
@@ -352,7 +352,7 @@ function CompareContent() {
                                             const isGood = ['EXCELLENT', 'GOOD'].includes(c.condition)
                                             const isBad = c.condition.startsWith("CAT") || c.condition === "POOR"
                                             return (
-                                                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold inline-block ${isGood ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' : isBad ? 'bg-red-500/15 text-red-400 border border-red-500/20' : 'bg-white/10 border border-white/10'}`}
+                                                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold inline-block ${isGood ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' : isBad ? 'bg-red-500/15 text-red-400 border border-red-500/20' : 'bg-white/10 border border-[var(--border-default)]'}`}
                                                     style={!isGood && !isBad ? { color: 'var(--text-primary)' } : undefined}>
                                                     {c.condition.replace('_', ' ')}
                                                 </span>
@@ -385,7 +385,7 @@ function CompareContent() {
                                         <tr>
                                             <td colSpan={3} className="py-20 text-center">
                                                 <div className="flex flex-col items-center gap-4">
-                                                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-700 flex items-center justify-center border border-white/10">
+                                                    <div className="w-20 h-20 rounded-2xl flex items-center justify-center border border-[var(--border-default)]" style={{ background: 'var(--bg-input)' }}>
                                                         <Car size={32} style={{ color: 'var(--text-faint)' }} />
                                                     </div>
                                                     <p className="text-lg font-semibold" style={{ color: 'var(--text-muted)' }}>Select vehicles above to begin comparing</p>
@@ -420,9 +420,9 @@ function CompareContent() {
                             style={{ background: 'var(--bg-dropdown)', borderColor: 'var(--border-default)' }}
                         >
                             {/* Modal header */}
-                            <div className="p-6 border-b flex justify-between items-center" style={{ borderColor: 'var(--border-default)', background: 'linear-gradient(135deg, rgba(30,41,59,0.8), rgba(15,23,42,0.8))' }}>
+                            <div className="p-6 border-b flex justify-between items-center" style={{ borderColor: 'var(--border-default)', background: 'var(--bg-card)' }}>
                                 <div>
-                                    <h2 className="text-xl font-bold text-white">Select Vehicle to Compare</h2>
+                                    <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Select Vehicle to Compare</h2>
                                     <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Search from your live listings database</p>
                                 </div>
                                 <button onClick={closeSelector}
@@ -529,7 +529,7 @@ function CompareContent() {
 
 export default function ComparePage() {
     return (
-        <Suspense fallback={<div className="min-h-screen bg-slate-900 flex items-center justify-center"><Loader2 className="animate-spin text-primary w-10 h-10" /></div>}>
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-primary w-10 h-10" /></div>}>
             <CompareContent />
         </Suspense>
     )

@@ -95,10 +95,10 @@ function AddLeadModal({
 
     return (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-            <div className="bg-slate-900 border border-white/10 rounded-2xl p-8 w-full max-w-lg shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-2xl p-8 w-full max-w-lg shadow-2xl" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-black text-white">Add Lead</h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+                    <h2 className="text-xl font-black">Add Lead</h2>
+                    <button onClick={onClose} className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors">
                         <X size={20} />
                     </button>
                 </div>
@@ -106,81 +106,81 @@ function AddLeadModal({
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {/* Buyer Name */}
                     <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Buyer Name *</label>
+                        <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Buyer Name *</label>
                         <input
                             type="text"
                             value={form.buyerName}
                             onChange={e => set('buyerName', e.target.value)}
                             placeholder="e.g. James Wilson"
-                            className="w-full bg-slate-800 border border-white/10 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary/50 transition-colors"
+                            className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary/50 transition-colors"
                         />
                     </div>
 
                     {/* Email + Phone */}
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Email</label>
+                            <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Email</label>
                             <input
                                 type="email"
                                 value={form.buyerEmail}
                                 onChange={e => set('buyerEmail', e.target.value)}
                                 placeholder="buyer@email.com"
-                                className="w-full bg-slate-800 border border-white/10 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary/50 transition-colors"
+                                className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary/50 transition-colors"
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Phone</label>
+                            <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Phone</label>
                             <input
                                 type="tel"
                                 value={form.buyerPhone}
                                 onChange={e => set('buyerPhone', e.target.value)}
                                 placeholder="+44 7700 ..."
-                                className="w-full bg-slate-800 border border-white/10 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary/50 transition-colors"
+                                className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary/50 transition-colors"
                             />
                         </div>
                     </div>
 
                     {/* Source */}
                     <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Lead Source</label>
+                        <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Lead Source</label>
                         <select
                             value={form.source}
                             onChange={e => set('source', e.target.value)}
-                            className="w-full bg-slate-800 border border-white/10 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary/50 transition-colors appearance-none cursor-pointer"
+                            className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary/50 transition-colors appearance-none cursor-pointer"
                         >
                             {SOURCES.map(s => (
-                                <option key={s} value={s} className="bg-slate-900 capitalize">{s.replace('-', ' ')}</option>
+                                <option key={s} value={s} className="bg-[var(--bg-dropdown)] capitalize">{s.replace('-', ' ')}</option>
                             ))}
                         </select>
                     </div>
 
                     {/* Linked Listing */}
                     <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Link to Listing (optional)</label>
+                        <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Link to Listing (optional)</label>
                         {selectedListing ? (
-                            <div className="flex items-center justify-between bg-slate-800 border border-primary/30 rounded-xl px-4 py-2.5">
-                                <span className="text-sm text-white font-medium truncate">{selectedListing.title}</span>
-                                <button type="button" onClick={() => setSelectedListing(null)} className="text-gray-500 hover:text-white ml-2 shrink-0">
+                            <div className="flex items-center justify-between bg-[var(--bg-input)] border border-primary/30 rounded-xl px-4 py-2.5">
+                                <span className="text-sm font-medium truncate">{selectedListing.title}</span>
+                                <button type="button" onClick={() => setSelectedListing(null)} className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white ml-2 shrink-0">
                                     <X size={14} />
                                 </button>
                             </div>
                         ) : (
                             <div className="relative">
-                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
                                 <input
                                     type="text"
                                     value={listingSearch}
                                     onChange={e => setListingSearch(e.target.value)}
                                     placeholder="Search your listings..."
-                                    className="w-full bg-slate-800 border border-white/10 text-white rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-primary/50 transition-colors"
+                                    className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-primary/50 transition-colors"
                                 />
                                 {listingSearch && filteredListings.length > 0 && (
-                                    <div className="absolute top-full mt-1 left-0 right-0 bg-slate-800 border border-white/10 rounded-xl shadow-2xl z-10 max-h-40 overflow-y-auto">
+                                    <div className="absolute top-full mt-1 left-0 right-0 bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-xl shadow-2xl z-10 max-h-40 overflow-y-auto">
                                         {filteredListings.slice(0, 5).map(l => (
                                             <button
                                                 key={l.id}
                                                 type="button"
-                                                className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2"
+                                                className="w-full text-left px-4 py-2.5 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)] hover:text-primary dark:hover:text-white transition-colors flex items-center gap-2"
                                                 onClick={() => { setSelectedListing(l); setListingSearch("") }}
                                             >
                                                 <CheckCircle size={12} className="text-primary shrink-0" />
@@ -190,7 +190,7 @@ function AddLeadModal({
                                     </div>
                                 )}
                                 {loadingListings && (
-                                    <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 animate-spin" />
+                                    <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] animate-spin" />
                                 )}
                             </div>
                         )}
@@ -198,13 +198,13 @@ function AddLeadModal({
 
                     {/* Notes */}
                     <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Notes</label>
+                        <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Notes</label>
                         <textarea
                             value={form.notes}
                             onChange={e => set('notes', e.target.value)}
                             rows={2}
                             placeholder="Any relevant notes about this lead..."
-                            className="w-full bg-slate-800 border border-white/10 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary/50 transition-colors resize-none"
+                            className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary/50 transition-colors resize-none"
                         />
                     </div>
 
@@ -213,7 +213,7 @@ function AddLeadModal({
                     )}
 
                     <div className="flex gap-3 pt-2">
-                        <Button type="button" variant="outline" className="flex-1 border-white/10" onClick={onClose} disabled={submitting}>
+                        <Button type="button" variant="outline" className="flex-1 border-[var(--border-default)]" onClick={onClose} disabled={submitting}>
                             Cancel
                         </Button>
                         <Button type="submit" className="flex-1 shadow-neon" disabled={submitting}>
@@ -312,7 +312,7 @@ export default function DealerCRMPage() {
     const leadsByStatus = (status: string) => leads.filter(l => l.status === status)
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
+        <div className="min-h-screen pt-20 pb-12">
             {showAddModal && (
                 <AddLeadModal
                     onClose={() => setShowAddModal(false)}
@@ -324,7 +324,7 @@ export default function DealerCRMPage() {
             )}
 
             {toast && (
-                <div className="fixed bottom-6 right-6 z-50 bg-slate-800 border border-white/10 text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-medium animate-in slide-in-from-bottom-4">
+                <div className="fixed bottom-6 right-6 z-50 bg-[var(--bg-dropdown)] border border-[var(--border-default)] px-5 py-3 rounded-xl shadow-2xl text-sm font-medium animate-in slide-in-from-bottom-4">
                     {toast}
                 </div>
             )}
@@ -349,13 +349,13 @@ export default function DealerCRMPage() {
                     {/* Stats bar */}
                     <div className="grid grid-cols-3 gap-4">
                         {[
-                            { label: "Total", count: leads.length, color: "text-white" },
+                            { label: "Total", count: leads.length, color: "text-[var(--text-primary)]" },
                             { label: "Active", count: leads.filter(l => !['WON','LOST'].includes(l.status)).length, color: "text-amber-400" },
                             { label: "Won", count: leads.filter(l => l.status === 'WON').length, color: "text-emerald-400" },
                         ].map(s => (
                             <div key={s.label} className="glass-card p-4 text-center">
                                 <p className={`text-2xl font-black ${s.color}`}>{s.count}</p>
-                                <p className="text-xs text-gray-500 uppercase font-bold tracking-widest">{s.label}</p>
+                                <p className="text-xs text-[var(--text-muted)] uppercase font-bold tracking-widest">{s.label}</p>
                             </div>
                         ))}
                     </div>
@@ -370,16 +370,16 @@ export default function DealerCRMPage() {
                             {COLUMNS.map(col => (
                                 <div key={col.key} className="flex-shrink-0 w-80">
                                     <div className={`border-t-4 ${col.color} rounded-t-2xl shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.5)]`}>
-                                        <div className={`flex items-center gap-2 px-5 py-4 bg-gradient-to-b ${col.bg} to-transparent rounded-t-2xl border-x border-white/5`}>
+                                        <div className={`flex items-center gap-2 px-5 py-4 bg-gradient-to-b ${col.bg} to-transparent rounded-t-2xl border-x border-[var(--border-default)]`}>
                                             <div className={`w-2.5 h-2.5 rounded-full ${col.dotColor} animate-pulse shadow-[0_0_8px_currentColor]`} />
-                                            <span className="text-xs font-black uppercase tracking-widest text-white">{col.label}</span>
-                                            <span className="ml-auto bg-white/5 px-2.5 py-1 rounded-full text-xs font-black text-gray-400 border border-white/5">
+                                            <span className="text-xs font-black uppercase tracking-widest">{col.label}</span>
+                                            <span className="ml-auto bg-[var(--bg-card)] px-2.5 py-1 rounded-full text-xs font-black text-[var(--text-muted)] border border-[var(--border-default)]">
                                                 {leadsByStatus(col.key).length}
                                             </span>
                                         </div>
                                     </div>
                                     <div 
-                                        className="bg-[#0A0A0C]/40 rounded-b-2xl min-h-[500px] p-3 space-y-3 border-x border-b border-white/5 relative transition-colors duration-200"
+                                        className="bg-[var(--bg-input)] rounded-b-2xl min-h-[500px] p-3 space-y-3 border-x border-b border-[var(--border-default)] relative transition-colors duration-200"
                                         onDragOver={(e) => {
                                             e.preventDefault()
                                             e.currentTarget.classList.add('bg-white/[0.05]')
@@ -398,8 +398,8 @@ export default function DealerCRMPage() {
 
                                         {leadsByStatus(col.key).length === 0 ? (
                                             <div className="text-center py-16 flex flex-col items-center gap-3">
-                                                <div className="w-12 h-12 rounded-full bg-white/[0.02] border border-white/5 flex items-center justify-center opacity-20">
-                                                    <ShieldCheck size={20} className="text-gray-500" />
+                                                <div className="w-12 h-12 rounded-full bg-white/[0.02] border border-[var(--border-default)] flex items-center justify-center opacity-20">
+                                                    <ShieldCheck size={20} className="text-[var(--text-muted)]" />
                                                 </div>
                                                 <p className="text-gray-600 text-xs font-black uppercase tracking-widest">Empty</p>
                                             </div>
@@ -416,16 +416,16 @@ export default function DealerCRMPage() {
                                                     onDragEnd={(e) => {
                                                         e.currentTarget.classList.remove('opacity-50')
                                                     }}
-                                                    className="dealer-glass-card p-5 group hover:ring-1 hover:ring-primary/40 transition-all border-white/5 bg-slate-900/40 cursor-grab active:cursor-grabbing"
+                                                    className="dealer-glass-card p-5 group hover:ring-1 hover:ring-primary/40 transition-all border-[var(--border-default)] bg-[var(--bg-input)] cursor-grab active:cursor-grabbing"
                                                 >
                                                     {/* Header */}
                                                     <div className="flex items-start justify-between mb-4">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="w-9 h-9 bg-black/60 rounded-xl flex items-center justify-center border border-white/10 shadow-2xl group-hover:border-primary/30 transition-colors">
-                                                                <User size={16} className="text-gray-400 group-hover:text-primary transition-colors" />
+                                                            <div className="w-9 h-9 bg-black/60 rounded-xl flex items-center justify-center border border-[var(--border-default)] shadow-2xl group-hover:border-primary/30 transition-colors">
+                                                                <User size={16} className="text-[var(--text-muted)] group-hover:text-primary transition-colors" />
                                                             </div>
                                                             <div>
-                                                                <p className="font-black text-white text-sm tracking-tight">{lead.buyerName}</p>
+                                                                <p className="font-black text-sm tracking-tight">{lead.buyerName}</p>
                                                                 <p className="text-xs font-bold text-primary uppercase tracking-widest">{lead.source || 'direct'}</p>
                                                             </div>
                                                         </div>
@@ -433,11 +433,11 @@ export default function DealerCRMPage() {
 
                                                     {/* Linked listing */}
                                                     {lead.listing && (
-                                                        <div className="mb-4 p-2.5 bg-black/40 rounded-xl border border-white/5 group-hover:bg-black/60 transition-colors">
-                                                            <p className="text-xs text-gray-500 font-black uppercase tracking-widest mb-1 flex items-center gap-1">
+                                                        <div className="mb-4 p-2.5 bg-black/40 rounded-xl border border-[var(--border-default)] group-hover:bg-black/60 transition-colors">
+                                                            <p className="text-xs text-[var(--text-muted)] font-black uppercase tracking-widest mb-1 flex items-center gap-1">
                                                                 <TrendingUp size={10} /> Interested In
                                                             </p>
-                                                            <p className="text-xs text-white font-bold truncate tracking-tight">{lead.listing.title}</p>
+                                                            <p className="text-xs font-bold truncate tracking-tight">{lead.listing.title}</p>
                                                         </div>
                                                     )}
 
@@ -447,7 +447,7 @@ export default function DealerCRMPage() {
                                                             <a
                                                                 href={`mailto:${lead.buyerEmail}`}
                                                                 title={lead.buyerEmail}
-                                                                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/5 rounded-lg border border-white/5 hover:bg-blue-500/10 hover:border-blue-500/20 hover:text-blue-400 transition-all text-gray-400 text-xs"
+                                                                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[var(--bg-card)] rounded-lg border border-[var(--border-default)] hover:bg-blue-500/10 hover:border-blue-500/20 hover:text-blue-400 transition-all text-[var(--text-muted)] text-xs"
                                                             >
                                                                 <Mail size={12} />
                                                                 <span className="hidden group-hover:inline text-xs max-w-[80px] truncate">{lead.buyerEmail}</span>
@@ -457,7 +457,7 @@ export default function DealerCRMPage() {
                                                             <a
                                                                 href={`tel:${lead.buyerPhone}`}
                                                                 title={lead.buyerPhone}
-                                                                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/5 rounded-lg border border-white/5 hover:bg-emerald-500/10 hover:border-emerald-500/20 hover:text-emerald-400 transition-all text-gray-400 text-xs"
+                                                                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[var(--bg-card)] rounded-lg border border-[var(--border-default)] hover:bg-emerald-500/10 hover:border-emerald-500/20 hover:text-emerald-400 transition-all text-[var(--text-muted)] text-xs"
                                                             >
                                                                 <Phone size={12} />
                                                                 <span className="text-xs">{lead.buyerPhone}</span>
@@ -468,7 +468,7 @@ export default function DealerCRMPage() {
                                                                 onClick={() => handleMessageBuyer(lead)}
                                                                 disabled={startingChat === lead.id}
                                                                 title="Message buyer"
-                                                                className="ml-auto flex items-center gap-1.5 px-2.5 py-1.5 bg-white/5 rounded-lg border border-white/5 hover:bg-primary/10 hover:border-primary/20 hover:text-primary transition-all text-gray-400 text-xs disabled:opacity-50"
+                                                                className="ml-auto flex items-center gap-1.5 px-2.5 py-1.5 bg-[var(--bg-card)] rounded-lg border border-[var(--border-default)] hover:bg-primary/10 hover:border-primary/20 hover:text-primary transition-all text-[var(--text-muted)] text-xs disabled:opacity-50"
                                                             >
                                                                 {startingChat === lead.id
                                                                     ? <Loader2 size={12} className="animate-spin" />
@@ -479,19 +479,19 @@ export default function DealerCRMPage() {
                                                     </div>
 
                                                     {/* Status selector */}
-                                                    <div className="pt-4 border-t border-white/5">
+                                                    <div className="pt-4 border-t border-[var(--border-default)]">
                                                         <div className="flex items-center justify-between mb-2">
-                                                            <label className="text-[8px] text-gray-500 uppercase font-black tracking-widest">Phase Status</label>
+                                                            <label className="text-[8px] text-[var(--text-muted)] uppercase font-black tracking-widest">Phase Status</label>
                                                             {updatingLeadId === lead.id && <Loader2 size={10} className="animate-spin text-primary" />}
                                                         </div>
                                                         <select
                                                             value={lead.status}
                                                             disabled={updatingLeadId === lead.id}
                                                             onChange={e => updateLeadStatus(lead.id, e.target.value)}
-                                                            className="w-full bg-black/40 border border-white/10 text-white rounded-xl px-3 py-2 text-xs font-bold tracking-widest uppercase focus:outline-none focus:ring-1 focus:ring-primary/40 appearance-none cursor-pointer hover:bg-black/60 transition-colors"
+                                                            className="w-full bg-black/40 border border-[var(--border-default)] text-white rounded-xl px-3 py-2 text-xs font-bold tracking-widest uppercase focus:outline-none focus:ring-1 focus:ring-primary/40 appearance-none cursor-pointer hover:bg-black/60 transition-colors"
                                                         >
                                                             {COLUMNS.map(status => (
-                                                                <option key={status.key} value={status.key} className="bg-slate-900">
+                                                                <option key={status.key} value={status.key} className="bg-[var(--bg-dropdown)]">
                                                                     {status.label}
                                                                 </option>
                                                             ))}

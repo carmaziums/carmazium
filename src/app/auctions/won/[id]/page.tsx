@@ -20,12 +20,12 @@ import { ChatWindow } from "@/components/chat/ChatWindow"
 function SpecRow({ icon, label, value }: { icon: React.ReactNode; label: string; value?: string | number | null }) {
     if (!value && value !== 0) return null
     return (
-        <div className="flex items-start gap-3 py-3 border-b border-white/5 last:border-0">
-            <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center shrink-0 mt-0.5 text-gray-500">
+        <div className="flex items-start gap-3 py-3 border-b border-[var(--border-default)] last:border-0">
+            <div className="w-7 h-7 rounded-lg bg-[var(--bg-card)] flex items-center justify-center shrink-0 mt-0.5 text-[var(--text-muted)]">
                 {icon}
             </div>
             <div className="flex-1 min-w-0">
-                <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">{label}</p>
+                <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold">{label}</p>
                 <p className="text-sm font-bold text-white mt-0.5">{value}</p>
             </div>
         </div>
@@ -94,7 +94,7 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
 
     if (authLoading || loading) {
         return (
-            <div className="min-h-screen pt-20 bg-slate-900 flex items-center justify-center">
+            <div className="min-h-screen pt-20 flex items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
         )
@@ -102,7 +102,7 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
 
     if (loadError || !auction) {
         return (
-            <div className="min-h-screen pt-20 bg-slate-900 flex flex-col items-center justify-center gap-4 text-center px-6">
+            <div className="min-h-screen pt-20 flex flex-col items-center justify-center gap-4 text-center px-6">
                 <AlertTriangle size={36} className="text-red-400" />
                 <p className="text-white font-bold">{loadError ?? "Auction not found."}</p>
                 <Link href="/auctions" className="text-sm text-primary hover:underline">Browse auctions</Link>
@@ -127,14 +127,14 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
     const taxOk = listing.taxStatus ? listing.taxStatus.toLowerCase() === "taxed" : null
 
     return (
-        <div className="min-h-screen pt-20 pb-16 bg-slate-900 text-white">
+        <div className="min-h-screen pt-20 pb-16">
             <div className="container mx-auto px-5 max-w-7xl">
 
                 {/* Back + win banner */}
                 <div className="mb-6 space-y-4">
                     <Link
                         href="/dashboard/user?tab=overview"
-                        className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-white transition-colors"
+                        className="inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-white transition-colors"
                     >
                         <ArrowLeft size={15} /> Back to Dashboard
                     </Link>
@@ -145,8 +145,8 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                         </div>
                         <div>
                             <p className="text-amber-300 font-black text-lg tracking-tight">You Won This Auction!</p>
-                            <p className="text-gray-400 text-sm mt-0.5">
-                                Winning bid: <strong className="text-white">£{winAmount.toLocaleString()}</strong>
+                            <p className="text-[var(--text-muted)] text-sm mt-0.5">
+                                Winning bid: <strong className="text-[var(--text-primary)]">£{winAmount.toLocaleString()}</strong>
                                 <span className="mx-2 text-gray-600">·</span>
                                 Contact the seller below to arrange collection or delivery.
                             </p>
@@ -204,21 +204,21 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                                     <h1 className="text-2xl font-black text-white tracking-tight">{listing.title}</h1>
                                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                                         {listing.vrm && (
-                                            <span className="text-sm font-bold text-gray-400 uppercase tracking-widest px-2.5 py-1 bg-white/5 rounded-lg border border-white/10">
+                                            <span className="text-sm font-bold text-[var(--text-muted)] uppercase tracking-widest px-2.5 py-1 bg-[var(--bg-card)] rounded-lg border border-[var(--border-default)]">
                                                 {listing.vrm}
                                             </span>
                                         )}
                                         {listing.make && <span className="text-sm font-bold text-primary italic uppercase tracking-widest">{listing.make}</span>}
-                                        {listing.year && <span className="text-sm text-gray-500 font-bold">• {listing.year}</span>}
+                                        {listing.year && <span className="text-sm text-[var(--text-muted)] font-bold">• {listing.year}</span>}
                                         {listing.location && (
-                                            <span className="flex items-center gap-1 text-xs text-gray-500">
+                                            <span className="flex items-center gap-1 text-xs text-[var(--text-muted)]">
                                                 <MapPin size={10} /> {listing.location}
                                             </span>
                                         )}
                                     </div>
                                 </div>
                                 <div className="text-right shrink-0">
-                                    <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">Winning Bid</p>
+                                    <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold">Winning Bid</p>
                                     <p className="text-2xl font-black text-amber-400">£{winAmount.toLocaleString()}</p>
                                 </div>
                             </div>
@@ -244,7 +244,7 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
 
                         {/* Specs grid */}
                         <div className="dealer-glass-card p-5">
-                            <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 border-b border-white/5 pb-3">
+                            <p className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest mb-4 border-b border-[var(--border-default)] pb-3">
                                 Vehicle Specifications
                             </p>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
@@ -264,7 +264,7 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                                 </div>
                             </div>
                             {listing.vin && (
-                                <div className="mt-2 pt-3 border-t border-white/5">
+                                <div className="mt-2 pt-3 border-t border-[var(--border-default)]">
                                     <SpecRow icon={<Hash size={13} />} label="VIN" value={listing.vin} />
                                 </div>
                             )}
@@ -276,22 +276,22 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                         {/* Description */}
                         {listing.description && (
                             <div className="dealer-glass-card p-5">
-                                <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 border-b border-white/5 pb-3">
+                                <p className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest mb-3 border-b border-[var(--border-default)] pb-3">
                                     Description
                                 </p>
-                                <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">{listing.description}</p>
+                                <p className="text-sm text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap">{listing.description}</p>
                             </div>
                         )}
 
                         {/* Features */}
                         {listing.features && listing.features.length > 0 && (
                             <div className="dealer-glass-card p-5">
-                                <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 border-b border-white/5 pb-3">
+                                <p className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest mb-3 border-b border-[var(--border-default)] pb-3">
                                     Features & Equipment
                                 </p>
                                 <div className="flex flex-wrap gap-2">
                                     {listing.features.map((f: string) => (
-                                        <span key={f} className="text-xs font-bold text-gray-300 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
+                                        <span key={f} className="text-xs font-bold text-[var(--text-secondary)] px-3 py-1.5 rounded-lg bg-[var(--bg-card)] border border-[var(--border-default)]">
                                             {f}
                                         </span>
                                     ))}
@@ -306,19 +306,19 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                         {/* Seller card */}
                         <div className="dealer-glass-card p-5">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                                <div className="w-10 h-10 rounded-xl bg-[var(--bg-card)] border border-[var(--border-default)] flex items-center justify-center shrink-0">
                                     {seller?.dealerProfile?.logo ? (
                                         <img src={seller.dealerProfile.logo} alt="" className="w-full h-full object-cover rounded-xl" />
                                     ) : (
-                                        <User size={18} className="text-gray-500" />
+                                        <User size={18} className="text-[var(--text-muted)]" />
                                     )}
                                 </div>
                                 <div>
-                                    <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">Selling from</p>
+                                    <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold">Selling from</p>
                                     <p className="text-white font-black text-sm">{sellerName}</p>
                                 </div>
                             </div>
-                            <div className="mt-3 pt-3 border-t border-white/5 flex items-center gap-2 text-xs text-gray-500">
+                            <div className="mt-3 pt-3 border-t border-[var(--border-default)] flex items-center gap-2 text-xs text-[var(--text-muted)]">
                                 <Clock size={11} />
                                 <span>Auction ended {new Date(auction.endTime).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
                             </div>
@@ -326,9 +326,9 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
 
                         {/* Chat window */}
                         <div className="dealer-glass-card overflow-hidden flex flex-col" style={{ height: 520 }}>
-                            <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10 shrink-0">
+                            <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--border-default)] shrink-0">
                                 <MessageSquare size={14} className="text-primary" />
-                                <span className="text-sm font-bold text-white">Chat with {sellerName}</span>
+                                <span className="text-sm font-bold">Chat with {sellerName}</span>
                             </div>
 
                             <div className="flex-1 min-h-0">
@@ -354,18 +354,18 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
 
                         {/* Auction summary */}
                         <div className="dealer-glass-card p-4 space-y-2">
-                            <p className="text-xs font-black text-gray-400 uppercase tracking-widest border-b border-white/5 pb-2">Auction Summary</p>
+                            <p className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest border-b border-[var(--border-default)] pb-2">Auction Summary</p>
                             <div className="flex justify-between text-sm">
-                                <span className="text-gray-500">Winning bid</span>
+                                <span className="text-[var(--text-muted)]">Winning bid</span>
                                 <span className="font-black text-amber-400">£{winAmount.toLocaleString()}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span className="text-gray-500">Buyer fee paid</span>
+                                <span className="text-[var(--text-muted)]">Buyer fee paid</span>
                                 <span className="font-bold text-emerald-400 flex items-center gap-1"><CheckCircle2 size={12} /> £125</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span className="text-gray-500">Auction ended</span>
-                                <span className="font-bold text-white">{formatDate(auction.endTime)}</span>
+                                <span className="text-[var(--text-muted)]">Auction ended</span>
+                                <span className="font-bold">{formatDate(auction.endTime)}</span>
                             </div>
                         </div>
                     </div>

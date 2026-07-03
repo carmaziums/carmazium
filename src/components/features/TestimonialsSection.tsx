@@ -65,7 +65,7 @@ export function TestimonialsSection() {
                         >
                             Trusted by <span className="text-primary">Thousands</span>
                         </motion.h2>
-                        <p className="text-gray-400 max-w-xl text-lg">
+                        <p className="text-[var(--text-muted)] max-w-xl text-lg">
                             Don't just take our word for it. Join the community of enthusiasts who are changing the way cars are bought and sold.
                         </p>
                     </div>
@@ -73,7 +73,7 @@ export function TestimonialsSection() {
                     {/* Navigation Buttons (Visual only, drag is primary) */}
                     <div className="hidden md:flex gap-4">
                         <div className="flex gap-2">
-                            <span className="text-xs text-gray-500 uppercase tracking-widest self-center mr-4">Drag to explore</span>
+                            <span className="text-xs text-[var(--text-muted)] uppercase tracking-widest self-center mr-4">Drag to explore</span>
                         </div>
                     </div>
                 </div>

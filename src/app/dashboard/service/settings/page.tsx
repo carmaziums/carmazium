@@ -50,7 +50,7 @@ export default function ServiceProviderSettingsPage() {
 
     if (authLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+            <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
             </div>
         )
@@ -59,53 +59,53 @@ export default function ServiceProviderSettingsPage() {
     const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "User")
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900">
+        <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="provider" userName={userName} userType={profile?.role ? `${profile.role} Account` : "Service Provider"} />
                 <main className="flex-1 space-y-6">
-                    <h1 className="text-3xl font-bold font-heading text-white mb-6">Service Provider Settings</h1>
+                    <h1 className="text-3xl font-bold font-heading mb-6">Service Provider Settings</h1>
 
                     <div className="glass-card p-8">
                         <div className="flex flex-col md:flex-row gap-8">
                             <div className="md:w-1/3">
-                                <div className="w-24 h-24 rounded-full bg-slate-800 mx-auto md:mx-0 flex items-center justify-center text-3xl font-bold text-primary mb-4 border-2 border-dashed border-primary/50 relative overflow-hidden group cursor-pointer hover:border-primary transition-colors shadow-neon">
+                                <div className="w-24 h-24 rounded-full bg-[var(--bg-input)] mx-auto md:mx-0 flex items-center justify-center text-3xl font-bold text-primary mb-4 border-2 border-dashed border-primary/50 relative overflow-hidden group cursor-pointer hover:border-primary transition-colors shadow-neon">
                                     {initials}
                                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs text-white">Logo</div>
                                 </div>
                             </div>
                             <div className="md:w-2/3 space-y-6">
                                 <section>
-                                    <h3 className="text-xl font-bold text-white mb-4 border-b border-white/10 pb-2">Business Information</h3>
+                                    <h3 className="text-xl font-bold mb-4 border-b border-[var(--border-default)] pb-2">Business Information</h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-1">
-                                            <label className="text-sm text-gray-400">First Name</label>
-                                            <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} className="w-full bg-slate-800 border border-white/10 rounded px-4 py-2 text-white focus:border-primary outline-none transition-colors" />
+                                            <label className="text-sm text-[var(--text-muted)]">First Name</label>
+                                            <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded px-4 py-2 focus:border-primary outline-none transition-colors" />
                                         </div>
                                         <div className="space-y-1">
-                                            <label className="text-sm text-gray-400">Last Name</label>
-                                            <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} className="w-full bg-slate-800 border border-white/10 rounded px-4 py-2 text-white focus:border-primary outline-none transition-colors" />
+                                            <label className="text-sm text-[var(--text-muted)]">Last Name</label>
+                                            <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded px-4 py-2 focus:border-primary outline-none transition-colors" />
                                         </div>
                                         <div className="space-y-1">
-                                            <label className="text-sm text-gray-400">Contact Email</label>
-                                            <input type="email" value={email} readOnly className="w-full bg-slate-800/50 border border-white/10 rounded px-4 py-2 text-gray-400 cursor-not-allowed outline-none" />
+                                            <label className="text-sm text-[var(--text-muted)]">Contact Email</label>
+                                            <input type="email" value={email} readOnly className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded px-4 py-2 text-[var(--text-muted)] cursor-not-allowed outline-none" />
                                         </div>
                                         <div className="space-y-1">
-                                            <label className="text-sm text-gray-400">Phone</label>
-                                            <input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-slate-800 border border-white/10 rounded px-4 py-2 text-white focus:border-primary outline-none transition-colors" />
+                                            <label className="text-sm text-[var(--text-muted)]">Phone</label>
+                                            <input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded px-4 py-2 focus:border-primary outline-none transition-colors" />
                                         </div>
                                     </div>
                                 </section>
 
                                 <section>
-                                    <h3 className="text-xl font-bold text-white mb-4 border-b border-white/10 pb-2">Service Preferences</h3>
+                                    <h3 className="text-xl font-bold mb-4 border-b border-[var(--border-default)] pb-2">Service Preferences</h3>
                                     <div className="space-y-3">
                                         <label className="flex items-center gap-3 cursor-pointer group">
-                                            <input type="checkbox" defaultChecked className="w-5 h-5 rounded border-gray-600 text-primary focus:ring-primary bg-slate-800" />
-                                            <span className="text-gray-300 group-hover:text-white transition-colors">Accept new job requests</span>
+                                            <input type="checkbox" defaultChecked className="w-5 h-5 rounded border-[var(--border-default)] text-primary focus:ring-primary bg-[var(--bg-input)]" />
+                                            <span className="text-[var(--text-secondary)] group-hover:text-primary dark:group-hover:text-white transition-colors">Accept new job requests</span>
                                         </label>
                                         <label className="flex items-center gap-3 cursor-pointer group">
-                                            <input type="checkbox" defaultChecked className="w-5 h-5 rounded border-gray-600 text-primary focus:ring-primary bg-slate-800" />
-                                            <span className="text-gray-300 group-hover:text-white transition-colors">Display business in public directory</span>
+                                            <input type="checkbox" defaultChecked className="w-5 h-5 rounded border-[var(--border-default)] text-primary focus:ring-primary bg-[var(--bg-input)]" />
+                                            <span className="text-[var(--text-secondary)] group-hover:text-primary dark:group-hover:text-white transition-colors">Display business in public directory</span>
                                         </label>
                                     </div>
                                 </section>

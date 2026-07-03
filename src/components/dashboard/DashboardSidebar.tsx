@@ -171,7 +171,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
     return (
         <>
             {/* Mobile Bottom Tab Navigation */}
-            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-lg border-t border-white/10 pb-[env(safe-area-inset-bottom)]">
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 backdrop-blur-lg border-t pb-[env(safe-area-inset-bottom)]" style={{ background: 'var(--bg-dropdown)', borderColor: 'var(--border-default)' }}>
                 <div className="flex justify-around items-center py-2 px-1">
                     {mobileLinks.map((link) => {
                         const linkPath = link.href.split('?')[0]
@@ -185,8 +185,9 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                                 href={link.href}
                                 className={`flex flex-col items-center justify-center py-2 px-3 rounded-lg min-w-[60px] relative transition-all ${isActive
                                     ? "text-primary"
-                                    : "text-gray-400 hover:text-white"
+                                    : ""
                                     }`}
+                                style={!isActive ? { color: 'var(--text-muted)' } : undefined}
                             >
                                 <div className="relative">
                                     <Icon size={20} />
@@ -218,8 +219,9 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                     {/* More menu trigger for additional items */}
                     <button
                         onClick={toggleMobileMenu}
-                        className={`flex flex-col items-center justify-center py-2 px-3 rounded-lg min-w-[60px] transition-all ${isMobileMenuOpen ? "text-primary" : "text-gray-400 hover:text-white"
+                        className={`flex flex-col items-center justify-center py-2 px-3 rounded-lg min-w-[60px] transition-all ${isMobileMenuOpen ? "text-primary" : ""
                             }`}
+                        style={!isMobileMenuOpen ? { color: 'var(--text-muted)' } : undefined}
                     >
                         {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
                         <span className="text-xs mt-1 font-medium">More</span>
@@ -238,19 +240,19 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             {/* Mobile Full Menu Panel */}
             <div className={`
                 lg:hidden fixed bottom-[72px] left-0 right-0 z-40
-                bg-slate-900 border-t border-white/10 rounded-t-2xl
+                border-t rounded-t-2xl
                 transition-transform duration-300 ease-out shadow-[0_-10px_40px_rgba(0,0,0,0.5)]
                 ${isMobileMenuOpen ? "translate-y-0" : "translate-y-[120%]"}
-            `}>
+            `} style={{ background: 'var(--bg-dropdown)', borderColor: 'var(--border-default)' }}>
                 <div className="p-4 pb-12 space-y-2 max-h-[60vh] overflow-y-auto">
                     {/* User Profile */}
-                    <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-xl mb-4">
+                    <div className="flex items-center gap-3 p-3 rounded-xl mb-4" style={{ background: 'var(--bg-card)' }}>
                         <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-sm border border-primary/30">
                             {(userName || "U").split(" ").filter(Boolean).map(n => n[0]).join("").toUpperCase().slice(0, 2)}
                         </div>
                         <div>
-                            <h3 className="font-bold text-white text-sm">{userName}</h3>
-                            <p className="text-xs text-gray-400 uppercase tracking-wider">{displayType}</p>
+                            <h3 className="font-bold text-sm">{userName}</h3>
+                            <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{displayType}</p>
                         </div>
                     </div>
 
@@ -265,8 +267,9 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                                 onClick={() => setIsMobileMenuOpen(false)}
                                 className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all ${isActive
                                     ? "bg-primary text-white"
-                                    : "text-gray-300 hover:bg-white/5"
+                                    : "hover:bg-primary/5 dark:hover:bg-[var(--bg-card)]"
                                     }`}
+                                style={!isActive ? { color: 'var(--text-secondary)' } : undefined}
                             >
                                 <div className="flex items-center gap-3">
                                     <Icon size={18} />
@@ -298,15 +301,15 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
 
             {/* Desktop Sidebar */}
             <aside className="hidden lg:block w-72 shrink-0">
-                <div className="bg-slate-800/50 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sticky top-24">
+                <div className="glass-card p-5 sticky top-24">
                     {/* User Profile */}
-                    <div className="flex items-center gap-3 mb-6 p-3 bg-slate-700/30 rounded-xl">
+                    <div className="flex items-center gap-3 mb-6 p-3 rounded-xl" style={{ background: 'var(--bg-input)' }}>
                         <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-lg border border-primary/30">
                             {(userName || "U").split(" ").filter(Boolean).map(n => n[0]).join("").toUpperCase().slice(0, 2)}
                         </div>
                         <div className="overflow-hidden">
-                            <h3 className="font-bold text-white truncate text-sm">{userName}</h3>
-                            <p className="text-xs text-gray-400 uppercase tracking-wider">{displayType}</p>
+                            <h3 className="font-bold truncate text-sm">{userName}</h3>
+                            <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{displayType}</p>
                         </div>
                     </div>
 
@@ -324,8 +327,9 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                                     href={link.href}
                                     className={`flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg text-sm transition-all ${isActive
                                         ? "bg-primary text-white font-semibold"
-                                        : "text-gray-400 hover:bg-white/5 hover:text-white"
+                                        : "hover:bg-primary/5 dark:hover:bg-[var(--bg-card)] hover:text-primary dark:hover:text-white"
                                         }`}
+                                    style={!isActive ? { color: 'var(--text-muted)' } : undefined}
                                 >
                                  <div className="flex items-center gap-3 relative">
                                         <Icon size={18} />
@@ -354,10 +358,10 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
 
                     {/* Admin Switcher */}
                     {isAdmin && role !== 'admin' && (
-                        <div className="mt-4 pt-4 border-t border-white/10">
+                        <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--border-default)' }}>
                             <Link
                                 href="/dashboard/admin"
-                                className="flex items-center gap-3 px-4 py-2.5 text-blue-400 hover:text-white hover:bg-blue-500/10 rounded-lg transition-all text-sm font-semibold"
+                                className="flex items-center gap-3 px-4 py-2.5 text-blue-500 dark:text-blue-400 hover:text-white hover:bg-blue-500/10 rounded-lg transition-all text-sm font-semibold"
                             >
                                 <Shield size={18} /> Admin Panel
                             </Link>
@@ -366,16 +370,17 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
 
                     {/* Children (e.g., Create Listing button) */}
                     {children && (
-                        <div className="mt-4 pt-4 border-t border-white/10">
+                        <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--border-default)' }}>
                             {children}
                         </div>
                     )}
 
                     {/* Sign Out */}
-                    <div className="mt-4 pt-4 border-t border-white/10">
+                    <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--border-default)' }}>
                         <button
                             onClick={handleSignOut}
-                            className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all text-sm"
+                            className="w-full flex items-center gap-3 px-4 py-2.5 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all text-sm"
+                            style={{ color: 'var(--text-muted)' }}
                         >
                             <LogOut size={18} /> Sign Out
                         </button>

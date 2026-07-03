@@ -74,7 +74,7 @@ export function CarDamageMap({ points, activePointId, onPointClick, view = 'FRON
   };
 
   return (
-    <div className="relative w-full aspect-video bg-slate-900/50 rounded-xl border border-white/5 p-4 overflow-hidden group">
+    <div className="relative w-full aspect-video bg-[var(--bg-input)] rounded-xl border border-[var(--border-default)] p-4 overflow-hidden group">
       {renderView()}
       
       {/* Damage Hotspots */}
@@ -96,7 +96,7 @@ export function CarDamageMap({ points, activePointId, onPointClick, view = 'FRON
       ))}
 
       {/* View Label */}
-      <div className="absolute top-2 left-2 px-2 py-1 bg-black/40 rounded text-[10px] font-bold text-gray-400 uppercase tracking-widest border border-white/5">
+      <div className="absolute top-2 left-2 px-2 py-1 bg-black/40 rounded text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest border border-[var(--border-default)]">
         {view} View
       </div>
     </div>

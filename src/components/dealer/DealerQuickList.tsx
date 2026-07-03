@@ -349,10 +349,10 @@ export function DealerQuickList() {
                         <Zap size={22} className="text-primary" />
                     </div>
                     <div>
-                        <h1 className="text-2xl md:text-3xl font-black font-heading text-white tracking-tight">
+                        <h1 className="text-2xl md:text-3xl font-black font-heading  tracking-tight">
                             {editId ? 'Complete Listing' : 'Quick List'}
                         </h1>
-                        <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">
+                        <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold">
                             {editId ? 'Fill in the remaining details to publish your vehicle' : 'VRM → Auto-fill → Photos → Publish'}
                         </p>
                     </div>
@@ -384,12 +384,12 @@ export function DealerQuickList() {
             {/* ── Listing Type Selector ─────────────────────────────────────── */}
             {!editId && (
                 <section className="space-y-3">
-                    <h2 className="text-sm font-black uppercase tracking-widest text-gray-400">Listing Type</h2>
+                    <h2 className="text-sm font-black uppercase tracking-widest text-[var(--text-muted)]">Listing Type</h2>
                     <div className="grid grid-cols-2 gap-3">
                         <button
                             type="button"
                             onClick={() => setListingType("CLASSIFIED")}
-                            className={`flex items-center gap-3 p-4 rounded-xl border transition-all text-left ${listingType === "CLASSIFIED" ? "border-primary/60 bg-primary/10 text-white" : "border-white/10 bg-slate-900/40 text-gray-400 hover:border-white/20"}`}
+                            className={`flex items-center gap-3 p-4 rounded-xl border transition-all text-left ${listingType === "CLASSIFIED" ? "border-primary/60 bg-primary/10 text-primary" : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"}`}
                         >
                             <List size={18} className={listingType === "CLASSIFIED" ? "text-primary" : ""} />
                             <div>
@@ -400,7 +400,7 @@ export function DealerQuickList() {
                         <button
                             type="button"
                             onClick={() => setListingType("AUCTION")}
-                            className={`flex items-center gap-3 p-4 rounded-xl border transition-all text-left ${listingType === "AUCTION" ? "border-orange-500/60 bg-orange-500/10 text-white" : "border-white/10 bg-slate-900/40 text-gray-400 hover:border-white/20"}`}
+                            className={`flex items-center gap-3 p-4 rounded-xl border transition-all text-left ${listingType === "AUCTION" ? "border-orange-500/60 bg-orange-500/10 text-orange-600 dark:text-orange-400" : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"}`}
                         >
                             <Gavel size={18} className={listingType === "AUCTION" ? "text-orange-400" : ""} />
                             <div>
@@ -414,7 +414,7 @@ export function DealerQuickList() {
 
             {/* ── SECTION 1: VRM Lookup ────────────────────────────────────── */}
             <section className="space-y-4">
-                <h2 className="text-sm font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
+                <h2 className="text-sm font-black uppercase tracking-widest text-[var(--text-muted)] flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary text-xs font-black">1</span>
                     Vehicle Identification
                 </h2>
@@ -423,7 +423,7 @@ export function DealerQuickList() {
                         placeholder="e.g. AB12 CDE"
                         value={vrm}
                         onChange={(e) => { setVrm(e.target.value.toUpperCase()); setDvlaData(null); setDvlaError(null) }}
-                        className="bg-black border-primary/20 text-white uppercase font-mono tracking-widest text-lg h-14 focus:border-primary flex-1 max-w-xs placeholder:text-gray-600"
+                        className="bg-[var(--bg-input)] border-primary/20 uppercase font-mono tracking-widest text-lg h-14 focus:border-primary flex-1 max-w-xs placeholder:text-[var(--text-secondary)]"
                     />
                     <Button
                         type="button"
@@ -456,13 +456,13 @@ export function DealerQuickList() {
                                 { label: "Tax",    value: dvlaData.taxStatus },
                             ].filter(f => f.value).map(f => (
                                 <div key={f.label}>
-                                    <span className="text-xs font-bold uppercase tracking-widest text-gray-500 block">{f.label}</span>
-                                    <span className="text-white font-semibold">{f.value}</span>
+                                    <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block">{f.label}</span>
+                                    <span className="font-semibold">{f.value}</span>
                                 </div>
                             ))}
                         </div>
                         {!dvlaData.model && (
-                            <div className="mt-4 pt-4 border-t border-white/5">
+                            <div className="mt-4 pt-4 border-t border-[var(--border-default)]">
                                 <label className="text-xs font-bold uppercase tracking-widest text-amber-400 block mb-1.5 flex items-center gap-1">
                                     <AlertTriangle size={12} /> Model not returned by DVLA — enter manually
                                 </label>
@@ -470,17 +470,17 @@ export function DealerQuickList() {
                                     placeholder="e.g. Octavia, Golf, 3 Series"
                                     value={model}
                                     onChange={e => setModel(e.target.value)}
-                                    className="bg-black border-amber-500/30 text-white h-10 focus:border-amber-400 max-w-xs placeholder:text-gray-600"
+                                    className="bg-[var(--bg-input)] border-amber-500/30 h-10 focus:border-amber-400 max-w-xs placeholder:text-[var(--text-secondary)]"
                                 />
                             </div>
                         )}
                         {dvlaData.model && (
-                            <div className="mt-4 pt-4 border-t border-white/5">
-                                <label className="text-xs font-bold uppercase tracking-widest text-gray-500 block mb-1.5">Model (editable)</label>
+                            <div className="mt-4 pt-4 border-t border-[var(--border-default)]">
+                                <label className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block mb-1.5">Model (editable)</label>
                                 <Input
                                     value={model}
                                     onChange={e => setModel(e.target.value)}
-                                    className="bg-black border-white/10 text-white h-10 focus:border-primary max-w-xs placeholder:text-gray-600"
+                                    className="bg-[var(--bg-input)] border-[var(--border-default)] h-10 focus:border-primary max-w-xs placeholder:text-[var(--text-secondary)]"
                                 />
                             </div>
                         )}
@@ -491,7 +491,7 @@ export function DealerQuickList() {
             {/* ── SECTION 2: Essentials ────────────────────────────────────── */}
             {dvlaData && (
                 <section className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <h2 className="text-sm font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
+                    <h2 className="text-sm font-black uppercase tracking-widest text-[var(--text-muted)] flex items-center gap-2">
                         <span className="w-6 h-6 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary text-xs font-black">2</span>
                         Essentials
                     </h2>
@@ -499,21 +499,21 @@ export function DealerQuickList() {
                     {/* Price / Mileage / Location */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div className="space-y-2">
-                            <label className="text-xs font-bold uppercase text-gray-400">Asking Price *</label>
+                            <label className="text-xs font-bold uppercase text-[var(--text-muted)]">Asking Price *</label>
                             <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-lg">£</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] font-bold text-lg">£</span>
                                 <Input
                                     type="number"
                                     placeholder="15,000"
                                     value={price}
                                     onChange={(e) => setPrice(e.target.value)}
-                                    className="bg-slate-900/50 border-white/10 text-white pl-8 h-12 focus:border-primary text-lg font-bold placeholder:text-gray-600"
+                                    className="bg-[var(--bg-input)] border-[var(--border-default)] pl-8 h-12 focus:border-primary text-lg font-bold placeholder:text-[var(--text-secondary)]"
                                 />
                             </div>
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-xs font-bold uppercase text-gray-400">
+                            <label className="text-xs font-bold uppercase text-[var(--text-muted)]">
                                 Mileage
                                 {mileage && <span className="text-emerald-400 ml-2 normal-case text-xs">● Auto-filled from MOT</span>}
                             </label>
@@ -522,25 +522,25 @@ export function DealerQuickList() {
                                 placeholder="45,000"
                                 value={mileage}
                                 onChange={(e) => setMileage(e.target.value)}
-                                className="bg-slate-900/50 border-white/10 text-white h-12 focus:border-primary placeholder:text-gray-600"
+                                className="bg-[var(--bg-input)] border-[var(--border-default)] h-12 focus:border-primary placeholder:text-[var(--text-secondary)]"
                             />
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-xs font-bold uppercase text-gray-400">Dealership Location</label>
+                            <label className="text-xs font-bold uppercase text-[var(--text-muted)]">Dealership Location</label>
                             <div className="flex gap-2">
                                 <Input
                                     placeholder="London, SW1A 1AA"
                                     value={location}
                                     onChange={(e) => setLocation(e.target.value)}
-                                    className="bg-slate-900/50 border-white/10 text-white h-12 focus:border-primary flex-1 placeholder:text-gray-600"
+                                    className="bg-[var(--bg-input)] border-[var(--border-default)] h-12 focus:border-primary flex-1 placeholder:text-[var(--text-secondary)]"
                                 />
                                 <Button
                                     type="button"
                                     variant="outline"
                                     onClick={handleGeolocate}
                                     disabled={geoLoading}
-                                    className="border-white/10 h-12 px-3 text-gray-400 hover:text-white shrink-0"
+                                    className="border-[var(--border-default)] h-12 px-3 text-[var(--text-muted)] hover:text-primary dark:hover:text-white shrink-0"
                                 >
                                     {geoLoading ? <Loader2 size={16} className="animate-spin" /> : <LocateFixed size={16} />}
                                 </Button>
@@ -550,7 +550,7 @@ export function DealerQuickList() {
 
                     {/* Condition * */}
                     <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase text-gray-400 flex items-center gap-1">
+                        <label className="text-xs font-bold uppercase text-[var(--text-muted)] flex items-center gap-1">
                             Condition
                             {editId && <span className="text-primary">*</span>}
                         </label>
@@ -561,8 +561,8 @@ export function DealerQuickList() {
                                     type="button"
                                     onClick={() => setCondition(c)}
                                     className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all ${condition === c
-                                        ? "border-primary bg-primary/10 text-white shadow-[0_0_12px_rgba(237,28,36,0.15)]"
-                                        : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"
+                                        ? "border-primary bg-primary/10 text-primary shadow-[0_0_12px_rgba(237,28,36,0.15)]"
+                                        : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"
                                     }`}
                                 >
                                     {c}
@@ -573,7 +573,7 @@ export function DealerQuickList() {
 
                     {/* Transmission * */}
                     <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase text-gray-400 flex items-center gap-1">
+                        <label className="text-xs font-bold uppercase text-[var(--text-muted)] flex items-center gap-1">
                             Transmission
                             {editId && <span className="text-primary">*</span>}
                         </label>
@@ -589,8 +589,8 @@ export function DealerQuickList() {
                                     type="button"
                                     onClick={() => setTransmission(value)}
                                     className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all ${transmission === value
-                                        ? "border-primary bg-primary/10 text-white shadow-[0_0_12px_rgba(237,28,36,0.15)]"
-                                        : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"
+                                        ? "border-primary bg-primary/10 text-primary shadow-[0_0_12px_rgba(237,28,36,0.15)]"
+                                        : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"
                                     }`}
                                 >
                                     {label}
@@ -601,7 +601,7 @@ export function DealerQuickList() {
 
                     {/* Body Type * */}
                     <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase text-gray-400 flex items-center gap-1">
+                        <label className="text-xs font-bold uppercase text-[var(--text-muted)] flex items-center gap-1">
                             Body Type
                             {editId && <span className="text-primary">*</span>}
                         </label>
@@ -623,8 +623,8 @@ export function DealerQuickList() {
                                     type="button"
                                     onClick={() => setBodyType(value as BodyTypeValue)}
                                     className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all ${bodyType === value
-                                        ? "border-primary bg-primary/10 text-white shadow-[0_0_12px_rgba(237,28,36,0.15)]"
-                                        : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"
+                                        ? "border-primary bg-primary/10 text-primary shadow-[0_0_12px_rgba(237,28,36,0.15)]"
+                                        : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"
                                     }`}
                                 >
                                     {label}
@@ -635,9 +635,9 @@ export function DealerQuickList() {
 
                     {/* Service History */}
                     <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase text-gray-400">
+                        <label className="text-xs font-bold uppercase text-[var(--text-muted)]">
                             Service History
-                            <span className="text-gray-600 font-normal ml-1 normal-case">— helps buyers trust the vehicle</span>
+                            <span className="text-[var(--text-secondary)] font-normal ml-1 normal-case">— helps buyers trust the vehicle</span>
                         </label>
                         <div className="flex flex-wrap gap-2">
                             {[
@@ -652,8 +652,8 @@ export function DealerQuickList() {
                                     type="button"
                                     onClick={() => setServiceHistory(value)}
                                     className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all ${serviceHistory === value
-                                        ? "border-primary bg-primary/10 text-white shadow-[0_0_12px_rgba(237,28,36,0.15)]"
-                                        : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"
+                                        ? "border-primary bg-primary/10 text-primary shadow-[0_0_12px_rgba(237,28,36,0.15)]"
+                                        : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"
                                     }`}
                                 >
                                     {label}
@@ -664,9 +664,9 @@ export function DealerQuickList() {
 
                     {/* Number of Owners */}
                     <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase text-gray-400">
+                        <label className="text-xs font-bold uppercase text-[var(--text-muted)]">
                             Previous Owners
-                            <span className="text-gray-600 font-normal ml-1 normal-case">— number of keepers</span>
+                            <span className="text-[var(--text-secondary)] font-normal ml-1 normal-case">— number of keepers</span>
                         </label>
                         <div className="flex flex-wrap gap-2">
                             {['1', '2', '3', '4+'].map(v => (
@@ -675,8 +675,8 @@ export function DealerQuickList() {
                                     type="button"
                                     onClick={() => setOwners(v)}
                                     className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all ${owners === v
-                                        ? "border-primary bg-primary/10 text-white shadow-[0_0_12px_rgba(237,28,36,0.15)]"
-                                        : "border-white/10 bg-slate-900/50 text-gray-400 hover:border-white/20"
+                                        ? "border-primary bg-primary/10 text-primary shadow-[0_0_12px_rgba(237,28,36,0.15)]"
+                                        : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"
                                     }`}
                                 >
                                     {v}
@@ -690,7 +690,7 @@ export function DealerQuickList() {
             {/* ── SECTION 3: Photos ───────────────────────────────────────── */}
             {dvlaData && (
                 <section className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '100ms' }}>
-                    <h2 className="text-sm font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
+                    <h2 className="text-sm font-black uppercase tracking-widest text-[var(--text-muted)] flex items-center gap-2">
                         <span className="w-6 h-6 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary text-xs font-black">3</span>
                         Photos
                         {editId && <span className="text-primary text-xs font-black">*</span>}
@@ -702,11 +702,11 @@ export function DealerQuickList() {
                         existingImages={images}
                     />
 
-                    <div className="pt-6 border-t border-white/5">
-                        <h3 className="text-sm font-black uppercase tracking-widest text-gray-400 flex items-center gap-2 mb-4">
+                    <div className="pt-6 border-t border-[var(--border-default)]">
+                        <h3 className="text-sm font-black uppercase tracking-widest text-[var(--text-muted)] flex items-center gap-2 mb-4">
                             <span className="w-6 h-6 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary text-xs font-black">★</span>
                             Damage Mapping
-                            <span className="text-xs text-gray-600 normal-case font-normal">— optional, increases buyer trust</span>
+                            <span className="text-xs text-[var(--text-secondary)] normal-case font-normal">— optional, increases buyer trust</span>
                         </h3>
                         <VehicleDamageMapper
                             bodyType={bodyType || dvlaData?.bodyType || undefined}
@@ -721,12 +721,12 @@ export function DealerQuickList() {
             {dvlaData && (
                 <section className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '200ms' }}>
                     <div className="flex items-center justify-between">
-                        <h2 className="text-sm font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
+                        <h2 className="text-sm font-black uppercase tracking-widest text-[var(--text-muted)] flex items-center gap-2">
                             <span className="w-6 h-6 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary text-xs font-black">4</span>
                             Description
                             {editId
                                 ? <span className="text-primary text-xs font-black">* Required to publish</span>
-                                : <span className="text-xs text-gray-600 normal-case font-normal">Optional</span>
+                                : <span className="text-xs text-[var(--text-secondary)] normal-case font-normal">Optional</span>
                             }
                         </h2>
                         <Button
@@ -735,7 +735,7 @@ export function DealerQuickList() {
                             size="sm"
                             disabled={isGeneratingDesc}
                             onClick={handleGenerateDescription}
-                            className="border-white/10 text-gray-400 hover:text-white gap-2 bg-black text-xs"
+                            className="border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white gap-2 bg-[var(--bg-input)] text-xs"
                         >
                             {isGeneratingDesc ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                             AI Generate
@@ -745,7 +745,7 @@ export function DealerQuickList() {
                         placeholder="Leave blank or use AI Generate to auto-write a professional listing description..."
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
-                        className="bg-slate-900/50 border-white/10 text-white min-h-[120px] placeholder:text-gray-600 focus:border-primary"
+                        className="bg-[var(--bg-input)] border-[var(--border-default)] min-h-[120px] placeholder:text-[var(--text-secondary)] focus:border-primary"
                     />
                     {generateDescError && (
                         <p className="text-xs text-red-400 flex items-center gap-1.5">
@@ -759,23 +759,23 @@ export function DealerQuickList() {
             {/* ── SECTION 5: Video Links ──────────────────────────────────── */}
             {dvlaData && (
                 <section className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '250ms' }}>
-                    <h2 className="text-sm font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
+                    <h2 className="text-sm font-black uppercase tracking-widest text-[var(--text-muted)] flex items-center gap-2">
                         <span className="w-6 h-6 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary text-xs font-black">5</span>
                         Video Links
-                        <span className="text-xs text-gray-600 normal-case font-normal">Optional · up to 5</span>
+                        <span className="text-xs text-[var(--text-secondary)] normal-case font-normal">Optional · up to 5</span>
                     </h2>
                     <div className="flex gap-2">
                         <Input
                             placeholder="Paste a YouTube, Instagram, Facebook or X video URL"
                             value={videoUrlInput}
                             onChange={e => { setVideoUrlInput(e.target.value); setVideoUrlError("") }}
-                            className="bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 flex-1"
+                            className="bg-[var(--bg-input)] border-[var(--border-default)] placeholder:text-[var(--text-secondary)] flex-1"
                         />
                         <Button
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 shrink-0"
+                            className="border-[var(--border-default)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:bg-white/10 shrink-0"
                             onClick={() => {
                                 const url = videoUrlInput.trim()
                                 if (!url) return
@@ -799,10 +799,10 @@ export function DealerQuickList() {
                                     : url.includes('facebook.com') || url.includes('fb.watch') ? 'Facebook'
                                     : 'X / Twitter'
                                 return (
-                                    <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-slate-900/50 border border-white/5">
+                                    <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-default)]">
                                         <span className="text-xs font-bold px-2 py-0.5 rounded bg-orange-500/20 text-orange-300 border border-orange-500/20 shrink-0">{platform}</span>
                                         <span className="text-xs text-blue-400 truncate flex-1">{url}</span>
-                                        <button type="button" onClick={() => setVideoUrls(videoUrls.filter((_, i) => i !== idx))} className="text-gray-500 hover:text-red-400 transition-colors shrink-0">
+                                        <button type="button" onClick={() => setVideoUrls(videoUrls.filter((_, i) => i !== idx))} className="text-[var(--text-muted)] hover:text-red-400 transition-colors shrink-0">
                                             <X size={14} />
                                         </button>
                                     </div>
@@ -821,16 +821,16 @@ export function DealerQuickList() {
                             <AlertTriangle size={16} /> {submitError}
                         </div>
                     )}
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 p-5 bg-[#0A0A0C] border border-white/5 rounded-2xl">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 p-5 bg-[var(--bg-card)] border border-[var(--border-default)] rounded-2xl">
                         {/* Publish toggle — hidden in edit mode (publishing goes through plan modal) */}
                         {!editId && (
-                            <div className="flex gap-2 p-1 bg-slate-800 rounded-xl border border-white/5">
+                            <div className="flex gap-2 p-1 bg-[var(--bg-input)] rounded-xl border border-[var(--border-default)]">
                                 <button
                                     type="button"
                                     onClick={() => setPublishAs("ACTIVE")}
                                     className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${publishAs === "ACTIVE"
                                         ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.15)]"
-                                        : "text-gray-500 hover:text-gray-300"
+                                        : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
                                     }`}
                                 >
                                     Publish Live
@@ -839,8 +839,8 @@ export function DealerQuickList() {
                                     type="button"
                                     onClick={() => setPublishAs("DRAFT")}
                                     className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${publishAs === "DRAFT"
-                                        ? "bg-gray-500/20 text-gray-300 border border-gray-500/30"
-                                        : "text-gray-500 hover:text-gray-300"
+                                        ? "bg-gray-500/20 text-[var(--text-secondary)] border border-gray-500/30"
+                                        : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
                                     }`}
                                 >
                                     Save Draft
@@ -875,18 +875,18 @@ export function DealerQuickList() {
             {/* ── Plan-selection modal (returnPublish flow) ────────────────── */}
             {showPlanModal && editId && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-                    <div className="relative w-full max-w-lg bg-[#0A0A0C] border border-white/10 rounded-2xl p-6 shadow-2xl">
+                    <div className="relative w-full max-w-lg bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-2xl p-6 shadow-2xl">
                         <button
                             onClick={() => { setShowPlanModal(false); router.push('/dashboard/dealer/inventory') }}
-                            className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-white/10 text-gray-500 hover:text-white transition-colors"
+                            className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-white/10 text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors"
                         >
                             <X size={18} />
                         </button>
 
-                        <h2 className="text-lg font-black text-white font-heading uppercase tracking-tight mb-1">
+                        <h2 className="text-lg font-black  font-heading uppercase tracking-tight mb-1">
                             Choose a Listing Plan
                         </h2>
-                        <p className="text-xs text-gray-500 mb-5">
+                        <p className="text-xs text-[var(--text-muted)] mb-5">
                             Details saved. Select a tier to go live — you can always upgrade later.
                         </p>
 
@@ -895,14 +895,14 @@ export function DealerQuickList() {
                             <button
                                 onClick={() => handlePlanConfirm('BASIC')}
                                 disabled={planPublishing}
-                                className="flex flex-col p-4 rounded-xl border border-white/10 bg-white/[0.02] hover:border-white/25 hover:bg-white/5 transition-all text-left disabled:opacity-50"
+                                className="flex flex-col p-4 rounded-xl border border-[var(--border-default)] bg-white/[0.02] hover:border-white/25 hover:bg-[var(--bg-card)] transition-all text-left disabled:opacity-50"
                             >
-                                <p className="text-white font-bold text-sm mb-1">Basic</p>
-                                <p className="text-2xl font-black text-white mb-3">£1</p>
-                                <ul className="space-y-1 text-[11px] text-gray-400">
+                                <p className="font-bold text-sm mb-1">Basic</p>
+                                <p className="text-2xl font-black  mb-3">£1</p>
+                                <ul className="space-y-1 text-[11px] text-[var(--text-muted)]">
                                     <li className="flex items-center gap-1.5"><CheckCircle size={11} className="text-emerald-400" /> Basic listing</li>
                                     <li className="flex items-center gap-1.5"><CheckCircle size={11} className="text-emerald-400" /> Offer system</li>
-                                    <li className="flex items-center gap-1.5 text-gray-600"><X size={11} /> No trust badges</li>
+                                    <li className="flex items-center gap-1.5 text-[var(--text-secondary)]"><X size={11} /> No trust badges</li>
                                 </ul>
                             </button>
 
@@ -913,11 +913,11 @@ export function DealerQuickList() {
                                 className="relative flex flex-col p-4 rounded-xl border border-blue-500/30 bg-blue-500/5 hover:border-blue-500/60 hover:bg-blue-500/10 transition-all text-left disabled:opacity-50"
                             >
                                 <p className="text-blue-400 font-bold text-sm mb-1 flex items-center gap-1"><Shield size={12} /> Standard</p>
-                                <p className="text-2xl font-black text-white mb-3">£10</p>
-                                <ul className="space-y-1 text-[11px] text-gray-400">
+                                <p className="text-2xl font-black  mb-3">£10</p>
+                                <ul className="space-y-1 text-[11px] text-[var(--text-muted)]">
                                     <li className="flex items-center gap-1.5"><BadgeCheckIcon size={11} className="text-blue-400" /> VIN Report badge</li>
                                     <li className="flex items-center gap-1.5"><BadgeCheckIcon size={11} className="text-blue-400" /> Verified Seller badge</li>
-                                    <li className="flex items-center gap-1.5 text-gray-600"><X size={11} /> No featured boost</li>
+                                    <li className="flex items-center gap-1.5 text-[var(--text-secondary)]"><X size={11} /> No featured boost</li>
                                 </ul>
                             </button>
                         </div>
@@ -933,9 +933,9 @@ export function DealerQuickList() {
                             </span>
                             <div className="flex-1">
                                 <p className="text-amber-400 font-bold text-sm flex items-center gap-1"><Star size={12} /> Premium</p>
-                                <p className="text-lg font-black text-white">£25</p>
+                                <p className="text-lg font-black">£25</p>
                             </div>
-                            <ul className="space-y-1 text-[11px] text-gray-400">
+                            <ul className="space-y-1 text-[11px] text-[var(--text-muted)]">
                                 <li className="flex items-center gap-1.5"><Zap size={11} className="text-amber-400" /> Featured boost (28 days)</li>
                                 <li className="flex items-center gap-1.5"><Zap size={11} className="text-amber-400" /> Priority in search results</li>
                                 <li className="flex items-center gap-1.5"><Zap size={11} className="text-amber-400" /> Featured badge</li>
@@ -943,7 +943,7 @@ export function DealerQuickList() {
                         </button>
 
                         {planPublishing && (
-                            <div className="mt-4 flex items-center justify-center gap-2 text-gray-400 text-sm">
+                            <div className="mt-4 flex items-center justify-center gap-2 text-[var(--text-muted)] text-sm">
                                 <Loader2 size={16} className="animate-spin" /> Publishing…
                             </div>
                         )}

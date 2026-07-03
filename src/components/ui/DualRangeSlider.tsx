@@ -32,7 +32,7 @@ export function DualRangeSlider({ min, max, step = 1, value, onChange, className
     return (
         <div className={cn("relative w-full h-4 flex items-center mt-2 mb-1", className)}>
             {/* Background Track */}
-            <div className="absolute w-full h-1.5 bg-slate-800 rounded-full" />
+            <div className="absolute w-full h-1.5 bg-[var(--bg-input)] rounded-full" />
 
             {/* Active Track (Highlight) */}
             <div

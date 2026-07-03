@@ -85,7 +85,7 @@ export default function PutOnAuctionPage() {
     }
 
     return (
-        <div className="min-h-screen pt-20 pb-12 bg-slate-900 text-white">
+        <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
@@ -93,7 +93,7 @@ export default function PutOnAuctionPage() {
                     {/* Back */}
                     <Link
                         href="/dashboard/dealer/inventory"
-                        className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-white transition-colors"
+                        className="inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-white transition-colors"
                     >
                         <ArrowLeft size={15} /> Back to Inventory
                     </Link>
@@ -105,7 +105,7 @@ export default function PutOnAuctionPage() {
                         </div>
                         <div>
                             <h1 className="text-xl font-black text-white uppercase tracking-tight">Put on Auction</h1>
-                            <p className="text-xs text-gray-500">Schedule a live auction for your vehicle</p>
+                            <p className="text-xs text-[var(--text-muted)]">Schedule a live auction for your vehicle</p>
                         </div>
                     </div>
 
@@ -136,7 +136,7 @@ export default function PutOnAuctionPage() {
                         <>
                             {/* Vehicle summary card */}
                             <div className="dealer-glass-card p-5 flex gap-4 items-center">
-                                <div className="w-24 h-16 bg-black/40 rounded-xl overflow-hidden border border-white/10 shrink-0">
+                                <div className="w-24 h-16 bg-black/40 rounded-xl overflow-hidden border border-[var(--border-default)] shrink-0">
                                     {listing.images?.[0] ? (
                                         <img src={listing.images[0]} alt="" className="w-full h-full object-cover opacity-80" />
                                     ) : (
@@ -148,7 +148,7 @@ export default function PutOnAuctionPage() {
                                 <div className="flex-1 min-w-0">
                                     <p className="font-black text-white text-base truncate">{listing.title}</p>
                                     <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                        <span className="text-xs font-bold text-gray-500 uppercase tracking-widest px-2 py-0.5 bg-white/5 rounded border border-white/5">{listing.vrm || "PRIVATE"}</span>
+                                        <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest px-2 py-0.5 bg-[var(--bg-card)] rounded border border-[var(--border-default)]">{listing.vrm || "PRIVATE"}</span>
                                         <span className="text-xs font-bold text-primary italic uppercase tracking-widest">{listing.make}</span>
                                         {listing.mileage && <span className="text-xs text-gray-600 font-bold">• {listing.mileage.toLocaleString()} mi</span>}
                                         {listing.year && <span className="text-xs text-gray-600 font-bold">• {listing.year}</span>}
@@ -162,9 +162,9 @@ export default function PutOnAuctionPage() {
                             {/* Info banner */}
                             <div className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl flex gap-3">
                                 <Info size={15} className="text-blue-400 shrink-0 mt-0.5" />
-                                <div className="space-y-1 text-xs text-gray-400 leading-relaxed">
-                                    <p>The auction runs for <strong className="text-white">24 hours</strong> from the start time you set.</p>
-                                    <p>Your <strong className="text-white">retail listing stays active</strong> simultaneously — it can sell via either channel.</p>
+                                <div className="space-y-1 text-xs text-[var(--text-muted)] leading-relaxed">
+                                    <p>The auction runs for <strong className="text-[var(--text-primary)]">24 hours</strong> from the start time you set.</p>
+                                    <p>Your <strong className="text-[var(--text-primary)]">retail listing stays active</strong> simultaneously — it can sell via either channel.</p>
                                     <p>If the reserve price is not met, the vehicle returns to retail-only listing.</p>
                                 </div>
                             </div>
@@ -174,18 +174,18 @@ export default function PutOnAuctionPage() {
                                 <div className="dealer-glass-card p-8 flex flex-col items-center gap-3 text-center">
                                     <CheckCircle2 size={36} className="text-emerald-400" />
                                     <p className="text-emerald-300 font-black text-lg">Auction Scheduled!</p>
-                                    <p className="text-gray-500 text-sm">Your retail listing remains active. Returning to inventory…</p>
+                                    <p className="text-[var(--text-muted)] text-sm">Your retail listing remains active. Returning to inventory…</p>
                                 </div>
                             ) : (
                                 /* Form */
                                 <form onSubmit={handleSubmit} className="dealer-glass-card p-6 space-y-5">
-                                    <p className="text-xs font-black text-gray-400 uppercase tracking-widest border-b border-white/5 pb-3">
+                                    <p className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest border-b border-[var(--border-default)] pb-3">
                                         Auction Configuration
                                     </p>
 
                                     {/* Start time */}
                                     <div>
-                                        <label className="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                                        <label className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1.5">
                                             <Calendar size={11} /> Auction Start Time
                                         </label>
                                         <Input
@@ -194,7 +194,7 @@ export default function PutOnAuctionPage() {
                                             value={startTime}
                                             onChange={e => setStartTime(e.target.value)}
                                             required
-                                            className="bg-slate-800 border-white/10 text-white h-11"
+                                            className="bg-[var(--bg-input)] border-[var(--border-default)] h-11"
                                         />
                                         <p className="text-xs text-gray-600 mt-1">Must be at least 1 hour from now. Auction ends 24 hours after start.</p>
                                     </div>
@@ -202,7 +202,7 @@ export default function PutOnAuctionPage() {
                                     {/* Reserve + Starting bid */}
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                                            <label className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1.5">
                                                 <PoundSterling size={11} /> Reserve Price
                                             </label>
                                             <Input
@@ -213,12 +213,12 @@ export default function PutOnAuctionPage() {
                                                 value={reserve}
                                                 onChange={e => setReserve(e.target.value)}
                                                 required
-                                                className="bg-slate-800 border-white/10 text-white h-11"
+                                                className="bg-[var(--bg-input)] border-[var(--border-default)] h-11"
                                             />
                                             <p className="text-xs text-gray-600 mt-1">Minimum you'll accept.</p>
                                         </div>
                                         <div>
-                                            <label className="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                                            <label className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1.5">
                                                 <TrendingUp size={11} /> Starting Bid
                                             </label>
                                             <Input
@@ -229,7 +229,7 @@ export default function PutOnAuctionPage() {
                                                 value={startBid}
                                                 onChange={e => setStartBid(e.target.value)}
                                                 required
-                                                className="bg-slate-800 border-white/10 text-white h-11"
+                                                className="bg-[var(--bg-input)] border-[var(--border-default)] h-11"
                                             />
                                             <p className="text-xs text-gray-600 mt-1">Opening bid amount.</p>
                                         </div>
@@ -237,7 +237,7 @@ export default function PutOnAuctionPage() {
 
                                     {/* Increment */}
                                     <div>
-                                        <label className="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                                        <label className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1.5">
                                             <TrendingUp size={11} /> Min Bid Increment (£)
                                         </label>
                                         <Input
@@ -247,14 +247,14 @@ export default function PutOnAuctionPage() {
                                             placeholder="100"
                                             value={increment}
                                             onChange={e => setIncrement(e.target.value)}
-                                            className="bg-slate-800 border-white/10 text-white h-11"
+                                            className="bg-[var(--bg-input)] border-[var(--border-default)] h-11"
                                         />
                                         <p className="text-xs text-gray-600 mt-1">Each bid must exceed the previous by at least this amount.</p>
                                     </div>
 
                                     {/* BIN — optional */}
                                     <div>
-                                        <label className="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                                        <label className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1.5">
                                             <Zap size={11} /> Buy It Now Price (£)
                                             <span className="normal-case text-gray-600 font-normal tracking-normal ml-1">— optional</span>
                                         </label>
@@ -265,7 +265,7 @@ export default function PutOnAuctionPage() {
                                             placeholder="Leave blank to disable"
                                             value={binPrice}
                                             onChange={e => setBinPrice(e.target.value)}
-                                            className="bg-slate-800 border-white/10 text-white h-11"
+                                            className="bg-[var(--bg-input)] border-[var(--border-default)] h-11"
                                         />
                                         <p className="text-xs text-gray-600 mt-1">Buyer can request an immediate purchase at this price.</p>
                                     </div>
@@ -279,7 +279,7 @@ export default function PutOnAuctionPage() {
 
                                     <div className="flex gap-3 pt-1">
                                         <Link href="/dashboard/dealer/inventory" className="flex-1">
-                                            <Button variant="outline" type="button" className="w-full border-white/10 text-gray-400 hover:text-white h-11">
+                                            <Button variant="outline" type="button" className="w-full border-[var(--border-default)] text-[var(--text-muted)] hover:text-white h-11">
                                                 Cancel
                                             </Button>
                                         </Link>

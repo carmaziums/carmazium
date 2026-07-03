@@ -195,11 +195,11 @@ export function CarCard({
             </div>
 
             <div
-                className="p-6 relative z-10 flex flex-col flex-1 border-t border-white/5 bg-gradient-to-b from-white/5 to-transparent rounded-b-2xl"
-                style={{ transform: "translateZ(20px)" }}
+                className="p-6 relative z-10 flex flex-col flex-1 border-t bg-gradient-to-b from-primary/5 dark:from-white/5 to-transparent rounded-b-2xl"
+                style={{ transform: "translateZ(20px)", borderColor: 'var(--border-default)' }}
             >
                 <div className="flex justify-between items-start mb-2 gap-2">
-                    <h3 className="text-lg md:text-xl font-bold font-heading text-white tracking-wide group-hover:text-primary transition-colors duration-300 line-clamp-2">{title}</h3>
+                    <h3 className="text-lg md:text-xl font-bold font-heading tracking-wide group-hover:text-primary transition-colors duration-300 line-clamp-2">{title}</h3>
                     {sellerId && sellerScore !== undefined ? (
                         <SellerBadge score={sellerScore} sellerUserId={sellerId} size="sm" showLabel />
                     ) : (
@@ -214,7 +214,7 @@ export function CarCard({
 
                 {/* Price Display */}
                 <div className="mb-3">
-                    <p className="text-white text-2xl font-bold font-mono bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
+                    <p className="text-2xl font-bold font-mono bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-gray-400">
                         {price}
                     </p>
                     {priceMin && priceMax && status !== 'SOLD' && (
@@ -243,7 +243,7 @@ export function CarCard({
                 {/* Estate chip — appears when isDepartedSale is true */}
                 {isDepartedSale && (
                     <div className="flex items-center gap-2 mb-3">
-                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide bg-white/5 text-gray-400 border border-white/10 px-2 py-0.5 rounded-full">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide bg-slate-500/10 dark:bg-[var(--bg-card)] text-slate-600 dark:text-[var(--text-muted)] border border-slate-500/20 dark:border-[var(--border-default)] px-2 py-0.5 rounded-full">
                             Estate
                         </span>
                     </div>
@@ -253,22 +253,22 @@ export function CarCard({
                 {hasSpecs && (
                     <div className="flex flex-wrap gap-1.5 mb-4">
                         {year && (
-                            <span className="inline-flex items-center gap-1 bg-white/5 border border-white/10 text-gray-400 text-[10px] font-semibold px-2 py-1 rounded-md">
+                            <span className="inline-flex items-center gap-1 bg-slate-500/10 dark:bg-[var(--bg-card)] border border-slate-500/20 dark:border-[var(--border-default)] text-slate-600 dark:text-[var(--text-muted)] text-[10px] font-semibold px-2 py-1 rounded-md">
                                 <Calendar size={10} /> {year}
                             </span>
                         )}
                         {mileage !== undefined && mileage !== null && (
-                            <span className="inline-flex items-center gap-1 bg-white/5 border border-white/10 text-gray-400 text-[10px] font-semibold px-2 py-1 rounded-md">
+                            <span className="inline-flex items-center gap-1 bg-slate-500/10 dark:bg-[var(--bg-card)] border border-slate-500/20 dark:border-[var(--border-default)] text-slate-600 dark:text-[var(--text-muted)] text-[10px] font-semibold px-2 py-1 rounded-md">
                                 <Gauge size={10} /> {mileage.toLocaleString()} mi
                             </span>
                         )}
                         {fuelType && FUEL_TYPE_LABELS[fuelType] && (
-                            <span className="inline-flex items-center gap-1 bg-white/5 border border-white/10 text-gray-400 text-[10px] font-semibold px-2 py-1 rounded-md">
+                            <span className="inline-flex items-center gap-1 bg-slate-500/10 dark:bg-[var(--bg-card)] border border-slate-500/20 dark:border-[var(--border-default)] text-slate-600 dark:text-[var(--text-muted)] text-[10px] font-semibold px-2 py-1 rounded-md">
                                 <Fuel size={10} /> {FUEL_TYPE_LABELS[fuelType]}
                             </span>
                         )}
                         {bodyType && BODY_TYPE_LABELS[bodyType] && (
-                            <span className="inline-flex items-center gap-1 bg-white/5 border border-white/10 text-gray-400 text-[10px] font-semibold px-2 py-1 rounded-md">
+                            <span className="inline-flex items-center gap-1 bg-slate-500/10 dark:bg-[var(--bg-card)] border border-slate-500/20 dark:border-[var(--border-default)] text-slate-600 dark:text-[var(--text-muted)] text-[10px] font-semibold px-2 py-1 rounded-md">
                                 <Car size={10} /> {BODY_TYPE_LABELS[bodyType]}
                             </span>
                         )}
@@ -277,7 +277,7 @@ export function CarCard({
                                 <MapPin size={10} /> {distanceMi < 1 ? '< 1 mi away' : `${Math.round(distanceMi)} mi away`}
                             </span>
                         ) : location ? (
-                            <span className="inline-flex items-center gap-1 bg-white/5 border border-white/10 text-gray-400 text-[10px] font-semibold px-2 py-1 rounded-md">
+                            <span className="inline-flex items-center gap-1 bg-slate-500/10 dark:bg-[var(--bg-card)] border border-slate-500/20 dark:border-[var(--border-default)] text-slate-600 dark:text-[var(--text-muted)] text-[10px] font-semibold px-2 py-1 rounded-md">
                                 <MapPin size={10} /> {location.split(',')[0].trim()}
                             </span>
                         ) : null}
