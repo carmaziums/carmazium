@@ -177,17 +177,25 @@ export function MaziumWidget() {
         router.push(`/search?${qs}`)
     }
     return (
-        <div className={cn(
-            "fixed bottom-24 lg:bottom-6 right-4 sm:right-6 z-50 flex flex-col items-end transition-opacity duration-500",
-            scrolled && !isOpen ? "opacity-30 hover:opacity-100" : "opacity-100"
-        )}>
+        <>
+            {/* Mobile backdrop — tap outside to close (desktop widget is small enough not to need one) */}
+            {isOpen && (
+                <div
+                    className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] lg:hidden"
+                    onClick={() => setIsOpen(false)}
+                />
+            )}
+            <div className={cn(
+                "fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-24 right-4 sm:right-6 z-50 flex flex-col items-end transition-opacity duration-500",
+                scrolled && !isOpen ? "opacity-30 hover:opacity-100" : "opacity-100"
+            )}>
             {/* Chat Window */}
             <div
                 className={cn(
-                    "rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 ease-in-out border mb-4",
+                    "rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 ease-in-out border mb-4 w-[min(380px,calc(100vw_-_2rem))]",
                     isOpen
-                        ? "w-[380px] h-[540px] opacity-100 translate-y-0"
-                        : "w-[380px] h-0 opacity-0 translate-y-10 pointer-events-none"
+                        ? "h-[min(540px,80vh)] opacity-100 translate-y-0"
+                        : "h-0 opacity-0 translate-y-10 pointer-events-none"
                 )}
                 style={{
                     background: "var(--bg-dropdown)",
@@ -203,14 +211,14 @@ export function MaziumWidget() {
                         </div>
                         <div>
                             <h3 className="font-bold text-sm">Mazium AI</h3>
-                            <p className="text-xs text-gray-400">
+                            <p className="text-xs text-[var(--text-muted)]">
                                 Car-buying assistant
                             </p>
                         </div>
                     </div>
                     <button
                         onClick={() => setIsOpen(false)}
-                        className="text-gray-400 hover:text-white transition-colors"
+                        className="text-[var(--text-muted)] hover:text-white transition-colors"
                     >
                         <X size={20} />
                     </button>
@@ -377,17 +385,17 @@ export function MaziumWidget() {
                             scale: 0.9,
                             transition: { duration: 0.2 },
                         }}
-                        className="absolute bottom-20 right-0 px-5 py-3 rounded-2xl shadow-xl border flex items-center gap-3 z-40 mb-2 origin-bottom-right"
+                        className="absolute bottom-20 right-0 px-5 py-3 rounded-2xl shadow-xl border flex items-center gap-3 z-40 mb-2 origin-bottom-right max-w-[calc(100vw_-_2rem)]"
                         style={{
                             background: "var(--bg-dropdown)",
                             borderColor: "var(--border-default)",
                         }}
                     >
-                        <div className="relative">
+                        <div className="relative shrink-0">
                             <div className="w-2 h-2 bg-green-500 rounded-full absolute -top-1 -right-1 animate-pulse z-10" />
                             <Image src="/assets/images/mazium-bot.jpeg" alt="Mazium" width={32} height={32} className="rounded-full" />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                             <p className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
                                 Hi, I&apos;m Mazium! 👋
                             </p>
@@ -436,6 +444,7 @@ export function MaziumWidget() {
                     <Image src="/assets/images/mazium-bot.jpeg" alt="Mazium AI" width={56} height={56} className="w-full h-full object-cover" />
                 )}
             </button>
-        </div>
+            </div>
+        </>
     )
 }
