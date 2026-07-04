@@ -23,6 +23,10 @@ export interface ThreeDVehicleViewerProps {
   onZoneHide?: (zoneId: string) => void;
   onZonePhoto?: (zoneId: string, imageUri: string) => void;
   height?: number;
+  /** Friendly body type label shown in the model badge (e.g. "SUV", "Hatchback").
+   *  The GLB model itself doesn't change shape per body type yet — this only
+   *  keeps the on-screen label honest about what vehicle the listing is. */
+  bodyTypeLabel?: string;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -35,6 +39,7 @@ export function ThreeDVehicleViewer({
   onZoneHide,
   onZonePhoto,
   height = 280,
+  bodyTypeLabel,
 }: ThreeDVehicleViewerProps) {
   const webViewRef = useRef<WebView>(null);
 
@@ -144,7 +149,7 @@ export function ThreeDVehicleViewer({
 
       {/* Model identity badge — top-left corner */}
       <View style={styles.badge} pointerEvents="none">
-        <Text style={styles.badgeText}>vehicle.glb · SUV</Text>
+        <Text style={styles.badgeText}>vehicle.glb · {bodyTypeLabel || 'Generic'}</Text>
       </View>
 
       {/* Tap-outside-to-dismiss backdrop — only present while a pill is open,

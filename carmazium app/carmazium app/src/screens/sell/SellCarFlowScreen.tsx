@@ -18,6 +18,8 @@ import { useSellWizardStore } from '../../lib/sellWizardStore';
 import { haptics } from '../../lib/haptics';
 import { useStripe } from '@stripe/stripe-react-native';
 import { createPaymentSheet } from '../../lib/paymentsApi';
+import { ThreeDVehicleViewer } from '../../components/damage/ThreeDVehicleViewer';
+import { DAMAGE_ZONES_3D } from '../../components/damage/damageZones';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -86,11 +88,6 @@ const BODY_TYPES = [
   { v: 'VAN', l: 'Van', icon: 'van-utility' },
   { v: 'PICKUP', l: 'Pickup', icon: 'truck' },
   { v: 'OTHER', l: 'Other', icon: 'car-outline' },
-];
-const DAMAGE_ZONES = [
-  'Front Bumper', 'Bonnet', 'Windscreen (Front)', 'Front Left Wing', 'Front Right Wing',
-  'Driver Side Door(s)', 'Passenger Side Door(s)', 'Roof', 'Rear Window',
-  'Boot / Tailgate', 'Rear Bumper', 'Wheel (FL)', 'Wheel (FR)', 'Wheel (RL)', 'Wheel (RR)',
 ];
 const DAMAGE_TYPES = ['SCRATCH', 'SCUFF', 'DENT', 'CRACK', 'OTHER'];
 
@@ -238,29 +235,19 @@ function SectionBox({ title, children, accent, action }: {
 
 // ─── Interactive Damage Map ───────────────────────────────────────────────────
 
-function DamageMapper({
-  records, onAdd, onRemove
+function Damage3DMapper({
+  records, onAdd, onRemove, onHide, onPhoto, bodyTypeLabel,
 }: {
   records: DamageEntry[];
   onAdd: (entry: DamageEntry) => void;
   onRemove: (id: string) => void;
+  onHide: (zoneId: string) => void;
+  onPhoto: (zoneId: string, uri: string) => void;
+  bodyTypeLabel?: string;
 }) {
   const [addingZone, setAddingZone] = useState<string | null>(null);
   const [dmgType, setDmgType] = useState<DamageEntry['type']>('SCRATCH');
   const [dmgDesc, setDmgDesc] = useState('');
-
-  const markedZones = new Set(records.map(r => r.zone));
-
-  // Simple top-down car visual using Views
-  const carRows: Array<{ zones: Array<{ key: string; flex: number }> }> = [
-    { zones: [{ key: 'Front Bumper', flex: 1 }] },
-    { zones: [{ key: 'Front Left Wing', flex: 1 }, { key: 'Bonnet', flex: 2 }, { key: 'Front Right Wing', flex: 1 }] },
-    { zones: [{ key: 'Windscreen (Front)', flex: 1 }] },
-    { zones: [{ key: 'Driver Side Door(s)', flex: 1 }, { key: 'Roof', flex: 2 }, { key: 'Passenger Side Door(s)', flex: 1 }] },
-    { zones: [{ key: 'Rear Window', flex: 1 }] },
-    { zones: [{ key: 'Wheel (RL)', flex: 1 }, { key: 'Boot / Tailgate', flex: 2 }, { key: 'Wheel (RR)', flex: 1 }] },
-    { zones: [{ key: 'Rear Bumper', flex: 1 }] },
-  ];
 
   function confirmAdd() {
     if (!addingZone) return;
@@ -277,49 +264,16 @@ function DamageMapper({
 
   return (
     <View>
-      {/* 2D car outline */}
-      <View style={s.carDiagram}>
-        <View style={s.carDiagramHeader}>
-          <MaterialCommunityIcons name="car-outline" size={32} color="#DC1F26" />
-          <Text style={[s.dvlaFieldLabel, { marginBottom: 0 }]}>Tap a zone to mark damage</Text>
-        </View>
-        {carRows.map((row, ri) => (
-          <View key={ri} style={{ flexDirection: 'row', marginBottom: 2 }}>
-            {row.zones.map(z => {
-              const marked = markedZones.has(z.key);
-              return (
-                <TouchableOpacity
-                  key={z.key}
-                  style={[s.carZone, { flex: z.flex }, marked && s.carZoneMarked]}
-                  onPress={() => setAddingZone(z.key)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[s.carZoneText, marked && s.carZoneTextMarked]} numberOfLines={2}>
-                    {z.key}
-                  </Text>
-                  {marked && <View style={s.carZoneDot} />}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        ))}
-        {/* wheels not in top view — shown separately */}
-        <View style={{ flexDirection: 'row', marginTop: 4, gap: 8 }}>
-          {['Wheel (FL)', 'Wheel (FR)'].map(z => {
-            const marked = markedZones.has(z);
-            return (
-              <TouchableOpacity
-                key={z}
-                style={[s.wheelZone, marked && s.carZoneMarked]}
-                onPress={() => setAddingZone(z)}
-                activeOpacity={0.7}
-              >
-                <Text style={[s.carZoneText, marked && s.carZoneTextMarked]}>{z}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
+      {/* 3D vehicle viewer with tappable damage hotspots */}
+      <ThreeDVehicleViewer
+        zones={DAMAGE_ZONES_3D}
+        selectedZone={addingZone}
+        markedZones={records.map(r => r.zone)}
+        onZoneClick={zoneLabel => setAddingZone(zoneLabel)}
+        onZoneHide={onHide}
+        onZonePhoto={onPhoto}
+        bodyTypeLabel={bodyTypeLabel}
+      />
 
       {/* Inline add form */}
       {addingZone && (
@@ -452,6 +406,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [interiorImages, setInteriorImages] = useState<string[]>([]);
   const [damageImages, setDamageImages] = useState<string[]>([]);
   const [damageRecords, setDamageRecords] = useState<DamageEntry[]>([]);
+  const [hiddenZoneIds, setHiddenZoneIds] = useState<string[]>([]);
+  const [zonePhotos, setZonePhotos] = useState<Record<string, string>>({});
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [videoUrls, setVideoUrls] = useState<string[]>([]);
   const [videoInput, setVideoInput] = useState('');
@@ -641,6 +597,14 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     } finally {
       setAiGenerating(false);
     }
+  }
+
+  // ─── Damage zone hide / photo (from the 3D viewer's action pill) ──────────────
+  function handleZoneHide(zoneId: string) {
+    setHiddenZoneIds(prev => prev.includes(zoneId) ? prev.filter(id => id !== zoneId) : [...prev, zoneId]);
+  }
+  function handleZonePhoto(zoneId: string, uri: string) {
+    setZonePhotos(prev => ({ ...prev, [zoneId]: uri }));
   }
 
   // ─── Photo Handling ───────────────────────────────────────────────────────────
@@ -846,12 +810,17 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         return apiClient(`/damage/${listingId}/save`, {
           method: 'POST',
           body: JSON.stringify({
-            detections: damageRecords.map(r => ({
-              part: r.zone,
-              type: r.type,
-              severity: 'MODERATE',
-              description: r.description || undefined,
-            })),
+            detections: damageRecords.map(r => {
+              const zoneId = DAMAGE_ZONES_3D.find(z => z.label === r.zone)?.id;
+              return {
+                part: r.zone,
+                type: r.type,
+                severity: 'MODERATE',
+                description: r.description || undefined,
+                hidden: zoneId ? hiddenZoneIds.includes(zoneId) : undefined,
+                photoUrl: zoneId ? zonePhotos[zoneId] : undefined,
+              };
+            }),
           }),
         }).catch(() => {});
       };
@@ -1459,12 +1428,15 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           <View>
             <SectionBox title="Damage Map — Select Damaged Areas" accent="#F59E0B">
               <Text style={s.fieldHint}>
-                Tap a zone on the car diagram to mark damage. Add damage type and description for each area.
+                Drag to rotate the 3D model. Tap a zone to mark damage, hide it, or attach a photo.
               </Text>
-              <DamageMapper
+              <Damage3DMapper
                 records={damageRecords}
                 onAdd={entry => setDamageRecords(p => [...p, entry])}
                 onRemove={id => setDamageRecords(p => p.filter(r => r.id !== id))}
+                onHide={handleZoneHide}
+                onPhoto={handleZonePhoto}
+                bodyTypeLabel={BODY_TYPES.find(bt => bt.v === bodyType)?.l}
               />
             </SectionBox>
           </View>
@@ -2188,13 +2160,6 @@ const s = StyleSheet.create({
   photoProgressFill: { height: 4, backgroundColor: Colors.accent ?? '#DC1F26', borderRadius: 0 },
 
   // Damage Map
-  carDiagram: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', padding: 8, marginBottom: 12 },
-  carZone: { margin: 1, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', paddingVertical: 10, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center' },
-  carZoneMarked: { backgroundColor: 'rgba(220,31,38,0.25)', borderColor: '#DC1F26' },
-  carZoneText: { fontFamily: FontFamily.regular, fontSize: 9, color: '#A0A0AB', textAlign: 'center' },
-  carZoneTextMarked: { color: '#FF6B6B', fontFamily: FontFamily.bold },
-  carZoneDot: { position: 'absolute', top: 2, right: 2, width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#DC1F26' },
-  wheelZone: { flex: 1, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', padding: 4, alignItems: 'center', justifyContent: 'center', height: 28 },
   dmgForm: { backgroundColor: '#111116', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(220,31,38,0.2)', padding: 14, marginBottom: 12 },
   dmgFormTitle: { fontFamily: FontFamily.bold, fontSize: 13, color: '#A0A0AB', marginBottom: 12 },
   dmgRecord: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: 10, marginBottom: 6 },
@@ -2250,9 +2215,6 @@ const s = StyleSheet.create({
   hpiCalloutSub: { fontFamily: FontFamily.regular, fontSize: 11, color: '#A0A0AB', lineHeight: 16 },
   hpiCalloutBadge: { backgroundColor: 'rgba(59,130,246,0.15)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, flexShrink: 0 },
   hpiCalloutPrice: { fontFamily: FontFamily.bold, fontSize: 13, color: '#60A5FA' },
-
-  // Damage map enhancements
-  carDiagramHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12, paddingHorizontal: 4 },
 
   // Bottom Bar
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingTop: 12, backgroundColor: '#0A0A0C', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', flexDirection: 'row', gap: 10 },
