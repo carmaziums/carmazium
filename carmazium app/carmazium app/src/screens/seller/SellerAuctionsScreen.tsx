@@ -33,6 +33,7 @@ import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { alsoListRetail } from '../../lib/listingsApi';
 import { createPaymentSheet } from '../../lib/paymentsApi';
+import { submitHandoverProof } from '../../lib/auctionApi';
 import { useStripe } from '@stripe/stripe-react-native';
 
 // ─────────────────────────── Types ───────────────────────────
@@ -52,6 +53,9 @@ interface AuctionItem {
   winnerId?: string | null;
   winningBidAmount?: number | null;
   handoverProofUrl?: string | null;
+  handoverSubmittedAt?: string | null;
+  sellerBonusReleased?: boolean;
+  stripePayoutError?: string | null;
   listing: {
     id: string;
     title?: string | null;
@@ -216,10 +220,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       const proofUrl = await uploadToStorage(
         jpegUri, 'handover', `${userId}/${auctionId}-${Date.now()}.jpg`, 'image/jpeg',
       );
-      await apiClient(`/auctions/${auctionId}/handover-proof`, {
-        method: 'POST',
-        body: JSON.stringify({ proofUrl }),
-      });
+      await submitHandoverProof(auctionId, proofUrl);
       haptics.success();
       setHandoverUploaded(prev => ({ ...prev, [auctionId]: true }));
     } catch (err: any) {
@@ -671,8 +672,23 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         {/* Handover proof upload for ENDED auctions with a winner */}
         {isEnded ? (
           <View style={styles.handoverSection}>
-            {handoverUploaded[item.id] ? (
-              <Text style={styles.handoverDone}>Handover proof submitted</Text>
+            {item.stripePayoutError ? (
+              <View style={styles.payoutFailPill}>
+                <Ionicons name="alert-circle-outline" size={13} color="#FCA5A5" />
+                <Text style={styles.payoutFailText}>
+                  Payout failed — {item.stripePayoutError}
+                </Text>
+              </View>
+            ) : item.sellerBonusReleased ? (
+              <View style={styles.payoutOkPill}>
+                <Ionicons name="checkmark-circle" size={13} color="#4ADE80" />
+                <Text style={styles.handoverDone}>£100 payout released</Text>
+              </View>
+            ) : handoverUploaded[item.id] || item.handoverProofUrl ? (
+              <View style={styles.payoutOkPill}>
+                <Ionicons name="hourglass-outline" size={13} color="#4ADE80" />
+                <Text style={styles.handoverDone}>Awaiting admin approval</Text>
+              </View>
             ) : handoverError[item.id] ? (
               <ErrorBanner
                 message={handoverError[item.id]!}
@@ -1409,10 +1425,38 @@ const styles = StyleSheet.create({
   },
   handoverDone: {
     color: '#4ADE80',
-    fontFamily: FontFamily.regular,
+    fontFamily: FontFamily.medium,
     fontSize: 13,
-    textAlign: 'center',
-    paddingVertical: 4,
+  },
+  payoutOkPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(74,222,128,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(74,222,128,0.24)',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  payoutFailPill: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    backgroundColor: 'rgba(239,68,68,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.32)',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  payoutFailText: {
+    color: '#FCA5A5',
+    fontFamily: FontFamily.medium,
+    fontSize: 12,
+    flex: 1,
+    lineHeight: 17,
   },
 
   // ── Create auction button ──
