@@ -655,7 +655,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           <TouchableOpacity
             style={styles.headerBtn}
             activeOpacity={0.75}
-            onPress={() => navigation?.navigate('SellCars')}
+            onPress={() => navigation?.navigate('SellCarFlow')}
           >
             <Ionicons name="add" size={20} color="#FFFFFF" />
           </TouchableOpacity>

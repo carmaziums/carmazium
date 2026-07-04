@@ -544,7 +544,7 @@ export const HomeScreen: React.FC = () => {
         {/* Sell your car CTA */}
         <TouchableOpacity
           style={s.sellCta}
-          onPress={() => navigation.navigate('SellCars' as any)}
+          onPress={() => navigation.navigate('SellCarFlow' as any)}
           activeOpacity={0.85}
         >
           <View style={{ flex: 1, marginRight: 12 }}>

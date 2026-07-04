@@ -714,7 +714,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Auctions</Text>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation?.navigate('SellCars')} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation?.navigate('SellCarFlow')} activeOpacity={0.7}>
           <Ionicons name="add" size={22} color="#FFFFFF" />
         </TouchableOpacity>
       </View>

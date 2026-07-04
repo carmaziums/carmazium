@@ -4,7 +4,6 @@ import { NavigatorScreenParams } from '@react-navigation/native';
 import { TabNavigator, TabParamList } from './TabNavigator';
 import { VehicleDetailScreen } from '../screens/vehicle/VehicleDetailScreen';
 import { AuctionDetailScreen } from '../screens/vehicle/AuctionDetailScreen';
-import { SellCarsScreen } from '../screens/sell/SellCarsScreen';
 import { MessagesScreen } from '../screens/main/MessagesScreen';
 import { ChatScreen } from '../screens/main/ChatScreen';
 import { CompareScreen } from '../screens/main/CompareScreen';
@@ -51,7 +50,6 @@ export type MainStackParamList = {
   VehicleDetail: { listing: CarListing };
   LiveAuctionDetailed: { listing: CarListing };
   Search: undefined;
-  SellCars: undefined;
   Messages: undefined;
   ChatScreen: { threadId: string };
   Compare: undefined;
@@ -131,11 +129,6 @@ export const MainStackNavigator: React.FC = () => {
       <Stack.Screen
         name="LiveAuctionDetailed"
         component={AuctionDetailScreen}
-        options={{ animation: 'slide_from_bottom' }}
-      />
-      <Stack.Screen
-        name="SellCars"
-        component={SellCarsScreen}
         options={{ animation: 'slide_from_bottom' }}
       />
       <Stack.Screen

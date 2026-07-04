@@ -297,7 +297,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
               <TouchableOpacity
                 style={styles.heroEditBtn}
                 activeOpacity={0.75}
-                onPress={() => navigation?.navigate('SellCars')}
+                onPress={() => navigation?.navigate('SellCarFlow')}
               >
                 <Ionicons name="pencil-outline" size={15} color="#FFFFFF" />
               </TouchableOpacity>
@@ -403,7 +403,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
         <TouchableOpacity
           style={styles.ctaButton}
           activeOpacity={0.85}
-          onPress={() => navigation?.navigate('SellCars')}
+          onPress={() => navigation?.navigate('SellCarFlow')}
         >
           <Ionicons name="add" size={20} color="#FFFFFF" />
           <Text style={styles.ctaButtonText}>CREATE NEW LISTING</Text>
@@ -512,7 +512,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
               <TouchableOpacity
                 style={styles.emptyCtaBtn}
                 activeOpacity={0.85}
-                onPress={() => navigation?.navigate('SellCars')}
+                onPress={() => navigation?.navigate('SellCarFlow')}
               >
                 <Text style={styles.emptyCtaBtnText}>Create your first listing</Text>
               </TouchableOpacity>
