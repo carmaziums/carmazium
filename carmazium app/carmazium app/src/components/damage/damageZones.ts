@@ -4,6 +4,17 @@
 // `coords` is the legacy percentage-based 2D position used by DamageMapViewer
 // (the read-only viewer buyers see on VehicleDetailScreen) so saved records
 // keep rendering correctly there.
+//
+// `id` values match the web app's zone ids (src/components/listing/ThreeDVehicleViewer.tsx,
+// repo root) for the exterior zones both apps cover, so the `part` field saved to
+// /damage/{id}/save is consistent across platforms.
+//
+// KNOWN GAP: web has 37 zones (this file's 10 exterior zones plus 10 more exterior —
+// headlights, wings, sills, rear quarters, rear lights — and 8 interior zones:
+// dashboard, steering-wheel, driver-seat, passenger-seat, rear-seat, centre-console,
+// headlining, boot-interior). Mobile only has these 10. Expanding requires placing new
+// 3D hotspot coordinates on the mobile GLB model per zone, which needs manual
+// placement/testing — not done here.
 
 export interface DamageZone3D {
   id: string;

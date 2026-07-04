@@ -517,10 +517,12 @@ export const SellCarsScreen: React.FC = () => {
         await apiClient(`/damage/${listing.id}/save`, {
           method: 'POST',
           body: JSON.stringify({
+            // `part` sends the zone id to match the web app's convention
+            // (VehicleDamageMapper.tsx sends r.zone = a zoneId string like "front-bumper")
             detections: damageRecords.map((r) => {
               const zoneId = DAMAGE_ZONES_3D.find((z) => z.label === r.zone)?.id;
               return {
-                part: r.zone,
+                part: zoneId ?? r.zone,
                 type: r.type,
                 severity: r.severity,
                 coords: zoneCoordsFor(r.zone),

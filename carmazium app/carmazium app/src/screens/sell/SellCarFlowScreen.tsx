@@ -65,6 +65,13 @@ const CONDITIONS = [
   { v: 'EXCELLENT', l: 'Excellent' }, { v: 'GOOD', l: 'Good' },
   { v: 'FAIR', l: 'Fair' }, { v: 'POOR', l: 'Poor' },
 ];
+const BANNER_LABELS = [
+  'Special Offer', 'Limited Time Offer', "Manager's Special", 'Below Market Value',
+  'Weekend Deal', '5% Discount', '10% Discount', '15% Discount', 'Save £500', 'Save £1,000',
+];
+const RELATIONSHIP_OPTIONS = [
+  'Son', 'Daughter', 'Sibling', 'Spouse', 'Executor of Will', 'Solicitor', 'Other',
+];
 const EURO_STANDARDS = ['EURO_4', 'EURO_5', 'EURO_6', 'EURO_6D'];
 const WRITE_OFF_CATS = [
   { v: 'NONE', l: 'None' }, { v: 'CAT_S', l: 'Cat S' },
@@ -393,6 +400,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [owners, setOwners] = useState('');
   const [isImported, setIsImported] = useState(false);
   const [condition, setCondition] = useState('');
+  const [isDepartedSale, setIsDepartedSale] = useState(false);
+  const [departedRelSelect, setDepartedRelSelect] = useState('');
+  const [departedRelOther, setDepartedRelOther] = useState('');
+  const departedRelationship = departedRelSelect === 'Other' ? departedRelOther : departedRelSelect;
   // Legal declarations
   const [writeOffCat, setWriteOffCat] = useState('');
   const [stolenRecovered, setStolenRecovered] = useState<boolean | null>(null);
@@ -668,7 +679,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     const url = videoInput.trim();
     if (!url.startsWith('http')) return;
     if (videoUrls.includes(url)) { setVideoInput(''); return; }
-    if (videoUrls.length >= 4) return;
+    if (videoUrls.length >= 5) return;
     setVideoUrls(p => [...p, url]);
     setVideoInput('');
   }
@@ -686,6 +697,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       if (!mileage.trim()) { Alert.alert('Required', 'Please enter the mileage.'); return false; }
       if (!title.trim()) { Alert.alert('Required', 'Please enter a listing title.'); return false; }
       if (!condition) { Alert.alert('Required', 'Please select the vehicle condition.'); return false; }
+      if (isDepartedSale && !departedRelationship.trim()) { Alert.alert('Required', 'Please select your relationship to the owner.'); return false; }
       if (!writeOffCat) { Alert.alert('Required', 'Please complete the write-off declaration.'); return false; }
       if ((writeOffCat === 'CAT_A' || writeOffCat === 'CAT_B') && !isAuction) {
         Alert.alert('Auction Only', 'Cat A and Cat B write-off vehicles can only be listed via auction. Select the Auction option in Step 3 Pricing.');
@@ -782,14 +794,18 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         features, title, description, condition,
         owners: owners ? parseInt(owners) : undefined,
         isImported,
+        isDepartedSale: isDepartedSale || undefined,
+        departedRelationship: isDepartedSale ? (departedRelationship || undefined) : undefined,
         writeOffCategory: writeOffCat,
         stolenRecovered, hasOutstandingFinance: outstandingFinance,
         isLegalRegisteredKeeper: isLegalKeeper,
         images: allImages,
         videoUrls: videoUrls.length ? videoUrls : undefined,
         priceMin: priceMin ? parseFloat(priceMin.replace(/[^0-9.]/g, '')) : undefined,
+        // priceMax mirrors the asking price — web has no separate max-price input either
         price: priceAsking ? parseFloat(priceAsking.replace(/[^0-9.]/g, '')) : 0,
-        bannerLabel: bannerLabel.trim() || undefined,
+        priceMax: priceAsking ? parseFloat(priceAsking.replace(/[^0-9.]/g, '')) : undefined,
+        bannerLabel: bannerLabel || undefined,
         ...(deliveryAvailable && {
           deliveryAvailable: true,
           deliveryMaxMiles: deliveryMaxMiles ? parseFloat(deliveryMaxMiles) : undefined,
@@ -810,10 +826,13 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         return apiClient(`/damage/${listingId}/save`, {
           method: 'POST',
           body: JSON.stringify({
+            // `part` sends the zone id (e.g. "front-bumper") to match the web app's
+            // convention (VehicleDamageMapper.tsx sends r.zone = a zoneId string) —
+            // fall back to the raw label for manually-typed zones with no matching id.
             detections: damageRecords.map(r => {
               const zoneId = DAMAGE_ZONES_3D.find(z => z.label === r.zone)?.id;
               return {
-                part: r.zone,
+                part: zoneId ?? r.zone,
                 type: r.type,
                 severity: 'MODERATE',
                 description: r.description || undefined,
@@ -1271,6 +1290,48 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               thumbColor="#FFFFFF"
             />
           </View>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
+            <Text style={s.sectionLabel}>DEPARTED / ESTATE SALE</Text>
+            <Switch
+              value={isDepartedSale}
+              onValueChange={v => {
+                setIsDepartedSale(v);
+                if (!v) { setDepartedRelSelect(''); setDepartedRelOther(''); }
+              }}
+              trackColor={{ false: '#2A2A35', true: '#DC1F26' }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+          <Text style={s.fieldHint}>
+            Buyers will see a Deceased Estate badge on your listing. You may be asked for probate documentation.
+          </Text>
+          {isDepartedSale && (
+            <View style={{ marginTop: 12 }}>
+              <SL label="RELATIONSHIP TO OWNER" required />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                {RELATIONSHIP_OPTIONS.map(opt => (
+                  <TouchableOpacity
+                    key={opt}
+                    style={[s.pill, departedRelSelect === opt && s.pillActive]}
+                    onPress={() => { setDepartedRelSelect(opt); if (opt !== 'Other') setDepartedRelOther(''); }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.pillText, departedRelSelect === opt && s.pillTextActive]}>{opt}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              {departedRelSelect === 'Other' && (
+                <TextInput
+                  style={[s.input, { marginTop: 10 }]}
+                  value={departedRelOther}
+                  onChangeText={setDepartedRelOther}
+                  placeholder="Please specify your relationship"
+                  placeholderTextColor="#404050"
+                />
+              )}
+            </View>
+          )}
         </SectionBox>
 
         {/* Write-Off & Legal Declaration */}
@@ -1461,12 +1522,12 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               autoCorrect={false}
               keyboardType="url"
               returnKeyType="done"
-              editable={videoUrls.length < 4}
+              editable={videoUrls.length < 5}
             />
             <TouchableOpacity
               style={[s.pill, s.pillActive, { paddingHorizontal: 16, alignSelf: 'stretch', justifyContent: 'center' }]}
               onPress={handleAddVideoUrl}
-              disabled={videoUrls.length >= 4}
+              disabled={videoUrls.length >= 5}
               activeOpacity={0.7}
             >
               <Text style={s.pillTextActive}>Add</Text>
@@ -1497,9 +1558,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           )}
 
           {/* Limit notice */}
-          {videoUrls.length >= 4 && (
+          {videoUrls.length >= 5 && (
             <Text style={[s.fieldHint, { color: Colors.warning, marginTop: 6 }]}>
-              Max 4 videos
+              Max 5 videos
             </Text>
           )}
         </SectionBox>
@@ -1587,15 +1648,18 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           <View style={{ marginTop: 20 }}>
             <Text style={s.sectionLabel}>LISTING RIBBON LABEL (optional)</Text>
             <Text style={s.fieldHint}>Appears as a coloured tag on your listing card</Text>
-            <TextInput
-              style={s.input}
-              value={bannerLabel}
-              onChangeText={setBannerLabel}
-              placeholder="e.g. Price Drop, Just Arrived, Finance Available"
-              placeholderTextColor="#404050"
-              maxLength={30}
-              autoCorrect={false}
-            />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginTop: 8 }}>
+              {BANNER_LABELS.map(label => (
+                <TouchableOpacity
+                  key={label}
+                  style={[s.pill, bannerLabel === label && s.pillActive]}
+                  onPress={() => setBannerLabel(p => p === label ? '' : label)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[s.pillText, bannerLabel === label && s.pillTextActive]}>{label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
         </SectionBox>
 
