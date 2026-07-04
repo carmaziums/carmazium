@@ -27,6 +27,7 @@ import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
+import { CounterLedger } from '../../components/offers/CounterLedger';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -41,6 +42,12 @@ interface Offer {
   amount: number;
   status: OfferStatus;
   counterAmount?: number | null;
+  sellerCounterAmount?: number | null;
+  buyerCounterAmount?: number | null;
+  counterAttemptsBuyer?: number | null;
+  counterAttemptsSeller?: number | null;
+  counterExpiresAt?: string | null;
+  lastCounteredBy?: 'BUYER' | 'SELLER' | null;
   listing?: {
     title?: string;
     price?: number;
@@ -50,6 +57,7 @@ interface Offer {
     lastName?: string;
   };
   createdAt?: string;
+  updatedAt?: string;
 }
 
 interface ReceivedOffersResponse {
@@ -306,6 +314,28 @@ export const DealerOffersScreen: React.FC = () => {
 
         {/* Listing name */}
         <Text style={styles.listingName} numberOfLines={1}>{listingTitle}</Text>
+
+        {/* Negotiation history — visible whenever any counter has occurred */}
+        {(offer.sellerCounterAmount != null ||
+          offer.buyerCounterAmount != null ||
+          offer.counterAmount != null) && (
+          <CounterLedger
+            offer={{
+              amount: offer.amount,
+              createdAt: offer.createdAt,
+              updatedAt: offer.updatedAt,
+              status: offer.status,
+              sellerCounterAmount: offer.sellerCounterAmount,
+              buyerCounterAmount: offer.buyerCounterAmount,
+              counterAmount: offer.counterAmount,
+              counterAttemptsBuyer: offer.counterAttemptsBuyer,
+              counterAttemptsSeller: offer.counterAttemptsSeller,
+              lastCounteredBy: offer.lastCounteredBy,
+              counterExpiresAt: offer.counterExpiresAt,
+            }}
+            viewerRole="SELLER"
+          />
+        )}
 
         {/* Counter sent label */}
         {isCountered && (

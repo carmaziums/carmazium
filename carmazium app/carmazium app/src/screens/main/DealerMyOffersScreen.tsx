@@ -18,6 +18,7 @@ import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
+import { CounterLedger } from '../../components/offers/CounterLedger';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
@@ -30,8 +31,15 @@ interface Offer {
   amount: number;
   status: OfferStatus;
   counterAmount?: number | null;
+  sellerCounterAmount?: number | null;
+  buyerCounterAmount?: number | null;
+  counterAttemptsBuyer?: number | null;
+  counterAttemptsSeller?: number | null;
+  counterExpiresAt?: string | null;
+  lastCounteredBy?: 'BUYER' | 'SELLER' | null;
   listingId?: string;
   createdAt?: string;
+  updatedAt?: string;
   listing?: {
     id?: string;
     title?: string;
@@ -305,6 +313,28 @@ export const DealerMyOffersScreen: React.FC = () => {
               )}
             </View>
           </View>
+        )}
+
+        {/* Negotiation history — visible whenever any counter has occurred */}
+        {(offer.sellerCounterAmount != null ||
+          offer.buyerCounterAmount != null ||
+          offer.counterAmount != null) && (
+          <CounterLedger
+            offer={{
+              amount: offer.amount,
+              createdAt: offer.createdAt,
+              updatedAt: offer.updatedAt,
+              status: offer.status,
+              sellerCounterAmount: offer.sellerCounterAmount,
+              buyerCounterAmount: offer.buyerCounterAmount,
+              counterAmount: offer.counterAmount,
+              counterAttemptsBuyer: offer.counterAttemptsBuyer,
+              counterAttemptsSeller: offer.counterAttemptsSeller,
+              lastCounteredBy: offer.lastCounteredBy,
+              counterExpiresAt: offer.counterExpiresAt,
+            }}
+            viewerRole="BUYER"
+          />
         )}
 
         {/* Time */}
