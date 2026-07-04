@@ -21,6 +21,7 @@ import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { CounterLedger } from '../../components/offers/CounterLedger';
 
 // ─────────────────────────── interfaces ───────────────────────────
 
@@ -35,6 +36,9 @@ interface Offer {
   buyerCounterAmount?: number | null;
   lastCounteredBy?: 'BUYER' | 'SELLER' | null;
   counterAmount?: number | null; // legacy — kept for backwards compat
+  counterAttemptsBuyer?: number | null;
+  counterAttemptsSeller?: number | null;
+  counterExpiresAt?: string | null;
   listing?: {
     title?: string;
     price?: number;
@@ -44,6 +48,7 @@ interface Offer {
     lastName?: string;
   };
   createdAt?: string;
+  updatedAt?: string;
 }
 
 interface SellerDashboardResponse {
@@ -138,6 +143,7 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [counterModalOffer, setCounterModalOffer] = useState<Offer | null>(null);
   const [counterAmount, setCounterAmount] = useState('');
+  const [toast, setToast] = useState<string | null>(null);
 
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -182,6 +188,13 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
           ...(counterAmt != null && { counterAmount: counterAmt }),
         }),
       });
+      // Backend auto-rejects sibling PENDING offers when we accept one.
+      // Let the seller know that happened so they aren't surprised when the
+      // other rows change status on the next refresh.
+      if (status === 'ACCEPTED') {
+        setToast('Offer accepted — other pending offers on this listing were auto-declined.');
+        setTimeout(() => setToast(null), 5000);
+      }
       await fetchData();
     } catch (err: any) {
       Alert.alert('Action Failed', err?.message ?? 'Something went wrong.');
@@ -316,6 +329,28 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
         {/* Listing name */}
         <Text style={styles.listingName} numberOfLines={1}>{listingTitle}</Text>
 
+        {/* Negotiation history — visible whenever any counter has occurred */}
+        {(offer.sellerCounterAmount != null ||
+          offer.buyerCounterAmount != null ||
+          offer.counterAmount != null) && (
+          <CounterLedger
+            offer={{
+              amount: offer.amount,
+              createdAt: offer.createdAt,
+              updatedAt: offer.updatedAt,
+              status: offer.status,
+              sellerCounterAmount: offer.sellerCounterAmount,
+              buyerCounterAmount: offer.buyerCounterAmount,
+              counterAmount: offer.counterAmount,
+              counterAttemptsBuyer: offer.counterAttemptsBuyer,
+              counterAttemptsSeller: offer.counterAttemptsSeller,
+              lastCounteredBy: offer.lastCounteredBy,
+              counterExpiresAt: offer.counterExpiresAt,
+            }}
+            viewerRole="SELLER"
+          />
+        )}
+
         {/* Counter state label */}
         {isCountered && (
           buyerCounteredBack ? (
@@ -411,6 +446,17 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
           <View style={styles.headerRight} />
         )}
       </View>
+
+      {/* Inline auto-reject toast — surfaces the sibling auto-decline behavior */}
+      {toast && (
+        <View style={styles.toast}>
+          <Ionicons name="checkmark-circle" size={14} color={Colors.success} />
+          <Text style={styles.toastText}>{toast}</Text>
+          <TouchableOpacity onPress={() => setToast(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="close" size={14} color={Colors.textMuted} />
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* ── Content ── */}
       <ScrollView
@@ -797,5 +843,28 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
     color: '#000000',
+  },
+
+  // ── Inline auto-decline toast ──
+  toast: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: 20,
+    marginTop: 4,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(34,197,94,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(34,197,94,0.28)',
+    borderRadius: 10,
+  },
+  toastText: {
+    flex: 1,
+    fontFamily: FontFamily.medium,
+    fontSize: 12,
+    color: Colors.textPrimary,
+    lineHeight: 17,
   },
 });
