@@ -733,7 +733,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   async function triggerListingFeePayment(listingId: string, tier: 'BASIC' | 'STANDARD' | 'PREMIUM'): Promise<boolean> {
     const amounts: Record<string, number> = { BASIC: 1, STANDARD: 10, PREMIUM: 25 };
     const amount = amounts[tier];
-    const sheet = await createPaymentSheet({ listingId, amount, type: 'COMMISSION', currency: 'gbp' });
+    const sheet = await createPaymentSheet({ listingId, amount, type: 'LISTING_FEE', currency: 'gbp' });
     const { error: initError } = await initPaymentSheet({
       merchantDisplayName: 'Carmazium',
       customerId: sheet.customerId,
