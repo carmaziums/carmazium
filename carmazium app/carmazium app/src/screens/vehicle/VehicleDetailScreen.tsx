@@ -42,6 +42,7 @@ import { haptics } from '../../lib/haptics';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { createDeliveryRequest, calcDeliveryFeeExVat } from '../../lib/deliveryApi';
 import { StripeCheckoutModal } from '../../components/StripeCheckoutModal';
+import { EnquireModal } from '../../components/listing/EnquireModal';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'VehicleDetail'>;
 
@@ -79,6 +80,9 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [offerAmount, setOfferAmount] = useState(listing.price - 2500);
   const [offerSubmitted, setOfferSubmitted] = useState(false);
   const [isSubmittingOffer, setIsSubmittingOffer] = useState(false);
+
+  // Enquire modal — structured form the buyer fills before landing in chat.
+  const [enquireVisible, setEnquireVisible] = useState(false);
 
   // Dynamic States for Live Chat simulation
   const [chatVisible, setChatVisible] = useState(false);
@@ -800,7 +804,11 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 style={styles.sellerChatBtn}
                 onPress={(e) => {
                   e.stopPropagation();
-                  handleOpenChat();
+                  if (listing.seller?.id) {
+                    setEnquireVisible(true);
+                  } else {
+                    handleOpenChat();
+                  }
                 }}
               >
                 <Ionicons name="chatbubble-ellipses-outline" size={17} color="#FFFFFF" />
@@ -1092,7 +1100,13 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         <TouchableOpacity
           style={styles.chatButton}
           activeOpacity={0.7}
-          onPress={handleOpenChat}
+          onPress={() => {
+            if (listing.seller?.id) {
+              setEnquireVisible(true);
+            } else {
+              handleOpenChat();
+            }
+          }}
         >
           <Ionicons name="chatbubble-ellipses-outline" size={20} color="#FFFFFF" />
         </TouchableOpacity>
@@ -1199,6 +1213,26 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
         </View>
       </Modal>
+
+      {/* ENQUIRE MODAL — structured form the buyer fills before chatting */}
+      <EnquireModal
+        visible={enquireVisible}
+        onClose={() => setEnquireVisible(false)}
+        listing={{
+          id: listing.id,
+          make: listing.make,
+          model: listing.model,
+          year: listing.year,
+        }}
+        sellerId={listing.seller?.id}
+        onSent={async (roomId) => {
+          setEnquireVisible(false);
+          // Make sure the ChatContext room list has the new/found room before
+          // ChatScreen mounts so the header + last message render immediately.
+          await refreshRooms();
+          navigation.navigate('ChatScreen', { threadId: roomId });
+        }}
+      />
 
       {/* HPI CHECKOUT MODAL — hosted Stripe checkout for £9.99 report */}
       <StripeCheckoutModal
