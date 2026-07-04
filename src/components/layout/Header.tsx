@@ -49,7 +49,7 @@ export function Header() {
 
 
     return (
-        <header className="fixed top-0 left-0 w-full z-50 border-b shadow-2xl transition-all duration-300"
+        <header className="fixed top-0 left-0 w-full z-[60] border-b shadow-2xl transition-all duration-300"
             style={{
                 borderColor: 'var(--border-default)',
                 color: 'var(--text-primary)',
@@ -81,7 +81,7 @@ export function Header() {
                 </div>
 
                 {/* Desktop Nav */}
-                <nav className="hidden md:flex flex-none justify-center gap-8">
+                <nav className="hidden lg:flex flex-none justify-center gap-8">
                     {navLinks.map((link) => (
                         <Link
                             key={link.name}
@@ -178,7 +178,7 @@ export function Header() {
                             <Button
                                 asChild
                                 variant="ghost"
-                                className="hidden md:flex text-sm font-semibold hover:text-primary transition-colors"
+                                className="hidden lg:flex text-sm font-semibold hover:text-primary transition-colors"
                             >
                                 <Link href="/auth/signup">
                                     Sign Up
@@ -189,7 +189,7 @@ export function Header() {
                                 asChild
                                 variant="default"
                                 shape="default"
-                                className="hidden md:flex gap-2 font-bold px-6 bg-gradient-to-br from-[#ff4d4d] to-[#ed1c24] hover:from-[#ff6b6b] hover:to-[#ff0033]"
+                                className="hidden lg:flex gap-2 font-bold px-6 bg-gradient-to-br from-[#ff4d4d] to-[#ed1c24] hover:from-[#ff6b6b] hover:to-[#ff0033]"
                             >
                                 <Link href="/auth/login">
                                     <LogIn size={18} /> Login
@@ -199,7 +199,7 @@ export function Header() {
                     )}
 
                     <button
-                        className="md:hidden text-2xl focus:outline-none ml-2"
+                        className="lg:hidden text-2xl focus:outline-none ml-2"
                         onClick={toggleMenu}
                         aria-label="Toggle Menu"
                     >
@@ -211,7 +211,7 @@ export function Header() {
             {/* Mobile Menu */}
             {isMobileMenuOpen && (
                 <div
-                    className="md:hidden absolute top-full left-0 w-full shadow-xl border-t animate-in slide-in-from-top-2"
+                    className="lg:hidden absolute top-full left-0 w-full shadow-xl border-t animate-in slide-in-from-top-2 max-h-[calc(100vh-5rem)] overflow-y-auto"
                     style={{
                         background: 'var(--bg-dropdown)',
                         borderColor: 'var(--border-default)',

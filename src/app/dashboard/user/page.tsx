@@ -464,6 +464,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const [saleListing, setSaleListing] = React.useState<Listing | null>(null)
     const [publishing, setPublishing] = React.useState<string | null>(null)
     const [showImportModal, setShowImportModal] = React.useState(false)
+    const [openMenuId, setOpenMenuId] = React.useState<string | null>(null)
 
     const auctionDashPath = profile?.role === 'DEALER' ? '/dashboard/dealer/auctions' : '/dashboard/seller/auctions'
 
@@ -656,11 +657,19 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                         {boosting === listing.id ? <Loader2 size={12} className="animate-spin" /> : 'BOOST'}
                                                     </Button>
                                                 )}
-                                                <div className="relative group">
-                                                    <button className="p-2.5 text-[var(--text-muted)] hover:text-white transition-colors">
+                                                <div className="relative">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === listing.id ? null : listing.id) }}
+                                                        className="p-2.5 text-[var(--text-muted)] hover:text-white transition-colors"
+                                                    >
                                                         <MoreVertical size={16} />
                                                     </button>
-                                                    <div className="absolute right-0 top-full mt-1 w-44 bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 py-2">
+                                                    {openMenuId === listing.id && (
+                                                    <>
+                                                        <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />
+                                                        <div className="absolute right-0 top-full mt-1 w-44 bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-xl shadow-2xl z-50 py-2"
+                                                            onClick={() => setOpenMenuId(null)}
+                                                        >
                                                         {listing.status === 'DRAFT' && (
                                                             <button
                                                                 onClick={() => handlePublish(listing)}
@@ -701,7 +710,9 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                         >
                                                             <Trash2 size={14} /> Delete
                                                         </button>
-                                                    </div>
+                                                        </div>
+                                                    </>
+                                                    )}
                                                 </div>
                                             </div>
                                         </td>

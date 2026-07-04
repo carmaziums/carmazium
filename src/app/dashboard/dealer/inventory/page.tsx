@@ -449,16 +449,22 @@ export default function DealerInventoryPage() {
                                                                 </Button>
                                                             )}
 
-                                                            <div className="relative group/menu">
+                                                            <div className="relative">
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
+                                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveDropdown(activeDropdown === listing.id ? null : listing.id) }}
                                                                     className="bg-[var(--bg-card)] hover:bg-white/10 text-[var(--text-muted)] hover:text-primary dark:hover:text-white border border-[var(--border-default)]"
                                                                 >
                                                                     <MoreVertical size={16} />
                                                                 </Button>
 
-                                                                <div className="absolute right-0 top-full mt-1 w-36 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg shadow-xl opacity-0 invisible group-hover/menu:opacity-100 group-hover/menu:visible transition-all z-20 flex flex-col py-1">
+                                                                {activeDropdown === listing.id && (
+                                                                <>
+                                                                <div className="fixed inset-0 z-10" onClick={() => setActiveDropdown(null)} />
+                                                                <div
+                                                                    onClick={() => setActiveDropdown(null)}
+                                                                    className="absolute right-0 top-full mt-1 w-36 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg shadow-xl transition-all z-20 flex flex-col py-1">
                                                                     <Link href={`/dashboard/dealer/add-listing?editId=${listing.id}&editSlug=${encodeURIComponent(listing.slug)}`} className="flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-card)] hover:text-primary dark:hover:text-white transition-colors">
                                                                         <Pencil size={14} /> Edit
                                                                     </Link>
@@ -544,6 +550,8 @@ export default function DealerInventoryPage() {
                                                                         <Trash2 size={14} /> Delete
                                                                     </button>
                                                                 </div>
+                                                                </>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </td>
