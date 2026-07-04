@@ -10,7 +10,6 @@ import {
   Alert,
   ActivityIndicator,
   Share,
-  Linking,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
@@ -18,6 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontFamily } from '../../constants/typography';
 import { apiClient } from '../../lib/apiClient';
+import { StripeCheckoutModal } from '../../components/StripeCheckoutModal';
+import { haptics } from '../../lib/haptics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -27,6 +28,8 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
   const [actionBusy, setActionBusy] = useState(false);
+  const [boostCheckoutUrl, setBoostCheckoutUrl] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -61,20 +64,31 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
       );
       const checkoutUrl = res?.data?.checkoutUrl;
       if (checkoutUrl) {
-        Alert.alert(
-          'Boost Listing',
-          'This will open a secure payment page to boost your listing to the top of search results.',
-          [
-            { text: 'Open', onPress: () => Linking.openURL(checkoutUrl) },
-            { text: 'Cancel', style: 'cancel' },
-          ]
-        );
+        // Open the Stripe hosted checkout inside our own WebView modal.
+        // The old flow used Linking.openURL which punted sellers to the
+        // system browser and left them re-authenticating on return.
+        setBoostCheckoutUrl(checkoutUrl);
+      } else {
+        Alert.alert('Error', 'No checkout URL returned.');
       }
     } catch (err: any) {
       Alert.alert('Error', err?.message || 'Could not start the boost checkout. Please try again.');
     } finally {
       setActionBusy(false);
     }
+  };
+
+  const handleBoostSuccess = async () => {
+    setBoostCheckoutUrl(null);
+    haptics.success();
+    setToast('Boosted for 7 days');
+    // Refetch the primary listing so the isFeatured flag/UI updates on this
+    // screen once the Stripe webhook has flipped the boost status.
+    try {
+      const res = await apiClient<any>('/listings/my?page=1&limit=20');
+      setListings(res?.data || []);
+    } catch { /* non-fatal */ }
+    setTimeout(() => setToast(null), 3000);
   };
 
   const handleShareListing = async () => {
@@ -334,6 +348,23 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
         end={{ x: 1, y: 0.5 }}
       />
       {renderMainView()}
+
+      {/* Boost checkout — hosted Stripe checkout in-app */}
+      <StripeCheckoutModal
+        url={boostCheckoutUrl}
+        title="Featured Boost Checkout"
+        onSuccess={handleBoostSuccess}
+        onCancel={() => setBoostCheckoutUrl(null)}
+        onClose={() => setBoostCheckoutUrl(null)}
+      />
+
+      {/* Small transient toast for boost success */}
+      {toast && (
+        <View style={styles.toast} pointerEvents="none">
+          <Ionicons name="flash" size={14} color="#F59E0B" />
+          <Text style={styles.toastText}>{toast}</Text>
+        </View>
+      )}
 
       {/* Floating Center Plus Button */}
       <TouchableOpacity 
@@ -610,5 +641,25 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.medium,
     fontSize: 11,
     color: '#606070',
+  },
+  toast: {
+    position: 'absolute',
+    bottom: 140,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(17,17,22,0.95)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.3)',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  toastText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 12,
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
 });
