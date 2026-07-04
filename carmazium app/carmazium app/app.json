@@ -9,13 +9,16 @@
     "icon": "./assets/images/icon.png",
     "scheme": "carmazium",
     "runtimeVersion": {
-      "policy": "appVersion"
+      "policy": "sdkVersion"
     },
     "updates": {
       "url": "https://u.expo.dev/f0ab914b-3433-4816-80a2-0a94e6c6a066",
       "enabled": true,
       "fallbackToCacheTimeout": 0,
-      "checkAutomatically": "ON_LOAD"
+      "checkAutomatically": "ON_LOAD",
+      "requestHeaders": {
+        "expo-channel-name": "production"
+      }
     },
     "splash": {
       "image": "./assets/images/splash.png",
