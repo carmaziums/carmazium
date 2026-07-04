@@ -1,9 +1,17 @@
 import { apiClient } from './apiClient';
 
+export type PaymentSheetType =
+  | 'DEPOSIT'
+  | 'FULL_PAYMENT'
+  | 'COMMISSION'
+  | 'LISTING_FEE'
+  | 'HPI_REPORT'
+  | 'BOOST';
+
 export interface PaymentSheetParams {
   listingId: string;
   amount: number;
-  type?: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION';
+  type?: PaymentSheetType;
   currency?: string;
 }
 
