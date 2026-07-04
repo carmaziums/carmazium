@@ -65,6 +65,10 @@ const CONDITIONS = [
   { v: 'EXCELLENT', l: 'Excellent' }, { v: 'GOOD', l: 'Good' },
   { v: 'FAIR', l: 'Fair' }, { v: 'POOR', l: 'Poor' },
 ];
+const OWNERS_OPTIONS = [
+  { v: '1', l: '1 Owner' }, { v: '2', l: '2 Owners' }, { v: '3', l: '3 Owners' },
+  { v: '4', l: '4 Owners' }, { v: '5+', l: '5+ Owners' },
+];
 const BANNER_LABELS = [
   'Special Offer', 'Limited Time Offer', "Manager's Special", 'Below Market Value',
   'Weekend Deal', '5% Discount', '10% Discount', '15% Discount', 'Save £500', 'Save £1,000',
@@ -697,6 +701,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       if (!mileage.trim()) { Alert.alert('Required', 'Please enter the mileage.'); return false; }
       if (!title.trim()) { Alert.alert('Required', 'Please enter a listing title.'); return false; }
       if (!condition) { Alert.alert('Required', 'Please select the vehicle condition.'); return false; }
+      if (!owners) { Alert.alert('Required', 'Please select the number of owners.'); return false; }
       if (isDepartedSale && !departedRelationship.trim()) { Alert.alert('Required', 'Please select your relationship to the owner.'); return false; }
       if (!writeOffCat) { Alert.alert('Required', 'Please complete the write-off declaration.'); return false; }
       if ((writeOffCat === 'CAT_A' || writeOffCat === 'CAT_B') && !isAuction) {
@@ -792,7 +797,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         extraUrbanMpg: extraUrbanMpg ? parseFloat(extraUrbanMpg) : undefined,
         ulezCompliant, euroStandard, co2Emissions: co2Emissions ? parseInt(co2Emissions) : undefined,
         features, title, description, condition,
-        owners: owners ? parseInt(owners) : undefined,
+        owners: owners || undefined,
         isImported,
         isDepartedSale: isDepartedSale || undefined,
         departedRelationship: isDepartedSale ? (departedRelationship || undefined) : undefined,
@@ -1271,16 +1276,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         {/* Ownership */}
         <SectionBox title="Ownership">
           <PillRow label="CONDITION" options={CONDITIONS} value={condition as any} onSelect={setCondition} required />
-          <View>
-            <SL label="NUMBER OF OWNERS" />
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {['1 Owner', '2 Owners', '3+ Owners'].map(k => (
-                <TouchableOpacity key={k} style={[s.pill, owners === k && s.pillActive]} onPress={() => setOwners(k)} activeOpacity={0.7}>
-                  <Text style={[s.pillText, owners === k && s.pillTextActive]}>{k}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+          <PillRow label="NUMBER OF OWNERS" options={OWNERS_OPTIONS} value={owners as any} onSelect={setOwners} required />
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
             <Text style={s.sectionLabel}>IMPORTED VEHICLE</Text>
             <Switch
