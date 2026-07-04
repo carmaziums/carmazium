@@ -30,6 +30,7 @@ import {
   type AuctionDetail, type BidBroadcastPayload, type AuctionEndPayload,
 } from '../../lib/auctionApi';
 import { createChatRoom } from '../../lib/chatApi';
+import { apiClient } from '../../lib/apiClient';
 import { io } from 'socket.io-client';
 import { getAccessToken } from '../../lib/supabase';
 import { Skeleton } from '../../components/ui/Skeleton';

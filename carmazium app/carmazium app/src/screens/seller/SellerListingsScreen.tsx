@@ -27,6 +27,7 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ImportListingModal } from '../../components/ImportListingModal';
 import { BulkImportModal } from '../../components/BulkImportModal';
+import { StripeCheckoutModal } from '../../components/StripeCheckoutModal';
 import { alsoAuction } from '../../lib/listingsApi';
 import { haptics } from '../../lib/haptics';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -192,6 +193,8 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
   const [sellPriceModal, setSellPriceModal] = useState<ApiListing | null>(null);
   const [soldPriceInput, setSoldPriceInput] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [boostCheckoutUrl, setBoostCheckoutUrl] = useState<string | null>(null);
+  const [boostToast, setBoostToast] = useState<string | null>(null);
 
   // ─── data fetch ───────────────────────────────────────────────
 
@@ -324,14 +327,11 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         );
         const checkoutUrl = res?.data?.checkoutUrl;
         if (checkoutUrl) {
-          Alert.alert(
-            'Boost Listing',
-            'This will open a secure payment page to boost your listing.',
-            [
-              { text: 'Open', onPress: () => Linking.openURL(checkoutUrl) },
-              { text: 'Cancel', style: 'cancel' },
-            ]
-          );
+          // In-app WebView checkout — mirrors MyListingDashboardScreen so
+          // the seller doesn't get bounced to the system browser.
+          setBoostCheckoutUrl(checkoutUrl);
+        } else {
+          Alert.alert('Error', 'No checkout URL returned.');
         }
       } catch (err: any) {
         Alert.alert('Error', err.message || 'Could not initiate boost.');
@@ -340,6 +340,21 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       }
     }
   };
+
+  const handleBoostSuccess = useCallback(async () => {
+    setBoostCheckoutUrl(null);
+    haptics.success();
+    setBoostToast('Boosted for 7 days');
+    setTimeout(() => setBoostToast(null), 3000);
+    // Refresh the listings so the isFeatured pill reflects the new state
+    // once the Stripe webhook has fired.
+    try {
+      const refreshed = await apiClient<{ success: boolean; data: ApiListing[] }>(
+        '/listings/my?page=1&limit=50',
+      );
+      if (refreshed?.success) setListings(refreshed.data || []);
+    } catch { /* non-fatal */ }
+  }, []);
 
   function onAuctionDateChange(event: DateTimePickerEvent, selected?: Date) {
     if (event.type === 'dismissed') { setShowAuctionDatePicker(false); return; }
@@ -726,6 +741,22 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       {actionLoading && !sellPriceModal && (
         <View style={styles.actionLoadingOverlay}>
           <ActivityIndicator color={Colors.accent} size="large" />
+        </View>
+      )}
+
+      {/* Featured boost checkout — hosted Stripe checkout in-app */}
+      <StripeCheckoutModal
+        url={boostCheckoutUrl}
+        title="Featured Boost Checkout"
+        onSuccess={handleBoostSuccess}
+        onCancel={() => setBoostCheckoutUrl(null)}
+        onClose={() => setBoostCheckoutUrl(null)}
+      />
+
+      {boostToast && (
+        <View style={styles.boostToast} pointerEvents="none">
+          <Ionicons name="flash" size={14} color="#F59E0B" />
+          <Text style={styles.boostToastText}>{boostToast}</Text>
         </View>
       )}
 
@@ -1180,6 +1211,28 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.35)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  // ── boost success toast ──
+  boostToast: {
+    position: 'absolute',
+    bottom: 100,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(17,17,22,0.95)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.3)',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  boostToastText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 12,
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
 
   // ── Dual-channel modal (Also Put in Auction) ──
