@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Image from "next/image"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { updateProfile } from "@/lib/listingApi"
@@ -97,7 +98,7 @@ export default function BuyerSettingsPage() {
                                     {uploadingImage ? (
                                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
                                     ) : profileImage ? (
-                                        <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
+                                        <Image src={profileImage} alt="Profile" fill sizes="128px" className="object-cover" />
                                     ) : (
                                         initials
                                     )}

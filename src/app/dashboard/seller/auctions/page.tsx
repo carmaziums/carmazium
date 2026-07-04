@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import {
     Gavel, PlusCircle, Loader2, Eye, XCircle, Clock,
@@ -751,7 +752,7 @@ function SellerAuctionsPage() {
                                         <div className="flex items-start justify-between gap-4">
                                             <div className="flex items-center gap-3 min-w-0">
                                                 {auction.listing.images?.[0] && (
-                                                    <img src={auction.listing.images[0]} alt="" className="w-14 h-10 rounded object-cover shrink-0" />
+                                                    <Image src={auction.listing.images[0]} alt="" width={56} height={40} className="w-14 h-10 rounded object-cover shrink-0" />
                                                 )}
                                                 <div className="min-w-0">
                                                     <p className="font-bold truncate">{auction.listing.title}</p>

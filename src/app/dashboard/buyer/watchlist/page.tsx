@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { getWatchlist, removeFromWatchlist, formatPrice, type WatchlistItem } from "@/lib/listingApi"
@@ -86,10 +87,12 @@ export default function WatchlistPage() {
                                         <Link href={`/cars/${item.listing.slug}`}>
                                             <div className="relative h-48 w-full bg-[var(--bg-input)]">
                                                 {item.listing.images?.[0] ? (
-                                                    <img
+                                                    <Image
                                                         src={item.listing.images[0]}
                                                         alt={item.listing.title}
-                                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                                        fill
+                                                        sizes="(max-width: 768px) 90vw, 33vw"
+                                                        className="object-cover group-hover:scale-110 transition-transform duration-500"
                                                     />
                                                 ) : (
                                                     <div className="w-full h-full flex items-center justify-center text-[var(--text-secondary)]">No Image</div>

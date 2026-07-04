@@ -4,10 +4,9 @@ import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
-import { motion } from "framer-motion"
 
 const buttonVariants = cva(
-    "inline-flex items-center justify-center whitespace-nowrap text-sm font-bold uppercase tracking-wider transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+    "inline-flex items-center justify-center whitespace-nowrap text-sm font-bold uppercase tracking-wider transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:scale-[1.02] active:scale-[0.98] duration-150",
     {
         variants: {
             variant: {
@@ -39,10 +38,6 @@ const buttonVariants = cva(
     }
 )
 
-// Hoist motion component creation outside render to prevent
-// React from seeing a new component type on every render cycle.
-const MotionButton = motion.button
-
 export interface ButtonProps
     extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
@@ -53,24 +48,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ({ className, variant, size, shape, asChild = false, ...props }, ref) => {
         const Comp = asChild ? Slot : "button"
 
-        if (asChild) {
-            return (
-                <Comp
-                    className={cn(buttonVariants({ variant, size, shape, className }))}
-                    ref={ref}
-                    {...props}
-                />
-            )
-        }
-
         return (
-            <MotionButton
+            <Comp
                 className={cn(buttonVariants({ variant, size, shape, className }))}
-                ref={ref as any}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                {...(props as any)}
+                ref={ref}
+                {...props}
             />
         )
     }

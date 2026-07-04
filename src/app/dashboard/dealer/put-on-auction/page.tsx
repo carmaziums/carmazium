@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import {
     ArrowLeft, Gavel, Car, Loader2, CheckCircle2,
     AlertTriangle, Info, Calendar, PoundSterling, TrendingUp, Zap,
@@ -136,9 +137,9 @@ export default function PutOnAuctionPage() {
                         <>
                             {/* Vehicle summary card */}
                             <div className="dealer-glass-card p-5 flex gap-4 items-center">
-                                <div className="w-24 h-16 bg-black/40 rounded-xl overflow-hidden border border-[var(--border-default)] shrink-0">
+                                <div className="w-24 h-16 bg-black/40 rounded-xl overflow-hidden border border-[var(--border-default)] shrink-0 relative">
                                     {listing.images?.[0] ? (
-                                        <img src={listing.images[0]} alt="" className="w-full h-full object-cover opacity-80" />
+                                        <Image src={listing.images[0]} alt="" fill sizes="96px" className="object-cover opacity-80" />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center text-gray-700">
                                             <Car size={20} />

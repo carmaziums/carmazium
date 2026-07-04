@@ -1,10 +1,6 @@
-"use client"
-
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/Button"
-import { motion, useMotionValue, useSpring, useTransform } from "framer-motion"
-import { useRef } from "react"
 import { Calendar, Gauge, Fuel, Car, BadgeCheck, ShieldCheck, Star, Sparkles, MapPin, Gavel, Truck } from "lucide-react"
 import { SellerBadge } from "@/components/ui/SellerBadge"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
@@ -58,33 +54,6 @@ export function CarCard({
     sellerId, sellerScore, isFeatured = false, badgeTier, status, bannerLabel, hasLinkedAuction,
     isDepartedSale, deliveryAvailable
 }: CarCardProps) {
-    const ref = useRef<HTMLDivElement>(null)
-
-    // Motion values for 3D tilt
-    const x = useMotionValue(0)
-    const y = useMotionValue(0)
-
-    // Spring physics for smooth tilt
-    const mouseX = useSpring(x, { stiffness: 150, damping: 15 })
-    const mouseY = useSpring(y, { stiffness: 150, damping: 15 })
-
-    const rotateX = useTransform(mouseY, [-0.5, 0.5], ["5deg", "-5deg"])
-    const rotateY = useTransform(mouseX, [-0.5, 0.5], ["-5deg", "5deg"])
-
-    function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
-        if (!ref.current) return
-        const rect = ref.current.getBoundingClientRect()
-        const xPct = (e.clientX - rect.left) / rect.width - 0.5
-        const yPct = (e.clientY - rect.top) / rect.height - 0.5
-        x.set(xPct)
-        y.set(yPct)
-    }
-
-    function handleMouseLeave() {
-        x.set(0)
-        y.set(0)
-    }
-
     const hasSpecs = year || mileage || fuelType || bodyType
 
     // Tier-based styling
@@ -100,23 +69,13 @@ export function CarCard({
                 : ''
 
     return (
-        <motion.div
-            ref={ref}
-            onMouseMove={handleMouseMove}
-            onMouseLeave={handleMouseLeave}
-            style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-            className={`glass-card isolate h-full flex flex-col perspective-1000 overflow-visible group relative ${tierBorder || ''} ${tierGlow || ''}`}
+        <div
+            className={`glass-card isolate h-full flex flex-col overflow-visible group relative transition-transform duration-300 ease-out hover:-translate-y-1 ${tierBorder || ''} ${tierGlow || ''}`}
         >
             {/* Holographic Shimmer Overlay */}
-            <motion.div
-                style={{
-                    background: useTransform(
-                        [mouseX, mouseY],
-                        ([latestX, latestY]: number[]) => `radial-gradient(circle at ${50 + latestX * 100}% ${50 + latestY * 100}%, rgba(255,255,255,0.15) 0%, transparent 50%)`
-                    ),
-                    zIndex: 20
-                }}
-                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-2xl"
+            <div
+                style={{ zIndex: 20 }}
+                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-2xl bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.15)_0%,transparent_50%)]"
             />
 
             <div
@@ -150,10 +109,7 @@ export function CarCard({
                 {/* Spotlight Glow */}
                 <div className="absolute inset-0 bg-indigo-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-3xl rounded-full scale-150 mix-blend-screen" />
 
-                <motion.div
-                    style={{ transform: "translateZ(40px)" }}
-                    className="relative z-10 w-full h-full"
-                >
+                <div className="relative z-10 w-full h-full">
                     <Link href={href} className="cursor-pointer block relative w-full h-full">
                         <Image
                             src={image}
@@ -163,7 +119,7 @@ export function CarCard({
                             className={`object-contain drop-shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:-rotate-1 ${status === 'SOLD' ? 'opacity-30 grayscale' : ''}`}
                         />
                     </Link>
-                </motion.div>
+                </div>
 
                 {/* Banner Label Ribbon */}
                 {bannerLabel && status !== 'SOLD' && (
@@ -196,19 +152,16 @@ export function CarCard({
 
             <div
                 className="p-6 relative z-10 flex flex-col flex-1 border-t bg-gradient-to-b from-primary/5 dark:from-white/5 to-transparent rounded-b-2xl"
-                style={{ transform: "translateZ(20px)", borderColor: 'var(--border-default)' }}
+                style={{ borderColor: 'var(--border-default)' }}
             >
                 <div className="flex justify-between items-start mb-2 gap-2">
                     <h3 className="text-lg md:text-xl font-bold font-heading tracking-wide group-hover:text-primary transition-colors duration-300 line-clamp-2">{title}</h3>
                     {sellerId && sellerScore !== undefined ? (
                         <SellerBadge score={sellerScore} sellerUserId={sellerId} size="sm" showLabel />
                     ) : (
-                        <motion.div
-                            className="bg-primary/20 text-primary text-[10px] font-bold px-2 py-1 rounded uppercase tracking items-center flex shrink-0"
-                            whileHover={{ scale: 1.1 }}
-                        >
+                        <div className="bg-primary/20 text-primary text-[10px] font-bold px-2 py-1 rounded uppercase tracking items-center flex shrink-0 transition-transform duration-200 hover:scale-110">
                             Verified
-                        </motion.div>
+                        </div>
                     )}
                 </div>
 
@@ -304,6 +257,6 @@ export function CarCard({
                     </Button>
                 </div>
             </div>
-        </motion.div>
+        </div>
     )
 }

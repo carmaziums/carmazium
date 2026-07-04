@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
@@ -275,7 +276,7 @@ export default function DealerInventoryPage() {
                                             {/* Thumbnail */}
                                             <div className="w-20 h-16 bg-black/40 rounded-xl overflow-hidden border border-[var(--border-default)] shrink-0 relative">
                                                 {listing.images?.[0] ? (
-                                                    <img src={listing.images[0]} alt="" className={`w-full h-full object-cover ${listing.status === 'SOLD' ? 'opacity-40' : 'opacity-80'}`} />
+                                                    <Image src={listing.images[0]} alt="" fill sizes="80px" className={`object-cover ${listing.status === 'SOLD' ? 'opacity-40' : 'opacity-80'}`} />
                                                 ) : (
                                                     <div className="w-full h-full flex items-center justify-center text-gray-700"><Car size={18} /></div>
                                                 )}
@@ -435,7 +436,7 @@ export default function DealerInventoryPage() {
                                                         <div className="flex items-center gap-5">
                                                             <div className="w-20 h-14 bg-black/40 rounded-xl overflow-hidden border border-[var(--border-default)] flex-shrink-0 group-hover:scale-105 transition-transform duration-500 shadow-2xl relative">
                                                                 {listing.images?.[0] ? (
-                                                                    <img src={listing.images[0]} alt="" className={`w-full h-full object-cover transition-opacity ${listing.status === 'SOLD' ? 'opacity-40' : 'opacity-80 group-hover:opacity-100'}`} />
+                                                                    <Image src={listing.images[0]} alt="" fill sizes="80px" className={`object-cover transition-opacity ${listing.status === 'SOLD' ? 'opacity-40' : 'opacity-80 group-hover:opacity-100'}`} />
                                                                 ) : (
                                                                     <div className="w-full h-full flex items-center justify-center text-gray-700">
                                                                         <Car size={20} />

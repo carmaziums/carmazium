@@ -10,6 +10,20 @@
 
   --animate-float: float 6s ease-in-out infinite;
   --animate-shimmer-sweep: shimmer-sweep 2s infinite linear;
+  --animate-page-in: page-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+
+  --keyframes-page-in: {
+    from {
+      opacity: 0;
+      transform: translateY(15px);
+      filter: blur(5px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+    }
+  }
 
   --keyframes-float: {
 

@@ -1208,8 +1208,8 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                         return (
                                             <div key={record.id ?? i} className="flex gap-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/15">
                                                 {record.imageUrl && (
-                                                    <div className="w-20 h-16 rounded-lg overflow-hidden shrink-0 border border-[var(--border-default)]">
-                                                        <img src={record.imageUrl} alt={zoneLabel} className="w-full h-full object-cover" />
+                                                    <div className="w-20 h-16 rounded-lg overflow-hidden shrink-0 border border-[var(--border-default)] relative">
+                                                        <Image src={record.imageUrl} alt={zoneLabel} fill sizes="80px" className="object-cover" />
                                                     </div>
                                                 )}
                                                 <div className="flex-1 min-w-0">

@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import {
     ArrowLeft, Trophy, Car, Loader2, AlertTriangle,
@@ -165,10 +166,13 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                             {images.length > 0 ? (
                                 <>
                                     <div className="relative h-72 sm:h-96 bg-black/40">
-                                        <img
+                                        <Image
                                             src={images[activeImage]}
                                             alt={listing.title}
-                                            className="w-full h-full object-cover"
+                                            fill
+                                            sizes="(max-width: 1024px) 100vw, 60vw"
+                                            priority
+                                            className="object-cover"
                                         />
                                         <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-lg text-xs font-bold text-white">
                                             {activeImage + 1} / {images.length}
@@ -180,11 +184,11 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                                                 <button
                                                     key={i}
                                                     onClick={() => setActiveImage(i)}
-                                                    className={`w-16 h-11 rounded-lg overflow-hidden shrink-0 border-2 transition-all ${
+                                                    className={`relative w-16 h-11 rounded-lg overflow-hidden shrink-0 border-2 transition-all ${
                                                         i === activeImage ? "border-primary" : "border-transparent opacity-60 hover:opacity-100"
                                                     }`}
                                                 >
-                                                    <img src={img} alt="" className="w-full h-full object-cover" />
+                                                    <Image src={img} alt="" fill sizes="64px" className="object-cover" />
                                                 </button>
                                             ))}
                                         </div>
@@ -306,9 +310,9 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                         {/* Seller card */}
                         <div className="dealer-glass-card p-5">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-[var(--bg-card)] border border-[var(--border-default)] flex items-center justify-center shrink-0">
+                                <div className="w-10 h-10 rounded-xl bg-[var(--bg-card)] border border-[var(--border-default)] flex items-center justify-center shrink-0 relative">
                                     {seller?.dealerProfile?.logo ? (
-                                        <img src={seller.dealerProfile.logo} alt="" className="w-full h-full object-cover rounded-xl" />
+                                        <Image src={seller.dealerProfile.logo} alt="" fill sizes="40px" className="object-cover rounded-xl" />
                                     ) : (
                                         <User size={18} className="text-[var(--text-muted)]" />
                                     )}

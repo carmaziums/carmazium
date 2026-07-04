@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import {
     Gavel, PlusCircle, Loader2, Eye, XCircle, Clock,
@@ -414,9 +415,9 @@ function DealerAuctionsPage() {
                             {auctions.map(auction => (
                                 <div key={auction.id} className="p-4 space-y-2">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-16 h-11 bg-black/40 rounded-xl overflow-hidden border border-[var(--border-default)] shrink-0">
+                                        <div className="w-16 h-11 bg-black/40 rounded-xl overflow-hidden border border-[var(--border-default)] shrink-0 relative">
                                             {auction.listing.images?.[0] ? (
-                                                <img src={auction.listing.images[0]} alt="" className="w-full h-full object-cover opacity-80" />
+                                                <Image src={auction.listing.images[0]} alt="" fill sizes="64px" className="object-cover opacity-80" />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center text-[var(--text-muted)]"><Gavel size={18} /></div>
                                             )}
@@ -508,12 +509,14 @@ function DealerAuctionsPage() {
                                                 {/* Vehicle */}
                                                 <td className="px-8 py-6">
                                                     <div className="flex items-center gap-5">
-                                                        <div className="w-20 h-14 bg-black/40 rounded-xl overflow-hidden border border-[var(--border-default)] flex-shrink-0 group-hover:scale-105 transition-transform duration-500 shadow-2xl">
+                                                        <div className="w-20 h-14 bg-black/40 rounded-xl overflow-hidden border border-[var(--border-default)] flex-shrink-0 group-hover:scale-105 transition-transform duration-500 shadow-2xl relative">
                                                             {auction.listing.images?.[0] ? (
-                                                                <img
+                                                                <Image
                                                                     src={auction.listing.images[0]}
                                                                     alt=""
-                                                                    className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                                                                    fill
+                                                                    sizes="80px"
+                                                                    className="object-cover opacity-80 group-hover:opacity-100 transition-opacity"
                                                                 />
                                                             ) : (
                                                                 <div className="w-full h-full flex items-center justify-center text-[var(--text-muted)]">

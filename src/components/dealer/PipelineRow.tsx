@@ -1,6 +1,7 @@
 ﻿"use client"
 
 import * as React from "react"
+import Image from "next/image"
 import {
     MoreHorizontal,
     FileText,
@@ -89,9 +90,9 @@ export function PipelineRow({ item, onViewSummary, onViewSeller }: PipelineRowPr
         <div className="dealer-glass-card p-0 group hover:border-white/8">
             <div className="flex items-center gap-4 p-4 md:p-5">
                 {/* Vehicle Thumbnail */}
-                <div className="w-16 h-16 md:w-20 md:h-16 rounded-xl overflow-hidden bg-[var(--bg-input)] shrink-0 border border-[var(--border-default)]">
+                <div className="w-16 h-16 md:w-20 md:h-16 rounded-xl overflow-hidden bg-[var(--bg-input)] shrink-0 border border-[var(--border-default)] relative">
                     {item.imageUrl ? (
-                        <img src={item.imageUrl} alt={item.vehicleTitle} className="w-full h-full object-cover" />
+                        <Image src={item.imageUrl} alt={item.vehicleTitle} fill sizes="80px" className="object-cover" />
                     ) : (
                         <div className="w-full h-full flex items-center justify-center">
                             <FileText size={20} className="text-gray-700" />

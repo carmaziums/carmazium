@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Image from "next/image"
 import { MessageSquare, Search, User, Loader2 } from "lucide-react"
 import { useChat } from "@/context/ChatContext"
 import type { ChatRoom } from "@/lib/chatApi"
@@ -102,12 +103,14 @@ export function ChatRoomList({ onSelectRoom, selectedRoomId }: ChatRoomListProps
                                     }`}
                             >
                                 {/* Avatar */}
-                                <div className="w-12 h-12 rounded-full bg-[var(--bg-card)] flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                <div className="w-12 h-12 rounded-full bg-[var(--bg-card)] flex items-center justify-center flex-shrink-0 overflow-hidden relative">
                                     {room.otherUser.profileImage ? (
-                                        <img
+                                        <Image
                                             src={room.otherUser.profileImage}
                                             alt=""
-                                            className="w-full h-full object-cover"
+                                            fill
+                                            sizes="48px"
+                                            className="object-cover"
                                         />
                                     ) : (
                                         <User className="text-[var(--text-muted)]" size={24} />

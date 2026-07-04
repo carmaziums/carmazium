@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Image from "next/image"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import {
@@ -193,11 +194,11 @@ export default function DealerSettingsPage() {
                                     <div className="flex items-center gap-6 pb-6 border-b border-[var(--border-default)]">
                                         <label className="relative block">
                                             <input type="file" className="hidden" accept="image/png, image/jpeg, image/webp" onChange={handleLogoUpload} disabled={uploadingLogo} />
-                                            <div className="w-20 h-20 bg-[var(--bg-input)] rounded-2xl flex items-center justify-center border-2 border-dashed border-[var(--border-default)] cursor-pointer hover:border-primary/50 transition-colors overflow-hidden group">
+                                            <div className="w-20 h-20 bg-[var(--bg-input)] rounded-2xl flex items-center justify-center border-2 border-dashed border-[var(--border-default)] cursor-pointer hover:border-primary/50 transition-colors overflow-hidden group relative">
                                                 {uploadingLogo ? (
                                                     <Loader2 size={24} className="text-primary animate-spin" />
                                                 ) : form.logo ? (
-                                                    <img src={form.logo} alt="Logo" className="w-full h-full object-cover" />
+                                                    <Image src={form.logo} alt="Logo" fill sizes="80px" className="object-cover" />
                                                 ) : (
                                                     <Building2 size={28} className="text-[var(--text-secondary)] group-hover:text-primary transition-colors" />
                                                 )}
