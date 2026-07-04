@@ -785,10 +785,13 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     }
     setIsPublishing(true);
     try {
+      const vinTrimmed = vin.trim().toUpperCase();
+      const isValidVin = /^[A-Z0-9]{17}$/.test(vinTrimmed);
+
       const payload: Record<string, any> = {
         vehicleType,
         vrm: vrm.replace(/\s/g, '').toUpperCase(),
-        vin, make, model, year: year ? parseInt(year) : undefined,
+        vin: isValidVin ? vinTrimmed : undefined, make, model, year: year ? parseInt(year) : undefined,
         bodyType, location,
         mileage: mileage ? parseInt(mileage.replace(/[^0-9]/g, '')) : undefined,
         fuelType, transmission, color: colour, engineSize: engineSize ? parseInt(engineSize) : undefined,
@@ -809,11 +812,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         writeOffCategory: writeOffCat,
         stolenRecovered, hasOutstandingFinance: outstandingFinance,
         isLegalRegisteredKeeper: isLegalKeeper,
-        declarationAcknowledged: declAcknowledged,
         images: allImages,
         videoUrls: videoUrls.length ? videoUrls : undefined,
         priceMin: priceMin ? parseFloat(priceMin.replace(/[^0-9.]/g, '')) : undefined,
-        priceAsking: priceAsking ? parseFloat(priceAsking.replace(/[^0-9.]/g, '')) : undefined,
         price: priceAsking ? parseFloat(priceAsking.replace(/[^0-9.]/g, '')) : 0,
         bannerLabel: bannerLabel.trim() || undefined,
         ...(deliveryAvailable && {
@@ -823,16 +824,32 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         }),
         badgeTier,
         listingType,
-        damageRecords: damageRecords.map(r => ({ zone: r.zone, type: r.type, description: r.description })),
         // DVLA fields
         motStatus, taxStatus, motExpiryDate: motExpiry, taxDueDate: taxDue,
-        monthOfFirstRegistration: firstRegistered, wheelplan, typeApproval, dateOfLastV5CIssued: lastV5C,
+        monthOfFirstRegistration: firstRegistered, wheelplan, typeApproval,
       };
       // Remove undefined values
       Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
 
+      // Damage records are saved via a dedicated endpoint, not the /listings payload
+      const saveDamageRecords = (listingId: string) => {
+        if (damageRecords.length === 0) return Promise.resolve();
+        return apiClient(`/damage/${listingId}/save`, {
+          method: 'POST',
+          body: JSON.stringify({
+            detections: damageRecords.map(r => ({
+              part: r.zone,
+              type: r.type,
+              severity: 'MODERATE',
+              description: r.description || undefined,
+            })),
+          }),
+        }).catch(() => {});
+      };
+
       if (editMode && editListingId) {
         await apiClient(`/listings/${editListingId}`, { method: 'PATCH', body: JSON.stringify(payload) });
+        await saveDamageRecords(editListingId);
         haptics.success();
         Alert.alert('Updated!', 'Your listing has been updated.', [
           { text: 'Done', onPress: () => navigation?.navigate('SellerListings') },
@@ -840,6 +857,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       } else {
         const res = await apiClient<{ success: boolean; data: { id: string } }>('/listings', { method: 'POST', body: JSON.stringify(payload) });
         const newListingId = res?.data?.id;
+
+        if (newListingId) await saveDamageRecords(newListingId);
 
         if (isAuction && newListingId) {
           // Auction listings: schedule the auction, then publish (no listing fee for auction tier)

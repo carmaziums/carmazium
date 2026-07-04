@@ -483,7 +483,6 @@ export const SellCarsScreen: React.FC = () => {
         motExpiryDate: vehicleData?.motExpiryDate,
         taxDueDate: vehicleData?.taxDueDate,
         monthOfFirstRegistration: vehicleData?.monthOfFirstRegistration,
-        dateOfLastV5CIssued: vehicleData?.dateOfLastV5CIssued,
         wheelplan: vehicleData?.wheelplan,
         typeApproval: vehicleData?.typeApproval,
         markedForExport: vehicleData?.markedForExport,
