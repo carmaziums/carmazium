@@ -38,11 +38,10 @@ import { createChatRoom } from '../../lib/chatApi';
 import { useChat } from '../../context/ChatContext';
 import { DamageMapViewer } from '../../components/DamageMapViewer';
 import { useAuthStore } from '../../store/authStore';
-import { useStripe } from '@stripe/stripe-react-native';
-import { createPaymentSheet } from '../../lib/paymentsApi';
 import { haptics } from '../../lib/haptics';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { createDeliveryRequest, calcDeliveryFeeExVat } from '../../lib/deliveryApi';
+import { StripeCheckoutModal } from '../../components/StripeCheckoutModal';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'VehicleDetail'>;
 
@@ -89,11 +88,16 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [isTyping, setIsTyping] = useState(false);
 
   // HPI
-  const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [hpiData, setHpiData] = useState<any>(null);
   const [hpiLoading, setHpiLoading] = useState(false);
   const [hpiModalVisible, setHpiModalVisible] = useState(false);
   const [hpiError, setHpiError] = useState<string | null>(null);
+  // In-app Stripe hosted checkout URL for HPI (£9.99). We use the WebView
+  // path here rather than the native Payment Sheet because the backend HPI
+  // report generation is triggered specifically by the /payments/hpi-checkout
+  // webhook — a plain /payments/intent payment would charge the buyer but
+  // never actually run HpiService.fetchAndSaveReport.
+  const [hpiCheckoutUrl, setHpiCheckoutUrl] = useState<string | null>(null);
 
   // Damage records
   const [damageRecords, setDamageRecords] = useState<any[]>([]);
@@ -261,45 +265,53 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const handleHpiCheck = async () => {
     if (!listing.id) return;
+    // Already-purchased report — just re-open the summary modal.
     if (hpiData) { setHpiModalVisible(true); return; }
     setHpiLoading(true);
     setHpiError(null);
     try {
-      const sheet = await createPaymentSheet({ listingId: listing.id, amount: 9.99, type: 'COMMISSION', currency: 'gbp' });
-      const { error: initError } = await initPaymentSheet({
-        merchantDisplayName: 'Carmazium',
-        customerId: sheet.customerId,
-        customerEphemeralKeySecret: sheet.ephemeralKey,
-        paymentIntentClientSecret: sheet.clientSecret,
-        allowsDelayedPaymentMethods: false,
-        appearance: {
-          colors: {
-            primary: '#DC1F26',
-            background: '#111116',
-            componentBackground: '#18181f',
-            componentBorder: 'rgba(255,255,255,0.08)',
-            componentDivider: 'rgba(255,255,255,0.06)',
-            primaryText: '#FFFFFF',
-            secondaryText: '#A0A0AB',
-            componentText: '#FFFFFF',
-            placeholderText: '#606070',
-            icon: '#A0A0AB',
-            error: '#DC1F26',
-          },
+      // Kick off the hosted Stripe checkout for the HPI report (£9.99).
+      // The backend records HPI intent metadata and, on webhook success,
+      // triggers HpiService.fetchAndSaveReport for this listing.
+      const vrm = (listing as any).vrm ?? undefined;
+      const res = await apiClient<{ success: boolean; data: { url: string } }>(
+        '/payments/hpi-checkout',
+        {
+          method: 'POST',
+          body: JSON.stringify({ listingId: listing.id, ...(vrm ? { vrm } : {}) }),
         },
-      });
-      if (initError) throw new Error(initError.message);
-      const { error: presentError } = await presentPaymentSheet();
-      if (presentError) {
-        if (presentError.code !== 'Canceled') throw new Error(presentError.message);
-        return; // user cancelled
-      }
-      // Payment succeeded — fetch HPI summary
-      haptics.success();
-      const res = await apiClient<{ success: boolean; data: any }>(`/hpi/listing/${listing.id}/summary`);
-      if (res.success) setHpiData(res.data);
+      );
+      const url = res?.data?.url;
+      if (!url) throw new Error('No checkout URL returned');
+      setHpiCheckoutUrl(url);
     } catch (err: any) {
       setHpiError(err.message ?? 'HPI check failed');
+    } finally {
+      setHpiLoading(false);
+    }
+  };
+
+  // Called when the WebView reaches /checkout/success. The webhook lands
+  // slightly after the redirect, so we retry the summary fetch a few times.
+  const handleHpiCheckoutSuccess = async () => {
+    setHpiCheckoutUrl(null);
+    setHpiLoading(true);
+    haptics.success();
+    try {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        try {
+          const res = await apiClient<{ success: boolean; data: any }>(
+            `/hpi/listing/${listing.id}/summary`,
+          );
+          if (res.success && res.data) {
+            setHpiData(res.data);
+            setHpiModalVisible(true);
+            return;
+          }
+        } catch { /* not ready yet — retry */ }
+        await new Promise(r => setTimeout(r, 1500));
+      }
+      setHpiError('Report is still generating — check back in a minute.');
     } finally {
       setHpiLoading(false);
     }
@@ -1187,6 +1199,15 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
         </View>
       </Modal>
+
+      {/* HPI CHECKOUT MODAL — hosted Stripe checkout for £9.99 report */}
+      <StripeCheckoutModal
+        url={hpiCheckoutUrl}
+        title="HPI Report Checkout"
+        onSuccess={handleHpiCheckoutSuccess}
+        onCancel={() => setHpiCheckoutUrl(null)}
+        onClose={() => setHpiCheckoutUrl(null)}
+      />
 
       {/* HPI REPORT MODAL */}
       <Modal
