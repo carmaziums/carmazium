@@ -16,15 +16,19 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { FontFamily } from '../../constants/typography';
 import { useStripe } from '@stripe/stripe-react-native';
 import { createPaymentSheet } from '../../lib/paymentsApi';
+import { apiClient } from '../../lib/apiClient';
 
 // ─────────────────────────────── types ────────────────────────────────
 
 export interface PurchaseFlowParams {
   /** Listing being purchased */
   listingId: string;
-  /** Agreed sale price in GBP */
+  /**
+   * Agreed sale price in GBP. Ignored when paymentType is 'COMMISSION' —
+   * the auction buyer fee is a standalone charge of `buyerFee` alone.
+   */
   salePrice: number;
-  /** Buyer platform fee in GBP (typically £95) */
+  /** Buyer platform fee in GBP (typically £95 for offers, £125 for auction wins) */
   buyerFee?: number;
   /** Display title for the listing */
   listingTitle: string;
@@ -32,8 +36,17 @@ export interface PurchaseFlowParams {
   listingImage?: string;
   /** Seller / dealer display name */
   sellerName?: string;
-  /** Payment type — defaults to FULL_PAYMENT */
-  paymentType?: 'DEPOSIT' | 'FULL_PAYMENT';
+  /**
+   * Payment type — defaults to FULL_PAYMENT.
+   * 'COMMISSION' is used by auction winners paying the £125 buyer fee.
+   */
+  paymentType?: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION';
+  /**
+   * Optional auction id — when set and paymentType is 'COMMISSION' the
+   * screen refetches the auction after a successful payment so the
+   * caller sees `buyerFeePaid = true` on next render.
+   */
+  auctionId?: string;
 }
 
 // ──────────────────────────── helpers ─────────────────────────────────
@@ -66,9 +79,15 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
     listingImage,
     sellerName,
     paymentType = 'FULL_PAYMENT',
+    auctionId,
   } = params;
 
-  const total = salePrice + buyerFee;
+  const isCommission = paymentType === 'COMMISSION';
+  // Auction winners pay only the platform commission — no sale price is
+  // being settled here (they still owe the seller the winning bid amount
+  // out-of-band). For deposits and full payments the sale price stacks
+  // with the buyer fee.
+  const total = isCommission ? buyerFee : salePrice + buyerFee;
 
   const [paying, setPaying] = useState(false);
   const [paid, setPaid] = useState(false);
@@ -131,12 +150,25 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
 
       // 4. Payment succeeded — show success state
       setPaid(true);
+
+      // For auction commission payments, refetch the auction so downstream
+      // screens (LiveAuctionDetailed) observe buyerFeePaid = true on their
+      // next render. The Stripe webhook flips the flag server-side; we do
+      // NOT set it optimistically.
+      if (isCommission && auctionId) {
+        try {
+          await apiClient(`/auctions/${auctionId}`);
+        } catch {
+          // Non-fatal — user still sees success. Auction screen will
+          // refetch on its own mount.
+        }
+      }
     } catch (err: any) {
       Alert.alert('Payment error', err?.message ?? 'Something went wrong. Please try again.');
     } finally {
       setPaying(false);
     }
-  }, [listingId, total, paymentType, initPaymentSheet, presentPaymentSheet]);
+  }, [listingId, total, paymentType, initPaymentSheet, presentPaymentSheet, isCommission, auctionId]);
 
   // ── Success screen ────────────────────────────────────────────────
   if (paid) {
@@ -200,8 +232,12 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
             <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
-            <Text style={styles.headerSub}>OFFER ACCEPTED</Text>
-            <Text style={styles.headerTitle}>Complete purchase</Text>
+            <Text style={styles.headerSub}>
+              {isCommission ? 'AUCTION WON' : 'OFFER ACCEPTED'}
+            </Text>
+            <Text style={styles.headerTitle}>
+              {isCommission ? 'Pay auction fee' : 'Complete purchase'}
+            </Text>
           </View>
           <View style={{ width: 36 }} />
         </View>
@@ -217,8 +253,14 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
           )}
           <View style={styles.heroInfo}>
             <View style={styles.successRow}>
-              <Ionicons name="checkmark-circle-outline" size={14} color="#10B981" />
-              <Text style={styles.successText}>Seller accepted your offer</Text>
+              <Ionicons
+                name={isCommission ? 'trophy-outline' : 'checkmark-circle-outline'}
+                size={14}
+                color="#10B981"
+              />
+              <Text style={styles.successText}>
+                {isCommission ? 'You won this auction' : 'Seller accepted your offer'}
+              </Text>
             </View>
             <Text style={styles.heroCarTitle} numberOfLines={2}>
               {listingTitle}
@@ -228,20 +270,38 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
         </View>
 
         {/* Order Summary */}
-        <Text style={styles.sectionTitle}>ORDER SUMMARY</Text>
+        <Text style={styles.sectionTitle}>
+          {isCommission ? 'FEE BREAKDOWN' : 'ORDER SUMMARY'}
+        </Text>
         <View style={styles.summaryBox}>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Agreed sale price</Text>
-            <Text style={styles.summaryValue}>{fmt(salePrice)}</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Carmazium buyer fee</Text>
-            <Text style={styles.summaryValue}>{fmt(buyerFee)}</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>HPI check</Text>
-            <Text style={styles.summaryValueGreen}>Included</Text>
-          </View>
+          {isCommission ? (
+            <>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Auction buyer fee</Text>
+                <Text style={styles.summaryValue}>{fmt(buyerFee)}</Text>
+              </View>
+              <Text style={styles.commissionNote}>
+                Unlocks chat with the seller and releases the £100 seller payout on
+                handover approval. The winning bid is paid to the seller directly
+                out-of-band.
+              </Text>
+            </>
+          ) : (
+            <>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Agreed sale price</Text>
+                <Text style={styles.summaryValue}>{fmt(salePrice)}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Carmazium buyer fee</Text>
+                <Text style={styles.summaryValue}>{fmt(buyerFee)}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>HPI check</Text>
+                <Text style={styles.summaryValueGreen}>Included</Text>
+              </View>
+            </>
+          )}
           <View style={styles.summaryDivider} />
           <View style={styles.summaryTotalRow}>
             <Text style={styles.summaryTotalLabel}>TOTAL PAYABLE</Text>
@@ -276,7 +336,11 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
             <Ionicons name="lock-closed-outline" size={18} color="#FFFFFF" style={styles.btnIconLeft} />
           )}
           <Text style={styles.mainBtnText}>
-            {paying ? 'PROCESSING…' : `CONFIRM PURCHASE · ${fmt(total)}`}
+            {paying
+              ? 'PROCESSING…'
+              : isCommission
+                ? `PAY FEE · ${fmt(total)}`
+                : `CONFIRM PURCHASE · ${fmt(total)}`}
           </Text>
         </TouchableOpacity>
       </View>
@@ -365,6 +429,13 @@ const styles = StyleSheet.create({
   summaryLabel: { fontFamily: FontFamily.regular, fontSize: 14, color: '#A0A0AB' },
   summaryValue: { fontFamily: FontFamily.medium, fontSize: 14, color: '#FFFFFF' },
   summaryValueGreen: { fontFamily: FontFamily.bold, fontSize: 14, color: '#10B981' },
+  commissionNote: {
+    fontFamily: FontFamily.regular,
+    fontSize: 12,
+    color: '#A0A0AB',
+    lineHeight: 18,
+    marginBottom: 4,
+  },
   summaryDivider: {
     height: 1,
     backgroundColor: 'rgba(255,255,255,0.06)',

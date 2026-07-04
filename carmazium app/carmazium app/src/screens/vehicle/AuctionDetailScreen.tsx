@@ -871,6 +871,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                         ? `${auction.listing.seller.firstName ?? ''} ${auction.listing.seller.lastName ?? ''}`.trim()
                         : undefined,
                       paymentType: 'COMMISSION',
+                      auctionId: auction?.id,
                     })
                   }
                 >

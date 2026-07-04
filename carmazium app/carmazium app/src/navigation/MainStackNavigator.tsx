@@ -90,7 +90,8 @@ export type MainStackParamList = {
     listingTitle: string;
     listingImage?: string;
     sellerName?: string;
-    paymentType?: 'DEPOSIT' | 'FULL_PAYMENT';
+    paymentType?: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION';
+    auctionId?: string;
   } | undefined;
   SellCarFlow: { listingId?: string } | undefined;
   SellerListings: undefined;
