@@ -264,6 +264,8 @@ export const SellCarsScreen: React.FC = () => {
   const [activePhotoTab, setActivePhotoTab] = useState<'EXTERIOR' | 'INTERIOR' | 'DAMAGE'>('EXTERIOR');
   const [damageRecords, setDamageRecords] = useState<Array<{ zone: string; type: string; severity: string; description?: string }>>([]);
   const [activeDamageZone, setActiveDamageZone] = useState<string | null>(null);
+  const [hiddenZoneIds, setHiddenZoneIds] = useState<string[]>([]);
+  const [zonePhotos, setZonePhotos] = useState<Record<string, string>>({});
   const [damageType, setDamageType] = useState('Scratch');
   const [damageSeverity, setDamageSeverity] = useState('Minor');
   const [damageDescription, setDamageDescription] = useState('');
@@ -371,6 +373,17 @@ export const SellCarsScreen: React.FC = () => {
   const clearDamageZone = () => {
     setActiveDamageZone(null);
     setDamageDescription('');
+  };
+
+  // ── Zone hide / photo (from the 3D viewer's action pill) ──────────────────
+  const handleZoneHide = (zoneId: string) => {
+    setHiddenZoneIds((prev) =>
+      prev.includes(zoneId) ? prev.filter((id) => id !== zoneId) : [...prev, zoneId]
+    );
+  };
+
+  const handleZonePhoto = (zoneId: string, imageUri: string) => {
+    setZonePhotos((prev) => ({ ...prev, [zoneId]: imageUri }));
   };
 
   // ── Manual zone entry (for damage not covered by the 10 preset hotspots) ──
@@ -505,12 +518,17 @@ export const SellCarsScreen: React.FC = () => {
         await apiClient(`/damage/${listing.id}/save`, {
           method: 'POST',
           body: JSON.stringify({
-            detections: damageRecords.map((r) => ({
-              part: r.zone,
-              type: r.type,
-              severity: r.severity,
-              coords: zoneCoordsFor(r.zone),
-            })),
+            detections: damageRecords.map((r) => {
+              const zoneId = DAMAGE_ZONES_3D.find((z) => z.label === r.zone)?.id;
+              return {
+                part: r.zone,
+                type: r.type,
+                severity: r.severity,
+                coords: zoneCoordsFor(r.zone),
+                hidden: zoneId ? hiddenZoneIds.includes(zoneId) : undefined,
+                photoUrl: zoneId ? zonePhotos[zoneId] : undefined,
+              };
+            }),
           }),
         }).catch(() => {});
       }
@@ -1027,6 +1045,8 @@ export const SellCarsScreen: React.FC = () => {
                   selectedZone={activeDamageZone}
                   markedZones={damageRecords.map((r) => r.zone)}
                   onZoneClick={handleZoneTap}
+                  onZoneHide={handleZoneHide}
+                  onZonePhoto={handleZonePhoto}
                 />
 
                 {/* Zone legend — same 10 hotspots as text chips, in case a pointer is hard to tap precisely */}

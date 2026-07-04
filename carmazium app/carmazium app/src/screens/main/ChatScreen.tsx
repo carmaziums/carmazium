@@ -10,11 +10,11 @@ import {
   Platform,
   Alert,
   StatusBar,
-  Linking,
   ActivityIndicator,
   Animated,
 } from 'react-native';
 import { Image } from 'expo-image';
+import * as WebBrowser from 'expo-web-browser';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -318,7 +318,12 @@ export const ChatScreen: React.FC = () => {
       });
 
       if (res.data?.url) {
-        Linking.openURL(res.data.url);
+        const result = await WebBrowser.openAuthSessionAsync(res.data.url, 'carmazium://');
+        if (result.type === 'success') {
+          showToast('Payment received — seller will be notified', 'success');
+        } else if (result.type === 'cancel' || result.type === 'dismiss') {
+          showToast('Payment cancelled', 'info');
+        }
       } else {
         Alert.alert('Checkout Error', 'Unable to initiate Stripe checkout. Please try again.');
       }

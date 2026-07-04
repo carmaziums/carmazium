@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111113;overflow:hidden;width:100vw;height:100vh}
+#msg{
+  position:fixed;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  color:#606070;font-family:sans-serif;font-size:13px;
+  text-align:center;padding:20px;pointer-events:none
+}
+</style>
+</head>
+<body>
+<div id="msg">Loading 3D model...</div>
+
+<script>
+/* Sync stub — captures data URL before the async CDN module finishes loading */
+window._pendingGLB = null;
+window.loadGLB = function(d) { window._pendingGLB = d; };
+window.onerror = function() {
+  var m = document.getElementById('msg');
+  if (m) { m.textContent = '3D viewer unavailable (check connection)'; m.style.display = 'flex'; }
+};
+window.addEventListener('unhandledrejection', function() {
+  var m = document.getElementById('msg');
+  if (m) { m.textContent = '3D viewer unavailable (check connection)'; m.style.display = 'flex'; }
+});
+</script>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js';
+import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/loaders/GLTFLoader.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/controls/OrbitControls.js';
+
+/* ── Renderer ── */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x111113, 1);
+document.body.appendChild(renderer.domElement);
+
+/* ── Scene + Camera ── */
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.01, 100);
+camera.position.set(3, 1.5, 3);
+
+/* ── Lighting: ambient + key + fill (no PBR needed) ── */
+scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+var keyLight = new THREE.DirectionalLight(0xffffff, 1.4);
+keyLight.position.set(4, 6, 4);
+scene.add(keyLight);
+var fillLight = new THREE.DirectionalLight(0xffffff, 0.4);
+fillLight.position.set(-4, 2, -3);
+scene.add(fillLight);
+
+/* ── Orbit controls: one-finger drag to rotate ── */
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.07;
+controls.enableZoom = false;
+controls.enablePan = false;
+controls.autoRotate = false;
+controls.minPolarAngle = 0.2;
+controls.maxPolarAngle = Math.PI * 0.72;
+
+/* ── Render loop ── */
+(function loop() {
+  requestAnimationFrame(loop);
+  controls.update();
+  renderer.render(scene, camera);
+})();
+
+/* ── Resize ── */
+window.addEventListener('resize', function() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+/* ── GLB loader called from RN via injectJavaScript ── */
+var loader = new GLTFLoader();
+function doLoad(dataUrl) {
+  var msgEl = document.getElementById('msg');
+  if (msgEl) msgEl.style.display = 'none';
+
+  loader.load(
+    dataUrl,
+    function(gltf) {
+      var model = gltf.scene;
+      var box = new THREE.Box3().setFromObject(model);
+      var center = box.getCenter(new THREE.Vector3());
+      var size = box.getSize(new THREE.Vector3());
+      var scale = 3 / Math.max(size.x, size.y, size.z);
+      model.scale.setScalar(scale);
+      model.position.copy(center.multiplyScalar(-scale));
+      scene.add(model);
+      controls.target.set(0, size.y * scale * 0.3, 0);
+      controls.update();
+    },
+    undefined,
+    function() {
+      var m = document.getElementById('msg');
+      if (m) { m.textContent = 'Could not load 3D model'; m.style.display = 'flex'; }
+    }
+  );
+}
+
+/* Pick up any URL that arrived while module was still loading */
+if (window._pendingGLB) { doLoad(window._pendingGLB); }
+
+/* Override stub with real implementation */
+window.loadGLB = doLoad;
+</script>
+
+</body>
+</html>
