@@ -18,6 +18,7 @@ import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
+import { CounterLedger } from '../../components/offers/CounterLedger';
 import { haptics } from '../../lib/haptics';
 
 // ─────────────────────────── interfaces ───────────────────────────
@@ -33,10 +34,13 @@ interface Offer {
   buyerCounterAmount?: number | null;
   lastCounteredBy?: 'BUYER' | 'SELLER' | null;
   counterAmount?: number | null; // legacy — kept for backwards compat
+  counterAttemptsBuyer?: number | null;
+  counterAttemptsSeller?: number | null;
   counterExpiresAt?: string | null;
   listingId?: string;
   sellerId?: string;
   createdAt?: string;
+  updatedAt?: string;
   listing?: {
     id?: string;
     title?: string;
@@ -411,6 +415,28 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
               </Text>
             )}
           </View>
+        )}
+
+        {/* Negotiation history — visible whenever any counter has occurred */}
+        {(offer.sellerCounterAmount != null ||
+          offer.buyerCounterAmount != null ||
+          offer.counterAmount != null) && (
+          <CounterLedger
+            offer={{
+              amount: offer.amount,
+              createdAt: offer.createdAt,
+              updatedAt: offer.updatedAt,
+              status: offer.status,
+              sellerCounterAmount: offer.sellerCounterAmount,
+              buyerCounterAmount: offer.buyerCounterAmount,
+              counterAmount: offer.counterAmount,
+              counterAttemptsBuyer: offer.counterAttemptsBuyer,
+              counterAttemptsSeller: offer.counterAttemptsSeller,
+              lastCounteredBy: offer.lastCounteredBy,
+              counterExpiresAt: offer.counterExpiresAt,
+            }}
+            viewerRole="BUYER"
+          />
         )}
 
         {/* Time */}
