@@ -268,45 +268,130 @@ export default function DealerInventoryPage() {
                                 </div>
                             ) : filteredListings.map((listing: any) => {
                                 const comp = listing.status === 'DRAFT' ? getListingCompleteness(listing) : null
+                                const isMenuOpen = activeDropdown === listing.id
                                 return (
-                                    <div key={listing.id} className="flex items-center gap-3 p-4">
-                                        {/* Thumbnail */}
-                                        <div className="w-16 h-12 bg-black/40 rounded-xl overflow-hidden border border-[var(--border-default)] shrink-0 relative">
-                                            {listing.images?.[0] ? (
-                                                <img src={listing.images[0]} alt="" className={`w-full h-full object-cover ${listing.status === 'SOLD' ? 'opacity-40' : 'opacity-80'}`} />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-gray-700"><Car size={18} /></div>
-                                            )}
-                                            {listing.status === 'SOLD' && (
-                                                <div className="absolute inset-0 flex items-center justify-center">
-                                                    <span className="bg-red-600/90 text-white text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rotate-[-20deg]">SOLD</span>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Info */}
-                                        <div className="flex-1 min-w-0">
-                                            <p className="font-black text-sm truncate">{listing.title}</p>
-                                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                                <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest px-1.5 py-0.5 bg-[var(--bg-card)] rounded border border-[var(--border-default)]">{listing.vrm || 'PRIVATE'}</span>
-                                                <span className={`inline-flex px-2 py-0.5 rounded text-xs font-black tracking-widest border ${STATUS_COLORS[listing.status] || STATUS_COLORS.DRAFT}`}>{listing.status}</span>
-                                                {comp && !comp.isComplete && <span className="text-xs text-amber-400 font-bold">{comp.complete}/{comp.total} fields</span>}
+                                    <div key={listing.id} className="p-4">
+                                        <div className="flex gap-3">
+                                            {/* Thumbnail */}
+                                            <div className="w-20 h-16 bg-black/40 rounded-xl overflow-hidden border border-[var(--border-default)] shrink-0 relative">
+                                                {listing.images?.[0] ? (
+                                                    <img src={listing.images[0]} alt="" className={`w-full h-full object-cover ${listing.status === 'SOLD' ? 'opacity-40' : 'opacity-80'}`} />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-gray-700"><Car size={18} /></div>
+                                                )}
                                             </div>
-                                            <p className="text-sm font-black  mt-1">£{listing.price?.toLocaleString()}</p>
+
+                                            {/* Info */}
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-black text-base leading-snug truncate">{listing.title}</p>
+                                                <p className="text-sm text-[var(--text-muted)] mt-0.5">{listing.vrm || 'Private'}</p>
+                                                <span className={`inline-flex mt-1.5 px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-widest border ${STATUS_COLORS[listing.status] || STATUS_COLORS.DRAFT}`}>
+                                                    {listing.status === 'ACTIVE' ? 'Live' : listing.status === 'SOLD' ? 'Sold' : listing.status === 'DRAFT' ? 'Draft' : listing.status}
+                                                </span>
+                                                {comp && !comp.isComplete && <p className="text-xs text-amber-400 font-bold mt-1">{comp.complete}/{comp.total} fields complete</p>}
+                                            </div>
                                         </div>
 
-                                        {/* Quick actions */}
-                                        <div className="flex flex-col gap-1.5 shrink-0">
-                                            {listing.status === 'DRAFT' && (
-                                                <button onClick={() => handlePublish(listing)} disabled={publishing === listing.id} className="p-2.5 bg-emerald-500/10 rounded-lg text-emerald-400 hover:bg-emerald-500/20 transition-colors disabled:opacity-50">
-                                                    {publishing === listing.id ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
+                                        <p className="text-xl font-black mt-3">£{listing.price?.toLocaleString()}</p>
+
+                                        <div className="grid grid-cols-2 gap-2 mt-3">
+                                            {listing.status === 'DRAFT' ? (
+                                                <button
+                                                    onClick={() => handlePublish(listing)}
+                                                    disabled={publishing === listing.id}
+                                                    className="min-h-[48px] flex items-center justify-center gap-2 rounded-xl bg-emerald-500 text-white font-bold text-sm disabled:opacity-60"
+                                                >
+                                                    {publishing === listing.id ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                                                    Publish
+                                                </button>
+                                            ) : listing.status === 'SOLD' ? (
+                                                <button
+                                                    onClick={async () => {
+                                                        const res = await apiClient(`/listings/${listing.id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'ACTIVE' }) }).catch(() => null)
+                                                        if (res !== null) fetchListings(searchQuery)
+                                                    }}
+                                                    className="min-h-[48px] flex items-center justify-center gap-2 rounded-xl bg-blue-500 text-white font-bold text-sm"
+                                                >
+                                                    <RefreshCcw size={16} /> Relist
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => openSoldModal(listing)}
+                                                    className="min-h-[48px] flex items-center justify-center gap-2 rounded-xl bg-emerald-500 text-white font-bold text-sm"
+                                                >
+                                                    <CheckCircle2 size={16} /> Mark sold
                                                 </button>
                                             )}
-                                            {listing.status !== 'SOLD' && (
-                                                <button onClick={() => openSoldModal(listing)} className="p-2.5 bg-[var(--bg-card)] rounded-lg text-[var(--text-muted)] hover:bg-emerald-500/10 hover:text-emerald-400 transition-colors"><CheckCircle2 size={15} /></button>
-                                            )}
-                                            <Link href={`/dashboard/dealer/add-listing?id=${listing.id}`} className="p-2.5 bg-[var(--bg-card)] rounded-lg text-[var(--text-muted)] hover:bg-white/10 transition-colors"><Pencil size={15} /></Link>
+                                            <Link
+                                                href={`/dashboard/dealer/add-listing?id=${listing.id}`}
+                                                className="min-h-[48px] flex items-center justify-center gap-2 rounded-xl border border-[var(--border-default)] font-bold text-sm hover:bg-white/5"
+                                            >
+                                                <Pencil size={16} /> Edit
+                                            </Link>
                                         </div>
+
+                                        <button
+                                            onClick={() => setActiveDropdown(isMenuOpen ? null : listing.id)}
+                                            className="w-full min-h-[44px] flex items-center justify-center gap-1.5 mt-2 text-sm font-bold text-[var(--text-muted)]"
+                                        >
+                                            {isMenuOpen ? 'Hide more options' : 'More options'}
+                                            <ChevronRight size={15} className={`transition-transform ${isMenuOpen ? 'rotate-90' : ''}`} />
+                                        </button>
+
+                                        {isMenuOpen && (
+                                            <div className="mt-1 space-y-1.5 border-t border-[var(--border-default)] pt-3">
+                                                <Link href={`/buy-cars/${listing.slug}`} className="min-h-[46px] flex items-center gap-2.5 px-3 rounded-xl bg-[var(--bg-card)] font-bold text-sm">
+                                                    <Eye size={16} /> View listing
+                                                </Link>
+                                                {listing.status === 'ACTIVE' && (
+                                                    <button
+                                                        onClick={async () => {
+                                                            try {
+                                                                const res = await apiClient<{ data: { url: string } }>(`/featured-boost/${listing.id}`, { method: 'POST' })
+                                                                if (res.data.url) window.location.href = res.data.url
+                                                            } catch { alert('Failed to start boost payment.') }
+                                                        }}
+                                                        className="w-full min-h-[46px] flex items-center gap-2.5 px-3 rounded-xl text-amber-400 bg-amber-500/5 font-bold text-sm"
+                                                    >
+                                                        <TrendingUp size={16} /> Boost to featured
+                                                    </button>
+                                                )}
+                                                {listing.type === 'CLASSIFIED' && listing.status === 'ACTIVE' && !listing.linkedListingId && (
+                                                    <button
+                                                        onClick={() => router.push(`/dashboard/dealer/put-on-auction?listingId=${listing.id}`)}
+                                                        className="w-full min-h-[46px] flex items-center gap-2.5 px-3 rounded-xl text-orange-400 bg-orange-500/5 font-bold text-sm"
+                                                    >
+                                                        <Gavel size={16} /> Put to auction
+                                                    </button>
+                                                )}
+                                                {listing.type === 'AUCTION' && listing.status === 'ACTIVE' && !(listing as any).linkedListing && (
+                                                    <button
+                                                        onClick={() => { setAlsoRetailListing(listing); setAlsoRetailPrice(""); setAlsoRetailTier('BASIC'); setAlsoRetailError(null) }}
+                                                        className="w-full min-h-[46px] flex items-center gap-2.5 px-3 rounded-xl text-blue-400 bg-blue-500/5 font-bold text-sm"
+                                                    >
+                                                        <Tag size={16} /> Also list for retail
+                                                    </button>
+                                                )}
+                                                {listing.type === 'AUCTION' && listing.status === 'ACTIVE' && (listing as any).linkedListing?.status === 'DRAFT' && (
+                                                    <button
+                                                        onClick={async () => {
+                                                            const linked = (listing as any).linkedListing
+                                                            const { url } = await createListingCheckout(linked.id, linked.badgeTier || 'BASIC')
+                                                            window.location.href = url
+                                                        }}
+                                                        className="w-full min-h-[46px] flex items-center gap-2.5 px-3 rounded-xl text-amber-400 bg-amber-500/5 font-bold text-sm"
+                                                    >
+                                                        <Tag size={16} /> Resume retail payment
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={() => deleteListing(listing.id)}
+                                                    className="w-full min-h-[46px] flex items-center gap-2.5 px-3 rounded-xl text-red-400 bg-red-500/5 font-bold text-sm"
+                                                >
+                                                    <Trash2 size={16} /> Delete listing
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 )
                             })}

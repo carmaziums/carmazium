@@ -408,39 +408,37 @@ function WatchlistTab() {
                                     <button
                                         onClick={() => handleRemove(item.listingId)}
                                         disabled={removing === item.listingId}
-                                        className="absolute top-2 right-2 w-8 h-8 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center text-pink-400 hover:bg-red-500/80 hover:text-white transition-all"
+                                        className="absolute top-2 right-2 w-11 h-11 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center text-pink-400 hover:bg-red-500/80 hover:text-white transition-all"
                                         title="Remove from watchlist"
                                     >
                                         {removing === item.listingId
-                                            ? <Loader2 size={14} className="animate-spin" />
-                                            : <Heart size={14} fill="currentColor" />}
+                                            ? <Loader2 size={16} className="animate-spin" />
+                                            : <Heart size={16} fill="currentColor" />}
                                     </button>
                                 </div>
                                 <div className="p-4">
-                                    <p className="font-black text-white text-sm uppercase tracking-tight truncate group-hover:text-primary transition-colors">
+                                    <p className="font-black text-white text-base uppercase tracking-tight truncate group-hover:text-primary transition-colors">
                                         {item.listing.title}
                                     </p>
-                                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                                    <p className="text-sm text-[var(--text-muted)] mt-0.5">
                                         {[item.listing.year, item.listing.mileage ? `${item.listing.mileage.toLocaleString()} mi` : null].filter(Boolean).join(' · ')}
                                     </p>
-                                    <div className="flex items-center justify-between mt-3">
-                                        <span className="text-primary font-black text-base">{formatPrice(Number(item.listing.price))}</span>
-                                        <Link href={`/buy-cars/${item.listing.slug}`}>
-                                            <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
-                                                View <ChevronRight size={12} />
-                                            </Button>
-                                        </Link>
-                                    </div>
+                                    <p className="text-primary font-black text-xl mt-2">{formatPrice(Number(item.listing.price))}</p>
+                                    <Link href={`/buy-cars/${item.listing.slug}`} className="block mt-2">
+                                        <Button variant="outline" className="w-full min-h-[44px] gap-1.5">
+                                            View listing <ChevronRight size={14} />
+                                        </Button>
+                                    </Link>
                                 </div>
                             </div>
                         ))}
                     </div>
 
                     {totalPages > 1 && (
-                        <div className="flex justify-center gap-2">
-                            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Previous</Button>
+                        <div className="flex justify-center items-center gap-2">
+                            <Button variant="outline" className="min-h-[44px] sm:min-h-0" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Previous</Button>
                             <span className="text-sm text-[var(--text-muted)] flex items-center px-2">Page {page} of {totalPages}</span>
-                            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next</Button>
+                            <Button variant="outline" className="min-h-[44px] sm:min-h-0" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next</Button>
                         </div>
                     )}
                 </>
@@ -574,7 +572,114 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
             </div>
 
             <div className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
-                <div className="overflow-x-auto">
+                {/* ── Simple mobile cards (< sm) ── */}
+                <div className="sm:hidden divide-y divide-[var(--border-default)]">
+                    {loading ? (
+                        <div className="py-16 text-center">
+                            <Loader2 className="h-9 w-9 animate-spin text-primary mx-auto" />
+                        </div>
+                    ) : listings.length === 0 ? (
+                        <div className="py-16 text-center text-[var(--text-muted)] italic px-6">
+                            No listings found. Start selling today!
+                        </div>
+                    ) : (
+                        listings.map((listing) => (
+                            <div key={listing.id} className="p-4">
+                                <div className="flex gap-3">
+                                    <div className="relative w-20 h-16 rounded-xl overflow-hidden border border-[var(--border-default)] shrink-0">
+                                        {listing.images?.[0] ? (
+                                            <Image src={listing.images[0]} alt="" fill className="object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full bg-[var(--bg-input)] flex items-center justify-center"><Car size={20} className="text-[var(--text-secondary)]" /></div>
+                                        )}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="font-black text-base leading-snug truncate">{listing.title}</p>
+                                        <p className="text-sm text-[var(--text-muted)] mt-0.5">{listing.year} &bull; {listing.mileage?.toLocaleString()} miles</p>
+                                        <span className={`inline-flex mt-1.5 px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-widest border ${
+                                            listing.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                            listing.status === 'SOLD' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                            listing.status === 'DRAFT' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                            'bg-slate-700/50 text-[var(--text-muted)] border-[var(--border-default)]'
+                                        }`}>
+                                            {listing.status === 'ACTIVE' ? 'Live' : listing.status === 'SOLD' ? 'Sold' : listing.status === 'DRAFT' ? 'Draft' : listing.status}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-between mt-3">
+                                    <span className="text-xl font-black">{formatPrice(listing.price)}</span>
+                                    <span className="text-sm text-[var(--text-muted)] flex items-center gap-1"><Eye size={14} /> {listing.viewCount || 0} views</span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 mt-3">
+                                    {listing.status === 'DRAFT' ? (
+                                        <button
+                                            onClick={() => handlePublish(listing)}
+                                            disabled={publishing === listing.id}
+                                            className="min-h-[48px] flex items-center justify-center gap-2 rounded-xl bg-emerald-500 text-white font-bold text-sm disabled:opacity-60"
+                                        >
+                                            {publishing === listing.id ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                                            Publish
+                                        </button>
+                                    ) : listing.status === 'SOLD' ? (
+                                        <button
+                                            onClick={() => handleRelist(listing.id)}
+                                            className="min-h-[48px] flex items-center justify-center gap-2 rounded-xl bg-blue-500 text-white font-bold text-sm"
+                                        >
+                                            <RefreshCw size={16} /> Relist
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={() => setSaleListing(listing)}
+                                            className="min-h-[48px] flex items-center justify-center gap-2 rounded-xl bg-emerald-500 text-white font-bold text-sm"
+                                        >
+                                            <CheckCircle2 size={16} /> Mark Sold
+                                        </button>
+                                    )}
+                                    <Link
+                                        href={`/dashboard/seller/add-listing?editId=${listing.id}`}
+                                        className="min-h-[48px] flex items-center justify-center gap-2 rounded-xl border border-[var(--border-default)] font-bold text-sm hover:bg-[var(--bg-input)]"
+                                    >
+                                        <Pencil size={16} /> Edit
+                                    </Link>
+                                </div>
+
+                                <button
+                                    onClick={() => setOpenMenuId(openMenuId === listing.id ? null : listing.id)}
+                                    className="w-full min-h-[44px] flex items-center justify-center gap-1.5 mt-2 text-sm font-bold text-[var(--text-muted)]"
+                                >
+                                    {openMenuId === listing.id ? 'Hide more options' : 'More options'}
+                                    <ChevronRight size={15} className={`transition-transform ${openMenuId === listing.id ? 'rotate-90' : ''}`} />
+                                </button>
+
+                                {openMenuId === listing.id && (
+                                    <div className="mt-1 space-y-1.5 border-t border-[var(--border-default)] pt-3">
+                                        {listing.status === 'ACTIVE' && (
+                                            <Link
+                                                href={`${auctionDashPath}?listingId=${listing.id}`}
+                                                className="min-h-[46px] flex items-center gap-2.5 px-3 rounded-xl text-orange-400 bg-orange-500/5 font-bold text-sm"
+                                            >
+                                                <Gavel size={16} /> Put to Auction
+                                            </Link>
+                                        )}
+                                        <button
+                                            onClick={() => handleDelete(listing.id)}
+                                            disabled={deleting === listing.id}
+                                            className="w-full min-h-[46px] flex items-center gap-2.5 px-3 rounded-xl text-red-400 bg-red-500/5 font-bold text-sm disabled:opacity-60"
+                                        >
+                                            {deleting === listing.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                                            Delete Listing
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                {/* ── Full table (>= sm) ── */}
+                <div className="hidden sm:block overflow-x-auto">
                     <table className="w-full text-left">
                         <thead className="bg-[var(--bg-input)] text-[var(--text-muted)] text-xs uppercase font-black tracking-widest border-b border-[var(--border-default)]">
                             <tr>
@@ -892,18 +997,39 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                                 )}
                                                             </div>
                                                         </div>
-                                                        <div className="flex items-center gap-2 flex-wrap">
-                                                            {offer.status === 'PENDING' ? (
+                                                        <div className="w-full sm:w-auto">
+                                                            {(offer.status === 'PENDING' || (offer.status === 'COUNTERED' && offer.lastCounteredBy === 'BUYER')) ? (
                                                                 <>
-                                                                    <Button size="sm" variant="outline" className="h-9 border-red-500/30 text-red-400" onClick={() => handleRespond(offer.id, listing.id, 'REJECTED')} disabled={!!responding}>Decline</Button>
-                                                                    <Button size="sm" variant="outline" className="h-9 border-blue-500/30 text-blue-400" onClick={() => setCountering({ id: offer.id, amount: '' })} disabled={!!responding}>Counter</Button>
-                                                                    <Button size="sm" className="h-9 bg-emerald-600 hover:bg-emerald-500" onClick={() => handleRespond(offer.id, listing.id, 'ACCEPTED')} disabled={!!responding}>Accept</Button>
-                                                                </>
-                                                            ) : offer.status === 'COUNTERED' && offer.lastCounteredBy === 'BUYER' ? (
-                                                                <>
-                                                                    <Button size="sm" variant="outline" className="h-9 border-red-500/30 text-red-400" onClick={() => handleRespond(offer.id, listing.id, 'REJECTED')} disabled={!!responding}>Decline</Button>
-                                                                    <Button size="sm" variant="outline" className="h-9 border-blue-500/30 text-blue-400" onClick={() => setCountering({ id: offer.id, amount: '' })} disabled={!!responding}>Counter</Button>
-                                                                    <Button size="sm" className="h-9 bg-emerald-600 hover:bg-emerald-500" onClick={() => handleRespond(offer.id, listing.id, 'ACCEPTED')} disabled={!!responding}>Accept</Button>
+                                                                    <div className="sm:hidden space-y-2">
+                                                                        <button
+                                                                            onClick={() => handleRespond(offer.id, listing.id, 'ACCEPTED')}
+                                                                            disabled={!!responding}
+                                                                            className="w-full min-h-[46px] rounded-xl bg-emerald-600 text-white font-bold text-sm disabled:opacity-60"
+                                                                        >
+                                                                            Accept
+                                                                        </button>
+                                                                        <div className="grid grid-cols-2 gap-2">
+                                                                            <button
+                                                                                onClick={() => setCountering({ id: offer.id, amount: '' })}
+                                                                                disabled={!!responding}
+                                                                                className="min-h-[46px] rounded-xl border border-blue-500/30 text-blue-400 font-bold text-sm disabled:opacity-60"
+                                                                            >
+                                                                                Counter
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => handleRespond(offer.id, listing.id, 'REJECTED')}
+                                                                                disabled={!!responding}
+                                                                                className="min-h-[46px] rounded-xl border border-red-500/30 text-red-400 font-bold text-sm disabled:opacity-60"
+                                                                            >
+                                                                                Decline
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="hidden sm:flex items-center gap-2">
+                                                                        <Button size="sm" variant="outline" className="h-9 border-red-500/30 text-red-400" onClick={() => handleRespond(offer.id, listing.id, 'REJECTED')} disabled={!!responding}>Decline</Button>
+                                                                        <Button size="sm" variant="outline" className="h-9 border-blue-500/30 text-blue-400" onClick={() => setCountering({ id: offer.id, amount: '' })} disabled={!!responding}>Counter</Button>
+                                                                        <Button size="sm" className="h-9 bg-emerald-600 hover:bg-emerald-500" onClick={() => handleRespond(offer.id, listing.id, 'ACCEPTED')} disabled={!!responding}>Accept</Button>
+                                                                    </div>
                                                                 </>
                                                             ) : offer.status === 'COUNTERED' && offer.lastCounteredBy === 'SELLER' ? (
                                                                 <span className="text-xs font-black uppercase tracking-widest text-blue-400/70">Awaiting buyer response</span>
@@ -911,39 +1037,40 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                                 <div className="flex items-center gap-2 flex-wrap">
                                                                     <span className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">{offer.status}</span>
                                                                     {offer.status === 'ACCEPTED' && (
-                                                                        <>
-                                                                            <Button size="sm" variant="ghost" className="h-8 text-blue-400" onClick={() => handleMessage(offer.buyerId, listing.id)}>Message</Button>
-                                                                            <Button size="sm" className="h-8 bg-emerald-600 hover:bg-emerald-500 text-white" onClick={() => setSaleContext({ listing, offer })}>Mark as Sold</Button>
-                                                                        </>
+                                                                        <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto mt-1 sm:mt-0">
+                                                                            <button onClick={() => handleMessage(offer.buyerId, listing.id)} className="min-h-[44px] sm:h-8 sm:min-h-0 rounded-xl sm:rounded-md border border-blue-500/30 sm:border-0 text-blue-400 font-bold text-sm">Message</button>
+                                                                            <button onClick={() => setSaleContext({ listing, offer })} className="min-h-[44px] sm:h-8 sm:min-h-0 rounded-xl sm:rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm">Mark as Sold</button>
+                                                                        </div>
                                                                     )}
                                                                 </div>
                                                             )}
                                                         </div>
                                                     </div>
                                                     {countering?.id === offer.id && (
-                                                        <div className="flex items-center gap-3 p-3 bg-[var(--bg-card)] rounded-xl border border-blue-500/30 animate-in zoom-in-95 duration-200">
+                                                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 bg-[var(--bg-card)] rounded-xl border border-blue-500/30 animate-in zoom-in-95 duration-200">
                                                             <div className="relative flex-1">
                                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] font-bold">£</span>
                                                                 <Input
                                                                     placeholder="Enter counter amount..."
-                                                                    className="pl-8 bg-transparent border-[var(--border-default)] h-10"
+                                                                    className="pl-8 bg-transparent border-[var(--border-default)] h-12 sm:h-10 text-base"
                                                                     value={countering.amount}
                                                                     onChange={(e) => setCountering({ ...countering, amount: e.target.value })}
                                                                     type="number"
                                                                 />
                                                             </div>
-                                                            <Button
-                                                                size="sm"
-                                                                className="h-10 bg-blue-600 hover:bg-blue-500"
-                                                                onClick={() => {
-                                                                    handleRespond(offer.id, listing.id, 'COUNTERED', parseFloat(countering.amount))
-                                                                    setCountering(null)
-                                                                }}
-                                                                disabled={!countering.amount || !!responding}
-                                                            >
-                                                                Send Counter
-                                                            </Button>
-                                                            <Button size="sm" variant="ghost" className="h-10 text-[var(--text-muted)]" onClick={() => setCountering(null)}>Cancel</Button>
+                                                            <div className="grid grid-cols-2 sm:flex gap-2">
+                                                                <Button
+                                                                    className="min-h-[46px] sm:h-10 sm:min-h-0 bg-blue-600 hover:bg-blue-500"
+                                                                    onClick={() => {
+                                                                        handleRespond(offer.id, listing.id, 'COUNTERED', parseFloat(countering.amount))
+                                                                        setCountering(null)
+                                                                    }}
+                                                                    disabled={!countering.amount || !!responding}
+                                                                >
+                                                                    Send Counter
+                                                                </Button>
+                                                                <Button variant="ghost" className="min-h-[46px] sm:h-10 sm:min-h-0 text-[var(--text-muted)]" onClick={() => setCountering(null)}>Cancel</Button>
+                                                            </div>
                                                         </div>
                                                     )}
                                                 </div>
@@ -1111,7 +1238,107 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                     <Tag size={14} /> Outgoing Offers
                 </h3>
                 <div className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
-                    <div className="overflow-x-auto">
+                    {/* ── Simple mobile cards (< sm) ── */}
+                    <div className="sm:hidden divide-y divide-[var(--border-default)]">
+                        {loading ? (
+                            <div className="py-16 text-center"><Loader2 className="h-9 w-9 animate-spin text-primary mx-auto" /></div>
+                        ) : offers.length === 0 ? (
+                            <div className="py-16 text-center text-[var(--text-secondary)] italic px-6">No outgoing offers.</div>
+                        ) : (
+                            offers.map(offer => {
+                                const thumb = offer.listing?.images?.[0] || '/assets/images/featured-sports.png'
+                                const isBuyerTurn = offer.status === 'COUNTERED' && offer.lastCounteredBy === 'SELLER'
+                                const isBuyerLocked = (offer.counterAttemptsBuyer ?? 0) >= 5
+                                const expiresAt = offer.counterExpiresAt ? new Date(offer.counterExpiresAt) : null
+                                return (
+                                    <div key={offer.id} className="p-4">
+                                        <Link href={`/vehicle/${offer.listing?.slug}`} className="flex gap-3">
+                                            <div className="relative w-20 h-16 rounded-xl overflow-hidden border border-[var(--border-default)] shrink-0">
+                                                <Image src={thumb} alt="" fill className="object-cover" />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="font-black text-base leading-snug truncate">{offer.listing?.title}</p>
+                                                <p className="text-lg font-black mt-0.5">{formatPrice(offer.amount)}</p>
+                                                {offer.status === 'COUNTERED' && offer.sellerCounterAmount != null && (
+                                                    <p className="text-sm font-bold text-blue-400 mt-0.5">Seller&apos;s counter: {formatPrice(offer.sellerCounterAmount)}</p>
+                                                )}
+                                            </div>
+                                        </Link>
+                                        <span className={`inline-flex mt-2 px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-widest bg-[var(--bg-input)] ${outgoingOfferStatusClass(offer.status)}`}>
+                                            {offer.status === 'PENDING' ? 'Awaiting seller' : offer.status === 'COUNTERED' ? (isBuyerTurn ? 'Seller countered' : 'Awaiting seller') : offer.status.charAt(0) + offer.status.slice(1).toLowerCase()}
+                                        </span>
+
+                                        {offer.status === 'COUNTERED' && isBuyerLocked && (
+                                            <div className="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+                                                <p className="text-amber-300 text-sm font-medium mb-1">Counter limit reached &mdash; awaiting seller&apos;s final decision.</p>
+                                                {expiresAt && <CountdownTimer expiresAt={expiresAt} />}
+                                            </div>
+                                        )}
+
+                                        {offer.status === 'COUNTERED' && isBuyerTurn && !isBuyerLocked && (
+                                            <>
+                                                <div className="grid grid-cols-2 gap-2 mt-3">
+                                                    <button
+                                                        onClick={() => handleAcceptCounter(offer.id)}
+                                                        disabled={accepting === offer.id || declining === offer.id}
+                                                        className="min-h-[46px] rounded-xl bg-emerald-600 text-white font-bold text-sm disabled:opacity-60"
+                                                    >
+                                                        {accepting === offer.id ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : 'Accept counter'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeclineCounter(offer.id)}
+                                                        disabled={accepting === offer.id || declining === offer.id}
+                                                        className="min-h-[46px] rounded-xl border border-red-500/30 text-red-400 font-bold text-sm disabled:opacity-60"
+                                                    >
+                                                        {declining === offer.id ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : 'Decline'}
+                                                    </button>
+                                                </div>
+                                                <div className="flex gap-2 mt-2">
+                                                    <input
+                                                        type="number"
+                                                        placeholder="Your counter (£)"
+                                                        value={counterAmounts[offer.id] ?? ''}
+                                                        onChange={(e) => setCounterAmounts(prev => ({ ...prev, [offer.id]: e.target.value }))}
+                                                        className="flex-1 min-h-[46px] px-3 rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] text-base"
+                                                    />
+                                                    <button
+                                                        onClick={() => handleBuyerCounter(offer.id, parseFloat(counterAmounts[offer.id] ?? '0'))}
+                                                        disabled={buyerCountering === offer.id || !counterAmounts[offer.id]}
+                                                        className="min-h-[46px] px-4 rounded-xl bg-blue-600 text-white font-bold text-sm disabled:opacity-60"
+                                                    >
+                                                        {buyerCountering === offer.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Counter'}
+                                                    </button>
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {offer.status === 'PENDING' && (
+                                            <button
+                                                onClick={() => handleWithdraw(offer.id)}
+                                                disabled={actioning === offer.id}
+                                                className="w-full min-h-[46px] mt-3 rounded-xl border border-red-500/30 text-red-400 font-bold text-sm disabled:opacity-60"
+                                            >
+                                                {actioning === offer.id ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : 'Withdraw offer'}
+                                            </button>
+                                        )}
+
+                                        {(offer.status === 'ACCEPTED' || (offer.status === 'COUNTERED' && isBuyerTurn)) && (
+                                            <button
+                                                onClick={() => handleMessageSeller(offer.listing?.sellerId, offer.listing?.id)}
+                                                disabled={startingChat === offer.listing?.id}
+                                                className="w-full min-h-[46px] mt-3 rounded-xl border border-blue-500/30 text-blue-400 font-bold text-sm disabled:opacity-60"
+                                            >
+                                                {startingChat === offer.listing?.id ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : 'Message seller'}
+                                            </button>
+                                        )}
+                                    </div>
+                                )
+                            })
+                        )}
+                    </div>
+
+                    {/* ── Full table (>= sm) ── */}
+                    <div className="hidden sm:block overflow-x-auto">
                         <table className="w-full text-left">
                             <thead className="bg-[var(--bg-input)] text-xs text-[var(--text-muted)] uppercase font-black tracking-widest">
                                 <tr>
@@ -1434,9 +1661,8 @@ function EarningsTab() {
                     <p className="text-[var(--text-muted)] text-sm font-medium">Detailed tracking of your sold assets and revenue.</p>
                 </div>
                 <Button
-                    className="flex items-center gap-2 h-10 shadow-neon-small"
+                    className="flex items-center justify-center gap-2 min-h-[44px] sm:h-10 w-full sm:w-auto shadow-neon-small"
                     variant="outline"
-                    size="sm"
                     onClick={handleExport}
                     disabled={exporting}
                 >
@@ -1477,7 +1703,39 @@ function EarningsTab() {
             </div>
 
             <div className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
-                <div className="overflow-x-auto">
+                {/* ── Simple mobile cards (< sm) ── */}
+                <div className="sm:hidden divide-y divide-[var(--border-default)]">
+                    {loading ? (
+                        <div className="py-16 text-center"><Loader2 className="h-9 w-9 animate-spin text-primary mx-auto" /></div>
+                    ) : !data || data.sales.length === 0 ? (
+                        <div className="py-16 text-center text-[var(--text-muted)] italic px-6">No sales records found.</div>
+                    ) : (
+                        data.sales.map((sale) => (
+                            <div key={sale.id} className="p-4 flex gap-3">
+                                <div className="relative w-16 h-14 rounded-xl overflow-hidden border border-[var(--border-default)] shrink-0">
+                                    {sale.listing.images?.[0] ? (
+                                        <Image src={sale.listing.images[0]} alt="" fill className="object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full bg-[var(--bg-input)] flex items-center justify-center"><Car size={16} className="text-[var(--text-secondary)]" /></div>
+                                    )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <p className="font-black text-base truncate">{sale.listing.title}</p>
+                                    <p className="text-sm text-[var(--text-muted)] mt-0.5 truncate">
+                                        {sale.buyer ? `${sale.buyer.firstName} ${sale.buyer.lastName || ""}`.trim() : (sale as any).buyerName || "Direct buyer"}
+                                    </p>
+                                    <div className="flex items-center justify-between mt-1.5">
+                                        <span className="text-lg font-black text-emerald-400">{formatPrice(sale.soldPrice)}</span>
+                                        <span className="text-sm text-[var(--text-muted)]">{new Date(sale.createdAt).toLocaleDateString('en-GB')}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                {/* ── Full table (>= sm) ── */}
+                <div className="hidden sm:block overflow-x-auto">
                     <table className="w-full text-left">
                         <thead className="bg-[var(--bg-input)] text-[var(--text-muted)] text-xs uppercase font-black tracking-widest border-b border-[var(--border-default)]">
                             <tr>

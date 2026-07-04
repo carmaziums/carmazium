@@ -429,34 +429,32 @@ function DealerAuctionsPage() {
                                             {auction.status}
                                         </span>
                                     </div>
-                                    <div className="flex items-center justify-between gap-2 text-sm">
+                                    <div className="flex items-center justify-between gap-2">
                                         <div>
-                                            <p className="font-black">£{getCurrentBid(auction).toLocaleString()}</p>
-                                            <p className="text-xs text-gray-600 font-bold uppercase">{getBidCount(auction) === 0 ? 'starting bid' : `${getBidCount(auction)} bids`}</p>
+                                            <p className="text-lg font-black">£{getCurrentBid(auction).toLocaleString()}</p>
+                                            <p className="text-xs text-gray-600 font-bold uppercase">{getBidCount(auction) === 0 ? 'Starting bid' : `${getBidCount(auction)} bids`}</p>
                                         </div>
-                                        <div className="text-right text-xs text-[var(--text-muted)]">
+                                        <div className="text-right text-sm">
                                             {auction.status === "ACTIVE" ? (
                                                 <p className="text-primary font-black" key={tick}>{formatCountdown(new Date(auction.endTime))}</p>
                                             ) : auction.status === "SCHEDULED" ? (
-                                                <p className="text-blue-400">Starts in {formatCountdown(new Date(auction.startTime))}</p>
+                                                <p className="text-blue-400 font-bold">Starts in {formatCountdown(new Date(auction.startTime))}</p>
                                             ) : (
-                                                <p>{formatDate(auction.endTime)}</p>
-                                            )}
-                                        </div>
-                                        <div>
-                                            {auction.status === "ACTIVE" && (
-                                                <Link href={`/auctions/live/${auction.id}`} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg">Live</Link>
-                                            )}
-                                            {auction.status === "SCHEDULED" && (
-                                                <button onClick={() => handleCancel(auction.id)} disabled={cancelling === auction.id} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg disabled:opacity-50">
-                                                    {cancelling === auction.id ? <Loader2 size={12} className="animate-spin" /> : 'Cancel'}
-                                                </button>
-                                            )}
-                                            {(auction.status === "ENDED" || auction.status === "CANCELLED") && (
-                                                <Link href={`/auctions/live/${auction.id}`} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-[var(--bg-card)] text-[var(--text-muted)] border border-[var(--border-default)] rounded-lg">Results</Link>
+                                                <p className="text-[var(--text-muted)] font-bold">{formatDate(auction.endTime)}</p>
                                             )}
                                         </div>
                                     </div>
+                                    {auction.status === "ACTIVE" && (
+                                        <Link href={`/auctions/live/${auction.id}`} className="w-full min-h-[46px] flex items-center justify-center rounded-xl bg-emerald-500 text-white font-bold text-sm">View live auction</Link>
+                                    )}
+                                    {auction.status === "SCHEDULED" && (
+                                        <button onClick={() => handleCancel(auction.id)} disabled={cancelling === auction.id} className="w-full min-h-[46px] rounded-xl border border-red-500/30 text-red-400 font-bold text-sm disabled:opacity-50">
+                                            {cancelling === auction.id ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Cancel auction'}
+                                        </button>
+                                    )}
+                                    {(auction.status === "ENDED" || auction.status === "CANCELLED") && (
+                                        <Link href={`/auctions/live/${auction.id}`} className="w-full min-h-[46px] flex items-center justify-center rounded-xl border border-[var(--border-default)] text-[var(--text-muted)] font-bold text-sm">View results</Link>
+                                    )}
                                 </div>
                             ))}
                         </div>

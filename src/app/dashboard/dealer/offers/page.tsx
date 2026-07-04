@@ -168,34 +168,53 @@ export default function DealerOffersPage() {
                                                     {offer.status === 'COUNTERED' && offer.counterAmount && <p className="text-xs text-blue-400 font-black">Ctr: £{offer.counterAmount.toLocaleString()}</p>}
                                                 </div>
                                             </div>
-                                            <div className="flex items-center justify-between gap-2">
-                                                <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-black tracking-widest uppercase border ${
-                                                    offer.status === "PENDING" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
-                                                    offer.status === "ACCEPTED" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
-                                                    offer.status === "REJECTED" ? "bg-red-500/10 text-red-400 border-red-500/20" :
-                                                    offer.status === "COUNTERED" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
-                                                    "bg-slate-500/10 text-[var(--text-muted)] border-[var(--border-default)]"
-                                                }`}>{offer.status}</span>
-                                                <div className="flex items-center gap-2 flex-wrap justify-end">
-                                                    {isPending && !isCountering && (
-                                                        <>
-                                                            <button onClick={() => { setCounteringOfferId(offer.id); setCounterAmount(offer.amount) }} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-xl">Counter</button>
-                                                            <button onClick={() => handleRespond(offer.id, 'ACCEPTED')} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl">Accept</button>
-                                                            <button onClick={() => handleRespond(offer.id, 'REJECTED')} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl">Reject</button>
-                                                        </>
-                                                    )}
-                                                    {offer.status === 'ACCEPTED' && !isCapturingPostcode && (
-                                                        <button onClick={() => setPostcodeCapture({ offerId: offer.id, postcode: '' })} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-emerald-600 text-white rounded-xl">Mark Sold</button>
-                                                    )}
-                                                    {offer.status === 'ACCEPTED' && isCapturingPostcode && (
-                                                        <div className="flex items-center gap-2 w-full mt-1">
-                                                            <input type="text" placeholder="Postcode (opt.)" maxLength={8} value={postcodeCapture?.postcode ?? ''} onChange={e => setPostcodeCapture(p => p ? { ...p, postcode: e.target.value.toUpperCase() } : null)} className="flex-1 bg-black/40 border border-[var(--border-default)] text-white rounded-lg px-3 py-1.5 text-xs font-bold focus:outline-none focus:border-emerald-500 uppercase" />
-                                                            <button onClick={confirmMarkSold} disabled={confirmingSale} className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold">Confirm</button>
-                                                            <button onClick={() => setPostcodeCapture(null)} className="px-2 py-1.5 text-[var(--text-muted)]"><XCircle size={16} /></button>
-                                                        </div>
-                                                    )}
+                                            <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-black tracking-widest uppercase border ${
+                                                offer.status === "PENDING" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
+                                                offer.status === "ACCEPTED" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                                                offer.status === "REJECTED" ? "bg-red-500/10 text-red-400 border-red-500/20" :
+                                                offer.status === "COUNTERED" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
+                                                "bg-slate-500/10 text-[var(--text-muted)] border-[var(--border-default)]"
+                                            }`}>
+                                                {offer.status === "PENDING" ? "Pending" : offer.status === "ACCEPTED" ? "Accepted" : offer.status === "REJECTED" ? "Rejected" : offer.status === "COUNTERED" ? "Countered" : offer.status}
+                                            </span>
+
+                                            {isPending && !isCountering && (
+                                                <div className="mt-3 space-y-2">
+                                                    <button onClick={() => handleRespond(offer.id, 'ACCEPTED')} className="w-full min-h-[46px] rounded-xl bg-emerald-500 text-white font-bold text-sm">Accept offer</button>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <button onClick={() => { setCounteringOfferId(offer.id); setCounterAmount(offer.amount) }} className="min-h-[46px] rounded-xl border border-blue-500/30 text-blue-400 font-bold text-sm">Counter</button>
+                                                        <button onClick={() => handleRespond(offer.id, 'REJECTED')} className="min-h-[46px] rounded-xl border border-red-500/30 text-red-400 font-bold text-sm">Reject</button>
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            )}
+                                            {isPending && isCountering && (
+                                                <div className="mt-3 space-y-2">
+                                                    <div className="relative">
+                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] font-bold">£</span>
+                                                        <input type="number"
+                                                            className="w-full bg-black/40 border border-[var(--border-default)] text-white rounded-xl pl-8 pr-3 min-h-[46px] text-base font-bold focus:outline-none focus:border-blue-500 transition-colors"
+                                                            value={counterAmount || ''}
+                                                            onChange={e => setCounterAmount(Number(e.target.value))}
+                                                            autoFocus />
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <button onClick={() => { handleRespond(offer.id, 'COUNTERED', counterAmount); setCounteringOfferId(null); setCounterAmount(undefined) }} disabled={!counterAmount} className="min-h-[46px] rounded-xl bg-blue-600 text-white font-bold text-sm disabled:opacity-50">Send counter</button>
+                                                        <button onClick={() => { setCounteringOfferId(null); setCounterAmount(undefined) }} className="min-h-[46px] rounded-xl border border-[var(--border-default)] text-[var(--text-muted)] font-bold text-sm">Cancel</button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {offer.status === 'ACCEPTED' && !isCapturingPostcode && (
+                                                <button onClick={() => setPostcodeCapture({ offerId: offer.id, postcode: '' })} className="w-full min-h-[46px] mt-3 rounded-xl bg-emerald-600 text-white font-bold text-sm">Mark sold</button>
+                                            )}
+                                            {offer.status === 'ACCEPTED' && isCapturingPostcode && (
+                                                <div className="mt-3 space-y-2">
+                                                    <input type="text" placeholder="Postcode (optional)" maxLength={8} value={postcodeCapture?.postcode ?? ''} onChange={e => setPostcodeCapture(p => p ? { ...p, postcode: e.target.value.toUpperCase() } : null)} className="w-full bg-black/40 border border-[var(--border-default)] text-white rounded-xl px-3 min-h-[46px] text-base font-bold focus:outline-none focus:border-emerald-500 uppercase" />
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <button onClick={confirmMarkSold} disabled={confirmingSale} className="min-h-[46px] rounded-xl bg-emerald-600 text-white font-bold text-sm disabled:opacity-60">{confirmingSale ? 'Saving…' : 'Confirm'}</button>
+                                                        <button onClick={() => setPostcodeCapture(null)} className="min-h-[46px] rounded-xl border border-[var(--border-default)] text-[var(--text-muted)] font-bold text-sm">Cancel</button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )
                                 })}
