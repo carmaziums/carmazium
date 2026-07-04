@@ -59,6 +59,10 @@ const SERVICE_HISTORY_OPTS = [
   { v: 'FULL_INDEPENDENT', l: 'Full Independent' },
   { v: 'PARTIAL', l: 'Partial' }, { v: 'NONE', l: 'None' },
 ];
+const CONDITIONS = [
+  { v: 'EXCELLENT', l: 'Excellent' }, { v: 'GOOD', l: 'Good' },
+  { v: 'FAIR', l: 'Fair' }, { v: 'POOR', l: 'Poor' },
+];
 const EURO_STANDARDS = ['EURO_4', 'EURO_5', 'EURO_6', 'EURO_6D'];
 const WRITE_OFF_CATS = [
   { v: 'NONE', l: 'None' }, { v: 'CAT_S', l: 'Cat S' },
@@ -434,6 +438,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // Ownership
   const [owners, setOwners] = useState('');
   const [isImported, setIsImported] = useState(false);
+  const [condition, setCondition] = useState('');
   // Legal declarations
   const [writeOffCat, setWriteOffCat] = useState('');
   const [stolenRecovered, setStolenRecovered] = useState<boolean | null>(null);
@@ -623,7 +628,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     try {
       const res = await apiClient<any>('/ai/generate-description', {
         method: 'POST',
-        body: JSON.stringify({ make, model, year, mileage, fuelType, transmission, color: colour, features, vrm, motStatus, condition: 'Used' }),
+        body: JSON.stringify({
+          make, model, year, mileage, fuelType, transmission, color: colour, features, vrm, motStatus,
+          condition, bodyType, serviceHistory, owners, engineSize,
+        }),
       });
       // API may return { data: { text: "..." } } or { text: "..." } directly
       const text = String(res?.data?.text || res?.text || '');
@@ -713,6 +721,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       if (!year.trim()) { Alert.alert('Required', 'Please enter the vehicle year.'); return false; }
       if (!mileage.trim()) { Alert.alert('Required', 'Please enter the mileage.'); return false; }
       if (!title.trim()) { Alert.alert('Required', 'Please enter a listing title.'); return false; }
+      if (!condition) { Alert.alert('Required', 'Please select the vehicle condition.'); return false; }
       if (!writeOffCat) { Alert.alert('Required', 'Please complete the write-off declaration.'); return false; }
       if ((writeOffCat === 'CAT_A' || writeOffCat === 'CAT_B') && !isAuction) {
         Alert.alert('Auction Only', 'Cat A and Cat B write-off vehicles can only be listed via auction. Select the Auction option in Step 3 Pricing.');
@@ -806,7 +815,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         combinedMpg: combinedMpg ? parseFloat(combinedMpg) : undefined,
         extraUrbanMpg: extraUrbanMpg ? parseFloat(extraUrbanMpg) : undefined,
         ulezCompliant, euroStandard, co2Emissions: co2Emissions ? parseInt(co2Emissions) : undefined,
-        features, title, description,
+        features, title, description, condition,
         owners: owners ? parseInt(owners) : undefined,
         isImported,
         writeOffCategory: writeOffCat,
@@ -1273,6 +1282,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
         {/* Ownership */}
         <SectionBox title="Ownership">
+          <PillRow label="CONDITION" options={CONDITIONS} value={condition as any} onSelect={setCondition} required />
           <View>
             <SL label="NUMBER OF OWNERS" />
             <View style={{ flexDirection: 'row', gap: 8 }}>
