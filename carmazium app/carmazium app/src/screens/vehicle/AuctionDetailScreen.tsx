@@ -834,28 +834,49 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   Winning bid: {fmt(Number(endedPayload?.winningBidAmount ?? 0))}
                 </Text>
               </View>
-              <TouchableOpacity
-                style={s.bannerBtn}
-                disabled={connectingChat}
-                onPress={async () => {
-                  const sellerId = auction?.listing?.sellerId;
-                  if (!sellerId) return;
-                  setConnectingChat(true);
-                  try {
-                    const room = await createChatRoom(sellerId, auction?.listingId);
-                    navigation.navigate('ChatScreen' as any, { threadId: room.id });
-                  } catch {
-                    navigation.navigate('Messages' as any);
-                  } finally {
-                    setConnectingChat(false);
+              {auction?.buyerFeePaid ? (
+                <TouchableOpacity
+                  style={s.bannerBtn}
+                  disabled={connectingChat}
+                  onPress={async () => {
+                    const sellerId = auction?.listing?.sellerId;
+                    if (!sellerId) return;
+                    setConnectingChat(true);
+                    try {
+                      const room = await createChatRoom(sellerId, auction?.listingId);
+                      navigation.navigate('ChatScreen' as any, { threadId: room.id });
+                    } catch {
+                      navigation.navigate('Messages' as any);
+                    } finally {
+                      setConnectingChat(false);
+                    }
+                  }}
+                >
+                  {connectingChat
+                    ? <ActivityIndicator size="small" color="#FFF" />
+                    : <Text style={s.bannerBtnText}>Message Seller</Text>
                   }
-                }}
-              >
-                {connectingChat
-                  ? <ActivityIndicator size="small" color="#FFF" />
-                  : <Text style={s.bannerBtnText}>Message Seller</Text>
-                }
-              </TouchableOpacity>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={s.bannerBtn}
+                  onPress={() =>
+                    navigation.navigate('PurchaseFlow' as any, {
+                      listingId: auction?.listingId,
+                      salePrice: 0,
+                      buyerFee: 125,
+                      listingTitle: auction?.listing?.title ?? 'Vehicle',
+                      listingImage: auction?.listing?.images?.[0],
+                      sellerName: auction?.listing?.seller
+                        ? `${auction.listing.seller.firstName ?? ''} ${auction.listing.seller.lastName ?? ''}`.trim()
+                        : undefined,
+                      paymentType: 'COMMISSION',
+                    })
+                  }
+                >
+                  <Text style={s.bannerBtnText}>Pay £125 Fee</Text>
+                </TouchableOpacity>
+              )}
             </>
           ) : endedPayload?.reserveMet === false ? (
             <>
@@ -1255,7 +1276,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           <View style={s.bidStateBox}>
             <Ionicons name="hammer-outline" size={20} color="#606070" />
             <Text style={s.bidStateText}>{userWon ? 'You Won!' : 'Auction Ended'}</Text>
-            {userWon && (
+            {userWon && auction?.buyerFeePaid && (
               <TouchableOpacity
                 style={[s.bidBtn, { backgroundColor: '#10B981', marginTop: 8 }]}
                 disabled={connectingChat}
@@ -1278,6 +1299,27 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                       <Text style={s.bidBtnText}>Message Seller</Text>
                     </>
                 }
+              </TouchableOpacity>
+            )}
+            {userWon && !auction?.buyerFeePaid && (
+              <TouchableOpacity
+                style={[s.bidBtn, { backgroundColor: '#DC1F26', marginTop: 8 }]}
+                onPress={() =>
+                  navigation.navigate('PurchaseFlow' as any, {
+                    listingId: auction?.listingId,
+                    salePrice: 0,
+                    buyerFee: 125,
+                    listingTitle: auction?.listing?.title ?? 'Vehicle',
+                    listingImage: auction?.listing?.images?.[0],
+                    sellerName: auction?.listing?.seller
+                      ? `${auction.listing.seller.firstName ?? ''} ${auction.listing.seller.lastName ?? ''}`.trim()
+                      : undefined,
+                    paymentType: 'COMMISSION',
+                  })
+                }
+              >
+                <Ionicons name="lock-closed-outline" size={15} color="#FFF" />
+                <Text style={s.bidBtnText}>Pay £125 Fee to Unlock Chat</Text>
               </TouchableOpacity>
             )}
           </View>

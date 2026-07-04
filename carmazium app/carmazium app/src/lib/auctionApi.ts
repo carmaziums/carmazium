@@ -80,6 +80,11 @@ export interface AuctionDetail {
   winningBidAmount?: number | null;
   buyItNowPrice?: number | null;
   buyItNowPendingBuyerId?: string | null;
+  buyerFeePaid?: boolean;
+  handoverProofUrl?: string | null;
+  handoverSubmittedAt?: string | null;
+  sellerBonusReleased?: boolean;
+  stripePayoutError?: string | null;
   createdAt: string;
   updatedAt: string;
   listing: AuctionListingDetail;
@@ -149,4 +154,16 @@ export async function confirmBuyItNow(auctionId: string): Promise<void> {
 
 export async function declineBuyItNow(auctionId: string): Promise<void> {
   await apiClient(`/auctions/${auctionId}/bin-decline`, { method: 'POST' });
+}
+
+// ─── Handover proof ──────────────────────────────────────────────────────────
+
+export async function submitHandoverProof(
+  auctionId: string,
+  proofUrl: string,
+): Promise<void> {
+  await apiClient(`/auctions/${auctionId}/handover-proof`, {
+    method: 'POST',
+    body: JSON.stringify({ proofUrl }),
+  });
 }
