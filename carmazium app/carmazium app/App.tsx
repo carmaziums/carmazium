@@ -14,6 +14,7 @@ import { DrawerProvider } from './src/context/DrawerContext';
 import { GlobalDrawer } from './src/components/GlobalDrawer';
 import { Colors } from './src/constants/colors';
 import { ChatProvider } from './src/context/ChatContext';
+import { LocationProvider } from './src/context/LocationContext';
 import { useAuthStore } from './src/store/authStore';
 import { supabase } from './src/lib/supabase';
 import * as Notifications from 'expo-notifications';
@@ -254,11 +255,13 @@ export default function App() {
         }}
       >
         <DrawerProvider>
-          <ChatProvider>
-            <GlobalToastProvider>
-              <RootNavigator />
-            </GlobalToastProvider>
-          </ChatProvider>
+          <LocationProvider>
+            <ChatProvider>
+              <GlobalToastProvider>
+                <RootNavigator />
+              </GlobalToastProvider>
+            </ChatProvider>
+          </LocationProvider>
           {/* GlobalDrawer sits inside DrawerProvider but renders as a Modal,
               so it overlays every screen automatically */}
           <GlobalDrawer />
