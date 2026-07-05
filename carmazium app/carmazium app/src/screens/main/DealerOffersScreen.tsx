@@ -28,6 +28,7 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { CounterLedger } from '../../components/offers/CounterLedger';
+import { ReceivedDeliveryRequestsPanel } from '../../components/delivery/ReceivedDeliveryRequestsPanel';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -435,6 +436,7 @@ export const DealerOffersScreen: React.FC = () => {
           data={offers}
           keyExtractor={(o) => o.id}
           renderItem={({ item }) => renderOfferCard(item)}
+          ListHeaderComponent={<ReceivedDeliveryRequestsPanel contextLabel="your inventory" />}
           ListEmptyComponent={renderEmptyState}
           ListFooterComponent={<View style={{ height: 40 }} />}
           contentContainerStyle={[styles.scrollContent, offers.length === 0 && { flexGrow: 1 }]}

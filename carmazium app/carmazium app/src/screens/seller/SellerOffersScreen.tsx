@@ -22,6 +22,7 @@ import { FontFamily, FontSize } from '../../constants/typography';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { CounterLedger } from '../../components/offers/CounterLedger';
+import { ReceivedDeliveryRequestsPanel } from '../../components/delivery/ReceivedDeliveryRequestsPanel';
 
 // ─────────────────────────── interfaces ───────────────────────────
 
@@ -472,6 +473,10 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
           />
         }
       >
+        {/* Pending delivery requests — surfaced above offers so acceptance
+            lives near the offers that spawned them. */}
+        <ReceivedDeliveryRequestsPanel contextLabel="your listing" />
+
         {loading
           ? renderSkeleton()
           : offers.length === 0
