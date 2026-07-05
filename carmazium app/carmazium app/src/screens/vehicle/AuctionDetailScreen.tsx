@@ -35,6 +35,7 @@ import { io } from 'socket.io-client';
 import { getAccessToken } from '../../lib/supabase';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { haptics } from '../../lib/haptics';
+import { DamageMapViewer } from '../../components/DamageMapViewer';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -127,6 +128,15 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // ── Auction lifecycle ──
   const [endedPayload, setEndedPayload] = useState<AuctionEndPayload | null>(null);
+
+  // Damage records — fetched from /damage/:listingId once the auction loads.
+  // Auctions must show damage on the buyer side for parity with the web
+  // /auctions/live/[id] page, which renders the ThreeDVehicleViewer with
+  // clickable zones tied to DamageRecord.part strings. Mobile uses the
+  // simpler DamageMapViewer (2D FRONT/SIDE/REAR/TOP view tabs with pins)
+  // that VehicleDetailScreen already uses — same data, same trust signal.
+  const [damageRecords, setDamageRecords] = useState<any[]>([]);
+  const [damageLoading, setDamageLoading] = useState(true);
   const [endTime, setEndTime] = useState<Date | null>(listingObj.endsAt ? new Date(listingObj.endsAt) : null);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [watchers, setWatchers] = useState<number>(listingObj.viewers ?? 0);
@@ -237,6 +247,18 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   }, [auctionId, currentUser]);
 
   useEffect(() => { loadAuction(); }, [loadAuction]);
+
+  // ─── Damage records fetch ────────────────────────────────────────────────
+  // Runs once the linked listingId is known (from route or loaded auction).
+  useEffect(() => {
+    const listingId = listingObj?.id;
+    if (!listingId) return;
+    setDamageLoading(true);
+    apiClient<{ success: boolean; data: any[] }>(`/damage/${listingId}`)
+      .then(res => { if (res?.success) setDamageRecords(res.data || []); })
+      .catch(() => {})
+      .finally(() => setDamageLoading(false));
+  }, [listingObj?.id]);
 
   // ─── Socket ───────────────────────────────────────────────────────────────
 
@@ -1132,6 +1154,15 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </View>
               </View>
             )}
+
+            {/* Damage report — parity with VehicleDetailScreen */}
+            <View style={s.card}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                <Ionicons name="warning-outline" size={13} color="#F59E0B" />
+                <Text style={[s.cardSectionTitle, { marginBottom: 0 }]}>Damage Report</Text>
+              </View>
+              <DamageMapViewer records={damageRecords} isLoading={damageLoading} />
+            </View>
 
             {/* Trust note */}
             <View style={[s.banner, s.bannerDark]}>
