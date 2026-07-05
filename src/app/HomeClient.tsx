@@ -9,6 +9,7 @@ import { BrowseByCategory } from "@/components/features/BrowseByCategory"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion"
 import { useRef, useState, useEffect } from "react"
+import { useTheme } from "next-themes"
 import { useRouter } from "next/navigation"
 import { formatPrice, type Listing } from "@/lib/listingApi"
 import { aiSearch, type AiSearchResult } from "@/lib/aiApi"
@@ -31,6 +32,12 @@ interface HomeClientProps {
 export default function HomeClient({ initialListings }: HomeClientProps) {
   const ref = useRef(null)
   const router = useRouter()
+  const { resolvedTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  const heroVideoSrc = mounted && resolvedTheme === "light"
+    ? "/assets/videos/hero-cinematic-light.mp4"
+    : "/assets/videos/hero-cinematic.mp4"
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ["start start", "end start"],
@@ -80,6 +87,7 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
         {/* Video Background */}
         <div className="absolute inset-0 w-full h-full">
           <video
+            key={heroVideoSrc}
             autoPlay
             muted
             loop
@@ -87,7 +95,7 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
             className="absolute top-1/2 left-1/2 min-w-full min-h-full object-cover -translate-x-1/2 -translate-y-1/2"
             onEnded={(e) => e.currentTarget.pause()}
           >
-            <source src="/assets/videos/hero-cinematic.mp4" type="video/mp4" />
+            <source src={heroVideoSrc} type="video/mp4" />
           </video>
           <div className="absolute inset-0 bg-gradient-to-b from-slate-900/80 via-slate-900/50 to-slate-900" />
         </div>

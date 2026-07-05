@@ -4,16 +4,25 @@ import Image from "next/image"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { ArrowRight } from "lucide-react"
+import { useTheme } from "next-themes"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/Button"
 
 export function DiscoverSection() {
+    const { resolvedTheme } = useTheme()
+    const [mounted, setMounted] = useState(false)
+    useEffect(() => setMounted(true), [])
+    const isLight = mounted && resolvedTheme === "light"
+
     return (
         <section className="relative overflow-hidden">
-            {/* Background — brand gradient from dark secondary to primary */}
+            {/* Background — brand gradient from dark secondary to primary (light mode gets a soft pastel version) */}
             <div
                 className="absolute inset-0"
                 style={{
-                    background: "linear-gradient(135deg, #1e293b 0%, #0f172a 40%, #1e293b 60%, #2d1215 85%, #ed1c24 100%)",
+                    background: isLight
+                        ? "linear-gradient(135deg, #eef2f8 0%, #e6edf5 40%, #fbe4e2 60%, #fbd3ce 85%, #f8b8b0 100%)"
+                        : "linear-gradient(135deg, #1e293b 0%, #0f172a 40%, #1e293b 60%, #2d1215 85%, #ed1c24 100%)",
                 }}
             />
             {/* Subtle radial glow behind center car */}
@@ -29,7 +38,8 @@ export function DiscoverSection() {
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{ duration: 0.7 }}
-                        className="text-4xl md:text-5xl lg:text-6xl font-bold font-heading text-white text-center mb-4 drop-shadow-lg"
+                        className="text-4xl md:text-5xl lg:text-6xl font-bold font-heading text-center mb-4 drop-shadow-lg"
+                        style={{ color: isLight ? 'var(--text-primary)' : '#ffffff' }}
                     >
                         Discover your perfect car
                     </motion.h2>
@@ -76,7 +86,7 @@ export function DiscoverSection() {
                         }}
                     >
                         <Image
-                            src="/assets/images/discover-hero.png"
+                            src={isLight ? "/assets/images/discover-hero-light.png" : "/assets/images/discover-hero.png"}
                             alt="Discover your perfect car — Blue pickup, Red SUV, White sedan"
                             fill
                             sizes="100vw"
@@ -88,7 +98,14 @@ export function DiscoverSection() {
             </div>
 
             {/* Bottom transition overlay — merges the section gradient into the page background */}
-            <div className="absolute bottom-0 left-0 right-0 h-16 md:h-48 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/80 to-transparent z-20 pointer-events-none" />
+            <div
+                className="absolute bottom-0 left-0 right-0 h-16 md:h-48 z-20 pointer-events-none"
+                style={{
+                    background: isLight
+                        ? "linear-gradient(to top, var(--bg-body), color-mix(in srgb, var(--bg-body) 80%, transparent), transparent)"
+                        : "linear-gradient(to top, #0f172a, rgba(15,23,42,0.8), transparent)",
+                }}
+            />
         </section>
     )
 }
