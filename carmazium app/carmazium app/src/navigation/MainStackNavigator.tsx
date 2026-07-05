@@ -37,6 +37,7 @@ import { SellerOffersScreen } from '../screens/seller/SellerOffersScreen';
 import { BuyerOffersScreen } from '../screens/buyer/BuyerOffersScreen';
 import { BuyerBidsScreen } from '../screens/buyer/BuyerBidsScreen';
 import { BuyerPurchaseHistoryScreen } from '../screens/buyer/BuyerPurchaseHistoryScreen';
+import { BuyerDeliveryRequestsScreen } from '../screens/buyer/BuyerDeliveryRequestsScreen';
 import { EarningsScreen } from '../screens/seller/EarningsScreen';
 import { SellerProfileScreen } from '../screens/seller/SellerProfileScreen';
 import { SellerPerformanceScreen } from '../screens/seller/SellerPerformanceScreen';
@@ -104,6 +105,7 @@ export type MainStackParamList = {
   BuyerOffers: undefined;
   BuyerBids: undefined;
   BuyerPurchaseHistory: undefined;
+  BuyerDeliveryRequests: undefined;
   Earnings: undefined;
   SellerProfile: { sellerId: string };
   SellerPerformance: undefined;
@@ -260,6 +262,7 @@ export const MainStackNavigator: React.FC = () => {
       />
       <Stack.Screen name="BuyerBids" component={BuyerBidsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="BuyerPurchaseHistory" component={BuyerPurchaseHistoryScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="BuyerDeliveryRequests" component={BuyerDeliveryRequestsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="SellerProfile" component={SellerProfileScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="SellerPerformance" component={SellerPerformanceScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="PaymentHistory" component={PaymentHistoryScreen} options={{ animation: 'slide_from_right' }} />

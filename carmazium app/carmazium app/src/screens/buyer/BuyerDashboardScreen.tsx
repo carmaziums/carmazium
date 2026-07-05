@@ -460,6 +460,17 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
               </View>
               <Text style={styles.quickLabel}>History</Text>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.quickTile}
+              activeOpacity={0.8}
+              onPress={() => navigation?.navigate('BuyerDeliveryRequests')}
+            >
+              <View style={[styles.quickIcon, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
+                <Ionicons name="car-outline" size={18} color="#10B981" />
+              </View>
+              <Text style={styles.quickLabel}>Delivery</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
