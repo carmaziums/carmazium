@@ -246,6 +246,8 @@ export async function searchListings(params: {
   deliveryAvailable?: boolean;
   sellerType?: string;
   listingType?: string;
+  /** Multi-select transmissions — serialized as `transmissions=MANUAL,AUTOMATIC` to match web. */
+  transmissions?: string[];
   sortBy?: string;
   page?: number;
   limit?: number;
@@ -262,6 +264,7 @@ export async function searchListings(params: {
     if (params.minMileage != null) query.set('minMileage', String(params.minMileage));
     if (params.maxMileage != null) query.set('maxMileage', String(params.maxMileage));
     if (params.conditions?.length) query.set('conditions', params.conditions.join(','));
+    if (params.transmissions?.length) query.set('transmissions', params.transmissions.join(','));
     if (params.ulezCompliant) query.set('ulezCompliant', 'true');
     if (params.minBhp != null) query.set('minBhp', String(params.minBhp));
     if (params.maxBhp != null) query.set('maxBhp', String(params.maxBhp));

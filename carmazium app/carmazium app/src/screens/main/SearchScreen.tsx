@@ -66,6 +66,10 @@ const SORT_OPTIONS = [
   { id: 'newest', label: 'Newest first' },
   { id: 'price_asc', label: 'Price: low → high' },
   { id: 'price_desc', label: 'Price: high → low' },
+  { id: 'mileage_asc', label: 'Mileage: low → high' },
+  { id: 'mileage_desc', label: 'Mileage: high → low' },
+  { id: 'year_asc', label: 'Year: oldest first' },
+  { id: 'year_desc', label: 'Year: newest first' },
 ];
 const YEAR_OPTS = ['Any', '2015', '2017', '2019', '2020', '2021', '2022', '2023'];
 const YEAR_OPTS_MAX = ['Any', '2016', '2018', '2020', '2021', '2022', '2023', '2024'];
@@ -110,7 +114,7 @@ export const SearchScreen: React.FC = () => {
   const [maxYear, setMaxYear] = useState('Any');
   const [minMiles, setMinMiles] = useState('Any');
   const [maxMiles, setMaxMiles] = useState('Any');
-  const [transmission, setTransmission] = useState('');
+  const [transmissions, setTransmissions] = useState<string[]>([]);
   // New filter dimensions
   const [conditions, setConditions] = useState<string[]>([]);
   const [ulezCompliant, setUlezCompliant] = useState(false);
@@ -156,7 +160,7 @@ export const SearchScreen: React.FC = () => {
       if (!p.maxPrice) setMaxPrice(150000);
       setMinYear('Any');
       setMaxMiles('Any');
-      setTransmission('');
+      setTransmissions([]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [(route.params as any)?._t]);
@@ -181,6 +185,7 @@ export const SearchScreen: React.FC = () => {
       minMileage: parseMi(minMiles),
       maxMileage: parseMi(maxMiles),
       conditions: conditions.length ? conditions : undefined,
+      transmissions: transmissions.length ? transmissions : undefined,
       ulezCompliant: ulezCompliant ? true : undefined,
       minBhp: minBhp ? parseInt(minBhp) : undefined,
       maxBhp: maxBhp ? parseInt(maxBhp) : undefined,
@@ -217,7 +222,7 @@ export const SearchScreen: React.FC = () => {
       setLoadingMore(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmission, conditions, ulezCompliant, minBhp, maxBhp, deliveryAvailable, sellerType, listingType, page]);
+  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, deliveryAvailable, sellerType, listingType, page]);
 
   // Initial load
   useEffect(() => { fetch(true); }, []);
@@ -235,7 +240,7 @@ export const SearchScreen: React.FC = () => {
   useEffect(() => {
     fetch(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmission, conditions, ulezCompliant, minBhp, maxBhp, deliveryAvailable, sellerType, listingType]);
+  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, deliveryAvailable, sellerType, listingType]);
 
   const onRefresh = () => { setRefreshing(true); fetch(true); };
 
@@ -249,7 +254,7 @@ export const SearchScreen: React.FC = () => {
     maxYear !== 'Any',
     minMiles !== 'Any',
     maxMiles !== 'Any',
-    !!transmission,
+    transmissions.length > 0,
     conditions.length > 0,
     ulezCompliant,
     !!minBhp || !!maxBhp,
@@ -268,7 +273,7 @@ export const SearchScreen: React.FC = () => {
     setMaxYear('Any');
     setMinMiles('Any');
     setMaxMiles('Any');
-    setTransmission('');
+    setTransmissions([]);
     setConditions([]);
     setUlezCompliant(false);
     setMinBhp('');
@@ -308,7 +313,7 @@ export const SearchScreen: React.FC = () => {
       if (f.minPrice) setMinPrice(parseInt(f.minPrice));
       if (f.minYear)  setMinYear(f.minYear);
       if (f.maxYear)  setMaxYear(f.maxYear);
-      if (f.transmission) setTransmission(f.transmission);
+      if (f.transmission) setTransmissions([f.transmission]);
       if (f.listingType)  setListingType(f.listingType as any);
       if (f.sellerType)   setSellerType(f.sellerType as any);
       if (f.ulezCompliant === 'true') setUlezCompliant(true);
@@ -710,21 +715,28 @@ export const SearchScreen: React.FC = () => {
 
               <View style={s.divider} />
 
-              {/* Transmission */}
+              {/* Transmission — multi-select, mirrors the fuel-types chip pattern */}
               <Text style={s.filterLabel}>TRANSMISSION</Text>
               <View style={s.chipGrid}>
-                {['AUTOMATIC', 'MANUAL', 'SEMI_AUTO'].map(t => (
-                  <TouchableOpacity
-                    key={t}
-                    style={[s.filterChip, transmission === t && s.filterChipActive]}
-                    onPress={() => setTransmission(prev => prev === t ? '' : t)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[s.filterChipText, transmission === t && s.filterChipTextActive]}>
-                      {t.replace('_', ' ')}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                {['AUTOMATIC', 'MANUAL', 'SEMI_AUTO'].map(t => {
+                  const selected = transmissions.includes(t);
+                  return (
+                    <TouchableOpacity
+                      key={t}
+                      style={[s.filterChip, selected && s.filterChipActive]}
+                      onPress={() =>
+                        setTransmissions(prev =>
+                          prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t],
+                        )
+                      }
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[s.filterChipText, selected && s.filterChipTextActive]}>
+                        {t.replace('_', ' ')}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
 
               <View style={s.divider} />
