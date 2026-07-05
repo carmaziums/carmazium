@@ -22,6 +22,8 @@ import { useWatchlistStore } from '../store/watchlistStore';
 import { SpecBadge } from './SpecBadge';
 import { Colors } from '../constants/colors';
 import { FontFamily, FontSize } from '../constants/typography';
+import { useLocation } from '../context/LocationContext';
+import { haversineDistanceMiles } from '../lib/distance';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - 48;
@@ -44,6 +46,18 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
   const { isSaved, toggle } = useWatchlistStore();
   const saved = isSaved(listing.id);
   const scale = useSharedValue(1);
+
+  // Distance chip — only shown when both sides have coordinates. The user's
+  // postcode gets geocoded via LocationContext on first entry; the listing's
+  // lat/lng is preserved from the backend by mapApiListingToCarListing.
+  const { latitude: userLat, longitude: userLng } = useLocation();
+  const distanceMiles: number | null =
+    userLat != null &&
+    userLng != null &&
+    listing.latitude != null &&
+    listing.longitude != null
+      ? Math.round(haversineDistanceMiles(userLat, userLng, listing.latitude, listing.longitude))
+      : null;
 
   const handleToggle = () => {
     toggle(listing);
@@ -155,6 +169,11 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
               <Text style={styles.locationText} numberOfLines={1}>
                 {listing.location}
               </Text>
+              {distanceMiles != null && (
+                <View style={styles.distanceChip}>
+                  <Text style={styles.distanceChipText}>{distanceMiles} mi away</Text>
+                </View>
+              )}
             </View>
             <View style={styles.fuelRow}>
               <Text style={styles.fuelText}>{listing.fuelType}</Text>
@@ -335,6 +354,23 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     fontSize: FontSize.xs,
     color: Colors.textMuted,
+    flexShrink: 1,
+  },
+  distanceChip: {
+    marginLeft: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: 'rgba(59,130,246,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(59,130,246,0.28)',
+    flexShrink: 0,
+  },
+  distanceChipText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 9,
+    color: '#60A5FA',
+    letterSpacing: 0.3,
   },
   fuelRow: {
     flexDirection: 'row',

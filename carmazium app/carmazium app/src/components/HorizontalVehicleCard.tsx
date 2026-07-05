@@ -18,6 +18,8 @@ import { CarListing, formatPrice, formatMileage } from '../data/listings';
 import { useWatchlistStore } from '../store/watchlistStore';
 import { Colors } from '../constants/colors';
 import { FontFamily, FontSize } from '../constants/typography';
+import { useLocation } from '../context/LocationContext';
+import { haversineDistanceMiles } from '../lib/distance';
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -52,16 +54,21 @@ export const HorizontalVehicleCard: React.FC<HorizontalVehicleCardProps> = ({
   // Specific visual highlight from mockup (e.g. Porsche 911 GT3 has outline box around price)
   const isOutlinePrice = listing.id === 'l3';
 
+  // Real haversine distance when both sides have coords. Fallback to just
+  // the year — the previous per-id mock distances ("2.1 M", "4.8 M" etc.)
+  // were leftover from the design-mockup era and shipped fake numbers to
+  // every real listing.
+  const { latitude: userLat, longitude: userLng } = useLocation();
+  const distanceMiles: number | null =
+    userLat != null &&
+    userLng != null &&
+    listing.latitude != null &&
+    listing.longitude != null
+      ? Math.round(haversineDistanceMiles(userLat, userLng, listing.latitude, listing.longitude))
+      : null;
+
   const getSpecsTopText = (l: CarListing) => {
-    let dist = "2.1 M";
-    if (l.id === 'l2') dist = "4.8 M";
-    if (l.id === 'l3') dist = "2.4 M";
-    if (l.id === 'l4') dist = "12 M";
-    if (l.id === 'a2') dist = "4.8 M";
-    if (l.id === 'l6') dist = "3.2 M";
-    if (l.id === 'l7') dist = "1.8 M";
-    if (l.id === 'l8') dist = "5.5 M";
-    return `${l.year} · ${dist}`;
+    return distanceMiles != null ? `${l.year} · ${distanceMiles} mi away` : `${l.year}`;
   };
 
   return (
