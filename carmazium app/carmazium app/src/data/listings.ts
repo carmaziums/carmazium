@@ -29,6 +29,8 @@ export interface CarListing {
   zeroToSixty: number;
   topSpeed: number;
   location: string;
+  latitude?: number | null;
+  longitude?: number | null;
   dealer: string;
   rating: number;
   images: string[];

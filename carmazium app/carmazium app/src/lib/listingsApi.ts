@@ -20,6 +20,8 @@ export interface ApiListing {
   zeroTo60Mph?: number | null;
   topSpeedMph?: number | null;
   location?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   images: string[];
   description?: string | null;
   features?: string[] | null;
@@ -164,6 +166,8 @@ export function mapApiListingToCarListing(l: ApiListing): CarListing {
     zeroToSixty:  l.zeroTo60Mph  ?? 0,
     topSpeed:     l.topSpeedMph  ?? 0,
     location:     l.location     ?? '',
+    latitude:     l.latitude     ?? null,
+    longitude:    l.longitude    ?? null,
     dealer,
     rating:       4.5,
     images:       l.images?.length ? l.images : [],

@@ -43,6 +43,8 @@ import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { createDeliveryRequest, calcDeliveryFeeExVat } from '../../lib/deliveryApi';
 import { StripeCheckoutModal } from '../../components/StripeCheckoutModal';
 import { EnquireModal } from '../../components/listing/EnquireModal';
+import { useLocation } from '../../context/LocationContext';
+import { haversineDistanceMiles } from '../../lib/distance';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'VehicleDetail'>;
 
@@ -122,6 +124,36 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [deliverySubmitting, setDeliverySubmitting] = useState(false);
   const [deliverySubmitted, setDeliverySubmitted] = useState(false);
   const [deliveryError, setDeliveryError] = useState<string | null>(null);
+
+  // Postcode entry inline in the delivery card — buyers who haven't set one
+  // yet can type it here without leaving the listing.
+  const {
+    postcode: userPostcode,
+    latitude: userLat,
+    longitude: userLng,
+    setPostcode: savePostcode,
+  } = useLocation();
+  const [postcodeDraft, setPostcodeDraft] = useState('');
+  const [postcodeSaving, setPostcodeSaving] = useState(false);
+
+  // Distance is only computable when we have lat/lng on both sides.
+  const deliveryDistanceMiles: number | null =
+    userLat != null &&
+    userLng != null &&
+    listing.latitude != null &&
+    listing.longitude != null
+      ? Math.round(haversineDistanceMiles(userLat, userLng, listing.latitude, listing.longitude))
+      : null;
+
+  const deliveryFeeIncVat: number | null =
+    deliveryDistanceMiles != null
+      ? Math.round(calcDeliveryFeeExVat(deliveryDistanceMiles) * 1.2)
+      : null;
+
+  const outsideRadius =
+    deliveryDistanceMiles != null &&
+    listing.deliveryMaxMiles != null &&
+    deliveryDistanceMiles > listing.deliveryMaxMiles;
 
   // Dealer tools panel
   const role = useAuthStore((s) => s.role);
@@ -969,23 +1001,90 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.deliveryTitle}>Delivery available</Text>
-                  {listing.deliveryMaxMiles && (
+                  {listing.deliveryMaxMiles ? (
                     <Text style={styles.deliverySubtitle}>
                       Up to {listing.deliveryMaxMiles} miles from the seller
                     </Text>
-                  )}
+                  ) : null}
                 </View>
                 <View style={styles.deliveryFeeWrap}>
-                  <Text style={styles.deliveryFeeLabel}>FROM</Text>
+                  <Text style={styles.deliveryFeeLabel}>
+                    {deliveryFeeIncVat != null ? 'ESTIMATE' : 'FROM'}
+                  </Text>
                   <Text style={styles.deliveryFeeValue}>
-                    £{Math.round(calcDeliveryFeeExVat(10) * 1.2)}
+                    £{deliveryFeeIncVat ?? Math.round(calcDeliveryFeeExVat(10) * 1.2)}
                   </Text>
                   <Text style={styles.deliveryFeeHint}>inc. VAT</Text>
                 </View>
               </View>
 
-              {/* Request Delivery button — only when offer is ACCEPTED */}
-              {offerStatus === 'ACCEPTED' && !deliverySubmitted && (
+              {/* Distance / postcode summary row */}
+              {userPostcode ? (
+                <Text style={styles.deliveryDistanceLine}>
+                  {deliveryDistanceMiles != null
+                    ? `≈ ${deliveryDistanceMiles} mi from ${userPostcode}`
+                    : `From ${userPostcode} — seller location coordinates missing, server will validate`}
+                </Text>
+              ) : (
+                <View style={styles.postcodeEntryRow}>
+                  <Ionicons name="location-outline" size={13} color="#60A5FA" />
+                  <TextInput
+                    style={styles.postcodeInput}
+                    value={postcodeDraft}
+                    onChangeText={setPostcodeDraft}
+                    autoCapitalize="characters"
+                    placeholder="Enter your postcode"
+                    placeholderTextColor="#606070"
+                    editable={!postcodeSaving}
+                    returnKeyType="done"
+                    onSubmitEditing={async () => {
+                      const trimmed = postcodeDraft.trim();
+                      if (!trimmed) return;
+                      setPostcodeSaving(true);
+                      try {
+                        await savePostcode(trimmed);
+                        setPostcodeDraft('');
+                      } finally {
+                        setPostcodeSaving(false);
+                      }
+                    }}
+                  />
+                  <TouchableOpacity
+                    disabled={postcodeSaving || !postcodeDraft.trim()}
+                    onPress={async () => {
+                      const trimmed = postcodeDraft.trim();
+                      if (!trimmed) return;
+                      setPostcodeSaving(true);
+                      try {
+                        await savePostcode(trimmed);
+                        setPostcodeDraft('');
+                      } finally {
+                        setPostcodeSaving(false);
+                      }
+                    }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    {postcodeSaving ? (
+                      <ActivityIndicator size="small" color="#60A5FA" />
+                    ) : (
+                      <Text style={styles.postcodeSaveText}>Save</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Outside-radius warning */}
+              {outsideRadius && (
+                <View style={styles.deliveryOutsideRadius}>
+                  <Ionicons name="alert-circle-outline" size={13} color="#F87171" />
+                  <Text style={styles.deliveryOutsideRadiusText}>
+                    Outside your delivery radius ({deliveryDistanceMiles} mi &gt; {listing.deliveryMaxMiles} mi)
+                  </Text>
+                </View>
+              )}
+
+              {/* Request Delivery button — only when offer is ACCEPTED and inside radius */}
+              {offerStatus === 'ACCEPTED' && !deliverySubmitted && !outsideRadius && (
                 <TouchableOpacity
                   style={styles.deliveryRequestBtn}
                   onPress={() => setDeliveryModalVisible(true)}
@@ -1001,7 +1100,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   <Text style={styles.deliverySuccessText}>Delivery request sent — seller will confirm soon.</Text>
                 </View>
               )}
-              {offerStatus !== 'ACCEPTED' && !deliverySubmitted && (
+              {offerStatus !== 'ACCEPTED' && !deliverySubmitted && !outsideRadius && (
                 <Text style={styles.deliveryPendingHint}>
                   Request delivery once your offer is accepted.
                 </Text>
@@ -2065,6 +2164,53 @@ const styles = StyleSheet.create({
     color: '#6EE7B7',
     opacity: 0.7,
     lineHeight: 16,
+  },
+  deliveryDistanceLine: {
+    fontFamily: FontFamily.medium,
+    fontSize: 11,
+    color: '#A0A0AB',
+  },
+  postcodeEntryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(59,130,246,0.28)',
+    backgroundColor: 'rgba(59,130,246,0.06)',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  postcodeInput: {
+    flex: 1,
+    fontFamily: FontFamily.mono,
+    fontSize: 13,
+    color: '#FFFFFF',
+    paddingVertical: 6,
+  },
+  postcodeSaveText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 12,
+    color: '#60A5FA',
+    letterSpacing: 0.3,
+  },
+  deliveryOutsideRadius: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(239,68,68,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.28)',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  deliveryOutsideRadiusText: {
+    flex: 1,
+    fontFamily: FontFamily.medium,
+    fontSize: 12,
+    color: '#F87171',
+    lineHeight: 17,
   },
 
   // Delivery modal fields
