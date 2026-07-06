@@ -13,6 +13,14 @@ import { fetchWithRetry } from "@/lib/fetchWithRetry"
 const VALID_SIGNUP_ROLES = ["BUYER", "SELLER", "DEALER", "CONTRACTOR", "FINANCE_PARTNER", "INSURANCE_PARTNER"] as const
 
 export default function SignupPage() {
+    return (
+        <React.Suspense fallback={null}>
+            <SignupForm />
+        </React.Suspense>
+    )
+}
+
+function SignupForm() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const roleParam = searchParams.get("role")?.toUpperCase()
