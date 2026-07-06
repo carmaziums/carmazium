@@ -97,7 +97,7 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
           >
             <source src={heroVideoSrc} type="video/mp4" />
           </video>
-          <div className="absolute inset-0 bg-gradient-to-b from-slate-900/80 via-slate-900/50 to-slate-900" />
+          <div className="absolute inset-0 dark:bg-gradient-to-b dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900" />
         </div>
 
         <div className="relative z-10 container mx-auto px-5 max-w-5xl">
