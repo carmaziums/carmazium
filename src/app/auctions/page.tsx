@@ -440,20 +440,20 @@ export default function AuctionsPage() {
                     </div>
 
                     {/* CTA banner */}
-                    <div className="relative rounded-3xl overflow-hidden border border-[var(--border-default)] p-10 md:p-14 text-center bg-gradient-to-br from-slate-800 to-slate-900 shadow-2xl">
+                    <div className="relative rounded-3xl overflow-hidden border border-[var(--border-default)] p-10 md:p-14 text-center bg-[var(--bg-card)] shadow-2xl">
                         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(237,28,36,0.1)_0%,transparent_55%)]" />
                         <div className="absolute top-0 left-0 w-96 h-96 bg-primary/5 blur-[100px] rounded-full -translate-x-1/2 -translate-y-1/2" />
                         <div className="relative z-10">
                             <p className="text-primary text-[10px] font-black uppercase tracking-[0.25em] mb-3">Ready to sell?</p>
-                            <h2 className="text-2xl md:text-3xl font-black text-white font-heading mb-3">
+                            <h2 className="text-2xl md:text-3xl font-black text-[var(--text-primary)] font-heading mb-3">
                                 Put your car under the gavel
                             </h2>
-                            <p className="text-gray-300 text-sm max-w-md mx-auto mb-6 leading-relaxed">
+                            <p className="text-[var(--text-muted)] text-sm max-w-md mx-auto mb-6 leading-relaxed">
                                 Free to list. 6-hour sprint. Set your reserve, schedule your time, and let buyers compete for your car.
                             </p>
                             <div className="flex flex-wrap items-center justify-center gap-2 mb-7">
                                 {["Free to list", "Set your reserve", "Anti-snipe protection", "Auto-connect with winner"].map(f => (
-                                    <span key={f} className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] bg-[var(--bg-card)] border border-[var(--border-default)] px-3 py-1.5 rounded-full">
+                                    <span key={f} className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] bg-[var(--bg-input)] border border-[var(--border-default)] px-3 py-1.5 rounded-full">
                                         <CheckCircle size={11} className="text-emerald-500" /> {f}
                                     </span>
                                 ))}

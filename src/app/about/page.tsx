@@ -270,20 +270,20 @@ export default function AboutPage() {
                     className="glass-strong rounded-3xl p-16 text-center relative overflow-hidden group border border-[var(--border-default)]"
                 >
                     <div className="absolute top-0 left-0 w-full h-full bg-[url('/assets/images/hero-bg.png')] opacity-10 blur-sm bg-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-slate-900/80 to-slate-900/90" />
+                    <div className="absolute inset-0 dark:bg-gradient-to-r dark:from-slate-900/90 dark:via-slate-900/80 dark:to-slate-900/90" />
 
                     <div className="relative z-10 max-w-2xl mx-auto">
-                        <h2 className="text-4xl font-bold text-white mb-8">Ready to start your journey?</h2>
-                        <p className="text-gray-300 mb-10 text-lg">Join the fastest growing luxury automotive community today.</p>
+                        <h2 className="text-4xl font-bold text-[var(--text-primary)] mb-8">Ready to start your journey?</h2>
+                        <p className="text-[var(--text-muted)] mb-10 text-lg">Join the fastest growing luxury automotive community today.</p>
                         <div className="flex flex-col sm:flex-row justify-center gap-6">
                             <Link href="/search" className="w-full sm:w-auto">
                                 <Button size="lg" className="px-6 sm:px-10 py-6 text-base sm:text-lg shadow-neon w-full whitespace-nowrap">BROWSE INVENTORY</Button>
                             </Link>
                             <Link href="/how-it-works" className="w-full sm:w-auto">
-                                <Button size="lg" variant="outline" className="px-6 sm:px-10 py-6 text-base sm:text-lg border-white/20 text-white hover:bg-white/10 w-full whitespace-nowrap">HOW IT WORKS</Button>
+                                <Button size="lg" variant="outline" className="px-6 sm:px-10 py-6 text-base sm:text-lg w-full whitespace-nowrap">HOW IT WORKS</Button>
                             </Link>
                             <Link href="/auth/signup" className="w-full sm:w-auto">
-                                <Button size="lg" variant="ghost" className="px-6 sm:px-10 py-6 text-base sm:text-lg text-white/70 hover:text-white hover:bg-[var(--bg-card)] w-full whitespace-nowrap">CREATE ACCOUNT</Button>
+                                <Button size="lg" variant="ghost" className="px-6 sm:px-10 py-6 text-base sm:text-lg text-[var(--text-muted)] hover:text-primary hover:bg-[var(--bg-card)] w-full whitespace-nowrap">CREATE ACCOUNT</Button>
                             </Link>
                         </div>
                     </div>

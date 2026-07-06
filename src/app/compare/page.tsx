@@ -198,8 +198,8 @@ function CompareContent() {
         <div className="min-h-screen pb-24 selection:bg-primary/30">
             {/* ── Hero ─────────────────────────────────────────────────────── */}
             <div className="relative overflow-hidden pt-32 pb-20">
-                <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-[#1a2744] to-slate-900" />
-                <div className="absolute inset-0 opacity-[0.03]"
+                <div className="absolute inset-0 dark:bg-gradient-to-br dark:from-slate-900 dark:via-[#1a2744] dark:to-slate-900" />
+                <div className="absolute inset-0 opacity-0 dark:opacity-[0.03]"
                     style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[150px] pointer-events-none" />
 
@@ -209,10 +209,10 @@ function CompareContent() {
                             <Car size={16} className="text-primary" />
                             <span className="text-primary text-sm font-semibold tracking-wide">Side-by-Side Comparison</span>
                         </div>
-                        <h1 className="text-4xl md:text-5xl lg:text-6xl font-heading font-bold text-white mb-6 tracking-tight">
+                        <h1 className="text-4xl md:text-5xl lg:text-6xl font-heading font-bold text-[var(--text-primary)] mb-6 tracking-tight">
                             Compare Vehicles <span className="text-primary">Head-to-Head</span>
                         </h1>
-                        <p className="text-lg text-gray-300 max-w-2xl mx-auto leading-relaxed">
+                        <p className="text-lg text-[var(--text-muted)] max-w-2xl mx-auto leading-relaxed">
                             Make an informed decision. Select up to 3 live listings to compare features, specifications, and pricing — all in one view.
                         </p>
                     </motion.div>
