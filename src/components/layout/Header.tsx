@@ -69,12 +69,21 @@ export function Header() {
                 <div className="flex-1 flex items-center justify-start gap-6">
                     <Link href="/" className="flex items-center">
                         <Image
+                            src="/assets/images/logo-light.png"
+                            alt="CarMazium"
+                            width={160}
+                            height={40}
+                            sizes="160px"
+                            className="h-8 md:h-10 w-auto object-contain dark:hidden"
+                            priority
+                        />
+                        <Image
                             src="/assets/images/logo.png"
                             alt="CarMazium"
                             width={160}
                             height={40}
                             sizes="160px"
-                            className="h-8 md:h-10 w-auto object-contain"
+                            className="h-8 md:h-10 w-auto object-contain hidden dark:block"
                             priority
                         />
                     </Link>
