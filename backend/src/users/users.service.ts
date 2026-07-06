@@ -13,6 +13,16 @@ const VERIFICATION_CODE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const MAX_VERIFICATION_ATTEMPTS = 5;
 const BCRYPT_ROUNDS = 12;
 
+// Loose UK phone format: +44 or 0 prefix, 10-11 digits total, spaces/dashes allowed
+const UK_PHONE_REGEX = /^(?:\+44|0)\d{9,10}$/;
+
+function assertValidPhone(phone: string) {
+    const stripped = phone.replace(/[\s-]/g, '');
+    if (!UK_PHONE_REGEX.test(stripped)) {
+        throw new BadRequestException('Please enter a valid UK phone number (e.g. 07123 456789 or +44 7123 456789).');
+    }
+}
+
 @Injectable()
 export class UsersService {
     constructor(
@@ -112,6 +122,10 @@ export class UsersService {
             throw new NotFoundException('User not found');
         }
 
+        if (data.phone !== undefined && data.phone !== null && data.phone.trim() !== '') {
+            assertValidPhone(data.phone);
+        }
+
         const updated = await this.prisma.user.update({
             where: { id: userId },
             data: {
@@ -183,6 +197,10 @@ export class UsersService {
 
         if (!user) {
             throw new NotFoundException('User not found');
+        }
+
+        if (data.phone !== undefined && data.phone !== null && data.phone.trim() !== '') {
+            assertValidPhone(data.phone);
         }
 
         // On create, companyName is required — fall back to a placeholder so the

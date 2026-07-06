@@ -184,7 +184,7 @@ function LoginContent() {
                             setGoogleLoading(true)
                             setError(null)
                             try {
-                                const redirectTo = `${window.location.origin}/auth/callback?redirect_to=/dashboard`
+                                const redirectTo = `${window.location.origin}/auth/callback?redirect_to=/auth/onboarding`
                                 const { error: oauthError } = await supabase.auth.signInWithOAuth({
                                     provider: 'google',
                                     options: { redirectTo },

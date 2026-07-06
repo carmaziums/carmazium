@@ -9,7 +9,7 @@ import dynamic from "next/dynamic"
 const FinanceCalculator = dynamic(() => import("@/components/features/FinanceCalculator").then(mod => mod.FinanceCalculator), { ssr: false })
 const ThreeDVehicleViewer = dynamic(() => import("@/components/listing/ThreeDVehicleViewer").then(m => m.ThreeDVehicleViewer), { ssr: false })
 import { ThreeDErrorBoundary } from "@/components/listing/ThreeDErrorBoundary"
-import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale, Loader2, MessageCircle, Tag, X, Clock, ThumbsUp, XCircle, AlertTriangle, BadgeCheck, Star, Sparkles, Info, Phone, Globe, Fuel, Gavel, Truck } from "lucide-react"
+import { ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale, Loader2, MessageCircle, Tag, X, Clock, ThumbsUp, XCircle, AlertTriangle, BadgeCheck, Star, Sparkles, Info, Globe, Fuel, Gavel, Truck } from "lucide-react"
 import { getListingBySlug, makeOffer, getMyOfferForListing, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, getDamageRecords, type Listing, type LatestOffer, formatPrice } from "@/lib/listingApi"
 import { triggerBuyItNow } from "@/lib/auctionApi"
 import { createChatRoom } from "@/lib/chatApi"
@@ -24,6 +24,7 @@ import { BODY_TYPE_LABELS, FUEL_TYPE_LABELS } from '@/lib/vehicleLabels'
 import { useLocation } from '@/context/LocationContext'
 import { haversineDistanceMiles } from '@/lib/distance'
 import { useCompare } from '@/context/CompareContext'
+import { BlurredPhone } from '@/components/shared/BlurredPhone'
 
 // ─── Offer Status Chip ───────────────────────────────────────────────────────
 // viewerRole: 'buyer' = the person who made the offer
@@ -742,17 +743,26 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                                 <p className="line-clamp-3 text-xs">{listing.seller.dealerProfile.description}</p>
                                             )}
                                             <div className="flex flex-col gap-1 pt-2">
-                                                {listing.seller.dealerProfile.phone && (
-                                                    <a href={`tel:${listing.seller.dealerProfile.phone}`} className="flex items-center gap-2 hover:text-primary dark:hover:text-white transition-colors">
-                                                        <Phone size={14} className="text-[var(--text-muted)]" /> {listing.seller.dealerProfile.phone}
-                                                    </a>
-                                                )}
+                                                <BlurredPhone
+                                                    phone={listing.seller.dealerProfile.phone}
+                                                    phoneAvailable={listing.seller.dealerProfile.phoneAvailable ?? !!listing.seller.dealerProfile.phone}
+                                                />
                                                 {listing.seller.dealerProfile.website && (
                                                     <a href={listing.seller.dealerProfile.website} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-primary dark:hover:text-white transition-colors">
                                                         <Globe size={14} className="text-[var(--text-muted)]" /> Visit Website
                                                     </a>
                                                 )}
                                             </div>
+                                        </div>
+                                    )}
+
+                                    {/* Private seller contact phone */}
+                                    {listing.seller && listing.seller.role !== 'DEALER' && (
+                                        <div className="mb-6 text-sm text-[var(--text-secondary)]">
+                                            <BlurredPhone
+                                                phone={listing.seller.phone ?? null}
+                                                phoneAvailable={listing.seller.phoneAvailable ?? !!listing.seller.phone}
+                                            />
                                         </div>
                                     )}
 
@@ -1140,17 +1150,26 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                             <p className="line-clamp-3 text-xs">{listing.seller.dealerProfile.description}</p>
                                         )}
                                         <div className="flex flex-col gap-1 pt-2">
-                                            {listing.seller.dealerProfile.phone && (
-                                                <a href={`tel:${listing.seller.dealerProfile.phone}`} className="flex items-center gap-2 hover:text-primary dark:hover:text-white transition-colors">
-                                                    <Phone size={14} className="text-[var(--text-muted)]" /> {listing.seller.dealerProfile.phone}
-                                                </a>
-                                            )}
+                                            <BlurredPhone
+                                                phone={listing.seller.dealerProfile.phone}
+                                                phoneAvailable={listing.seller.dealerProfile.phoneAvailable ?? !!listing.seller.dealerProfile.phone}
+                                            />
                                             {listing.seller.dealerProfile.website && (
                                                 <a href={listing.seller.dealerProfile.website} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-primary dark:hover:text-white transition-colors">
                                                     <Globe size={14} className="text-[var(--text-muted)]" /> Visit Website
                                                 </a>
                                             )}
                                         </div>
+                                    </div>
+                                )}
+
+                                {/* Private seller contact phone */}
+                                {listing.seller && listing.seller.role !== 'DEALER' && (
+                                    <div className="mb-6 text-sm text-[var(--text-secondary)]">
+                                        <BlurredPhone
+                                            phone={listing.seller.phone ?? null}
+                                            phoneAvailable={listing.seller.phoneAvailable ?? !!listing.seller.phone}
+                                        />
                                     </div>
                                 )}
 

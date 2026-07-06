@@ -22,6 +22,7 @@ import {
 import { SellersService } from './sellers.service';
 import { CreateSellerReviewDto } from './dto/create-seller-review.dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
+import { OptionalSessionAuthGuard } from '../auth/guards/optional-session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dto';
 
@@ -42,6 +43,23 @@ export class SellersController {
     async getProfile(@Param('userId') userId: string): Promise<StandardResponse<any>> {
         const profile = await this.sellersService.getPublicProfile(userId);
         return new StandardResponse(profile);
+    }
+
+    /**
+     * GET /sellers/:userId/phone
+     * Soft-auth — returns the seller's contact phone only if the caller is
+     * logged in; anonymous callers get `phoneAvailable` instead of the number.
+     */
+    @Get(':userId/phone')
+    @UseGuards(OptionalSessionAuthGuard)
+    @ApiOperation({ summary: "Get a seller's contact phone (gated by login)" })
+    @ApiParam({ name: 'userId', description: 'UUID of the seller', example: 'uuid' })
+    async getContactPhone(
+        @Param('userId') userId: string,
+        @CurrentUser() user: any,
+    ): Promise<StandardResponse<{ phone: string | null; phoneAvailable: boolean }>> {
+        const result = await this.sellersService.getContactPhone(userId, !!user);
+        return new StandardResponse(result);
     }
 
     /**

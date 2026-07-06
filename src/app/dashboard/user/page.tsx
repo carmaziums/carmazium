@@ -63,6 +63,7 @@ import {
     getEarnings,
     exportEarningsCsv,
     resetPassword,
+    updateProfile,
     getMyListings,
     deleteListing,
     boostListing,
@@ -107,7 +108,7 @@ export default function UnifiedUserDashboard() {
 }
 
 function UnifiedUserDashboardContent() {
-    const { user, profile, loading: authLoading } = useAuth()
+    const { user, profile, loading: authLoading, refreshProfile } = useAuth()
     const { rooms, refreshRooms } = useChat()
     const searchParams = useSearchParams()
     const router = useRouter()
@@ -192,7 +193,7 @@ function UnifiedUserDashboardContent() {
                         {activeTab === "stats" && <StatsTab />}
                         {activeTab === "messages" && <MessagesTab rooms={rooms} refreshRooms={refreshRooms} />}
                         {activeTab === "earnings" && <EarningsTab />}
-                        {activeTab === "settings" && <SettingsTab profile={profile} />}
+                        {activeTab === "settings" && <SettingsTab profile={profile} refreshProfile={refreshProfile} />}
                     </div>
                 </main>
             </div>
@@ -1803,7 +1804,7 @@ function EarningsTab() {
 // SETTINGS TAB
 // ─────────────────────────────────────────────────────────────────────────────
 
-function SettingsTab({ profile }: { profile: any }) {
+function SettingsTab({ profile, refreshProfile }: { profile: any; refreshProfile: () => Promise<void> }) {
     const [oldPassword, setOldPassword] = React.useState("")
     const [newPassword, setNewPassword] = React.useState("")
     const [confirmPassword, setConfirmPassword] = React.useState("")
@@ -1817,13 +1818,46 @@ function SettingsTab({ profile }: { profile: any }) {
     const [savingBank, setSavingBank] = React.useState(false)
     const [bankSaveStatus, setBankSaveStatus] = React.useState<"idle" | "success" | "error">("idle")
 
+    // Profile Information (name + phone) — editable
+    const [firstName, setFirstName] = React.useState("")
+    const [lastName, setLastName] = React.useState("")
+    const [phone, setPhone] = React.useState("")
+    const [savingProfile, setSavingProfile] = React.useState(false)
+    const [profileSaveStatus, setProfileSaveStatus] = React.useState<{ type: "idle" | "success" | "error", message?: string }>({ type: "idle" })
+
     React.useEffect(() => {
         if (profile) {
             setBankName(profile.bankAccountName || "")
             setBankSortCode(profile.bankSortCode || "")
             setBankAccountNumber(profile.bankAccountNumber || "")
+            setFirstName(profile.firstName || "")
+            setLastName(profile.lastName || "")
+            setPhone(profile.phone || "")
         }
     }, [profile])
+
+    const handleSaveProfile = async () => {
+        if (!firstName.trim() || !lastName.trim()) {
+            setProfileSaveStatus({ type: "error", message: "First and last name are required." })
+            return
+        }
+        if (!phone.trim()) {
+            setProfileSaveStatus({ type: "error", message: "A phone number is required — it's shown on your profile and listings." })
+            return
+        }
+        setSavingProfile(true)
+        setProfileSaveStatus({ type: "idle" })
+        try {
+            await updateProfile({ firstName: firstName.trim(), lastName: lastName.trim(), phone: phone.trim() })
+            await refreshProfile()
+            setProfileSaveStatus({ type: "success", message: "Profile updated." })
+            setTimeout(() => setProfileSaveStatus({ type: "idle" }), 3000)
+        } catch (err: any) {
+            setProfileSaveStatus({ type: "error", message: err.message || "Failed to save profile." })
+        } finally {
+            setSavingProfile(false)
+        }
+    }
 
     React.useEffect(() => {
         getStripeConnectStatus().then(setConnectStatus).catch(() => {})
@@ -1894,20 +1928,64 @@ function SettingsTab({ profile }: { profile: any }) {
                 <h3 className="text-xl font-black font-heading uppercase tracking-tight flex items-center gap-2 mb-6">
                     <UserIcon className="text-primary" size={24} /> Profile Information
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-1">
-                        <p className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-2">
-                            <Mail size={12} /> Email Address
-                        </p>
-                        <p className="text-sm font-black">{profile?.email}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <label className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest">First Name</label>
+                        <Input
+                            value={firstName}
+                            onChange={e => setFirstName(e.target.value)}
+                            placeholder="John"
+                            className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-primary text-[var(--text-primary)] h-12"
+                        />
                     </div>
-                    <div className="space-y-1">
-                        <p className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-2">
-                            <Phone size={12} /> Phone Number
-                        </p>
-                        <p className="text-sm font-black">{profile?.phone || "Not set"}</p>
+                    <div className="space-y-2">
+                        <label className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest">Last Name</label>
+                        <Input
+                            value={lastName}
+                            onChange={e => setLastName(e.target.value)}
+                            placeholder="Doe"
+                            className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-primary text-[var(--text-primary)] h-12"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-1.5">
+                            <Mail size={12} /> Email Address
+                        </label>
+                        <p className="h-12 flex items-center px-4 rounded-md bg-[var(--bg-input)] border border-[var(--border-default)] text-sm font-bold text-[var(--text-muted)]">{profile?.email}</p>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-1.5">
+                            <Phone size={12} /> Phone Number <span className="text-primary">*</span>
+                        </label>
+                        <Input
+                            type="tel"
+                            value={phone}
+                            onChange={e => setPhone(e.target.value)}
+                            placeholder="07123 456789"
+                            className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-primary text-[var(--text-primary)] h-12"
+                        />
                     </div>
                 </div>
+                <p className="text-[11px] text-[var(--text-muted)] mt-4">
+                    Your phone number is shown on your profile and listings — hidden from visitors who aren't logged in.
+                </p>
+
+                {profileSaveStatus.message && (
+                    <div className={`mt-4 p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${
+                        profileSaveStatus.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                    }`}>
+                        {profileSaveStatus.type === 'success' ? <ShieldCheck size={14} /> : <AlertCircle size={14} />}
+                        {profileSaveStatus.message}
+                    </div>
+                )}
+
+                <Button
+                    onClick={handleSaveProfile}
+                    disabled={savingProfile}
+                    className="mt-6 px-8 h-11 shadow-neon font-black uppercase tracking-widest text-xs"
+                >
+                    {savingProfile ? <Loader2 size={16} className="animate-spin" /> : "Save Profile"}
+                </Button>
             </div>
 
             <div className="glass-card p-8 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl shadow-neon-small">

@@ -71,6 +71,32 @@ export class SellersService {
         });
     }
 
+    /**
+     * Returns the seller's contact phone (personal or dealership), gated by
+     * whether the caller is authenticated. Anonymous callers get `phone: null`
+     * with `phoneAvailable` so the frontend can render a "log in to view"
+     * blurred placeholder without a real number ever reaching the network response.
+     */
+    async getContactPhone(userId: string, viewerAuthenticated: boolean): Promise<{ phone: string | null; phoneAvailable: boolean }> {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                phone: true,
+                dealerProfile: { select: { phone: true } },
+            },
+        });
+
+        if (!user) {
+            throw new NotFoundException(`User "${userId}" not found`);
+        }
+
+        const realPhone = user.dealerProfile?.phone || user.phone || null;
+        return {
+            phone: viewerAuthenticated ? realPhone : null,
+            phoneAvailable: !!realPhone,
+        };
+    }
+
     // ── Get public seller profile ───────────────────────────────────────────
 
     /**

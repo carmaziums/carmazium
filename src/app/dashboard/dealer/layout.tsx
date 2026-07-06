@@ -3,9 +3,90 @@
 import React from "react"
 import { useAuth } from "@/context/AuthContext"
 import { KycOverlayForm, KYC_SKIP_KEY } from "@/components/dashboard/KycOverlayForm"
-import { Loader2, Lock, ShieldCheck, ArrowRight } from "lucide-react"
+import { Loader2, Lock, ShieldCheck, ArrowRight, Phone, AlertCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { apiClient } from "@/lib/apiClient"
+
+/**
+ * Blocks the dealer dashboard until the dealership's contact phone is set.
+ * DealerProfile doesn't exist until KYC is submitted, so this must run
+ * after `isVerifiedDealer` — not in the root ProfileCompletionGate.
+ */
+function DealerPhoneGate({ onSaved }: { onSaved: () => void }) {
+    const [phone, setPhone] = React.useState("")
+    const [error, setError] = React.useState("")
+    const [saving, setSaving] = React.useState(false)
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setError("")
+        if (!phone.trim()) {
+            setError("Please enter a contact phone number.")
+            return
+        }
+        setSaving(true)
+        try {
+            await apiClient('/users/dealer-profile', {
+                method: 'PATCH',
+                body: JSON.stringify({ phone: phone.trim() }),
+            })
+            onSaved()
+        } catch (err: any) {
+            setError(err.message || "Failed to save. Please try again.")
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xl" style={{ background: "rgba(2, 6, 23, 0.95)" }}>
+            <div className="w-full max-w-md rounded-2xl border border-white/5 p-8" style={{ background: "var(--bg-card)" }}>
+                <div className="flex items-center gap-3 mb-2">
+                    <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                        <Phone className="text-primary" size={20} />
+                    </div>
+                    <div>
+                        <h1 className="text-lg font-black font-heading text-white tracking-tight uppercase">
+                            Add a Contact Number
+                        </h1>
+                        <p className="text-[11px] text-gray-400">Shown to buyers on your listings</p>
+                    </div>
+                </div>
+
+                <p className="text-xs text-gray-400 leading-relaxed mt-4 mb-6">
+                    A dealership contact phone is now required. It appears on your listings and public dealer profile —
+                    hidden from visitors who aren't logged in.
+                </p>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <input
+                        value={phone}
+                        onChange={e => setPhone(e.target.value)}
+                        placeholder="01234 567890"
+                        type="tel"
+                        autoFocus
+                        className="w-full h-11 px-3 rounded-lg bg-slate-900/60 border border-white/10 text-white text-sm placeholder:text-gray-600 focus:outline-none focus:border-primary transition-colors"
+                    />
+
+                    {error && (
+                        <div className="flex items-start gap-2 p-3 rounded-lg border border-red-500/20 bg-red-500/5 text-red-400 text-xs">
+                            <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                            <span>{error}</span>
+                        </div>
+                    )}
+
+                    <button
+                        type="submit"
+                        disabled={saving}
+                        className="w-full h-11 rounded-lg bg-primary hover:bg-primary/90 text-white font-bold text-sm uppercase tracking-wide flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                    >
+                        {saving ? <Loader2 className="animate-spin" size={16} /> : <>Continue <ArrowRight size={15} /></>}
+                    </button>
+                </form>
+            </div>
+        </div>
+    )
+}
 
 /**
  * Dealer Dashboard Layout
@@ -134,6 +215,12 @@ export default function DealerDashboardLayout({
                 </p>
             </div>
         )
+    }
+
+    // Require a dealership contact phone once KYC is verified — skip for
+    // staff members, who don't own the dealer profile.
+    if (isVerifiedDealer && !isStaffMember && !profile?.dealerProfile?.phone) {
+        return <DealerPhoneGate onSaved={refreshProfile} />
     }
 
     return <>{children}</>

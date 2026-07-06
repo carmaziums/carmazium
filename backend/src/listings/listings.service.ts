@@ -505,11 +505,14 @@ export class ListingsService {
     }
 
     /**
-     * Find a single listing by slug (SEO-friendly) or ID
+     * Find a single listing by slug (SEO-friendly) or ID.
+     * `viewerId` is only present when the caller is authenticated (via
+     * OptionalSessionAuthGuard) — used to gate the seller's phone number so
+     * anonymous visitors never receive it in the response payload.
      */
-    async findBySlug(slugOrId: string): Promise<Listing> {
+    async findBySlug(slugOrId: string, viewerId?: string): Promise<Listing> {
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(slugOrId);
-        
+
         const listing = await this.prisma.listing.findFirst({
             where: {
                 ...(isUuid ? { id: slugOrId } : { slug: slugOrId }),
@@ -517,7 +520,17 @@ export class ListingsService {
             },
             include: {
                 seller: {
-                    include: {
+                    // NOTE: explicit `select` (not `include`) — this is a public
+                    // endpoint and must never leak passwordHash or other
+                    // sensitive User columns to anonymous callers.
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        profileImage: true,
+                        role: true,
+                        phone: true,
+                        createdAt: true,
                         sellerProfile: {
                             include: {
                                 reviews: {
@@ -587,9 +600,30 @@ export class ListingsService {
         }).catch(err => console.error(`Failed to increment views for ${slugOrId}:`, err));
 
         // Map _count to listingCount on seller
-        const sellerWithCount = listing.seller
+        let sellerWithCount: any = listing.seller
             ? { ...listing.seller, listingCount: (listing.seller as any)._count?.listings ?? 0 }
             : listing.seller
+
+        // Gate contact phone numbers behind login — anonymous visitors get a
+        // `phoneAvailable` boolean instead of the real number so the frontend
+        // can render a "log in to view" blurred placeholder.
+        if (sellerWithCount) {
+            const hasPersonalPhone = !!sellerWithCount.phone;
+            const hasDealerPhone = !!sellerWithCount.dealerProfile?.phone;
+
+            sellerWithCount = {
+                ...sellerWithCount,
+                phone: viewerId ? sellerWithCount.phone : null,
+                phoneAvailable: hasPersonalPhone,
+                ...(sellerWithCount.dealerProfile ? {
+                    dealerProfile: {
+                        ...sellerWithCount.dealerProfile,
+                        phone: viewerId ? sellerWithCount.dealerProfile.phone : null,
+                        phoneAvailable: hasDealerPhone,
+                    },
+                } : {}),
+            };
+        }
 
         const listingWithCount = { ...listing, seller: sellerWithCount }
 

@@ -31,6 +31,7 @@ import { ListingFilterDto } from './dto/listing-filter.dto';
 import { StandardResponse, PaginatedResponse } from './dto/response.dto';
 import { Listing } from '@prisma/client';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
+import { OptionalSessionAuthGuard } from '../auth/guards/optional-session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 
@@ -309,8 +310,12 @@ export class ListingsController {
         status: 404,
         description: 'Listing not found',
     })
-    async findBySlug(@Param('slug') slug: string): Promise<StandardResponse<Listing>> {
-        const listing = await this.listingsService.findBySlug(slug);
+    @UseGuards(OptionalSessionAuthGuard)
+    async findBySlug(
+        @Param('slug') slug: string,
+        @CurrentUser() user: any,
+    ): Promise<StandardResponse<Listing>> {
+        const listing = await this.listingsService.findBySlug(slug, user?.id);
         return new StandardResponse(listing);
     }
 

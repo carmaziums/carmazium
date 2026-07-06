@@ -235,12 +235,17 @@ export interface Listing {
         lastName: string | null
         profileImage: string | null
         listingCount?: number
+        // `phone` is null for anonymous viewers even if the seller has one on
+        // file — check `phoneAvailable` to distinguish "hidden" from "unset"
+        phone?: string | null
+        phoneAvailable?: boolean
         dealerProfile?: {
             id: string
             companyName: string
             logo: string | null
             description: string | null
             phone: string | null
+            phoneAvailable?: boolean
             website: string | null
         } | null
     } | null

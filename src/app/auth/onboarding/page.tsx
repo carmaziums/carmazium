@@ -1,13 +1,18 @@
 "use client"
 
 import { Button } from "@/components/ui/Button"
-import { CheckCircle, Loader2, Mail, MapPin, Heart, ArrowRight, Car, Zap, Gauge, RefreshCw, LayoutDashboard } from "lucide-react"
+import { CheckCircle, Loader2, Mail, MapPin, Heart, ArrowRight, Car, Zap, Gauge, RefreshCw, LayoutDashboard, User as UserIcon } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
 import { useState, useEffect, useRef } from "react"
 import { Input } from "@/components/ui/Input"
 import { BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { updateProfile } from "@/lib/listingApi"
+
+// Fresh-signup window: accounts created within this window go through the
+// full wizard (location/preferences); older accounts logging in via a
+// provider that lacks a name/phone only see the missing-field step(s).
+const FRESH_SIGNUP_WINDOW_MS = 10 * 60 * 1000
 
 const FUEL_PREFS = [
     { value: 'PETROL', label: 'Petrol' },
@@ -26,7 +31,7 @@ const BUDGET_RANGES = [
 ]
 
 export default function OnboardingPage() {
-    const { user, profile, loading } = useAuth()
+    const { user, profile, loading, refreshProfile } = useAuth()
     const router = useRouter()
     const [resending, setResending] = useState(false)
     const [resendSuccess, setResendSuccess] = useState(false)
@@ -37,12 +42,18 @@ export default function OnboardingPage() {
     const [pendingEmail, setPendingEmail] = useState<string | null>(null)
 
     // Post-verification steps
-    const [step, setStep] = useState<'verify' | 'location' | 'preferences' | 'done'>('verify')
+    const [step, setStep] = useState<'verify' | 'name' | 'location' | 'preferences' | 'done'>('verify')
+    const [firstName, setFirstName] = useState('')
+    const [lastName, setLastName] = useState('')
+    const [nameError, setNameError] = useState('')
     const [location, setLocation] = useState('')
     const [selectedBodyTypes, setSelectedBodyTypes] = useState<string[]>([])
     const [selectedFuels, setSelectedFuels] = useState<string[]>([])
     const [selectedBudget, setSelectedBudget] = useState('')
     const [saving, setSaving] = useState(false)
+    // Tracks whether we've already routed this session, so the profile-driven
+    // effect below doesn't re-run every render once a step has been chosen
+    const routedRef = useRef(false)
 
     // Read stashed email from signup flow
     useEffect(() => {
@@ -52,16 +63,63 @@ export default function OnboardingPage() {
     }, [])
 
     useEffect(() => {
-        if (user) {
-            const verified = !!user.email_confirmed_at
-            setIsVerified(verified)
-            if (verified && step === 'verify') {
-                // Clear stashed email once verified
-                if (typeof window !== 'undefined') sessionStorage.removeItem('pending_verification_email')
-                setStep('location')
-            }
+        if (!user) return
+        const verified = !!user.email_confirmed_at
+        setIsVerified(verified)
+        if (!verified) return
+        // Clear stashed email once verified
+        if (typeof window !== 'undefined') sessionStorage.removeItem('pending_verification_email')
+
+        // Wait for the profile fetch to settle before deciding the next step —
+        // otherwise we'd briefly see profile === null and wrongly show 'name'.
+        if (loading) return
+        if (routedRef.current) return
+        routedRef.current = true
+
+        if (!profile?.firstName || !profile?.lastName) {
+            setFirstName(profile?.firstName || '')
+            setLastName(profile?.lastName || '')
+            setStep('name')
+            return
         }
-    }, [user])
+
+        // Existing accounts (e.g. returning via "Continue with Google" on the
+        // login page) already have a name — don't force them through the full
+        // wizard again. Only genuinely fresh signups see location/preferences.
+        const createdAtMs = user.created_at ? new Date(user.created_at).getTime() : 0
+        const isFreshSignup = createdAtMs > 0 && (Date.now() - createdAtMs) < FRESH_SIGNUP_WINDOW_MS
+        if (isFreshSignup) {
+            setStep('location')
+        } else {
+            router.replace('/dashboard')
+        }
+    }, [user, profile, loading])
+
+    const handleSaveName = async () => {
+        const trimmedFirst = firstName.trim()
+        const trimmedLast = lastName.trim()
+        if (!trimmedFirst || !trimmedLast) {
+            setNameError('Please enter both your first and last name.')
+            return
+        }
+        setNameError('')
+        setSaving(true)
+        try {
+            await updateProfile({ firstName: trimmedFirst, lastName: trimmedLast })
+            await refreshProfile()
+            const createdAtMs = user?.created_at ? new Date(user.created_at).getTime() : 0
+            const isFreshSignup = createdAtMs > 0 && (Date.now() - createdAtMs) < FRESH_SIGNUP_WINDOW_MS
+            if (isFreshSignup) {
+                setStep('location')
+            } else {
+                router.replace('/dashboard')
+            }
+        } catch (err: any) {
+            setNameError(err.message || 'Failed to save your name. Please try again.')
+        } finally {
+            setSaving(false)
+        }
+    }
 
     const getBaseUrl = () => {
         if (typeof window !== 'undefined') return window.location.origin
@@ -159,8 +217,8 @@ export default function OnboardingPage() {
         )
     }
 
-    const stepIndex = step === 'verify' ? 1 : step === 'location' ? 2 : step === 'preferences' ? 3 : 4
-    const steps = ['Verify Email', 'Your Location', 'Preferences', 'All Done']
+    const stepIndex = step === 'verify' ? 1 : step === 'name' ? 2 : step === 'location' ? 3 : step === 'preferences' ? 4 : 5
+    const steps = ['Verify Email', 'Your Name', 'Your Location', 'Preferences', 'All Done']
 
     return (
         <div className="min-h-screen pt-24 pb-12 flex items-center justify-center bg-slate-900 relative overflow-hidden">
@@ -263,7 +321,55 @@ export default function OnboardingPage() {
                         </div>
                     )}
 
-                    {/* ── Step 2: Location ── */}
+                    {/* ── Step 2: Your Name (mandatory — no skip) ── */}
+                    {step === 'name' && (
+                        <div className="space-y-6">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="p-2.5 bg-primary/20 rounded-xl border border-primary/20">
+                                    <UserIcon className="text-primary h-6 w-6" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-white">What's your name?</h2>
+                                    <p className="text-gray-400 text-sm">Shown on your profile and any listings you create</p>
+                                </div>
+                            </div>
+
+                            {nameError && (
+                                <div className="p-3 bg-red-500/15 border border-red-500/40 rounded-xl text-red-300 text-sm">
+                                    {nameError}
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold uppercase text-gray-400">First Name</label>
+                                    <Input
+                                        placeholder="John"
+                                        value={firstName}
+                                        onChange={e => setFirstName(e.target.value)}
+                                        className="h-12 bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary"
+                                        autoFocus
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold uppercase text-gray-400">Last Name</label>
+                                    <Input
+                                        placeholder="Doe"
+                                        value={lastName}
+                                        onChange={e => setLastName(e.target.value)}
+                                        className="h-12 bg-slate-900/50 border-white/10 text-white placeholder:text-gray-600 focus:border-primary"
+                                        onKeyDown={e => e.key === 'Enter' && handleSaveName()}
+                                    />
+                                </div>
+                            </div>
+
+                            <Button className="w-full" onClick={handleSaveName} disabled={saving}>
+                                {saving ? <Loader2 className="animate-spin h-4 w-4" /> : <>Continue <ArrowRight size={16} className="ml-1" /></>}
+                            </Button>
+                        </div>
+                    )}
+
+                    {/* ── Step 3: Location ── */}
                     {step === 'location' && (
                         <div className="space-y-6">
                             <div className="flex items-center gap-3 mb-2">

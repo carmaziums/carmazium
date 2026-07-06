@@ -10,6 +10,7 @@ import { notFound } from "next/navigation"
 import Image from "next/image"
 import { Star, ShieldCheck, Car, MessageCircle, TrendingUp, Clock, ChevronRight, AlertCircle, BadgeCheck } from "lucide-react"
 import type { Metadata } from "next"
+import { SellerContactPhone } from "@/components/seller/SellerContactPhone"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -282,6 +283,11 @@ export default async function SellerProfilePage({ params }: { params: Promise<{ 
                                     <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] leading-none">Identity</p>
                                     <p className="text-sm font-bold text-emerald-400 mt-0.5">KYC Verified</p>
                                 </div>
+                            </div>
+
+                            {/* Contact phone — real number only for logged-in viewers */}
+                            <div className="mt-3">
+                                <SellerContactPhone sellerId={user.id} />
                             </div>
                         </div>
                     </div>
