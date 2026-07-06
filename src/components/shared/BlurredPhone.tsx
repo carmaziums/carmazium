@@ -29,9 +29,9 @@ export function BlurredPhone({ phone, phoneAvailable, className = "" }: BlurredP
         return (
             <a
                 href={`tel:${phone}`}
-                className={`flex items-center gap-2 hover:text-primary dark:hover:text-white transition-colors ${className}`}
+                className={`flex items-center gap-2 text-emerald-500 hover:text-primary dark:hover:text-white transition-colors ${className}`}
             >
-                <Phone size={14} className="text-[var(--text-muted)] shrink-0" /> {phone}
+                <Phone size={14} className="text-emerald-500 shrink-0" /> {phone}
             </a>
         )
     }

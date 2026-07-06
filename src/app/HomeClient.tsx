@@ -3,7 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import dynamic from "next/dynamic"
-import { Search, ArrowRight, ShieldCheck, UserCheck, FileText, CheckCircle, Handshake, Shield, Lightbulb, Star, Sparkles, Loader2, Gavel, Flame, Users, Clock } from "lucide-react"
+import { Search, ArrowRight, ShieldCheck, UserCheck, FileText, CheckCircle, Handshake, Shield, Lightbulb, Star, Sparkles, Loader2, Gavel, Flame, Users, Clock, Building2 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { BrowseByCategory } from "@/components/features/BrowseByCategory"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
@@ -481,6 +481,44 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
                 </Link>
               </div>
             </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Apply as a Dealer */}
+      <section className="py-24" style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border-default)', borderBottom: '1px solid var(--border-default)' }}>
+        <div className="container mx-auto px-5">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="max-w-4xl mx-auto text-center"
+          >
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary mb-6">
+              <Building2 size={32} />
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold font-heading mb-4">Are You a Car Dealer?</h2>
+            <p className="text-lg max-w-2xl mx-auto mb-10" style={{ color: 'var(--text-muted)' }}>
+              Join CarMazium as a verified dealer and get access to bulk inventory tools, a dedicated CRM, lead management, and priority placement for your listings.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10 text-left">
+              {[
+                { icon: FileText, title: "Bulk Listing Tools", desc: "Import and manage your entire inventory in minutes." },
+                { icon: Users, title: "Lead & CRM Suite", desc: "Track buyer enquiries and manage relationships in one place." },
+                { icon: Star, title: "Priority Placement", desc: "Get your listings featured in front of serious buyers." },
+              ].map((f, i) => (
+                <div key={i} className="p-5 rounded-2xl border" style={{ background: 'var(--bg-input)', borderColor: 'var(--border-default)' }}>
+                  <f.icon className="text-primary mb-3" size={22} />
+                  <h3 className="font-bold mb-1">{f.title}</h3>
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{f.desc}</p>
+                </div>
+              ))}
+            </div>
+            <Link href="/auth/signup?role=DEALER">
+              <Button size="lg" shape="pill" className="px-10 py-6 text-lg shadow-neon">
+                Apply as a Dealer <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
           </motion.div>
         </div>
       </section>

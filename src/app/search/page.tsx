@@ -114,6 +114,8 @@ interface FilterState {
     features: string[]
     maxDistanceMi: number | null
     deliveryAvailable: boolean
+    isImported: boolean
+    markedForExport: boolean
 }
 
 const INITIAL_FILTERS: FilterState = {
@@ -133,6 +135,8 @@ const INITIAL_FILTERS: FilterState = {
     features: [],
     maxDistanceMi: null,
     deliveryAvailable: false,
+    isImported: false,
+    markedForExport: false,
 }
 
 // ─── Collapsible Section ──────────────────────────────────────────────────────
@@ -261,6 +265,8 @@ function SearchPageContent() {
             features: searchParams.get('features')?.split(',').filter(Boolean) || [],
             maxDistanceMi: searchParams.get('maxDistanceMi') ? Number(searchParams.get('maxDistanceMi')) : null,
             deliveryAvailable: p('deliveryAvailable') === 'true',
+            isImported: p('isImported') === 'true',
+            markedForExport: p('markedForExport') === 'true',
         }
     }, [searchParams])
 
@@ -347,6 +353,8 @@ function SearchPageContent() {
         if (appliedFilters.listingType) count++
         if (appliedFilters.maxDistanceMi) count++
         if (appliedFilters.deliveryAvailable) count++
+        if (appliedFilters.isImported) count++
+        if (appliedFilters.markedForExport) count++
         return count
     }, [appliedFilters])
 
@@ -385,6 +393,8 @@ function SearchPageContent() {
         if (state.sortBy && state.sortBy !== 'newest') f.sortBy = state.sortBy
         if (state.features?.length) f.features = state.features
         if (state.deliveryAvailable) f.deliveryAvailable = true
+        if (state.isImported) f.isImported = true
+        if (state.markedForExport) f.markedForExport = true
         return f
     }, [])
 
@@ -1007,6 +1017,34 @@ function SearchPageContent() {
                                 </button>
                             </FilterSection>
 
+                            {/* Import / Export status */}
+                            <FilterSection title="Import / Export">
+                                <div className="flex flex-col gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => set('isImported', !filters.isImported)}
+                                        className={`flex items-center gap-2 w-full py-1.5 px-2.5 rounded-md border text-xs font-semibold transition-all ${
+                                            filters.isImported
+                                                ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300'
+                                                : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'
+                                        }`}
+                                    >
+                                        Imported vehicles
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => set('markedForExport', !filters.markedForExport)}
+                                        className={`flex items-center gap-2 w-full py-1.5 px-2.5 rounded-md border text-xs font-semibold transition-all ${
+                                            filters.markedForExport
+                                                ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300'
+                                                : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'
+                                        }`}
+                                    >
+                                        Marked for export
+                                    </button>
+                                </div>
+                            </FilterSection>
+
                         </div>
 
                         {/* Auction Promo Card */}
@@ -1087,6 +1125,12 @@ function SearchPageContent() {
                             {appliedFilters.maxDistanceMi && <FilterTag label={`Within ${appliedFilters.maxDistanceMi} mi`} onRemove={() => clearFilter({ maxDistanceMi: null })} />}
                             {appliedFilters.deliveryAvailable && (
                                 <FilterTag label="Delivery available" onRemove={() => clearFilter({ deliveryAvailable: false })} />
+                            )}
+                            {appliedFilters.isImported && (
+                                <FilterTag label="Imported" onRemove={() => clearFilter({ isImported: false })} />
+                            )}
+                            {appliedFilters.markedForExport && (
+                                <FilterTag label="Marked for export" onRemove={() => clearFilter({ markedForExport: false })} />
                             )}
                         </div>
                     )}

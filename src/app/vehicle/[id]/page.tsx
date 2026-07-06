@@ -645,10 +645,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                 <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-3 py-1 rounded-full mb-3 border border-red-500/20 bg-red-500/10 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.1)]">
                                     Offers Welcome
                                 </span>
-                                <p className="text-[11px] text-[var(--text-muted)] mt-1 pb-5 border-b border-[var(--border-default)]">Price includes VAT. Financing available from 19% APR.</p>
-                                <p className="text-xs text-[var(--text-muted)] mt-2 flex items-center gap-1">
-                                    <Clock size={12} /> Listed on {new Date(listing.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                </p>
+                                <div className="mt-1 pb-5 border-b border-[var(--border-default)]" />
                                 {/* Last offer made — visible to public & seller viewers */}
                                 {latestOffer && offerViewerRole !== 'buyer' && (
                                     <p className="text-xs text-amber-400/80 mt-1.5 flex items-center gap-1">
@@ -803,9 +800,9 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                     {listing.seller.dealerProfile.phone && (
                                         <a href={`tel:${listing.seller.dealerProfile.phone}`} className="flex items-center gap-3 hover:text-primary dark:hover:text-white transition-colors bg-[var(--bg-input)] p-2.5 rounded-lg border border-[var(--border-default)] group">
                                             <div className="bg-[var(--bg-card)] p-1.5 rounded-md group-hover:bg-primary/20 transition-colors">
-                                                <Phone size={14} className="text-[var(--text-muted)] group-hover:text-primary transition-colors" />
+                                                <Phone size={14} className="text-emerald-500 group-hover:text-primary transition-colors" />
                                             </div>
-                                            <span className="font-medium">{listing.seller.dealerProfile.phone}</span>
+                                            <span className="font-medium text-emerald-500">{listing.seller.dealerProfile.phone}</span>
                                         </a>
                                     )}
                                     {listing.seller.dealerProfile.website && (
@@ -1339,10 +1336,6 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                             Offers Welcome
                                         </span>
                                     </div>
-                                    <p className="text-xs text-[var(--text-muted)] mt-3">Price includes VAT. Financing available from 19% APR.</p>
-                                    <p className="text-xs text-[var(--text-muted)] mt-2 flex items-center gap-1">
-                                        <Clock size={12} /> Listed on {new Date(listing.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                    </p>
                                 </div>
 
                                 {/* Seller Info Block */}
@@ -1389,8 +1382,8 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                         )}
                                         <div className="flex flex-col gap-1 pt-2">
                                             {listing.seller.dealerProfile.phone && (
-                                                <a href={`tel:${listing.seller.dealerProfile.phone}`} className="flex items-center gap-2 hover:text-primary dark:hover:text-white transition-colors">
-                                                    <Phone size={14} className="text-[var(--text-muted)]" /> {listing.seller.dealerProfile.phone}
+                                                <a href={`tel:${listing.seller.dealerProfile.phone}`} className="flex items-center gap-2 text-emerald-500 hover:text-primary dark:hover:text-white transition-colors">
+                                                    <Phone size={14} className="text-emerald-500" /> {listing.seller.dealerProfile.phone}
                                                 </a>
                                             )}
                                             {listing.seller.dealerProfile.website && (

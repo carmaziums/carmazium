@@ -792,10 +792,6 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                                 Offers Welcome
                                             </span>
                                         </div>
-                                        <p className="text-xs text-[var(--text-muted)] mt-3">Price includes VAT. Financing available from 19% APR.</p>
-                                        <p className="text-xs text-[var(--text-muted)] mt-2 flex items-center gap-1">
-                                            <Clock size={12} /> Listed on {new Date(listing.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                        </p>
                                     </div>
 
                                     {(offerViewerRole === 'buyer' ? myOffer : latestOffer) && (
@@ -1221,10 +1217,6 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                                     Offers Welcome
                                                 </span>
                                             </div>
-                                            <p className="text-xs text-[var(--text-muted)] mt-3">Price includes VAT. Financing available from 19% APR.</p>
-                                            <p className="text-xs text-[var(--text-muted)] mt-2 flex items-center gap-1">
-                                                <Clock size={12} /> Listed on {new Date(listing.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                            </p>
                                         </div>
 
                                         {/* Offer Status */}

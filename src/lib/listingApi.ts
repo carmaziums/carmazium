@@ -167,6 +167,7 @@ export interface Listing {
     condition: VehicleConditionValue | null
     ulezCompliant: boolean | null
     euroStandard: EuroStandardValue | null
+    isImported?: boolean | null
     co2Emissions: number | null
     // DVLA extended fields
     motStatus: string | null
@@ -290,6 +291,8 @@ export interface ListingFilters {
     conditions?: VehicleConditionValue[]
     ulezCompliant?: boolean
     euroStandard?: EuroStandardValue
+    isImported?: boolean
+    markedForExport?: boolean
     vehicleType?: string
     minBhp?: number
     maxBhp?: number
@@ -332,6 +335,8 @@ export async function getListings(filters?: ListingFilters): Promise<ListingsRes
         else if (filters.condition) params.append('condition', filters.condition)
         if (filters.ulezCompliant !== undefined) params.append('ulezCompliant', filters.ulezCompliant.toString())
         if (filters.euroStandard) params.append('euroStandard', filters.euroStandard)
+        if (filters.isImported !== undefined) params.append('isImported', String(filters.isImported))
+        if (filters.markedForExport !== undefined) params.append('markedForExport', String(filters.markedForExport))
         if (filters.vehicleType) params.append('vehicleType', filters.vehicleType)
         if (filters.minBhp !== undefined) params.append('minBhp', filters.minBhp.toString())
         if (filters.maxBhp !== undefined) params.append('maxBhp', filters.maxBhp.toString())

@@ -166,6 +166,19 @@ export class ListingFilterDto {
     @IsOptional()
     euroStandard?: EuroStandard;
 
+    // ─── Imported / Export status ────────────────────────────────────────────
+    @ApiPropertyOptional({ description: 'Filter by whether the vehicle is an import', example: true })
+    @Transform(({ value }) => value === 'true' ? true : value === 'false' ? false : value)
+    @IsBoolean()
+    @IsOptional()
+    isImported?: boolean;
+
+    @ApiPropertyOptional({ description: 'Filter by whether the vehicle is marked for export', example: true })
+    @Transform(({ value }) => value === 'true' ? true : value === 'false' ? false : value)
+    @IsBoolean()
+    @IsOptional()
+    markedForExport?: boolean;
+
     // ─── Vehicle Type ────────────────────────────────────────────────────────
     @ApiPropertyOptional({ description: 'Filter by vehicle type (car, motorcycle, HGV)', enum: VehicleType })
     @IsEnum(VehicleType)

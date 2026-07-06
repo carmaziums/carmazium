@@ -137,22 +137,32 @@ export class FeaturedBoostService {
             select: { id: true, listingId: true },
         });
 
-        if (expired.length === 0) return { expired: 0 };
+        if (expired.length > 0) {
+            const expiredIds = expired.map((b) => b.id);
+            const listingIds = [...new Set(expired.map((b) => b.listingId))];
 
-        const expiredIds = expired.map((b) => b.id);
-        const listingIds = [...new Set(expired.map((b) => b.listingId))];
+            await this.prisma.$transaction([
+                this.prisma.featuredBoost.updateMany({
+                    where: { id: { in: expiredIds } },
+                    data: { isActive: false },
+                }),
+                this.prisma.listing.updateMany({
+                    where: { id: { in: listingIds } },
+                    data: { isFeatured: false, featuredUntil: null },
+                }),
+            ]);
+        }
 
-        await this.prisma.$transaction([
-            this.prisma.featuredBoost.updateMany({
-                where: { id: { in: expiredIds } },
-                data: { isActive: false },
-            }),
-            this.prisma.listing.updateMany({
-                where: { id: { in: listingIds } },
-                data: { isFeatured: false, featuredUntil: null },
-            }),
-        ]);
+        // Some listings become featured directly at creation time or via the
+        // listing-fee payment webhook (PREMIUM badge tier) rather than through
+        // a FeaturedBoost row, so they're invisible to the sweep above. Catch
+        // any listing whose featuredUntil has passed regardless of how it was
+        // set, so isFeatured never goes stale.
+        const staleListings = await this.prisma.listing.updateMany({
+            where: { isFeatured: true, featuredUntil: { lt: now } },
+            data: { isFeatured: false, featuredUntil: null },
+        });
 
-        return { expired: expired.length };
+        return { expired: expired.length + staleListings.count };
     }
 }

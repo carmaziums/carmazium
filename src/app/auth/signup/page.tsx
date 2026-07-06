@@ -3,21 +3,26 @@
 import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { ArrowLeft, Car, CreditCard, Loader2, Eye, EyeOff, Building2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { fetchWithRetry } from "@/lib/fetchWithRetry"
 
+const VALID_SIGNUP_ROLES = ["BUYER", "SELLER", "DEALER", "CONTRACTOR", "FINANCE_PARTNER", "INSURANCE_PARTNER"] as const
+
 export default function SignupPage() {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const roleParam = searchParams.get("role")?.toUpperCase()
+    const initialRole = (VALID_SIGNUP_ROLES as readonly string[]).includes(roleParam ?? "") ? roleParam as typeof VALID_SIGNUP_ROLES[number] : "BUYER"
     const [formData, setFormData] = React.useState({
         firstName: "",
         lastName: "",
         email: "",
         password: "",
-        role: "BUYER" as "BUYER" | "SELLER" | "DEALER" | "CONTRACTOR" | "FINANCE_PARTNER" | "INSURANCE_PARTNER"
+        role: initialRole
     })
     const [loading, setLoading] = React.useState(false)
     const [googleLoading, setGoogleLoading] = React.useState(false)

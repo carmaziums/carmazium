@@ -174,11 +174,6 @@ export class ListingsService {
             : createListingDto.status === 'SOLD' ? 'SOLD'
             : 'DRAFT';
 
-        // Block imported vehicles
-        if (createListingDto.isImported) {
-            throw new BadRequestException('Imported vehicles cannot be listed on CarMazium.');
-        }
-
         // Cat A and Cat B are total-loss / body-salvage write-offs that cannot be
         // re-registered. They may only be listed for auction (parts/scrapping).
         const writeOff = createListingDto.writeOffCategory;
@@ -318,6 +313,7 @@ export class ListingsService {
             color, minDoors, minSeats,
             minEngine, maxEngine, maxCo2,
             conditions, ulezCompliant, euroStandard,
+            isImported, markedForExport,
             vehicleType,
             minBhp, maxBhp,
             sellerType, location, listingType,
@@ -386,6 +382,10 @@ export class ListingsService {
 
         // ─── Boolean compliance filter ───────────────────────────────────────
         if (ulezCompliant !== undefined) where.ulezCompliant = ulezCompliant;
+
+        // ─── Imported / Export status ────────────────────────────────────────
+        if (isImported !== undefined) where.isImported = isImported;
+        if (markedForExport !== undefined) where.markedForExport = markedForExport;
 
         // ─── Delivery availability ────────────────────────────────────────────
         if (filterDto.deliveryAvailable !== undefined) {

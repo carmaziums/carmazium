@@ -2148,6 +2148,42 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     )}
                                 </div>
 
+                                {/* Imported */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold uppercase text-[var(--text-secondary)]">Is this vehicle an import?</label>
+                                    <div className="flex gap-3">
+                                        {([{ label: 'Yes', val: true }, { label: 'No', val: false }] as const).map(({ label, val }) => (
+                                            <button key={label} type="button"
+                                                onClick={() => set("isImported", val)}
+                                                className={`flex-1 py-2.5 rounded-xl border text-sm font-semibold transition-all ${formData.isImported === val
+                                                    ? "border-primary bg-primary/10 text-primary"
+                                                    : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"
+                                                    }`}
+                                            >
+                                                {label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Marked for export */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold uppercase text-[var(--text-secondary)]">Is this vehicle marked for export?</label>
+                                    <div className="flex gap-3">
+                                        {([{ label: 'Yes', val: true }, { label: 'No', val: false }] as const).map(({ label, val }) => (
+                                            <button key={label} type="button"
+                                                onClick={() => set("markedForExport", val)}
+                                                className={`flex-1 py-2.5 rounded-xl border text-sm font-semibold transition-all ${formData.markedForExport === val
+                                                    ? "border-primary bg-primary/10 text-primary"
+                                                    : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"
+                                                    }`}
+                                            >
+                                                {label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
                                 {/* Declaration Acknowledgment */}
                                 <label className="flex items-start gap-3 cursor-pointer group">
                                     <div
