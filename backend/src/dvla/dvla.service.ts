@@ -86,6 +86,12 @@ const DVLA_FUEL_MAP: Record<string, string> = {
     'PLUG-IN HYBRID ELECTRIC': 'PLUGIN_HYBRID',
     'GAS/PETROL': 'PETROL',
     'GAS/DIESEL': 'DIESEL',
+    'GAS BI-FUEL': 'BI_FUEL',
+    'BI-FUEL': 'BI_FUEL',
+    'GAS': 'NATURAL_GAS',
+    'NATURAL GAS': 'NATURAL_GAS',
+    'FUEL CELL ELECTRIC': 'HYDROGEN_CELL',
+    'HYDROGEN': 'HYDROGEN_CELL',
 };
 
 // ─── Euro status mapping (DVLA values → our enum) ─────────────────────────────

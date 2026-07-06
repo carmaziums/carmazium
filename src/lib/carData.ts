@@ -3,15 +3,15 @@
  * Models and trims are the most common variants sold in the UK market.
  */
 export const CAR_MAKES: string[] = [
-  'Alfa Romeo', 'Aston Martin', 'Audi', 'Bentley', 'BMW', 'Bugatti',
-  'Chevrolet', 'Chrysler', 'Citroën', 'Cupra', 'Dacia', 'DS',
-  'Ferrari', 'Fiat', 'Ford', 'Honda', 'Hyundai', 'Infiniti',
-  'Jaguar', 'Jeep', 'Kia', 'Lamborghini', 'Land Rover', 'Lexus',
-  'Maserati', 'Mazda', 'McLaren', 'Mercedes-Benz', 'MG', 'MINI',
-  'Mitsubishi', 'Morgan', 'Nissan', 'Peugeot', 'Porsche', 'Renault',
-  'Rolls-Royce', 'SEAT', 'Skoda', 'Smart', 'Subaru', 'Suzuki',
-  'Tesla', 'Toyota', 'Vauxhall', 'Volkswagen', 'Volvo',
-  'BYD', 'Lynk & Co', 'Omoda', 'Jaecoo', 'GWM ORA', 'Leapmotor',
+  'Abarth', 'Alfa Romeo', 'Alpine', 'Aston Martin', 'Audi', 'Bentley', 'BMW', 'Bugatti', 'BYD',
+  'Caterham', 'Chevrolet', 'Chrysler', 'Citroën', 'Cupra', 'Dacia', 'Daihatsu', 'DS',
+  'Ferrari', 'Fiat', 'Ford', 'Genesis', 'GWM ORA', 'Honda', 'Hyundai',
+  'Ineos', 'Infiniti', 'Isuzu', 'Jaecoo', 'Jaguar', 'Jeep', 'Kia',
+  'Lamborghini', 'Land Rover', 'Leapmotor', 'Lexus', 'Lotus', 'Lynk & Co',
+  'Mahindra', 'Maserati', 'Maybach', 'Mazda', 'McLaren', 'Mercedes-Benz', 'MG', 'MINI',
+  'Mitsubishi', 'Morgan', 'Nissan', 'Omoda', 'Peugeot', 'Polestar', 'Porsche', 'Renault',
+  'Rolls-Royce', 'Rover', 'Saab', 'SEAT', 'Skoda', 'Smart', 'SsangYong', 'Subaru', 'Suzuki',
+  'Tesla', 'Toyota', 'TVR', 'Vauxhall', 'VinFast', 'Volkswagen', 'Volvo', 'Xpeng', 'Zeekr',
 ]
 
 export const MODELS_BY_MAKE: Record<string, string[]> = {
@@ -212,6 +212,24 @@ export const MODELS_BY_MAKE: Record<string, string[]> = {
     'EX30', 'EX40', 'EX90',
     'EC40',
   ],
+  'Abarth': ['500', '595', '695', '124 Spider'],
+  'Alpine': ['A110', 'A290'],
+  'Caterham': ['Seven', '170', '360', '420', '620'],
+  'Daihatsu': ['Sirion', 'Terios', 'Copen', 'Materia', 'Charade'],
+  'Genesis': ['G70', 'G80', 'G90', 'GV60', 'GV70', 'GV80'],
+  'Ineos': ['Grenadier'],
+  'Isuzu': ['D-Max', 'Trooper'],
+  'Lotus': ['Elise', 'Exige', 'Evora', 'Emira', 'Eletre'],
+  'Mahindra': ['Scorpio', 'XUV700', 'Thar', 'Bolero'],
+  'Maybach': ['S-Class', 'GLS'],
+  'Polestar': ['Polestar 2', 'Polestar 3', 'Polestar 4'],
+  'Rover': ['75', '45', '25', 'Metro', '200', '400', '600', '800'],
+  'Saab': ['9-3', '9-5', '900', '9000'],
+  'SsangYong': ['Korando', 'Tivoli', 'Rexton', 'Musso'],
+  'TVR': ['Griffith', 'Chimaera', 'Tuscan', 'Sagaris'],
+  'VinFast': ['VF 8', 'VF 9', 'VF e34'],
+  'Xpeng': ['P7', 'G9', 'G6'],
+  'Zeekr': ['001', 'X', '009'],
 }
 
 /**

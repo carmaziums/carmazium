@@ -20,6 +20,8 @@ const FUEL_PREFS = [
     { value: 'ELECTRIC', label: 'Electric' },
     { value: 'HYBRID', label: 'Hybrid' },
     { value: 'PLUGIN_HYBRID', label: 'Plug-in Hybrid' },
+    { value: 'LPG', label: 'LPG' },
+    { value: 'HYDROGEN_CELL', label: 'Hydrogen' },
 ]
 
 const BUDGET_RANGES = [

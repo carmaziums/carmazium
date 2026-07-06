@@ -10,4 +10,8 @@ export const FUEL_TYPE_LABELS: Record<string, string> = {
     PETROL: 'Petrol', DIESEL: 'Diesel', ELECTRIC: 'Electric',
     HYBRID: 'Hybrid', PLUGIN_HYBRID: 'Plug-in', LPG: 'LPG',
     HYDROGEN_CELL: 'Hydrogen',
+    BI_FUEL: 'Bi Fuel', NATURAL_GAS: 'Natural Gas',
+    PETROL_HYBRID: 'Petrol Hybrid', DIESEL_HYBRID: 'Diesel Hybrid',
+    PETROL_PLUGIN_HYBRID: 'Petrol Plug-in Hybrid', DIESEL_PLUGIN_HYBRID: 'Diesel Plug-in Hybrid',
+    UNLISTED: 'Unlisted',
 }

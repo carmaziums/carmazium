@@ -29,11 +29,19 @@ const POPULAR_FEATURES = [
     'Lane Assist', 'Blind Spot Monitoring', 'Adaptive Cruise Control',
 ] as const
 
-const FUEL_TYPES = ['Petrol', 'Diesel', 'Hybrid', 'Electric', 'Plugin Hybrid', 'LPG', 'Hydrogen Fuel Cell'] as const
+const FUEL_TYPES = [
+    'Bi Fuel', 'Diesel', 'Diesel Hybrid', 'Diesel Plug-in Hybrid', 'Electric',
+    'Hybrid', 'Hydrogen', 'LPG', 'Natural Gas', 'Petrol', 'Petrol Hybrid',
+    'Petrol Plug-in Hybrid', 'Plugin Hybrid', 'Unlisted',
+] as const
 const FUEL_MAP: Record<string, string> = {
     'Petrol': 'PETROL', 'Diesel': 'DIESEL', 'Hybrid': 'HYBRID',
     'Electric': 'ELECTRIC', 'Plugin Hybrid': 'PLUGIN_HYBRID',
-    'LPG': 'LPG', 'Hydrogen Fuel Cell': 'HYDROGEN_CELL',
+    'LPG': 'LPG', 'Hydrogen': 'HYDROGEN_CELL',
+    'Bi Fuel': 'BI_FUEL', 'Natural Gas': 'NATURAL_GAS',
+    'Petrol Hybrid': 'PETROL_HYBRID', 'Diesel Hybrid': 'DIESEL_HYBRID',
+    'Petrol Plug-in Hybrid': 'PETROL_PLUGIN_HYBRID', 'Diesel Plug-in Hybrid': 'DIESEL_PLUGIN_HYBRID',
+    'Unlisted': 'UNLISTED',
 }
 // Reverse map: API enum values → display labels (used when AI filter cards pass singular fuelType)
 const REVERSE_FUEL_MAP: Record<string, string> = Object.fromEntries(

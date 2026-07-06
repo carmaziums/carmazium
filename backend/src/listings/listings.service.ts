@@ -41,6 +41,13 @@ const mapFuelType = (fuel?: DtoFuelType): FuelType | null => {
         [DtoFuelType.PLUGIN_HYBRID]: 'PLUGIN_HYBRID',
         [DtoFuelType.LPG]: 'LPG',
         [DtoFuelType.HYDROGEN_CELL]: 'HYDROGEN_CELL',
+        [DtoFuelType.BI_FUEL]: 'BI_FUEL',
+        [DtoFuelType.NATURAL_GAS]: 'NATURAL_GAS',
+        [DtoFuelType.PETROL_HYBRID]: 'PETROL_HYBRID',
+        [DtoFuelType.DIESEL_HYBRID]: 'DIESEL_HYBRID',
+        [DtoFuelType.PETROL_PLUGIN_HYBRID]: 'PETROL_PLUGIN_HYBRID',
+        [DtoFuelType.DIESEL_PLUGIN_HYBRID]: 'DIESEL_PLUGIN_HYBRID',
+        [DtoFuelType.UNLISTED]: 'UNLISTED',
     };
     return map[fuel];
 };
@@ -1544,6 +1551,10 @@ export class ListingsService {
         const fuelMap: Record<string, FuelType> = {
             PETROL: 'PETROL', DIESEL: 'DIESEL', ELECTRIC: 'ELECTRIC',
             HYBRID: 'HYBRID', PLUGIN_HYBRID: 'PLUGIN_HYBRID', LPG: 'LPG', HYDROGEN_CELL: 'HYDROGEN_CELL',
+            BI_FUEL: 'BI_FUEL', NATURAL_GAS: 'NATURAL_GAS',
+            PETROL_HYBRID: 'PETROL_HYBRID', DIESEL_HYBRID: 'DIESEL_HYBRID',
+            PETROL_PLUGIN_HYBRID: 'PETROL_PLUGIN_HYBRID', DIESEL_PLUGIN_HYBRID: 'DIESEL_PLUGIN_HYBRID',
+            UNLISTED: 'UNLISTED',
         };
         const transMap: Record<string, TransmissionType> = {
             MANUAL: 'MANUAL', AUTOMATIC: 'AUTOMATIC', SEMI_AUTOMATIC: 'SEMI_AUTOMATIC', CVT: 'CVT',

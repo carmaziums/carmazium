@@ -1171,8 +1171,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                         'ELECTRICITY': 'ELECTRIC', 'ELECTRIC': 'ELECTRIC',
                                                         'HYBRID': 'HYBRID', 'PLUGIN_HYBRID': 'PLUGIN_HYBRID',
                                                         'PLUGIN HYBRID': 'PLUGIN_HYBRID', 'PLUG-IN HYBRID': 'PLUGIN_HYBRID',
-                                                        'LPG': 'LPG', 'GAS': 'LPG',
+                                                        'LPG': 'LPG', 'GAS': 'NATURAL_GAS',
                                                         'HYDROGEN': 'HYDROGEN_CELL', 'HYDROGEN_CELL': 'HYDROGEN_CELL',
+                                                        'BI_FUEL': 'BI_FUEL', 'BI-FUEL': 'BI_FUEL',
+                                                        'NATURAL_GAS': 'NATURAL_GAS', 'NATURAL GAS': 'NATURAL_GAS',
+                                                        'PETROL_HYBRID': 'PETROL_HYBRID', 'DIESEL_HYBRID': 'DIESEL_HYBRID',
+                                                        'PETROL_PLUGIN_HYBRID': 'PETROL_PLUGIN_HYBRID', 'DIESEL_PLUGIN_HYBRID': 'DIESEL_PLUGIN_HYBRID',
+                                                        'UNLISTED': 'UNLISTED',
                                                     }
                                                     const mappedFuel = fuelTypeMap[r.fuelType.toUpperCase()]
                                                     if (mappedFuel) set("fuelType", mappedFuel)
@@ -1720,9 +1725,16 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         { value: "DIESEL", label: "Diesel" },
                                         { value: "ELECTRIC", label: "Electric" },
                                         { value: "HYBRID", label: "Hybrid" },
+                                        { value: "PETROL_HYBRID", label: "Petrol Hybrid" },
+                                        { value: "DIESEL_HYBRID", label: "Diesel Hybrid" },
                                         { value: "PLUGIN_HYBRID", label: "Plug-in Hybrid" },
+                                        { value: "PETROL_PLUGIN_HYBRID", label: "Petrol Plug-in Hybrid" },
+                                        { value: "DIESEL_PLUGIN_HYBRID", label: "Diesel Plug-in Hybrid" },
                                         { value: "LPG", label: "LPG" },
-                                        { value: "HYDROGEN_CELL", label: "Hydrogen Fuel Cell" },
+                                        { value: "BI_FUEL", label: "Bi Fuel" },
+                                        { value: "NATURAL_GAS", label: "Natural Gas" },
+                                        { value: "HYDROGEN_CELL", label: "Hydrogen" },
+                                        { value: "UNLISTED", label: "Unlisted" },
                                     ]}
                                 />
 

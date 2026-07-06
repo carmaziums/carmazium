@@ -428,11 +428,21 @@ export class ScraperService {
     private normaliseFuel(raw: string): string | undefined {
         if (!raw) return undefined;
         const lower = raw.toLowerCase();
+        if (lower.includes('bi-fuel') || lower.includes('bi fuel') || lower.includes('bifuel')) return 'BI_FUEL';
+        if (lower.includes('natural gas') || lower.includes('cng') || (lower.includes('gas') && !lower.includes('gasoline'))) return 'NATURAL_GAS';
+        if (lower.includes('hybrid') && lower.includes('plug')) {
+            if (lower.includes('diesel')) return 'DIESEL_PLUGIN_HYBRID';
+            if (lower.includes('petrol')) return 'PETROL_PLUGIN_HYBRID';
+            return 'PLUGIN_HYBRID';
+        }
+        if (lower.includes('hybrid')) {
+            if (lower.includes('diesel')) return 'DIESEL_HYBRID';
+            if (lower.includes('petrol')) return 'PETROL_HYBRID';
+            return 'HYBRID';
+        }
         if (lower.includes('petrol')) return 'PETROL';
         if (lower.includes('diesel')) return 'DIESEL';
         if (lower.includes('electric')) return 'ELECTRIC';
-        if (lower.includes('hybrid') && lower.includes('plug')) return 'PLUGIN_HYBRID';
-        if (lower.includes('hybrid')) return 'HYBRID';
         if (lower.includes('lpg')) return 'LPG';
         if (lower.includes('hydrogen')) return 'HYDROGEN_CELL';
         return undefined;
