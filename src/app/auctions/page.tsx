@@ -220,8 +220,8 @@ export default function AuctionsPage() {
                     priority
                     className="object-cover object-center"
                 />
-                {/* Dark overlays keep text readable (dark mode only) */}
-                <div className="absolute inset-0 dark:bg-gradient-to-b dark:from-slate-900/80 dark:via-slate-900/70 dark:to-slate-900" />
+                {/* Overlays keep text readable: a lighter left-anchored scrim in light mode (so the photo still shows through on the right), a fuller dark wash in dark mode */}
+                <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/15 to-transparent dark:bg-gradient-to-b dark:from-slate-900/80 dark:via-slate-900/70 dark:to-slate-900" />
                 <div className="absolute inset-0 dark:bg-[radial-gradient(ellipse_at_top_left,rgba(237,28,36,0.18)_0%,transparent_55%)]" />
                 <div className="absolute inset-0 dark:bg-[radial-gradient(ellipse_at_bottom_right,rgba(15,23,42,0.85)_0%,transparent_60%)]" />
 

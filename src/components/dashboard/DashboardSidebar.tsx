@@ -300,7 +300,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             </div>
 
             {/* Desktop Sidebar */}
-            <aside className="hidden lg:block w-72 shrink-0">
+            <aside className="hidden lg:block w-72 shrink-0 self-start">
                 <div className="glass-card p-5 sticky top-24">
                     {/* User Profile */}
                     <div className="flex items-center gap-3 mb-6 p-3 rounded-xl" style={{ background: 'var(--bg-input)' }}>
