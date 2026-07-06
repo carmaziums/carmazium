@@ -92,7 +92,7 @@ function DocumentLightbox({
             ) : (
               <FileImage size={16} className="text-primary" />
             )}
-            <span className="text-xs font-extrabold uppercase tracking-widest text-[var(--text-secondary)]">{label}</span>
+            <span className="text-xs font-extrabold uppercase tracking-widest text-gray-300">{label}</span>
           </div>
           <div className="flex items-center gap-2">
             <a

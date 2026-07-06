@@ -1356,7 +1356,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                     <Button
                         variant="outline"
                         size="icon"
-                        className="h-11 w-11 shrink-0 border-[var(--border-default)] text-[var(--text-muted)]"
+                        className="h-11 w-11 shrink-0 border-white/20 text-gray-300"
                         onClick={handleEnquire}
                         title="Enquire"
                     >
@@ -1365,7 +1365,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                     <Button
                         variant="outline"
                         size="icon"
-                        className={`h-11 w-11 shrink-0 transition-all ${isWatchlisted ? 'text-red-400 border-red-500/40 bg-red-500/10' : 'border-[var(--border-default)] text-[var(--text-muted)]'}`}
+                        className={`h-11 w-11 shrink-0 transition-all ${isWatchlisted ? 'text-red-400 border-red-500/40 bg-red-500/10' : 'border-white/20 text-gray-300'}`}
                         onClick={handleWatchlist}
                         title="Save"
                     >
@@ -1374,7 +1374,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                     <Button
                         variant="outline"
                         size="icon"
-                        className="h-11 w-11 shrink-0 border-[var(--border-default)] text-[var(--text-muted)]"
+                        className="h-11 w-11 shrink-0 border-white/20 text-gray-300"
                         onClick={handleShare}
                         title="Share"
                     >
@@ -1383,7 +1383,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                     <Button
                         variant="outline"
                         size="icon"
-                        className="h-11 w-11 shrink-0 border-[var(--border-default)] text-[var(--text-muted)]"
+                        className="h-11 w-11 shrink-0 border-white/20 text-gray-300"
                         onClick={handleCompareAndNavigate}
                         title="Compare"
                     >

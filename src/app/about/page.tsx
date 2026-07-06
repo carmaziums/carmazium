@@ -274,7 +274,7 @@ export default function AboutPage() {
 
                     <div className="relative z-10 max-w-2xl mx-auto">
                         <h2 className="text-4xl font-bold text-white mb-8">Ready to start your journey?</h2>
-                        <p className="text-[var(--text-secondary)] mb-10 text-lg">Join the fastest growing luxury automotive community today.</p>
+                        <p className="text-gray-300 mb-10 text-lg">Join the fastest growing luxury automotive community today.</p>
                         <div className="flex flex-col sm:flex-row justify-center gap-6">
                             <Link href="/search" className="w-full sm:w-auto">
                                 <Button size="lg" className="px-6 sm:px-10 py-6 text-base sm:text-lg shadow-neon w-full whitespace-nowrap">BROWSE INVENTORY</Button>

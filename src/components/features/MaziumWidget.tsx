@@ -211,14 +211,14 @@ export function MaziumWidget() {
                         </div>
                         <div>
                             <h3 className="font-bold text-sm">Mazium AI</h3>
-                            <p className="text-xs text-[var(--text-muted)]">
+                            <p className="text-xs text-gray-300">
                                 Car-buying assistant
                             </p>
                         </div>
                     </div>
                     <button
                         onClick={() => setIsOpen(false)}
-                        className="text-[var(--text-muted)] hover:text-white transition-colors"
+                        className="text-gray-300 hover:text-white transition-colors"
                     >
                         <X size={20} />
                     </button>

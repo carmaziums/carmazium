@@ -448,7 +448,7 @@ export default function AuctionsPage() {
                             <h2 className="text-2xl md:text-3xl font-black text-white font-heading mb-3">
                                 Put your car under the gavel
                             </h2>
-                            <p className="text-[var(--text-muted)] text-sm max-w-md mx-auto mb-6 leading-relaxed">
+                            <p className="text-gray-300 text-sm max-w-md mx-auto mb-6 leading-relaxed">
                                 Free to list. 6-hour sprint. Set your reserve, schedule your time, and let buyers compete for your car.
                             </p>
                             <div className="flex flex-wrap items-center justify-center gap-2 mb-7">

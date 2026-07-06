@@ -212,7 +212,7 @@ function CompareContent() {
                         <h1 className="text-4xl md:text-5xl lg:text-6xl font-heading font-bold text-white mb-6 tracking-tight">
                             Compare Vehicles <span className="text-primary">Head-to-Head</span>
                         </h1>
-                        <p className="text-lg text-[var(--text-muted)] max-w-2xl mx-auto leading-relaxed">
+                        <p className="text-lg text-gray-300 max-w-2xl mx-auto leading-relaxed">
                             Make an informed decision. Select up to 3 live listings to compare features, specifications, and pricing — all in one view.
                         </p>
                     </motion.div>

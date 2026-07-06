@@ -145,11 +145,11 @@ export default function DealerDashboard() {
                                 <div className="p-4 bg-amber-500/20 rounded-full mb-5">
                                     <Mail className="h-10 w-10 text-amber-400" />
                                 </div>
-                                <h2 className="text-2xl font-black font-heading tracking-tight mb-2">Verify Your Email</h2>
-                                <p className="text-[var(--text-muted)] text-sm mb-1">
-                                    We&apos;ve sent a verification link to <strong className="text-[var(--text-primary)]">{user?.email}</strong>
+                                <h2 className="text-2xl font-black font-heading tracking-tight mb-2 text-white">Verify Your Email</h2>
+                                <p className="text-gray-300 text-sm mb-1">
+                                    We&apos;ve sent a verification link to <strong className="text-white">{user?.email}</strong>
                                 </p>
-                                <p className="text-[var(--text-muted)] text-sm mb-6">
+                                <p className="text-gray-300 text-sm mb-6">
                                     Please verify your email address to access your dealer dashboard and start managing your dealership.
                                 </p>
 

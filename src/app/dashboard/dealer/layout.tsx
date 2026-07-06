@@ -165,17 +165,17 @@ export default function DealerDashboardLayout({
                         <Lock size={40} className="text-amber-400" />
                     </div>
                     <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-slate-950 border border-[var(--border-default)] flex items-center justify-center">
-                        <ShieldCheck size={16} className="text-[var(--text-muted)]" />
+                        <ShieldCheck size={16} className="text-gray-400" />
                     </div>
                 </div>
 
                 <h1 className="text-3xl font-black font-heading text-white mb-3 tracking-tight">
                     Dealer Features Locked
                 </h1>
-                <p className="text-[var(--text-muted)] max-w-md mb-2 leading-relaxed">
+                <p className="text-gray-300 max-w-md mb-2 leading-relaxed">
                     Complete KYC verification to unlock your dealer dashboard and start listing vehicles, managing inventory, and accessing auction tools.
                 </p>
-                <p className="text-xs text-[var(--text-secondary)] uppercase tracking-widest mb-10">
+                <p className="text-xs text-gray-400 uppercase tracking-widest mb-10">
                     Verification typically takes less than 24 hours
                 </p>
 

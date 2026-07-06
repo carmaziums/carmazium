@@ -163,11 +163,11 @@ export function PromoCarousel() {
                                         animate={{ opacity: 1, x: 0 }}
                                         transition={{ duration: 0.5, delay: 0.2 }}
                                     >
-                                        <h2 className="text-4xl md:text-5xl font-bold font-heading mb-8 uppercase tracking-wide leading-tight">
+                                        <h2 className="text-4xl md:text-5xl font-bold font-heading mb-8 uppercase tracking-wide leading-tight text-white">
                                             {slides[current].title}
                                         </h2>
 
-                                        <p className="text-[var(--text-secondary)] mb-10 leading-relaxed text-lg max-w-xl">
+                                        <p className="text-gray-300 mb-10 leading-relaxed text-lg max-w-xl">
                                             {slides[current].description}
                                         </p>
 

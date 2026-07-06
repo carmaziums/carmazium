@@ -1290,8 +1290,8 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                     <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center text-primary mb-4 shadow-neon">
                                         <Lock size={28} />
                                     </div>
-                                    <h4 className="text-xl font-bold mb-2">Detailed Report Locked</h4>
-                                    <p className="text-sm text-[var(--text-secondary)] max-w-sm mb-6">
+                                    <h4 className="text-xl font-bold mb-2 text-white">Detailed Report Locked</h4>
+                                    <p className="text-sm text-gray-300 max-w-sm mb-6">
                                         Unlock the full 50+ point vehicle history check including MOT history, keeper changes, and hidden issues.
                                     </p>
                                     <Button className="shadow-neon px-8 hover:scale-105 transition-transform">

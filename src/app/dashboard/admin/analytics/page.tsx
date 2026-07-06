@@ -92,8 +92,8 @@ function StatCard({ label, value, icon: Icon, color }: StatCardProps) {
             <div className={`inline-flex p-2 ${color} rounded-lg mb-3`}>
                 <Icon size={16} className="" />
             </div>
-            <p className="text-[var(--text-muted)] text-xs uppercase tracking-widest font-bold">{label}</p>
-            <h3 className="text-3xl font-black font-heading mt-1">{typeof value === "number" ? value.toLocaleString() : value}</h3>
+            <p className="text-gray-400 text-xs uppercase tracking-widest font-bold">{label}</p>
+            <h3 className="text-3xl font-black font-heading mt-1 text-white">{typeof value === "number" ? value.toLocaleString() : value}</h3>
         </div>
     )
 }

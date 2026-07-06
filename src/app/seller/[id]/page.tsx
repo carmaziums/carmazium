@@ -252,7 +252,7 @@ export default async function SellerProfilePage({ params }: { params: Promise<{ 
                         {/* Identity */}
                         <div className="flex-1">
                             <h1 className="font-heading text-3xl font-extrabold tracking-tight sm:text-4xl">{displayName}</h1>
-                            <p className="mt-1 text-sm text-[var(--text-muted)]">
+                            <p className="mt-1 text-sm text-gray-400">
                                 Member since {memberSince} &middot; {user.role.charAt(0) + user.role.slice(1).toLowerCase()}
                             </p>
 
