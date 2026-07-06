@@ -220,10 +220,10 @@ export default function AuctionsPage() {
                     priority
                     className="object-cover object-center"
                 />
-                {/* Dark overlays keep text readable */}
-                <div className="absolute inset-0 bg-gradient-to-b from-slate-900/80 via-slate-900/70 to-slate-900" />
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(237,28,36,0.18)_0%,transparent_55%)]" />
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(15,23,42,0.85)_0%,transparent_60%)]" />
+                {/* Dark overlays keep text readable (dark mode only) */}
+                <div className="absolute inset-0 dark:bg-gradient-to-b dark:from-slate-900/80 dark:via-slate-900/70 dark:to-slate-900" />
+                <div className="absolute inset-0 dark:bg-[radial-gradient(ellipse_at_top_left,rgba(237,28,36,0.18)_0%,transparent_55%)]" />
+                <div className="absolute inset-0 dark:bg-[radial-gradient(ellipse_at_bottom_right,rgba(15,23,42,0.85)_0%,transparent_60%)]" />
 
                 <div className="container mx-auto px-6 py-20 md:py-28 relative z-10">
                     <div className="max-w-4xl">

@@ -28,8 +28,8 @@ export default function AboutPage() {
             <section className="relative h-[80vh] flex items-center justify-center overflow-hidden select-none">
                 <div className="absolute inset-0 w-full h-full">
                     {/* Reusing hero video or similar cinematic visual */}
-                    <div className="absolute inset-0 bg-slate-900/40 z-10" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent z-10" />
+                    <div className="absolute inset-0 z-10 dark:bg-slate-900/40" />
+                    <div className="absolute inset-0 z-10 dark:bg-gradient-to-t dark:from-slate-900 dark:via-transparent dark:to-transparent" />
                     <video
                         autoPlay
                         muted
