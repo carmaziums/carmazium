@@ -37,7 +37,7 @@ export function LoginWall({
                 {/* Close */}
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 text-[var(--text-muted)] hover:text-white transition-colors"
+                    className="absolute top-4 right-4 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
                 >
                     <X size={18} />
                 </button>
@@ -47,7 +47,7 @@ export function LoginWall({
                     <Lock size={22} className="text-primary" />
                 </div>
 
-                <h3 className="text-lg font-bold text-center text-white mb-2">Login Required</h3>
+                <h3 className="text-lg font-bold text-center text-[var(--text-primary)] mb-2">Login Required</h3>
                 <p className="text-sm text-[var(--text-muted)] text-center mb-6">{message}</p>
 
                 <div className="space-y-3">
@@ -60,7 +60,7 @@ export function LoginWall({
                     <Button
                         variant="outline"
                         onClick={() => { onClose(); router.push(`/auth/signup?redirect=${encodeURIComponent(redirect)}`) }}
-                        className="w-full border-[var(--border-default)] text-[var(--text-muted)] hover:text-white gap-2"
+                        className="w-full border-[var(--border-default)] text-[var(--text-muted)] hover:text-[var(--text-primary)] gap-2"
                     >
                         <UserPlus size={16} /> Create Account
                     </Button>

@@ -388,7 +388,7 @@ export default function AuctionsPage() {
                 <div className="container mx-auto px-6 py-20">
                     <div className="text-center mb-12">
                         <p className="text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-3">How It Works</p>
-                        <h2 className="text-3xl md:text-4xl font-black text-white font-heading">Bid. Win. Connect.</h2>
+                        <h2 className="text-3xl md:text-4xl font-black text-[var(--text-primary)] font-heading">Bid. Win. Connect.</h2>
                         <p className="text-[var(--text-muted)] text-sm mt-3 max-w-md mx-auto">Three simple steps from browsing to owning your next car.</p>
                     </div>
 
@@ -411,7 +411,7 @@ export default function AuctionsPage() {
                                         </div>
                                         <div>
                                             <p className="text-[10px] font-black text-[var(--text-muted)] tracking-widest mb-1">{step}</p>
-                                            <h3 className="text-white font-bold mb-2">{title}</h3>
+                                            <h3 className="text-[var(--text-primary)] font-bold mb-2">{title}</h3>
                                             <p className="text-[var(--text-muted)] text-sm leading-relaxed">{desc}</p>
                                         </div>
                                     </div>
@@ -432,7 +432,7 @@ export default function AuctionsPage() {
                                     <Icon size={17} />
                                 </div>
                                 <div>
-                                    <p className="text-white font-bold text-sm mb-1">{title}</p>
+                                    <p className="text-[var(--text-primary)] font-bold text-sm mb-1">{title}</p>
                                     <p className="text-[var(--text-muted)] text-xs leading-relaxed">{desc}</p>
                                 </div>
                             </div>

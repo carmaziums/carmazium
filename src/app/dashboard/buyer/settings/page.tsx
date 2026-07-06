@@ -143,15 +143,15 @@ export default function BuyerSettingsPage() {
                                     <div className="space-y-3">
                                         <label className="flex items-center gap-3 cursor-pointer group">
                                             <input type="checkbox" defaultChecked className="w-5 h-5 rounded border-[var(--border-default)] text-primary focus:ring-primary bg-[var(--bg-input)]" />
-                                            <span className="text-[var(--text-secondary)] group-hover:text-white transition-colors">Email me when a bid is placed</span>
+                                            <span className="text-[var(--text-secondary)] group-hover:text-primary dark:group-hover:text-white transition-colors">Email me when a bid is placed</span>
                                         </label>
                                         <label className="flex items-center gap-3 cursor-pointer group">
                                             <input type="checkbox" defaultChecked className="w-5 h-5 rounded border-[var(--border-default)] text-primary focus:ring-primary bg-[var(--bg-input)]" />
-                                            <span className="text-[var(--text-secondary)] group-hover:text-white transition-colors">Email me about auction endings</span>
+                                            <span className="text-[var(--text-secondary)] group-hover:text-primary dark:group-hover:text-white transition-colors">Email me about auction endings</span>
                                         </label>
                                         <label className="flex items-center gap-3 cursor-pointer group">
                                             <input type="checkbox" className="w-5 h-5 rounded border-[var(--border-default)] text-primary focus:ring-primary bg-[var(--bg-input)]" />
-                                            <span className="text-[var(--text-secondary)] group-hover:text-white transition-colors">Marketing and newsletter</span>
+                                            <span className="text-[var(--text-secondary)] group-hover:text-primary dark:group-hover:text-white transition-colors">Marketing and newsletter</span>
                                         </label>
                                     </div>
                                 </section>

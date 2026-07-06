@@ -258,7 +258,7 @@ export function ImageUpload({
             <div className="bg-[var(--bg-card)] rounded-xl p-4 border border-[var(--border-default)]">
                 <div className="flex justify-between items-end mb-2">
                     <div>
-                        <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
                             {currentTotal >= RECOMMENDED_TOTAL ? <CheckCircle2 className="text-emerald-400" size={16} /> : <Camera className="text-primary" size={16} />}
                             Photo Tracker
                         </h4>
@@ -267,7 +267,7 @@ export function ImageUpload({
                         </p>
                     </div>
                     <div className="text-right">
-                        <span className={`text-2xl font-black font-mono ${currentTotal >= RECOMMENDED_TOTAL ? 'text-emerald-400' : 'text-white'}`}>{currentTotal}</span>
+                        <span className={`text-2xl font-black font-mono ${currentTotal >= RECOMMENDED_TOTAL ? 'text-emerald-400' : 'text-[var(--text-primary)]'}`}>{currentTotal}</span>
                         <span className="text-sm text-[var(--text-muted)] font-bold"> / {RECOMMENDED_TOTAL}</span>
                     </div>
                 </div>
@@ -291,7 +291,7 @@ export function ImageUpload({
                             onClick={() => setActiveTab(cat.id)}
                             className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${isActive
                                 ? 'bg-primary text-white shadow-neon'
-                                : 'text-[var(--text-muted)] hover:text-white hover:bg-[var(--bg-card)]'
+                                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card)]'
                                 }`}
                         >
                             {cat.label}
@@ -359,7 +359,7 @@ export function ImageUpload({
                                 <Camera className="h-7 w-7 text-[var(--text-muted)] group-hover:text-primary transition-colors" />
                             )}
                         </div>
-                        <h3 className="text-xl font-bold font-heading text-white mb-2">
+                        <h3 className="text-xl font-bold font-heading text-[var(--text-primary)] mb-2">
                             {dragActive ? 'Drop images here' : `Add ${CATEGORIES.find(c => c.id === activeTab)?.label} Photos`}
                         </h3>
                         <p className="text-[var(--text-muted)] text-sm mb-4">
@@ -392,7 +392,7 @@ export function ImageUpload({
             {images.length > 0 && (
                 <div>
                     <div className="flex items-center justify-between mb-4 border-b border-[var(--border-default)] pb-2">
-                        <h3 className="text-sm font-bold uppercase text-white tracking-wider">
+                        <h3 className="text-sm font-bold uppercase text-[var(--text-primary)] tracking-wider">
                             All Uploaded Photos
                         </h3>
                         {images.length > 1 && (

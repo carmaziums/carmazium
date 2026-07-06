@@ -402,7 +402,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                 >
                     <RefreshCw size={13} /> Try Again
                 </button>
-                <Link href="/auctions" className="text-[var(--text-muted)] text-xs font-bold hover:text-white transition-colors flex items-center gap-1">
+                <Link href="/auctions" className="text-[var(--text-muted)] text-xs font-bold hover:text-primary dark:hover:text-white transition-colors flex items-center gap-1">
                     <ArrowLeft size={13} /> All Auctions
                 </Link>
             </div>
@@ -518,7 +518,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                             <div className="flex gap-3">
                                 <button
                                     onClick={() => setShowBinModal(false)}
-                                    className="flex-1 rounded-lg border border-[var(--border-default)] py-2 text-sm text-[var(--text-muted)] hover:text-white transition-colors"
+                                    className="flex-1 rounded-lg border border-[var(--border-default)] py-2 text-sm text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors"
                                 >
                                     Cancel
                                 </button>
@@ -553,7 +553,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             <div className="sticky top-[80px] z-30 backdrop-blur-xl border-b" style={{ background: 'var(--bg-header)', borderColor: 'var(--border-default)' }}>
                 <div className="container mx-auto px-6 h-14 flex items-center justify-between">
                     <div className="flex items-center gap-3 min-w-0">
-                        <Link href="/auctions" className="text-[var(--text-muted)] hover:text-white transition-colors shrink-0">
+                        <Link href="/auctions" className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors shrink-0">
                             <ArrowLeft size={16} />
                         </Link>
                         <div className="w-px h-4 bg-white/10 shrink-0" />
@@ -581,7 +581,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                     <Zap size={8} /> Anti-Snipe
                                 </span>
                             )}
-                            <h1 className="text-white font-bold text-sm truncate">
+                            <h1 className="text-[var(--text-primary)] font-bold text-sm truncate">
                                 {auction.listing.title}
                             </h1>
                         </div>
@@ -610,7 +610,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                         </div>
                         <button
                             onClick={handleShare}
-                            className="text-[var(--text-muted)] hover:text-white transition-colors relative"
+                            className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors relative"
                             title="Copy link"
                         >
                             <Share2 size={15} />
@@ -686,7 +686,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         </div>
                                         <div className="min-w-0">
                                             <p className="text-emerald-400 font-black text-sm uppercase tracking-wider">You won this auction!</p>
-                                            <p className="text-[var(--text-muted)] text-xs">Winning bid: <span className="text-white font-bold">£{Number(endedPayload?.winningBidAmount).toLocaleString()}</span></p>
+                                            <p className="text-[var(--text-muted)] text-xs">Winning bid: <span className="text-[var(--text-primary)] font-bold">£{Number(endedPayload?.winningBidAmount).toLocaleString()}</span></p>
                                         </div>
                                     </div>
                                     {/* Buyer fee + chat actions */}
@@ -694,7 +694,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-xs">
                                             <p className="text-amber-400 font-black text-[10px] uppercase tracking-widest mb-0.5">Buyer Fee Due</p>
                                             <div className="flex items-baseline gap-1">
-                                                <span className="text-white font-black text-base">£125</span>
+                                                <span className="text-[var(--text-primary)] font-black text-base">£125</span>
                                             </div>
                                         </div>
                                         <div className="flex flex-col gap-1.5">
@@ -736,7 +736,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                             ) : endedPayload?.winnerId ? (
                                 <div className="flex items-center gap-2 text-[var(--text-muted)] text-sm">
                                     <Gavel size={15} className="shrink-0" />
-                                    <p>Auction ended. Winning bid: <span className="text-white font-bold">£{Number(endedPayload?.winningBidAmount ?? 0).toLocaleString()}</span></p>
+                                    <p>Auction ended. Winning bid: <span className="text-[var(--text-primary)] font-bold">£{Number(endedPayload?.winningBidAmount ?? 0).toLocaleString()}</span></p>
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-2 text-[var(--text-muted)] text-sm">
@@ -771,7 +771,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                 <div className="lg:hidden sticky top-[80px] z-40 bg-[var(--bg-dropdown)] backdrop-blur-md border-b border-[var(--border-default)] px-4 py-2.5 flex items-center gap-3">
                     <div className="flex-1 min-w-0">
                         <p className="text-[9px] text-[var(--text-muted)] uppercase tracking-widest font-bold">Current Bid</p>
-                        <p className="text-xl font-black text-white font-mono leading-none">£{currentBid.toLocaleString()}</p>
+                        <p className="text-xl font-black text-[var(--text-primary)] font-mono leading-none">£{currentBid.toLocaleString()}</p>
                     </div>
                     {isWinning ? (
                         <span className="flex items-center gap-1 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-black px-3 py-1.5 rounded-full">
@@ -851,8 +851,8 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                 )}
                                 {isLive && endTime && (
                                     <div className="bg-[var(--bg-card)] backdrop-blur border border-[var(--border-default)] rounded-xl px-3 py-2 text-center">
-                                        <p className="text-[8px] text-white/40 uppercase tracking-widest font-bold mb-0.5">Ends In</p>
-                                        <div className="text-white font-mono font-black text-lg leading-none">
+                                        <p className="text-[8px] text-[var(--text-muted)] uppercase tracking-widest font-bold mb-0.5">Ends In</p>
+                                        <div className="text-[var(--text-primary)] font-mono font-black text-lg leading-none">
                                             <CountdownTimer targetDate={endTime} minimal />
                                         </div>
                                     </div>
@@ -919,7 +919,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             ].map(s => (
                                                 <div key={s.label} className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-xl p-3 text-center">
                                                     <p className="text-[9px] text-[var(--text-muted)] uppercase tracking-widest mb-1">{s.label}</p>
-                                                    <p className="text-sm font-bold text-white capitalize leading-tight">{s.value}</p>
+                                                    <p className="text-sm font-bold text-[var(--text-primary)] capitalize leading-tight">{s.value}</p>
                                                 </div>
                                             ))}
                                         </div>
@@ -927,7 +927,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         {/* ── Description ─────────────────────────────────── */}
                                         {auction.listing.description && (
                                             <div>
-                                                <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-2 border-l-2 border-primary pl-2.5">Description</h4>
+                                                <h4 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider mb-2 border-l-2 border-primary pl-2.5">Description</h4>
                                                 <p className="text-sm text-[var(--text-muted)] leading-relaxed whitespace-pre-line">{auction.listing.description}</p>
                                             </div>
                                         )}
@@ -935,7 +935,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         {/* ── Video Links ──────────────────────────────────── */}
                                         {(auction.listing as any).videoUrls?.length > 0 && (
                                             <div>
-                                                <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-3 border-l-2 border-primary pl-2.5">Videos</h4>
+                                                <h4 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider mb-3 border-l-2 border-primary pl-2.5">Videos</h4>
                                                 <div className="space-y-3">
                                                     {((auction.listing as any).videoUrls as string[]).map((url: string, i: number) => {
                                                         let ytEmbedUrl = ""
@@ -991,7 +991,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
 
                                         {/* ── Specifications: 2-column sub-section grid ─────── */}
                                         <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4">
-                                            <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-4 border-l-2 border-primary pl-2.5">Specifications</h4>
+                                            <h4 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider mb-4 border-l-2 border-primary pl-2.5">Specifications</h4>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
 
                                                 {/* Overview */}
@@ -1012,7 +1012,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                         ].filter(([, v]) => v != null && v !== "").map(([k, v]) => (
                                                             <div key={k as string} className="flex justify-between gap-2 text-xs">
                                                                 <span className="text-[var(--text-muted)] shrink-0">{k}</span>
-                                                                <span className="text-white font-semibold text-right capitalize">{String(v)}</span>
+                                                                <span className="text-[var(--text-primary)] font-semibold text-right capitalize">{String(v)}</span>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -1032,7 +1032,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                         ].filter(([, v]) => v != null && v !== "").map(([k, v]) => (
                                                             <div key={k as string} className="flex justify-between gap-2 text-xs">
                                                                 <span className="text-[var(--text-muted)] shrink-0">{k}</span>
-                                                                <span className="text-white font-semibold text-right capitalize">{String(v)}</span>
+                                                                <span className="text-[var(--text-primary)] font-semibold text-right capitalize">{String(v)}</span>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -1082,7 +1082,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         {/* ── Features ────────────────────────────────────── */}
                                         {auction.listing.features && Array.isArray(auction.listing.features) && (auction.listing.features as string[]).length > 0 && (
                                             <div>
-                                                <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-2.5 border-l-2 border-primary pl-2.5">Features &amp; Options</h4>
+                                                <h4 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider mb-2.5 border-l-2 border-primary pl-2.5">Features &amp; Options</h4>
                                                 <div className="flex flex-wrap gap-2">
                                                     {(auction.listing.features as string[]).map((f: string) => (
                                                         <span key={f} className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-full">
@@ -1096,7 +1096,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         {/* ── Damage Report ───────────────────────────────── */}
                                         {damageRecords.length > 0 && (
                                             <div className="rounded-xl border border-amber-500/20 bg-[var(--bg-input)] p-4">
-                                                <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-1 border-l-2 border-amber-500 pl-2.5">
+                                                <h4 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider mb-1 border-l-2 border-amber-500 pl-2.5">
                                                     Reported Damage
                                                 </h4>
                                                 <p className="text-[10px] text-[var(--text-muted)] mb-4 pl-3">
@@ -1131,7 +1131,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                                 </div>
                                                             )}
                                                             <div className="min-w-0">
-                                                                <p className="text-sm font-semibold text-white capitalize">
+                                                                <p className="text-sm font-semibold text-[var(--text-primary)] capitalize">
                                                                     {record.part.replace(/-/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
                                                                 </p>
                                                                 <p className="text-xs text-[var(--text-muted)]">
@@ -1221,7 +1221,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                 {getSellerInitials(auction)}
                                             </div>
                                             <div>
-                                                <h3 className="font-bold text-white text-sm">{getSellerName(auction)}</h3>
+                                                <h3 className="font-bold text-[var(--text-primary)] text-sm">{getSellerName(auction)}</h3>
                                                 <div className="flex items-center gap-1 text-emerald-400 text-xs font-bold mt-0.5">
                                                     <ShieldCheck size={11} /> Verified Seller
                                                 </div>
@@ -1390,9 +1390,9 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                 {/* Status */}
                                 <div className="text-center pb-3 border-b border-[var(--border-default)]">
                                     <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold mb-1">Current Bid</p>
-                                    <p className="text-2xl font-black text-white font-mono">£{currentBid.toLocaleString()}</p>
+                                    <p className="text-2xl font-black text-[var(--text-primary)] font-mono">£{currentBid.toLocaleString()}</p>
                                     <p className="text-[10px] text-[var(--text-muted)] mt-1">
-                                        Min next bid: <span className="text-white font-bold">£{(currentBid + minIncrement).toLocaleString()}</span>
+                                        Min next bid: <span className="text-[var(--text-primary)] font-bold">£{(currentBid + minIncrement).toLocaleString()}</span>
                                     </p>
                                 </div>
 
@@ -1408,7 +1408,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             <span className="text-[9px] text-[var(--text-muted)] group-hover:text-[var(--text-muted)] font-bold transition-colors">
                                                 +£{inc >= 1000 ? `${inc / 1000}k` : inc}
                                             </span>
-                                            <span className="text-sm text-white font-black font-mono">£{(currentBid + inc).toLocaleString()}</span>
+                                            <span className="text-sm text-[var(--text-primary)] font-black font-mono">£{(currentBid + inc).toLocaleString()}</span>
                                         </button>
                                     ))}
                                 </div>
@@ -1420,7 +1420,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         <Input
                                             type="number"
                                             placeholder="Custom amount"
-                                            className="bg-[var(--bg-input)] border-[var(--border-default)] focus:border-primary/50 text-white pl-6 h-11 text-sm font-mono"
+                                            className="bg-[var(--bg-input)] border-[var(--border-default)] focus:border-primary/50 text-[var(--text-primary)] pl-6 h-11 text-sm font-mono"
                                             value={bidAmount}
                                             onChange={e => { setBidAmount(e.target.value); setBidError(null) }}
                                             onKeyDown={e => { if (e.key === "Enter" && bidAmount) handleBid(Number(bidAmount)) }}
@@ -1456,7 +1456,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     {showBin && (
                         <div className="rounded-xl border border-primary/40 bg-[var(--bg-input)] p-4">
                             <p className="text-sm text-[var(--text-muted)] mb-1">Buy It Now</p>
-                            <p className="text-2xl font-mono font-bold text-white mb-3">
+                            <p className="text-2xl font-mono font-bold text-[var(--text-primary)] mb-3">
                                 £{Number(auction.buyItNowPrice!).toLocaleString('en-GB')}
                             </p>
                             <button
@@ -1515,7 +1515,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                             </p>
                             <div className="flex items-center justify-between text-xs">
                                 <span className="text-[var(--text-muted)]">Fee on winning</span>
-                                <span className="text-white font-black text-base">£125</span>
+                                <span className="text-[var(--text-primary)] font-black text-base">£125</span>
                             </div>
                             <p className="text-[10px] text-[var(--text-muted)]">One-time fee payable after the auction closes if you win.</p>
                         </div>

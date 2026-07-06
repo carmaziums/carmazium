@@ -104,7 +104,7 @@ export default function AdminAnalyticsPage() {
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+                        <h1 className="text-3xl font-bold text-[var(--text-primary)] flex items-center gap-3">
                             <BarChart3 className="text-primary" size={32} />
                             Analytics Dashboard
                         </h1>
@@ -113,7 +113,7 @@ export default function AdminAnalyticsPage() {
                     <button
                         onClick={fetchData}
                         disabled={loading}
-                        className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm transition-colors disabled:opacity-50"
+                        className="flex items-center gap-2 bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)] border border-[var(--border-default)] text-[var(--text-primary)] px-4 py-2 rounded-lg text-sm transition-colors disabled:opacity-50"
                     >
                         <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
                         Refresh
@@ -163,7 +163,7 @@ export default function AdminAnalyticsPage() {
                 {/* Events by Type */}
                 {summary && Array.isArray(summary.eventsByType) && summary.eventsByType.length > 0 && (
                     <div className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl p-6 mb-8">
-                        <h3 className="text-white font-semibold mb-4">Events by Type</h3>
+                        <h3 className="text-[var(--text-primary)] font-semibold mb-4">Events by Type</h3>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
                             {summary.eventsByType.map((e) => {
                                 const Icon = EVENT_ICONS[e.type] || Activity
@@ -173,7 +173,7 @@ export default function AdminAnalyticsPage() {
                                         className="bg-[var(--bg-card)] rounded-lg p-3 text-center"
                                     >
                                         <Icon size={18} className="mx-auto text-primary mb-1" />
-                                        <div className="text-white font-bold text-lg">{e.count}</div>
+                                        <div className="text-[var(--text-primary)] font-bold text-lg">{e.count}</div>
                                         <div className="text-[var(--text-muted)] text-xs truncate">
                                             {e.type.replace(/_/g, " ")}
                                         </div>

@@ -194,14 +194,14 @@ export default function DealerMyOffersPage() {
                                                     {image ? <Image src={image} alt={offer.listing?.title || ''} fill className="object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-600"><Car size={16} /></div>}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <Link href={`/vehicle/${slug}`} className="font-black text-white text-sm truncate block hover:text-primary transition-colors">{offer.listing?.title || 'Listing'}</Link>
+                                                    <Link href={`/vehicle/${slug}`} className="font-black text-[var(--text-primary)] text-sm truncate block hover:text-primary transition-colors">{offer.listing?.title || 'Listing'}</Link>
                                                     <p className="text-xs text-[var(--text-muted)] font-bold uppercase truncate">{offer.listing?.year} {offer.listing?.make} {offer.listing?.model}</p>
                                                 </div>
                                                 <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-black tracking-widest uppercase border shrink-0 ${style.bg} ${style.text} ${style.border}`}>{style.label}</span>
                                             </div>
                                             <div className="flex items-center justify-between gap-2">
                                                 <div>
-                                                    <p className="text-base font-black text-white tabular-nums">
+                                                    <p className="text-base font-black text-[var(--text-primary)] tabular-nums">
                                                         {formatPrice(offer.status === 'ACCEPTED' ? (offer.finalAmount ?? offer.counterAmount ?? offer.amount) : offer.amount)}
                                                     </p>
                                                     {offer.status === 'ACCEPTED' && <p className="text-xs font-black text-emerald-400">Agreed price</p>}
@@ -254,7 +254,7 @@ export default function DealerMyOffersPage() {
                                                                 )}
                                                             </div>
                                                             <div className="min-w-0">
-                                                                <p className="font-black text-white truncate group-hover/link:text-primary transition-colors text-sm">
+                                                                <p className="font-black text-[var(--text-primary)] truncate group-hover/link:text-primary transition-colors text-sm">
                                                                     {offer.listing?.title || 'Listing'}
                                                                 </p>
                                                                 <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-wider truncate">
@@ -265,7 +265,7 @@ export default function DealerMyOffersPage() {
                                                         </Link>
                                                     </td>
                                                     <td className="px-6 py-5 text-right">
-                                                        <span className="text-base font-black text-white tabular-nums">
+                                                        <span className="text-base font-black text-[var(--text-primary)] tabular-nums">
                                                             {formatPrice(offer.status === 'ACCEPTED' ? (offer.finalAmount ?? offer.counterAmount ?? offer.amount) : offer.amount)}
                                                         </span>
                                                         {offer.status === 'ACCEPTED' && (

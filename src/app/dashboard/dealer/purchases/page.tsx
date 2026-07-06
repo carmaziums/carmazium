@@ -103,7 +103,7 @@ export default function DealerPurchasesPage() {
                                 className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all ${
                                     viewMode === "list"
                                         ? "bg-gradient-to-r from-primary to-red-700 text-white shadow-lg shadow-primary/20"
-                                        : "text-[var(--text-muted)] hover:text-white hover:bg-white/[0.04]"
+                                        : "text-[var(--text-muted)] hover:text-primary dark:hover:text-white hover:bg-white/[0.04]"
                                 }`}
                             >
                                 <LayoutList size={14} /> List
@@ -113,7 +113,7 @@ export default function DealerPurchasesPage() {
                                 className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all ${
                                     viewMode === "kanban"
                                         ? "bg-gradient-to-r from-primary to-red-700 text-white shadow-lg shadow-primary/20"
-                                        : "text-[var(--text-muted)] hover:text-white hover:bg-white/[0.04]"
+                                        : "text-[var(--text-muted)] hover:text-primary dark:hover:text-white hover:bg-white/[0.04]"
                                 }`}
                             >
                                 <Columns3 size={14} /> Kanban
@@ -242,14 +242,14 @@ export default function DealerPurchasesPage() {
                                         <div className="space-y-3">
                                             {items.map((item) => (
                                                 <div key={item.id} className="dealer-glass-card p-4 group">
-                                                    <h4 className="text-sm font-bold text-white truncate group-hover:text-primary transition-colors">
+                                                    <h4 className="text-sm font-bold text-[var(--text-primary)] truncate group-hover:text-primary transition-colors">
                                                         {item.vehicleTitle}
                                                     </h4>
                                                     {item.vehicleSubtitle && (
                                                         <p className="text-xs text-[var(--text-muted)] mt-0.5 truncate">{item.vehicleSubtitle}</p>
                                                     )}
                                                     <div className="flex items-center justify-between mt-3 pt-3 border-t border-[var(--border-default)]">
-                                                        <span className="text-sm font-black text-white tabular-nums">
+                                                        <span className="text-sm font-black text-[var(--text-primary)] tabular-nums">
                                                             £{item.purchasePrice.toLocaleString()}
                                                         </span>
                                                         <div className="flex items-center gap-1">
@@ -329,7 +329,7 @@ export default function DealerPurchasesPage() {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="bg-black/20 rounded-xl p-4 border border-[var(--border-default)]">
                                 <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block mb-1">Purchase Price</span>
-                                <span className="text-xl font-black text-white tabular-nums">£{summaryItem.purchasePrice.toLocaleString()}</span>
+                                <span className="text-xl font-black text-[var(--text-primary)] tabular-nums">£{summaryItem.purchasePrice.toLocaleString()}</span>
                             </div>
                             <div className="bg-black/20 rounded-xl p-4 border border-[var(--border-default)]">
                                 <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block mb-1">Purchase Date</span>
@@ -389,13 +389,13 @@ export default function DealerPurchasesPage() {
                         <div className="space-y-3">
                             <div className="bg-black/20 rounded-xl p-4 border border-[var(--border-default)]">
                                 <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block mb-1">Email</span>
-                                <a href={`mailto:${sellerItem.sellerEmail}`} className="text-sm text-primary hover:text-white transition-colors font-medium">
+                                <a href={`mailto:${sellerItem.sellerEmail}`} className="text-sm text-primary hover:text-red-600 dark:hover:text-white transition-colors font-medium">
                                     {sellerItem.sellerEmail}
                                 </a>
                             </div>
                             <div className="bg-black/20 rounded-xl p-4 border border-[var(--border-default)]">
                                 <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block mb-1">Phone</span>
-                                <a href={`tel:${sellerItem.sellerPhone}`} className="text-sm text-primary hover:text-white transition-colors font-medium">
+                                <a href={`tel:${sellerItem.sellerPhone}`} className="text-sm text-primary hover:text-red-600 dark:hover:text-white transition-colors font-medium">
                                     {sellerItem.sellerPhone}
                                 </a>
                             </div>

@@ -27,7 +27,7 @@ function SpecRow({ icon, label, value }: { icon: React.ReactNode; label: string;
             </div>
             <div className="flex-1 min-w-0">
                 <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold">{label}</p>
-                <p className="text-sm font-bold text-white mt-0.5">{value}</p>
+                <p className="text-sm font-bold text-[var(--text-primary)] mt-0.5">{value}</p>
             </div>
         </div>
     )
@@ -105,7 +105,7 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
         return (
             <div className="min-h-screen pt-20 flex flex-col items-center justify-center gap-4 text-center px-6">
                 <AlertTriangle size={36} className="text-red-400" />
-                <p className="text-white font-bold">{loadError ?? "Auction not found."}</p>
+                <p className="text-[var(--text-primary)] font-bold">{loadError ?? "Auction not found."}</p>
                 <Link href="/auctions" className="text-sm text-primary hover:underline">Browse auctions</Link>
             </div>
         )
@@ -135,7 +135,7 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                 <div className="mb-6 space-y-4">
                     <Link
                         href="/dashboard/user?tab=overview"
-                        className="inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-white transition-colors"
+                        className="inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors"
                     >
                         <ArrowLeft size={15} /> Back to Dashboard
                     </Link>
@@ -205,7 +205,7 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                         <div className="dealer-glass-card p-5">
                             <div className="flex items-start justify-between gap-3 flex-wrap">
                                 <div>
-                                    <h1 className="text-2xl font-black text-white tracking-tight">{listing.title}</h1>
+                                    <h1 className="text-2xl font-black text-[var(--text-primary)] tracking-tight">{listing.title}</h1>
                                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                                         {listing.vrm && (
                                             <span className="text-sm font-bold text-[var(--text-muted)] uppercase tracking-widest px-2.5 py-1 bg-[var(--bg-card)] rounded-lg border border-[var(--border-default)]">
@@ -319,7 +319,7 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                                 </div>
                                 <div>
                                     <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold">Selling from</p>
-                                    <p className="text-white font-black text-sm">{sellerName}</p>
+                                    <p className="text-[var(--text-primary)] font-black text-sm">{sellerName}</p>
                                 </div>
                             </div>
                             <div className="mt-3 pt-3 border-t border-[var(--border-default)] flex items-center gap-2 text-xs text-[var(--text-muted)]">

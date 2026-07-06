@@ -50,8 +50,8 @@ function CheckoutCancelContent() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
                 >
-                    <h1 className="text-3xl md:text-4xl font-heading font-bold">Payment Cancelled</h1>
-                    <p className="mt-3 text-lg" style={{ color: 'var(--text-muted)' }}>
+                    <h1 className="text-3xl md:text-4xl font-heading font-bold text-white">Payment Cancelled</h1>
+                    <p className="mt-3 text-lg text-gray-300">
                         No worries — your payment was not processed and no charges were made.
                     </p>
                 </motion.div>

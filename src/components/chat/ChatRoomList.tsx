@@ -120,7 +120,7 @@ export function ChatRoomList({ onSelectRoom, selectedRoomId }: ChatRoomListProps
                                 {/* Content */}
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between mb-1">
-                                        <h4 className="font-bold text-white truncate">
+                                        <h4 className="font-bold text-[var(--text-primary)] truncate">
                                             {room.otherUser.firstName} {room.otherUser.lastName}
                                         </h4>
                                         {room.lastMessage && (

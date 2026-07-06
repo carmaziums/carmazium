@@ -117,7 +117,7 @@ export default function AdminDashboard() {
                 <main className="flex-1 space-y-8 min-w-0">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[var(--bg-input)] p-6 rounded-2xl border border-[var(--border-default)] backdrop-blur-md">
                         <div>
-                            <h1 className="text-3xl font-black font-heading text-white uppercase tracking-tight flex items-center gap-3">
+                            <h1 className="text-3xl font-black font-heading text-[var(--text-primary)] uppercase tracking-tight flex items-center gap-3">
                                 <ShieldAlert className="text-primary hidden sm:block" size={28} />
                                 System Overview
                             </h1>

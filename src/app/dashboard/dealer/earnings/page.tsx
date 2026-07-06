@@ -80,7 +80,7 @@ export default function DealerEarningsPage() {
                                 <DollarSign size={28} className="text-primary" />
                             </div>
                             <div>
-                                <h1 className="text-3xl font-black font-heading text-white uppercase tracking-tight">Dealership Earnings</h1>
+                                <h1 className="text-3xl font-black font-heading text-[var(--text-primary)] uppercase tracking-tight">Dealership Earnings</h1>
                                 <p className="text-[var(--text-muted)] mt-0.5 font-medium text-sm">Comprehensive revenue oversight for your dealership inventory.</p>
                             </div>
                         </div>
@@ -126,7 +126,7 @@ export default function DealerEarningsPage() {
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
-                                className={`px-5 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-primary text-white shadow-neon-small' : 'text-[var(--text-muted)] hover:text-white'}`}
+                                className={`px-5 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-primary text-white shadow-neon-small' : 'text-[var(--text-muted)] hover:text-primary dark:hover:text-white'}`}
                             >
                                 {tab === 'sales' ? 'Sales Registry' : 'Receipts'}
                             </button>
@@ -139,7 +139,7 @@ export default function DealerEarningsPage() {
                             <div className="p-8 border-b border-[var(--border-default)] bg-gradient-to-r from-white/[0.05] to-transparent">
                                 <div className="flex items-center gap-3">
                                     <div className="w-2 h-8 bg-primary rounded-full" />
-                                    <h2 className="text-2xl font-black font-heading text-white uppercase tracking-tight">Payment Receipts</h2>
+                                    <h2 className="text-2xl font-black font-heading text-[var(--text-primary)] uppercase tracking-tight">Payment Receipts</h2>
                                 </div>
                                 <p className="text-xs text-[var(--text-muted)] mt-1 ml-5">All platform fees, listing charges, and KYC payments.</p>
                             </div>
@@ -152,7 +152,7 @@ export default function DealerEarningsPage() {
                         <div className="p-8 border-b border-[var(--border-default)] flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gradient-to-r from-white/[0.05] to-transparent">
                             <div className="flex items-center gap-3">
                                 <div className="w-2 h-8 bg-primary rounded-full" />
-                                <h2 className="text-2xl font-black font-heading text-white uppercase tracking-tight">Sales Registry</h2>
+                                <h2 className="text-2xl font-black font-heading text-[var(--text-primary)] uppercase tracking-tight">Sales Registry</h2>
                             </div>
                             <div className="relative w-full md:w-80 group">
                                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-primary transition-colors" size={20} />
@@ -178,7 +178,7 @@ export default function DealerEarningsPage() {
                                         )}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="font-black text-white text-sm truncate uppercase tracking-tight">{sale.listing.title}</p>
+                                        <p className="font-black text-[var(--text-primary)] text-sm truncate uppercase tracking-tight">{sale.listing.title}</p>
                                         <p className="text-xs text-[var(--text-muted)] font-bold">{sale.listing.vrm || 'PRIVATE'}</p>
                                         <div className="flex items-center justify-between mt-1.5 gap-2">
                                             <span className="text-xs text-[var(--text-muted)] truncate">
@@ -188,7 +188,7 @@ export default function DealerEarningsPage() {
                                         </div>
                                     </div>
                                     <div className="text-right shrink-0">
-                                        <p className="font-black text-white text-base leading-none">{formatPrice(sale.soldPrice)}</p>
+                                        <p className="font-black text-[var(--text-primary)] text-base leading-none">{formatPrice(sale.soldPrice)}</p>
                                         <div className="mt-1">
                                             {Number(sale.soldPrice) >= Number(sale.listedPrice) ? (
                                                 <span className="text-xs text-emerald-400 font-black flex items-center gap-0.5 justify-end">
@@ -218,7 +218,7 @@ export default function DealerEarningsPage() {
                                         <th className="px-8 py-6 text-center">Transaction Date</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-[var(--border-default)] text-white/80">
+                                <tbody className="divide-y divide-[var(--border-default)] text-[var(--text-secondary)]">
                                     {loading ? (
                                         <tr>
                                             <td colSpan={6} className="px-8 py-20 text-center">
@@ -252,7 +252,7 @@ export default function DealerEarningsPage() {
                                                             )}
                                                         </div>
                                                         <div className="min-w-0">
-                                                            <p className="font-black text-white group-hover:text-primary transition-colors truncate uppercase tracking-tight text-base leading-tight">{sale.listing.title}</p>
+                                                            <p className="font-black text-[var(--text-primary)] group-hover:text-primary transition-colors truncate uppercase tracking-tight text-base leading-tight">{sale.listing.title}</p>
                                                             <div className="flex items-center gap-2 mt-1">
                                                                 <span className="bg-slate-700 text-[var(--text-secondary)] text-xs font-black px-2 py-0.5 rounded tracking-widest uppercase border border-[var(--border-default)]">
                                                                     {sale.listing.vrm || "PRIVATE"}
@@ -269,7 +269,7 @@ export default function DealerEarningsPage() {
                                                             <UserIcon size={18} />
                                                         </div>
                                                         <div className="min-w-0">
-                                                            <p className="text-sm font-black text-white truncate uppercase tracking-tight">
+                                                            <p className="text-sm font-black text-[var(--text-primary)] truncate uppercase tracking-tight">
                                                                 {sale.buyer
                                                                     ? `${sale.buyer.firstName} ${sale.buyer.lastName || ""}`.trim()
                                                                     : (sale as any).buyerName || "Direct Buyer"}
@@ -284,7 +284,7 @@ export default function DealerEarningsPage() {
                                                     {formatPrice((sale as any).listing?.price ?? sale.listedPrice ?? 0)}
                                                 </td>
                                                 <td className="px-8 py-6 text-right">
-                                                    <p className="font-black text-white text-lg leading-none">{formatPrice(sale.soldPrice)}</p>
+                                                    <p className="font-black text-[var(--text-primary)] text-lg leading-none">{formatPrice(sale.soldPrice)}</p>
                                                     <div className="flex items-center justify-end gap-1 mt-1.5">
                                                         {Number(sale.soldPrice) >= Number(sale.listedPrice) ? (
                                                             <span className="text-xs text-emerald-400 font-black flex items-center gap-0.5 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
@@ -305,7 +305,7 @@ export default function DealerEarningsPage() {
                                                 </td>
                                                 <td className="px-8 py-6 text-center">
                                                     <div className="inline-block px-3 py-1 bg-[var(--bg-input)] rounded-lg border border-[var(--border-default)]">
-                                                        <p className="text-sm font-black text-gray-200 tracking-tight">
+                                                        <p className="text-sm font-black text-[var(--text-secondary)] tracking-tight">
                                                             {new Date(sale.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                         </p>
                                                         <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest mt-0.5">{new Date(sale.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</p>

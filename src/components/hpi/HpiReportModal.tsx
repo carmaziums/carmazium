@@ -114,7 +114,7 @@ export function HpiReportModal({ listingId, onClose }: Props) {
                             <ShieldCheck size={18} className="text-primary" />
                         </div>
                         <div>
-                            <h2 className="font-bold text-white text-lg">HPI Check Report</h2>
+                            <h2 className="font-bold text-[var(--text-primary)] text-lg">HPI Check Report</h2>
                             {summary && (
                                 <p className="text-xs text-[var(--text-muted)]">
                                     {summary.vrm} · Generated {new Date(summary.purchasedAt || summary.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
@@ -126,12 +126,12 @@ export function HpiReportModal({ listingId, onClose }: Props) {
                         {summary && (
                             <button
                                 onClick={handlePrint}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--bg-card)] border border-[var(--border-default)] text-[var(--text-muted)] hover:text-white text-xs font-bold transition-colors"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--bg-card)] border border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white text-xs font-bold transition-colors"
                             >
                                 <Printer size={13} /> Print
                             </button>
                         )}
-                        <button onClick={onClose} className="p-2 text-[var(--text-muted)] hover:text-white transition-colors">
+                        <button onClick={onClose} className="p-2 text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors">
                             <X size={18} />
                         </button>
                     </div>

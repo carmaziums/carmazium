@@ -51,8 +51,8 @@ export function TestimonialsSection() {
     return (
         <section className="py-24 relative overflow-hidden">
             {/* Background Elements */}
-            <div className="absolute inset-0 bg-slate-900/50 pointer-events-none" />
-            <div className="absolute top-1/2 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent pointer-events-none" />
+            <div className="absolute inset-0 dark:bg-slate-900/50 pointer-events-none" />
+            <div className="absolute top-1/2 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[var(--border-default)] to-transparent pointer-events-none" />
 
             <div className="container mx-auto px-5 relative z-10">
                 <div className="flex flex-col md:flex-row items-end justify-between mb-16 gap-6">

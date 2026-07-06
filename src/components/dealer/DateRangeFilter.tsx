@@ -86,7 +86,7 @@ export function DateRangeFilter({
                                 type="date"
                                 value={customStart || ""}
                                 onChange={(e) => onCustomChange?.(e.target.value, customEnd || "")}
-                                className="w-full bg-black/40 border border-[var(--border-default)] rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
+                                className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
                             />
                         </div>
                         <span className="text-[var(--text-secondary)] text-xs font-bold mt-5">→</span>
@@ -96,7 +96,7 @@ export function DateRangeFilter({
                                 type="date"
                                 value={customEnd || ""}
                                 onChange={(e) => onCustomChange?.(customStart || "", e.target.value)}
-                                className="w-full bg-black/40 border border-[var(--border-default)] rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
+                                className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
                             />
                         </div>
                     </div>

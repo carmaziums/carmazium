@@ -412,7 +412,7 @@ function BidModal({
                                         )}
                                     </div>
                                     <div className="flex items-center gap-3">
-                                        <span className={`font-black tabular-nums ${i === 0 ? 'text-white' : 'text-[var(--text-secondary)]'}`}>£{entry.amount.toLocaleString('en-GB')}</span>
+                                        <span className={`font-black tabular-nums ${i === 0 ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>£{entry.amount.toLocaleString('en-GB')}</span>
                                         <span className="text-[var(--text-secondary)] text-[10px]">
                                             {new Date(entry.timestamp).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                                         </span>
@@ -741,7 +741,7 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                             variant="outline"
                                             onClick={handleEnquire}
                                             disabled={enquiring}
-                                            className="w-full py-6 text-[15px] font-black uppercase bg-transparent hover:bg-slate-700 border-[var(--border-default)] text-white rounded-xl gap-2"
+                                            className="w-full py-6 text-[15px] font-black uppercase bg-transparent hover:bg-slate-700 border-[var(--border-default)] text-[var(--text-primary)] hover:text-white rounded-xl gap-2"
                                         >
                                             {enquiring ? <><Loader2 className="w-5 h-5 animate-spin mr-2" />Starting Chat...</> : <><MessageCircle size={18} /> ENQUIRE NOW</>}
                                         </Button>

@@ -185,7 +185,7 @@ function SelectField({
             <select
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                className={`w-full h-10 rounded-md border bg-[var(--bg-input)] px-3 text-base md:text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary ${error ? 'border-red-500' : 'border-[var(--border-default)]'}`}
+                className={`w-full h-10 rounded-md border bg-[var(--bg-input)] px-3 text-base md:text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary ${error ? 'border-red-500' : 'border-[var(--border-default)]'}`}
             >
                 <option value="">Select {label.toLowerCase()}</option>
                 {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -245,7 +245,7 @@ function HpiBaitSection({ isUnlocked, onUnlock }: { isUnlocked: boolean, onUnloc
                 <div className="p-6 md:p-8 flex-1 flex flex-col justify-center text-center md:text-left">
                     <div className="flex items-center justify-center md:justify-start gap-3 mb-3">
                         <Shield className="text-blue-400 shrink-0" size={32} />
-                        <h3 className="text-white font-bold text-xl">Official HPI Vehicle Check</h3>
+                        <h3 className="text-[var(--text-primary)] font-bold text-xl">Official HPI Vehicle Check</h3>
                     </div>
                     
                     <p className="text-[var(--text-secondary)] mb-6 leading-relaxed">
@@ -877,8 +877,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             <div className="glass-card p-0 max-w-md w-full relative overflow-hidden flex flex-col text-left" onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
                 <div className="bg-[var(--bg-card)] p-5 border-b border-[var(--border-default)] flex justify-between items-center">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2"><CreditCard size={18} className="text-primary"/> Secure Checkout</h3>
-                    <button disabled={isProcessingPayment} type="button" onClick={() => setShowHpiModal(false)} className="text-[var(--text-muted)] hover:text-white transition-colors">
+                    <h3 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2"><CreditCard size={18} className="text-primary"/> Secure Checkout</h3>
+                    <button disabled={isProcessingPayment} type="button" onClick={() => setShowHpiModal(false)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
                         <X size={20} />
                     </button>
                 </div>
@@ -887,7 +887,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 <div className="p-6">
                      <div className="flex justify-between items-center mb-6">
                          <div>
-                             <p className="text-white font-bold">Comprehensive HPI Report</p>
+                             <p className="text-[var(--text-primary)] font-bold">Comprehensive HPI Report</p>
                              <p className="text-xs text-[var(--text-muted)] mt-1 uppercase font-bold tracking-wider">Powered by OneAuto API</p>
                          </div>
                          <div className="text-xl font-black">£9.99</div>
@@ -1049,7 +1049,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center mx-auto mb-3">
                                         <span className="text-primary font-black text-sm">{s.id}</span>
                                     </div>
-                                    <p className="text-white font-semibold text-sm">{s.title}</p>
+                                    <p className="text-[var(--text-primary)] font-semibold text-sm">{s.title}</p>
                                 </div>
                             ))}
                         </div>
@@ -1069,7 +1069,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                 {/* Back link */}
                 <div className="mb-6 flex items-center">
-                    <Button variant="ghost" className="text-[var(--text-muted)] hover:text-white group px-2"
+                    <Button variant="ghost" className="text-[var(--text-muted)] hover:text-[var(--text-primary)] group px-2"
                         onClick={() => {
                             if (currentStep > 1) {
                                 handleBack()
@@ -1345,7 +1345,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                         // Store canonical casing from CAR_MAKES
                                                         else { set("make", e.target.value); set("model", ""); set("variant", "") }
                                                     }}
-                                                    className="w-full h-10 rounded-md border bg-[var(--bg-input)] px-3 text-base md:text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary border-[var(--border-default)]"
+                                                    className="w-full h-10 rounded-md border bg-[var(--bg-input)] px-3 text-base md:text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary border-[var(--border-default)]"
                                                 >
                                                     <option value="">Select make</option>
                                                     {CAR_MAKES.map(m => <option key={m} value={m}>{m}</option>)}
@@ -1381,7 +1381,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                         if (e.target.value === "__other__") { set("model", ""); set("variant", "") }
                                                         else { set("model", e.target.value); set("variant", "") }
                                                     }}
-                                                    className="w-full h-10 rounded-md border bg-[var(--bg-input)] px-3 text-base md:text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary border-[var(--border-default)]"
+                                                    className="w-full h-10 rounded-md border bg-[var(--bg-input)] px-3 text-base md:text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary border-[var(--border-default)]"
                                                 >
                                                     <option value="">Select model</option>
                                                     {models.map(m => <option key={m} value={m}>{m}</option>)}
@@ -1429,7 +1429,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                             if (e.target.value === "__other__") { set("variant", "") }
                                                             else { set("variant", e.target.value) }
                                                         }}
-                                                        className="w-full h-10 rounded-md border bg-[var(--bg-input)] px-3 text-base md:text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary border-[var(--border-default)]"
+                                                        className="w-full h-10 rounded-md border bg-[var(--bg-input)] px-3 text-base md:text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary border-[var(--border-default)]"
                                                     >
                                                         <option value="">Select variant / trim</option>
                                                         {knownVariants.map(v => <option key={v} value={v}>{v}</option>)}
@@ -1567,7 +1567,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 { timeout: 10000 }
                                             )
                                         }}
-                                        className="border-[var(--border-default)] text-[var(--text-muted)] hover:text-white gap-1.5 px-4"
+                                        className="border-[var(--border-default)] text-[var(--text-muted)] hover:text-[var(--text-primary)] gap-1.5 px-4"
                                     >
                                         {geoLoading ? <Loader2 size={14} className="animate-spin" /> : <LocateFixed size={14} />}
                                         <span className="hidden md:inline">Use my location</span>
@@ -1653,7 +1653,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         placeholder="Paste a YouTube, Instagram, Facebook or X video URL"
                                         value={videoUrlInput}
                                         onChange={e => { setVideoUrlInput(e.target.value); setVideoUrlError("") }}
-                                        className="bg-[var(--bg-card)] border-[var(--border-default)] text-white placeholder:text-[var(--text-secondary)] flex-1"
+                                        className="bg-[var(--bg-card)] border-[var(--border-default)] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] flex-1"
                                     />
                                     <Button
                                         type="button"
@@ -1871,7 +1871,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 input.value = '';
                                             }
                                         }}
-                                        className="border-[var(--border-default)] text-white hover:border-primary shrink-0"
+                                        className="border-[var(--border-default)] text-[var(--text-primary)] hover:border-primary shrink-0"
                                     >
                                         Add
                                     </Button>
@@ -1954,7 +1954,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
                                                 formData.owners === opt
                                                     ? 'bg-blue-600 border-blue-500 text-white'
-                                                    : 'border-[var(--border-default)] text-white/60 hover:border-white/30'
+                                                    : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'
                                             }`}
                                         >
                                             {opt === '5+' ? '5+ Owners' : `${opt} Owner${opt !== '1' ? 's' : ''}`}
@@ -1977,11 +1977,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         }}
                                         className="w-4 h-4 rounded border-white/20 bg-[var(--bg-card)] accent-blue-500"
                                     />
-                                    <label htmlFor="isDepartedSale" className="text-sm text-white/70 cursor-pointer">
+                                    <label htmlFor="isDepartedSale" className="text-sm text-[var(--text-secondary)] cursor-pointer">
                                         This is a departed/estate sale
                                     </label>
                                 </div>
-                                <p className="text-xs text-white/40 mt-1 ml-7">
+                                <p className="text-xs text-[var(--text-muted)] mt-1 ml-7">
                                     Buyers will see a Deceased Estate badge on your listing. You may be asked for probate documentation.
                                 </p>
                                 {formData.isDepartedSale && (
@@ -2003,7 +2003,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 placeholder="Please specify your relationship"
                                                 value={departedRelOther}
                                                 onChange={(e) => handleRelOtherChange(e.target.value)}
-                                                className="mt-2 w-full px-4 py-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-default)] text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-blue-500/50"
+                                                className="mt-2 w-full px-4 py-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-default)] text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-blue-500/50"
                                             />
                                         )}
                                     </div>
@@ -2348,8 +2348,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             }`}
                                     >
                                         {formData.badgeTier === 'BASIC' && <span className="absolute top-2 right-2 text-[10px] bg-primary text-black font-bold px-2 py-0.5 rounded-full">Selected</span>}
-                                        <p className="text-white font-bold text-sm mb-1">Basic</p>
-                                        <p className="text-2xl font-black text-white mb-3">£1</p>
+                                        <p className="text-[var(--text-primary)] font-bold text-sm mb-1">Basic</p>
+                                        <p className="text-2xl font-black text-[var(--text-primary)] mb-3">£1</p>
                                         <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
                                             <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Standard listing</li>
                                             <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Offer range system</li>
@@ -2368,7 +2368,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     >
                                         {formData.badgeTier === 'STANDARD' && <span className="absolute top-2 right-2 text-[10px] bg-blue-500 text-white font-bold px-2 py-0.5 rounded-full">Selected</span>}
                                         <p className="text-blue-400 font-bold text-sm mb-1 flex items-center gap-1"><Shield size={14} /> Standard</p>
-                                        <p className="text-2xl font-black text-white mb-3">£10</p>
+                                        <p className="text-2xl font-black text-[var(--text-primary)] mb-3">£10</p>
                                         <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
                                             <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Everything in Basic</li>
                                             <li className="flex items-center gap-1.5"><BadgeCheck size={12} className="text-blue-400" /> VIN Report badge</li>
@@ -2388,7 +2388,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold px-3 py-0.5 rounded-full flex items-center gap-1"><Sparkles size={10} /> Best Value</span>
                                         {formData.badgeTier === 'PREMIUM' && <span className="absolute top-2 right-2 text-[10px] bg-amber-500 text-black font-bold px-2 py-0.5 rounded-full">Selected</span>}
                                         <p className="text-amber-400 font-bold text-sm mb-1 mt-1 flex items-center gap-1"><Star size={14} /> Premium</p>
-                                        <p className="text-2xl font-black text-white mb-3">£25</p>
+                                        <p className="text-2xl font-black text-[var(--text-primary)] mb-3">£25</p>
                                         <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
                                             <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Everything in Standard</li>
                                             <li className="flex items-center gap-1.5"><Zap size={12} className="text-amber-400" /> Featured boost (28 days)</li>
@@ -2547,15 +2547,15 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
                                         <div>
                                             <p className="text-[10px] text-[var(--text-muted)] uppercase mb-0.5">Reserve</p>
-                                            <p className="text-white font-black">{formatPrice(parseFloat(auctionSchedule.reservePrice))}</p>
+                                            <p className="text-[var(--text-primary)] font-black">{formatPrice(parseFloat(auctionSchedule.reservePrice))}</p>
                                         </div>
                                         <div>
                                             <p className="text-[10px] text-[var(--text-muted)] uppercase mb-0.5">Opening Bid</p>
-                                            <p className="text-white font-bold">{formatPrice(parseFloat(auctionSchedule.startingBid))}</p>
+                                            <p className="text-[var(--text-primary)] font-bold">{formatPrice(parseFloat(auctionSchedule.startingBid))}</p>
                                         </div>
                                         <div>
                                             <p className="text-[10px] text-[var(--text-muted)] uppercase mb-0.5">Min. Increment</p>
-                                            <p className="text-white font-bold">{formatPrice(parseFloat(auctionSchedule.minIncrement || '0'))}</p>
+                                            <p className="text-[var(--text-primary)] font-bold">{formatPrice(parseFloat(auctionSchedule.minIncrement || '0'))}</p>
                                         </div>
                                         <div>
                                             <p className="text-[10px] text-[var(--text-muted)] uppercase mb-0.5">Duration</p>
@@ -2730,7 +2730,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         ))}
                                     </div>
                                 )}
-                                {formData.title && <div className="mt-3 pt-3 border-t border-[var(--border-default)]"><p className="text-xs text-[var(--text-muted)] uppercase mb-1">Title</p><p className="text-white font-semibold">{formData.title}</p></div>}
+                                {formData.title && <div className="mt-3 pt-3 border-t border-[var(--border-default)]"><p className="text-xs text-[var(--text-muted)] uppercase mb-1">Title</p><p className="text-[var(--text-primary)] font-semibold">{formData.title}</p></div>}
                                 {formData.description && <p className="text-sm text-[var(--text-muted)] mt-2">{formData.description}</p>}
                             </SummarySection>
 
@@ -2739,11 +2739,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
                                             <p className="text-[10px] text-[var(--text-muted)] uppercase mb-0.5">{isAuction ? 'Guide Price' : 'Lower'}</p>
-                                            <p className="text-white font-bold text-lg tabular-nums">{isAuction ? '—' : formData.priceMin ? formatPrice(formData.priceMin) : '—'}</p>
+                                            <p className="text-[var(--text-primary)] font-bold text-lg tabular-nums">{isAuction ? '—' : formData.priceMin ? formatPrice(formData.priceMin) : '—'}</p>
                                         </div>
                                         <div className="text-right">
                                             <p className="text-[10px] text-primary uppercase font-bold mb-0.5">{isAuction ? 'Guide Price' : 'Asking Price'}</p>
-                                            <p className="text-white font-black text-2xl tabular-nums">{formatPrice(formData.priceAsking)}</p>
+                                            <p className="text-[var(--text-primary)] font-black text-2xl tabular-nums">{formatPrice(formData.priceAsking)}</p>
                                         </div>
                                     </div>
 
@@ -2836,7 +2836,7 @@ function SummaryField({ label, value, mono = false }: { label: string; value: st
     return (
         <div>
             <p className="text-[10px] text-[var(--text-muted)] uppercase mb-0.5">{label}</p>
-            <p className={`text-white font-medium text-sm ${mono ? "font-mono tracking-wide" : ""}`}>{value}</p>
+            <p className={`text-[var(--text-primary)] font-medium text-sm ${mono ? "font-mono tracking-wide" : ""}`}>{value}</p>
         </div>
     )
 }

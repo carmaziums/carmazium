@@ -139,8 +139,8 @@ function CheckoutContent() {
                     <Link href={`/vehicle/${listing.slug}`} className="inline-flex items-center gap-2 text-sm mb-4 transition-colors hover:text-primary" style={{ color: 'var(--text-muted)' }}>
                         <ArrowLeft size={16} /> Back to listing
                     </Link>
-                    <h1 className="text-3xl md:text-4xl font-heading font-bold">Secure Checkout</h1>
-                    <p className="mt-2" style={{ color: 'var(--text-muted)' }}>Complete your purchase safely through Stripe</p>
+                    <h1 className="text-3xl md:text-4xl font-heading font-bold text-white">Secure Checkout</h1>
+                    <p className="mt-2 text-gray-300">Complete your purchase safely through Stripe</p>
                 </div>
             </div>
 
@@ -244,7 +244,7 @@ function CheckoutContent() {
                                 <div className="rounded-xl p-3 space-y-1.5 bg-blue-500/5 border border-blue-500/15">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Refund Policy</p>
                                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                                        If the sale does not complete for any reason, <span className="text-white font-bold">£100 is refunded</span> to you. The £25 platform fee is non-refundable.
+                                        If the sale does not complete for any reason, <span className="text-[var(--text-primary)] font-bold">£100 is refunded</span> to you. The £25 platform fee is non-refundable.
                                     </p>
                                 </div>
                             </div>
@@ -281,7 +281,7 @@ function CheckoutContent() {
                                 {/* Retail buyer fee notice */}
                                 <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/15 text-xs">
                                     <CheckCircle size={13} className="text-emerald-400 shrink-0" />
-                                    <span style={{ color: 'var(--text-muted)' }}>Retail buyers pay <span className="text-white font-bold">no buyer fees</span> — only the vehicle price above.</span>
+                                    <span style={{ color: 'var(--text-muted)' }}>Retail buyers pay <span className="text-[var(--text-primary)] font-bold">no buyer fees</span> — only the vehicle price above.</span>
                                 </div>
                             </div>
                         )}

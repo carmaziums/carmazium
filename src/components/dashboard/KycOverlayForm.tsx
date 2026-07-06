@@ -485,7 +485,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
           <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mb-6">
             <CheckCircle2 size={40} className="text-emerald-400" />
           </div>
-          <h2 className="text-2xl md:text-3xl font-black font-heading text-white tracking-tight mb-3">
+          <h2 className="text-2xl md:text-3xl font-black font-heading text-[var(--text-primary)] tracking-tight mb-3">
             KYC APPROVED
           </h2>
           <p className="text-[var(--text-secondary)] text-sm leading-relaxed mb-8">
@@ -540,7 +540,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
             </span>
           </div>
 
-          <h2 className="text-2xl md:text-3xl font-black font-heading text-white tracking-tight mb-3">
+          <h2 className="text-2xl md:text-3xl font-black font-heading text-[var(--text-primary)] tracking-tight mb-3">
             VERIFICATION IN PROGRESS
           </h2>
 
@@ -606,7 +606,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
               <Shield className="text-primary" size={22} />
             </div>
             <div className="min-w-0">
-              <h1 className="text-lg sm:text-xl md:text-2xl font-black font-heading text-white tracking-tight uppercase leading-tight">
+              <h1 className="text-lg sm:text-xl md:text-2xl font-black font-heading text-[var(--text-primary)] tracking-tight uppercase leading-tight">
                 Dealer KYC Portal
               </h1>
               <p className="text-xs sm:text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold truncate">
@@ -714,7 +714,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
               {/* ── STEP 1: CORPORATE DETAILS ── */}
               {activeStep === 1 && (
                 <div className="space-y-5">
-                  <h3 className="text-base font-extrabold uppercase text-white tracking-tight border-b border-[var(--border-default)] pb-2">
+                  <h3 className="text-base font-extrabold uppercase text-[var(--text-primary)] tracking-tight border-b border-[var(--border-default)] pb-2">
                     Step 1: Representative &amp; Company Details
                   </h3>
 
@@ -754,7 +754,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
               {/* ── STEP 2: COMMERCIAL REGISTRATIONS ── */}
               {activeStep === 2 && (
                 <div className="space-y-5">
-                  <h3 className="text-base font-extrabold uppercase text-white tracking-tight border-b border-[var(--border-default)] pb-2">
+                  <h3 className="text-base font-extrabold uppercase text-[var(--text-primary)] tracking-tight border-b border-[var(--border-default)] pb-2">
                     Step 2: Registrations &amp; Business Address
                   </h3>
 
@@ -812,7 +812,7 @@ export function KycOverlayForm({ onSkip }: { onSkip?: () => void }) {
               {activeStep === 3 && (
                 <div className="space-y-6">
                   <div>
-                    <h3 className="text-sm font-extrabold text-white uppercase tracking-widest mb-1">
+                    <h3 className="text-sm font-extrabold text-[var(--text-primary)] uppercase tracking-widest mb-1">
                       Step 3: Payment Verification
                     </h3>
                     <p className="text-[11px] text-[var(--text-muted)]">

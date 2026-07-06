@@ -200,21 +200,21 @@ export default function MyBidsPage() {
                                                         ) : isAuction && auctionActive && auction ? (
                                                             <Link
                                                                 href={`/auctions/live/${auction.id}`}
-                                                                className="inline-flex items-center gap-1.5 text-emerald-400 hover:text-white text-sm font-bold transition-colors"
+                                                                className="inline-flex items-center gap-1.5 text-emerald-400 dark:hover:text-white text-sm font-bold transition-colors"
                                                             >
                                                                 <Radio size={13} className="animate-pulse" /> View Live
                                                             </Link>
                                                         ) : isAuction && auction ? (
                                                             <Link
                                                                 href={`/auctions/live/${auction.id}`}
-                                                                className="text-primary hover:text-white text-sm font-bold transition-colors"
+                                                                className="text-primary dark:hover:text-white text-sm font-bold transition-colors"
                                                             >
                                                                 View Results
                                                             </Link>
                                                         ) : (
                                                             <Link
                                                                 href={`/cars/${bid.listing.slug}`}
-                                                                className="text-primary hover:text-white text-sm font-bold transition-colors"
+                                                                className="text-primary dark:hover:text-white text-sm font-bold transition-colors"
                                                             >
                                                                 View
                                                             </Link>

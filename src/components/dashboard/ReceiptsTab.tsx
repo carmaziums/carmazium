@@ -201,7 +201,7 @@ export function ReceiptsTab({ isDealer = false }: { isDealer?: boolean }) {
                                     <StatusIcon size={9} /> {status.label}
                                 </span>
                             </div>
-                            <p className="text-sm font-bold text-white truncate">
+                            <p className="text-sm font-bold text-[var(--text-primary)] truncate">
                                 {receipt.vehicle?.title || receipt.description || TYPE_LABELS[receipt.type]}
                             </p>
                             <p className="text-[11px] text-[var(--text-muted)] mt-0.5 flex items-center gap-1.5 flex-wrap">

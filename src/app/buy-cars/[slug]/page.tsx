@@ -1041,7 +1041,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                                 </div>
                                             )}
                                             <div className="min-w-0">
-                                                <p className="text-sm font-semibold text-white">{record.part.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}</p>
+                                                <p className="text-sm font-semibold text-[var(--text-primary)]">{record.part.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}</p>
                                                 <p className="text-xs text-[var(--text-muted)]">{record.type}{record.size ? ` — ${record.size}` : ''}</p>
                                             </div>
                                         </button>
@@ -1059,7 +1059,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                         <ShieldCheck size={18} className="text-emerald-400" />
                                     </div>
                                     <div>
-                                        <p className="font-bold text-white text-sm">HPI History Check</p>
+                                        <p className="font-bold text-[var(--text-primary)] text-sm">HPI History Check</p>
                                         <p className="text-xs text-[var(--text-muted)]">Comprehensive vehicle history report — stolen, finance, write-off & more</p>
                                     </div>
                                 </div>
@@ -1288,7 +1288,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                                         <Truck size={16} className="text-emerald-400" />
                                                         <span className="text-sm font-semibold text-emerald-300">Delivery available</span>
                                                         {feeIncVat != null && (
-                                                            <span className="ml-auto text-white font-bold text-sm">£{feeIncVat} <span className="text-[var(--text-muted)] text-[11px] font-normal">inc. VAT</span></span>
+                                                            <span className="ml-auto text-[var(--text-primary)] font-bold text-sm">£{feeIncVat} <span className="text-[var(--text-muted)] text-[11px] font-normal">inc. VAT</span></span>
                                                         )}
                                                     </div>
                                                     {feeExVat != null ? (

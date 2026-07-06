@@ -379,7 +379,7 @@ function WatchlistTab() {
                     <div className="w-20 h-20 bg-pink-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-pink-500/20">
                         <Heart size={40} className="text-pink-400/50" />
                     </div>
-                    <h3 className="text-xl font-black text-white uppercase mb-2">Your Watchlist is Empty</h3>
+                    <h3 className="text-xl font-black text-[var(--text-primary)] uppercase mb-2">Your Watchlist is Empty</h3>
                     <p className="text-[var(--text-muted)] text-sm max-w-md mx-auto mb-8">
                         Save the vehicles you're interested in by clicking the heart icon on any listing.
                     </p>
@@ -417,7 +417,7 @@ function WatchlistTab() {
                                     </button>
                                 </div>
                                 <div className="p-4">
-                                    <p className="font-black text-white text-base uppercase tracking-tight truncate group-hover:text-primary transition-colors">
+                                    <p className="font-black text-[var(--text-primary)] text-base uppercase tracking-tight truncate group-hover:text-primary transition-colors">
                                         {item.listing.title}
                                     </p>
                                     <p className="text-sm text-[var(--text-muted)] mt-0.5">
@@ -765,7 +765,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                 <div className="relative">
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === listing.id ? null : listing.id) }}
-                                                        className="p-2.5 text-[var(--text-muted)] hover:text-white transition-colors"
+                                                        className="p-2.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
                                                     >
                                                         <MoreVertical size={16} />
                                                     </button>
@@ -969,7 +969,7 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                         <Image src={listing.images?.[0] || ""} alt="" fill className="object-cover" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="font-bold text-white truncate uppercase">{listing.title}</p>
+                                        <p className="font-bold text-[var(--text-primary)] truncate uppercase">{listing.title}</p>
                                         <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest">{listingOffers.length} TOTAL OFFERS</p>
                                     </div>
                                     {pending > 0 && <span className="bg-primary text-white text-xs font-black px-3 py-1 rounded-full">{pending} PENDING</span>}
@@ -987,7 +987,7 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                         <div className="flex items-center gap-3">
                                                             <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary font-black shrink-0">{offer.buyer?.firstName?.[0] || '?'}</div>
                                                             <div>
-                                                                <p className="font-bold text-sm text-white uppercase">{offer.buyer?.firstName} {offer.buyer?.lastName}</p>
+                                                                <p className="font-bold text-sm text-[var(--text-primary)] uppercase">{offer.buyer?.firstName} {offer.buyer?.lastName}</p>
                                                                 <p className="text-lg font-black text-primary font-mono">{formatPrice(offer.amount)}</p>
                                                                 {offer.status === 'COUNTERED' && offer.sellerCounterAmount != null && (
                                                                     <p className="text-[11px] font-bold text-blue-400 mt-0.5">Your counter: {formatPrice(offer.sellerCounterAmount)}</p>
@@ -1105,7 +1105,7 @@ function CountdownTimer({ expiresAt }: { expiresAt: Date }) {
         const id = setInterval(update, 60000)
         return () => clearInterval(id)
     }, [expiresAt])
-    return <p className="text-white/40 text-xs">{timeLeft}</p>
+    return <p className="text-[var(--text-muted)] text-xs">{timeLeft}</p>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1389,7 +1389,7 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                         <div className="flex flex-col items-end gap-2 w-full">
                                                             {/* Remaining counter count */}
                                                             {isBuyerTurn && !isBuyerLocked && (
-                                                                <p className="text-xs text-white/50">
+                                                                <p className="text-xs text-[var(--text-muted)]">
                                                                     {buyerRemaining} counter-offer{buyerRemaining !== 1 ? 's' : ''} remaining
                                                                 </p>
                                                             )}
@@ -1412,7 +1412,7 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                                         placeholder="Your counter (£)"
                                                                         value={counterAmounts[offer.id] ?? ''}
                                                                         onChange={(e) => setCounterAmounts(prev => ({ ...prev, [offer.id]: e.target.value }))}
-                                                                        className="w-36 px-3 py-1.5 rounded-lg bg-[var(--bg-card)] border border-[var(--border-default)] text-white text-sm"
+                                                                        className="w-36 px-3 py-1.5 rounded-lg bg-[var(--bg-card)] border border-[var(--border-default)] text-[var(--text-primary)] text-sm"
                                                                     />
                                                                     <Button
                                                                         size="sm"
@@ -1579,14 +1579,14 @@ function MessagesTab({ rooms, refreshRooms }: { rooms: ChatRoom[], refreshRooms:
                     <div className="flex items-center gap-3 min-w-0">
                         <MessageSquare className="text-primary shrink-0" size={22} />
                         <div className="min-w-0">
-                            <h2 className="text-lg md:text-xl font-bold font-heading text-white tracking-tight">Messages</h2>
+                            <h2 className="text-lg md:text-xl font-bold font-heading text-[var(--text-primary)] tracking-tight">Messages</h2>
                             <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">Conversations with buyers and sellers</p>
                         </div>
                     </div>
                     <button
                         type="button"
                         onClick={refreshRooms}
-                        className="shrink-0 p-2 rounded-lg text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition-colors"
+                        className="shrink-0 p-2 rounded-lg text-[var(--text-muted)] hover:text-primary hover:bg-[var(--bg-input)] transition-colors"
                         title="Refresh conversations"
                     >
                         <RefreshCw size={18} />
@@ -1675,7 +1675,7 @@ function EarningsTab() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="glass-card p-5 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                     <p className="text-xs font-black uppercase tracking-widest text-emerald-400 mb-2">Total Earnings</p>
-                    <p className="text-3xl font-black text-white tabular-nums">
+                    <p className="text-3xl font-black text-[var(--text-primary)] tabular-nums">
                         {loading ? "—" : formatPrice(totalRevenue)}
                     </p>
                     <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest mt-2">
@@ -1684,7 +1684,7 @@ function EarningsTab() {
                 </div>
                 <div className="glass-card p-5 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                     <p className="text-xs font-black uppercase tracking-widest text-primary mb-2">Vehicles Sold</p>
-                    <p className="text-3xl font-black text-white tabular-nums">
+                    <p className="text-3xl font-black text-[var(--text-primary)] tabular-nums">
                         {loading ? "—" : totalSales}
                     </p>
                     <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest mt-2">
@@ -1693,7 +1693,7 @@ function EarningsTab() {
                 </div>
                 <div className="glass-card p-5 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                     <p className="text-xs font-black uppercase tracking-widest text-blue-400 mb-2">Avg. Sale Price</p>
-                    <p className="text-3xl font-black text-white tabular-nums">
+                    <p className="text-3xl font-black text-[var(--text-primary)] tabular-nums">
                         {loading ? "—" : formatPrice(avgSale)}
                     </p>
                     <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest mt-2">
@@ -1767,13 +1767,13 @@ function EarningsTab() {
                                                     )}
                                                 </div>
                                                 <div className="min-w-0">
-                                                    <p className="font-bold text-sm text-white truncate uppercase">{sale.listing.title}</p>
+                                                    <p className="font-bold text-sm text-[var(--text-primary)] truncate uppercase">{sale.listing.title}</p>
                                                     <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest">{sale.listing.vrm || "N/A"}</p>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-5">
-                                            <p className="text-sm font-bold text-gray-200 uppercase truncate">
+                                            <p className="text-sm font-bold text-[var(--text-secondary)] uppercase truncate">
                                                 {sale.buyer
                                                     ? `${sale.buyer.firstName} ${sale.buyer.lastName || ""}`.trim()
                                                     : (sale as any).buyerName || "Direct Buyer"}
@@ -1923,7 +1923,7 @@ function SettingsTab({ profile }: { profile: any }) {
                             value={oldPassword}
                             onChange={(e) => setOldPassword(e.target.value)}
                             required
-                            className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-primary text-white h-12" 
+                            className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-primary text-[var(--text-primary)] h-12" 
                         />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1935,7 +1935,7 @@ function SettingsTab({ profile }: { profile: any }) {
                                 value={newPassword}
                                 onChange={(e) => setNewPassword(e.target.value)}
                                 required
-                                className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-primary text-white h-12" 
+                                className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-primary text-[var(--text-primary)] h-12" 
                             />
                         </div>
                         <div className="space-y-2">
@@ -1946,7 +1946,7 @@ function SettingsTab({ profile }: { profile: any }) {
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
                                 required
-                                className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-primary text-white h-12" 
+                                className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-primary text-[var(--text-primary)] h-12" 
                             />
                         </div>
                     </div>
@@ -2029,7 +2029,7 @@ function SettingsTab({ profile }: { profile: any }) {
                             value={bankName}
                             onChange={e => setBankName(e.target.value)}
                             placeholder="e.g. John Smith"
-                            className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-amber-400 text-white h-12"
+                            className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-amber-400 text-[var(--text-primary)] h-12"
                         />
                     </div>
                     <div className="space-y-2">
@@ -2040,7 +2040,7 @@ function SettingsTab({ profile }: { profile: any }) {
                             onChange={e => setBankSortCode(e.target.value)}
                             placeholder="e.g. 00-00-00"
                             maxLength={8}
-                            className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-amber-400 text-white h-12 font-mono"
+                            className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-amber-400 text-[var(--text-primary)] h-12 font-mono"
                         />
                     </div>
                     <div className="space-y-2">
@@ -2051,7 +2051,7 @@ function SettingsTab({ profile }: { profile: any }) {
                             onChange={e => setBankAccountNumber(e.target.value)}
                             placeholder="e.g. 12345678"
                             maxLength={8}
-                            className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-amber-400 text-white h-12 font-mono"
+                            className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-amber-400 text-[var(--text-primary)] h-12 font-mono"
                         />
                     </div>
                 </div>

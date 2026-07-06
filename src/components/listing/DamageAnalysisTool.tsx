@@ -49,7 +49,7 @@ export function DamageAnalysisTool({ images, onComplete }: DamageAnalysisToolPro
           <Sparkles className="absolute inset-0 m-auto w-10 h-10 text-amber-400 animate-pulse" />
         </div>
         <div className="space-y-2">
-          <h3 className="text-xl font-bold text-white font-heading">AI Damage Assessment in Progress</h3>
+          <h3 className="text-xl font-bold text-[var(--text-primary)] font-heading">AI Damage Assessment in Progress</h3>
           <p className="text-[var(--text-muted)] max-w-md mx-auto">
             Our computer vision model is scanning your photos for scratches, scuffs, and dents using YOLOv8...
           </p>
@@ -68,7 +68,7 @@ export function DamageAnalysisTool({ images, onComplete }: DamageAnalysisToolPro
       <div className="space-y-6 animate-in fade-in zoom-in-95 duration-500">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <h3 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
               <CheckCircle2 className="text-emerald-400" size={18} />
               AI Analysis Complete
             </h3>
@@ -164,7 +164,7 @@ export function DamageAnalysisTool({ images, onComplete }: DamageAnalysisToolPro
                 <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl space-y-1">
                   <p className="text-xs font-bold text-amber-400 uppercase tracking-widest">AI Assessment</p>
                   <p className="text-sm text-[var(--text-secondary)]">
-                    Detected a <span className="text-white font-bold">{activePoint.size.toLowerCase()} {activePoint.type.toLowerCase()}</span> on the <span className="text-white font-bold">{activePoint.part.toLowerCase()}</span>.
+                    Detected a <span className="text-[var(--text-primary)] font-bold">{activePoint.size.toLowerCase()} {activePoint.type.toLowerCase()}</span> on the <span className="text-[var(--text-primary)] font-bold">{activePoint.part.toLowerCase()}</span>.
                   </p>
                 </div>
               </div>
@@ -186,7 +186,7 @@ export function DamageAnalysisTool({ images, onComplete }: DamageAnalysisToolPro
         <Sparkles className="text-primary w-8 h-8" />
       </div>
       <div className="space-y-2">
-        <h3 className="text-xl font-bold text-white font-heading">AI Damage Scanning</h3>
+        <h3 className="text-xl font-bold text-[var(--text-primary)] font-heading">AI Damage Scanning</h3>
         <p className="text-[var(--text-muted)] max-w-md mx-auto text-sm">
           Run our automated visual inspection tool to identify bodywork issues, plot them on a map, and categorize severity automatically.
         </p>

@@ -283,7 +283,7 @@ export default function AdminAnalyticsPage() {
                         <div className="flex items-center justify-between mb-4">
                             <div>
                                 <p className="text-xs font-black uppercase tracking-[0.2em] text-[var(--text-secondary)] mb-1 px-1">Website Traffic & Visitors</p>
-                                <p className="text-xs text-gray-700 px-1">Derived from on-site event tracking. Geo data enriches over time.</p>
+                                <p className="text-xs text-[var(--text-muted)] px-1">Derived from on-site event tracking. Geo data enriches over time.</p>
                             </div>
                         </div>
 

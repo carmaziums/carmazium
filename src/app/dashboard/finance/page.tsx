@@ -115,10 +115,10 @@ export default function FinanceDashboard() {
                     {/* Recent Applications Table */}
                     <div className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                         <div className="p-6 border-b border-[var(--border-default)] flex justify-between items-center bg-[var(--bg-card)]">
-                            <h2 className="text-xl font-black font-heading text-white uppercase tracking-tight flex items-center gap-2">
+                            <h2 className="text-xl font-black font-heading text-[var(--text-primary)] uppercase tracking-tight flex items-center gap-2">
                                 <FileText className="text-primary" /> Recent Applications
                             </h2>
-                            <Link href="/dashboard/finance/applications" className="text-primary hover:text-white text-sm font-black transition-colors uppercase">View All</Link>
+                            <Link href="/dashboard/finance/applications" className="text-primary hover:text-primary dark:hover:text-white text-sm font-black transition-colors uppercase">View All</Link>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
@@ -132,7 +132,7 @@ export default function FinanceDashboard() {
                                         <th className="px-6 py-4 text-right">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-[var(--border-default)] text-white/80">
+                                <tbody className="divide-y divide-[var(--border-default)] text-[var(--text-secondary)]">
                                     {loading ? (
                                         <tr>
                                             <td colSpan={6} className="px-6 py-12 text-center">

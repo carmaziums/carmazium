@@ -94,7 +94,7 @@ export default function PutOnAuctionPage() {
                     {/* Back */}
                     <Link
                         href="/dashboard/dealer/inventory"
-                        className="inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-white transition-colors"
+                        className="inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors"
                     >
                         <ArrowLeft size={15} /> Back to Inventory
                     </Link>
@@ -105,7 +105,7 @@ export default function PutOnAuctionPage() {
                             <Gavel size={18} className="text-emerald-400" />
                         </div>
                         <div>
-                            <h1 className="text-xl font-black text-white uppercase tracking-tight">Put on Auction</h1>
+                            <h1 className="text-xl font-black text-[var(--text-primary)] uppercase tracking-tight">Put on Auction</h1>
                             <p className="text-xs text-[var(--text-muted)]">Schedule a live auction for your vehicle</p>
                         </div>
                     </div>
@@ -147,14 +147,14 @@ export default function PutOnAuctionPage() {
                                     )}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="font-black text-white text-base truncate">{listing.title}</p>
+                                    <p className="font-black text-[var(--text-primary)] text-base truncate">{listing.title}</p>
                                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                                         <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest px-2 py-0.5 bg-[var(--bg-card)] rounded border border-[var(--border-default)]">{listing.vrm || "PRIVATE"}</span>
                                         <span className="text-xs font-bold text-primary italic uppercase tracking-widest">{listing.make}</span>
                                         {listing.mileage && <span className="text-xs text-gray-600 font-bold">• {listing.mileage.toLocaleString()} mi</span>}
                                         {listing.year && <span className="text-xs text-gray-600 font-bold">• {listing.year}</span>}
                                     </div>
-                                    <p className="text-sm font-black text-white mt-1">
+                                    <p className="text-sm font-black text-[var(--text-primary)] mt-1">
                                         Retail price: £{listing.price?.toLocaleString()}
                                     </p>
                                 </div>
@@ -280,7 +280,7 @@ export default function PutOnAuctionPage() {
 
                                     <div className="flex gap-3 pt-1">
                                         <Link href="/dashboard/dealer/inventory" className="flex-1">
-                                            <Button variant="outline" type="button" className="w-full border-[var(--border-default)] text-[var(--text-muted)] hover:text-white h-11">
+                                            <Button variant="outline" type="button" className="w-full border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white h-11">
                                                 Cancel
                                             </Button>
                                         </Link>

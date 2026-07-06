@@ -223,7 +223,7 @@ export default function EarningsPage() {
                                                             <UserIcon size={14} />
                                                         </div>
                                                         <div className="min-w-0">
-                                                            <p className="text-sm font-bold text-gray-200 truncate">
+                                                            <p className="text-sm font-bold text-[var(--text-primary)] truncate">
                                                                 {sale.buyer
                                                                     ? `${sale.buyer.firstName} ${sale.buyer.lastName || ""}`.trim()
                                                                     : (sale as any).buyerName || "Private Buyer"}

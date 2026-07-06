@@ -268,7 +268,7 @@ export default function DealerDashboard() {
                             <div className="flex items-center gap-3">
                                 <div className="p-2.5 bg-primary/10 border border-primary/20 rounded-xl"><Car size={20} className="text-primary group-hover:scale-110 transition-transform" /></div>
                                 <div>
-                                    <p className="font-bold text-white text-sm relative">Inventory<span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all"></span></p>
+                                    <p className="font-bold text-[var(--text-primary)] text-sm relative">Inventory<span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all"></span></p>
                                     <p className="text-[var(--text-muted)] text-xs uppercase font-bold tracking-wider mt-0.5">Manage Stock</p>
                                 </div>
                             </div>
@@ -277,7 +277,7 @@ export default function DealerDashboard() {
                             <div className="flex items-center gap-3">
                                 <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl"><Kanban size={20} className="text-amber-400 group-hover:scale-110 transition-transform" /></div>
                                 <div>
-                                     <p className="font-bold text-white text-sm relative">Leads<span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-amber-400 group-hover:w-full transition-all"></span></p>
+                                     <p className="font-bold text-[var(--text-primary)] text-sm relative">Leads<span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-amber-400 group-hover:w-full transition-all"></span></p>
                                      <p className="text-[var(--text-muted)] text-xs uppercase font-bold tracking-wider mt-0.5">Sales Pipeline</p>
                                 </div>
                             </div>

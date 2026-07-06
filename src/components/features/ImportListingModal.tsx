@@ -183,11 +183,11 @@ export function ImportListingModal({ onClose, onImported }: Props) {
                             <Link2 size={18} className="text-primary" />
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-white font-heading">Import Listing</h2>
+                            <h2 className="text-lg font-bold text-[var(--text-primary)] font-heading">Import Listing</h2>
                             <p className="text-xs text-[var(--text-muted)]">{stepLabels[step]}</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="text-[var(--text-muted)] hover:text-white transition-colors">
+                    <button onClick={onClose} className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors">
                         <X size={20} />
                     </button>
                 </div>
@@ -293,7 +293,7 @@ export function ImportListingModal({ onClose, onImported }: Props) {
                                 ].filter(f => f.value).map(({ label, value }) => (
                                     <div key={label} className="bg-[var(--bg-input)] rounded-lg px-3 py-2">
                                         <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">{label}</p>
-                                        <p className="text-sm text-white font-medium">{String(value)}</p>
+                                        <p className="text-sm text-[var(--text-primary)] font-medium">{String(value)}</p>
                                     </div>
                                 ))}
                             </div>
@@ -385,7 +385,7 @@ export function ImportListingModal({ onClose, onImported }: Props) {
                                             <div className="flex items-center justify-between mb-2">
                                                 <div className="flex items-center gap-2">
                                                     <Icon size={16} className={PLAN_ICON_COLOUR[plan.tier]} />
-                                                    <span className="font-bold text-white text-sm">{plan.label}</span>
+                                                    <span className="font-bold text-[var(--text-primary)] text-sm">{plan.label}</span>
                                                 </div>
                                                 <div className="flex items-baseline gap-0.5">
                                                     <span className="text-xl font-black">£{plan.price}</span>

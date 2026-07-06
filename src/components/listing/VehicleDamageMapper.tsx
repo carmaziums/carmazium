@@ -205,7 +205,7 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
       <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
         <p className="text-xs font-bold text-blue-300 mb-0.5">How to mark damage</p>
         <p className="text-xs text-[var(--text-muted)]">
-          Rotate the 3D model to inspect all angles. Click any <span className="text-white font-bold">+</span> hotspot
+          Rotate the 3D model to inspect all angles. Click any <span className="text-[var(--text-primary)] font-bold">+</span> hotspot
           on the vehicle to mark a damage zone, then describe it and optionally add a photo.
           You can also click any zone in the list below the model.
         </p>
@@ -346,7 +346,7 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <AlertTriangle size={15} className="text-primary" />
-              <p className="font-bold text-white text-sm">
+              <p className="font-bold text-[var(--text-primary)] text-sm">
                 Marking: <span className="text-primary">{pendingZone.label}</span>
               </p>
             </div>
@@ -385,7 +385,7 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-white/20 text-[var(--text-muted)] hover:border-white/40 hover:text-white transition-all text-sm"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-white/20 text-[var(--text-muted)] hover:border-white/40 hover:text-[var(--text-primary)] transition-all text-sm"
               >
                 {uploading
                   ? <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />

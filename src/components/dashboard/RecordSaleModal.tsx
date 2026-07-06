@@ -54,7 +54,7 @@ export function RecordSaleModal({ listing, offer, onClose, onSuccess }: RecordSa
                     <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-emerald-500/20">
                         <CheckCircle2 size={40} className="text-emerald-400" />
                     </div>
-                    <h2 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Sale Recorded!</h2>
+                    <h2 className="text-2xl font-black text-[var(--text-primary)] mb-2 uppercase tracking-tight">Sale Recorded!</h2>
                     <p className="text-[var(--text-muted)] text-sm">Revenue tracked and listing updated to SOLD.</p>
                 </div>
             </div>
@@ -66,7 +66,7 @@ export function RecordSaleModal({ listing, offer, onClose, onSuccess }: RecordSa
             <div className="bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-2xl p-6 w-full max-w-lg shadow-2xl relative">
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 text-[var(--text-muted)] hover:text-white transition-colors"
+                    className="absolute top-4 right-4 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
                 >
                     <X size={20} />
                 </button>
@@ -76,7 +76,7 @@ export function RecordSaleModal({ listing, offer, onClose, onSuccess }: RecordSa
                         <DollarSign size={24} className="text-primary" />
                     </div>
                     <div>
-                        <h2 className="text-xl font-black text-white uppercase tracking-tight">Finalize Sale</h2>
+                        <h2 className="text-xl font-black text-[var(--text-primary)] uppercase tracking-tight">Finalize Sale</h2>
                         <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest">{listing.title}</p>
                     </div>
                 </div>
@@ -92,7 +92,7 @@ export function RecordSaleModal({ listing, offer, onClose, onSuccess }: RecordSa
                                 type="number"
                                 value={soldPrice}
                                 onChange={(e) => setSoldPrice(e.target.value)}
-                                className="pl-8 bg-[var(--bg-card)] border-[var(--border-default)] focus:border-primary text-white h-14 text-lg font-black"
+                                className="pl-8 bg-[var(--bg-card)] border-[var(--border-default)] focus:border-primary text-[var(--text-primary)] h-14 text-lg font-black"
                                 required
                             />
                         </div>
@@ -109,7 +109,7 @@ export function RecordSaleModal({ listing, offer, onClose, onSuccess }: RecordSa
                             placeholder="e.g. John Smith"
                             value={buyerName}
                             onChange={(e) => setBuyerName(e.target.value)}
-                            className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-primary text-white h-12"
+                            className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-primary text-[var(--text-primary)] h-12"
                         />
                     </div>
 
@@ -122,7 +122,7 @@ export function RecordSaleModal({ listing, offer, onClose, onSuccess }: RecordSa
                             placeholder="buyer@example.com"
                             value={buyerEmail}
                             onChange={(e) => setBuyerEmail(e.target.value)}
-                            className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-primary text-white h-12"
+                            className="bg-[var(--bg-card)] border-[var(--border-default)] focus:border-primary text-[var(--text-primary)] h-12"
                         />
                     </div>
 

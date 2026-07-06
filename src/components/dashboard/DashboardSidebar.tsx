@@ -361,7 +361,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                         <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--border-default)' }}>
                             <Link
                                 href="/dashboard/admin"
-                                className="flex items-center gap-3 px-4 py-2.5 text-blue-500 dark:text-blue-400 hover:text-white hover:bg-blue-500/10 rounded-lg transition-all text-sm font-semibold"
+                                className="flex items-center gap-3 px-4 py-2.5 text-blue-500 dark:text-blue-400 dark:hover:text-white hover:bg-blue-500/10 rounded-lg transition-all text-sm font-semibold"
                             >
                                 <Shield size={18} /> Admin Panel
                             </Link>

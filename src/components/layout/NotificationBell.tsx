@@ -234,7 +234,7 @@ export function NotificationBell() {
                     <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-default)]">
                         <div className="flex items-center gap-2">
                             <Bell size={14} className="text-primary" />
-                            <span className="font-bold text-white text-sm">Notifications</span>
+                            <span className="font-bold text-[var(--text-primary)] text-sm">Notifications</span>
                             {unreadNotifs > 0 && (
                                 <span className="bg-primary/20 text-primary text-[10px] font-black px-2 py-0.5 rounded-full">
                                     {unreadNotifs} new
@@ -244,7 +244,7 @@ export function NotificationBell() {
                         {unreadNotifs > 0 && (
                             <button
                                 onClick={handleMarkAll}
-                                className="flex items-center gap-1 text-[10px] text-[var(--text-muted)] hover:text-white transition-colors font-bold uppercase tracking-widest"
+                                className="flex items-center gap-1 text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors font-bold uppercase tracking-widest"
                             >
                                 <Check size={10} /> Mark all read
                             </button>
@@ -279,7 +279,7 @@ export function NotificationBell() {
                                             {getIcon(n.type)}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className={`text-xs font-bold mb-0.5 ${!n.isRead ? 'text-white' : 'text-[var(--text-secondary)]'}`}>
+                                            <p className={`text-xs font-bold mb-0.5 ${!n.isRead ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>
                                                 {n.title}
                                             </p>
                                             <p className="text-[11px] text-[var(--text-muted)] leading-relaxed line-clamp-2">{n.body ?? n.message}</p>
@@ -299,7 +299,7 @@ export function NotificationBell() {
                         <Link
                             href="/dashboard/user?tab=overview"
                             onClick={() => setOpen(false)}
-                            className="text-[11px] text-[var(--text-muted)] hover:text-white transition-colors font-bold uppercase tracking-widest flex items-center justify-center gap-1"
+                            className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors font-bold uppercase tracking-widest flex items-center justify-center gap-1"
                         >
                             View Dashboard →
                         </Link>

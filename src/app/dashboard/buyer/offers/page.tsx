@@ -251,7 +251,7 @@ function DeliveryRequestForm({ listing, onSuccess }: { listing: DeliveryFormList
                 <button
                     type="button"
                     onClick={() => setShowForm(false)}
-                    className="text-xs text-[var(--text-muted)] hover:text-white transition-colors"
+                    className="text-xs text-[var(--text-muted)] dark:hover:text-white transition-colors"
                 >
                     Cancel
                 </button>
@@ -552,12 +552,12 @@ export default function BuyerOffersPage() {
                                                                 <button
                                                                     onClick={() => handleMessageSeller(offer.listing?.sellerId, offer.listing?.id || "")}
                                                                     disabled={startingChat === offer.listing?.id}
-                                                                    className="inline-flex items-center justify-center h-10 px-3 text-sm font-bold text-blue-400 hover:text-white hover:bg-white/10 rounded-xl transition-all hover:scale-105 disabled:opacity-50"
+                                                                    className="inline-flex items-center justify-center h-10 px-3 text-sm font-bold text-blue-400 dark:hover:text-white hover:bg-white/10 rounded-xl transition-all hover:scale-105 disabled:opacity-50"
                                                                     title="Message Seller"
                                                                 >
                                                                     {startingChat === offer.listing?.id ? <Loader2 size={16} className="animate-spin" /> : "Message"}
                                                                 </button>
-                                                                <Link href={`/buy-cars/${slug}`} className="inline-flex items-center justify-center w-10 h-10 text-[var(--text-muted)] hover:text-white hover:bg-white/10 rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]" title="View Listing">
+                                                                <Link href={`/buy-cars/${slug}`} className="inline-flex items-center justify-center w-10 h-10 text-[var(--text-muted)] dark:hover:text-white hover:bg-white/10 rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]" title="View Listing">
                                                                     <Eye size={18} />
                                                                 </Link>
                                                             </div>
@@ -574,7 +574,7 @@ export default function BuyerOffersPage() {
                                                                         {deliveryReq.status === 'PENDING' && (
                                                                             <button
                                                                                 onClick={() => handleCancelDelivery(deliveryReq.id)}
-                                                                                className="text-xs text-[var(--text-muted)] hover:text-white transition-colors underline"
+                                                                                className="text-xs text-[var(--text-muted)] dark:hover:text-white transition-colors underline"
                                                                             >
                                                                                 Cancel request
                                                                             </button>

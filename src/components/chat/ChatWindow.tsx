@@ -205,7 +205,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
             {/* Header */}
             <div className="flex items-center gap-3 p-4 border-b border-[var(--border-default)]">
                 {onBack && (
-                    <button onClick={onBack} className="text-[var(--text-muted)] hover:text-white transition-colors">
+                    <button onClick={onBack} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
                         <ArrowLeft size={20} />
                     </button>
                 )}

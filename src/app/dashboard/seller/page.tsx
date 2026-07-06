@@ -134,8 +134,8 @@ export default function SellerDashboard() {
                     {/* Active Listings Table */}
                     <div className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                         <div className="p-6 border-b border-[var(--border-default)] flex justify-between items-center bg-[var(--bg-card)]">
-                            <h2 className="text-xl font-black font-heading text-white uppercase tracking-tight">Your Inventory</h2>
-                            <Link href="/dashboard/seller/listings" className="text-primary hover:text-white text-sm font-black transition-colors uppercase">Manage All</Link>
+                            <h2 className="text-xl font-black font-heading text-[var(--text-primary)] uppercase tracking-tight">Your Inventory</h2>
+                            <Link href="/dashboard/seller/listings" className="text-primary hover:text-primary dark:hover:text-white text-sm font-black transition-colors uppercase">Manage All</Link>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
@@ -148,7 +148,7 @@ export default function SellerDashboard() {
                                         <th className="px-6 py-4 text-right">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-[var(--border-default)] text-white/80">
+                                <tbody className="divide-y divide-[var(--border-default)] text-[var(--text-secondary)]">
                                     {loading ? (
                                         <tr>
                                             <td colSpan={5} className="px-6 py-8 text-center">
@@ -186,7 +186,7 @@ export default function SellerDashboard() {
                                                 <td className="px-6 py-4 text-right font-bold">{formatPrice(listing.price)}</td>
                                                 <td className="px-6 py-4 text-center text-[var(--text-muted)]">{listing.viewCount || 0}</td>
                                                 <td className="px-6 py-4 text-right">
-                                                    <Link href={`/buy-cars/${listing.slug}`} className="text-primary hover:text-white text-xs font-bold transition-colors">
+                                                    <Link href={`/buy-cars/${listing.slug}`} className="text-primary hover:text-primary dark:hover:text-white text-xs font-bold transition-colors">
                                                         View
                                                     </Link>
                                                 </td>

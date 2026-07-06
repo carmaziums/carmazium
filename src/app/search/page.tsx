@@ -633,7 +633,7 @@ function SearchPageContent() {
                                         return (
                                             <button key={key} type="button"
                                                 onClick={() => set('bodyType', filters.bodyType === key ? '' : key)}
-                                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${isActive ? 'bg-primary/15 text-primary border border-primary/30' : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-gray-200 border border-transparent'}`}
+                                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${isActive ? 'bg-primary/15 text-primary border border-primary/30' : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-[var(--text-secondary)] dark:hover:text-white border border-transparent'}`}
                                             >
                                                 <Icon className="w-8 h-4 shrink-0" />{BODY_TYPE_LABELS[key]}
                                             </button>
@@ -670,7 +670,7 @@ function SearchPageContent() {
                                                 <button
                                                     type="button"
                                                     onClick={() => set('model', '')}
-                                                    className={`w-full text-left px-3 py-2 rounded text-sm transition-all ${!filters.model ? 'bg-primary/15 text-primary font-semibold' : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-gray-200'}`}
+                                                    className={`w-full text-left px-3 py-2 rounded text-sm transition-all ${!filters.model ? 'bg-primary/15 text-primary font-semibold' : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-[var(--text-secondary)] dark:hover:text-white'}`}
                                                 >
                                                     All {filters.make} models
                                                 </button>
@@ -679,7 +679,7 @@ function SearchPageContent() {
                                                         key={m}
                                                         type="button"
                                                         onClick={() => set('model', m)}
-                                                        className={`w-full text-left px-3 py-2 rounded text-sm transition-all ${filters.model === m ? 'bg-primary/15 text-primary font-semibold' : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-gray-200'}`}
+                                                        className={`w-full text-left px-3 py-2 rounded text-sm transition-all ${filters.model === m ? 'bg-primary/15 text-primary font-semibold' : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-[var(--text-secondary)] dark:hover:text-white'}`}
                                                     >
                                                         {m}
                                                     </button>
@@ -815,7 +815,7 @@ function SearchPageContent() {
                                                     ? filters.conditions.filter(c => c !== opt.value)
                                                     : [...filters.conditions, opt.value]
                                                 )}
-                                                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all cursor-pointer flex items-center gap-2 ${isActive ? 'bg-primary/15 text-primary border border-primary/30' : isCat ? 'text-amber-500/70 hover:bg-amber-500/10 border border-transparent' : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-gray-200 border border-transparent'}`}
+                                                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all cursor-pointer flex items-center gap-2 ${isActive ? 'bg-primary/15 text-primary border border-primary/30' : isCat ? 'text-amber-500/70 hover:bg-amber-500/10 border border-transparent' : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-[var(--text-secondary)] dark:hover:text-white border border-transparent'}`}
                                             >
                                                 <span className={`w-4 h-4 shrink-0 rounded border flex items-center justify-center ${isActive ? 'bg-primary border-primary' : 'border-white/20'}`}>
                                                     {isActive && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}

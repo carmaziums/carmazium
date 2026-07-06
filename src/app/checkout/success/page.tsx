@@ -104,7 +104,7 @@ function CheckoutSuccessContent() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
                 >
-                    <h1 className="text-3xl md:text-4xl font-heading font-bold">
+                    <h1 className="text-3xl md:text-4xl font-heading font-bold text-white">
                         {sessionData?.metadata?.type === 'LISTING_FEE'
                             ? 'Your Listing is Live!'
                             : sessionData?.metadata?.type === 'COMMISSION'
@@ -113,7 +113,7 @@ function CheckoutSuccessContent() {
                             ? 'Verification Fee Paid!'
                             : 'Payment Successful!'}
                     </h1>
-                    <p className="mt-3 text-lg" style={{ color: 'var(--text-muted)' }}>
+                    <p className="mt-3 text-lg text-gray-300">
                         {sessionData?.metadata?.type === 'LISTING_FEE'
                             ? 'Your vehicle is now published and visible to buyers.'
                             : sessionData?.metadata?.type === 'COMMISSION'
