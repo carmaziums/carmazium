@@ -486,39 +486,43 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
       </section>
 
       {/* Apply as a Dealer */}
-      <section className="py-24" style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border-default)', borderBottom: '1px solid var(--border-default)' }}>
+      <section className="py-24">
         <div className="container mx-auto px-5">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="max-w-4xl mx-auto text-center"
+            className="max-w-4xl mx-auto rounded-3xl border p-10 md:p-14 text-center relative overflow-hidden shadow-2xl"
+            style={{ background: 'var(--bg-card)', borderColor: 'var(--border-default)' }}
           >
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary mb-6">
-              <Building2 size={32} />
+            <div className="absolute top-0 right-0 w-72 h-72 bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
+            <div className="relative z-10">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary mb-6">
+                <Building2 size={32} />
+              </div>
+              <h2 className="text-3xl md:text-4xl font-bold font-heading mb-4">Are You a Car Dealer?</h2>
+              <p className="text-lg max-w-2xl mx-auto mb-10" style={{ color: 'var(--text-muted)' }}>
+                Join CarMazium as a verified dealer and get access to bulk inventory tools, a dedicated CRM, lead management, and priority placement for your listings.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-10 text-left">
+                {[
+                  { icon: FileText, title: "Bulk Listing Tools", desc: "Import and manage your entire inventory in minutes." },
+                  { icon: Users, title: "Lead & CRM Suite", desc: "Track buyer enquiries and manage relationships in one place." },
+                  { icon: Star, title: "Priority Placement", desc: "Get your listings featured in front of serious buyers." },
+                ].map((f, i) => (
+                  <div key={i} className="p-5 rounded-2xl border bg-primary/5 border-primary/10">
+                    <f.icon className="text-primary mb-3" size={22} />
+                    <h3 className="font-bold mb-1">{f.title}</h3>
+                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{f.desc}</p>
+                  </div>
+                ))}
+              </div>
+              <Link href="/auth/signup?role=DEALER">
+                <Button size="lg" shape="pill" className="px-10 py-6 text-lg shadow-neon hover:scale-105 transition-transform">
+                  Apply as a Dealer <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold font-heading mb-4">Are You a Car Dealer?</h2>
-            <p className="text-lg max-w-2xl mx-auto mb-10" style={{ color: 'var(--text-muted)' }}>
-              Join CarMazium as a verified dealer and get access to bulk inventory tools, a dedicated CRM, lead management, and priority placement for your listings.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10 text-left">
-              {[
-                { icon: FileText, title: "Bulk Listing Tools", desc: "Import and manage your entire inventory in minutes." },
-                { icon: Users, title: "Lead & CRM Suite", desc: "Track buyer enquiries and manage relationships in one place." },
-                { icon: Star, title: "Priority Placement", desc: "Get your listings featured in front of serious buyers." },
-              ].map((f, i) => (
-                <div key={i} className="p-5 rounded-2xl border" style={{ background: 'var(--bg-input)', borderColor: 'var(--border-default)' }}>
-                  <f.icon className="text-primary mb-3" size={22} />
-                  <h3 className="font-bold mb-1">{f.title}</h3>
-                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{f.desc}</p>
-                </div>
-              ))}
-            </div>
-            <Link href="/auth/signup?role=DEALER">
-              <Button size="lg" shape="pill" className="px-10 py-6 text-lg shadow-neon">
-                Apply as a Dealer <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
           </motion.div>
         </div>
       </section>
