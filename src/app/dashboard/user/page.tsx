@@ -553,19 +553,19 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                     onImported={() => { setShowImportModal(false); fetchListings() }}
                 />
             )}
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                 <h2 className="text-2xl font-black font-heading uppercase tracking-tight">My Inventory</h2>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 w-full sm:w-auto">
                     <Button
                         variant="outline"
                         size="sm"
-                        className="flex items-center gap-2 h-10 border-[var(--border-default)] text-[var(--text-secondary)] hover:text-primary dark:hover:text-white"
+                        className="flex items-center justify-center gap-2 h-10 w-full sm:w-auto border-[var(--border-default)] text-[var(--text-secondary)] hover:text-primary dark:hover:text-white"
                         onClick={() => setShowImportModal(true)}
                     >
                         <ExternalLink size={16} /> Import Listing
                     </Button>
-                    <Link href="/sell">
-                        <Button className="flex items-center gap-2 h-10 shadow-neon-small" size="sm">
+                    <Link href="/sell" className="w-full sm:w-auto">
+                        <Button className="flex items-center justify-center gap-2 h-10 w-full shadow-neon-small" size="sm">
                             <PlusCircle size={18} /> New Listing
                         </Button>
                     </Link>

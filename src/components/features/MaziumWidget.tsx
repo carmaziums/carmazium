@@ -192,10 +192,10 @@ export function MaziumWidget() {
             {/* Chat Window */}
             <div
                 className={cn(
-                    "rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 ease-in-out border mb-4 w-[min(380px,calc(100vw_-_2rem))]",
+                    "rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 ease-in-out border",
                     isOpen
-                        ? "h-[min(540px,80vh)] opacity-100 translate-y-0"
-                        : "h-0 opacity-0 translate-y-10 pointer-events-none"
+                        ? "w-[min(380px,calc(100vw_-_2rem))] h-[min(540px,80vh)] opacity-100 translate-y-0 mb-4"
+                        : "w-0 h-0 opacity-0 translate-y-10 pointer-events-none mb-0"
                 )}
                 style={{
                     background: "var(--bg-dropdown)",
