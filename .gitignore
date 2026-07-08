@@ -34,6 +34,8 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
+env.txt
+**/env.txt
 
 # EAS / app store credentials — never commit real service-account keys or
 # signing secrets (eas.json itself only holds placeholder IDs, safe to commit)
