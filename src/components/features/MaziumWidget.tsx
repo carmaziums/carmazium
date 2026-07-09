@@ -192,9 +192,9 @@ export function MaziumWidget() {
             {/* Chat Window */}
             <div
                 className={cn(
-                    "rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 ease-in-out border",
+                    "rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 ease-in-out border flex flex-col",
                     isOpen
-                        ? "w-[min(380px,calc(100vw_-_2rem))] h-[min(540px,80vh)] opacity-100 translate-y-0 mb-4"
+                        ? "w-[min(340px,calc(100vw_-_2rem))] h-[min(540px,calc(100dvh_-_16rem_-_env(safe-area-inset-bottom)))] lg:h-[min(540px,calc(100dvh_-_16.5rem))] opacity-100 translate-y-0 mb-4"
                         : "w-0 h-0 opacity-0 translate-y-10 pointer-events-none mb-0"
                 )}
                 style={{
@@ -203,7 +203,7 @@ export function MaziumWidget() {
                 }}
             >
                 {/* Header */}
-                <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-4 text-white flex justify-between items-center">
+                <div className="shrink-0 bg-gradient-to-r from-slate-900 to-slate-800 p-4 text-white flex justify-between items-center">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full overflow-hidden relative">
                             <Image src="/assets/images/mazium-bot.jpeg" alt="Mazium" width={40} height={40} className="w-full h-full object-cover" />
@@ -225,7 +225,7 @@ export function MaziumWidget() {
                 </div>
 
                 {/* Messages */}
-                <div className="h-[340px] overflow-y-auto p-4 space-y-4 custom-scrollbar"
+                <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 custom-scrollbar"
                     style={{ background: "var(--bg-card)" }}
                 >
                     {messages.map((msg, i) => (
@@ -324,7 +324,7 @@ export function MaziumWidget() {
                 </div>
 
                 {/* Quick-Reply Chips */}
-                <div className="px-3 py-2 flex gap-2 overflow-x-auto border-t custom-scrollbar"
+                <div className="shrink-0 px-3 py-2 flex gap-2 overflow-x-auto border-t custom-scrollbar"
                     style={{ borderColor: "var(--border-default)" }}
                 >
                     {quickReplies.map((chip) => (
@@ -345,7 +345,7 @@ export function MaziumWidget() {
 
                 {/* Input */}
                 <div
-                    className="p-3 flex gap-2 border-t"
+                    className="shrink-0 p-3 flex gap-2 border-t"
                     style={{ borderColor: "var(--border-default)" }}
                 >
                     <Input
@@ -385,7 +385,7 @@ export function MaziumWidget() {
                             scale: 0.9,
                             transition: { duration: 0.2 },
                         }}
-                        className="absolute bottom-20 right-0 px-5 py-3 rounded-2xl shadow-xl border flex items-center gap-3 z-40 mb-2 origin-bottom-right max-w-[calc(100vw_-_2rem)]"
+                        className="absolute bottom-20 right-0 px-5 py-3 rounded-2xl shadow-xl border flex items-center gap-3 z-40 mb-2 origin-bottom-right w-max max-w-[min(260px,calc(100vw_-_2rem))]"
                         style={{
                             background: "var(--bg-dropdown)",
                             borderColor: "var(--border-default)",

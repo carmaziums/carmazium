@@ -63,7 +63,7 @@ export function Header() {
                     transform: 'translate3d(0,0,0)' 
                 }} 
             />
-            <div className="container mx-auto px-6 flex items-center justify-between h-20 relative z-10">
+            <div className="container mx-auto px-6 flex items-center justify-between gap-6 h-20 relative z-10">
 
                 {/* Logo Area */}
                 <div className="flex-1 flex items-center justify-start gap-6">
@@ -118,7 +118,7 @@ export function Header() {
 
                 {/* Action Buttons */}
                 <div className="flex-1 flex items-center justify-end gap-2 lg:gap-3">
-                    <div className={user ? "hidden lg:block" : "block"}>
+                    <div className="hidden lg:block">
                         <ThemeToggle />
                     </div>
 
@@ -236,6 +236,11 @@ export function Header() {
                     }}
                 >
                     <nav className="flex flex-col p-6 gap-4 text-center">
+                        {!user && (
+                            <div className="flex items-center justify-center pb-2">
+                                <ThemeToggle />
+                            </div>
+                        )}
                         {navLinks.map((link) => (
                             <Link
                                 key={link.name}
