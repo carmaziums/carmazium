@@ -77,6 +77,24 @@ Either path can also publish JS-only fixes (no new native module) via `eas updat
 
 ## Known issues / backend follow-ups (2026-07-12)
 
+- **RESOLVED 2026-07-12 (damage zone-id web-parity verification,
+  `mobile-audit-plan.md` Stage 3 / `mobile-production-readiness-plan.md`):** `damageZones.ts`
+  used to carry a comment saying 23 of 33 zone ids were "UNVERIFIED best-effort guesses"
+  because the web repo wasn't reachable from whatever machine wrote that comment (the
+  `D:\carmazium` path issue, since fixed). Diffed all 33 ids programmatically against the
+  web's authoritative `ALL_ZONES` (`src/components/listing/ThreeDVehicleViewer.tsx`) — **14
+  were actually wrong** (not the 23 flagged as suspect; most of those 23 turned out fine).
+  Corrected: `headlight-ns/-os`→`ns-headlight`/`os-headlight`, `front-wing-ns/-os`→`nsf-wing`/
+  `osf-wing`, `windscreen-rear`→`rear-windshield`, `sill-ns/-os`→`ns-sill`/`os-sill`,
+  `rear-qtr-ns/-os`→`nsr-quarter`/`osr-quarter`, `rear-light-ns/-os`→`ns-rear-light`/
+  `os-rear-light`, `drivers-seat`→`driver-seat`, `passengers-seat`→`passenger-seat`,
+  `rear-seats`→`rear-seat`. Confirmed via repo-wide search that nothing else hardcodes the old
+  (wrong) strings, so this is fully contained to `damageZones.ts`. **Low, unverified risk:**
+  if a live listing already saved a damage record under one of the 14 wrong ids, it'll now
+  silently fail to match a known zone (handled gracefully by `DamageMapViewer.tsx`'s existing
+  defensive guard — dropped pin, not a crash) — the file's own history suggests this is
+  unlikely but wasn't re-checked against live data this session.
+
 - **RESOLVED 2026-07-12 (`SellerAuctionsScreen.tsx` BottomSheet migration,
   `mobile-production-readiness-plan.md` / `mobile-ui-ux-plan.md` Stage 3):** the schedule-auction
   create modal (2-step wizard, listing picker + auction settings form) was the last remaining
