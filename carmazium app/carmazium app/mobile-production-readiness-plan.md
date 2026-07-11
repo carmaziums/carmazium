@@ -8,7 +8,7 @@ This document does not repeat content already well-covered in the four existing 
 > **STATUS UPDATE — 2026-07-12.** Between this plan being written (2026-07-11) and the next work session, nearly the entire Section 2 roadmap below (Stages 1–11, i.e. all of `mobile-audit-plan.md` and `mobile-ui-ux-plan.md`) was executed — verified by direct code inspection, not assumption. See the status banners added to `mobile-audit-plan.md` and `mobile-ui-ux-plan.md` for the per-stage breakdown. In short: **only these remain open** as of 2026-07-12:
 > - Damage zone-id web-parity verification (`mobile-audit-plan.md` Stage 3, part 1 — the defensive guard is done, the id-matching against web isn't).
 > - `SellerAuctionsScreen.tsx`'s schedule-auction modal, still hand-rolled (`mobile-ui-ux-plan.md` Stage 3 straggler).
-> - **F2** below (payment amount trust hardening) — deliberately deferred, see Stage 0.
+> - **F2 — DONE as of 2026-07-12.** `PaymentsService.createPaymentSheet` now re-derives `amount` server-side per `type` (`FULL_PAYMENT` → `listing.price`, `LISTING_FEE` → `LISTING_FEES[badgeTier]`, `COMMISSION` → `AUCTION_BUYER_FEE`, `DEPOSIT` → a new `DEPOSIT_AMOUNT = 500` constant matching the web checkout page's own constant) and only logs a mismatch warning if the client's `amount` disagrees — it's never used for the actual charge. Covered by 5 new unit tests. **Newly discovered while fixing this:** `PaymentsService.createCheckoutSession` (the sibling method behind the web's generic `/payments/checkout` Stripe Checkout Session endpoint) has the **identical** unfixed vulnerability — it also trusts a raw client-supplied `amount` for `DEPOSIT`/`FULL_PAYMENT`/`COMMISSION` with zero server-side re-derivation. Out of scope for this fix (F2 was scoped to the mobile-only Payment Sheet endpoint) but it's the same class of bug on the web-facing flow — worth its own follow-up.
 > - **F3 — DONE as of 2026-07-12.** `DealerKYCScreen.tsx` now calls `POST /dealers/kyc/checkout` after form submission and opens the returned Stripe Checkout URL in `StripeCheckoutModal`; the `isPending` gate now requires `stripeChargedAt`; the retired manual-bank-transfer fields/copy (`paymentReference`, `paymentScreenshot`) were removed to match the web app's `KycOverlayForm.tsx`, which has already fully retired them. See `CONTEXT.md`'s "Known issues" for the full writeup. **Not yet on-device verified** — do a real £1 payment test before considering this production-ready.
 >
 > **Stage 0 (F1, F2, F5) status: F1 and F5 are DONE, F2 deliberately deferred.** See the Stage 0 section below for exactly what shipped (`backend/src/payments/dto/create-payment-intent.dto.ts`, `payments.controller.ts`, `payments.service.ts` + a new `payments.service.spec.ts`, plus 3 mobile call sites and the `CLAUDE.md`/`CONTEXT.md` path fix). F2 (re-deriving `amount` server-side instead of trusting the client, for all four payment types) remains open — do it as its own follow-up per the user's explicit choice to scope it out of the F1 fix.
@@ -89,6 +89,20 @@ Also worth noting: the KYC form (both web and mobile) still carries legacy `paym
 Both say the web app lives at `D:\carmazium\src\`, sibling to `carmazium app/`. On this machine (the one this plan was written on), the actual repo root is `C:\ca\carmazium\`, and the web frontend is at `C:\ca\carmazium\src\` (confirmed: `backend/`, `src/`, and `carmazium app/` are all siblings directly under `C:\ca\carmazium\`). This is almost certainly a leftover from whatever machine `CONTEXT.md` was originally written on (it explicitly says "as of 2026-07-06," and separately documents a "build machine" vs. "dev machine" split with different drive letters). The stale path is why `mobile-audit-plan.md` Stage 1 and `CONTEXT.md`'s own "Known issues" note both say "couldn't verify — web repo isn't present on this machine" for questions this document just answered by reading `C:\ca\carmazium\backend\src\` directly.
 
 **Fix:** one-line edit to both files, replace `D:\carmazium\src\` → `C:\ca\carmazium\src\` (or better, `..\..\src` / a relative reference, so it survives future machine changes). Do this now — it's a 2-minute fix that stops every future audit session from re-hitting the same dead end.
+
+**Status: DONE** (2026-07-12).
+
+---
+
+### F6 — `PaymentsService.createCheckoutSession` (web's `/payments/checkout`) has the same client-trusted-amount gap as F2, unfixed
+
+**Files:** `backend/src/payments/payments.service.ts` (`createCheckoutSession`, ~line 47)
+
+Discovered while fixing F2 in the sibling `createPaymentSheet` method. `createCheckoutSession` — the method behind the web app's generic `/payments/checkout` Stripe Checkout Session endpoint, used for `DEPOSIT`/`FULL_PAYMENT`/`COMMISSION` — takes `amount` as a raw parameter and uses it directly for the Stripe Checkout Session's `unit_amount` with **no re-derivation from `listing.price`, the fixed deposit amount, or the auction buyer fee**, exactly the bug F2 fixed in `createPaymentSheet`. The web's own `checkout/page.tsx` computes `DEPOSIT_AMOUNT = 500` and `fullPrice`/`AUCTION_BUYER_FEE` client-side and sends them as `amount` — same trust assumption.
+
+**Fix:** apply the identical pattern from F2's fix (re-derive `amount` server-side per `type`, using the same `LISTING_FEES`/`AUCTION_BUYER_FEE`/`DEPOSIT_AMOUNT` constants already added to the class) to `createCheckoutSession`. This is a clean, well-scoped follow-up — same file, same constants, same shape of fix, just the other one of the two `amount`-accepting methods in this service.
+
+**Status: OPEN** — not yet started.
 
 ---
 

@@ -77,6 +77,20 @@ Either path can also publish JS-only fixes (no new native module) via `eas updat
 
 ## Known issues / backend follow-ups (2026-07-12)
 
+- **RESOLVED 2026-07-12 (F2, `mobile-production-readiness-plan.md`):**
+  `PaymentsService.createPaymentSheet` (the backend method behind mobile's `/payments/intent`)
+  used to trust the client-supplied `amount` verbatim for every payment type — a modified
+  mobile client could have requested a Payment Sheet for an arbitrary amount against a real
+  listing/auction. Fixed by re-deriving `amount` server-side per `type`: `FULL_PAYMENT` →
+  `listing.price`, `LISTING_FEE` → `LISTING_FEES[badgeTier]`, `COMMISSION` →
+  `AUCTION_BUYER_FEE`, `DEPOSIT` → a new fixed `DEPOSIT_AMOUNT = 500` constant matching the web
+  checkout page's own `DEPOSIT_AMOUNT`. The client's `amount` is now only used for a
+  mismatch-detection log line, never the actual charge. Covered by 5 new unit tests in
+  `payments.service.spec.ts` (now 9 total). **Found in the process, still open:**
+  `PaymentsService.createCheckoutSession` (the web-facing `/payments/checkout` Stripe Checkout
+  Session endpoint) has the identical unfixed gap — same class of bug, different method, not
+  part of this fix. See `mobile-production-readiness-plan.md` finding F6.
+
 - **RESOLVED 2026-07-12 (F3, `mobile-production-readiness-plan.md`):** `DealerKYCScreen.tsx`
   never called the £1 verification-fee Stripe checkout (`POST /dealers/kyc/checkout`) that the
   backend added — it only ever posted the form to `POST /dealers/kyc`, so `stripeChargedAt`
