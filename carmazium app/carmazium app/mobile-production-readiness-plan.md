@@ -5,13 +5,20 @@
 
 This document does not repeat content already well-covered in the four existing docs — it references them by stage number and inserts new findings at the correct point in sequence. Read this document first; it tells you when to read the others.
 
-> **STATUS UPDATE — 2026-07-12.** Between this plan being written (2026-07-11) and the next work session, nearly the entire Section 2 roadmap below (Stages 1–11, i.e. all of `mobile-audit-plan.md` and `mobile-ui-ux-plan.md`) was executed — verified by direct code inspection, not assumption. See the status banners added to `mobile-audit-plan.md` and `mobile-ui-ux-plan.md` for the per-stage breakdown. In short: **only these remain open** as of 2026-07-12:
+> **STATUS UPDATE — 2026-07-12 (superseded twice, now current).** Between this plan being written (2026-07-11) and the next work session, nearly the entire Section 2 roadmap below (Stages 1–11, i.e. all of `mobile-audit-plan.md` and `mobile-ui-ux-plan.md`) was executed — verified by direct code inspection, not assumption. See the status banners added to `mobile-audit-plan.md` and `mobile-ui-ux-plan.md` for the per-stage breakdown.
+>
+> **F1–F6 status, all findings in Section 1 below:**
+> - **F1 — DONE.** `/payments/intent` accepts `type: 'LISTING_FEE'`; webhook activates the listing at the right tier.
+> - **F2 — DONE.** `createPaymentSheet` re-derives `amount` server-side for all four payment types instead of trusting the client.
+> - **F3 — DONE.** `DealerKYCScreen.tsx` now drives the £1 verification-fee Stripe checkout; retired manual-bank-transfer fields removed. **Not yet on-device verified** — do a real £1 payment test before calling this production-ready.
+> - **F4 — no action needed** (positive finding — mobile already gates auction bidding correctly).
+> - **F5 — DONE.** `CLAUDE.md`/`CONTEXT.md` no longer reference the stale `D:\carmazium\src` path.
+> - **F6 — DONE.** `createCheckoutSession` (the web-facing sibling of the F2 fix) now re-derives `amount` server-side too — both `amount`-accepting methods in `PaymentsService` are hardened.
+>
+> **Only these remain open** as of 2026-07-12:
 > - Damage zone-id web-parity verification (`mobile-audit-plan.md` Stage 3, part 1 — the defensive guard is done, the id-matching against web isn't).
 > - `SellerAuctionsScreen.tsx`'s schedule-auction modal, still hand-rolled (`mobile-ui-ux-plan.md` Stage 3 straggler).
-> - **F2 — DONE as of 2026-07-12.** `PaymentsService.createPaymentSheet` now re-derives `amount` server-side per `type` (`FULL_PAYMENT` → `listing.price`, `LISTING_FEE` → `LISTING_FEES[badgeTier]`, `COMMISSION` → `AUCTION_BUYER_FEE`, `DEPOSIT` → a new `DEPOSIT_AMOUNT = 500` constant matching the web checkout page's own constant) and only logs a mismatch warning if the client's `amount` disagrees — it's never used for the actual charge. Covered by 5 new unit tests. **Newly discovered while fixing this:** `PaymentsService.createCheckoutSession` (the sibling method behind the web's generic `/payments/checkout` Stripe Checkout Session endpoint) has the **identical** unfixed vulnerability — it also trusts a raw client-supplied `amount` for `DEPOSIT`/`FULL_PAYMENT`/`COMMISSION` with zero server-side re-derivation. Out of scope for this fix (F2 was scoped to the mobile-only Payment Sheet endpoint) but it's the same class of bug on the web-facing flow — worth its own follow-up.
-> - **F3 — DONE as of 2026-07-12.** `DealerKYCScreen.tsx` now calls `POST /dealers/kyc/checkout` after form submission and opens the returned Stripe Checkout URL in `StripeCheckoutModal`; the `isPending` gate now requires `stripeChargedAt`; the retired manual-bank-transfer fields/copy (`paymentReference`, `paymentScreenshot`) were removed to match the web app's `KycOverlayForm.tsx`, which has already fully retired them. See `CONTEXT.md`'s "Known issues" for the full writeup. **Not yet on-device verified** — do a real £1 payment test before considering this production-ready.
->
-> **Stage 0 (F1, F2, F5) status: F1 and F5 are DONE, F2 deliberately deferred.** See the Stage 0 section below for exactly what shipped (`backend/src/payments/dto/create-payment-intent.dto.ts`, `payments.controller.ts`, `payments.service.ts` + a new `payments.service.spec.ts`, plus 3 mobile call sites and the `CLAUDE.md`/`CONTEXT.md` path fix). F2 (re-deriving `amount` server-side instead of trusting the client, for all four payment types) remains open — do it as its own follow-up per the user's explicit choice to scope it out of the F1 fix.
+> - On-device verification of the F1/F3 payment flows (can't be done from this environment — no adb/emulator, and it would mean live Stripe/DB writes).
 
 ---
 
@@ -102,7 +109,7 @@ Discovered while fixing F2 in the sibling `createPaymentSheet` method. `createCh
 
 **Fix:** apply the identical pattern from F2's fix (re-derive `amount` server-side per `type`, using the same `LISTING_FEES`/`AUCTION_BUYER_FEE`/`DEPOSIT_AMOUNT` constants already added to the class) to `createCheckoutSession`. This is a clean, well-scoped follow-up — same file, same constants, same shape of fix, just the other one of the two `amount`-accepting methods in this service.
 
-**Status: OPEN** — not yet started.
+**Status: DONE** (2026-07-12). `createCheckoutSession` now re-derives `amount` server-side identically to `createPaymentSheet` (F2): `FULL_PAYMENT` → `listing.price`, `COMMISSION` → `AUCTION_BUYER_FEE`, `DEPOSIT` → `DEPOSIT_AMOUNT`. (No `LISTING_FEE` case needed here — that type never reaches this method; `CreateCheckoutSessionDto` only allows `DEPOSIT`/`FULL_PAYMENT`/`COMMISSION`, and the web's listing-fee flow goes through the separate `createListingSession`, which already derived its amount server-side from `badgeTier` before this fix.) Covered by 3 new unit tests (12 total in `payments.service.spec.ts`, all passing). Both `amount`-accepting methods in `PaymentsService` now trust nothing from the client — this closes out the payments-integrity gap across the whole service.
 
 ---
 

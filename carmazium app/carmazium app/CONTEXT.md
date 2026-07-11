@@ -77,6 +77,19 @@ Either path can also publish JS-only fixes (no new native module) via `eas updat
 
 ## Known issues / backend follow-ups (2026-07-12)
 
+- **RESOLVED 2026-07-12 (F6, `mobile-production-readiness-plan.md`):**
+  `PaymentsService.createCheckoutSession` (the web-facing `/payments/checkout` Stripe Checkout
+  Session endpoint) had the identical client-trusted-amount gap that F2 fixed in the sibling
+  `createPaymentSheet` method. Fixed the same way: `FULL_PAYMENT` → `listing.price`,
+  `COMMISSION` → `AUCTION_BUYER_FEE`, `DEPOSIT` → `DEPOSIT_AMOUNT` (reusing the constants F2
+  already added). No `LISTING_FEE` case needed — that type never reaches this method
+  (`CreateCheckoutSessionDto` only allows `DEPOSIT`/`FULL_PAYMENT`/`COMMISSION`; the web's
+  listing-fee flow uses the separate `createListingSession`, which already derived its amount
+  server-side from `badgeTier` before any of this work started). Covered by 3 new unit tests
+  (`payments.service.spec.ts` now 12 total). Both `amount`-accepting methods in
+  `PaymentsService` now re-derive the charge server-side — no known remaining payment-integrity
+  gap in this service.
+
 - **RESOLVED 2026-07-12 (F2, `mobile-production-readiness-plan.md`):**
   `PaymentsService.createPaymentSheet` (the backend method behind mobile's `/payments/intent`)
   used to trust the client-supplied `amount` verbatim for every payment type — a modified
