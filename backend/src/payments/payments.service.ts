@@ -246,8 +246,9 @@ export class PaymentsService {
         listingId: string,
         userId: string,
         amount: number,
-        type: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' = 'FULL_PAYMENT',
+        type: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' | 'LISTING_FEE' = 'FULL_PAYMENT',
         currency = 'gbp',
+        badgeTier?: 'BASIC' | 'STANDARD' | 'PREMIUM',
     ) {
         const listing = await this.prisma.listing.findUnique({
             where: { id: listingId },
@@ -286,6 +287,7 @@ export class PaymentsService {
             DEPOSIT: `Refundable deposit for ${listing.title}`,
             FULL_PAYMENT: `Full payment for ${listing.title}`,
             COMMISSION: `Auction buyer fee — ${listing.title}`,
+            LISTING_FEE: `${badgeTier ?? ''} Listing Fee — ${listing.title}`.trim(),
         };
 
         // Create a pending transaction record first (we'll store the PI id after)
@@ -311,6 +313,9 @@ export class PaymentsService {
                 listingId,
                 userId,
                 type,
+                // Only present for LISTING_FEE — the payment_intent.succeeded webhook
+                // handler needs this to know which tier to activate the listing at.
+                ...(badgeTier ? { badgeTier } : {}),
             },
         });
 
@@ -489,7 +494,7 @@ export class PaymentsService {
             // ── Payment Sheet (native SDK) ──────────────────────────
             case 'payment_intent.succeeded': {
                 const pi = event.data.object;
-                const { transactionId, listingId, type } = pi.metadata ?? {};
+                const { transactionId, listingId, type, badgeTier } = pi.metadata ?? {};
 
                 if (transactionId) {
                     await this.prisma.transaction.update({
@@ -497,6 +502,19 @@ export class PaymentsService {
                         data: {
                             status: 'COMPLETED',
                             stripePaymentId: pi.id,
+                        },
+                    });
+                }
+
+                if (type === 'LISTING_FEE' && listingId) {
+                    const isPremium = badgeTier === 'PREMIUM';
+                    await this.prisma.listing.update({
+                        where: { id: listingId },
+                        data: {
+                            status: 'ACTIVE',
+                            badgeTier,
+                            isFeatured: isPremium,
+                            featuredUntil: isPremium ? new Date(Date.now() + 28 * 24 * 60 * 60 * 1000) : null,
                         },
                     });
                 }

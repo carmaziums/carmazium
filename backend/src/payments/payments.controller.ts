@@ -61,6 +61,7 @@ export class PaymentsController {
             dto.amount,
             dto.type,
             dto.currency,
+            dto.badgeTier,
         );
         return new StandardResponse(result);
     }
