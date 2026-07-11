@@ -13,6 +13,8 @@ export interface PaymentSheetParams {
   amount: number;
   type?: PaymentSheetType;
   currency?: string;
+  /** Required when type is 'LISTING_FEE' — tells the backend webhook which tier to activate the listing at. */
+  badgeTier?: 'BASIC' | 'STANDARD' | 'PREMIUM';
 }
 
 export interface PaymentSheetResult {

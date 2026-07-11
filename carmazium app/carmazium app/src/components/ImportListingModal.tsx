@@ -24,6 +24,7 @@ import { haptics } from '../lib/haptics';
 import { previewImport, importFromUrl, type ScrapedListingPreview } from '../lib/listingsApi';
 import { createPaymentSheet } from '../lib/paymentsApi';
 
+import { IconButton } from './IconButton';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Step = 1 | 2 | 3;
@@ -49,7 +50,7 @@ const PLANS: Array<{
     label: 'Basic',
     price: 1,
     sub: 'Standard listing',
-    accent: '#FFFFFF',
+    accent: Colors.white,
     features: ['Standard visibility', 'Offer range system'],
   },
   {
@@ -57,7 +58,7 @@ const PLANS: Array<{
     label: 'Standard',
     price: 10,
     sub: 'Most popular',
-    accent: '#3B82F6',
+    accent: Colors.infoBlue,
     features: ['Verified badge', 'Priority in search', 'VIN Report badge'],
   },
   {
@@ -65,15 +66,15 @@ const PLANS: Array<{
     label: 'Premium',
     price: 25,
     sub: 'Best value',
-    accent: '#F59E0B',
+    accent: Colors.warning,
     features: ['Everything in Standard', 'Featured boost (28 days)', 'HPI check included'],
   },
 ];
 
 const PLATFORM_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  AUTOTRADER: { bg: 'rgba(249,115,22,0.12)', text: '#FB923C', label: 'AutoTrader' },
-  CARGURUS:   { bg: 'rgba(59,130,246,0.12)',  text: '#60A5FA', label: 'CarGurus' },
-  CARWOW:     { bg: 'rgba(34,197,94,0.12)',   text: '#4ADE80', label: 'CarWow' },
+  AUTOTRADER: { bg: 'rgba(249,115,22,0.12)', text: Colors.lightOrange_fb923c, label: 'AutoTrader' },
+  CARGURUS:   { bg: Colors.infoBlueAlpha12,  text: Colors.infoBlueLight, label: 'CarGurus' },
+  CARWOW:     { bg: Colors.successAlpha12,   text: Colors.lightGreen_4ade80, label: 'CarWow' },
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -169,6 +170,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
         amount: plan.price,
         type: 'LISTING_FEE',
         currency: 'gbp',
+        badgeTier: plan.tier,
       });
       const { error: initError } = await initPaymentSheet({
         merchantDisplayName: 'Carmazium',
@@ -178,16 +180,16 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
         allowsDelayedPaymentMethods: false,
         appearance: {
           colors: {
-            primary: '#DC1F26',
-            background: '#111116',
-            componentBackground: '#18181f',
-            componentBorder: 'rgba(255,255,255,0.08)',
-            primaryText: '#FFFFFF',
-            secondaryText: '#A0A0AB',
-            componentText: '#FFFFFF',
-            placeholderText: '#606070',
-            icon: '#A0A0AB',
-            error: '#DC1F26',
+            primary: Colors.accent,
+            background: Colors.bgSecondaryAlt,
+            componentBackground: Colors.deepBlue_18181f,
+            componentBorder: Colors.whiteAlpha08,
+            primaryText: Colors.white,
+            secondaryText: Colors.textSecondary,
+            componentText: Colors.white,
+            placeholderText: Colors.iconMuted,
+            icon: Colors.textSecondary,
+            error: Colors.accent,
           },
         },
       });
@@ -238,7 +240,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <View style={st.container}>
         <LinearGradient
-          colors={['rgba(59,130,246,0.06)', 'rgba(10,10,12,0)', '#0A0A0C']}
+          colors={[Colors.infoBlueAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0, y: 0.5 }}
           style={StyleSheet.absoluteFillObject}
@@ -247,9 +249,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
 
         {/* Header */}
         <View style={st.header}>
-          <TouchableOpacity style={st.closeBtn} onPress={onClose} activeOpacity={0.75}>
-            <Ionicons name="close" size={18} color="#FFFFFF" />
-          </TouchableOpacity>
+          <IconButton style={st.closeBtn} icon={<Ionicons name="close" size={18} color={Colors.white} />} onPress={onClose} accessibilityLabel="Close" />
           <View style={{ flex: 1, alignItems: 'center' }}>
             <Text style={st.headerTitle}>Import a Listing</Text>
             <Text style={st.headerSub}>
@@ -267,8 +267,8 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
             <React.Fragment key={n}>
               <View style={[st.stepDot, step >= n && st.stepDotActive]}>
                 {step > n
-                  ? <Ionicons name="checkmark" size={10} color="#FFF" />
-                  : <Text style={[st.stepDotText, step === n && { color: '#FFF' }]}>{n}</Text>
+                  ? <Ionicons name="checkmark" size={10} color={Colors.white} />
+                  : <Text style={[st.stepDotText, step === n && { color: Colors.white }]}>{n}</Text>
                 }
               </View>
               {n < 3 && <View style={[st.stepLine, step > n && st.stepLineActive]} />}
@@ -298,13 +298,13 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
 
               {/* URL input */}
               <View style={st.urlInputRow}>
-                <Ionicons name="link-outline" size={16} color="#606070" style={{ marginRight: 8 }} />
+                <Ionicons name="link-outline" size={16} color={Colors.iconMuted} style={{ marginRight: 8 }} />
                 <TextInput
                   style={st.urlInput}
                   value={url}
                   onChangeText={v => { setUrl(v); setFetchError(null); }}
                   placeholder="https://www.autotrader.co.uk/car-details/..."
-                  placeholderTextColor="#404050"
+                  placeholderTextColor={Colors.borderMuted}
                   autoCapitalize="none"
                   autoCorrect={false}
                   keyboardType="url"
@@ -312,9 +312,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                   onSubmitEditing={handleFetch}
                 />
                 {url.length > 0 && (
-                  <TouchableOpacity onPress={() => setUrl('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Ionicons name="close-circle" size={16} color="#404050" />
-                  </TouchableOpacity>
+                  <IconButton icon={<Ionicons name="close-circle" size={16} color={Colors.borderMuted} />} onPress={() => setUrl('')} accessibilityLabel="Clear" />
                 )}
               </View>
 
@@ -332,10 +330,10 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                 activeOpacity={0.85}
               >
                 {fetching ? (
-                  <ActivityIndicator color="#FFF" size="small" />
+                  <ActivityIndicator color={Colors.white} size="small" />
                 ) : (
                   <>
-                    <Ionicons name="search-outline" size={16} color="#FFF" />
+                    <Ionicons name="search-outline" size={16} color={Colors.white} />
                     <Text style={st.primaryBtnText}>Fetch Details</Text>
                   </>
                 )}
@@ -399,7 +397,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                 value={editTitle}
                 onChangeText={v => { setEditTitle(v); setSaveError(null); }}
                 placeholder="e.g. BMW M4 Competition 2021"
-                placeholderTextColor="#404050"
+                placeholderTextColor={Colors.borderMuted}
                 autoCorrect={false}
               />
 
@@ -411,7 +409,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                   value={editPrice}
                   onChangeText={v => { setEditPrice(v); setSaveError(null); }}
                   placeholder="0"
-                  placeholderTextColor="#404050"
+                  placeholderTextColor={Colors.borderMuted}
                   keyboardType="number-pad"
                 />
               </View>
@@ -422,7 +420,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                 value={editVrm}
                 onChangeText={v => { setEditVrm(v.toUpperCase()); setSaveError(null); }}
                 placeholder="e.g. AB12 CDE"
-                placeholderTextColor="#404050"
+                placeholderTextColor={Colors.borderMuted}
                 autoCapitalize="characters"
                 autoCorrect={false}
               />
@@ -441,11 +439,11 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                 activeOpacity={0.85}
               >
                 {saving ? (
-                  <ActivityIndicator color="#FFF" size="small" />
+                  <ActivityIndicator color={Colors.white} size="small" />
                 ) : (
                   <>
                     <Text style={st.primaryBtnText}>Save as Draft</Text>
-                    <Ionicons name="arrow-forward" size={15} color="#FFF" />
+                    <Ionicons name="arrow-forward" size={15} color={Colors.white} />
                   </>
                 )}
               </TouchableOpacity>
@@ -465,7 +463,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
               {/* Success header */}
               <View style={st.successHeader}>
                 <View style={st.successIcon}>
-                  <Ionicons name="checkmark-circle" size={32} color="#10B981" />
+                  <Ionicons name="checkmark-circle" size={32} color={Colors.accentGreen} />
                 </View>
                 <Text style={st.successTitle}>Listing saved as draft</Text>
                 <Text style={st.successSub}>Choose a plan to make it live, or do it later from My Listings.</Text>
@@ -483,7 +481,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                       <View style={[st.planRadio, selected && { backgroundColor: plan.accent, borderColor: plan.accent }]}>
-                        {selected && <Ionicons name="checkmark" size={11} color="#FFF" />}
+                        {selected && <Ionicons name="checkmark" size={11} color={Colors.white} />}
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={[st.planLabel, { color: plan.accent }]}>{plan.label}</Text>
@@ -495,7 +493,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                       <View style={{ marginTop: 10, marginLeft: 40, gap: 3 }}>
                         {plan.features.map(f => (
                           <View key={f} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <Ionicons name="checkmark-circle" size={11} color="#10B981" />
+                            <Ionicons name="checkmark-circle" size={11} color={Colors.accentGreen} />
                             <Text style={st.planFeatureText}>{f}</Text>
                           </View>
                         ))}
@@ -513,7 +511,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                 activeOpacity={0.85}
               >
                 {activating ? (
-                  <ActivityIndicator color="#FFF" size="small" />
+                  <ActivityIndicator color={Colors.white} size="small" />
                 ) : (
                   <Text style={st.primaryBtnText}>
                     Activate for £{PLANS.find(p => p.tier === selectedTier)?.price}
@@ -549,21 +547,21 @@ const st = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 16,
-    color: '#FFFFFF',
+    fontSize: FontSize.md,
+    color: Colors.white,
     textAlign: 'center',
   },
   headerSub: {
     fontFamily: FontFamily.regular,
-    fontSize: 11,
+    fontSize: FontSize.xs,
     color: Colors.textMuted,
     textAlign: 'center',
     marginTop: 2,
@@ -581,9 +579,9 @@ const st = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: Colors.whiteAlpha12,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -593,13 +591,13 @@ const st = StyleSheet.create({
   },
   stepDotText: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
+    fontSize: FontSize.size10,
     color: Colors.textMuted,
   },
   stepLine: {
     flex: 1,
     height: 2,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     marginHorizontal: 6,
   },
   stepLineActive: {
@@ -627,7 +625,7 @@ const st = StyleSheet.create({
   },
   platformChipText: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
+    fontSize: FontSize.size12,
   },
 
   // URL input
@@ -645,7 +643,7 @@ const st = StyleSheet.create({
   urlInput: {
     flex: 1,
     fontFamily: FontFamily.regular,
-    fontSize: 14,
+    fontSize: FontSize.size14,
     color: Colors.textPrimary,
   },
 
@@ -664,35 +662,35 @@ const st = StyleSheet.create({
   specChip: {
     backgroundColor: Colors.bgTertiary,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: Colors.whiteAlpha08,
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
   specChipLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 8,
+    fontSize: FontSize.size8,
     color: Colors.textMuted,
     letterSpacing: 0.8,
     marginBottom: 2,
   },
   specChipValue: {
     fontFamily: FontFamily.medium,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.textPrimary,
   },
 
   // Editable fields
   sectionLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     color: Colors.textMuted,
     letterSpacing: 1,
     marginBottom: 12,
   },
   fieldLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     color: Colors.textMuted,
     letterSpacing: 0.8,
     marginBottom: 6,
@@ -706,7 +704,7 @@ const st = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontFamily: FontFamily.regular,
-    fontSize: 15,
+    fontSize: FontSize.base,
     color: Colors.textPrimary,
     marginBottom: 0,
   },
@@ -721,7 +719,7 @@ const st = StyleSheet.create({
   },
   priceCurrency: {
     fontFamily: FontFamily.bold,
-    fontSize: 16,
+    fontSize: FontSize.md,
     color: Colors.textMuted,
     marginRight: 6,
   },
@@ -736,19 +734,19 @@ const st = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: 'rgba(16,185,129,0.12)',
+    backgroundColor: Colors.accentGreenAlpha12,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
   },
   successTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 18,
+    fontSize: FontSize.lg,
     color: Colors.textPrimary,
   },
   successSub: {
     fontFamily: FontFamily.regular,
-    fontSize: 13,
+    fontSize: FontSize.sm,
     color: Colors.textMuted,
     textAlign: 'center',
     lineHeight: 19,
@@ -757,7 +755,7 @@ const st = StyleSheet.create({
   planCard: {
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: Colors.whiteAlpha08,
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
@@ -767,28 +765,28 @@ const st = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.20)',
+    borderColor: Colors.whiteAlpha20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   planLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 15,
+    fontSize: FontSize.base,
   },
   planSub: {
     fontFamily: FontFamily.regular,
-    fontSize: 11,
+    fontSize: FontSize.xs,
     color: Colors.textMuted,
     marginTop: 1,
   },
   planPrice: {
     fontFamily: FontFamily.mono,
-    fontSize: 18,
+    fontSize: FontSize.lg,
     flexShrink: 0,
   },
   planFeatureText: {
     fontFamily: FontFamily.regular,
-    fontSize: 11,
+    fontSize: FontSize.xs,
     color: Colors.textSecondary,
   },
 
@@ -805,8 +803,8 @@ const st = StyleSheet.create({
   },
   primaryBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: 15,
-    color: '#FFFFFF',
+    fontSize: FontSize.base,
+    color: Colors.white,
     letterSpacing: 0.3,
   },
   backLink: {
@@ -815,23 +813,23 @@ const st = StyleSheet.create({
   },
   backLinkText: {
     fontFamily: FontFamily.medium,
-    fontSize: 13,
+    fontSize: FontSize.sm,
     color: Colors.textMuted,
   },
   errorBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 7,
-    backgroundColor: 'rgba(239,68,68,0.08)',
+    backgroundColor: Colors.errorAlpha08,
     borderWidth: 1,
-    borderColor: 'rgba(239,68,68,0.20)',
+    borderColor: Colors.errorAlpha20,
     borderRadius: 10,
     padding: 10,
     marginTop: 10,
   },
   errorText: {
     fontFamily: FontFamily.medium,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.error,
     flex: 1,
     lineHeight: 17,

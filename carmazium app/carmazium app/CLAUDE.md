@@ -26,7 +26,7 @@ This file is auto-loaded by Claude Code whenever it works in this directory. Rea
 
 ## Web app is the source of truth for field parity
 
-The web app lives at the repo root (`D:\carmazium\src\`, sibling to this directory — NOT inside `carmazium app/`). When adding or auditing a listing/payment/AI-feature field, check the equivalent web code first:
+The web app lives at the repo root (`..\..\src\` relative to this directory, i.e. `src\` as a sibling of `backend\` and `carmazium app\` at the repo root — NOT inside `carmazium app/`). This path is relative deliberately: it has drifted before (previously documented as `D:\carmazium\src\`, which does not exist on every machine this repo is checked out on) — always resolve it relative to the repo root you're actually in, don't hardcode a drive letter. When adding or auditing a listing/payment/AI-feature field, check the equivalent web code first:
 - `src/components/listing/ListingWizard.tsx` — the listing creation form and its exact `/listings` payload shape
 - `src/lib/aiApi.ts` — the AI description generation payload shape
 - `src/components/listing/ThreeDVehicleViewer.tsx` / `VehicleDamageMapper.tsx` — the full 37-zone damage taxonomy and `/damage/{id}/save` payload

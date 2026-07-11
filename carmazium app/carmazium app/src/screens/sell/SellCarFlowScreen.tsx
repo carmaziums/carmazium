@@ -1,16 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   StatusBar, TextInput, ActivityIndicator, Alert,
-  Switch, Dimensions, Platform,
+  Switch, Dimensions, Platform, BackHandler,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Colors } from '../../constants/colors';
+import { BODY_TYPE_ICONS } from '../../constants/bodyTypes';
+import { IconButton } from '../../components/IconButton';
 import { apiClient } from '../../lib/apiClient';
 import { useAuthStore } from '../../store/authStore';
 import { convertAndCompress, uploadToStorage } from '../../lib/storageHelper';
@@ -19,7 +22,7 @@ import { haptics } from '../../lib/haptics';
 import { useStripe } from '@stripe/stripe-react-native';
 import { createPaymentSheet } from '../../lib/paymentsApi';
 import { ThreeDVehicleViewer } from '../../components/damage/ThreeDVehicleViewer';
-import { DAMAGE_ZONES_3D } from '../../components/damage/damageZones';
+import { DAMAGE_ZONES_3D, DAMAGE_ZONE_SECTIONS } from '../../components/damage/damageZones';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -87,19 +90,8 @@ const PRESET_FEATURES = [
   'Parking Sensors', 'Reverse Camera', 'Cruise Control', 'Climate Control',
   'Apple CarPlay', 'Android Auto', 'DAB Radio', 'LED Headlights', 'Alloy Wheels', 'Tow Bar',
 ];
-const BODY_TYPES = [
-  { v: 'HATCHBACK', l: 'Hatchback', icon: 'car-hatchback' },
-  { v: 'SALOON', l: 'Saloon', icon: 'car-limousine' },
-  { v: 'SEDAN', l: 'Sedan', icon: 'car' },
-  { v: 'ESTATE', l: 'Estate', icon: 'car-estate' },
-  { v: 'SUV', l: 'SUV', icon: 'car-suv' },
-  { v: 'COUPE', l: 'Coupé', icon: 'car-sports' },
-  { v: 'CONVERTIBLE', l: 'Convertible', icon: 'car-convertible' },
-  { v: 'MPV', l: 'MPV', icon: 'car' },
-  { v: 'VAN', l: 'Van', icon: 'van-utility' },
-  { v: 'PICKUP', l: 'Pickup', icon: 'truck' },
-  { v: 'OTHER', l: 'Other', icon: 'car-outline' },
-];
+// Source of truth for body-type icons app-wide — see src/constants/bodyTypes.ts
+const BODY_TYPES = BODY_TYPE_ICONS.map(b => ({ v: b.value, l: b.label, icon: b.icon }));
 const DAMAGE_TYPES = ['SCRATCH', 'SCUFF', 'DENT', 'CRACK', 'OTHER'];
 
 const BADGES = [
@@ -109,7 +101,7 @@ const BADGES = [
     listingType: 'AUCTION' as const,
     features: ['Open bidding', '24-hour auction', 'Anyone can bid'],
     negative: ['No trust badges'],
-    accent: '#F97316',
+    accent: Colors.lightOrange_f97316,
   },
   {
     id: 'BASIC' as const, label: 'Basic', price: '£1',
@@ -117,7 +109,7 @@ const BADGES = [
     listingType: 'CLASSIFIED' as const,
     features: ['Standard listing', 'Offer range system'],
     negative: ['No trust badges', 'No featured boost'],
-    accent: '#FFFFFF',
+    accent: Colors.white,
   },
   {
     id: 'STANDARD' as const, label: 'Standard', price: '£10',
@@ -125,7 +117,7 @@ const BADGES = [
     listingType: 'CLASSIFIED' as const,
     features: ['Everything in Basic', 'VIN Report badge', 'Verified Seller badge'],
     negative: ['No featured boost'],
-    accent: '#3B82F6',
+    accent: Colors.infoBlue,
   },
   {
     id: 'PREMIUM' as const, label: 'Premium', price: '£25',
@@ -133,7 +125,7 @@ const BADGES = [
     listingType: 'CLASSIFIED' as const,
     features: ['Everything in Standard', 'Featured boost (28 days)', 'Priority in search results', 'Featured badge on listing'],
     negative: [],
-    accent: '#F59E0B',
+    accent: Colors.warning,
   },
 ];
 
@@ -147,35 +139,36 @@ const SL = ({ label, required }: { label: string; required?: boolean }) => (
 );
 
 function FieldInput({
-  label, value, onChange, placeholder, keyboardType, multiline, required, hint
+  label, value, onChange, placeholder, keyboardType, multiline, required, hint, error
 }: {
   label: string; value: string; onChange: (v: string) => void;
   placeholder?: string; keyboardType?: any; multiline?: boolean;
-  required?: boolean; hint?: string;
+  required?: boolean; hint?: string; error?: string;
 }) {
   return (
     <View style={{ marginBottom: 16 }}>
       <SL label={label} required={required} />
       {hint ? <Text style={s.fieldHint}>{hint}</Text> : null}
       <TextInput
-        style={[s.input, multiline && { height: 100, textAlignVertical: 'top', paddingTop: 12 }]}
+        style={[s.input, multiline && { height: 100, textAlignVertical: 'top', paddingTop: 12 }, error ? { borderColor: Colors.error } : null]}
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
-        placeholderTextColor="#404050"
+        placeholderTextColor={Colors.borderMuted}
         keyboardType={keyboardType}
         multiline={multiline}
         autoCorrect={false}
       />
+      {error ? <Text style={s.inlineError}>{error}</Text> : null}
     </View>
   );
 }
 
 function PillRow<T extends string>({
-  label, options, value, onSelect, required
+  label, options, value, onSelect, required, error
 }: {
   label: string; options: { v: T; l: string }[]; value: T | '';
-  onSelect: (v: T) => void; required?: boolean;
+  onSelect: (v: T) => void; required?: boolean; error?: string;
 }) {
   return (
     <View style={{ marginBottom: 16 }}>
@@ -192,15 +185,16 @@ function PillRow<T extends string>({
           </TouchableOpacity>
         ))}
       </ScrollView>
+      {error ? <Text style={s.inlineError}>{error}</Text> : null}
     </View>
   );
 }
 
 function YesNoRow({
-  label, value, onChange, required
+  label, value, onChange, required, error
 }: {
   label: string; value: boolean | null;
-  onChange: (v: boolean) => void; required?: boolean;
+  onChange: (v: boolean) => void; required?: boolean; error?: string;
 }) {
   return (
     <View style={{ marginBottom: 16 }}>
@@ -217,6 +211,7 @@ function YesNoRow({
           </TouchableOpacity>
         ))}
       </View>
+      {error ? <Text style={s.inlineError}>{error}</Text> : null}
     </View>
   );
 }
@@ -259,6 +254,7 @@ function Damage3DMapper({
   const [addingZone, setAddingZone] = useState<string | null>(null);
   const [dmgType, setDmgType] = useState<DamageEntry['type']>('SCRATCH');
   const [dmgDesc, setDmgDesc] = useState('');
+  const [customZoneText, setCustomZoneText] = useState('');
 
   function confirmAdd() {
     if (!addingZone) return;
@@ -273,23 +269,76 @@ function Damage3DMapper({
     setDmgDesc('');
   }
 
+  const markedLabels = records.map(r => r.zone);
+
   return (
     <View>
       {/* 3D vehicle viewer with tappable damage hotspots */}
       <ThreeDVehicleViewer
         zones={DAMAGE_ZONES_3D}
         selectedZone={addingZone}
-        markedZones={records.map(r => r.zone)}
+        markedZones={markedLabels}
         onZoneClick={zoneLabel => setAddingZone(zoneLabel)}
         onZoneHide={onHide}
         onZonePhoto={onPhoto}
         bodyTypeLabel={bodyTypeLabel}
       />
 
+      {/* Quick-add button list — every zone the web app offers, for faster
+          input than hunting for a precise spot on the 3D model */}
+      <View style={{ marginTop: 16 }}>
+        {DAMAGE_ZONE_SECTIONS.map(section => (
+          <View key={section} style={{ marginBottom: 14 }}>
+            <SL label={section.toUpperCase()} />
+            <View style={s.zoneChipRow}>
+              {DAMAGE_ZONES_3D.filter(z => z.section === section).map(zone => {
+                const isMarked = markedLabels.includes(zone.label);
+                return (
+                  <TouchableOpacity
+                    key={zone.id}
+                    style={[s.pill, isMarked && s.pillActive]}
+                    onPress={() => setAddingZone(zone.label)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.pillText, isMarked && s.pillTextActive]}>{zone.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        ))}
+
+        {/* Free-text zone for anything not covered above */}
+        <View>
+          <SL label="OTHER DAMAGE AREA" />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TextInput
+              style={[s.input, { flex: 1 }]}
+              value={customZoneText}
+              onChangeText={setCustomZoneText}
+              placeholder="e.g. Interior — Driver Seat, Engine Bay..."
+              placeholderTextColor={Colors.iconMuted}
+            />
+            <TouchableOpacity
+              style={[s.pill, { justifyContent: 'center', paddingHorizontal: 18 }, !customZoneText.trim() && { opacity: 0.5 }]}
+              disabled={!customZoneText.trim()}
+              onPress={() => {
+                setAddingZone(customZoneText.trim());
+                setCustomZoneText('');
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={s.pillText}>Mark</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={s.zoneHint}>Not in the list above? Type any area and press Mark to describe the damage.</Text>
+        </View>
+      </View>
+
       {/* Inline add form */}
       {addingZone && (
         <View style={s.dmgForm}>
-          <Text style={s.dmgFormTitle}>Mark damage: <Text style={{ color: '#DC1F26' }}>{addingZone}</Text></Text>
+          <Text style={s.dmgFormTitle}>Mark damage: <Text style={{ color: Colors.accent }}>{addingZone}</Text></Text>
           <SL label="DAMAGE TYPE" />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 12 }}>
             {DAMAGE_TYPES.map(t => (
@@ -309,7 +358,7 @@ function Damage3DMapper({
             value={dmgDesc}
             onChangeText={setDmgDesc}
             placeholder="e.g. Small scratch on lower section"
-            placeholderTextColor="#404050"
+            placeholderTextColor={Colors.borderMuted}
           />
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <TouchableOpacity style={[s.pill, { flex: 1, justifyContent: 'center', paddingVertical: 12 }]} onPress={() => setAddingZone(null)}>
@@ -332,9 +381,11 @@ function Damage3DMapper({
                 <Text style={s.dmgRecordZone}>{r.zone}</Text>
                 <Text style={s.dmgRecordMeta}>{r.type}{r.description ? ` · ${r.description}` : ''}</Text>
               </View>
-              <TouchableOpacity onPress={() => onRemove(r.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons name="trash-outline" size={16} color="#DC1F26" />
-              </TouchableOpacity>
+              <IconButton
+                icon={<Ionicons name="trash-outline" size={16} color={Colors.accent} />}
+                accessibilityLabel={`Remove damage record for ${r.zone}`}
+                onPress={() => onRemove(r.id)}
+              />
             </View>
           ))}
         </View>
@@ -459,6 +510,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // Touched tracks whether user has interacted with a field (blur or change after focus)
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const fieldTouched = (key: string) => () => setTouched(prev => ({ ...prev, [key]: true }));
+  // Shared across steps since only one step's ScrollView is ever mounted at a time.
+  const stepScrollRef = useRef<ScrollView>(null);
 
   // ── Draft hydration — offer resume after app restart ─────────────────────────
   useEffect(() => {
@@ -522,8 +575,29 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     if (key === 'title') {
       if (!title.trim()) return 'Listing title is required';
     }
+    if (key === 'make' && !make.trim()) return 'Required';
+    if (key === 'model' && !model.trim()) return 'Required';
+    if (key === 'year' && !year.trim()) return 'Required';
+    if (key === 'condition' && !condition) return 'Required';
+    if (key === 'owners' && !owners) return 'Required';
+    if (key === 'departedRelationship' && isDepartedSale && !departedRelationship.trim()) return 'Required';
+    if (key === 'writeOffCat' && !writeOffCat) return 'Required';
+    if (key === 'stolenRecovered' && stolenRecovered === null) return 'Required';
+    if (key === 'outstandingFinance' && outstandingFinance === null) return 'Required';
+    if (key === 'isLegalKeeper' && isLegalKeeper === null) return 'Required';
+    if (key === 'declAcknowledged' && !declAcknowledged) return 'You must acknowledge this declaration to continue';
+    if (key === 'auctionStartDate' && auctionStartMode === 'SCHEDULED' && !auctionStartDate.trim()) return 'Required';
+    if (key === 'reservePrice' && (!reservePrice.trim() || parseFloat(reservePrice) <= 0)) return 'Enter a valid reserve price';
+    if (key === 'startingBid' && (!startingBid.trim() || parseFloat(startingBid) <= 0)) return 'Enter a valid starting bid';
+    if (key === 'minIncrement' && (!minIncrement.trim() || parseFloat(minIncrement) <= 0)) return 'Enter a valid minimum increment';
     return null;
   };
+
+  // All field keys validated per step — used to force every field's error to show
+  // (mark touched) when Next is tapped, and to know which keys to check.
+  const STEP1_FIELD_KEYS = ['make', 'model', 'year', 'mileage', 'title', 'condition', 'owners', 'departedRelationship', 'writeOffCat', 'stolenRecovered', 'outstandingFinance', 'isLegalKeeper', 'declAcknowledged'];
+  const STEP3_FIELD_KEYS = ['priceAsking'];
+  const STEP4_AUCTION_FIELD_KEYS = ['auctionStartDate', 'reservePrice', 'startingBid', 'minIncrement'];
 
   // Border color helper
   const fieldBorderColor = (key: string): string => {
@@ -693,37 +767,43 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const isAuction = listingType === 'AUCTION';
   const totalSteps = isAuction ? 5 : 4;
 
+  // Marks every field relevant to a step as touched (forcing fieldError() to
+  // evaluate/show for all of them, not just ones the user already blurred),
+  // then reports whether any of them actually have an error.
+  function touchAndCheck(keys: string[]): boolean {
+    setTouched(prev => {
+      const next = { ...prev };
+      for (const k of keys) next[k] = true;
+      return next;
+    });
+    return keys.some(k => fieldError(k) != null);
+  }
+
   function validateStep(s: Step): boolean {
     if (s === 1) {
-      if (!make.trim()) { Alert.alert('Required', 'Please enter the vehicle make.'); return false; }
-      if (!model.trim()) { Alert.alert('Required', 'Please enter the vehicle model.'); return false; }
-      if (!year.trim()) { Alert.alert('Required', 'Please enter the vehicle year.'); return false; }
-      if (!mileage.trim()) { Alert.alert('Required', 'Please enter the mileage.'); return false; }
-      if (!title.trim()) { Alert.alert('Required', 'Please enter a listing title.'); return false; }
-      if (!condition) { Alert.alert('Required', 'Please select the vehicle condition.'); return false; }
-      if (!owners) { Alert.alert('Required', 'Please select the number of owners.'); return false; }
-      if (isDepartedSale && !departedRelationship.trim()) { Alert.alert('Required', 'Please select your relationship to the owner.'); return false; }
-      if (!writeOffCat) { Alert.alert('Required', 'Please complete the write-off declaration.'); return false; }
+      if (touchAndCheck(STEP1_FIELD_KEYS)) {
+        stepScrollRef.current?.scrollTo({ y: 0, animated: true });
+        return false;
+      }
+      // Cross-field business rule (not a per-field "required" validation) —
+      // still a genuine blocking condition, kept as an alert per CLAUDE.md's
+      // guidance that only inline "required" validation moves to inline errors.
       if ((writeOffCat === 'CAT_A' || writeOffCat === 'CAT_B') && !isAuction) {
         Alert.alert('Auction Only', 'Cat A and Cat B write-off vehicles can only be listed via auction. Select the Auction option in Step 3 Pricing.');
         return false;
       }
-      if (stolenRecovered === null) { Alert.alert('Required', 'Please answer the stolen/recovered question.'); return false; }
-      if (outstandingFinance === null) { Alert.alert('Required', 'Please answer the outstanding finance question.'); return false; }
-      if (isLegalKeeper === null) { Alert.alert('Required', 'Please confirm if you are the legal registered keeper.'); return false; }
-      if (!declAcknowledged) { Alert.alert('Required', 'Please acknowledge the declaration.'); return false; }
     }
-    if (s === 3 && !isAuction) {
-      if (!priceAsking.trim()) { Alert.alert('Required', 'Please enter an asking price.'); return false; }
-    }
-    if (s === 3 && isAuction) {
-      if (!priceAsking.trim()) { Alert.alert('Required', 'Please enter a reserve price / asking price.'); return false; }
+    if (s === 3) {
+      if (touchAndCheck(STEP3_FIELD_KEYS)) {
+        stepScrollRef.current?.scrollTo({ y: 0, animated: true });
+        return false;
+      }
     }
     if (s === 4 && isAuction) {
-      if (auctionStartMode === 'SCHEDULED' && !auctionStartDate.trim()) { Alert.alert('Required', 'Please enter the auction start date/time.'); return false; }
-      if (!reservePrice.trim() || parseFloat(reservePrice) <= 0) { Alert.alert('Required', 'Please enter a reserve price.'); return false; }
-      if (!startingBid.trim() || parseFloat(startingBid) <= 0) { Alert.alert('Required', 'Please enter a starting bid.'); return false; }
-      if (!minIncrement.trim() || parseFloat(minIncrement) <= 0) { Alert.alert('Required', 'Please enter a minimum bid increment.'); return false; }
+      if (touchAndCheck(STEP4_AUCTION_FIELD_KEYS)) {
+        stepScrollRef.current?.scrollTo({ y: 0, animated: true });
+        return false;
+      }
     }
     return true;
   }
@@ -733,7 +813,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   async function triggerListingFeePayment(listingId: string, tier: 'BASIC' | 'STANDARD' | 'PREMIUM'): Promise<boolean> {
     const amounts: Record<string, number> = { BASIC: 1, STANDARD: 10, PREMIUM: 25 };
     const amount = amounts[tier];
-    const sheet = await createPaymentSheet({ listingId, amount, type: 'LISTING_FEE', currency: 'gbp' });
+    const sheet = await createPaymentSheet({ listingId, amount, type: 'LISTING_FEE', currency: 'gbp', badgeTier: tier });
     const { error: initError } = await initPaymentSheet({
       merchantDisplayName: 'Carmazium',
       customerId: sheet.customerId,
@@ -742,17 +822,17 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       allowsDelayedPaymentMethods: false,
       appearance: {
         colors: {
-          primary: '#DC1F26',
-          background: '#111116',
-          componentBackground: '#18181f',
-          componentBorder: 'rgba(255,255,255,0.08)',
-          componentDivider: 'rgba(255,255,255,0.06)',
-          primaryText: '#FFFFFF',
-          secondaryText: '#A0A0AB',
-          componentText: '#FFFFFF',
-          placeholderText: '#606070',
-          icon: '#A0A0AB',
-          error: '#DC1F26',
+          primary: Colors.accent,
+          background: Colors.bgSecondaryAlt,
+          componentBackground: Colors.deepBlue_18181f,
+          componentBorder: Colors.whiteAlpha08,
+          componentDivider: Colors.whiteAlpha06,
+          primaryText: Colors.white,
+          secondaryText: Colors.textSecondary,
+          componentText: Colors.white,
+          placeholderText: Colors.iconMuted,
+          icon: Colors.textSecondary,
+          error: Colors.accent,
         },
       },
     });
@@ -825,9 +905,12 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       // Remove undefined values
       Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
 
-      // Damage records are saved via a dedicated endpoint, not the /listings payload
-      const saveDamageRecords = (listingId: string) => {
-        if (damageRecords.length === 0) return Promise.resolve();
+      // Damage records are saved via a dedicated endpoint, not the /listings payload.
+      // Returns whether the save succeeded — failures must be surfaced to the seller,
+      // not silently swallowed (mobile-audit.md W7: publish used to succeed while the
+      // damage details vanished with no indication anything went wrong).
+      const saveDamageRecords = (listingId: string): Promise<boolean> => {
+        if (damageRecords.length === 0) return Promise.resolve(true);
         return apiClient(`/damage/${listingId}/save`, {
           method: 'POST',
           body: JSON.stringify({
@@ -846,21 +929,28 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               };
             }),
           }),
-        }).catch(() => {});
+        }).then(() => true).catch((err) => {
+          console.error(`Failed to save damage records for listing ${listingId}:`, err);
+          return false;
+        });
       };
+      const DAMAGE_SAVE_FAILED_MSG =
+        'Listing published, but damage details couldn\'t be saved — edit the listing to retry.';
 
       if (editMode && editListingId) {
         await apiClient(`/listings/${editListingId}`, { method: 'PATCH', body: JSON.stringify(payload) });
-        await saveDamageRecords(editListingId);
+        const damageSaved = await saveDamageRecords(editListingId);
         haptics.success();
-        Alert.alert('Updated!', 'Your listing has been updated.', [
-          { text: 'Done', onPress: () => navigation?.navigate('SellerListings') },
-        ]);
+        Alert.alert(
+          damageSaved ? 'Updated!' : 'Updated — damage details not saved',
+          damageSaved ? 'Your listing has been updated.' : DAMAGE_SAVE_FAILED_MSG,
+          [{ text: 'Done', onPress: () => navigation?.navigate('SellerListings') }],
+        );
       } else {
         const res = await apiClient<{ success: boolean; data: { id: string } }>('/listings', { method: 'POST', body: JSON.stringify(payload) });
         const newListingId = res?.data?.id;
 
-        if (newListingId) await saveDamageRecords(newListingId);
+        const damageSaved = newListingId ? await saveDamageRecords(newListingId) : true;
 
         if (isAuction && newListingId) {
           // Auction listings: schedule the auction, then publish (no listing fee for auction tier)
@@ -869,8 +959,6 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             reservePrice: parseFloat(reservePrice),
             startingBid: parseFloat(startingBid),
             minIncrement: parseFloat(minIncrement),
-            durationHours: 24,
-            antiSnipeMinutes: 3,
           };
           if (auctionStartMode === 'NOW') {
             auctionPayload.startTime = new Date().toISOString();
@@ -883,8 +971,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           } catch (auctionErr: any) {
             Alert.alert(
               'Listing created',
-              `Your listing was published but the auction could not be scheduled: ${auctionErr.message || 'Unknown error'}. You can schedule the auction from your listings.`,
+              `Your listing was saved but the auction could not be scheduled: ${auctionErr.message || 'Unknown error'}. You can schedule the auction from your listings.`,
             );
+            return;
           }
           // Publish auction listing (no fee)
           try {
@@ -894,9 +983,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           }
           haptics.success();
           clearDraft();
-          Alert.alert('Auction Scheduled!', 'Your auction is now live.', [
-            { text: 'View Listings', onPress: () => navigation?.navigate('SellerListings') },
-          ]);
+          Alert.alert(
+            damageSaved ? 'Auction Scheduled!' : 'Auction scheduled — damage details not saved',
+            damageSaved ? 'Your auction is now live.' : DAMAGE_SAVE_FAILED_MSG,
+            [{ text: 'View Listings', onPress: () => navigation?.navigate('SellerListings') }],
+          );
         } else if (newListingId) {
           // Classified listing: gate behind payment sheet for all tiers (BASIC=£1, STANDARD=£10, PREMIUM=£25)
           let paid = false;
@@ -924,9 +1015,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             );
           }
           clearDraft();
-          Alert.alert('Published!', 'Your listing is now live.', [
-            { text: 'View Listings', onPress: () => navigation?.navigate('SellerListings') },
-          ]);
+          Alert.alert(
+            damageSaved ? 'Published!' : 'Published — damage details not saved',
+            damageSaved ? 'Your listing is now live.' : DAMAGE_SAVE_FAILED_MSG,
+            [{ text: 'View Listings', onPress: () => navigation?.navigate('SellerListings') }],
+          );
         }
       }
     } catch (err: any) {
@@ -960,6 +1053,27 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     else navigation?.goBack();
   }
 
+  // Save-and-exit — useSellWizardStore already persists draft state (see the
+  // resume-draft prompt above); this just surfaces an explicit exit point on
+  // any step beyond the first instead of only auto-saving on Next (SE8).
+  function handleSaveDraftExit() {
+    updateDraft({
+      make, model, year, mileage, title, fuelType, transmission, bodyType, colour,
+      price: priceAsking, listingType,
+      exteriorImages, interiorImages, damageImages,
+      lastStep: step,
+    });
+    haptics.light();
+    navigation?.goBack();
+  }
+
+  // Android hardware back previously dropped the whole flow instead of stepping
+  // back like the header chevron does (mobile-ui-ux-audit.md §C8/SE1).
+  useFocusEffect(useCallback(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => { handleBack(); return true; });
+    return () => sub.remove();
+  }, [step]));
+
   // ─── Stepper ─────────────────────────────────────────────────────────────────
 
   const STEP_LABELS = isAuction
@@ -978,7 +1092,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               <View style={s.stepItem}>
                 <View style={[s.stepCircle, active && s.stepCircleActive]}>
                   {done
-                    ? <Ionicons name="checkmark" size={13} color="#FFF" />
+                    ? <Ionicons name="checkmark" size={13} color={Colors.white} />
                     : <Text style={[s.stepNum, active && s.stepNumActive]}>{n}</Text>
                   }
                 </View>
@@ -996,7 +1110,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   function renderStep1() {
     return (
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
+      <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
 
         {/* Vehicle Type */}
         <SectionBox title="Vehicle Type">
@@ -1017,7 +1131,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         </SectionBox>
 
         {/* Registration */}
-        <SectionBox title="Registration (VRM) *" accent="#DC1F26">
+        <SectionBox title="Registration (VRM) *" accent={Colors.accent}>
           <Text style={s.fieldHint}>Enter the UK registration plate and tap Analyse to auto-fill vehicle details.</Text>
           <View style={s.vrmRow}>
             <TextInput
@@ -1025,7 +1139,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               value={vrm}
               onChangeText={handlePlateChange}
               placeholder="e.g. AB12 CDE"
-              placeholderTextColor="#806000"
+              placeholderTextColor={Colors.darkYellow}
               autoCapitalize="characters"
               autoCorrect={false}
             />
@@ -1036,21 +1150,21 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               activeOpacity={0.8}
             >
               {dvlaLoading
-                ? <ActivityIndicator size="small" color="#000" />
+                ? <ActivityIndicator size="small" color={Colors.black} />
                 : <Text style={s.vrmBtnText}>ANALYSE DATA</Text>
               }
             </TouchableOpacity>
           </View>
           {dvlaFetched && (
             <View style={s.dvlaSuccess}>
-              <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+              <Ionicons name="checkmark-circle" size={14} color={Colors.accentGreen} />
               <Text style={s.dvlaSuccessText}>DVLA data loaded — these fields are auto-filled but editable.</Text>
             </View>
           )}
         </SectionBox>
 
         {/* Registration & Compliance — DVLA auto-filled */}
-        <SectionBox title="Registration & Compliance" accent="#3B82F6">
+        <SectionBox title="Registration & Compliance" accent={Colors.infoBlue}>
           <Text style={s.fieldHint}>These fields are filled from the DVLA and VIN database. They may not always be accurate.</Text>
           <View style={s.dvlaGrid}>
             <DVLAField label="LAST V5C ISSUED" value={lastV5C} />
@@ -1069,13 +1183,35 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         <SectionBox title="Make / Model / Year">
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <View style={{ flex: 1 }}>
-              <FieldInput label="MAKE *" value={make} onChange={setMake} placeholder="e.g. BMW" required />
+              <FieldInput
+                label="MAKE *"
+                value={make}
+                onChange={v => { setMake(v); if (touched.make) setTouched(prev => ({ ...prev, make: true })); }}
+                placeholder="e.g. BMW"
+                required
+                error={fieldError('make') ?? undefined}
+              />
             </View>
             <View style={{ flex: 1 }}>
-              <FieldInput label="MODEL *" value={model} onChange={setModel} placeholder="e.g. M4" required />
+              <FieldInput
+                label="MODEL *"
+                value={model}
+                onChange={v => { setModel(v); if (touched.model) setTouched(prev => ({ ...prev, model: true })); }}
+                placeholder="e.g. M4"
+                required
+                error={fieldError('model') ?? undefined}
+              />
             </View>
             <View style={{ width: 80 }}>
-              <FieldInput label="YEAR *" value={year} onChange={setYear} placeholder="2021" keyboardType="number-pad" required />
+              <FieldInput
+                label="YEAR *"
+                value={year}
+                onChange={v => { setYear(v); if (touched.year) setTouched(prev => ({ ...prev, year: true })); }}
+                placeholder="2021"
+                keyboardType="number-pad"
+                required
+                error={fieldError('year') ?? undefined}
+              />
             </View>
           </View>
         </SectionBox>
@@ -1136,7 +1272,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 onPress={() => setBodyType(bt.v)}
                 activeOpacity={0.7}
               >
-                <MaterialCommunityIcons name={bt.icon as any} size={18} color={bodyType === bt.v ? '#FFFFFF' : '#A0A0AB'} />
+                <MaterialCommunityIcons name={bt.icon as any} size={18} color={bodyType === bt.v ? Colors.white : Colors.textSecondary} />
                 <Text style={[s.pillText, bodyType === bt.v && s.pillTextActive]}>{bt.l}</Text>
               </TouchableOpacity>
             ))}
@@ -1159,7 +1295,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 onChangeText={v => { setMileage(v); if (touched.mileage) setTouched(prev => ({ ...prev, mileage: true })); }}
                 onBlur={fieldTouched('mileage')}
                 placeholder="e.g. 45000"
-                placeholderTextColor="#404050"
+                placeholderTextColor={Colors.borderMuted}
                 keyboardType="number-pad"
                 autoCorrect={false}
               />
@@ -1221,7 +1357,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           <TextInput
             style={[s.input, { marginTop: 12 }]}
             placeholder="Additional features (comma separated)"
-            placeholderTextColor="#404050"
+            placeholderTextColor={Colors.borderMuted}
             onSubmitEditing={e => {
               const extras = e.nativeEvent.text.split(',').map(x => x.trim()).filter(Boolean);
               setFeatures(p => [...new Set([...p, ...extras])]);
@@ -1239,7 +1375,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               onChangeText={v => { setTitle(v); if (touched.title) setTouched(prev => ({ ...prev, title: true })); }}
               onBlur={fieldTouched('title')}
               placeholder="e.g. BMW M4 Competition 2021"
-              placeholderTextColor="#404050"
+              placeholderTextColor={Colors.borderMuted}
               autoCorrect={false}
             />
             {fieldError('title') ? <Text style={s.inlineError}>{fieldError('title')}</Text> : null}
@@ -1254,9 +1390,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 activeOpacity={0.8}
               >
                 {aiGenerating
-                  ? <ActivityIndicator size="small" color="#FFF" />
+                  ? <ActivityIndicator size="small" color={Colors.white} />
                   : <>
-                      <Ionicons name="sparkles" size={12} color="#FFF" />
+                      <Ionicons name="sparkles" size={12} color={Colors.white} />
                       <Text style={s.aiBtnText}>AUTO GENERATE WITH AI</Text>
                     </>
                 }
@@ -1267,7 +1403,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               value={description}
               onChangeText={setDescription}
               placeholder="Describe your vehicle for potential buyers..."
-              placeholderTextColor="#404050"
+              placeholderTextColor={Colors.borderMuted}
               multiline
             />
           </View>
@@ -1275,15 +1411,29 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
         {/* Ownership */}
         <SectionBox title="Ownership">
-          <PillRow label="CONDITION" options={CONDITIONS} value={condition as any} onSelect={setCondition} required />
-          <PillRow label="NUMBER OF OWNERS" options={OWNERS_OPTIONS} value={owners as any} onSelect={setOwners} required />
+          <PillRow
+            label="CONDITION"
+            options={CONDITIONS}
+            value={condition as any}
+            onSelect={v => { setCondition(v); setTouched(prev => ({ ...prev, condition: true })); }}
+            required
+            error={fieldError('condition') ?? undefined}
+          />
+          <PillRow
+            label="NUMBER OF OWNERS"
+            options={OWNERS_OPTIONS}
+            value={owners as any}
+            onSelect={v => { setOwners(v); setTouched(prev => ({ ...prev, owners: true })); }}
+            required
+            error={fieldError('owners') ?? undefined}
+          />
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
             <Text style={s.sectionLabel}>IMPORTED VEHICLE</Text>
             <Switch
               value={isImported}
               onValueChange={setIsImported}
-              trackColor={{ false: '#2A2A35', true: '#DC1F26' }}
-              thumbColor="#FFFFFF"
+              trackColor={{ false: Colors.darkBlue_2a2a35, true: Colors.accent }}
+              thumbColor={Colors.white}
             />
           </View>
 
@@ -1295,8 +1445,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 setIsDepartedSale(v);
                 if (!v) { setDepartedRelSelect(''); setDepartedRelOther(''); }
               }}
-              trackColor={{ false: '#2A2A35', true: '#DC1F26' }}
-              thumbColor="#FFFFFF"
+              trackColor={{ false: Colors.darkBlue_2a2a35, true: Colors.accent }}
+              thumbColor={Colors.white}
             />
           </View>
           <Text style={s.fieldHint}>
@@ -1310,7 +1460,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   <TouchableOpacity
                     key={opt}
                     style={[s.pill, departedRelSelect === opt && s.pillActive]}
-                    onPress={() => { setDepartedRelSelect(opt); if (opt !== 'Other') setDepartedRelOther(''); }}
+                    onPress={() => {
+                      setDepartedRelSelect(opt);
+                      if (opt !== 'Other') setDepartedRelOther('');
+                      setTouched(prev => ({ ...prev, departedRelationship: true }));
+                    }}
                     activeOpacity={0.7}
                   >
                     <Text style={[s.pillText, departedRelSelect === opt && s.pillTextActive]}>{opt}</Text>
@@ -1321,17 +1475,18 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 <TextInput
                   style={[s.input, { marginTop: 10 }]}
                   value={departedRelOther}
-                  onChangeText={setDepartedRelOther}
+                  onChangeText={v => { setDepartedRelOther(v); setTouched(prev => ({ ...prev, departedRelationship: true })); }}
                   placeholder="Please specify your relationship"
-                  placeholderTextColor="#404050"
+                  placeholderTextColor={Colors.borderMuted}
                 />
               )}
+              {fieldError('departedRelationship') ? <Text style={s.inlineError}>{fieldError('departedRelationship')}</Text> : null}
             </View>
           )}
         </SectionBox>
 
         {/* Write-Off & Legal Declaration */}
-        <SectionBox title="Write-Off & Legal Declaration" accent="#DC1F26">
+        <SectionBox title="Write-Off & Legal Declaration" accent={Colors.accent}>
           <Text style={s.warnText}>
             Required by law. False declarations can constitute fraud and must be reported to relevant authorities.
           </Text>
@@ -1341,33 +1496,53 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               {WRITE_OFF_CATS.map(c => (
                 <TouchableOpacity
                   key={c.v}
-                  style={[s.pill, writeOffCat === c.v && s.pillActive, c.v !== 'NONE' && writeOffCat === c.v && { backgroundColor: 'rgba(220,31,38,0.15)', borderColor: '#DC1F26' }]}
-                  onPress={() => setWriteOffCat(c.v)}
+                  style={[s.pill, writeOffCat === c.v && s.pillActive, c.v !== 'NONE' && writeOffCat === c.v && { backgroundColor: Colors.accentAlpha15, borderColor: Colors.accent }]}
+                  onPress={() => { setWriteOffCat(c.v); setTouched(prev => ({ ...prev, writeOffCat: true })); }}
                   activeOpacity={0.7}
                 >
                   <Text style={[s.pillText, writeOffCat === c.v && s.pillTextActive]}>{c.l}</Text>
                 </TouchableOpacity>
               ))}
             </View>
+            {fieldError('writeOffCat') ? <Text style={s.inlineError}>{fieldError('writeOffCat')}</Text> : null}
           </View>
           <View style={{ marginTop: 16 }}>
-            <YesNoRow label="HAS THIS VEHICLE EVER BEEN REPORTED STOLEN OR RECOVERED? *" value={stolenRecovered} onChange={setStolenRecovered} required />
-            <YesNoRow label="IS THERE CURRENTLY OUTSTANDING FINANCE ON THE VEHICLE? *" value={outstandingFinance} onChange={setOutstandingFinance} required />
-            <YesNoRow label="ARE YOU THE LEGAL REGISTERED KEEPER OF THIS VEHICLE? *" value={isLegalKeeper} onChange={setIsLegalKeeper} required />
+            <YesNoRow
+              label="HAS THIS VEHICLE EVER BEEN REPORTED STOLEN OR RECOVERED? *"
+              value={stolenRecovered}
+              onChange={v => { setStolenRecovered(v); setTouched(prev => ({ ...prev, stolenRecovered: true })); }}
+              required
+              error={fieldError('stolenRecovered') ?? undefined}
+            />
+            <YesNoRow
+              label="IS THERE CURRENTLY OUTSTANDING FINANCE ON THE VEHICLE? *"
+              value={outstandingFinance}
+              onChange={v => { setOutstandingFinance(v); setTouched(prev => ({ ...prev, outstandingFinance: true })); }}
+              required
+              error={fieldError('outstandingFinance') ?? undefined}
+            />
+            <YesNoRow
+              label="ARE YOU THE LEGAL REGISTERED KEEPER OF THIS VEHICLE? *"
+              value={isLegalKeeper}
+              onChange={v => { setIsLegalKeeper(v); setTouched(prev => ({ ...prev, isLegalKeeper: true })); }}
+              required
+              error={fieldError('isLegalKeeper') ?? undefined}
+            />
           </View>
           <TouchableOpacity
             style={[s.declRow, declAcknowledged && s.declRowActive]}
-            onPress={() => setDeclAcknowledged(p => !p)}
+            onPress={() => setDeclAcknowledged(p => { setTouched(prev => ({ ...prev, declAcknowledged: true })); return !p; })}
             activeOpacity={0.8}
           >
             <View style={[s.checkbox, declAcknowledged && s.checkboxActive]}>
-              {declAcknowledged && <Ionicons name="checkmark" size={12} color="#FFF" />}
+              {declAcknowledged && <Ionicons name="checkmark" size={12} color={Colors.white} />}
             </View>
             <Text style={s.declText}>
               I confirm that the above declarations are true and accurate to the best of my knowledge.
               I understand that false declarations on this listing may have legal consequences.
             </Text>
           </TouchableOpacity>
+          {fieldError('declAcknowledged') ? <Text style={s.inlineError}>{fieldError('declAcknowledged')}</Text> : null}
         </SectionBox>
 
       </ScrollView>
@@ -1386,7 +1561,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         {/* Photo Tracker */}
         <View style={s.photoTracker}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="camera" size={14} color="#DC1F26" />
+            <Ionicons name="camera" size={14} color={Colors.accent} />
             <Text style={s.photoTrackerLabel}>Photo Tracker</Text>
           </View>
           <Text style={s.photoTrackerCount}>{totalCount} / 20</Text>
@@ -1413,13 +1588,13 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         {/* Pro Tip */}
         {photoTab === 'Exterior' && (
           <View style={s.proTip}>
-            <Ionicons name="information-circle-outline" size={14} color="#3B82F6" />
+            <Ionicons name="information-circle-outline" size={14} color={Colors.infoBlue} accessibilityElementsHidden importantForAccessibility="no" />
             <Text style={s.proTipText}>PRO TIP — EXTERIOR: Park in an open, well-lit area. Take photos from all 4 corners, straight on front/back, and close-ups of wheels.</Text>
           </View>
         )}
         {photoTab === 'Interior' && (
           <View style={s.proTip}>
-            <Ionicons name="information-circle-outline" size={14} color="#3B82F6" />
+            <Ionicons name="information-circle-outline" size={14} color={Colors.infoBlue} accessibilityElementsHidden importantForAccessibility="no" />
             <Text style={s.proTipText}>PRO TIP — INTERIOR: Photograph dashboard, steering wheel, infotainment, seats, boot, and any wear.</Text>
           </View>
         )}
@@ -1434,9 +1609,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               activeOpacity={0.7}
             >
               {uploadingPhoto
-                ? <ActivityIndicator color="#DC1F26" />
+                ? <ActivityIndicator color={Colors.accent} />
                 : <>
-                    <Ionicons name="camera-outline" size={28} color="#606070" />
+                    <Ionicons name="camera-outline" size={28} color={Colors.iconMuted} />
                     <Text style={s.uploadZoneTitle}>Add {photoTab} Photos</Text>
                     <Text style={s.uploadZoneHint}>Tap to select from gallery · Max 50 photos</Text>
                     <Text style={s.uploadZoneFormats}>JPEG, PNG, WebP · Max 5MB per file</Text>
@@ -1470,9 +1645,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                           </View>
                         )}
                         {i === 0 && <View style={s.coverBadge}><Text style={s.coverBadgeText}>COVER</Text></View>}
-                        <TouchableOpacity style={s.photoRemoveBtn} onPress={() => removePhoto(photoTab, uri)}>
-                          <Ionicons name="close" size={10} color="#FFF" />
-                        </TouchableOpacity>
+                        <IconButton style={s.photoRemoveBtn} icon={<Ionicons name="close" size={10} color={Colors.white} />} onPress={() => removePhoto(photoTab, uri)} accessibilityLabel="Remove photo" />
                       </View>
                     );
                   })}
@@ -1483,7 +1656,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         ) : (
           /* Damage Map */
           <View>
-            <SectionBox title="Damage Map — Select Damaged Areas" accent="#F59E0B">
+            <SectionBox title="Damage Map — Select Damaged Areas" accent={Colors.warning}>
               <Text style={s.fieldHint}>
                 Drag to rotate the 3D model. Tap a zone to mark damage, hide it, or attach a photo.
               </Text>
@@ -1513,7 +1686,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               onChangeText={setVideoInput}
               onSubmitEditing={handleAddVideoUrl}
               placeholder="Paste a YouTube, Instagram or Facebook URL"
-              placeholderTextColor="#404050"
+              placeholderTextColor={Colors.borderMuted}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="url"
@@ -1538,16 +1711,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   key={url}
                   style={[s.pill, s.pillActive, { flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 8 }]}
                 >
-                  <Ionicons name="play-circle-outline" size={14} color="#FFFFFF" />
-                  <Text style={[s.pillTextActive, { flex: 1, fontSize: 11 }]} numberOfLines={1}>
+                  <Ionicons name="play-circle-outline" size={14} color={Colors.white} />
+                  <Text style={[s.pillTextActive, { flex: 1, fontSize: FontSize.xs }]} numberOfLines={1}>
                     {url.length > 40 ? `${url.slice(0, 40)}…` : url}
                   </Text>
-                  <TouchableOpacity
-                    onPress={() => setVideoUrls(p => p.filter(v => v !== url))}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Ionicons name="close" size={13} color="#FFFFFF" />
-                  </TouchableOpacity>
+                  <IconButton icon={<Ionicons name="close" size={13} color={Colors.white} />} onPress={() => setVideoUrls(p => p.filter(v => v !== url))} accessibilityLabel="Remove video" />
                 </View>
               ))}
             </View>
@@ -1573,12 +1741,12 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     const isValidRange = askVal > 0 && (minVal === 0 || minVal < askVal);
 
     return (
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
+      <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
 
-        <SectionBox title="Set Your Price Range" accent="#DC1F26">
+        <SectionBox title="Set Your Price Range" accent={Colors.accent}>
           <Text style={s.fieldHint}>
-            The <Text style={{ color: '#FFFFFF', fontFamily: FontFamily.bold }}>Asking Price</Text> is displayed publicly.
-            The <Text style={{ color: '#FFFFFF', fontFamily: FontFamily.bold }}>Lower (Min)</Text> defines your acceptable offer floor.
+            The <Text style={{ color: Colors.white, fontFamily: FontFamily.bold }}>Asking Price</Text> is displayed publicly.
+            The <Text style={{ color: Colors.white, fontFamily: FontFamily.bold }}>Lower (Min)</Text> defines your acceptable offer floor.
           </Text>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <View style={{ flex: 1 }}>
@@ -1592,7 +1760,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   onChangeText={v => { setPriceMin(v); if (touched.priceMin) setTouched(prev => ({ ...prev, priceMin: true })); }}
                   onBlur={fieldTouched('priceMin')}
                   placeholder="0"
-                  placeholderTextColor="#404050"
+                  placeholderTextColor={Colors.borderMuted}
                   keyboardType="number-pad"
                 />
               </View>
@@ -1602,14 +1770,14 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               <SL label="ASKING PRICE *" required />
               <Text style={s.fieldHintRed}>Displayed on listing — required</Text>
               <View style={[s.priceInputWrap, s.priceInputWrapActive, touched.priceAsking ? { borderColor: fieldBorderColor('priceAsking') } : {}]}>
-                <Text style={[s.priceCurrency, { color: '#DC1F26' }]}>£</Text>
+                <Text style={[s.priceCurrency, { color: Colors.accent }]}>£</Text>
                 <TextInput
                   style={s.priceInput}
                   value={priceAsking}
                   onChangeText={v => { setPriceAsking(v); if (touched.priceAsking) setTouched(prev => ({ ...prev, priceAsking: true })); }}
                   onBlur={fieldTouched('priceAsking')}
                   placeholder="0"
-                  placeholderTextColor="#404050"
+                  placeholderTextColor={Colors.borderMuted}
                   keyboardType="number-pad"
                 />
               </View>
@@ -1621,19 +1789,19 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           {(minVal > 0 || askVal > 0) && (
             <View style={{ marginTop: 16 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                <Text style={[s.fieldHint, { color: '#F59E0B' }]}>YOUR PRICE RANGE</Text>
-                <Text style={[s.fieldHint, { color: isValidRange ? '#10B981' : '#DC1F26' }]}>
+                <Text style={[s.fieldHint, { color: Colors.warning }]}>YOUR PRICE RANGE</Text>
+                <Text style={[s.fieldHint, { color: isValidRange ? Colors.accentGreen : Colors.accent }]}>
                   {isValidRange ? '✓ VALID' : '⚠ CHECK'}
                 </Text>
               </View>
               <View style={s.priceRangeBar}>
-                <View style={[s.priceRangeFill, !isValidRange && { backgroundColor: '#DC1F26' }]} />
+                <View style={[s.priceRangeFill, !isValidRange && { backgroundColor: Colors.accent }]} />
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-                <Text style={[s.priceRangeLabel, { color: '#F59E0B' }]}>
+                <Text style={[s.priceRangeLabel, { color: Colors.warning }]}>
                   {minVal > 0 ? `£${minVal.toLocaleString()}` : '£0'}
                 </Text>
-                <Text style={[s.priceRangeLabel, { color: '#FFFFFF' }]}>
+                <Text style={[s.priceRangeLabel, { color: Colors.white }]}>
                   {askVal > 0 ? `£${askVal.toLocaleString()}` : '—'}
                 </Text>
               </View>
@@ -1670,8 +1838,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             <Switch
               value={deliveryAvailable}
               onValueChange={setDeliveryAvailable}
-              trackColor={{ false: '#2A2A35', true: '#DC1F26' }}
-              thumbColor="#FFFFFF"
+              trackColor={{ false: Colors.darkBlue_2a2a35, true: Colors.accent }}
+              thumbColor={Colors.white}
             />
           </View>
 
@@ -1685,7 +1853,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   value={deliveryMaxMiles}
                   onChangeText={setDeliveryMaxMiles}
                   placeholder="e.g. 50"
-                  placeholderTextColor="#404050"
+                  placeholderTextColor={Colors.borderMuted}
                   keyboardType="number-pad"
                   autoCorrect={false}
                 />
@@ -1698,7 +1866,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   value={deliveryPricePerMile}
                   onChangeText={setDeliveryPricePerMile}
                   placeholder="e.g. 2.00"
-                  placeholderTextColor="#404050"
+                  placeholderTextColor={Colors.borderMuted}
                   keyboardType="decimal-pad"
                   autoCorrect={false}
                 />
@@ -1717,7 +1885,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 const totalExVat = feeExVat + ppm * EXAMPLE_MILES;
                 return (
                   <View style={s.deliveryPreview}>
-                    <Ionicons name="information-circle-outline" size={13} color="#60A5FA" />
+                    <Ionicons name="information-circle-outline" size={13} color={Colors.infoBlueLight} accessibilityElementsHidden importantForAccessibility="no" />
                     <Text style={s.deliveryPreviewText}>
                       {`Example: ${EXAMPLE_MILES}-mile delivery = £${Math.round(totalExVat)} ex-VAT`}
                       {ppm > 0 ? ` (£${Math.round(feeExVat)} base + £${Math.round(ppm * EXAMPLE_MILES)} per-mile)` : ' (base fee only)'}
@@ -1751,21 +1919,21 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   activeOpacity={0.8}
                 >
                   {badge.id === 'STANDARD' && (
-                    <View style={[s.badgePopular, { backgroundColor: '#3B82F6' }]}><Text style={s.badgePopularText}>Standard</Text></View>
+                    <View style={[s.badgePopular, { backgroundColor: Colors.infoBlue }]}><Text style={s.badgePopularText}>Standard</Text></View>
                   )}
                   {badge.id === 'PREMIUM' && (
-                    <View style={[s.badgePopular, { backgroundColor: '#F59E0B' }]}>
-                      <Text style={[s.badgePopularText, { color: '#000' }]}>Best Value</Text>
+                    <View style={[s.badgePopular, { backgroundColor: Colors.warning }]}>
+                      <Text style={[s.badgePopularText, { color: Colors.black }]}>Best Value</Text>
                     </View>
                   )}
                   {active && (
                     <View style={[s.badgeSelected, { backgroundColor: badge.accent }]}>
-                      <Text style={[s.badgeSelectedText, badge.id === 'PREMIUM' && { color: '#000' }]}>Selected</Text>
+                      <Text style={[s.badgeSelectedText, badge.id === 'PREMIUM' && { color: Colors.black }]}>Selected</Text>
                     </View>
                   )}
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                     <View style={[s.radioCircle, active && { backgroundColor: badge.accent, borderColor: badge.accent }]}>
-                      {active && <Ionicons name="checkmark" size={12} color={badge.id === 'PREMIUM' ? '#000' : '#FFF'} />}
+                      {active && <Ionicons name="checkmark" size={12} color={badge.id === 'PREMIUM' ? Colors.black : Colors.white} />}
                     </View>
                     <View style={{ flex: 1 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -1779,14 +1947,14 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   <View style={{ marginTop: 10, marginLeft: 36, gap: 4 }}>
                     {badge.features.map(f => (
                       <View key={f} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Ionicons name="checkmark-circle" size={12} color="#10B981" />
+                        <Ionicons name="checkmark-circle" size={12} color={Colors.accentGreen} />
                         <Text style={s.badgeFeatureText}>{f}</Text>
                       </View>
                     ))}
                     {badge.negative.map(f => (
                       <View key={f} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Ionicons name="close" size={12} color="#404050" />
-                        <Text style={[s.badgeFeatureText, { color: '#404050' }]}>{f}</Text>
+                        <Ionicons name="close" size={12} color={Colors.borderMuted} />
+                        <Text style={[s.badgeFeatureText, { color: Colors.borderMuted }]}>{f}</Text>
                       </View>
                     ))}
                   </View>
@@ -1804,16 +1972,16 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   function renderAuctionSchedule() {
     return (
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
+      <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
 
-        <SectionBox title="Live Auction — 24-Hour Fixed Duration" accent="#F97316">
-          <Text style={[s.fieldHint, { color: '#FB923C' }]}>
+        <SectionBox title="Live Auction — 24-Hour Fixed Duration" accent={Colors.lightOrange_f97316}>
+          <Text style={[s.fieldHint, { color: Colors.lightOrange_fb923c }]}>
             Your auction will run for exactly 24 hours. Anti-snipe protection automatically extends bidding by 3 minutes if a bid arrives in the final 3 minutes.
           </Text>
         </SectionBox>
 
         {/* When to start */}
-        <SectionBox title="When to Start *" accent="#F97316">
+        <SectionBox title="When to Start *" accent={Colors.lightOrange_f97316}>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <TouchableOpacity
               style={[s.auctionModeBtn, auctionStartMode === 'NOW' && s.auctionModeBtnActive]}
@@ -1821,7 +1989,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               activeOpacity={0.7}
             >
               <Text style={s.auctionModeBtnIcon}>⚡</Text>
-              <Text style={[s.auctionModeBtnTitle, auctionStartMode === 'NOW' && { color: '#FB923C' }]}>Start Immediately</Text>
+              <Text style={[s.auctionModeBtnTitle, auctionStartMode === 'NOW' && { color: Colors.lightOrange_fb923c }]}>Start Immediately</Text>
               <Text style={s.auctionModeBtnHint}>Auction goes live right now</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -1830,7 +1998,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               activeOpacity={0.7}
             >
               <Text style={s.auctionModeBtnIcon}>🗓️</Text>
-              <Text style={[s.auctionModeBtnTitle, auctionStartMode === 'SCHEDULED' && { color: '#FB923C' }]}>Schedule</Text>
+              <Text style={[s.auctionModeBtnTitle, auctionStartMode === 'SCHEDULED' && { color: Colors.lightOrange_fb923c }]}>Schedule</Text>
               <Text style={s.auctionModeBtnHint}>Choose a start date & time</Text>
             </TouchableOpacity>
           </View>
@@ -1839,9 +2007,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               <FieldInput
                 label="START DATE & TIME"
                 value={auctionStartDate}
-                onChange={setAuctionStartDate}
+                onChange={v => { setAuctionStartDate(v); if (touched.auctionStartDate) setTouched(prev => ({ ...prev, auctionStartDate: true })); }}
                 placeholder="e.g. 2025-12-25 14:00"
                 required
+                error={fieldError('auctionStartDate') ?? undefined}
               />
               <Text style={s.fieldHint}>Format: YYYY-MM-DD HH:MM (24-hour)</Text>
             </View>
@@ -1849,33 +2018,36 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         </SectionBox>
 
         {/* Pricing */}
-        <SectionBox title="Auction Pricing" accent="#F97316">
+        <SectionBox title="Auction Pricing" accent={Colors.lightOrange_f97316}>
           <FieldInput
             label="RESERVE PRICE (£) *"
             value={reservePrice}
-            onChange={setReservePrice}
+            onChange={v => { setReservePrice(v); if (touched.reservePrice) setTouched(prev => ({ ...prev, reservePrice: true })); }}
             placeholder="Minimum you'll accept"
             keyboardType="number-pad"
             required
             hint="The auction must reach this price for the sale to complete."
+            error={fieldError('reservePrice') ?? undefined}
           />
           <FieldInput
             label="STARTING BID (£) *"
             value={startingBid}
-            onChange={setStartingBid}
+            onChange={v => { setStartingBid(v); if (touched.startingBid) setTouched(prev => ({ ...prev, startingBid: true })); }}
             placeholder="Opening bid amount"
             keyboardType="number-pad"
             required
             hint="The first bid placed must be at least this amount."
+            error={fieldError('startingBid') ?? undefined}
           />
           <FieldInput
             label="MINIMUM BID INCREMENT (£) *"
             value={minIncrement}
-            onChange={setMinIncrement}
+            onChange={v => { setMinIncrement(v); if (touched.minIncrement) setTouched(prev => ({ ...prev, minIncrement: true })); }}
             placeholder="e.g. 100"
             keyboardType="number-pad"
             required
             hint="Each subsequent bid must raise the price by at least this amount."
+            error={fieldError('minIncrement') ?? undefined}
           />
         </SectionBox>
 
@@ -1885,7 +2057,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             <View style={s.reviewCell}><Text style={s.reviewCellLabel}>DURATION</Text><Text style={s.reviewCellValue}>24 Hours</Text></View>
             <View style={s.reviewCell}><Text style={s.reviewCellLabel}>ANTI-SNIPE</Text><Text style={s.reviewCellValue}>3 Minutes</Text></View>
             <View style={s.reviewCell}><Text style={s.reviewCellLabel}>START</Text><Text style={s.reviewCellValue}>{auctionStartMode === 'NOW' ? 'Immediately' : auctionStartDate || '—'}</Text></View>
-            <View style={s.reviewCell}><Text style={s.reviewCellLabel}>LISTING FEE</Text><Text style={[s.reviewCellValue, { color: '#10B981' }]}>Free</Text></View>
+            <View style={s.reviewCell}><Text style={s.reviewCellLabel}>LISTING FEE</Text><Text style={[s.reviewCellValue, { color: Colors.accentGreen }]}>Free</Text></View>
           </View>
         </SectionBox>
 
@@ -1901,13 +2073,13 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     const minNum = parseFloat(priceMin.replace(/[^0-9.]/g, '')) || 0;
 
     return (
-      <ScrollView style={{ flex: 1, backgroundColor: '#0A0A0C' }} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 140 }]}>
+      <ScrollView style={{ flex: 1, backgroundColor: Colors.bgPrimary }} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 140 }]}>
         <Text style={s.reviewHeading}>Review Your Listing</Text>
 
         {/* Vehicle Identity */}
         <SectionBox title="Vehicle Identity" action={
           <TouchableOpacity style={s.reviewEditBtn} onPress={() => setStep(1)}>
-            <Ionicons name="create-outline" size={12} color="#DC1F26" />
+            <Ionicons name="create-outline" size={12} color={Colors.accent} />
             <Text style={s.reviewEditText}>Edit</Text>
           </TouchableOpacity>
         }>
@@ -1924,7 +2096,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         {/* Photos */}
         <SectionBox title={`Photos (${allImages.length})`} action={
           <TouchableOpacity style={s.reviewEditBtn} onPress={() => setStep(2)}>
-            <Ionicons name="create-outline" size={12} color="#DC1F26" />
+            <Ionicons name="create-outline" size={12} color={Colors.accent} />
             <Text style={s.reviewEditText}>Edit</Text>
           </TouchableOpacity>
         }>
@@ -1948,7 +2120,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         {/* Technical Specs */}
         <SectionBox title="Technical Specs" action={
           <TouchableOpacity style={s.reviewEditBtn} onPress={() => setStep(1)}>
-            <Ionicons name="create-outline" size={12} color="#DC1F26" />
+            <Ionicons name="create-outline" size={12} color={Colors.accent} />
             <Text style={s.reviewEditText}>Edit</Text>
           </TouchableOpacity>
         }>
@@ -1985,14 +2157,14 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           )}
           {title ? <View style={{ marginTop: 12 }}>
             <Text style={s.reviewCellLabel}>TITLE</Text>
-            <Text style={[s.reviewCellValue, { fontFamily: FontFamily.bold, fontSize: 14, marginTop: 4 }]}>{String(title)}</Text>
+            <Text style={[s.reviewCellValue, { fontFamily: FontFamily.bold, fontSize: FontSize.size14, marginTop: 4 }]}>{String(title)}</Text>
           </View> : null}
         </SectionBox>
 
         {/* Pricing */}
         <SectionBox title="Pricing" action={
           <TouchableOpacity style={s.reviewEditBtn} onPress={() => setStep(3)}>
-            <Ionicons name="create-outline" size={12} color="#DC1F26" />
+            <Ionicons name="create-outline" size={12} color={Colors.accent} />
             <Text style={s.reviewEditText}>Edit</Text>
           </TouchableOpacity>
         }>
@@ -2003,7 +2175,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             </View>
             <View style={s.reviewCell}>
               <Text style={s.reviewCellLabel}>ASKING PRICE</Text>
-              <Text style={[s.reviewCellValue, { color: '#FFFFFF', fontFamily: FontFamily.extraBold, fontSize: 18 }]}>
+              <Text style={[s.reviewCellValue, { color: Colors.white, fontFamily: FontFamily.extraBold, fontSize: FontSize.lg }]}>
                 {askNum > 0 ? `£${askNum.toLocaleString()}` : '—'}
               </Text>
             </View>
@@ -2019,7 +2191,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         {/* HPI Check Callout */}
         <View style={s.hpiCallout}>
           <View style={s.hpiCalloutIcon}>
-            <Ionicons name="shield-checkmark-outline" size={22} color="#3B82F6" />
+            <Ionicons name="shield-checkmark-outline" size={22} color={Colors.infoBlue} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={s.hpiCalloutTitle}>Add HPI Vehicle Check</Text>
@@ -2040,23 +2212,27 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     <View style={s.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(220,31,38,0.03)', 'rgba(0,0,0,0)', '#0A0A0C']}
+        colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.3 }}
       />
 
       {/* Header */}
       <View style={[s.header, { paddingTop: insets.top + 14 }]}>
-        <TouchableOpacity style={s.backBtn} onPress={handleBack} activeOpacity={0.7}>
-          <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
+        <IconButton style={s.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={handleBack} accessibilityLabel="Go back" />
         <View style={s.headerCenter}>
           <Text style={s.headerSub}>SELL MY CAR</Text>
           <Text style={s.headerTitle}>
             {step === 1 ? 'Vehicle Details' : step === 2 ? 'Media & Damage' : step === 3 ? 'Pricing' : (step === 4 && isAuction) ? 'Auction Schedule' : 'Review & Publish'}
           </Text>
         </View>
-        <View style={{ width: 38 }} />
+        {step >= 2 && !editMode ? (
+          <TouchableOpacity onPress={handleSaveDraftExit} activeOpacity={0.7} style={{ width: 38, alignItems: 'flex-end' }}>
+            <Text style={{ fontFamily: FontFamily.medium, fontSize: FontSize.size9, color: Colors.textSecondary }}>SAVE{'\n'}& EXIT</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 38 }} />
+        )}
       </View>
 
       {renderStepper()}
@@ -2073,7 +2249,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       <View style={[s.bottomBar, { paddingBottom: insets.bottom || 20 }]}>
         {step > 1 && (
           <TouchableOpacity style={s.backBtnSm} onPress={handleBack} activeOpacity={0.8}>
-            <Ionicons name="arrow-back" size={16} color="#FFFFFF" />
+            <Ionicons name="arrow-back" size={16} color={Colors.white} />
             <Text style={s.backBtnSmText}>BACK</Text>
           </TouchableOpacity>
         )}
@@ -2091,7 +2267,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 : step === 3 ? 'REVIEW LISTING'
                 : 'REVIEW LISTING'}
             </Text>
-            <Ionicons name="arrow-forward" size={16} color="#FFF" style={{ marginLeft: 8 }} />
+            <Ionicons name="arrow-forward" size={16} color={Colors.white} style={{ marginLeft: 8 }} />
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
@@ -2101,10 +2277,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             disabled={isPublishing}
           >
             {isPublishing
-              ? <ActivityIndicator color="#FFF" size="small" />
+              ? <ActivityIndicator color={Colors.white} size="small" />
               : <>
                   <Text style={s.nextBtnText}>{editMode ? 'SAVE CHANGES' : 'PUBLISH LISTING'}</Text>
-                  <Ionicons name="checkmark" size={16} color="#FFF" style={{ marginLeft: 8 }} />
+                  <Ionicons name="checkmark" size={16} color={Colors.white} style={{ marginLeft: 8 }} />
                 </>
             }
           </TouchableOpacity>
@@ -2117,170 +2293,172 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0A0A0C' },
+  container: { flex: 1, backgroundColor: Colors.bgPrimary },
   scroll: { paddingHorizontal: 16, paddingTop: 12 },
 
   // Header
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 12 },
-  backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.whiteAlpha05, borderWidth: 1, borderColor: Colors.whiteAlpha08, alignItems: 'center', justifyContent: 'center' },
   headerCenter: { alignItems: 'center' },
-  headerSub: { fontFamily: FontFamily.bold, fontSize: 9, color: '#DC1F26', letterSpacing: 1.5, marginBottom: 3 },
-  headerTitle: { fontFamily: FontFamily.extraBold, fontSize: 16, color: '#FFFFFF' },
+  headerSub: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.accent, letterSpacing: 1.5, marginBottom: 3 },
+  headerTitle: { fontFamily: FontFamily.extraBold, fontSize: FontSize.md, color: Colors.white },
 
   // Stepper
   stepperContainer: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'center', paddingHorizontal: 16, marginBottom: 16 },
   stepItem: { alignItems: 'center', width: 56 },
-  stepCircle: { width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
-  stepCircleActive: { backgroundColor: '#DC1F26' },
-  stepNum: { fontFamily: FontFamily.bold, fontSize: 11, color: '#606070' },
-  stepNumActive: { color: '#FFFFFF' },
-  stepLabel: { fontFamily: FontFamily.bold, fontSize: 8, color: '#606070', letterSpacing: 0.8 },
-  stepLabelActive: { color: '#FFFFFF' },
-  stepLine: { flex: 1, height: 2, backgroundColor: 'rgba(255,255,255,0.08)', marginTop: 12, marginHorizontal: -8 },
-  stepLineActive: { backgroundColor: '#DC1F26' },
+  stepCircle: { width: 26, height: 26, borderRadius: 13, backgroundColor: Colors.whiteAlpha05, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  stepCircleActive: { backgroundColor: Colors.accent },
+  stepNum: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.iconMuted },
+  stepNumActive: { color: Colors.white },
+  stepLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size8, color: Colors.iconMuted, letterSpacing: 0.8 },
+  stepLabelActive: { color: Colors.white },
+  stepLine: { flex: 1, height: 2, backgroundColor: Colors.whiteAlpha08, marginTop: 12, marginHorizontal: -8 },
+  stepLineActive: { backgroundColor: Colors.accent },
 
   // Section Box
-  sectionBox: { backgroundColor: '#111116', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', marginBottom: 12 },
-  sectionBoxHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)', borderLeftWidth: 3, borderLeftColor: 'rgba(255,255,255,0.15)', borderTopLeftRadius: 14, borderTopRightRadius: 14 },
-  sectionBoxTitle: { fontFamily: FontFamily.bold, fontSize: 11, color: '#FFFFFF', letterSpacing: 1, flex: 1 },
+  sectionBox: { backgroundColor: Colors.bgSecondaryAlt, borderRadius: 14, borderWidth: 1, borderColor: Colors.whiteAlpha06, marginBottom: 12 },
+  sectionBoxHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.whiteAlpha05, borderLeftWidth: 3, borderLeftColor: Colors.whiteAlpha15, borderTopLeftRadius: 14, borderTopRightRadius: 14 },
+  sectionBoxTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 1, flex: 1 },
   sectionBoxBody: { padding: 14 },
 
   // Labels
-  sectionLabel: { fontFamily: FontFamily.bold, fontSize: 10, color: '#FFFFFF', letterSpacing: 1.2, marginBottom: 8 },
-  fieldHint: { fontFamily: FontFamily.regular, fontSize: 11, color: '#606070', marginBottom: 8, lineHeight: 16 },
-  deliveryPreview: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, backgroundColor: 'rgba(59,130,246,0.08)', borderWidth: 1, borderColor: 'rgba(59,130,246,0.20)', borderRadius: 8, padding: 10 },
-  deliveryPreviewText: { fontFamily: FontFamily.regular, fontSize: 11, color: '#93C5FD', flex: 1, lineHeight: 17 },
-  fieldHintRed: { fontFamily: FontFamily.regular, fontSize: 10, color: '#DC1F26', marginBottom: 8 },
+  sectionLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.white, letterSpacing: 1.2, marginBottom: 8 },
+  fieldHint: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted, marginBottom: 8, lineHeight: 16 },
+  deliveryPreview: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, backgroundColor: Colors.infoBlueAlpha08, borderWidth: 1, borderColor: Colors.infoBlueAlpha20, borderRadius: 8, padding: 10 },
+  deliveryPreviewText: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.paleBlue_93c5fd, flex: 1, lineHeight: 17 },
+  fieldHintRed: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.accent, marginBottom: 8 },
 
   // Input
-  input: { backgroundColor: '#1A1A22', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', paddingHorizontal: 14, paddingVertical: 12, fontFamily: FontFamily.medium, fontSize: 14, color: '#FFFFFF', marginBottom: 0 },
+  input: { backgroundColor: Colors.deepBlue_1a1a22, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha08, paddingHorizontal: 14, paddingVertical: 12, fontFamily: FontFamily.medium, fontSize: FontSize.size14, color: Colors.white, marginBottom: 0 },
   inlineError: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.error, marginTop: 4 },
 
   // DVLA
   vrmRow: { flexDirection: 'row', gap: 8, alignItems: 'stretch' },
-  vrmInput: { flex: 1, backgroundColor: '#FCD34D', borderRadius: 10, paddingHorizontal: 16, fontFamily: FontFamily.black, fontSize: 22, color: '#000', letterSpacing: 2 } as any,
-  vrmBtn: { backgroundColor: '#DC1F26', borderRadius: 10, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center', minWidth: 120 },
-  vrmBtnText: { fontFamily: FontFamily.bold, fontSize: 11, color: '#FFFFFF', letterSpacing: 0.8 },
-  dvlaSuccess: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, padding: 10, backgroundColor: 'rgba(16,185,129,0.08)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(16,185,129,0.2)' },
-  dvlaSuccessText: { fontFamily: FontFamily.regular, fontSize: 11, color: '#10B981', flex: 1 },
+  vrmInput: { flex: 1, backgroundColor: Colors.lightYellow, borderRadius: 10, paddingHorizontal: 16, fontFamily: FontFamily.black, fontSize: FontSize.size22, color: Colors.black, letterSpacing: 2 } as any,
+  vrmBtn: { backgroundColor: Colors.accent, borderRadius: 10, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center', minWidth: 120 },
+  vrmBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 0.8 },
+  dvlaSuccess: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, padding: 10, backgroundColor: Colors.accentGreenAlpha08, borderRadius: 8, borderWidth: 1, borderColor: Colors.accentGreenAlpha20 },
+  dvlaSuccessText: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.accentGreen, flex: 1 },
   dvlaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 0, marginBottom: 12 },
   dvlaField: { width: '50%', paddingVertical: 8, paddingRight: 8 },
-  dvlaFieldLabel: { fontFamily: FontFamily.bold, fontSize: 9, color: '#606070', letterSpacing: 1, marginBottom: 3 },
-  dvlaFieldValue: { fontFamily: FontFamily.medium, fontSize: 13, color: '#FFFFFF' },
+  dvlaFieldLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.iconMuted, letterSpacing: 1, marginBottom: 3 },
+  dvlaFieldValue: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.white },
 
   // Pills
-  pill: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-  pillActive: { backgroundColor: '#DC1F26', borderColor: '#DC1F26' },
-  pillText: { fontFamily: FontFamily.bold, fontSize: 11, color: '#A0A0AB' },
-  pillTextActive: { color: '#FFFFFF' },
+  pill: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: Colors.whiteAlpha04, borderWidth: 1, borderColor: Colors.whiteAlpha08 },
+  pillActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+  pillText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
+  pillTextActive: { color: Colors.white },
+  zoneChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  zoneHint: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted, marginTop: 6, lineHeight: 16 },
 
   // Yes/No
-  yesno: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-  yesnoActive: { backgroundColor: 'rgba(220,31,38,0.15)', borderColor: '#DC1F26' },
-  yesnoText: { fontFamily: FontFamily.bold, fontSize: 12, color: '#A0A0AB' },
-  yesnoTextActive: { color: '#FFFFFF' },
+  yesno: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, backgroundColor: Colors.whiteAlpha04, borderWidth: 1, borderColor: Colors.whiteAlpha08 },
+  yesnoActive: { backgroundColor: Colors.accentAlpha15, borderColor: Colors.accent },
+  yesnoText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.textSecondary },
+  yesnoTextActive: { color: Colors.white },
 
   // AI
-  aiBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#DC1F26', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, marginBottom: 8 },
-  aiBtnText: { fontFamily: FontFamily.bold, fontSize: 9, color: '#FFF', letterSpacing: 0.8 },
+  aiBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Colors.accent, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, marginBottom: 8 },
+  aiBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.white, letterSpacing: 0.8 },
 
   // Legal
-  warnText: { fontFamily: FontFamily.regular, fontSize: 12, color: '#F59E0B', lineHeight: 18, marginBottom: 14, padding: 10, backgroundColor: 'rgba(245,158,11,0.08)', borderRadius: 8 },
-  declRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.02)', marginTop: 8 },
-  declRowActive: { borderColor: 'rgba(220,31,38,0.4)', backgroundColor: 'rgba(220,31,38,0.05)' },
-  checkbox: { width: 20, height: 20, borderRadius: 4, borderWidth: 2, borderColor: '#606070', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 },
-  checkboxActive: { backgroundColor: '#DC1F26', borderColor: '#DC1F26' },
-  declText: { fontFamily: FontFamily.regular, fontSize: 12, color: '#A0A0AB', lineHeight: 18, flex: 1 },
+  warnText: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.warning, lineHeight: 18, marginBottom: 14, padding: 10, backgroundColor: Colors.warningAlpha08, borderRadius: 8 },
+  declRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha08, backgroundColor: Colors.whiteAlpha02, marginTop: 8 },
+  declRowActive: { borderColor: Colors.accentAlpha40, backgroundColor: Colors.accentAlpha05 },
+  checkbox: { width: 20, height: 20, borderRadius: 4, borderWidth: 2, borderColor: Colors.iconMuted, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 },
+  checkboxActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+  declText: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textSecondary, lineHeight: 18, flex: 1 },
 
   // Photo
   photoTracker: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  photoTrackerLabel: { fontFamily: FontFamily.bold, fontSize: 12, color: '#FFFFFF' },
-  photoTrackerCount: { fontFamily: FontFamily.bold, fontSize: 12, color: '#DC1F26' },
-  photoTrackerBar: { height: 4, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 2, marginBottom: 8 },
-  photoTrackerFill: { height: 4, backgroundColor: '#DC1F26', borderRadius: 2 },
-  photoTrackerHint: { fontFamily: FontFamily.regular, fontSize: 11, color: '#606070', marginBottom: 16 },
-  photoTabs: { flexDirection: 'row', gap: 0, marginBottom: 14, backgroundColor: '#111116', borderRadius: 10, padding: 3 },
+  photoTrackerLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white },
+  photoTrackerCount: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.accent },
+  photoTrackerBar: { height: 4, backgroundColor: Colors.whiteAlpha10, borderRadius: 2, marginBottom: 8 },
+  photoTrackerFill: { height: 4, backgroundColor: Colors.accent, borderRadius: 2 },
+  photoTrackerHint: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted, marginBottom: 16 },
+  photoTabs: { flexDirection: 'row', gap: 0, marginBottom: 14, backgroundColor: Colors.bgSecondaryAlt, borderRadius: 10, padding: 3 },
   photoTab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 8 },
-  photoTabActive: { backgroundColor: '#DC1F26' },
-  photoTabText: { fontFamily: FontFamily.bold, fontSize: 11, color: '#606070' },
-  photoTabTextActive: { color: '#FFFFFF' },
-  proTip: { flexDirection: 'row', gap: 8, backgroundColor: 'rgba(59,130,246,0.08)', borderWidth: 1, borderColor: 'rgba(59,130,246,0.2)', borderRadius: 10, padding: 10, marginBottom: 14 },
-  proTipText: { fontFamily: FontFamily.regular, fontSize: 11, color: '#93C5FD', lineHeight: 16, flex: 1 },
-  uploadZone: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderStyle: 'dashed', borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingVertical: 36, gap: 8 },
-  uploadZoneTitle: { fontFamily: FontFamily.bold, fontSize: 15, color: '#FFFFFF' },
-  uploadZoneHint: { fontFamily: FontFamily.regular, fontSize: 12, color: '#606070' },
-  uploadZoneFormats: { fontFamily: FontFamily.regular, fontSize: 10, color: '#404050' },
+  photoTabActive: { backgroundColor: Colors.accent },
+  photoTabText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.iconMuted },
+  photoTabTextActive: { color: Colors.white },
+  proTip: { flexDirection: 'row', gap: 8, backgroundColor: Colors.infoBlueAlpha08, borderWidth: 1, borderColor: Colors.infoBlueAlpha20, borderRadius: 10, padding: 10, marginBottom: 14 },
+  proTipText: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.paleBlue_93c5fd, lineHeight: 16, flex: 1 },
+  uploadZone: { borderWidth: 1, borderColor: Colors.whiteAlpha10, borderStyle: 'dashed', borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingVertical: 36, gap: 8 },
+  uploadZoneTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white },
+  uploadZoneHint: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.iconMuted },
+  uploadZoneFormats: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.borderMuted },
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  photoThumb: { width: (SW - 32 - 24) / 4, aspectRatio: 1, borderRadius: 8, overflow: 'hidden', backgroundColor: '#1A1A22' },
+  photoThumb: { width: (SW - 32 - 24) / 4, aspectRatio: 1, borderRadius: 8, overflow: 'hidden', backgroundColor: Colors.deepBlue_1a1a22 },
   photoThumbImg: { width: '100%', height: '100%' },
-  coverBadge: { position: 'absolute', bottom: 4, left: 4, backgroundColor: '#DC1F26', paddingHorizontal: 4, paddingVertical: 2, borderRadius: 3 },
-  coverBadgeText: { fontFamily: FontFamily.bold, fontSize: 7, color: '#FFF' },
+  coverBadge: { position: 'absolute', bottom: 4, left: 4, backgroundColor: Colors.accent, paddingHorizontal: 4, paddingVertical: 2, borderRadius: 3 },
+  coverBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size7, color: Colors.white },
   photoRemoveBtn: { position: 'absolute', top: 3, right: 3, width: 16, height: 16, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' },
   photoProgressBar: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 4, backgroundColor: 'rgba(0,0,0,0.4)' },
-  photoProgressFill: { height: 4, backgroundColor: Colors.accent ?? '#DC1F26', borderRadius: 0 },
+  photoProgressFill: { height: 4, backgroundColor: Colors.accent ?? Colors.accent, borderRadius: 0 },
 
   // Damage Map
-  dmgForm: { backgroundColor: '#111116', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(220,31,38,0.2)', padding: 14, marginBottom: 12 },
-  dmgFormTitle: { fontFamily: FontFamily.bold, fontSize: 13, color: '#A0A0AB', marginBottom: 12 },
-  dmgRecord: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: 10, marginBottom: 6 },
-  dmgRecordZone: { fontFamily: FontFamily.bold, fontSize: 12, color: '#FFFFFF', marginBottom: 2 },
-  dmgRecordMeta: { fontFamily: FontFamily.regular, fontSize: 11, color: '#606070' },
+  dmgForm: { backgroundColor: Colors.bgSecondaryAlt, borderRadius: 12, borderWidth: 1, borderColor: Colors.accentAlpha20, padding: 14, marginBottom: 12 },
+  dmgFormTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textSecondary, marginBottom: 12 },
+  dmgRecord: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.whiteAlpha03, borderRadius: 8, padding: 10, marginBottom: 6 },
+  dmgRecordZone: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white, marginBottom: 2 },
+  dmgRecordMeta: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted },
 
   // Pricing
-  priceInputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1A1A22', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', paddingHorizontal: 14, height: 52, marginBottom: 0 },
-  priceInputWrapActive: { borderColor: 'rgba(220,31,38,0.4)', backgroundColor: 'rgba(220,31,38,0.04)' },
-  priceCurrency: { fontFamily: FontFamily.bold, fontSize: 16, color: '#A0A0AB', marginRight: 6 },
-  priceInput: { flex: 1, fontFamily: FontFamily.bold, fontSize: 20, color: '#FFFFFF' },
-  priceRangeBar: { height: 6, backgroundColor: 'rgba(245,158,11,0.15)', borderRadius: 3, marginBottom: 0 },
-  priceRangeFill: { height: 6, width: '100%', backgroundColor: '#F59E0B', borderRadius: 3 },
-  priceRangeLabel: { fontFamily: FontFamily.bold, fontSize: 11 },
+  priceInputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.deepBlue_1a1a22, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha08, paddingHorizontal: 14, height: 52, marginBottom: 0 },
+  priceInputWrapActive: { borderColor: Colors.accentAlpha40, backgroundColor: Colors.accentAlpha04 },
+  priceCurrency: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.textSecondary, marginRight: 6 },
+  priceInput: { flex: 1, fontFamily: FontFamily.bold, fontSize: FontSize.xl, color: Colors.white },
+  priceRangeBar: { height: 6, backgroundColor: Colors.warningAlpha15, borderRadius: 3, marginBottom: 0 },
+  priceRangeFill: { height: 6, width: '100%', backgroundColor: Colors.warning, borderRadius: 3 },
+  priceRangeLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.xs },
 
   // Badge Cards
-  badgeCard: { backgroundColor: '#111116', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', padding: 14, position: 'relative', overflow: 'hidden' },
+  badgeCard: { backgroundColor: Colors.bgSecondaryAlt, borderRadius: 14, borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 14, position: 'relative', overflow: 'hidden' },
   badgeSelected: { position: 'absolute', top: 8, right: 8, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  badgeSelectedText: { fontFamily: FontFamily.bold, fontSize: 9, color: '#FFF', letterSpacing: 0.8 },
-  badgePopular: { position: 'absolute', top: 0, right: 0, backgroundColor: '#3B82F6', paddingHorizontal: 8, paddingVertical: 4, borderBottomLeftRadius: 8 },
-  badgePopularText: { fontFamily: FontFamily.bold, fontSize: 9, color: '#FFF' },
-  radioCircle: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: '#606070', alignItems: 'center', justifyContent: 'center' },
-  badgeLabel: { fontFamily: FontFamily.bold, fontSize: 14, marginBottom: 2 },
-  badgePrice: { fontFamily: FontFamily.extraBold, fontSize: 22, marginBottom: 2 },
-  badgeSub: { fontFamily: FontFamily.regular, fontSize: 11, color: '#606070' },
-  badgeFeatureText: { fontFamily: FontFamily.regular, fontSize: 11, color: '#A0A0AB' },
+  badgeSelectedText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.white, letterSpacing: 0.8 },
+  badgePopular: { position: 'absolute', top: 0, right: 0, backgroundColor: Colors.infoBlue, paddingHorizontal: 8, paddingVertical: 4, borderBottomLeftRadius: 8 },
+  badgePopularText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.white },
+  radioCircle: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: Colors.iconMuted, alignItems: 'center', justifyContent: 'center' },
+  badgeLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, marginBottom: 2 },
+  badgePrice: { fontFamily: FontFamily.extraBold, fontSize: FontSize.size22, marginBottom: 2 },
+  badgeSub: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted },
+  badgeFeatureText: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary },
 
   // Review
-  reviewHeading: { fontFamily: FontFamily.extraBold, fontSize: 22, color: '#FFFFFF', marginBottom: 16 },
+  reviewHeading: { fontFamily: FontFamily.extraBold, fontSize: FontSize.size22, color: Colors.white, marginBottom: 16 },
   reviewEditBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  reviewEditText: { fontFamily: FontFamily.bold, fontSize: 10, color: '#DC1F26' },
+  reviewEditText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.accent },
   reviewGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 0 },
   reviewCell: { width: '50%', paddingVertical: 8, paddingRight: 8 },
-  reviewCellLabel: { fontFamily: FontFamily.bold, fontSize: 9, color: '#606070', letterSpacing: 1, marginBottom: 3 },
-  reviewCellValue: { fontFamily: FontFamily.medium, fontSize: 13, color: '#C0C0CB' },
-  reviewFeatureChip: { paddingHorizontal: 10, paddingVertical: 4, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12 },
-  reviewFeatureChipText: { fontFamily: FontFamily.medium, fontSize: 10, color: '#A0A0AB' },
+  reviewCellLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.iconMuted, letterSpacing: 1, marginBottom: 3 },
+  reviewCellValue: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.paleBlue_c0c0cb },
+  reviewFeatureChip: { paddingHorizontal: 10, paddingVertical: 4, backgroundColor: Colors.whiteAlpha06, borderRadius: 12 },
+  reviewFeatureChipText: { fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: Colors.textSecondary },
 
   // Auction Schedule
-  auctionModeBtn: { flex: 1, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', padding: 14, alignItems: 'flex-start', gap: 4 },
-  auctionModeBtnActive: { borderColor: '#F97316', backgroundColor: 'rgba(249,115,22,0.08)' },
-  auctionModeBtnIcon: { fontSize: 20, marginBottom: 4 },
-  auctionModeBtnTitle: { fontFamily: FontFamily.bold, fontSize: 13, color: '#FFFFFF', marginBottom: 2 },
-  auctionModeBtnHint: { fontFamily: FontFamily.regular, fontSize: 10, color: '#606070' },
+  auctionModeBtn: { flex: 1, backgroundColor: Colors.whiteAlpha03, borderRadius: 12, borderWidth: 1, borderColor: Colors.whiteAlpha08, padding: 14, alignItems: 'flex-start', gap: 4 },
+  auctionModeBtnActive: { borderColor: Colors.lightOrange_f97316, backgroundColor: 'rgba(249,115,22,0.08)' },
+  auctionModeBtnIcon: { fontSize: FontSize.xl, marginBottom: 4 },
+  auctionModeBtnTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, marginBottom: 2 },
+  auctionModeBtnHint: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.iconMuted },
 
   // Body type pill with icon stacked
   bodyTypePill: { alignItems: 'center', paddingHorizontal: 10, paddingVertical: 8, gap: 4 },
 
   // HPI callout in review
-  hpiCallout: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(59,130,246,0.07)', borderWidth: 1, borderColor: 'rgba(59,130,246,0.2)', borderRadius: 14, padding: 14, marginBottom: 12, gap: 12 },
-  hpiCalloutIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(59,130,246,0.12)', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  hpiCalloutTitle: { fontFamily: FontFamily.bold, fontSize: 14, color: '#FFFFFF', marginBottom: 3 },
-  hpiCalloutSub: { fontFamily: FontFamily.regular, fontSize: 11, color: '#A0A0AB', lineHeight: 16 },
-  hpiCalloutBadge: { backgroundColor: 'rgba(59,130,246,0.15)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, flexShrink: 0 },
-  hpiCalloutPrice: { fontFamily: FontFamily.bold, fontSize: 13, color: '#60A5FA' },
+  hpiCallout: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(59,130,246,0.07)', borderWidth: 1, borderColor: Colors.infoBlueAlpha20, borderRadius: 14, padding: 14, marginBottom: 12, gap: 12 },
+  hpiCalloutIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: Colors.infoBlueAlpha12, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  hpiCalloutTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white, marginBottom: 3 },
+  hpiCalloutSub: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary, lineHeight: 16 },
+  hpiCalloutBadge: { backgroundColor: Colors.infoBlueAlpha15, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, flexShrink: 0 },
+  hpiCalloutPrice: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.infoBlueLight },
 
   // Bottom Bar
-  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingTop: 12, backgroundColor: '#0A0A0C', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', flexDirection: 'row', gap: 10 },
-  backBtnSm: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, height: 52, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.05)' },
-  backBtnSmText: { fontFamily: FontFamily.bold, fontSize: 12, color: '#FFFFFF' },
-  nextBtn: { flex: 1, backgroundColor: '#DC1F26', borderRadius: 12, height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  nextBtnText: { fontFamily: FontFamily.bold, fontSize: 13, color: '#FFFFFF', letterSpacing: 0.8 },
-  publishBtn: { backgroundColor: '#10B981' },
+  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingTop: 12, backgroundColor: Colors.bgPrimary, borderTopWidth: 1, borderTopColor: Colors.whiteAlpha05, flexDirection: 'row', gap: 10 },
+  backBtnSm: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, height: 52, borderRadius: 12, borderWidth: 1, borderColor: Colors.whiteAlpha10, backgroundColor: Colors.whiteAlpha05 },
+  backBtnSmText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white },
+  nextBtn: { flex: 1, backgroundColor: Colors.accent, borderRadius: 12, height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  nextBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, letterSpacing: 0.8 },
+  publishBtn: { backgroundColor: Colors.accentGreen },
 });

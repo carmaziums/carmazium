@@ -4,7 +4,7 @@ Read this before starting work, especially on a machine you haven't worked from 
 
 ## What this app is
 
-React Native/Expo mobile app for Carmazium — a UK vehicle marketplace with retail listings and live auctions. Buyer, seller, and dealer flows. Same backend as the web app (`https://carmazium-hjoh9w.fly.dev`), which lives at the repo root (`D:\carmazium\src\`) as a separate Next.js codebase — this mobile app is `D:\carmazium\carmazium app\carmazium app\`.
+React Native/Expo mobile app for Carmazium — a UK vehicle marketplace with retail listings and live auctions. Buyer, seller, and dealer flows. Same backend as the web app (`https://carmazium-hjoh9w.fly.dev`), which lives at the repo root (`src\`, sibling of `backend\` and this directory — resolve relative to wherever the repo is checked out; this used to say `D:\carmazium\src\`, which was stale on other machines) as a separate Next.js codebase — this mobile app is `<repo-root>\carmazium app\carmazium app\`.
 
 ## Where things stand (as of 2026-07-06)
 
@@ -74,3 +74,55 @@ Either path can also publish JS-only fixes (no new native module) via `eas updat
 
 - `FEATURE_AUDIT.md` (repo root) — web feature reference the mobile app is audited against
 - `.planning/phases/mobile-app-parity/mobile-CONTEXT.md` — older GSD planning doc covering UI polish scope (animations, skeleton states, etc.) — some of it (e.g. "3D viewer not surfaced") is now stale given item 1 above; treat as historical, not current truth
+
+## Known issues / backend follow-ups (2026-07-12)
+
+- **RESOLVED 2026-07-12 (F3, `mobile-production-readiness-plan.md`):** `DealerKYCScreen.tsx`
+  never called the £1 verification-fee Stripe checkout (`POST /dealers/kyc/checkout`) that the
+  backend added — it only ever posted the form to `POST /dealers/kyc`, so `stripeChargedAt`
+  never got set for any mobile-only dealer, and the screen's "Under Review" gate
+  (`isPending`) didn't check for it either, so a dealer who submitted saw "Under Review"
+  immediately with no way to actually pay. The mobile form also still had the **retired**
+  manual-bank-transfer fields (`paymentReference` text input, `paymentScreenshot` upload, and
+  "£1 bank transfer to CARMAZIUM TRADING LTD..." copy) — confirmed retired by checking the
+  web app's `KycOverlayForm.tsx` (`src/components/dashboard/KycOverlayForm.tsx`), which has
+  zero references to either field and is fully Stripe-checkout-driven. Fix mirrors web exactly:
+  removed the two retired fields/copy, added `alreadyPaid`/`paidAt` state driven by
+  `existingKyc.stripeChargedAt`, changed `isPending` to require `stripeChargedAt` (not just
+  `status === 'PENDING'`) so an unpaid submission falls through to the payment step instead of
+  a dead-end "Under Review" banner, and after a successful form submit now calls
+  `POST /dealers/kyc/checkout` and opens the returned Stripe Checkout URL in
+  `StripeCheckoutModal` (the same in-app WebView pattern already used for the HPI report
+  checkout on `VehicleDetailScreen.tsx` — not `Linking.openURL`, which is the black-screen bug
+  pattern this app already fixed once before). **Not yet done:** on-device verification of a
+  real £1 charge completing and `stripeChargedAt` landing — do this before considering dealer
+  KYC production-ready on mobile.
+
+- **RESOLVED 2026-07-12 (Stage 0, `mobile-production-readiness-plan.md` F1):** `/payments/intent`
+  was rejecting every `type: 'LISTING_FEE'` request outright — `CreatePaymentSheetDto`'s
+  `@IsIn(['DEPOSIT','FULL_PAYMENT','COMMISSION'])` didn't include `'LISTING_FEE'`, and the
+  global `ValidationPipe` 400'd the request before it ever reached `PaymentsService`. This
+  meant **every mobile attempt to publish a paid-tier (BASIC/STANDARD/PREMIUM) classified
+  listing failed** — confirmed by reading `backend/src/payments/` directly (this doc's prior
+  version couldn't verify this because it was written without backend source access; that's
+  fixed too, see below). Three call sites were affected: `SellCarFlowScreen.tsx` (main sell
+  flow), `ImportListingModal.tsx` (import-from-URL), and `SellerAuctionsScreen.tsx`
+  (also-list-retail). Fix: added `'LISTING_FEE'` to the DTO's allowed types, added a
+  `badgeTier` field (required when `type === 'LISTING_FEE'`) so the `payment_intent.succeeded`
+  webhook branch — which didn't exist before this fix — knows which tier to activate the
+  listing at (mirrors what the web's `checkout.session.completed` handler already did for its
+  own `LISTING_FEE` case). All three mobile call sites now send `badgeTier`. Covered by
+  `backend/src/payments/payments.service.spec.ts` (new file — `PaymentsService` had zero test
+  coverage before this).
+  **Still open, deliberately deferred (F2 in the plan doc):** `/payments/intent` still trusts
+  the client-supplied `amount` for `DEPOSIT`/`FULL_PAYMENT`/`COMMISSION`/`LISTING_FEE` — it
+  doesn't re-derive the real price server-side the way the web's Stripe Checkout Session flow
+  does. This is a payment-integrity gap, not just a listing-fee-tier question — scoped out of
+  this fix on purpose to keep it reviewable; do it as its own follow-up.
+
+- **Doc path fix (2026-07-12):** this file and `CLAUDE.md` used to hardcode the web app's
+  location as `D:\carmazium\src\`, which doesn't exist on every machine this repo is checked
+  out on (confirmed stale on the machine this fix was written on — the actual path was
+  `<repo-root>\src\`). Both docs now describe the path relative to the repo root instead of a
+  hardcoded drive letter. If you're reading this and the path is wrong again, fix it the same
+  way rather than re-hardcoding a machine-specific path.
