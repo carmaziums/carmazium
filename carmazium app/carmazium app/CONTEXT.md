@@ -77,6 +77,20 @@ Either path can also publish JS-only fixes (no new native module) via `eas updat
 
 ## Known issues / backend follow-ups (2026-07-12)
 
+- **RESOLVED 2026-07-12 (`SellerAuctionsScreen.tsx` BottomSheet migration,
+  `mobile-production-readiness-plan.md` / `mobile-ui-ux-plan.md` Stage 3):** the schedule-auction
+  create modal (2-step wizard, listing picker + auction settings form) was the last remaining
+  hand-rolled `presentationStyle="fullScreen"` `<Modal>` flagged as the "biggest single win" in
+  the BottomSheet migration plan. Migrated to `<BottomSheet>` — no `title` prop, since the modal
+  needs its own custom header (conditional back-chevron, step-dependent title, close button)
+  plus a step-indicator row, rendered as sheet content instead. `maxHeightPercent={95}`
+  approximates the old full-screen feel. Removed the screen's own `KeyboardAvoidingView`/
+  `StatusBar`/top-inset-spacer, now handled by `BottomSheet`'s `avoidKeyboard` prop and the fact
+  it's a transparent overlay rather than a separate native fullscreen window. `Modal` and
+  `KeyboardAvoidingView` became unused imports and were removed. `tsc`/`eslint` clean. **Not
+  on-device verified** — confirm the listing-picker `FlatList` (step 1) actually scrolls
+  correctly within the sheet's `maxHeight`-bounded `flex: 1` before shipping.
+
 - **RESOLVED 2026-07-12 (F6, `mobile-production-readiness-plan.md`):**
   `PaymentsService.createCheckoutSession` (the web-facing `/payments/checkout` Stripe Checkout
   Session endpoint) had the identical client-trusted-amount gap that F2 fixed in the sibling

@@ -15,10 +15,12 @@ This document does not repeat content already well-covered in the four existing 
 > - **F5 — DONE.** `CLAUDE.md`/`CONTEXT.md` no longer reference the stale `D:\carmazium\src` path.
 > - **F6 — DONE.** `createCheckoutSession` (the web-facing sibling of the F2 fix) now re-derives `amount` server-side too — both `amount`-accepting methods in `PaymentsService` are hardened.
 >
+> **`SellerAuctionsScreen.tsx`'s schedule-auction modal — DONE as of 2026-07-12.** Migrated the 2-step create-auction wizard (~220 lines) from a hand-rolled `presentationStyle="fullScreen"` `<Modal>` to the shared `<BottomSheet>`. Notes for anyone touching this next: no `title` prop is passed — the modal needs its own two-icon header (conditional back-chevron on step 2, step-dependent title text, close button) plus a step-indicator row, which don't fit `BottomSheet`'s single-row `title` convention, so both are rendered as the first children instead. `maxHeightPercent={95}` approximates the original full-screen feel while keeping the shared rounded-sheet chrome. The screen's own `KeyboardAvoidingView`/`StatusBar`/top-inset-spacer (needed for the old fullscreen presentation) were removed — `avoidKeyboard` on `BottomSheet` now handles the keyboard, and the sheet is a transparent overlay over the still-visible screen behind it, not a separate native fullscreen window. `Modal` and `KeyboardAvoidingView` are now unused imports in this file and were removed. `npx tsc --noEmit` and `eslint` both clean. **Not on-device verified** — the FlatList (step 1) and ScrollView (step 2) rely on Yoga resolving `flex: 1` against the parent's `maxHeight` correctly, which is standard RN behavior but should be confirmed on a real device before shipping, especially that the listing-picker FlatList actually scrolls/virtualizes within the sheet bounds.
+>
 > **Only these remain open** as of 2026-07-12:
 > - Damage zone-id web-parity verification (`mobile-audit-plan.md` Stage 3, part 1 — the defensive guard is done, the id-matching against web isn't).
-> - `SellerAuctionsScreen.tsx`'s schedule-auction modal, still hand-rolled (`mobile-ui-ux-plan.md` Stage 3 straggler).
-> - On-device verification of the F1/F3 payment flows (can't be done from this environment — no adb/emulator, and it would mean live Stripe/DB writes).
+> - `VehicleDetailScreen.tsx`'s remaining `<Modal>` usage — not yet checked whether that's the HPI/thumbnail/offer modals the original plan flagged, or something already fine as-is.
+> - On-device verification of the F1/F3 payment flows and this BottomSheet migration (can't be done from this environment — no adb/emulator, and payment flows would mean live Stripe/DB writes).
 
 ---
 

@@ -3,8 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  KeyboardAvoidingView,
-  Modal,
   Platform,
   RefreshControl,
   ScrollView,
@@ -924,20 +922,17 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         </TouchableOpacity>
       </BottomSheet>
 
-      {/* ── Create Auction Modal ── */}
-      <Modal
+      {/* ── Create Auction Modal (BottomSheet — shell provided by shared component,
+          no `title` prop since this modal needs its own two-icon header with a
+          conditional back-chevron + step indicator, not the sheet's simple
+          single-row title) ── */}
+      <BottomSheet
         visible={createModalVisible}
-        animationType="slide"
-        presentationStyle="fullScreen"
-        onRequestClose={() => { setCreateModalVisible(false); resetCreateModal(); }}
+        onClose={() => { setCreateModalVisible(false); resetCreateModal(); }}
+        avoidKeyboard
+        maxHeightPercent={95}
       >
-        <KeyboardAvoidingView
-          style={styles.modalContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-          <View style={{ height: insets.top }} />
-
+        <View style={styles.modalContainer}>
           {/* Modal header */}
           <View style={styles.modalHeader}>
             {createStep === 2 ? (
@@ -960,7 +955,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
           {/* ── Step 1: Pick a listing ── */}
           {createStep === 1 && (
-            <>
+            <View style={{ flex: 1 }}>
               <Text style={styles.modalSubheading}>
                 Choose an active classified listing to put up for auction.
               </Text>
@@ -979,6 +974,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 </View>
               ) : (
                 <FlatList
+                  style={{ flex: 1 }}
                   data={eligibleListings}
                   keyExtractor={l => l.id}
                   contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40, gap: 10 }}
@@ -986,12 +982,13 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                   renderItem={renderListingPickCard}
                 />
               )}
-            </>
+            </View>
           )}
 
           {/* ── Step 2: Auction settings ── */}
           {createStep === 2 && selectedListing && (
             <ScrollView
+              style={{ flex: 1 }}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40, gap: 16 }}
             >
@@ -1142,8 +1139,8 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               </TouchableOpacity>
             </ScrollView>
           )}
-        </KeyboardAvoidingView>
-      </Modal>
+        </View>
+      </BottomSheet>
     </View>
   );
 };
@@ -1492,10 +1489,11 @@ const styles = StyleSheet.create({
   retailSubmitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 50, borderRadius: 12, backgroundColor: Colors.infoBlue, marginTop: 16, marginBottom: 4 },
   retailSubmitText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white, letterSpacing: 0.3 },
 
-  // ── Create Auction Modal ──
+  // ── Create Auction Modal (shell now provided by shared <BottomSheet>) ──
   modalContainer: {
     flex: 1,
-    backgroundColor: Colors.bgPrimary,
+    // No backgroundColor here — BottomSheet's own sheet background
+    // (Colors.bgSecondary) already shows through.
   },
   modalHeader: {
     flexDirection: 'row',
