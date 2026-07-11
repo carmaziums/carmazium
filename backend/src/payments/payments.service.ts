@@ -47,7 +47,7 @@ export class PaymentsService {
     async createCheckoutSession(
         listingId: string,
         userId: string,
-        amount: number,
+        clientAmount: number,
         type: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' = 'FULL_PAYMENT',
         currency = 'gbp',
     ) {
@@ -57,6 +57,30 @@ export class PaymentsService {
 
         if (!listing || listing.deletedAt) {
             throw new NotFoundException(`Listing "${listingId}" not found`);
+        }
+
+        // Re-derive the real charge amount server-side instead of trusting the
+        // client-supplied `clientAmount` — same fix as createPaymentSheet (F2);
+        // see that method's comment for the full rationale. `clientAmount` is
+        // kept only as a mismatch-detection log, never used for the actual charge.
+        let amount: number;
+        switch (type) {
+            case 'FULL_PAYMENT':
+                amount = Number(listing.price);
+                break;
+            case 'COMMISSION':
+                amount = this.AUCTION_BUYER_FEE;
+                break;
+            case 'DEPOSIT':
+            default:
+                amount = this.DEPOSIT_AMOUNT;
+                break;
+        }
+
+        if (Math.abs(amount - clientAmount) > 0.01) {
+            console.warn(
+                `[PaymentsService.createCheckoutSession] client-supplied amount (${clientAmount}) did not match server-derived amount (${amount}) for type=${type} listing=${listingId} user=${userId} — using the server-derived amount.`,
+            );
         }
 
         const stripe = await this.getStripe();

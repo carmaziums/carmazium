@@ -3,6 +3,7 @@ const mockPaymentIntentsCreate = jest.fn();
 const mockCustomersCreate = jest.fn();
 const mockEphemeralKeysCreate = jest.fn();
 const mockConstructEvent = jest.fn();
+const mockCheckoutSessionsCreate = jest.fn();
 
 jest.mock('stripe', () => {
     const MockStripe = jest.fn().mockImplementation(() => ({
@@ -10,6 +11,7 @@ jest.mock('stripe', () => {
         customers: { create: mockCustomersCreate },
         ephemeralKeys: { create: mockEphemeralKeysCreate },
         webhooks: { constructEvent: mockConstructEvent },
+        checkout: { sessions: { create: mockCheckoutSessionsCreate } },
     }));
     // `payments.service.ts` loads Stripe via a dynamic `await import('stripe')`
     // (unlike dealers.service.ts's static import) — __esModule: true is required
@@ -229,5 +231,58 @@ describe('PaymentsService — handleWebhook payment_intent.succeeded (LISTING_FE
                 featuredUntil: null,
             }),
         });
+    });
+});
+
+describe('PaymentsService — createCheckoutSession (F6: server-side amount, same fix as F2)', () => {
+    let service: PaymentsService;
+    let prisma: any;
+
+    beforeEach(async () => {
+        mockCheckoutSessionsCreate.mockReset();
+        prisma = buildPrismaMock();
+        const module: TestingModule = await buildModule(prisma);
+        service = module.get<PaymentsService>(PaymentsService);
+
+        mockCheckoutSessionsCreate.mockResolvedValue({ id: 'cs_mock', url: 'https://checkout.stripe.com/cs_mock' });
+    });
+
+    it('charges the real listing price for FULL_PAYMENT regardless of a lower client-supplied amount', async () => {
+        prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', price: 30000, make: 'BMW', model: 'M3', year: 2022, images: [], deletedAt: null });
+
+        await service.createCheckoutSession('listing-1', 'user-1', 1, 'FULL_PAYMENT', 'gbp');
+
+        expect(mockCheckoutSessionsCreate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                line_items: [expect.objectContaining({ price_data: expect.objectContaining({ unit_amount: 3000000 }) })],
+            }),
+        );
+        expect(prisma.transaction.create).toHaveBeenCalledWith(
+            expect.objectContaining({ data: expect.objectContaining({ amount: 30000 }) }),
+        );
+    });
+
+    it('charges the fixed £500 deposit for DEPOSIT regardless of client-supplied amount', async () => {
+        prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', price: 30000, make: 'BMW', model: 'M3', year: 2022, images: [], deletedAt: null });
+
+        await service.createCheckoutSession('listing-1', 'user-1', 1, 'DEPOSIT', 'gbp');
+
+        expect(mockCheckoutSessionsCreate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                line_items: [expect.objectContaining({ price_data: expect.objectContaining({ unit_amount: 50000 }) })],
+            }),
+        );
+    });
+
+    it('charges the fixed £125 auction buyer fee for COMMISSION regardless of client-supplied amount', async () => {
+        prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', price: 30000, make: 'BMW', model: 'M3', year: 2022, images: [], deletedAt: null });
+
+        await service.createCheckoutSession('listing-1', 'user-1', 1, 'COMMISSION', 'gbp');
+
+        expect(mockCheckoutSessionsCreate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                line_items: [expect.objectContaining({ price_data: expect.objectContaining({ unit_amount: 12500 }) })],
+            }),
+        );
     });
 });
