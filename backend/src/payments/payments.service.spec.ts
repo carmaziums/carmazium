@@ -106,6 +106,67 @@ describe('PaymentsService — createPaymentSheet (LISTING_FEE)', () => {
         const callArg = mockPaymentIntentsCreate.mock.calls[0][0];
         expect(callArg.metadata.badgeTier).toBeUndefined();
     });
+
+    it('throws BadRequestException for LISTING_FEE with no badgeTier', async () => {
+        await expect(
+            service.createPaymentSheet('listing-1', 'user-1', 25, 'LISTING_FEE', 'gbp', undefined),
+        ).rejects.toThrow('badgeTier is required');
+        expect(mockPaymentIntentsCreate).not.toHaveBeenCalled();
+    });
+});
+
+describe('PaymentsService — createPaymentSheet (F2: server-side amount, ignores client amount)', () => {
+    let service: PaymentsService;
+    let prisma: any;
+
+    beforeEach(async () => {
+        mockPaymentIntentsCreate.mockReset();
+        mockCustomersCreate.mockReset();
+        mockEphemeralKeysCreate.mockReset();
+        prisma = buildPrismaMock();
+        const module: TestingModule = await buildModule(prisma);
+        service = module.get<PaymentsService>(PaymentsService);
+
+        mockEphemeralKeysCreate.mockResolvedValue({ secret: 'ek_mock' });
+        mockPaymentIntentsCreate.mockResolvedValue({ id: 'pi_mock', client_secret: 'pi_mock_secret' });
+    });
+
+    it('charges the real listing price for FULL_PAYMENT regardless of a lower client-supplied amount', async () => {
+        prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', price: 30000, deletedAt: null });
+
+        await service.createPaymentSheet('listing-1', 'user-1', 1, 'FULL_PAYMENT', 'gbp');
+
+        expect(mockPaymentIntentsCreate).toHaveBeenCalledWith(
+            expect.objectContaining({ amount: 3000000 }), // £30,000 in pence, NOT the client's £1
+        );
+        expect(prisma.transaction.create).toHaveBeenCalledWith(
+            expect.objectContaining({ data: expect.objectContaining({ amount: 30000 }) }),
+        );
+    });
+
+    it('charges the fixed £500 deposit for DEPOSIT regardless of client-supplied amount', async () => {
+        prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', price: 30000, deletedAt: null });
+
+        await service.createPaymentSheet('listing-1', 'user-1', 1, 'DEPOSIT', 'gbp');
+
+        expect(mockPaymentIntentsCreate).toHaveBeenCalledWith(expect.objectContaining({ amount: 50000 }));
+    });
+
+    it('charges the fixed £125 auction buyer fee for COMMISSION regardless of client-supplied amount', async () => {
+        prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', price: 30000, deletedAt: null });
+
+        await service.createPaymentSheet('listing-1', 'user-1', 1, 'COMMISSION', 'gbp');
+
+        expect(mockPaymentIntentsCreate).toHaveBeenCalledWith(expect.objectContaining({ amount: 12500 }));
+    });
+
+    it('charges the real LISTING_FEES[badgeTier] amount regardless of a lower client-supplied amount', async () => {
+        prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', price: 30000, deletedAt: null });
+
+        await service.createPaymentSheet('listing-1', 'user-1', 1, 'LISTING_FEE', 'gbp', 'PREMIUM');
+
+        expect(mockPaymentIntentsCreate).toHaveBeenCalledWith(expect.objectContaining({ amount: 2500 })); // £25 PREMIUM fee, not the client's £1
+    });
 });
 
 describe('PaymentsService — handleWebhook payment_intent.succeeded (LISTING_FEE)', () => {

@@ -23,6 +23,9 @@ export class PaymentsService {
         PREMIUM: 25.00,
     };
     private readonly BOOST_PRICE = 25.00;
+    // £500 refundable deposit — matches the web checkout page's DEPOSIT_AMOUNT
+    // constant (src/app/checkout/page.tsx). Not listing-dependent.
+    private readonly DEPOSIT_AMOUNT = 500;
 
     /**
      * Lazily create a Stripe SDK instance.
@@ -245,7 +248,7 @@ export class PaymentsService {
     async createPaymentSheet(
         listingId: string,
         userId: string,
-        amount: number,
+        clientAmount: number,
         type: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' | 'LISTING_FEE' = 'FULL_PAYMENT',
         currency = 'gbp',
         badgeTier?: 'BASIC' | 'STANDARD' | 'PREMIUM',
@@ -259,6 +262,37 @@ export class PaymentsService {
 
         const user = await this.prisma.user.findUnique({ where: { id: userId } });
         if (!user) throw new NotFoundException('User not found');
+
+        // Re-derive the real charge amount server-side instead of trusting the
+        // client-supplied `clientAmount` — without this, a modified client could
+        // request a Payment Sheet for an arbitrary (e.g. £1) amount against a real
+        // listing/auction and only ever be charged that. `clientAmount` is kept
+        // only as a mismatch-detection log, never used to set the actual charge.
+        let amount: number;
+        switch (type) {
+            case 'FULL_PAYMENT':
+                amount = Number(listing.price);
+                break;
+            case 'LISTING_FEE':
+                if (!badgeTier || !(badgeTier in this.LISTING_FEES)) {
+                    throw new BadRequestException('badgeTier is required and must be BASIC, STANDARD, or PREMIUM for a LISTING_FEE payment.');
+                }
+                amount = this.LISTING_FEES[badgeTier];
+                break;
+            case 'COMMISSION':
+                amount = this.AUCTION_BUYER_FEE;
+                break;
+            case 'DEPOSIT':
+            default:
+                amount = this.DEPOSIT_AMOUNT;
+                break;
+        }
+
+        if (Math.abs(amount - clientAmount) > 0.01) {
+            console.warn(
+                `[PaymentsService.createPaymentSheet] client-supplied amount (${clientAmount}) did not match server-derived amount (${amount}) for type=${type} badgeTier=${badgeTier ?? 'n/a'} listing=${listingId} user=${userId} — using the server-derived amount.`,
+            );
+        }
 
         const stripe = await this.getStripe();
 
