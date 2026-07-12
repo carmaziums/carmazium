@@ -90,6 +90,48 @@ const TypingDots: React.FC = () => {
   );
 };
 
+// ─── Error boundary ───────────────────────────────────────────────────────────
+// The chat panel is a `transparent` Modal — if anything inside throws during
+// render with no boundary, React unmounts the failing subtree and leaves only
+// the Modal's dim backdrop visible, which reads as "the screen went black."
+// This catches that case and shows a recoverable fallback instead.
+class ChatErrorBoundary extends React.Component<
+  { onReset: () => void; children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { onReset: () => void; children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: unknown) {
+    if (__DEV__) console.warn('[GlobalAIChatBot] chat panel crashed:', error);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={styles.errorFallback}>
+          <Ionicons name="alert-circle-outline" size={28} color={Colors.accent} />
+          <Text style={styles.errorFallbackText}>Something went wrong with chat.</Text>
+          <TouchableOpacity
+            style={styles.errorFallbackBtn}
+            activeOpacity={0.8}
+            onPress={() => {
+              this.setState({ hasError: false });
+              this.props.onReset();
+            }}
+          >
+            <Text style={styles.errorFallbackBtnText}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export const GlobalAIChatBot: React.FC = () => {
@@ -259,6 +301,7 @@ export const GlobalAIChatBot: React.FC = () => {
             style={[styles.chatBox, { bottom: dynamicBottom, height: dynamicHeight }]}
             onPress={() => {}}
           >
+            <ChatErrorBoundary onReset={() => setIsOpen(false)}>
 
               {/* Header */}
               <View style={styles.chatHeader}>
@@ -344,6 +387,7 @@ export const GlobalAIChatBot: React.FC = () => {
                 <IconButton style={[styles.sendBtn, (isThinking || !message.trim()) && { opacity: 0.4 }]} icon={<Ionicons name="send" size={16} color={Colors.white} />} onPress={() => sendMessage(message)} disabled={isThinking || !message.trim()} accessibilityLabel="Send message" />
               </View>
 
+            </ChatErrorBoundary>
           </Pressable>
         </Pressable>
       </Modal>
@@ -385,6 +429,21 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.accentAlpha30,
     shadowColor: Colors.black, shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.5, shadowRadius: 20, elevation: 20, overflow: 'hidden',
+  },
+  errorFallback: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    gap: 10, padding: 24,
+  },
+  errorFallbackText: {
+    fontFamily: FontFamily.medium, fontSize: FontSize.sm,
+    color: Colors.textSecondary, textAlign: 'center',
+  },
+  errorFallbackBtn: {
+    marginTop: 6, paddingHorizontal: 20, paddingVertical: 10,
+    borderRadius: 10, backgroundColor: Colors.accent,
+  },
+  errorFallbackBtnText: {
+    fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white,
   },
   chatHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
