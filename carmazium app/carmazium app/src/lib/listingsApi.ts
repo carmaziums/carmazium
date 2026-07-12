@@ -301,6 +301,8 @@ export async function searchListings(params: {
   minMileage?: number;
   maxMileage?: number;
   fuelType?: string;
+  /** Multi-select fuel types — serialized as `fuelTypes=PETROL,ELECTRIC` to match web; backend's ListingFilterDto already supports this (fuelTypes takes precedence over fuelType). */
+  fuelTypes?: string[];
   bodyType?: string;
   conditions?: string[];
   ulezCompliant?: boolean;
@@ -341,8 +343,16 @@ export async function searchListings(params: {
     if (params.page  != null) query.set('page',  String(params.page));
     if (params.limit != null) query.set('limit', String(params.limit));
 
-    const backendFuel = toBackendFuelType(params.fuelType);
-    if (backendFuel) query.set('fuelType', backendFuel);
+    if (params.fuelTypes?.length) {
+      // Was silently dropped — SearchScreen let users select multiple fuel
+      // chips but only ever sent the first one. fuelTypes is a real,
+      // already-supported backend param (listing-filter.dto.ts), same
+      // comma-separated pattern as transmissions above.
+      query.set('fuelTypes', params.fuelTypes.map(f => toBackendFuelType(f)).filter(Boolean).join(','));
+    } else {
+      const backendFuel = toBackendFuelType(params.fuelType);
+      if (backendFuel) query.set('fuelType', backendFuel);
+    }
 
     const backendBody = toBackendBodyType(params.bodyType);
     if (backendBody) query.set('bodyType', backendBody);

@@ -205,7 +205,11 @@ export const SearchScreen: React.FC = () => {
       maxPrice: maxPrice < 150000 ? maxPrice : qf?.params.maxPrice,
       minPrice: minPrice > 0 ? minPrice : undefined,
       bodyType: selectedBody || qf?.params.bodyType,
-      fuelType: selectedFuels[0] || qf?.params.fuelType,
+      // Was selectedFuels[0] — selecting 2+ fuel chips silently ignored
+      // everything past the first. fuelTypes sends the full selection; the
+      // quick-filter fallback only applies when nothing was explicitly picked.
+      fuelTypes: selectedFuels.length ? selectedFuels : undefined,
+      fuelType: selectedFuels.length ? undefined : qf?.params.fuelType,
       minYear: minYear !== 'Any' ? parseInt(minYear) : qf?.params.minYear,
       maxYear: maxYear !== 'Any' ? parseInt(maxYear) : undefined,
       minMileage: parseMi(minMiles),
@@ -594,7 +598,13 @@ export const SearchScreen: React.FC = () => {
                   <TouchableOpacity
                     key={m}
                     style={[s.filterChip, selectedMakes.includes(m) && s.filterChipActive]}
-                    onPress={() => setSelectedMakes(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m])}
+                    // Was a multi-select toggle, but the backend's Make filter
+                    // only ever accepts one value (no `makes` array param
+                    // exists) — buildParams() only ever sent selectedMakes[0],
+                    // so picking a 2nd/3rd chip silently did nothing. Single-
+                    // select here is honest about what actually filters,
+                    // matching how Body Type already behaves in this screen.
+                    onPress={() => setSelectedMakes(prev => prev.includes(m) ? [] : [m])}
                     activeOpacity={0.7}
                   >
                     <Text style={[s.filterChipText, selectedMakes.includes(m) && s.filterChipTextActive]}>
