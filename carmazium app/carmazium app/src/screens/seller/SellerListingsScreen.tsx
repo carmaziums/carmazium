@@ -29,6 +29,7 @@ import { BulkImportModal } from '../../components/BulkImportModal';
 import { StripeCheckoutModal } from '../../components/StripeCheckoutModal';
 import { alsoAuction } from '../../lib/listingsApi';
 import { haptics } from '../../lib/haptics';
+import { useListingFeePayment } from '../../hooks/useListingFeePayment';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
 import { IconButton } from '../../components/IconButton';
@@ -173,6 +174,7 @@ const getActionsForStatus = (status?: string): ActionItem[] => {
 
 export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { triggerListingFeePayment } = useListingFeePayment();
 
   const [showImportModal, setShowImportModal] = useState(false);
   const [showBulkImportModal, setShowBulkImportModal] = useState(false);
@@ -310,15 +312,49 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     }
 
     if (key === 'publish') {
+      // Was a bare PATCH /status — the same status field the backend's own
+      // /publish endpoint gates on LISTING_FEE payment, so this let sellers
+      // publish paid-tier (BASIC/STANDARD/PREMIUM) listings for free (mobile-audit.md
+      // critical finding). Now mirrors SellCarFlowScreen.tsx's own publish flow:
+      // call /publish first, and only if it reports requiresPayment, run the
+      // real Stripe Payment Sheet before calling /publish again to activate.
       setActionLoading(true);
       try {
-        await apiClient(`/listings/${listing.id}/status`, {
-          method: 'PATCH',
-          body: JSON.stringify({ status: 'ACTIVE' }),
-        });
-        setListings(prev =>
-          prev.map(l => l.id === listing.id ? { ...l, status: 'ACTIVE' } : l)
+        const first = await apiClient<{ success: boolean; data: { activated: boolean; requiresPayment?: boolean } }>(
+          `/listings/${listing.id}/publish`,
+          { method: 'POST' },
         );
+
+        if (first?.data?.activated) {
+          haptics.success();
+          setListings(prev => prev.map(l => l.id === listing.id ? { ...l, status: 'ACTIVE' } : l));
+          return;
+        }
+
+        if (first?.data?.requiresPayment) {
+          const tier = ((listing.badgeTier as 'BASIC' | 'STANDARD' | 'PREMIUM') || 'BASIC');
+          let paid = false;
+          try {
+            paid = await triggerListingFeePayment(listing.id, tier);
+          } catch (payErr: any) {
+            Alert.alert('Payment Failed', payErr.message || 'Could not process payment.');
+            return;
+          }
+          if (!paid) {
+            Alert.alert('Payment cancelled', 'This listing is still a draft. Publish again to complete payment.');
+            return;
+          }
+          haptics.success();
+          const second = await apiClient<{ success: boolean; data: { activated: boolean } }>(
+            `/listings/${listing.id}/publish`,
+            { method: 'POST' },
+          );
+          if (second?.data?.activated) {
+            setListings(prev => prev.map(l => l.id === listing.id ? { ...l, status: 'ACTIVE' } : l));
+          } else {
+            Alert.alert('Almost there!', 'Payment succeeded but the listing could not be activated automatically. Pull to refresh in a moment.');
+          }
+        }
       } catch (err: any) {
         Alert.alert('Error', err.message || 'Could not publish listing.');
       } finally {
