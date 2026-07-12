@@ -58,6 +58,7 @@ interface Bid {
   amount: number;
   auctionStatus: AuctionStatus;
   auctionId?: string | null;
+  isWinning?: boolean;
   isWinner?: boolean;
   winningBidAmount?: number | null;
   paymentDeadline?: string | null;
@@ -85,6 +86,7 @@ const mapRawBid = (b: RawBid, currentUserId?: string): Bid => {
     amount: Number(b.amount),
     auctionStatus: auction?.status ?? 'ENDED',
     auctionId: auction?.id ?? null,
+    isWinning: b.isWinning,
     isWinner: !!auction?.winnerId && auction.winnerId === currentUserId,
     winningBidAmount: auction?.winningBidAmount != null ? Number(auction.winningBidAmount) : null,
     paymentDeadline: auction?.endTime
@@ -314,6 +316,19 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
             {isWon ? (
               <View style={[styles.statusChip, { backgroundColor: Colors.accentGreenAlpha15, borderWidth: 1, borderColor: 'rgba(16,185,129,0.4)' }]}>
                 <Text style={[styles.statusChipText, { color: Colors.accentGreen }]}>WON</Text>
+              </View>
+            ) : bid.auctionStatus === 'ACTIVE' ? (
+              // Web's dashboard/buyer/bids/page.tsx distinguishes Winning vs
+              // Outbid on every active bid — mobile fetched bid.isWinning from
+              // /bids/my but never rendered it, showing a generic "LIVE" chip
+              // that couldn't tell a buyer whether they'd just been outbid.
+              <View style={[styles.statusChip, bid.isWinning
+                ? { backgroundColor: Colors.accentGreenAlpha15, borderWidth: 1, borderColor: 'rgba(16,185,129,0.4)' }
+                : { backgroundColor: Colors.warningAlpha15, borderWidth: 1, borderColor: Colors.warningAlpha25 }]}
+              >
+                <Text style={[styles.statusChipText, { color: bid.isWinning ? Colors.accentGreen : Colors.warning }]}>
+                  {bid.isWinning ? '● WINNING' : 'OUTBID'}
+                </Text>
               </View>
             ) : (
               <View
