@@ -15,8 +15,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { apiClient } from '../../lib/apiClient';
 import { mapApiListingToCarListing, ApiListing, BackendPaginatedResponse } from '../../lib/listingsApi';
 import { Colors } from '../../constants/colors';
-import { FontFamily } from '../../constants/typography';
+import {FontFamily, FontSize } from '../../constants/typography';
 
+import { IconButton } from '../../components/IconButton';
 // ─────────────────────────── interfaces ───────────────────────────
 
 interface SellerProfileData {
@@ -172,9 +173,7 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
       <View style={[styles.container, styles.centerFill]}>
         <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
         <View style={{ height: insets.top }} />
-        <TouchableOpacity style={[styles.backBtn, { position: 'absolute', top: insets.top + 10, left: 16 }]} onPress={() => navigation?.goBack()}>
-          <Ionicons name="chevron-back" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
+        <IconButton style={[styles.backBtn, { position: 'absolute', top: insets.top + 10, left: 16 }]} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
         <Ionicons name="person-circle-outline" size={48} color={Colors.textMuted} />
         <Text style={styles.emptyTitle}>Seller not found</Text>
         <Text style={styles.emptySub}>This profile may have been removed.</Text>
@@ -189,7 +188,7 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(220,31,38,0.06)', 'rgba(10,10,12,0)', '#0A0A0C']}
+        colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
@@ -198,9 +197,7 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} activeOpacity={0.75} onPress={() => navigation?.goBack()}>
-          <Ionicons name="chevron-back" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
+        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
         <Text style={styles.headerTitle}>Seller Profile</Text>
         <View style={{ width: 36 }} />
       </View>
@@ -214,13 +211,13 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
           {user.profileImage ? (
             <Image source={{ uri: user.profileImage }} style={styles.avatarImg} contentFit="cover" cachePolicy="memory-disk" />
           ) : (
-            <LinearGradient colors={['#2d3c63', '#1a2238']} style={styles.avatar}>
+            <LinearGradient colors={[Colors.darkBlue_2d3c63, Colors.darkBlue_1a2238]} style={styles.avatar}>
               <Text style={styles.avatarText}>{getInitials(user)}</Text>
             </LinearGradient>
           )}
           <View style={styles.heroNameRow}>
             <Text style={styles.heroName}>{getName(user)}</Text>
-            {isDealer && <Ionicons name="checkmark-circle" size={16} color="#3B82F6" style={{ marginLeft: 6 }} />}
+            {isDealer && <Ionicons name="checkmark-circle" size={16} color={Colors.infoBlue} style={{ marginLeft: 6 }} />}
           </View>
           <Text style={styles.heroSub}>
             {isDealer ? 'Verified Dealer' : 'Private Seller'} · Member since {memberSince(user.createdAt)}
@@ -290,7 +287,7 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
             {reviews.map((r) => (
               <View key={r.id} style={styles.reviewCard}>
                 <View style={styles.reviewTopRow}>
-                  <LinearGradient colors={['#3a3a47', '#26262e']} style={styles.reviewAvatar}>
+                  <LinearGradient colors={[Colors.textDisabled, Colors.darkBlue_26262e]} style={styles.reviewAvatar}>
                     <Text style={styles.reviewAvatarText}>{getInitials(r.reviewer)}</Text>
                   </LinearGradient>
                   <View style={{ flex: 1, marginLeft: 10 }}>
@@ -326,14 +323,14 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 15,
+    fontSize: FontSize.base,
     fontFamily: FontFamily.semiBold,
     color: Colors.textPrimary,
   },
@@ -359,24 +356,24 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgTertiary,
   },
   avatarText: {
-    fontSize: 26,
+    fontSize: FontSize.size26,
     fontFamily: FontFamily.bold,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   heroNameRow: { flexDirection: 'row', alignItems: 'center' },
   heroName: {
-    fontSize: 19,
+    fontSize: FontSize.size19,
     fontFamily: FontFamily.bold,
     color: Colors.textPrimary,
   },
   heroSub: {
-    fontSize: 12,
+    fontSize: FontSize.size12,
     fontFamily: FontFamily.regular,
     color: Colors.textSecondary,
     marginTop: 4,
   },
   ratingText: {
-    fontSize: 12,
+    fontSize: FontSize.size12,
     fontFamily: FontFamily.medium,
     color: Colors.textSecondary,
   },
@@ -398,12 +395,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 20,
+    fontSize: FontSize.xl,
     fontFamily: FontFamily.bold,
     color: Colors.textPrimary,
   },
   statLabel: {
-    fontSize: 9,
+    fontSize: FontSize.size9,
     fontFamily: FontFamily.semiBold,
     color: Colors.textMuted,
     letterSpacing: 0.5,
@@ -416,13 +413,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 11,
+    fontSize: FontSize.xs,
     fontFamily: FontFamily.bold,
     color: Colors.textMuted,
     letterSpacing: 1,
   },
   sectionEmptyText: {
-    fontSize: 12,
+    fontSize: FontSize.size12,
     fontFamily: FontFamily.regular,
     color: Colors.textMuted,
     paddingHorizontal: 20,
@@ -442,12 +439,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgTertiary,
   },
   listingTitle: {
-    fontSize: 12,
+    fontSize: FontSize.size12,
     fontFamily: FontFamily.semiBold,
     color: Colors.textPrimary,
   },
   listingPrice: {
-    fontSize: 13,
+    fontSize: FontSize.sm,
     fontFamily: FontFamily.bold,
     color: Colors.accent,
     marginTop: 2,
@@ -470,22 +467,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   reviewAvatarText: {
-    fontSize: 12,
+    fontSize: FontSize.size12,
     fontFamily: FontFamily.bold,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   reviewerName: {
-    fontSize: 13,
+    fontSize: FontSize.sm,
     fontFamily: FontFamily.semiBold,
     color: Colors.textPrimary,
   },
   reviewTime: {
-    fontSize: 10,
+    fontSize: FontSize.size10,
     fontFamily: FontFamily.regular,
     color: Colors.textMuted,
   },
   reviewComment: {
-    fontSize: 12,
+    fontSize: FontSize.size12,
     fontFamily: FontFamily.regular,
     color: Colors.textSecondary,
     lineHeight: 18,
@@ -493,12 +490,12 @@ const styles = StyleSheet.create({
   },
 
   emptyTitle: {
-    fontSize: 14,
+    fontSize: FontSize.size14,
     fontFamily: FontFamily.semiBold,
     color: Colors.textPrimary,
   },
   emptySub: {
-    fontSize: 12,
+    fontSize: FontSize.size12,
     fontFamily: FontFamily.regular,
     color: Colors.textMuted,
   },

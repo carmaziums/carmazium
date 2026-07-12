@@ -7,10 +7,10 @@ import {
   ScrollView,
   StatusBar,
   Image,
-  Alert,
   Animated,
   RefreshControl,
   Dimensions,
+  Share,
 } from 'react-native';
 import { Skeleton } from '../../components/ui/Skeleton';
 
@@ -23,6 +23,7 @@ import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { CarListing } from '../../data/listings';
 
+import { IconButton } from '../../components/IconButton';
 // ─────────────────────────── interfaces ───────────────────────────
 
 interface ListingStats {
@@ -30,6 +31,15 @@ interface ListingStats {
   totalViews: number;
   offersReceived: number;
   savedCount: number;
+  // Already returned by GET /listings/stats (this screen already calls it) —
+  // just never read into this interface before. Web's equivalent Sold/Revenue
+  // cards read from a *different* endpoint (/dashboard/seller) whose backend
+  // method (getSellerDashboard) doesn't actually return soldListings or
+  // totalRevenue at all, so those two cards silently show 0 for every seller
+  // on web today. /listings/stats computes them correctly, so mobile uses
+  // that instead rather than copying the broken behavior.
+  soldListings: number;
+  totalRevenue: number;
 }
 
 interface StatsResponse {
@@ -77,10 +87,10 @@ interface SellerDashResponse {
 // ──────────────────────── static config ───────────────────────────
 
 const LISTING_STATUS_CONFIG: Record<string, { bg: string; text: string; label: string; border: string }> = {
-  ACTIVE: { bg: 'rgba(16,185,129,0.22)', text: '#34d399', label: '• LIVE', border: 'rgba(16,185,129,0.40)' },
-  DRAFT:  { bg: 'rgba(245,158,11,0.18)', text: '#F59E0B', label: 'DRAFT', border: 'rgba(245,158,11,0.35)' },
-  SOLD:   { bg: 'rgba(255,255,255,0.08)', text: '#A0A0AB', label: 'SOLD',  border: 'rgba(255,255,255,0.12)' },
-  PENDING:{ bg: 'rgba(59,130,246,0.18)', text: '#3B82F6', label: 'PENDING', border: 'rgba(59,130,246,0.35)' },
+  ACTIVE: { bg: 'rgba(16,185,129,0.22)', text: Colors.lightGreen_34d399, label: '• LIVE', border: 'rgba(16,185,129,0.40)' },
+  DRAFT:  { bg: 'rgba(245,158,11,0.18)', text: Colors.warning, label: 'DRAFT', border: 'rgba(245,158,11,0.35)' },
+  SOLD:   { bg: Colors.whiteAlpha08, text: Colors.textSecondary, label: 'SOLD',  border: Colors.whiteAlpha12 },
+  PENDING:{ bg: 'rgba(59,130,246,0.18)', text: Colors.infoBlue, label: 'PENDING', border: 'rgba(59,130,246,0.35)' },
 };
 
 // ────────────────────────── helpers ───────────────────────────────
@@ -131,23 +141,23 @@ const QUICK_ACTIONS = [
   {
     key: 'boost',
     icon: 'flash-outline',
-    tone: '#F59E0B',
-    toneBg: 'rgba(245,158,11,0.12)',
+    tone: Colors.warning,
+    toneBg: Colors.warningAlpha12,
     label: 'Boost listing',
     sub: 'More views for £9.99',
   },
   {
     key: 'share',
     icon: 'share-outline',
-    tone: '#3B82F6',
-    toneBg: 'rgba(59,130,246,0.12)',
+    tone: Colors.infoBlue,
+    toneBg: Colors.infoBlueAlpha12,
     label: 'Share listing',
     sub: 'Copy link or social',
   },
   {
     key: 'insights',
     icon: 'bar-chart-outline',
-    tone: '#818CF8',
+    tone: Colors.paleBlue_818cf8,
     toneBg: 'rgba(129,140,248,0.12)',
     label: 'View insights',
     sub: 'Clicks, searches, reach',
@@ -155,8 +165,8 @@ const QUICK_ACTIONS = [
   {
     key: 'sold',
     icon: 'checkmark-circle-outline',
-    tone: '#22C55E',
-    toneBg: 'rgba(34,197,94,0.12)',
+    tone: Colors.success,
+    toneBg: Colors.successAlpha12,
     label: 'Mark as sold',
     sub: 'Close listing',
   },
@@ -167,7 +177,7 @@ const QUICK_ACTIONS = [
 export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
 
-  const [stats, setStats] = useState<ListingStats>({ activeListings: 0, totalViews: 0, offersReceived: 0, savedCount: 0 });
+  const [stats, setStats] = useState<ListingStats>({ activeListings: 0, totalViews: 0, offersReceived: 0, savedCount: 0, soldListings: 0, totalRevenue: 0 });
   const [listings, setListings] = useState<ApiListing[]>([]);
   const [recentOffers, setRecentOffers] = useState<IncomingOffer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -216,19 +226,33 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
   const heroStatusKey = (heroListing?.status ?? 'DRAFT').toUpperCase();
   const heroStatusCfg = LISTING_STATUS_CONFIG[heroStatusKey] ?? LISTING_STATUS_CONFIG.DRAFT;
 
-  const handleQuickAction = (key: string) => {
-    if (key === 'sold') {
-      Alert.alert(
-        'Mark as sold',
-        'Are you sure you want to close this listing?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Mark as Sold', style: 'destructive', onPress: () => {} },
-        ],
-      );
-    } else {
-      Alert.alert('Coming soon', 'This feature is coming in a future update.');
+  // These used to be dead Alert.alert('Coming soon') stubs regardless of
+  // which tile was tapped, including "sold" which claimed to ask for
+  // confirmation and then did nothing on confirm. Boost and Mark Sold both
+  // already have real, working implementations one screen over
+  // (SellerListingsScreen.tsx's action sheet — in-app Stripe checkout for
+  // Boost, a sale-price prompt for Mark Sold), and Insights already has a
+  // real screen (SellerPerformanceScreen.tsx) — so route there instead of
+  // re-implementing the same logic a second time in this file. Share is
+  // genuinely simple to do inline with the native Share sheet.
+  const handleQuickAction = async (key: string) => {
+    if (key === 'share' && heroListing) {
+      try {
+        await Share.share({
+          message: `Check out this ${getListingTitle(heroListing)} on CarMazium — ${formatPrice(heroListing.price)}`,
+        });
+      } catch {
+        // user cancelled the share sheet — nothing to do
+      }
+      return;
     }
+    if (key === 'insights') {
+      navigation?.navigate('SellerPerformance');
+      return;
+    }
+    // 'boost' and 'sold' both need a specific listing picked from the
+    // seller's inventory — send them to the screen that already does this.
+    navigation?.navigate('SellerListings');
   };
 
   // ─────────────────── render ───────────────────────
@@ -237,7 +261,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(59,130,246,0.05)', 'rgba(220,31,38,0.03)', '#0A0A0C']}
+        colors={['rgba(59,130,246,0.05)', Colors.accentAlpha03, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.6 }}
         style={StyleSheet.absoluteFillObject}
@@ -252,9 +276,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
           <Text style={styles.headerEyebrow}>MY LISTING</Text>
           <Text style={styles.headerTitle}>Selling</Text>
         </View>
-        <TouchableOpacity style={styles.bellBtn} activeOpacity={0.75} onPress={() => navigation?.navigate('Notifications')}>
-          <Ionicons name="notifications-outline" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
+        <IconButton style={styles.bellBtn} icon={<Ionicons name="notifications-outline" size={18} color={Colors.white} />} onPress={() => navigation?.navigate('Notifications')} accessibilityLabel="Notifications" />
       </View>
 
       <ScrollView
@@ -294,13 +316,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
               </View>
 
               {/* Edit pill */}
-              <TouchableOpacity
-                style={styles.heroEditBtn}
-                activeOpacity={0.75}
-                onPress={() => navigation?.navigate('SellCarFlow')}
-              >
-                <Ionicons name="pencil-outline" size={15} color="#FFFFFF" />
-              </TouchableOpacity>
+              <IconButton style={styles.heroEditBtn} icon={<Ionicons name="pencil-outline" size={15} color={Colors.white} />} onPress={() => navigation?.navigate('SellCarFlow')} accessibilityLabel="Edit" />
 
               {/* Days listed pill */}
               <View style={styles.heroDaysPill}>
@@ -352,12 +368,34 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
 
             {/* Offers */}
             <View style={[styles.statCard, styles.statCardOffers]}>
-              <Ionicons name="pricetag-outline" size={15} color="#F59E0B" />
-              <Text style={[styles.statValue, { color: '#F59E0B' }]}>
+              <Ionicons name="pricetag-outline" size={15} color={Colors.warning} />
+              <Text style={[styles.statValue, { color: Colors.warning }]}>
                 {stats.offersReceived}
               </Text>
-              <Text style={[styles.statLabel, { color: '#F59E0B' }]}>OFFERS</Text>
-              <Text style={[styles.statDelta, { color: '#F59E0B' }]}>received</Text>
+              <Text style={[styles.statLabel, { color: Colors.warning }]}>OFFERS</Text>
+              <Text style={[styles.statDelta, { color: Colors.warning }]}>received</Text>
+            </View>
+          </View>
+        )}
+
+        {/* ── 2b. Sold / Revenue — matches web's Sold and Revenue stat cards ── */}
+        {!loading && (
+          <View style={[styles.statsRow, { marginTop: 12 }]}>
+            <View style={[styles.statCard, styles.statCardSold]}>
+              <Ionicons name="trending-up-outline" size={15} color={Colors.success} />
+              <Text style={[styles.statValue, { color: Colors.success }]}>
+                {stats.soldListings}
+              </Text>
+              <Text style={[styles.statLabel, { color: Colors.success }]}>SOLD</Text>
+              <Text style={[styles.statDelta, { color: Colors.success }]}>all time</Text>
+            </View>
+            <View style={[styles.statCard, styles.statCardRevenue]}>
+              <Ionicons name="cash-outline" size={15} color={Colors.accentGreen} />
+              <Text style={[styles.statValue, { color: Colors.accentGreen }]}>
+                {formatPrice(stats.totalRevenue)}
+              </Text>
+              <Text style={[styles.statLabel, { color: Colors.accentGreen }]}>REVENUE</Text>
+              <Text style={[styles.statDelta, { color: Colors.accentGreen }]}>all time</Text>
             </View>
           </View>
         )}
@@ -367,16 +405,16 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
           <TouchableOpacity
             style={{
               flex: 1, height: 44, borderRadius: 12,
-              backgroundColor: 'rgba(255,255,255,0.05)',
-              borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+              backgroundColor: Colors.whiteAlpha05,
+              borderWidth: 1, borderColor: Colors.whiteAlpha08,
               alignItems: 'center', justifyContent: 'center',
               flexDirection: 'row', gap: 6,
             }}
             activeOpacity={0.75}
             onPress={() => navigation?.navigate('SellerListings')}
           >
-            <Ionicons name="list-outline" size={15} color="#A0A0AB" />
-            <Text style={{ fontFamily: FontFamily.bold, fontSize: 12, color: '#A0A0AB' }}>
+            <Ionicons name="list-outline" size={15} color={Colors.textSecondary} />
+            <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.textSecondary }}>
               All Listings
             </Text>
           </TouchableOpacity>
@@ -384,16 +422,16 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
           <TouchableOpacity
             style={{
               flex: 1, height: 44, borderRadius: 12,
-              backgroundColor: 'rgba(255,255,255,0.05)',
-              borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+              backgroundColor: Colors.whiteAlpha05,
+              borderWidth: 1, borderColor: Colors.whiteAlpha08,
               alignItems: 'center', justifyContent: 'center',
               flexDirection: 'row', gap: 6,
             }}
             activeOpacity={0.75}
             onPress={() => navigation?.navigate('SellerAuctions')}
           >
-            <Ionicons name="hammer-outline" size={15} color="#A0A0AB" />
-            <Text style={{ fontFamily: FontFamily.bold, fontSize: 12, color: '#A0A0AB' }}>
+            <Ionicons name="hammer-outline" size={15} color={Colors.textSecondary} />
+            <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.textSecondary }}>
               My Auctions
             </Text>
           </TouchableOpacity>
@@ -405,7 +443,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
           activeOpacity={0.85}
           onPress={() => navigation?.navigate('SellCarFlow')}
         >
-          <Ionicons name="add" size={20} color="#FFFFFF" />
+          <Ionicons name="add" size={20} color={Colors.white} />
           <Text style={styles.ctaButtonText}>CREATE NEW LISTING</Text>
         </TouchableOpacity>
 
@@ -441,8 +479,8 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
                     activeOpacity={0.75}
                     onPress={() => navigation?.navigate('SellerOffers')}
                   >
-                    <View style={[styles.offerAvatar, { backgroundColor: isPending ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.06)' }]}>
-                      <Text style={[styles.offerAvatarText, { color: isPending ? '#F59E0B' : '#A0A0AB' }]}>
+                    <View style={[styles.offerAvatar, { backgroundColor: isPending ? Colors.warningAlpha15 : Colors.whiteAlpha06 }]}>
+                      <Text style={[styles.offerAvatarText, { color: isPending ? Colors.warning : Colors.textSecondary }]}>
                         {buyerName.charAt(0).toUpperCase()}
                       </Text>
                     </View>
@@ -453,7 +491,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
                     <View style={styles.offerAmountCol}>
                       <Text style={styles.offerAmount}>£{offer.amount.toLocaleString('en-GB')}</Text>
                       {offerVsAsking != null && (
-                        <Text style={[styles.offerDiff, { color: offerVsAsking >= 0 ? '#22C55E' : Colors.accent }]}>
+                        <Text style={[styles.offerDiff, { color: offerVsAsking >= 0 ? Colors.success : Colors.accent }]}>
                           {offerVsAsking >= 0 ? '+' : ''}£{Math.abs(offerVsAsking).toLocaleString('en-GB')}
                         </Text>
                       )}
@@ -578,13 +616,13 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
 // ═══════════════════════════ STYLES ════════════════════════════════
 
 const CARD_BG = 'rgba(20,26,42,0.65)';
-const CARD_BORDER = 'rgba(255,255,255,0.08)';
+const CARD_BORDER = Colors.whiteAlpha08;
 
 const styles = StyleSheet.create({
   // ── base ──
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0C',
+    backgroundColor: Colors.bgPrimary,
   },
   scroll: {
     flex: 1,
@@ -609,15 +647,15 @@ const styles = StyleSheet.create({
   },
   headerEyebrow: {
     fontFamily: FontFamily.medium,
-    fontSize: 9,
-    color: '#5C5C6B',
+    fontSize: FontSize.size9,
+    color: Colors.textMuted,
     letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
   headerTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 22,
-    color: '#FFFFFF',
+    fontSize: FontSize.size22,
+    color: Colors.white,
     letterSpacing: -0.22,
     marginTop: 4,
   },
@@ -625,9 +663,9 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    backgroundColor: Colors.whiteAlpha07,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -642,12 +680,12 @@ const styles = StyleSheet.create({
   },
   heroImageArea: {
     height: 150,
-    backgroundColor: '#15192a',
+    backgroundColor: Colors.deepBlue_15192a,
     overflow: 'hidden',
   },
   heroImagePlaceholder: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#15192a',
+    backgroundColor: Colors.deepBlue_15192a,
   },
   heroBadge: {
     position: 'absolute',
@@ -660,7 +698,7 @@ const styles = StyleSheet.create({
   },
   heroBadgeText: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
+    fontSize: FontSize.size10,
     letterSpacing: 0.5,
   },
   heroEditBtn: {
@@ -670,7 +708,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: Colors.blackAlpha45,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
@@ -683,14 +721,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: Colors.blackAlpha55,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: Colors.whiteAlpha12,
   },
   heroDaysPillText: {
     fontFamily: FontFamily.mono,
-    fontSize: 10,
-    color: '#A0A0AB',
+    fontSize: FontSize.size10,
+    color: Colors.textSecondary,
   },
   heroBody: {
     flexDirection: 'row',
@@ -706,18 +744,18 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 16,
-    color: '#FFFFFF',
+    fontSize: FontSize.md,
+    color: Colors.white,
   },
   heroSpecs: {
     fontFamily: FontFamily.medium,
-    fontSize: 11.5,
-    color: '#A0A0AB',
+    fontSize: FontSize.size11_5,
+    color: Colors.textSecondary,
   },
   heroPrice: {
     fontFamily: FontFamily.mono,
-    fontSize: 18,
-    color: '#FFFFFF',
+    fontSize: FontSize.lg,
+    color: Colors.white,
   },
 
   // ── stats row ──
@@ -735,31 +773,39 @@ const styles = StyleSheet.create({
   },
   statCardViews: {
     backgroundColor: 'rgba(20,26,42,0.60)',
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
   },
   statCardSaves: {
     backgroundColor: 'rgba(20,26,42,0.60)',
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
   },
   statCardOffers: {
-    backgroundColor: 'rgba(245,158,11,0.08)',
-    borderColor: 'rgba(245,158,11,0.25)',
+    backgroundColor: Colors.warningAlpha08,
+    borderColor: Colors.warningAlpha25,
+  },
+  statCardSold: {
+    backgroundColor: Colors.successAlpha08,
+    borderColor: Colors.successAlpha25,
+  },
+  statCardRevenue: {
+    backgroundColor: Colors.accentGreenAlpha08,
+    borderColor: Colors.accentGreenAlpha20,
   },
   statValue: {
     fontFamily: FontFamily.mono,
-    fontSize: 24,
-    color: '#FFFFFF',
+    fontSize: FontSize['2xl'],
+    color: Colors.white,
   },
   statLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 8,
-    color: '#A0A0AB',
+    fontSize: FontSize.size8,
+    color: Colors.textSecondary,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
   statDelta: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
+    fontSize: FontSize.size10,
   },
 
   // ── CTA button ──
@@ -770,12 +816,12 @@ const styles = StyleSheet.create({
     gap: 10,
     height: 52,
     borderRadius: 14,
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
   },
   ctaButtonText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: '#FFFFFF',
+    color: Colors.white,
     letterSpacing: 0.6,
   },
 
@@ -790,29 +836,29 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#FFFFFF',
+    fontSize: FontSize.xs,
+    color: Colors.white,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
   sectionTitleMuted: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#A0A0AB',
+    fontSize: FontSize.size10,
+    color: Colors.textSecondary,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
   sectionSeeAll: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#DC1F26',
+    fontSize: FontSize.xs,
+    color: Colors.accent,
   },
 
   // ── offers empty ──
   offersEmpty: {
     backgroundColor: 'rgba(20,26,42,0.55)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: Colors.whiteAlpha05,
     borderRadius: 16,
     padding: 20,
     alignItems: 'center',
@@ -820,13 +866,13 @@ const styles = StyleSheet.create({
   },
   offersEmptyTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
   },
   offersEmptySub: {
     fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: '#5C5C6B',
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
     textAlign: 'center',
   },
 
@@ -840,7 +886,7 @@ const styles = StyleSheet.create({
     width: '47.5%',
     backgroundColor: 'rgba(20,26,42,0.55)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     borderRadius: 16,
     padding: 16,
   },
@@ -853,14 +899,14 @@ const styles = StyleSheet.create({
   },
   quickLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#FFFFFF',
+    fontSize: FontSize.size12,
+    color: Colors.white,
     marginTop: 8,
   },
   quickSub: {
     fontFamily: FontFamily.regular,
-    fontSize: 10.5,
-    color: '#5C5C6B',
+    fontSize: FontSize.size10_5,
+    color: Colors.textMuted,
     marginTop: 2,
   },
 
@@ -868,7 +914,7 @@ const styles = StyleSheet.create({
   listingCardSkeleton: {
     height: 76,
     borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
   },
   listingCard: {
     flexDirection: 'row',
@@ -894,7 +940,7 @@ const styles = StyleSheet.create({
   listingThumbPlaceholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: Colors.whiteAlpha05,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -905,12 +951,12 @@ const styles = StyleSheet.create({
   listingTitle: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.sm,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   listingPrice: {
     fontFamily: FontFamily.mono,
     fontSize: FontSize.base,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   listingMetaItem: {
     flexDirection: 'row',
@@ -919,8 +965,8 @@ const styles = StyleSheet.create({
   },
   listingMetaText: {
     fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: '#5C5C6B',
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
   },
   statusChip: {
     paddingHorizontal: 8,
@@ -931,7 +977,7 @@ const styles = StyleSheet.create({
   },
   statusChipText: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     letterSpacing: 0.5,
   },
 
@@ -944,12 +990,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.lg,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   emptySubText: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.sm,
-    color: '#5C5C6B',
+    color: Colors.textMuted,
     textAlign: 'center',
     lineHeight: 20,
     paddingHorizontal: 24,
@@ -959,14 +1005,14 @@ const styles = StyleSheet.create({
     height: 48,
     paddingHorizontal: 28,
     borderRadius: 12,
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyCtaBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
 
   // ── recent offers card ──
@@ -985,7 +1031,7 @@ const styles = StyleSheet.create({
   },
   offerRowBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+    borderBottomColor: Colors.whiteAlpha05,
   },
   offerAvatar: {
     width: 36,
@@ -997,7 +1043,7 @@ const styles = StyleSheet.create({
   },
   offerAvatarText: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
+    fontSize: FontSize.size14,
   },
   offerInfo: {
     flex: 1,
@@ -1005,40 +1051,40 @@ const styles = StyleSheet.create({
   },
   offerBuyer: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
-    color: '#FFFFFF',
+    fontSize: FontSize.sm,
+    color: Colors.white,
     marginBottom: 2,
   },
   offerListing: {
     fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: '#A0A0AB',
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
   },
   offerAmountCol: {
     alignItems: 'flex-end',
   },
   offerAmount: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
     marginBottom: 4,
   },
   offerDiff: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
+    fontSize: FontSize.size10,
   },
   pendingChip: {
-    backgroundColor: 'rgba(245,158,11,0.15)',
+    backgroundColor: Colors.warningAlpha15,
     borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.3)',
+    borderColor: Colors.warningAlpha30,
     borderRadius: 20,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
   pendingChipText: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#F59E0B',
+    fontSize: FontSize.size9,
+    color: Colors.warning,
     letterSpacing: 0.5,
   },
 });

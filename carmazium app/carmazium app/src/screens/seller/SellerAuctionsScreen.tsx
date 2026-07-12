@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import { useRoute } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -56,6 +57,9 @@ interface AuctionItem {
   handoverSubmittedAt?: string | null;
   sellerBonusReleased?: boolean;
   stripePayoutError?: string | null;
+  // Already returned by GET /auctions/my/list (confirmed in auctions.service.ts's
+  // findMyAuctions) — just not read by this screen before.
+  winner?: { id: string; firstName?: string | null; lastName?: string | null } | null;
   listing: {
     id: string;
     title?: string | null;
@@ -66,6 +70,8 @@ interface AuctionItem {
     images?: string[];
     viewCount?: number;
     sellerId?: string | null;
+    _count?: { bids?: number };
+    bids?: { amount: number }[];
   };
 }
 
@@ -100,8 +106,15 @@ function fmtDate(iso: string) {
 
 export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const route = useRoute<any>();
   const userId = useAuthStore((state) => state.user?.id) ?? 'anon';
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
+  // Dealers reach this screen from a specific listing's "Put on Auction"
+  // action (DealerInventoryScreen) rather than the "CREATE AUCTION" button
+  // below — when a listing id is passed in, jump straight to step 2 once
+  // it's confirmed still eligible, instead of making them re-pick it.
+  const preselectListingId: string | undefined = route.params?.preselectListingId;
+  const [preselectHandled, setPreselectHandled] = useState(false);
 
   const [auctions, setAuctions] = useState<AuctionItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -128,6 +141,13 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
   const [retailTier, setRetailTier] = useState<'BASIC' | 'STANDARD' | 'PREMIUM'>('BASIC');
   const [retailSubmitting, setRetailSubmitting] = useState(false);
   const [retailError, setRetailError] = useState<string | null>(null);
+
+  // Close Bids (early-close an ACTIVE auction)
+  const [closingId, setClosingId] = useState<string | null>(null);
+
+  // Auction Results modal (ENDED auctions)
+  const [resultsAuction, setResultsAuction] = useState<AuctionItem | null>(null);
+  const [connectingChat, setConnectingChat] = useState(false);
 
   // Create auction modal
   const [createModalVisible, setCreateModalVisible] = useState(false);
@@ -230,6 +250,43 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     }
   }
 
+  // ── Close Bids — ends an ACTIVE auction immediately, matching web's
+  // handleClose (POST /auctions/:id/close). A winner is still determined if
+  // the reserve was met by the time of closing. ──
+  async function handleCloseBids(item: AuctionItem) {
+    setClosingId(item.id);
+    try {
+      await apiClient(`/auctions/${item.id}/close`, { method: 'POST' });
+      haptics.success();
+      await fetchAuctions(true);
+      Alert.alert('Auction Closed', 'Bidding has ended — a winner was determined if the reserve was met.');
+    } catch (err: any) {
+      Alert.alert('Error', err?.message ?? 'Failed to close auction.');
+    } finally {
+      setClosingId(null);
+    }
+  }
+
+  async function handleConnectWithWinner(item: AuctionItem) {
+    const winnerId = item.winnerId ?? item.winner?.id;
+    if (!winnerId) return;
+    setConnectingChat(true);
+    try {
+      const res = await apiClient<{ success: boolean; data: { id: string } }>(
+        '/chat/rooms',
+        { method: 'POST', body: JSON.stringify({ participantId: winnerId, listingId: item.listing.id }) },
+      );
+      if (res?.success && res.data?.id) {
+        setResultsAuction(null);
+        navigation?.navigate('ChatScreen', { threadId: res.data.id });
+      }
+    } catch (err: any) {
+      Alert.alert('Could not open chat', err?.message ?? 'Please try again.');
+    } finally {
+      setConnectingChat(false);
+    }
+  }
+
   // ── Auction overflow menu (SCHEDULED + ACTIVE) ──
   function handleAuctionMenu(item: AuctionItem) {
     if (item.status === 'ACTIVE') {
@@ -245,6 +302,18 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               setRetailError(null);
               setAlsoRetailAuction(item);
             },
+          },
+          {
+            text: 'Close Bids',
+            style: 'destructive',
+            onPress: () => Alert.alert(
+              'Close Bids',
+              'Close this auction now? Bidding will end immediately and a winner will be determined if the reserve has been met. This cannot be undone.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Close Bids', style: 'destructive', onPress: () => handleCloseBids(item) },
+              ],
+            ),
           },
           { text: 'Dismiss', style: 'cancel' },
         ],
@@ -429,7 +498,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     setCreateError(null);
   }
 
-  async function openCreateModal() {
+  async function openCreateModal(presetListingId?: string) {
     resetCreateModal();
     setCreateModalVisible(true);
     setListingsLoading(true);
@@ -440,11 +509,27 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       if (res.success) {
         const items = Array.isArray(res.data) ? res.data : [];
         // Only ACTIVE CLASSIFIED listings can be put in an auction
-        setEligibleListings(items.filter(l => l.type === 'CLASSIFIED' && l.status === 'ACTIVE'));
+        const eligible = items.filter(l => l.type === 'CLASSIFIED' && l.status === 'ACTIVE');
+        setEligibleListings(eligible);
+        if (presetListingId) {
+          const match = eligible.find(l => l.id === presetListingId);
+          // If the listing is no longer eligible (already sold, converted,
+          // etc.) fall back to the normal picker rather than failing silently.
+          if (match) selectListing(match);
+        }
       }
     } catch { /* show empty state */ }
     finally { setListingsLoading(false); }
   }
+
+  // Auto-open the create flow once when arriving with a preselected listing.
+  useEffect(() => {
+    if (preselectListingId && !preselectHandled) {
+      setPreselectHandled(true);
+      openCreateModal(preselectListingId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preselectListingId, preselectHandled]);
 
   function selectListing(listing: EligibleListing) {
     setSelectedListing(listing);
@@ -595,13 +680,23 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             {isLoadingNav ? (
               <ActivityIndicator size="small" color={Colors.textMuted} style={{ width: 28, height: 28 }} />
             ) : (isScheduled || item.status === 'ACTIVE') ? (
-              // Three-dots menu for SCHEDULED (edit/cancel) and ACTIVE (also-list-retail)
+              // Three-dots menu for SCHEDULED (edit/cancel) and ACTIVE (also-list-retail/close-bids)
               <TouchableOpacity
                 style={styles.menuBtn}
                 onPress={() => handleAuctionMenu(item)}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
                 <Ionicons name="ellipsis-vertical" size={18} color={Colors.textMuted} />
+              </TouchableOpacity>
+            ) : item.status === 'ENDED' ? (
+              // Results — winner/no-winner summary, matches web's Results button
+              <TouchableOpacity
+                style={styles.resultsBtn}
+                onPress={() => setResultsAuction(item)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="bar-chart-outline" size={13} color={Colors.accent} style={{ marginRight: 4 }} />
+                <Text style={styles.resultsBtnText}>Results</Text>
               </TouchableOpacity>
             ) : (
               <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
@@ -841,7 +936,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             <View>
               <TouchableOpacity
                 style={styles.createAuctionBtn}
-                onPress={openCreateModal}
+                onPress={() => openCreateModal()}
                 activeOpacity={0.85}
               >
                 <MaterialCommunityIcons name="gavel" size={18} color={Colors.white} />
@@ -920,6 +1015,123 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             <Text style={styles.retailSubmitText}>Create Listing</Text>
           )}
         </TouchableOpacity>
+      </BottomSheet>
+
+      {/* ── Auction Results Modal — matches web's Results modal (winner banner,
+          winning-bid/total-bids/reserve stats, timeline, and either "Connect
+          with Winner" or "Re-auction" depending on outcome). ── */}
+      <BottomSheet
+        visible={resultsAuction != null}
+        onClose={() => setResultsAuction(null)}
+        title="Auction Results"
+        maxHeightPercent={70}
+      >
+        {resultsAuction && (
+          <View style={{ gap: 16 }}>
+            <Text style={styles.resultsListingTitle} numberOfLines={1}>
+              {resultsAuction.listing.title ?? 'Vehicle'}
+            </Text>
+
+            {/* Status banner */}
+            {resultsAuction.winnerId ? (
+              <View style={styles.resultsBanner}>
+                <Ionicons name="trophy" size={20} color={Colors.warning} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.resultsBannerTitle}>Auction Sold</Text>
+                  <Text style={styles.resultsBannerSub}>
+                    Winner: {[resultsAuction.winner?.firstName, resultsAuction.winner?.lastName].filter(Boolean).join(' ') || 'Anonymous Bidder'}
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <View style={[styles.resultsBanner, { backgroundColor: Colors.whiteAlpha04, borderColor: Colors.whiteAlpha10 }]}>
+                <Ionicons name="close-circle-outline" size={20} color={Colors.textMuted} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.resultsBannerTitle, { color: Colors.textSecondary }]}>No Winner</Text>
+                  <Text style={styles.resultsBannerSub}>Reserve price not met or no bids placed</Text>
+                </View>
+              </View>
+            )}
+
+            {/* Stats grid */}
+            <View style={styles.resultsStatsGrid}>
+              <View style={styles.resultsStatCell}>
+                <Text style={styles.resultsStatLabel}>WINNING BID</Text>
+                <Text style={styles.resultsStatValue}>
+                  {resultsAuction.winningBidAmount ? `£${Number(resultsAuction.winningBidAmount).toLocaleString('en-GB')}` : '—'}
+                </Text>
+              </View>
+              <View style={styles.resultsStatCell}>
+                <Text style={styles.resultsStatLabel}>TOTAL BIDS</Text>
+                <Text style={styles.resultsStatValue}>
+                  {resultsAuction.listing._count?.bids ?? resultsAuction.listing.bids?.length ?? 0}
+                </Text>
+              </View>
+              <View style={styles.resultsStatCell}>
+                <Text style={styles.resultsStatLabel}>RESERVE</Text>
+                <Text style={styles.resultsStatValue}>
+                  £{Number(resultsAuction.reservePrice).toLocaleString('en-GB')}
+                </Text>
+              </View>
+            </View>
+
+            {/* Timeline */}
+            <View style={styles.resultsTimeline}>
+              <View style={styles.resultsTimelineRow}>
+                <Text style={styles.resultsTimelineLabel}>Started</Text>
+                <Text style={styles.resultsTimelineValue}>{fmtDate(resultsAuction.startTime)}</Text>
+              </View>
+              <View style={styles.resultsTimelineRow}>
+                <Text style={styles.resultsTimelineLabel}>Ended</Text>
+                <Text style={styles.resultsTimelineValue}>{fmtDate(resultsAuction.endTime)}</Text>
+              </View>
+              <View style={styles.resultsTimelineRow}>
+                <Text style={styles.resultsTimelineLabel}>Starting Bid</Text>
+                <Text style={styles.resultsTimelineValue}>£{Number(resultsAuction.startingBid).toLocaleString('en-GB')}</Text>
+              </View>
+            </View>
+
+            {/* Actions */}
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity
+                style={styles.resultsViewBtn}
+                activeOpacity={0.8}
+                onPress={() => { setResultsAuction(null); handleTap(resultsAuction); }}
+              >
+                <Ionicons name="eye-outline" size={14} color={Colors.textSecondary} style={{ marginRight: 6 }} />
+                <Text style={styles.resultsViewBtnText}>View Auction</Text>
+              </TouchableOpacity>
+              {resultsAuction.winnerId ? (
+                <TouchableOpacity
+                  style={[styles.resultsPrimaryBtn, connectingChat && { opacity: 0.6 }]}
+                  activeOpacity={0.8}
+                  onPress={() => handleConnectWithWinner(resultsAuction)}
+                  disabled={connectingChat}
+                >
+                  {connectingChat ? <ActivityIndicator size="small" color={Colors.white} /> : (
+                    <>
+                      <Ionicons name="chatbubble-ellipses-outline" size={14} color={Colors.white} style={{ marginRight: 6 }} />
+                      <Text style={styles.resultsPrimaryBtnText}>Connect with Winner</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.resultsPrimaryBtn}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    const relistId = resultsAuction.listing.id;
+                    setResultsAuction(null);
+                    openCreateModal(relistId);
+                  }}
+                >
+                  <MaterialCommunityIcons name="gavel" size={14} color={Colors.white} style={{ marginRight: 6 }} />
+                  <Text style={styles.resultsPrimaryBtnText}>Re-auction</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
       </BottomSheet>
 
       {/* ── Create Auction Modal (BottomSheet — shell provided by shared component,
@@ -1299,6 +1511,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  resultsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 20,
+    backgroundColor: Colors.whiteAlpha04,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha10,
+  },
+  resultsBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size9,
+    color: Colors.accent,
+    letterSpacing: 0.3,
+  },
 
   // ── Auction info row (SCHEDULED) ──
   auctionInfoRow: {
@@ -1399,6 +1627,111 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.medium,
     fontSize: FontSize.sm,
     color: Colors.textMuted,
+  },
+
+  // ── Auction Results Modal ──
+  resultsListingTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.lg,
+    color: Colors.white,
+  },
+  resultsBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: Colors.whiteAlpha06,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha10,
+  },
+  resultsBannerTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.sm,
+    color: Colors.white,
+  },
+  resultsBannerSub: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  resultsStatsGrid: {
+    flexDirection: 'row',
+    backgroundColor: Colors.bgSecondary,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha06,
+    paddingVertical: 12,
+  },
+  resultsStatCell: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  resultsStatLabel: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size8,
+    color: Colors.textMuted,
+    letterSpacing: 0.8,
+    marginBottom: 3,
+  },
+  resultsStatValue: {
+    fontFamily: FontFamily.mono,
+    fontSize: FontSize.sm,
+    color: Colors.white,
+  },
+  resultsTimeline: {
+    backgroundColor: Colors.bgSecondary,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha06,
+    padding: 12,
+    gap: 8,
+  },
+  resultsTimelineRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  resultsTimelineLabel: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+  },
+  resultsTimelineValue: {
+    fontFamily: FontFamily.mono,
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
+  },
+  resultsViewBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 42,
+    borderRadius: 10,
+    backgroundColor: Colors.whiteAlpha04,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha10,
+  },
+  resultsViewBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+  },
+  resultsPrimaryBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 42,
+    borderRadius: 10,
+    backgroundColor: Colors.accent,
+  },
+  resultsPrimaryBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.sm,
+    color: Colors.white,
   },
 
   // ── Handover section ──

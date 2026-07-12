@@ -3,9 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  KeyboardAvoidingView,
   Linking,
-  Modal,
   Platform,
   RefreshControl,
   ScrollView,
@@ -20,6 +18,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BottomSheet } from '../../components/BottomSheet';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
@@ -32,6 +31,7 @@ import { alsoAuction } from '../../lib/listingsApi';
 import { haptics } from '../../lib/haptics';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
+import { IconButton } from '../../components/IconButton';
 // ─────────────────────────── types ────────────────────────────────
 
 interface ApiListing {
@@ -63,30 +63,30 @@ const STATUS_CONFIG: Record<string, { label: string; chipBg: string; chipText: s
   ACTIVE: {
     label: '• LIVE',
     chipBg: 'rgba(16,185,129,0.18)',
-    chipText: '#34d399',
+    chipText: Colors.lightGreen_34d399,
     chipBorder: 'rgba(16,185,129,0.35)',
-    leftBorder: '#22C55E',
+    leftBorder: Colors.success,
   },
   DRAFT: {
     label: 'DRAFT',
     chipBg: 'rgba(245,158,11,0.18)',
-    chipText: '#F59E0B',
+    chipText: Colors.warning,
     chipBorder: 'rgba(245,158,11,0.35)',
-    leftBorder: '#F59E0B',
+    leftBorder: Colors.warning,
   },
   SOLD: {
     label: 'SOLD',
-    chipBg: 'rgba(255,255,255,0.07)',
-    chipText: '#A0A0AB',
-    chipBorder: 'rgba(255,255,255,0.10)',
-    leftBorder: 'rgba(255,255,255,0.15)',
+    chipBg: Colors.whiteAlpha07,
+    chipText: Colors.textSecondary,
+    chipBorder: Colors.whiteAlpha10,
+    leftBorder: Colors.whiteAlpha15,
   },
   WITHDRAWN: {
     label: 'WITHDRAWN',
-    chipBg: 'rgba(255,255,255,0.05)',
-    chipText: '#5C5C6B',
-    chipBorder: 'rgba(255,255,255,0.06)',
-    leftBorder: 'rgba(255,255,255,0.08)',
+    chipBg: Colors.whiteAlpha05,
+    chipText: Colors.textMuted,
+    chipBorder: Colors.whiteAlpha06,
+    leftBorder: Colors.whiteAlpha08,
   },
 };
 
@@ -124,16 +124,16 @@ const getActionsForListing = (listing: ApiListing): ActionItem[] => {
 
   if (s === 'ACTIVE') {
     const base: ActionItem[] = [
-      { key: 'boost', icon: 'flash-outline', label: 'Boost listing', tone: '#F59E0B', toneBg: 'rgba(245,158,11,0.14)' },
-      { key: 'edit', icon: 'pencil-outline', label: 'Edit listing', tone: '#3B82F6', toneBg: 'rgba(59,130,246,0.14)' },
+      { key: 'boost', icon: 'flash-outline', label: 'Boost listing', tone: Colors.warning, toneBg: Colors.warningAlpha14 },
+      { key: 'edit', icon: 'pencil-outline', label: 'Edit listing', tone: Colors.infoBlue, toneBg: Colors.infoBlueAlpha14 },
     ];
     if (!hasActiveLinkedAuction) {
-      base.push({ key: 'also_auction', icon: 'hammer-outline', label: 'Also Put in Auction', tone: '#F97316', toneBg: 'rgba(249,115,22,0.14)' });
+      base.push({ key: 'also_auction', icon: 'hammer-outline', label: 'Also Put in Auction', tone: Colors.lightOrange_f97316, toneBg: 'rgba(249,115,22,0.14)' });
     }
     base.push(
-      { key: 'withdraw', icon: 'arrow-undo-outline', label: 'Withdraw', tone: '#A0A0AB', toneBg: 'rgba(255,255,255,0.07)' },
-      { key: 'mark_sold', icon: 'checkmark-circle-outline', label: 'Mark as Sold', tone: '#22C55E', toneBg: 'rgba(34,197,94,0.14)' },
-      { key: 'delete', icon: 'trash-outline', label: 'Delete', tone: '#EF4444', toneBg: 'rgba(239,68,68,0.14)', isDestructive: true },
+      { key: 'withdraw', icon: 'arrow-undo-outline', label: 'Withdraw', tone: Colors.textSecondary, toneBg: Colors.whiteAlpha07 },
+      { key: 'mark_sold', icon: 'checkmark-circle-outline', label: 'Mark as Sold', tone: Colors.success, toneBg: Colors.successAlpha14 },
+      { key: 'delete', icon: 'trash-outline', label: 'Delete', tone: Colors.error, toneBg: Colors.errorAlpha14, isDestructive: true },
     );
     return base;
   }
@@ -147,23 +147,24 @@ const getActionsForStatus = (status?: string): ActionItem[] => {
   const s = (status ?? 'DRAFT').toUpperCase();
   if (s === 'ACTIVE') {
     return [
-      { key: 'boost', icon: 'flash-outline', label: 'Boost listing', tone: '#F59E0B', toneBg: 'rgba(245,158,11,0.14)' },
-      { key: 'edit', icon: 'pencil-outline', label: 'Edit listing', tone: '#3B82F6', toneBg: 'rgba(59,130,246,0.14)' },
-      { key: 'withdraw', icon: 'arrow-undo-outline', label: 'Withdraw', tone: '#A0A0AB', toneBg: 'rgba(255,255,255,0.07)' },
-      { key: 'mark_sold', icon: 'checkmark-circle-outline', label: 'Mark as Sold', tone: '#22C55E', toneBg: 'rgba(34,197,94,0.14)' },
-      { key: 'delete', icon: 'trash-outline', label: 'Delete', tone: '#EF4444', toneBg: 'rgba(239,68,68,0.14)', isDestructive: true },
+      { key: 'boost', icon: 'flash-outline', label: 'Boost listing', tone: Colors.warning, toneBg: Colors.warningAlpha14 },
+      { key: 'edit', icon: 'pencil-outline', label: 'Edit listing', tone: Colors.infoBlue, toneBg: Colors.infoBlueAlpha14 },
+      { key: 'withdraw', icon: 'arrow-undo-outline', label: 'Withdraw', tone: Colors.textSecondary, toneBg: Colors.whiteAlpha07 },
+      { key: 'mark_sold', icon: 'checkmark-circle-outline', label: 'Mark as Sold', tone: Colors.success, toneBg: Colors.successAlpha14 },
+      { key: 'delete', icon: 'trash-outline', label: 'Delete', tone: Colors.error, toneBg: Colors.errorAlpha14, isDestructive: true },
     ];
   }
   if (s === 'DRAFT') {
     return [
-      { key: 'edit', icon: 'pencil-outline', label: 'Edit listing', tone: '#3B82F6', toneBg: 'rgba(59,130,246,0.14)' },
-      { key: 'publish', icon: 'rocket-outline', label: 'Publish', tone: '#22C55E', toneBg: 'rgba(34,197,94,0.14)' },
-      { key: 'delete', icon: 'trash-outline', label: 'Delete', tone: '#EF4444', toneBg: 'rgba(239,68,68,0.14)', isDestructive: true },
+      { key: 'edit', icon: 'pencil-outline', label: 'Edit listing', tone: Colors.infoBlue, toneBg: Colors.infoBlueAlpha14 },
+      { key: 'publish', icon: 'rocket-outline', label: 'Publish', tone: Colors.success, toneBg: Colors.successAlpha14 },
+      { key: 'delete', icon: 'trash-outline', label: 'Delete', tone: Colors.error, toneBg: Colors.errorAlpha14, isDestructive: true },
     ];
   }
   // SOLD / WITHDRAWN
   return [
-    { key: 'delete', icon: 'trash-outline', label: 'Delete', tone: '#EF4444', toneBg: 'rgba(239,68,68,0.14)', isDestructive: true },
+    { key: 'relist', icon: 'refresh-outline', label: 'Relist', tone: Colors.success, toneBg: Colors.successAlpha14 },
+    { key: 'delete', icon: 'trash-outline', label: 'Delete', tone: Colors.error, toneBg: Colors.errorAlpha14, isDestructive: true },
   ];
 };
 
@@ -281,6 +282,26 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         );
       } catch (err: any) {
         Alert.alert('Error', err.message || 'Could not withdraw listing.');
+      } finally {
+        setActionLoading(false);
+      }
+      return;
+    }
+
+    if (key === 'relist') {
+      // Matches web's handleRelist (dashboard/user/page.tsx) — a SOLD/WITHDRAWN
+      // listing going back on sale is the same PATCH /status as publish.
+      setActionLoading(true);
+      try {
+        await apiClient(`/listings/${listing.id}/status`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'ACTIVE' }),
+        });
+        setListings(prev =>
+          prev.map(l => l.id === listing.id ? { ...l, status: 'ACTIVE' } : l)
+        );
+      } catch (err: any) {
+        Alert.alert('Error', err.message || 'Could not relist. Please try again.');
       } finally {
         setActionLoading(false);
       }
@@ -467,7 +488,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     />
   );
 
-  const renderCard = ({ item }: { item: ApiListing }) => {
+  const renderCard = useCallback(({ item }: { item: ApiListing }) => {
     const statusKey = (item.status ?? 'DRAFT').toUpperCase();
     const cfg = STATUS_CONFIG[statusKey] ?? FALLBACK_STATUS;
     const thumb = item.images?.[0];
@@ -512,7 +533,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         </View>
       </View>
     );
-  };
+  }, []);
 
   // ─── action sheet ─────────────────────────────────────────────
 
@@ -520,46 +541,36 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     if (!actionMenuListing) return null;
     const actions = getActionsForListing(actionMenuListing);
     return (
-      <Modal
+      <BottomSheet
         visible
-        transparent
-        animationType="slide"
-        onRequestClose={() => setActionMenuListing(null)}
+        onClose={() => setActionMenuListing(null)}
+        title={getTitle(actionMenuListing)}
+        maxHeightPercent={60}
       >
-        <TouchableOpacity
-          style={styles.sheetOverlay}
-          activeOpacity={1}
-          onPress={() => setActionMenuListing(null)}
-        />
-        <View style={[styles.sheet, { paddingBottom: insets.bottom + 8 }]}>
-          <View style={styles.sheetHandle} />
-          <Text style={styles.sheetTitle} numberOfLines={1}>{getTitle(actionMenuListing)}</Text>
-
-          {actions.map(action => (
-            <TouchableOpacity
-              key={action.key}
-              style={styles.sheetRow}
-              activeOpacity={0.75}
-              onPress={() => handleAction(action.key, actionMenuListing)}
-            >
-              <View style={[styles.sheetIconWrap, { backgroundColor: action.toneBg }]}>
-                <Ionicons name={action.icon} size={18} color={action.tone} />
-              </View>
-              <Text style={[styles.sheetRowLabel, action.isDestructive && { color: Colors.error }]}>
-                {action.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-
+        {actions.map(action => (
           <TouchableOpacity
-            style={[styles.sheetRow, { borderBottomWidth: 0 }]}
+            key={action.key}
+            style={styles.sheetRow}
             activeOpacity={0.75}
-            onPress={() => setActionMenuListing(null)}
+            onPress={() => handleAction(action.key, actionMenuListing)}
           >
-            <Text style={[styles.sheetRowLabel, { color: Colors.error }]}>Cancel</Text>
+            <View style={[styles.sheetIconWrap, { backgroundColor: action.toneBg }]}>
+              <Ionicons name={action.icon} size={18} color={action.tone} />
+            </View>
+            <Text style={[styles.sheetRowLabel, action.isDestructive && { color: Colors.error }]}>
+              {action.label}
+            </Text>
           </TouchableOpacity>
-        </View>
-      </Modal>
+        ))}
+
+        <TouchableOpacity
+          style={[styles.sheetRow, { borderBottomWidth: 0 }]}
+          activeOpacity={0.75}
+          onPress={() => setActionMenuListing(null)}
+        >
+          <Text style={[styles.sheetRowLabel, { color: Colors.error }]}>Cancel</Text>
+        </TouchableOpacity>
+      </BottomSheet>
     );
   };
 
@@ -568,61 +579,48 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
   const renderSoldModal = () => {
     if (!sellPriceModal) return null;
     return (
-      <Modal
+      <BottomSheet
         visible
-        transparent
-        animationType="slide"
-        onRequestClose={() => setSellPriceModal(null)}
+        onClose={() => setSellPriceModal(null)}
+        title="Mark as Sold"
+        avoidKeyboard
+        maxHeightPercent={60}
       >
-        <KeyboardAvoidingView
-          style={styles.sheetOverlayFull}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          <TouchableOpacity
-            style={StyleSheet.absoluteFillObject}
-            activeOpacity={1}
-            onPress={() => setSellPriceModal(null)}
+        <Text style={styles.soldSubtitle}>Enter the final sale price for this vehicle.</Text>
+
+        <View style={styles.soldInputWrap}>
+          <Text style={styles.soldCurrencySymbol}>£</Text>
+          <TextInput
+            style={styles.soldInput}
+            value={soldPriceInput}
+            onChangeText={setSoldPriceInput}
+            keyboardType="numeric"
+            placeholder="0"
+            placeholderTextColor={Colors.textMuted}
+            selectionColor={Colors.accent}
           />
-          <View style={[styles.sheet, { paddingBottom: insets.bottom + 8 }]}>
-            <View style={styles.sheetHandle} />
-            <Text style={styles.sheetTitle}>Mark as Sold</Text>
-            <Text style={styles.soldSubtitle}>Enter the final sale price for this vehicle.</Text>
+        </View>
 
-            <View style={styles.soldInputWrap}>
-              <Text style={styles.soldCurrencySymbol}>£</Text>
-              <TextInput
-                style={styles.soldInput}
-                value={soldPriceInput}
-                onChangeText={setSoldPriceInput}
-                keyboardType="numeric"
-                placeholder="0"
-                placeholderTextColor={Colors.textMuted}
-                selectionColor={Colors.accent}
-              />
-            </View>
-
-            <TouchableOpacity
-              style={[styles.soldConfirmBtn, actionLoading && { opacity: 0.6 }]}
-              activeOpacity={0.8}
-              onPress={handleConfirmSold}
-              disabled={actionLoading}
-            >
-              {actionLoading ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <Text style={styles.soldConfirmBtnText}>Confirm Sale</Text>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.soldCancelBtn}
-              activeOpacity={0.75}
-              onPress={() => setSellPriceModal(null)}
-            >
-              <Text style={styles.soldCancelBtnText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+        <TouchableOpacity
+          style={[styles.soldConfirmBtn, actionLoading && { opacity: 0.6 }]}
+          activeOpacity={0.8}
+          onPress={handleConfirmSold}
+          disabled={actionLoading}
+        >
+          {actionLoading ? (
+            <ActivityIndicator color={Colors.white} size="small" />
+          ) : (
+            <Text style={styles.soldConfirmBtnText}>Confirm Sale</Text>
+          )}
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.soldCancelBtn}
+          activeOpacity={0.75}
+          onPress={() => setSellPriceModal(null)}
+        >
+          <Text style={styles.soldCancelBtnText}>Cancel</Text>
+        </TouchableOpacity>
+      </BottomSheet>
     );
   };
 
@@ -632,7 +630,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(220,31,38,0.04)', 'rgba(0,0,0,0)', '#0A0A0C']}
+        colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
@@ -642,38 +640,14 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
       {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.headerBtn}
-          activeOpacity={0.75}
-          onPress={() => navigation?.goBack()}
-        >
-          <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
+        <IconButton style={styles.headerBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
 
         <Text style={styles.headerTitle}>My Listings</Text>
 
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <TouchableOpacity
-            style={styles.headerBtn}
-            activeOpacity={0.75}
-            onPress={() => setShowBulkImportModal(true)}
-          >
-            <Ionicons name="cloud-upload-outline" size={18} color="#F59E0B" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.headerBtn}
-            activeOpacity={0.75}
-            onPress={() => setShowImportModal(true)}
-          >
-            <Ionicons name="link-outline" size={18} color="#60A5FA" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.headerBtn}
-            activeOpacity={0.75}
-            onPress={() => navigation?.navigate('SellCarFlow')}
-          >
-            <Ionicons name="add" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+          <IconButton style={styles.headerBtn} icon={<Ionicons name="cloud-upload-outline" size={18} color={Colors.warning} />} onPress={() => setShowBulkImportModal(true)} accessibilityLabel="Bulk import" />
+          <IconButton style={styles.headerBtn} icon={<Ionicons name="link-outline" size={18} color={Colors.infoBlueLight} />} onPress={() => setShowImportModal(true)} accessibilityLabel="Import from URL" />
+          <IconButton style={styles.headerBtn} icon={<Ionicons name="add" size={20} color={Colors.white} />} onPress={() => navigation?.navigate('SellCarFlow')} accessibilityLabel="Add listing" />
         </View>
       </View>
 
@@ -755,7 +729,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
       {boostToast && (
         <View style={styles.boostToast} pointerEvents="none">
-          <Ionicons name="flash" size={14} color="#F59E0B" />
+          <Ionicons name="flash" size={14} color={Colors.warning} />
           <Text style={styles.boostToastText}>{boostToast}</Text>
         </View>
       )}
@@ -776,20 +750,13 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       )}
 
       {/* ── Also Put in Auction Modal ── */}
-      <Modal
+      <BottomSheet
         visible={alsoAuctionListing !== null}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setAlsoAuctionListing(null)}
+        onClose={() => setAlsoAuctionListing(null)}
+        title="Also Put in Auction"
+        avoidKeyboard
       >
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <TouchableOpacity style={styles.dualModalOverlay} activeOpacity={1} onPress={() => setAlsoAuctionListing(null)}>
-            <View style={[styles.dualModalSheet, { paddingBottom: Math.max(insets.bottom, 24) }]} onStartShouldSetResponder={() => true}>
-              <View style={styles.dualModalHandle} />
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <Ionicons name="hammer-outline" size={16} color="#F97316" />
-                <Text style={styles.dualModalTitle}>Also Put in Auction</Text>
-              </View>
+        <View>
               {alsoAuctionListing && (
                 <Text style={styles.dualModalSub} numberOfLines={1}>
                   {getTitle(alsoAuctionListing)} · stays on sale simultaneously
@@ -804,11 +771,11 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                   onPress={() => { setAuctionPickerMode('date'); setShowAuctionDatePicker(true); }}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="calendar-outline" size={14} color="#60A5FA" />
+                  <Ionicons name="calendar-outline" size={14} color={Colors.infoBlueLight} />
                   <Text style={styles.datePickerBtnText}>
                     {auctionStartDate.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </Text>
-                  <Ionicons name="chevron-down" size={13} color={Colors.textMuted} />
+                  <Ionicons name="chevron-down" size={13} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
                 </TouchableOpacity>
                 {(Platform.OS === 'ios' || showAuctionDatePicker) && (
                   <DateTimePicker
@@ -858,8 +825,8 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 )}
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(249,115,22,0.06)', borderWidth: 1, borderColor: 'rgba(249,115,22,0.18)', borderRadius: 10, padding: 10, marginTop: 14 }}>
-                  <Ionicons name="time-outline" size={13} color="#FB923C" />
-                  <Text style={{ fontFamily: FontFamily.regular, fontSize: 11, color: '#FB923C', flex: 1, lineHeight: 16 }}>Auction runs for 24 hours. Anti-snipe: bids in the final 3 minutes extend the auction by 3 minutes.</Text>
+                  <Ionicons name="time-outline" size={13} color={Colors.lightOrange_fb923c} />
+                  <Text style={{ fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.lightOrange_fb923c, flex: 1, lineHeight: 16 }}>Auction runs for 24 hours. Anti-snipe: bids in the final 3 minutes extend the auction by 3 minutes.</Text>
                 </View>
 
                 <TouchableOpacity
@@ -868,16 +835,14 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                   disabled={auctionSubmitting}
                   activeOpacity={0.85}
                 >
-                  {auctionSubmitting ? <ActivityIndicator color="#FFF" size="small" /> : (
+                  {auctionSubmitting ? <ActivityIndicator color={Colors.white} size="small" /> : (
                     <Text style={styles.dualSubmitText}>Create Auction</Text>
                   )}
                 </TouchableOpacity>
                 <View style={{ height: 20 }} />
               </ScrollView>
-            </View>
-          </TouchableOpacity>
-        </KeyboardAvoidingView>
-      </Modal>
+        </View>
+      </BottomSheet>
     </View>
   );
 };
@@ -887,7 +852,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0C',
+    backgroundColor: Colors.bgPrimary,
   },
 
   // ── header ──
@@ -902,16 +867,16 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    backgroundColor: Colors.whiteAlpha07,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 18,
-    color: '#FFFFFF',
+    fontSize: FontSize.lg,
+    color: Colors.white,
   },
 
   // ── tabs ──
@@ -930,9 +895,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: Colors.whiteAlpha05,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: Colors.whiteAlpha08,
   },
   tabActive: {
     backgroundColor: Colors.accent,
@@ -940,18 +905,18 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.textMuted,
     letterSpacing: 0.5,
   },
   tabLabelActive: {
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   tabBadge: {
     minWidth: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
@@ -961,11 +926,11 @@ const styles = StyleSheet.create({
   },
   tabBadgeText: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
+    fontSize: FontSize.size10,
     color: Colors.textMuted,
   },
   tabBadgeTextActive: {
-    color: '#FFFFFF',
+    color: Colors.white,
   },
 
   // ── list ──
@@ -988,12 +953,12 @@ const styles = StyleSheet.create({
   skeletonRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     borderLeftWidth: 3,
-    borderLeftColor: 'rgba(255,255,255,0.10)',
+    borderLeftColor: Colors.whiteAlpha10,
     padding: 12,
     gap: 12,
   },
@@ -1010,10 +975,10 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     borderLeftWidth: 3,
     padding: 12,
     gap: 12,
@@ -1032,7 +997,7 @@ const styles = StyleSheet.create({
   thumbPlaceholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1042,18 +1007,18 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontFamily: FontFamily.semiBold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
   },
   cardPrice: {
     fontFamily: FontFamily.mono,
-    fontSize: 16,
-    color: '#FFFFFF',
+    fontSize: FontSize.md,
+    color: Colors.white,
     marginTop: 3,
   },
   cardViews: {
     fontFamily: FontFamily.regular,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.textMuted,
     marginTop: 3,
   },
@@ -1070,7 +1035,7 @@ const styles = StyleSheet.create({
   },
   statusChipText: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     letterSpacing: 0.5,
   },
   menuBtn: {
@@ -1092,47 +1057,13 @@ const styles = StyleSheet.create({
 
 
   // ── action sheet ──
-  sheetOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-  },
-  sheetOverlayFull: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.55)',
-  },
-  sheet: {
-    backgroundColor: '#111115',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    paddingTop: 12,
-  },
-  sheetHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignSelf: 'center',
-    marginBottom: 16,
-  },
-  sheetTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: 13,
-    color: Colors.textSecondary,
-    paddingHorizontal: 20,
-    paddingBottom: 8,
-    letterSpacing: 0.3,
-  },
   sheetRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
     paddingVertical: 16,
-    paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.04)',
+    borderBottomColor: Colors.whiteAlpha04,
   },
   sheetIconWrap: {
     width: 32,
@@ -1143,14 +1074,14 @@ const styles = StyleSheet.create({
   },
   sheetRowLabel: {
     fontFamily: FontFamily.semiBold,
-    fontSize: 15,
-    color: '#FFFFFF',
+    fontSize: FontSize.base,
+    color: Colors.white,
   },
 
   // ── sold modal ──
   soldSubtitle: {
     fontFamily: FontFamily.regular,
-    fontSize: 13,
+    fontSize: FontSize.sm,
     color: Colors.textMuted,
     paddingHorizontal: 20,
     marginBottom: 20,
@@ -1160,24 +1091,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: 20,
     marginBottom: 16,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: Colors.whiteAlpha05,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: Colors.whiteAlpha10,
     borderRadius: 14,
     paddingHorizontal: 16,
     height: 60,
   },
   soldCurrencySymbol: {
     fontFamily: FontFamily.mono,
-    fontSize: 22,
+    fontSize: FontSize.size22,
     color: Colors.textSecondary,
     marginRight: 6,
   },
   soldInput: {
     flex: 1,
     fontFamily: FontFamily.mono,
-    fontSize: 22,
-    color: '#FFFFFF',
+    fontSize: FontSize.size22,
+    color: Colors.white,
   },
   soldConfirmBtn: {
     marginHorizontal: 20,
@@ -1191,7 +1122,7 @@ const styles = StyleSheet.create({
   soldConfirmBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   soldCancelBtn: {
     marginHorizontal: 20,
@@ -1223,32 +1154,28 @@ const styles = StyleSheet.create({
     gap: 8,
     backgroundColor: 'rgba(17,17,22,0.95)',
     borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.3)',
+    borderColor: Colors.warningAlpha30,
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
   boostToastText: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#FFFFFF',
+    fontSize: FontSize.size12,
+    color: Colors.white,
     letterSpacing: 0.3,
   },
 
   // ── Dual-channel modal (Also Put in Auction) ──
-  dualModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' },
-  dualModalSheet: { backgroundColor: '#0F0F14', borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', paddingHorizontal: 22, paddingTop: 18, maxHeight: '90%' },
-  dualModalHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)', alignSelf: 'center', marginBottom: 14 },
-  dualModalTitle: { fontFamily: FontFamily.bold, fontSize: 16, color: '#FFFFFF' },
-  dualModalSub: { fontFamily: FontFamily.regular, fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-  dualFieldLabel: { fontFamily: FontFamily.bold, fontSize: 9, color: Colors.textMuted, letterSpacing: 0.8, marginBottom: 6 },
+  dualModalSub: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textMuted, marginTop: 2 },
+  dualFieldLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.textMuted, letterSpacing: 0.8, marginBottom: 6 },
   dualPriceRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.inputBg, borderWidth: 1, borderColor: Colors.inputBorder, borderRadius: 10, paddingHorizontal: 12 },
-  dualCurrency: { fontFamily: FontFamily.bold, fontSize: 14, color: Colors.textMuted, marginRight: 4 },
-  dualInput: { flex: 1, fontFamily: FontFamily.mono, fontSize: 15, color: Colors.textPrimary, paddingVertical: 11 },
-  datePickerBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.inputBg, borderWidth: 1, borderColor: 'rgba(59,130,246,0.30)', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12 },
-  datePickerBtnText: { flex: 1, fontFamily: FontFamily.mono, fontSize: 13, color: '#60A5FA' },
-  dualErrorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 7, backgroundColor: 'rgba(239,68,68,0.08)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.20)', borderRadius: 10, padding: 10, marginTop: 10 },
-  dualErrorText: { fontFamily: FontFamily.medium, fontSize: 12, color: Colors.error, flex: 1, lineHeight: 17 },
-  dualSubmitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, borderRadius: 12, backgroundColor: '#F97316', marginTop: 16 },
-  dualSubmitText: { fontFamily: FontFamily.bold, fontSize: 15, color: '#FFFFFF', letterSpacing: 0.3 },
+  dualCurrency: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.textMuted, marginRight: 4 },
+  dualInput: { flex: 1, fontFamily: FontFamily.mono, fontSize: FontSize.base, color: Colors.textPrimary, paddingVertical: 11 },
+  datePickerBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.inputBg, borderWidth: 1, borderColor: Colors.infoBlueAlpha30, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12 },
+  datePickerBtnText: { flex: 1, fontFamily: FontFamily.mono, fontSize: FontSize.sm, color: Colors.infoBlueLight },
+  dualErrorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 7, backgroundColor: Colors.errorAlpha08, borderWidth: 1, borderColor: Colors.errorAlpha20, borderRadius: 10, padding: 10, marginTop: 10 },
+  dualErrorText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.error, flex: 1, lineHeight: 17 },
+  dualSubmitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, borderRadius: 12, backgroundColor: Colors.lightOrange_f97316, marginTop: 16 },
+  dualSubmitText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white, letterSpacing: 0.3 },
 });

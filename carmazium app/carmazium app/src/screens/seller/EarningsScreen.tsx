@@ -24,6 +24,7 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 
+import { IconButton } from '../../components/IconButton';
 // ─────────────────────────── interfaces ───────────────────────────
 
 interface SaleRecord {
@@ -68,8 +69,6 @@ const getBuyerName = (buyer?: SaleRecord['buyer']): string => {
   const parts = [buyer.firstName, buyer.lastName].filter(Boolean);
   return parts.length > 0 ? parts.join(' ') : 'Private buyer';
 };
-
-const NET_RATE = 0.975; // 2.5% platform fee
 
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
@@ -187,7 +186,6 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
   );
 
   const renderSaleRow = (sale: SaleRecord) => {
-    const net = Math.round(sale.soldPrice * NET_RATE);
     const title = sale.listing?.title ?? 'Vehicle';
     const buyerName = getBuyerName(sale.buyer);
 
@@ -205,11 +203,13 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
           <Text style={styles.saleDate}>{formatDate(sale.createdAt)}</Text>
         </View>
 
-        {/* Revenue */}
+        {/* Revenue — CarMazium doesn't take a cut of classified sales (web's
+            earnings page is explicit: net proceeds are "After 0% Fee"), so
+            what a seller receives is the sold price itself, not a discounted
+            "net" figure. */}
         <View style={styles.saleRevenue}>
           <Text style={styles.soldPrice}>{formatPrice(sale.soldPrice)}</Text>
-          <Text style={styles.netAmount}>{formatPrice(net)} net</Text>
-          <Text style={styles.feeLabel}>2.5% fee</Text>
+          <Text style={styles.netAmount}>you received</Text>
         </View>
       </View>
     );
@@ -221,7 +221,7 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(34,197,94,0.05)', 'rgba(10,10,12,0)', '#0A0A0C']}
+        colors={['rgba(34,197,94,0.05)', 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
@@ -232,13 +232,7 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
 
       {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          activeOpacity={0.75}
-          onPress={() => navigation?.goBack()}
-        >
-          <Ionicons name="chevron-back" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
+        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
 
         <Text style={styles.headerTitle}>Earnings</Text>
 
@@ -248,7 +242,7 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
           onPress={handleExport}
           disabled={exporting}
         >
-          <Ionicons name="download-outline" size={15} color="#22C55E" />
+          <Ionicons name="download-outline" size={15} color={Colors.success} />
           <Text style={styles.exportBtnText}>
             {exporting ? 'Exporting…' : 'Export'}
           </Text>
@@ -332,7 +326,7 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
               activeOpacity={0.85}
             >
               {connectLoading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={Colors.white} />
               ) : (
                 <Text style={styles.connectButtonText}>Set up Payouts with Stripe</Text>
               )}
@@ -366,9 +360,9 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -386,15 +380,15 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    backgroundColor: 'rgba(34,197,94,0.10)',
+    backgroundColor: Colors.successAlpha10,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(34,197,94,0.25)',
+    borderColor: Colors.successAlpha25,
   },
   exportBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#22C55E',
+    fontSize: FontSize.xs,
+    color: Colors.success,
   },
 
   // ── Scroll ──
@@ -413,7 +407,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(20,26,42,0.70)',
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: Colors.whiteAlpha08,
     padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
@@ -427,7 +421,7 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     color: Colors.textMuted,
     letterSpacing: 1,
     textTransform: 'uppercase',
@@ -446,20 +440,20 @@ const styles = StyleSheet.create({
   summaryDivider: {
     width: 1,
     height: 48,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: Colors.whiteAlpha08,
     marginHorizontal: 20,
   },
   skeletonRevenue: {
     width: 120,
     height: 36,
     borderRadius: 6,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
   },
   skeletonSalesCount: {
     width: 48,
     height: 32,
     borderRadius: 6,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
   },
 
   // ── History section ──
@@ -468,7 +462,7 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     color: Colors.textMuted,
     letterSpacing: 1.5,
     textTransform: 'uppercase',
@@ -479,18 +473,18 @@ const styles = StyleSheet.create({
   skeletonRow: {
     height: 76,
     borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.04)',
+    borderColor: Colors.whiteAlpha04,
   },
   skeletonRowWrap: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     gap: 12,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.04)',
+    borderColor: Colors.whiteAlpha04,
     padding: 14,
   },
   skeletonRowContent: {
@@ -530,7 +524,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgSecondary,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     padding: 14,
     gap: 12,
   },
@@ -538,9 +532,9 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(34,197,94,0.10)',
+    backgroundColor: Colors.successAlpha10,
     borderWidth: 1,
-    borderColor: 'rgba(34,197,94,0.20)',
+    borderColor: Colors.successAlpha20,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -551,17 +545,17 @@ const styles = StyleSheet.create({
   },
   saleTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
+    fontSize: FontSize.size14,
     color: Colors.textPrimary,
   },
   saleBuyer: {
     fontFamily: FontFamily.regular,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.textMuted,
   },
   saleDate: {
     fontFamily: FontFamily.mono,
-    fontSize: 10,
+    fontSize: FontSize.size10,
     color: Colors.textMuted,
   },
   saleRevenue: {
@@ -571,18 +565,13 @@ const styles = StyleSheet.create({
   },
   soldPrice: {
     fontFamily: FontFamily.mono,
-    fontSize: 16,
+    fontSize: FontSize.md,
     color: Colors.textPrimary,
   },
   netAmount: {
     fontFamily: FontFamily.mono,
-    fontSize: 10,
+    fontSize: FontSize.size10,
     color: Colors.success,
-  },
-  feeLabel: {
-    fontFamily: FontFamily.regular,
-    fontSize: 9,
-    color: Colors.textMuted,
   },
 
   // ── Payouts / Stripe Connect ──
@@ -593,7 +582,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgSecondary,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(34,197,94,0.15)',
+    borderColor: Colors.successAlpha15,
     padding: 16,
     gap: 14,
   },
@@ -606,22 +595,22 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(34,197,94,0.10)',
+    backgroundColor: Colors.successAlpha10,
     borderWidth: 1,
-    borderColor: 'rgba(34,197,94,0.20)',
+    borderColor: Colors.successAlpha20,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   payoutsCardTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
+    fontSize: FontSize.size14,
     color: Colors.textPrimary,
     marginBottom: 4,
   },
   payoutsCardSub: {
     fontFamily: FontFamily.regular,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.textMuted,
     lineHeight: 18,
   },
@@ -634,8 +623,8 @@ const styles = StyleSheet.create({
   },
   connectButtonText: {
     fontFamily: FontFamily.semiBold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
     textAlign: 'center',
   },
 });

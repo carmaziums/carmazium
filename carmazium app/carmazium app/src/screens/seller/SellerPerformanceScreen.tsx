@@ -15,10 +15,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BarChart, LineChart } from 'react-native-gifted-charts';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
-import { FontFamily } from '../../constants/typography';
+import {FontFamily, FontSize } from '../../constants/typography';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 
+import { IconButton } from '../../components/IconButton';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CHART_W = SCREEN_WIDTH - 64;
 
@@ -76,7 +77,7 @@ const buildViewsData = (d: SellerPerformanceData): { value: number; label: strin
     return d.recentListingViews.slice(0, 8).map((item, i) => ({
       value: Math.max(item.views, 0),
       label: item.title.split(' ')[0] ?? String(i + 1),
-      frontColor: i === 0 ? Colors.accent : 'rgba(220,31,38,0.4)',
+      frontColor: i === 0 ? Colors.accent : Colors.accentAlpha40,
     }));
   }
   return [{ value: Math.max(d.totalViews, 0), label: 'Total', frontColor: Colors.accent }];
@@ -135,7 +136,7 @@ export const SellerPerformanceScreen: React.FC<{ navigation?: any }> = ({ naviga
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(220,31,38,0.06)', 'rgba(10,10,12,0)', '#0A0A0C']}
+        colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
@@ -144,9 +145,7 @@ export const SellerPerformanceScreen: React.FC<{ navigation?: any }> = ({ naviga
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} activeOpacity={0.75} onPress={() => navigation?.goBack()}>
-          <Ionicons name="chevron-back" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
+        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
         <Text style={styles.headerTitle}>Performance</Text>
         <View style={{ width: 36 }} />
       </View>
@@ -178,28 +177,28 @@ export const SellerPerformanceScreen: React.FC<{ navigation?: any }> = ({ naviga
             {/* ── KPI grid ── */}
             <View style={styles.statsGrid}>
               <View style={styles.statCard}>
-                <View style={[styles.statIconWrap, { backgroundColor: 'rgba(34,197,94,0.12)' }]}>
+                <View style={[styles.statIconWrap, { backgroundColor: Colors.successAlpha12 }]}>
                   <Ionicons name="cash-outline" size={16} color={Colors.success} />
                 </View>
                 <Text style={styles.statValue}>{formatCurrency(data!.totalRevenue)}</Text>
                 <Text style={styles.statLabel}>TOTAL REVENUE</Text>
               </View>
               <View style={styles.statCard}>
-                <View style={[styles.statIconWrap, { backgroundColor: 'rgba(59,130,246,0.12)' }]}>
-                  <Ionicons name="eye-outline" size={16} color="#3B82F6" />
+                <View style={[styles.statIconWrap, { backgroundColor: Colors.infoBlueAlpha12 }]}>
+                  <Ionicons name="eye-outline" size={16} color={Colors.infoBlue} />
                 </View>
                 <Text style={styles.statValue}>{data!.totalViews.toLocaleString('en-GB')}</Text>
                 <Text style={styles.statLabel}>TOTAL VIEWS</Text>
               </View>
               <View style={styles.statCard}>
-                <View style={[styles.statIconWrap, { backgroundColor: 'rgba(245,158,11,0.12)' }]}>
+                <View style={[styles.statIconWrap, { backgroundColor: Colors.warningAlpha12 }]}>
                   <Ionicons name="car-sport-outline" size={16} color={Colors.warning} />
                 </View>
                 <Text style={styles.statValue}>{String(data!.totalListings)}</Text>
                 <Text style={styles.statLabel}>LISTINGS</Text>
               </View>
               <View style={styles.statCard}>
-                <View style={[styles.statIconWrap, { backgroundColor: 'rgba(220,31,38,0.12)' }]}>
+                <View style={[styles.statIconWrap, { backgroundColor: Colors.accentAlpha12 }]}>
                   <Ionicons name="trending-up-outline" size={16} color={Colors.accent} />
                 </View>
                 <Text style={styles.statValue}>{data!.conversionRate.toFixed(1)}%</Text>
@@ -229,7 +228,7 @@ export const SellerPerformanceScreen: React.FC<{ navigation?: any }> = ({ naviga
                     hideYAxisText
                     xAxisColor="transparent"
                     yAxisColor="transparent"
-                    xAxisLabelTextStyle={{ fontFamily: FontFamily.mono, fontSize: 8, color: Colors.textMuted }}
+                    xAxisLabelTextStyle={{ fontFamily: FontFamily.mono, fontSize: FontSize.size8, color: Colors.textMuted }}
                     isAnimated
                   />
                 </View>
@@ -251,7 +250,7 @@ export const SellerPerformanceScreen: React.FC<{ navigation?: any }> = ({ naviga
                     hideYAxisText
                     xAxisColor="transparent"
                     yAxisColor="transparent"
-                    xAxisLabelTextStyle={{ fontFamily: FontFamily.mono, fontSize: 8, color: Colors.textMuted }}
+                    xAxisLabelTextStyle={{ fontFamily: FontFamily.mono, fontSize: FontSize.size8, color: Colors.textMuted }}
                     noOfSections={3}
                     maxValue={Math.max(...viewsData.map(d => d.value), 1)}
                     isAnimated
@@ -263,7 +262,7 @@ export const SellerPerformanceScreen: React.FC<{ navigation?: any }> = ({ naviga
             {/* ── Conversion KPI tile (no chart needed per plan) ── */}
             <Text style={styles.sectionLabel}>CONVERSION RATE</Text>
             <View style={styles.convCard}>
-              <View style={[styles.convIconWrap, { backgroundColor: 'rgba(220,31,38,0.12)' }]}>
+              <View style={[styles.convIconWrap, { backgroundColor: Colors.accentAlpha12 }]}>
                 <Ionicons name="analytics-outline" size={22} color={Colors.accent} />
               </View>
               <View style={{ flex: 1, marginLeft: 16 }}>
@@ -305,14 +304,14 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 15,
+    fontSize: FontSize.base,
     fontFamily: FontFamily.bold,
     color: Colors.textPrimary,
   },
@@ -341,12 +340,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   statValue: {
-    fontSize: 19,
+    fontSize: FontSize.size19,
     fontFamily: FontFamily.mono,
     color: Colors.textPrimary,
   },
   statLabel: {
-    fontSize: 9,
+    fontSize: FontSize.size9,
     fontFamily: FontFamily.bold,
     color: Colors.textMuted,
     letterSpacing: 0.5,
@@ -354,7 +353,7 @@ const styles = StyleSheet.create({
   },
 
   sectionLabel: {
-    fontSize: 11,
+    fontSize: FontSize.xs,
     fontFamily: FontFamily.bold,
     color: Colors.textMuted,
     letterSpacing: 1,
@@ -390,13 +389,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   convValue: {
-    fontSize: 28,
+    fontSize: FontSize['3xl'],
     fontFamily: FontFamily.mono,
     color: Colors.textPrimary,
     marginBottom: 2,
   },
   convLabel: {
-    fontSize: 11,
+    fontSize: FontSize.xs,
     fontFamily: FontFamily.regular,
     color: Colors.textMuted,
     lineHeight: 16,

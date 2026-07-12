@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  FlatList,
   StatusBar,
   Dimensions,
   Alert,
@@ -15,12 +16,56 @@ import { Image } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FontFamily } from '../../constants/typography';
+import {FontFamily, FontSize } from '../../constants/typography';
 import { apiClient } from '../../lib/apiClient';
 import { StripeCheckoutModal } from '../../components/StripeCheckoutModal';
 import { haptics } from '../../lib/haptics';
+import { Colors } from '../../constants/colors';
 
+import { IconButton } from '../../components/IconButton';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// Hoisted + memoized so FlatList only re-renders the row whose props
+// actually changed, instead of recreating this JSX inline in renderItem on
+// every parent re-render (mobile-audit.md P3/P4).
+const ListingRow: React.FC<{ item: any }> = React.memo(({ item }) => {
+  const listingTitle = item.title || `${item.make ?? ''} ${item.model ?? ''}`.trim() || 'Vehicle';
+  const listingImage = item.images?.[0];
+  const statusColor = item.status === 'ACTIVE' ? Colors.accentGreen : item.status === 'SOLD' ? Colors.warning : Colors.textSecondary;
+
+  return (
+    <View style={styles.listingCard}>
+      {listingImage ? (
+        <Image source={{ uri: listingImage }} style={styles.listingImage} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+      ) : (
+        <View style={[styles.listingImage, styles.listingImagePlaceholder]}>
+          <Ionicons name="car-outline" size={32} color={Colors.textMuted} />
+        </View>
+      )}
+      <View style={styles.listingInfo}>
+        <View style={styles.listingTitleRow}>
+          <Text style={styles.listingTitle} numberOfLines={1}>{listingTitle}</Text>
+          <View style={[styles.statusPill, { backgroundColor: `${statusColor}22`, borderColor: `${statusColor}66` }]}>
+            <Text style={[styles.statusText, { color: statusColor }]}>{item.status ?? 'DRAFT'}</Text>
+          </View>
+        </View>
+        <Text style={styles.listingPrice}>£{Number(item.price ?? 0).toLocaleString('en-GB')}</Text>
+        <View style={styles.listingMetaRow}>
+          {item.year ? <Text style={styles.listingMeta}>{item.year}</Text> : null}
+          {item.year && item.mileage ? <Text style={styles.listingMetaDot}>·</Text> : null}
+          {item.mileage ? <Text style={styles.listingMeta}>{Number(item.mileage).toLocaleString('en-GB')} mi</Text> : null}
+          {item.viewCount != null ? (
+            <>
+              <Text style={styles.listingMetaDot}>·</Text>
+              <Ionicons name="eye-outline" size={11} color={Colors.iconMuted} />
+              <Text style={styles.listingMeta}>{item.viewCount}</Text>
+            </>
+          ) : null}
+        </View>
+      </View>
+    </View>
+  );
+});
 
 export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -123,27 +168,30 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
     }
   };
 
+  const renderListingRow = useCallback(({ item }: { item: any }) => <ListingRow item={item} />, []);
+  const keyExtractor = useCallback((item: any, idx: number) => item.id ?? String(idx), []);
+
   const renderTabBar = () => (
      <View style={[styles.mockTabBar, { paddingBottom: insets.bottom || 12 }]}>
          <TouchableOpacity style={styles.tabItem} onPress={() => navTab('Home')}>
-            <Ionicons name="home-outline" size={24} color="#A0A0AB" />
+            <Ionicons name="home-outline" size={24} color={Colors.textSecondary} />
             <Text style={styles.tabLabel}>HOME</Text>
          </TouchableOpacity>
          <TouchableOpacity style={styles.tabItem} onPress={() => navTab('Search')}>
-            <Ionicons name="search-outline" size={24} color="#A0A0AB" />
+            <Ionicons name="search-outline" size={24} color={Colors.textSecondary} />
             <Text style={styles.tabLabel}>SEARCH</Text>
          </TouchableOpacity>
          <TouchableOpacity style={styles.tabItem} onPress={() => navTab('Live')}>
-            <MaterialCommunityIcons name="gavel" size={24} color="#A0A0AB" />
+            <MaterialCommunityIcons name="gavel" size={24} color={Colors.textSecondary} />
             <Text style={styles.tabLabel}>LIVE</Text>
          </TouchableOpacity>
          <TouchableOpacity style={styles.tabItem} onPress={() => navTab('Saved')}>
-            <Ionicons name="heart-outline" size={24} color="#A0A0AB" />
+            <Ionicons name="heart-outline" size={24} color={Colors.textSecondary} />
             <Text style={styles.tabLabel}>SAVED</Text>
          </TouchableOpacity>
          <TouchableOpacity style={styles.tabItem} onPress={() => navigation?.openDrawer()}>
-            <Ionicons name="person" size={24} color="#DC1F26" />
-            <Text style={[styles.tabLabel, { color: '#DC1F26' }]}>PROFILE</Text>
+            <Ionicons name="person" size={24} color={Colors.accent} />
+            <Text style={[styles.tabLabel, { color: Colors.accent }]}>PROFILE</Text>
          </TouchableOpacity>
       </View>
   );
@@ -154,7 +202,7 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
       return (
         <View style={{ flex: 1 }}>
           <View style={[styles.scrollContent, { paddingTop: insets.top + 14, flex: 1, alignItems: 'center', justifyContent: 'center' }]}>
-            <ActivityIndicator size="large" color="#DC1F26" />
+            <ActivityIndicator size="large" color={Colors.accent} />
             <Text style={styles.loadingText}>Loading your listings…</Text>
           </View>
           {renderTabBar()}
@@ -172,13 +220,11 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
                 <Text style={styles.headerSub}>MY LISTINGS</Text>
                 <Text style={styles.headerTitle}>Selling</Text>
               </View>
-              <TouchableOpacity style={styles.notifBtn} activeOpacity={0.7} onPress={() => navigation?.navigate('Alerts')}>
-                <Ionicons name="notifications-outline" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
+              <IconButton style={styles.notifBtn} icon={<Ionicons name="notifications-outline" size={20} color={Colors.white} />} onPress={() => navigation?.navigate('Notifications')} accessibilityLabel="Notifications" />
             </View>
 
             <View style={styles.emptyState}>
-              <Ionicons name="car-outline" size={56} color="#5C5C6B" style={{ marginBottom: 16 }} />
+              <Ionicons name="car-outline" size={56} color={Colors.textMuted} style={{ marginBottom: 16 }} />
               <Text style={styles.emptyTitle}>No listings yet</Text>
               <Text style={styles.emptySubtitle}>Sell your car on Carmazium and reach thousands of verified buyers.</Text>
               <TouchableOpacity
@@ -186,7 +232,7 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
                 onPress={() => navigation?.navigate('SellCarFlow')}
                 activeOpacity={0.85}
               >
-                <Ionicons name="add" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                <Ionicons name="add" size={18} color={Colors.white} style={{ marginRight: 8 }} />
                 <Text style={styles.emptyCtaText}>LIST YOUR CAR</Text>
               </TouchableOpacity>
             </View>
@@ -202,136 +248,103 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
 
     return (
       <View style={{ flex: 1 }}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 14 }]}>
-
-          {/* Header */}
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.headerSub}>MY LISTINGS</Text>
-              <Text style={styles.headerTitle}>Selling</Text>
-            </View>
-            <TouchableOpacity style={styles.notifBtn} activeOpacity={0.7} onPress={() => navigation?.navigate('Alerts')}>
-              <Ionicons name="notifications-outline" size={20} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Stats KPI bar from real API */}
-          <View style={styles.statsRow}>
-            <View style={styles.statCard}>
-              <Ionicons name="car-outline" size={18} color="#A0A0AB" style={styles.statIcon} />
-              <Text style={styles.statValue}>{stats?.activeListings ?? listings.filter((l) => l.status === 'ACTIVE').length}</Text>
-              <Text style={styles.statLabel}>ACTIVE</Text>
-              <Text style={styles.statChange}>{listings.length} total</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Ionicons name="eye-outline" size={18} color="#A0A0AB" style={styles.statIcon} />
-              <Text style={styles.statValue}>{stats?.totalViews ?? primaryListing?.viewCount ?? 0}</Text>
-              <Text style={styles.statLabel}>VIEWS</Text>
-              <Text style={styles.statChange}>all listings</Text>
-            </View>
-            <TouchableOpacity style={styles.statCardOffers} activeOpacity={0.8} onPress={() => navigation?.navigate('SellerOffers')}>
-              <LinearGradient
-                colors={['rgba(245,158,11,0.1)', 'rgba(245,158,11,0.02)']}
-                style={StyleSheet.absoluteFillObject}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              />
-              <Ionicons name="pricetag-outline" size={18} color="#F59E0B" style={styles.statIcon} />
-              <Text style={styles.statValue}>{stats?.offersReceived ?? 0}</Text>
-              <Text style={styles.statLabelOffers}>OFFERS</Text>
-              <Text style={styles.statChangeOffers}>tap to view</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Listings */}
-          <View style={styles.sectionHeaderWrap}>
-            <Text style={styles.sectionTitle}>YOUR LISTINGS</Text>
-            <Text style={styles.seeAllText}>{listings.length} listing{listings.length !== 1 ? 's' : ''}</Text>
-          </View>
-
-          {listings.map((item, idx) => {
-            const listingTitle = item.title || `${item.make ?? ''} ${item.model ?? ''}`.trim() || 'Vehicle';
-            const listingImage = item.images?.[0];
-            const statusColor = item.status === 'ACTIVE' ? '#10B981' : item.status === 'SOLD' ? '#F59E0B' : '#A0A0AB';
-
-            return (
-              <View key={item.id ?? idx} style={styles.listingCard}>
-                {listingImage ? (
-                  <Image source={{ uri: listingImage }} style={styles.listingImage} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-                ) : (
-                  <View style={[styles.listingImage, styles.listingImagePlaceholder]}>
-                    <Ionicons name="car-outline" size={32} color="#5C5C6B" />
-                  </View>
-                )}
-                <View style={styles.listingInfo}>
-                  <View style={styles.listingTitleRow}>
-                    <Text style={styles.listingTitle} numberOfLines={1}>{listingTitle}</Text>
-                    <View style={[styles.statusPill, { backgroundColor: `${statusColor}22`, borderColor: `${statusColor}66` }]}>
-                      <Text style={[styles.statusText, { color: statusColor }]}>{item.status ?? 'DRAFT'}</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.listingPrice}>£{Number(item.price ?? 0).toLocaleString('en-GB')}</Text>
-                  <View style={styles.listingMetaRow}>
-                    {item.year ? <Text style={styles.listingMeta}>{item.year}</Text> : null}
-                    {item.year && item.mileage ? <Text style={styles.listingMetaDot}>·</Text> : null}
-                    {item.mileage ? <Text style={styles.listingMeta}>{Number(item.mileage).toLocaleString('en-GB')} mi</Text> : null}
-                    {item.viewCount != null ? (
-                      <>
-                        <Text style={styles.listingMetaDot}>·</Text>
-                        <Ionicons name="eye-outline" size={11} color="#606070" />
-                        <Text style={styles.listingMeta}>{item.viewCount}</Text>
-                      </>
-                    ) : null}
-                  </View>
+        <FlatList
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 14 }]}
+          data={listings}
+          keyExtractor={keyExtractor}
+          renderItem={renderListingRow}
+          ListHeaderComponent={
+            <>
+              {/* Header */}
+              <View style={styles.header}>
+                <View>
+                  <Text style={styles.headerSub}>MY LISTINGS</Text>
+                  <Text style={styles.headerTitle}>Selling</Text>
                 </View>
+                <IconButton style={styles.notifBtn} icon={<Ionicons name="notifications-outline" size={20} color={Colors.white} />} onPress={() => navigation?.navigate('Notifications')} accessibilityLabel="Notifications" />
               </View>
-            );
-          })}
 
-          {/* Live banner for primary active listing */}
-          {isActive && (
-            <View style={styles.liveBanner}>
-              <LinearGradient
-                colors={['rgba(255,255,255,0.05)', '#DC1F26']}
-                style={StyleSheet.absoluteFillObject}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              />
-              <View style={styles.livePill}>
-                <View style={styles.liveDot} />
-                <Text style={styles.liveText}>LIVE</Text>
+              {/* Stats KPI bar from real API */}
+              <View style={styles.statsRow}>
+                <View style={styles.statCard}>
+                  <Ionicons name="car-outline" size={18} color={Colors.textSecondary} style={styles.statIcon} />
+                  <Text style={styles.statValue}>{stats?.activeListings ?? listings.filter((l) => l.status === 'ACTIVE').length}</Text>
+                  <Text style={styles.statLabel}>ACTIVE</Text>
+                  <Text style={styles.statChange}>{listings.length} total</Text>
+                </View>
+                <View style={styles.statCard}>
+                  <Ionicons name="eye-outline" size={18} color={Colors.textSecondary} style={styles.statIcon} />
+                  <Text style={styles.statValue}>{stats?.totalViews ?? primaryListing?.viewCount ?? 0}</Text>
+                  <Text style={styles.statLabel}>VIEWS</Text>
+                  <Text style={styles.statChange}>all listings</Text>
+                </View>
+                <TouchableOpacity style={styles.statCardOffers} activeOpacity={0.8} onPress={() => navigation?.navigate('SellerOffers')}>
+                  <LinearGradient
+                    colors={[Colors.warningAlpha10, 'rgba(245,158,11,0.02)']}
+                    style={StyleSheet.absoluteFillObject}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  />
+                  <Ionicons name="pricetag-outline" size={18} color={Colors.warning} style={styles.statIcon} />
+                  <Text style={styles.statValue}>{stats?.offersReceived ?? 0}</Text>
+                  <Text style={styles.statLabelOffers}>OFFERS</Text>
+                  <Text style={styles.statChangeOffers}>tap to view</Text>
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity style={styles.editBtn} onPress={() => navigation?.navigate('SellCarFlow', { listingId: listings[0]?.id })}>
-                <Ionicons name="create-outline" size={14} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
-          )}
 
-          {/* Action Grid */}
-          <View style={styles.actionGrid}>
-            <TouchableOpacity style={styles.actionCard} onPress={handleBoostListing} disabled={actionBusy}>
-              <Ionicons name="flash-outline" size={20} color="#F59E0B" style={styles.actionIcon} />
-              <Text style={styles.actionTitle}>Boost listing</Text>
-              <Text style={styles.actionSub}>Get more views</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={handleShareListing}>
-              <Ionicons name="share-social-outline" size={20} color="#38BDF8" style={styles.actionIcon} />
-              <Text style={styles.actionTitle}>Share listing</Text>
-              <Text style={styles.actionSub}>Share with friends</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={handleViewInsights} disabled={actionBusy}>
-              <Ionicons name="bar-chart-outline" size={20} color="#A78BFA" style={styles.actionIcon} />
-              <Text style={styles.actionTitle}>View insights</Text>
-              <Text style={styles.actionSub}>Views & performance</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={() => navigation?.navigate('SellCarFlow')}>
-              <Ionicons name="add-circle-outline" size={20} color="#10B981" style={styles.actionIcon} />
-              <Text style={styles.actionTitle}>New listing</Text>
-              <Text style={styles.actionSub}>List another car</Text>
-            </TouchableOpacity>
-          </View>
+              {/* Listings */}
+              <View style={styles.sectionHeaderWrap}>
+                <Text style={styles.sectionTitle}>YOUR LISTINGS</Text>
+                <Text style={styles.seeAllText}>{listings.length} listing{listings.length !== 1 ? 's' : ''}</Text>
+              </View>
+            </>
+          }
+          ListFooterComponent={
+            <>
+              {/* Live banner for primary active listing */}
+              {isActive && (
+                <View style={styles.liveBanner}>
+                  <LinearGradient
+                    colors={[Colors.whiteAlpha05, Colors.accent]}
+                    style={StyleSheet.absoluteFillObject}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  />
+                  <View style={styles.livePill}>
+                    <View style={styles.liveDot} />
+                    <Text style={styles.liveText}>LIVE</Text>
+                  </View>
+                  <IconButton style={styles.editBtn} icon={<Ionicons name="create-outline" size={14} color={Colors.white} />} onPress={() => navigation?.navigate('SellCarFlow', { listingId: listings[0]?.id })} accessibilityLabel="Edit listing" />
+                </View>
+              )}
 
-        </ScrollView>
+              {/* Action Grid */}
+              <View style={styles.actionGrid}>
+                <TouchableOpacity style={styles.actionCard} onPress={handleBoostListing} disabled={actionBusy}>
+                  <Ionicons name="flash-outline" size={20} color={Colors.warning} style={styles.actionIcon} />
+                  <Text style={styles.actionTitle}>Boost listing</Text>
+                  <Text style={styles.actionSub}>Get more views</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionCard} onPress={handleShareListing}>
+                  <Ionicons name="share-social-outline" size={20} color={Colors.lightTeal_38bdf8} style={styles.actionIcon} />
+                  <Text style={styles.actionTitle}>Share listing</Text>
+                  <Text style={styles.actionSub}>Share with friends</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionCard} onPress={handleViewInsights} disabled={actionBusy}>
+                  <Ionicons name="bar-chart-outline" size={20} color={Colors.palePurple_a78bfa} style={styles.actionIcon} />
+                  <Text style={styles.actionTitle}>View insights</Text>
+                  <Text style={styles.actionSub}>Views & performance</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionCard} onPress={() => navigation?.navigate('SellCarFlow')}>
+                  <Ionicons name="add-circle-outline" size={20} color={Colors.accentGreen} style={styles.actionIcon} />
+                  <Text style={styles.actionTitle}>New listing</Text>
+                  <Text style={styles.actionSub}>List another car</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          }
+        />
 
         {renderTabBar()}
       </View>
@@ -342,7 +355,7 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(220,31,38,0.03)', 'rgba(0,0,0,0)', '#0A0A0C']}
+        colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.5 }}
@@ -361,7 +374,7 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
       {/* Small transient toast for boost success */}
       {toast && (
         <View style={styles.toast} pointerEvents="none">
-          <Ionicons name="flash" size={14} color="#F59E0B" />
+          <Ionicons name="flash" size={14} color={Colors.warning} />
           <Text style={styles.toastText}>{toast}</Text>
         </View>
       )}
@@ -371,14 +384,14 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
         style={[styles.floatingPlusBtn, { bottom: (insets.bottom || 12) + 70 }]}
         onPress={() => navigation?.navigate('SellCarFlow')}
         activeOpacity={0.8}
-      >
+       accessibilityLabel="Add listing" accessibilityRole="button">
          <LinearGradient
-            colors={['#EF4444', '#DC1F26']}
+            colors={[Colors.error, Colors.accent]}
             style={StyleSheet.absoluteFillObject}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
          />
-         <Ionicons name="add" size={32} color="#FFFFFF" />
+         <Ionicons name="add" size={32} color={Colors.white} />
       </TouchableOpacity>
     </View>
   );
@@ -387,7 +400,7 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0C',
+    backgroundColor: Colors.bgPrimary,
   },
   floatingPlusBtn: {
      position: 'absolute',
@@ -397,7 +410,7 @@ const styles = StyleSheet.create({
      borderRadius: 28,
      alignItems: 'center',
      justifyContent: 'center',
-     shadowColor: '#DC1F26',
+     shadowColor: Colors.accent,
      shadowOffset: { width: 0, height: 4 },
      shadowOpacity: 0.4,
      shadowRadius: 10,
@@ -417,24 +430,24 @@ const styles = StyleSheet.create({
   },
   headerSub: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#606070',
+    fontSize: FontSize.size10,
+    color: Colors.iconMuted,
     letterSpacing: 1.5,
     marginBottom: 4,
   },
   headerTitle: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 28,
-    color: '#FFFFFF',
+    fontSize: FontSize['3xl'],
+    color: Colors.white,
     letterSpacing: -0.5,
   },
   notifBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: Colors.whiteAlpha05,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: Colors.whiteAlpha08,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -444,14 +457,14 @@ const styles = StyleSheet.create({
      justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 24, overflow: 'hidden'
   },
   livePill: {
-     flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(16,185,129,0.2)',
-     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: '#10B981'
+     flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.accentGreenAlpha20,
+     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: Colors.accentGreen
   },
   liveDot: {
-     width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981', marginRight: 6
+     width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.accentGreen, marginRight: 6
   },
   liveText: {
-     fontFamily: FontFamily.bold, fontSize: 11, color: '#10B981', letterSpacing: 1
+     fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accentGreen, letterSpacing: 1
   },
   editBtn: {
      width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.3)',
@@ -462,76 +475,76 @@ const styles = StyleSheet.create({
      flexDirection: 'row', marginHorizontal: 24, gap: 12, marginBottom: 32
   },
   statCard: {
-     flex: 1, backgroundColor: '#111116', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+     flex: 1, backgroundColor: Colors.bgSecondaryAlt, borderRadius: 16, borderWidth: 1, borderColor: Colors.whiteAlpha06,
      padding: 16, alignItems: 'center'
   },
   statCardOffers: {
-     flex: 1, backgroundColor: '#111116', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(245,158,11,0.3)',
+     flex: 1, backgroundColor: Colors.bgSecondaryAlt, borderRadius: 16, borderWidth: 1, borderColor: Colors.warningAlpha30,
      padding: 16, alignItems: 'center', overflow: 'hidden'
   },
   statIcon: {
      marginBottom: 12
   },
   statValue: {
-     fontFamily: FontFamily.black, fontSize: 24, color: '#FFFFFF', marginBottom: 4
+     fontFamily: FontFamily.black, fontSize: FontSize['2xl'], color: Colors.white, marginBottom: 4
   },
   statLabel: {
-     fontFamily: FontFamily.bold, fontSize: 10, color: '#A0A0AB', letterSpacing: 1, marginBottom: 4
+     fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.textSecondary, letterSpacing: 1, marginBottom: 4
   },
   statLabelOffers: {
-     fontFamily: FontFamily.bold, fontSize: 10, color: '#F59E0B', letterSpacing: 1, marginBottom: 4
+     fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.warning, letterSpacing: 1, marginBottom: 4
   },
   statChange: {
-     fontFamily: FontFamily.bold, fontSize: 10, color: '#10B981'
+     fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.accentGreen
   },
   statChangeOffers: {
-     fontFamily: FontFamily.bold, fontSize: 10, color: '#F59E0B'
+     fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.warning
   },
 
   sectionHeaderWrap: {
      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 24, marginBottom: 16
   },
   sectionTitle: {
-     fontFamily: FontFamily.bold, fontSize: 11, color: '#FFFFFF', letterSpacing: 1.5
+     fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 1.5
   },
   seeAllText: {
-     fontFamily: FontFamily.bold, fontSize: 12, color: '#DC1F26'
+     fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.accent
   },
 
   actionGrid: {
      flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: 24, gap: 12
   },
   actionCard: {
-     width: (SCREEN_WIDTH - 60) / 2, backgroundColor: '#111116', borderRadius: 16, borderWidth: 1,
-     borderColor: 'rgba(255,255,255,0.06)', padding: 16
+     width: (SCREEN_WIDTH - 60) / 2, backgroundColor: Colors.bgSecondaryAlt, borderRadius: 16, borderWidth: 1,
+     borderColor: Colors.whiteAlpha06, padding: 16
   },
   actionIcon: {
      marginBottom: 16
   },
   actionTitle: {
-     fontFamily: FontFamily.bold, fontSize: 14, color: '#FFFFFF', marginBottom: 4
+     fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white, marginBottom: 4
   },
   actionSub: {
-     fontFamily: FontFamily.regular, fontSize: 11, color: '#A0A0AB'
+     fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary
   },
 
   // Mock Tab Bar
   mockTabBar: {
      position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-around',
-     paddingTop: 12, backgroundColor: '#0A0A0C', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)'
+     paddingTop: 12, backgroundColor: Colors.bgPrimary, borderTopWidth: 1, borderTopColor: Colors.whiteAlpha05
   },
   tabItem: {
      alignItems: 'center', flex: 1
   },
   tabLabel: {
-     fontFamily: FontFamily.bold, fontSize: 9, color: '#606070', marginTop: 4, letterSpacing: 0.5
+     fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.iconMuted, marginTop: 4, letterSpacing: 0.5
   },
 
   // Loading
   loadingText: {
     fontFamily: FontFamily.medium,
-    fontSize: 13,
-    color: '#606070',
+    fontSize: FontSize.sm,
+    color: Colors.iconMuted,
     marginTop: 16,
   },
 
@@ -543,15 +556,15 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 22,
-    color: '#FFFFFF',
+    fontSize: FontSize.size22,
+    color: Colors.white,
     marginBottom: 12,
     letterSpacing: -0.3,
   },
   emptySubtitle: {
     fontFamily: FontFamily.regular,
-    fontSize: 14,
-    color: '#A0A0AB',
+    fontSize: FontSize.size14,
+    color: Colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 32,
@@ -560,25 +573,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     borderRadius: 14,
     height: 52,
     paddingHorizontal: 32,
   },
   emptyCtaText: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
     letterSpacing: 0.6,
   },
 
   // Listing cards
   listingCard: {
     marginHorizontal: 24,
-    backgroundColor: '#111116',
+    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     overflow: 'hidden',
     marginBottom: 14,
     flexDirection: 'row',
@@ -588,7 +601,7 @@ const styles = StyleSheet.create({
     height: 80,
   },
   listingImagePlaceholder: {
-    backgroundColor: '#1A1A22',
+    backgroundColor: Colors.deepBlue_1a1a22,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -605,8 +618,8 @@ const styles = StyleSheet.create({
   },
   listingTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
     flex: 1,
     marginRight: 8,
   },
@@ -618,13 +631,13 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontFamily: FontFamily.bold,
-    fontSize: 8,
+    fontSize: FontSize.size8,
     letterSpacing: 0.5,
   },
   listingPrice: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 16,
-    color: '#FFFFFF',
+    fontSize: FontSize.md,
+    color: Colors.white,
     marginBottom: 4,
   },
   listingMetaRow: {
@@ -634,13 +647,13 @@ const styles = StyleSheet.create({
   },
   listingMeta: {
     fontFamily: FontFamily.medium,
-    fontSize: 11,
-    color: '#606070',
+    fontSize: FontSize.xs,
+    color: Colors.iconMuted,
   },
   listingMetaDot: {
     fontFamily: FontFamily.medium,
-    fontSize: 11,
-    color: '#606070',
+    fontSize: FontSize.xs,
+    color: Colors.iconMuted,
   },
   toast: {
     position: 'absolute',
@@ -651,15 +664,15 @@ const styles = StyleSheet.create({
     gap: 8,
     backgroundColor: 'rgba(17,17,22,0.95)',
     borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.3)',
+    borderColor: Colors.warningAlpha30,
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
   toastText: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#FFFFFF',
+    fontSize: FontSize.size12,
+    color: Colors.white,
     letterSpacing: 0.3,
   },
 });
