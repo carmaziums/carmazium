@@ -23,6 +23,7 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 
 import { IconButton } from '../../components/IconButton';
+import { HamburgerButton } from '../../components/HamburgerButton';
 // ─────────────────────────── interfaces ───────────────────────────
 // Same GET /listings/earnings endpoint as the private-seller EarningsScreen —
 // web's dealer earnings page (src/app/dashboard/dealer/earnings/page.tsx)
@@ -216,6 +217,7 @@ export const DealerEarningsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
         <Text style={styles.headerTitle}>Dealership Earnings</Text>
 
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <TouchableOpacity
           style={[styles.exportBtn, exporting && { opacity: 0.5 }]}
           activeOpacity={0.75}
@@ -227,6 +229,8 @@ export const DealerEarningsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             {exporting ? 'Exporting…' : 'Export'}
           </Text>
         </TouchableOpacity>
+        <HamburgerButton />
+        </View>
       </View>
 
       <ScrollView

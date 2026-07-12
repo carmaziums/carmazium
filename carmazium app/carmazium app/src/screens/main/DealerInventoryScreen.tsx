@@ -30,6 +30,7 @@ import { BulkImportModal } from '../../components/BulkImportModal';
 import { BottomSheet } from '../../components/BottomSheet';
 import { StripeCheckoutModal } from '../../components/StripeCheckoutModal';
 import { IconButton } from '../../components/IconButton';
+import { HamburgerButton } from '../../components/HamburgerButton';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const VIEW_MODE_STORAGE_KEY = 'czm_dealer_inventory_view_mode';
@@ -601,12 +602,15 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
           <Text style={styles.listHeaderSub}>DEALER · {listings.length} LISTINGS</Text>
           <Text style={styles.listHeaderTitle}>Inventory</Text>
         </View>
-        <IconButton
-          style={styles.backBtn}
-          icon={<Ionicons name={viewMode === 'list' ? 'grid-outline' : 'list-outline'} size={20} color={Colors.white} />}
-          onPress={toggleViewMode}
-          accessibilityLabel={viewMode === 'list' ? 'Switch to grid view' : 'Switch to list view'}
-        />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <IconButton
+            style={styles.backBtn}
+            icon={<Ionicons name={viewMode === 'list' ? 'grid-outline' : 'list-outline'} size={20} color={Colors.white} />}
+            onPress={toggleViewMode}
+            accessibilityLabel={viewMode === 'list' ? 'Switch to grid view' : 'Switch to list view'}
+          />
+          <HamburgerButton />
+        </View>
       </View>
 
       {/* ── Filter tabs ──────────────────────────────────────────────────── */}

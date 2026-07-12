@@ -18,6 +18,7 @@ import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
 
 import { IconButton } from '../../components/IconButton';
+import { HamburgerButton } from '../../components/HamburgerButton';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 // ─────────────────────────── helpers ──────────────────────────────
@@ -259,7 +260,7 @@ export const SettingsScreen: React.FC = () => {
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
         <Text style={styles.title}>Settings</Text>
-        <View style={{ width: 36 }} />
+        <HamburgerButton />
       </View>
 
       <ScrollView

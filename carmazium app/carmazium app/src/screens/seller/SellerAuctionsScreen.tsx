@@ -37,6 +37,7 @@ import { submitHandoverProof } from '../../lib/auctionApi';
 import { useStripe } from '@stripe/stripe-react-native';
 
 import { IconButton } from '../../components/IconButton';
+import { HamburgerButton } from '../../components/HamburgerButton';
 // ─────────────────────────── Types ───────────────────────────
 
 type AuctionStatus = 'SCHEDULED' | 'ACTIVE' | 'ENDED' | 'CANCELLED';
@@ -870,7 +871,10 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       <View style={styles.header}>
         <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
         <Text style={styles.headerTitle}>My Auctions</Text>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="add" size={22} color={Colors.white} />} onPress={() => navigation?.navigate('SellCarFlow')} accessibilityLabel="Add listing" />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <IconButton style={styles.backBtn} icon={<Ionicons name="add" size={22} color={Colors.white} />} onPress={() => navigation?.navigate('SellCarFlow')} accessibilityLabel="Add listing" />
+          <HamburgerButton />
+        </View>
       </View>
 
       {/* Status tabs */}

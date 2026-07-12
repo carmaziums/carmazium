@@ -27,6 +27,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 
 import { IconButton } from '../../components/IconButton';
+import { HamburgerButton } from '../../components/HamburgerButton';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
@@ -247,15 +248,16 @@ export const DealerPurchasesScreen: React.FC = () => {
 
         <Text style={styles.headerTitle}>Purchases</Text>
 
-        {purchases.length > 0 ? (
-          <View style={styles.countBadge}>
-            <Text style={styles.countBadgeText}>
-              {purchases.length > 99 ? '99+' : purchases.length}
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.headerPlaceholder} />
-        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {purchases.length > 0 && (
+            <View style={styles.countBadge}>
+              <Text style={styles.countBadgeText}>
+                {purchases.length > 99 ? '99+' : purchases.length}
+              </Text>
+            </View>
+          )}
+          <HamburgerButton />
+        </View>
       </View>
 
       {/* ── Content ── */}

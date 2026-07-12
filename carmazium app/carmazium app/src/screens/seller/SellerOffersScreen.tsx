@@ -27,6 +27,7 @@ import { CounterLedger } from '../../components/offers/CounterLedger';
 import { ReceivedDeliveryRequestsPanel } from '../../components/delivery/ReceivedDeliveryRequestsPanel';
 
 import { IconButton } from '../../components/IconButton';
+import { HamburgerButton } from '../../components/HamburgerButton';
 // ─────────────────────────── interfaces ───────────────────────────
 
 type OfferStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'COUNTERED' | 'WITHDRAWN';
@@ -579,14 +580,14 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
 
         <Text style={styles.headerTitle}>Incoming Offers</Text>
 
-        {/* Pending count badge */}
-        {pendingCount > 0 ? (
-          <View style={styles.pendingBadge}>
-            <Text style={styles.pendingBadgeText}>{pendingCount > 99 ? '99+' : pendingCount}</Text>
-          </View>
-        ) : (
-          <View style={styles.headerRight} />
-        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {pendingCount > 0 && (
+            <View style={styles.pendingBadge}>
+              <Text style={styles.pendingBadgeText}>{pendingCount > 99 ? '99+' : pendingCount}</Text>
+            </View>
+          )}
+          <HamburgerButton />
+        </View>
       </View>
 
       {/* Inline auto-reject toast — surfaces the sibling auto-decline behavior */}

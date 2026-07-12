@@ -31,6 +31,7 @@ import { CounterLedger } from '../../components/offers/CounterLedger';
 import { ReceivedDeliveryRequestsPanel } from '../../components/delivery/ReceivedDeliveryRequestsPanel';
 
 import { IconButton } from '../../components/IconButton';
+import { HamburgerButton } from '../../components/HamburgerButton';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
@@ -548,14 +549,14 @@ export const DealerOffersScreen: React.FC = () => {
 
         <Text style={styles.headerTitle}>Direct Offers</Text>
 
-        {/* Pending count badge */}
-        {pendingCount > 0 ? (
-          <View style={styles.pendingBadge}>
-            <Text style={styles.pendingBadgeText}>{pendingCount > 99 ? '99+' : pendingCount}</Text>
-          </View>
-        ) : (
-          <View style={styles.headerRight} />
-        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {pendingCount > 0 && (
+            <View style={styles.pendingBadge}>
+              <Text style={styles.pendingBadgeText}>{pendingCount > 99 ? '99+' : pendingCount}</Text>
+            </View>
+          )}
+          <HamburgerButton />
+        </View>
       </View>
 
       {/* ── Content ── */}

@@ -21,6 +21,7 @@ import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { CounterLedger } from '../../components/offers/CounterLedger';
 
 import { IconButton } from '../../components/IconButton';
+import { HamburgerButton } from '../../components/HamburgerButton';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 // ─────────────────────────── interfaces ───────────────────────────
@@ -450,15 +451,16 @@ export const DealerMyOffersScreen: React.FC = () => {
 
         <Text style={styles.headerTitle}>My Offers</Text>
 
-        {counteredPending > 0 ? (
-          <View style={styles.counterBadge}>
-            <Text style={styles.counterBadgeText}>
-              {counteredPending > 99 ? '99+' : counteredPending}
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.headerRight} />
-        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {counteredPending > 0 && (
+            <View style={styles.counterBadge}>
+              <Text style={styles.counterBadgeText}>
+                {counteredPending > 99 ? '99+' : counteredPending}
+              </Text>
+            </View>
+          )}
+          <HamburgerButton />
+        </View>
       </View>
 
       {/* ── Content ── */}

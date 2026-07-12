@@ -26,6 +26,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 import { FontFamily, FontSize } from '../../constants/typography';
 
 import { IconButton } from '../../components/IconButton';
+import { HamburgerButton } from '../../components/HamburgerButton';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface StaffMember {
@@ -357,7 +358,10 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
 
         <Text style={styles.headerTitle}>Team</Text>
 
-        <IconButton style={styles.inviteBtn} icon={<Ionicons name="person-add-outline" size={18} color={Colors.white} />} onPress={() => setInviteModalVisible(true)} accessibilityLabel="Invite team member" />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <IconButton style={styles.inviteBtn} icon={<Ionicons name="person-add-outline" size={18} color={Colors.white} />} onPress={() => setInviteModalVisible(true)} accessibilityLabel="Invite team member" />
+          <HamburgerButton />
+        </View>
       </View>
 
       {/* Summary row */}

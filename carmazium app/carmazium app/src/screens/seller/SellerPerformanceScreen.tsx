@@ -20,6 +20,7 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 
 import { IconButton } from '../../components/IconButton';
+import { HamburgerButton } from '../../components/HamburgerButton';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CHART_W = SCREEN_WIDTH - 64;
 
@@ -147,7 +148,7 @@ export const SellerPerformanceScreen: React.FC<{ navigation?: any }> = ({ naviga
       <View style={styles.header}>
         <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
         <Text style={styles.headerTitle}>Performance</Text>
-        <View style={{ width: 36 }} />
+        <HamburgerButton />
       </View>
 
       <ScrollView

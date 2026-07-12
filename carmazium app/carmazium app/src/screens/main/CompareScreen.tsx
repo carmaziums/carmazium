@@ -24,6 +24,7 @@ import { FontFamily, FontSize } from '../../constants/typography';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
 import { IconButton } from '../../components/IconButton';
+import { HamburgerButton } from '../../components/HamburgerButton';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 const getMileageText = (car: CarListing) => `${(car.mileage / 1000).toFixed(1)}k`;
@@ -200,8 +201,9 @@ export const CompareScreen: React.FC = () => {
         </View>
 
         {/* Share was alert-only with no real implementation — removed rather
-            than faking it (mobile-ui-ux-audit.md §C13). Spacer keeps the title centered. */}
-        <View style={styles.shareBtn} />
+            than faking it (mobile-ui-ux-audit.md §C13). Hamburger keeps
+            drawer access reachable from this screen instead of a dead spacer. */}
+        <HamburgerButton />
       </View>
 
       <ScrollView 

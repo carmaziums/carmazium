@@ -17,6 +17,7 @@ import { FontFamily, FontSize } from '../../constants/typography';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
 import { IconButton } from '../../components/IconButton';
+import { HamburgerButton } from '../../components/HamburgerButton';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 // ─────────────────────────── data ──────────────────────────────────
@@ -110,7 +111,7 @@ export const HowItWorksScreen: React.FC = () => {
       <View style={styles.header}>
         <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
         <Text style={styles.headerTitle}>How It Works</Text>
-        <View style={styles.headerPlaceholder} />
+        <HamburgerButton />
       </View>
 
       <ScrollView

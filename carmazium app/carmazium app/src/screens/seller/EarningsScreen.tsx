@@ -25,6 +25,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 
 import { IconButton } from '../../components/IconButton';
+import { HamburgerButton } from '../../components/HamburgerButton';
 // ─────────────────────────── interfaces ───────────────────────────
 
 interface SaleRecord {
@@ -236,17 +237,20 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
 
         <Text style={styles.headerTitle}>Earnings</Text>
 
-        <TouchableOpacity
-          style={[styles.exportBtn, exporting && { opacity: 0.5 }]}
-          activeOpacity={0.75}
-          onPress={handleExport}
-          disabled={exporting}
-        >
-          <Ionicons name="download-outline" size={15} color={Colors.success} />
-          <Text style={styles.exportBtnText}>
-            {exporting ? 'Exporting…' : 'Export'}
-          </Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TouchableOpacity
+            style={[styles.exportBtn, exporting && { opacity: 0.5 }]}
+            activeOpacity={0.75}
+            onPress={handleExport}
+            disabled={exporting}
+          >
+            <Ionicons name="download-outline" size={15} color={Colors.success} />
+            <Text style={styles.exportBtnText}>
+              {exporting ? 'Exporting…' : 'Export'}
+            </Text>
+          </TouchableOpacity>
+          <HamburgerButton />
+        </View>
       </View>
 
       <ScrollView

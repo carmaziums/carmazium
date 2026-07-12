@@ -32,6 +32,7 @@ import { haptics } from '../../lib/haptics';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
 import { IconButton } from '../../components/IconButton';
+import { HamburgerButton } from '../../components/HamburgerButton';
 // ─────────────────────────── types ────────────────────────────────
 
 interface ApiListing {
@@ -648,6 +649,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           <IconButton style={styles.headerBtn} icon={<Ionicons name="cloud-upload-outline" size={18} color={Colors.warning} />} onPress={() => setShowBulkImportModal(true)} accessibilityLabel="Bulk import" />
           <IconButton style={styles.headerBtn} icon={<Ionicons name="link-outline" size={18} color={Colors.infoBlueLight} />} onPress={() => setShowImportModal(true)} accessibilityLabel="Import from URL" />
           <IconButton style={styles.headerBtn} icon={<Ionicons name="add" size={20} color={Colors.white} />} onPress={() => navigation?.navigate('SellCarFlow')} accessibilityLabel="Add listing" />
+          <HamburgerButton />
         </View>
       </View>
 

@@ -24,6 +24,7 @@ import { FontFamily, FontSize } from '../../constants/typography';
 import { CarListing } from '../../data/listings';
 
 import { IconButton } from '../../components/IconButton';
+import { HamburgerButton } from '../../components/HamburgerButton';
 // ─────────────────────────── interfaces ───────────────────────────
 
 interface ListingStats {
@@ -276,7 +277,10 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
           <Text style={styles.headerEyebrow}>MY LISTING</Text>
           <Text style={styles.headerTitle}>Selling</Text>
         </View>
-        <IconButton style={styles.bellBtn} icon={<Ionicons name="notifications-outline" size={18} color={Colors.white} />} onPress={() => navigation?.navigate('Notifications')} accessibilityLabel="Notifications" />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <IconButton style={styles.bellBtn} icon={<Ionicons name="notifications-outline" size={18} color={Colors.white} />} onPress={() => navigation?.navigate('Notifications')} accessibilityLabel="Notifications" />
+          <HamburgerButton />
+        </View>
       </View>
 
       <ScrollView

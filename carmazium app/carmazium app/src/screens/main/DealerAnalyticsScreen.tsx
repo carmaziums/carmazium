@@ -26,6 +26,7 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 
 import { IconButton } from '../../components/IconButton';
+import { HamburgerButton } from '../../components/HamburgerButton';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_GAP = 12;
 const HALF_CARD = (SCREEN_WIDTH - 48 - CARD_GAP) / 2;
@@ -425,10 +426,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
           <Text style={styles.headerSub}>SALES · LAST {period}</Text>
           <Text style={styles.headerTitleMain}>Analytics</Text>
         </View>
-        {/* No export-report backend endpoint exists yet — removed the dead
-            button rather than faking it (mobile-ui-ux-audit.md §C13
-            precedent). Spacer keeps the title centered. */}
-        <View style={{ width: 38 }} />
+        <HamburgerButton />
       </View>
 
       {/* Period pills */}

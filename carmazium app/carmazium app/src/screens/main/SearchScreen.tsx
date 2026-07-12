@@ -23,6 +23,7 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 
 import { IconButton } from '../../components/IconButton';
+import { HamburgerButton } from '../../components/HamburgerButton';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 const { width: SW } = Dimensions.get('window');
@@ -380,7 +381,10 @@ export const SearchScreen: React.FC = () => {
             {total > 0 ? `${total.toLocaleString('en-GB')} listings` : 'Browse cars'}
           </Text>
         </View>
-        <IconButton style={s.iconBtn} icon={<Ionicons name="notifications-outline" size={19} color={Colors.white} />} onPress={() => navigation.navigate('Notifications')} accessibilityLabel="Notifications" />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <IconButton style={s.iconBtn} icon={<Ionicons name="notifications-outline" size={19} color={Colors.white} />} onPress={() => navigation.navigate('Notifications')} accessibilityLabel="Notifications" />
+          <HamburgerButton />
+        </View>
       </View>
 
       {/* ── Search bar ── */}

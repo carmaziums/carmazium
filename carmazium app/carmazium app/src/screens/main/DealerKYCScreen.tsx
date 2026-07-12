@@ -28,6 +28,7 @@ import { haptics } from '../../lib/haptics';
 import { StripeCheckoutModal } from '../../components/StripeCheckoutModal';
 
 import { IconButton } from '../../components/IconButton';
+import { HamburgerButton } from '../../components/HamburgerButton';
 // ─── Inline form-field helper ────────────────────────────────────────────────
 
 interface FormFieldProps {
@@ -410,7 +411,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
         <View style={styles.header}>
           <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
           <Text style={styles.headerTitle}>Business Verification</Text>
-          <View style={{ width: 38 }} />
+          <HamburgerButton />
         </View>
         <KycSkeleton />
       </View>
@@ -479,7 +480,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
 
         <Text style={styles.headerTitle}>Business Verification</Text>
 
-        <View style={{ width: 38 }} />
+        <HamburgerButton />
       </View>
 
       {/* PENDING STATE — replaces the form when under review */}

@@ -33,6 +33,7 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { Button } from '../../components/Button';
 
 import { IconButton } from '../../components/IconButton';
+import { HamburgerButton } from '../../components/HamburgerButton';
 type FilterTab = 'All' | 'Hot' | 'Warm' | 'New';
 
 interface Lead {
@@ -616,7 +617,10 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
                <Text style={styles.headerTitle}>Leads</Text>
             </View>
          </View>
-         <IconButton style={styles.addLeadBtn} icon={<Ionicons name="add" size={20} color={Colors.white} />} onPress={() => setCreateModalVisible(true)} accessibilityLabel="Add lead" />
+         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <IconButton style={styles.addLeadBtn} icon={<Ionicons name="add" size={20} color={Colors.white} />} onPress={() => setCreateModalVisible(true)} accessibilityLabel="Add lead" />
+            <HamburgerButton />
+         </View>
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>

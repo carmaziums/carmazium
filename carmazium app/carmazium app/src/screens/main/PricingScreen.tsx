@@ -18,6 +18,7 @@ import { PRICING } from '../../constants/pricing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
 import { IconButton } from '../../components/IconButton';
+import { HamburgerButton } from '../../components/HamburgerButton';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 // ─────────────────────────── data ──────────────────────────────────
@@ -175,7 +176,7 @@ export const PricingScreen: React.FC = () => {
       <View style={styles.header}>
         <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.textPrimary} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
         <Text style={styles.headerTitle}>Pricing</Text>
-        <View style={styles.headerPlaceholder} />
+        <HamburgerButton />
       </View>
 
       <ScrollView
