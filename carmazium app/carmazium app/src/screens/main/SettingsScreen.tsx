@@ -44,7 +44,7 @@ const FieldLabel: React.FC<{ label: string }> = ({ label }) => (
 export const SettingsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
-  const { user, updateUser, initializeAuth } = useAuthStore();
+  const { user, role, updateUser, initializeAuth } = useAuthStore();
 
   // ── Profile state ──────────────────────────────────────────────
   const [profileEmail] = useState(user?.email ?? '');
@@ -71,6 +71,17 @@ export const SettingsScreen: React.FC = () => {
           setProfileImage(p.profileImage ?? '');
           if (typeof p.notifyOnSale === 'boolean') setNotifyOnSale(p.notifyOnSale);
           if (typeof p.showPublicProfile === 'boolean') setShowPublicProfile(p.showPublicProfile);
+          if (p.dealerProfile) {
+            const dp = p.dealerProfile;
+            setDealerCompanyName(dp.companyName ?? '');
+            setDealerVatNumber(dp.vatNumber ?? '');
+            setDealerRegNumber(dp.registrationNumber ?? '');
+            setDealerAddress(dp.businessAddress ?? '');
+            setDealerPhone(dp.phone ?? '');
+            setDealerWebsite(dp.website ?? '');
+            setDealerDescription(dp.description ?? '');
+            setDealerLogo(dp.logo ?? '');
+          }
         }
       } catch { /* keep store-derived defaults */ }
     })();
@@ -99,6 +110,75 @@ export const SettingsScreen: React.FC = () => {
       Alert.alert('Error', err?.message ?? 'Could not upload photo. Please try again.');
     } finally {
       setUploadingPhoto(false);
+    }
+  };
+
+  // ── Dealership profile state (dealers only) ─────────────────────
+  // Web lets dealers edit their company info anytime after onboarding
+  // (src/app/dashboard/dealer/settings/page.tsx); mobile's
+  // DealerOnboardingScreen only ever wrote these once with no way back in.
+  // Same PATCH /users/dealer-profile endpoint, same field set.
+  const [dealerCompanyName, setDealerCompanyName] = useState('');
+  const [dealerVatNumber, setDealerVatNumber] = useState('');
+  const [dealerRegNumber, setDealerRegNumber] = useState('');
+  const [dealerAddress, setDealerAddress] = useState('');
+  const [dealerPhone, setDealerPhone] = useState('');
+  const [dealerWebsite, setDealerWebsite] = useState('');
+  const [dealerDescription, setDealerDescription] = useState('');
+  const [dealerLogo, setDealerLogo] = useState('');
+  const [dealerSaving, setDealerSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [dealerFieldErrors, setDealerFieldErrors] = useState<{ companyName?: string; vatNumber?: string }>({});
+
+  const handlePickDealerLogo = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: 'images' as any,
+      allowsMultipleSelection: false,
+      quality: 1.0,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+    setUploadingLogo(true);
+    try {
+      const jpegUri = await convertAndCompress(result.assets[0].uri);
+      const userId = user?.id ?? 'anon';
+      const url = await uploadToStorage(jpegUri, 'listings', `${userId}/dealer-logo/${Date.now()}.jpg`, 'image/jpeg');
+      setDealerLogo(url);
+    } catch (err: any) {
+      Alert.alert('Error', err?.message ?? 'Could not upload logo. Please try again.');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleSaveDealerProfile = async () => {
+    const trimmedCompany = dealerCompanyName.trim();
+    const trimmedVat = dealerVatNumber.trim();
+    const nextFieldErrors: { companyName?: string; vatNumber?: string } = {};
+    if (!trimmedCompany) nextFieldErrors.companyName = 'Company name is required';
+    if (!trimmedVat) nextFieldErrors.vatNumber = 'VAT number is required';
+    setDealerFieldErrors(nextFieldErrors);
+    if (Object.keys(nextFieldErrors).length > 0) return;
+
+    setDealerSaving(true);
+    try {
+      await apiClient('/users/dealer-profile', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          companyName: trimmedCompany,
+          vatNumber: trimmedVat,
+          registrationNumber: dealerRegNumber.trim(),
+          businessAddress: dealerAddress.trim(),
+          phone: dealerPhone.trim(),
+          website: dealerWebsite.trim(),
+          description: dealerDescription.trim(),
+          logo: dealerLogo,
+        }),
+      });
+      Alert.alert('Saved', 'Dealership profile updated successfully.');
+    } catch (err: any) {
+      Alert.alert('Error', err?.message ?? 'Could not update dealership profile.');
+    } finally {
+      setDealerSaving(false);
     }
   };
 
@@ -435,7 +515,134 @@ export const SettingsScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* ── 2. TRADER VERIFICATION ── */}
+        {/* ── 2. DEALERSHIP PROFILE (dealers only) ── */}
+        {role === 'dealer' && (
+          <>
+            <SectionHeader icon="storefront-outline" label="DEALERSHIP PROFILE" />
+            <View style={styles.card}>
+              <TouchableOpacity
+                style={styles.avatarRow}
+                activeOpacity={0.8}
+                onPress={handlePickDealerLogo}
+                disabled={uploadingLogo}
+              >
+                <View style={styles.avatarCircle}>
+                  {uploadingLogo ? (
+                    <ActivityIndicator size="small" color={Colors.accent} />
+                  ) : dealerLogo ? (
+                    <Image source={{ uri: dealerLogo }} style={styles.avatarImage} contentFit="cover" />
+                  ) : (
+                    <Ionicons name="storefront-outline" size={22} color={Colors.iconMuted} />
+                  )}
+                </View>
+                <View>
+                  <Text style={styles.avatarChangeText}>Change logo</Text>
+                  <Text style={styles.avatarHintText}>JPG or PNG, square works best</Text>
+                </View>
+              </TouchableOpacity>
+
+              <View>
+                <FieldLabel label="COMPANY NAME" />
+                <TextInput
+                  style={styles.inputField}
+                  value={dealerCompanyName}
+                  onChangeText={v => { setDealerCompanyName(v); if (dealerFieldErrors.companyName) setDealerFieldErrors(prev => ({ ...prev, companyName: undefined })); }}
+                  placeholder="e.g. Knightsbridge Motors Ltd"
+                  placeholderTextColor={Colors.iconMuted}
+                />
+                {dealerFieldErrors.companyName ? <Text style={styles.fieldErrorText}>{dealerFieldErrors.companyName}</Text> : null}
+              </View>
+
+              <View>
+                <FieldLabel label="VAT NUMBER" />
+                <TextInput
+                  style={styles.inputField}
+                  value={dealerVatNumber}
+                  onChangeText={v => { setDealerVatNumber(v); if (dealerFieldErrors.vatNumber) setDealerFieldErrors(prev => ({ ...prev, vatNumber: undefined })); }}
+                  placeholder="e.g. GB 123 456 789"
+                  placeholderTextColor={Colors.iconMuted}
+                />
+                {dealerFieldErrors.vatNumber ? <Text style={styles.fieldErrorText}>{dealerFieldErrors.vatNumber}</Text> : null}
+              </View>
+
+              <View>
+                <FieldLabel label="COMPANIES HOUSE REG" />
+                <TextInput
+                  style={styles.inputField}
+                  value={dealerRegNumber}
+                  onChangeText={setDealerRegNumber}
+                  keyboardType="numeric"
+                  placeholder="e.g. 12345678"
+                  placeholderTextColor={Colors.iconMuted}
+                />
+              </View>
+
+              <View>
+                <FieldLabel label="BUSINESS ADDRESS" />
+                <TextInput
+                  style={styles.inputField}
+                  value={dealerAddress}
+                  onChangeText={setDealerAddress}
+                  placeholder="e.g. 42 Sloane St, SW1X 9LT"
+                  placeholderTextColor={Colors.iconMuted}
+                />
+              </View>
+
+              <View style={styles.bankRow}>
+                <View style={{ flex: 1 }}>
+                  <FieldLabel label="BUSINESS PHONE" />
+                  <TextInput
+                    style={styles.inputField}
+                    value={dealerPhone}
+                    onChangeText={setDealerPhone}
+                    keyboardType="phone-pad"
+                    placeholder="e.g. +44 20 7123 4567"
+                    placeholderTextColor={Colors.iconMuted}
+                  />
+                </View>
+                <View style={{ width: 12 }} />
+                <View style={{ flex: 1 }}>
+                  <FieldLabel label="WEBSITE" />
+                  <TextInput
+                    style={styles.inputField}
+                    value={dealerWebsite}
+                    onChangeText={setDealerWebsite}
+                    autoCapitalize="none"
+                    keyboardType="url"
+                    placeholder="e.g. yourdealer.co.uk"
+                    placeholderTextColor={Colors.iconMuted}
+                  />
+                </View>
+              </View>
+
+              <View>
+                <FieldLabel label="DESCRIPTION / TAGLINE" />
+                <TextInput
+                  style={[styles.inputField, { height: 72, paddingTop: 12, textAlignVertical: 'top' }]}
+                  value={dealerDescription}
+                  onChangeText={setDealerDescription}
+                  placeholder="A short line about your dealership"
+                  placeholderTextColor={Colors.iconMuted}
+                  multiline
+                />
+              </View>
+
+              <View style={styles.cardDivider} />
+              <TouchableOpacity
+                style={[styles.saveBtn, dealerSaving && { opacity: 0.6 }]}
+                activeOpacity={0.8}
+                onPress={handleSaveDealerProfile}
+                disabled={dealerSaving}
+              >
+                {dealerSaving
+                  ? <ActivityIndicator size="small" color={Colors.white} />
+                  : <Text style={styles.saveBtnText}>SAVE DEALERSHIP PROFILE</Text>}
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+
+        {/* ── 3. TRADER VERIFICATION ── */}
         <SectionHeader icon={isAddressVerified ? 'shield-checkmark-outline' : 'shield-outline'} label="TRADER VERIFICATION" />
         <View style={styles.card}>
           <Text style={styles.payoutDesc}>
@@ -465,7 +672,7 @@ export const SettingsScreen: React.FC = () => {
           )}
         </View>
 
-        {/* ── 3. SECURITY & PASSWORD ── */}
+        {/* ── 4. SECURITY & PASSWORD ── */}
         <SectionHeader icon="lock-closed-outline" label="SECURITY & PASSWORD" />
         <View style={styles.card}>
           <FieldLabel label="CURRENT PASSWORD" />
@@ -529,7 +736,7 @@ export const SettingsScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* ── 4. PAYOUTS ── */}
+        {/* ── 5. PAYOUTS ── */}
         <SectionHeader icon="card-outline" label="PAYOUTS" />
         <View style={styles.card}>
           <Text style={styles.payoutDesc}>
@@ -573,7 +780,7 @@ export const SettingsScreen: React.FC = () => {
           )}
         </View>
 
-        {/* ── 5. BANK ACCOUNT DETAILS ── */}
+        {/* ── 6. BANK ACCOUNT DETAILS ── */}
         <SectionHeader icon="business-outline" label="BANK ACCOUNT DETAILS" />
         <View style={styles.card}>
           <Text style={styles.payoutDesc}>
@@ -740,6 +947,7 @@ const styles = StyleSheet.create({
 
   // Field label
   fieldLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.iconMuted, letterSpacing: 1, marginBottom: 6 },
+  fieldErrorText: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.error, marginTop: 6 },
 
   // Profile info row
   fieldRow: { flexDirection: 'row', gap: 0 },
