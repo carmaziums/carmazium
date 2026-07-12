@@ -67,6 +67,8 @@
     },
     "plugins": [
       "./plugins/withAndroidProguardRules",
+      "./plugins/withAndroidReleaseSigning",
+      "./plugins/withAndroidGradleMemory",
       [
         "expo-font",
         {

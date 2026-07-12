@@ -14,6 +14,12 @@ web-build/
 google-service-account*.json
 *-service-account.json
 
+# Android release signing — keystore + plaintext passwords, never commit.
+# Also covered individually by *.jks/*.p12 above, but the whole folder is
+# ignored too so a stray backup copy or a differently-named keystore can't
+# slip through.
+keystores/
+
 # Environment — developer creates their own .env
 .env
 .env.local

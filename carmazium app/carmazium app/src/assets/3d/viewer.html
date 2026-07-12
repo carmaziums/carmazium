@@ -18,23 +18,24 @@ body{background:#111113;overflow:hidden;width:100vw;height:100vh}
 <div id="msg">Loading 3D model...</div>
 
 <script>
-/* Sync stub — captures data URL before the async CDN module finishes loading */
+/* Sync stub — captures data URL before the module script below has run */
 window._pendingGLB = null;
 window.loadGLB = function(d) { window._pendingGLB = d; };
+window._pendingZones = null;
+window.setZones = function(json) { window._pendingZones = json; };
 window.onerror = function() {
   var m = document.getElementById('msg');
-  if (m) { m.textContent = '3D viewer unavailable (check connection)'; m.style.display = 'flex'; }
+  if (m) { m.textContent = '3D viewer unavailable'; m.style.display = 'flex'; }
 };
 window.addEventListener('unhandledrejection', function() {
   var m = document.getElementById('msg');
-  if (m) { m.textContent = '3D viewer unavailable (check connection)'; m.style.display = 'flex'; }
+  if (m) { m.textContent = '3D viewer unavailable'; m.style.display = 'flex'; }
 });
 </script>
 
 <script type="module">
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js';
-import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/loaders/GLTFLoader.js';
-import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/controls/OrbitControls.js';
+/*__THREE_BUNDLE__*/
+const { THREE, GLTFLoader, OrbitControls } = window.__CARMAZIUM_THREE__;
 
 /* ── Renderer ── */
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -67,12 +68,69 @@ controls.autoRotate = false;
 controls.minPolarAngle = 0.2;
 controls.maxPolarAngle = Math.PI * 0.72;
 
+/* ── Zone projection: keeps hotspots glued to the model as it rotates ──
+   Zones are authored as fractions of the loaded model's own bounding box
+   (fx/fy/fz, 0..1), resolved against the actual box/center/scale once the
+   GLB is loaded, then projected through the live camera on a throttled
+   interval (decoupled from the render loop so orbiting stays smooth).
+   Occlusion is approximated analytically (outward normal from box-center
+   vs. camera direction) rather than raycasting the mesh — with 23 zones,
+   a per-zone raycast against the full model every tick was the actual
+   cause of the jank on this screen. */
+var _modelInfo = null; // { model, min, size, center, scale }
+var _zones = [];
+var _vec = new THREE.Vector3();
+
+function resolveZoneWorldPos(zone) {
+  var m = _modelInfo;
+  var raw = new THREE.Vector3(
+    m.min.x + m.size.x * zone.fx,
+    m.min.y + m.size.y * zone.fy,
+    m.min.z + m.size.z * zone.fz
+  );
+  return raw.sub(m.center).multiplyScalar(m.scale);
+}
+
+function postZonePositions() {
+  if (!_modelInfo || !_zones.length || !window.ReactNativeWebView) return;
+  var m = _modelInfo;
+  var out = [];
+  for (var i = 0; i < _zones.length; i++) {
+    var zone = _zones[i];
+    var worldPos = resolveZoneWorldPos(zone);
+    var ndc = worldPos.clone().project(camera);
+    var onScreen = ndc.z < 1 && ndc.x > -1.3 && ndc.x < 1.3 && ndc.y > -1.3 && ndc.y < 1.3;
+
+    // Outward normal approximated from the zone's position relative to the
+    // box center (works well enough for a roughly-convex car body).
+    var nx = (zone.fx - 0.5) * m.size.x;
+    var ny = (zone.fy - 0.5) * m.size.y;
+    var nz = (zone.fz - 0.5) * m.size.z;
+    var normal = _vec.set(nx, ny, nz).normalize();
+    var toCam = camera.position.clone().sub(worldPos).normalize();
+    var facingCamera = normal.dot(toCam) > -0.15;
+
+    out.push({
+      id: zone.id,
+      x: (ndc.x * 0.5 + 0.5) * 100,
+      y: (1 - (ndc.y * 0.5 + 0.5)) * 100,
+      visible: onScreen && facingCamera,
+    });
+  }
+  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'zonePositions', positions: out }));
+}
+
 /* ── Render loop ── */
 (function loop() {
   requestAnimationFrame(loop);
   controls.update();
   renderer.render(scene, camera);
 })();
+
+/* Zone positions update on their own timer, independent of render FPS —
+   ~8fps is plenty for hotspots tracking a drag-to-rotate gesture and keeps
+   the render loop itself free of per-frame extra work. */
+setInterval(postZonePositions, 120);
 
 /* ── Resize ── */
 window.addEventListener('resize', function() {
@@ -95,6 +153,9 @@ function doLoad(dataUrl) {
       var center = box.getCenter(new THREE.Vector3());
       var size = box.getSize(new THREE.Vector3());
       var scale = 3 / Math.max(size.x, size.y, size.z);
+      // Captured before `center` is mutated below — zone projection needs
+      // the original box/center to resolve fx/fy/fz fractions correctly.
+      _modelInfo = { model: model, min: box.min.clone(), size: size.clone(), center: center.clone(), scale: scale };
       model.scale.setScalar(scale);
       model.position.copy(center.multiplyScalar(-scale));
       scene.add(model);
@@ -109,11 +170,17 @@ function doLoad(dataUrl) {
   );
 }
 
-/* Pick up any URL that arrived while module was still loading */
-if (window._pendingGLB) { doLoad(window._pendingGLB); }
+function doSetZones(json) {
+  try { _zones = JSON.parse(json); } catch (e) { _zones = []; }
+}
 
-/* Override stub with real implementation */
+/* Pick up anything that arrived while the module was still loading */
+if (window._pendingGLB) { doLoad(window._pendingGLB); }
+if (window._pendingZones) { doSetZones(window._pendingZones); }
+
+/* Override stubs with real implementations */
 window.loadGLB = doLoad;
+window.setZones = doSetZones;
 </script>
 
 </body>
