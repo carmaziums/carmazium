@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../../constants/colors';
-import { FontFamily } from '../../constants/typography';
+import {FontFamily, FontSize } from '../../constants/typography';
 import {
   acceptDeliveryRequest,
   declineDeliveryRequest,
@@ -115,7 +115,7 @@ export const ReceivedDeliveryRequestsPanel: React.FC<Props> = ({
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Ionicons name="car-outline" size={13} color="#10B981" />
+        <Ionicons name="car-outline" size={13} color={Colors.accentGreen} />
         <Text style={styles.headerText}>
           {rows.length} delivery request{rows.length === 1 ? '' : 's'} awaiting your response
         </Text>
@@ -150,7 +150,7 @@ export const ReceivedDeliveryRequestsPanel: React.FC<Props> = ({
                 onPress={() => onDecline(req)}
                 disabled={isActioning}
               >
-                <Text style={[styles.btnText, { color: '#F87171' }]}>Decline</Text>
+                <Text style={[styles.btnText, { color: Colors.paleRed_f87171 }]}>Decline</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.btn, styles.btnAccept]}
@@ -159,11 +159,11 @@ export const ReceivedDeliveryRequestsPanel: React.FC<Props> = ({
                 disabled={isActioning}
               >
                 {isActioning ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color={Colors.white} />
                 ) : (
                   <>
-                    <Ionicons name="checkmark" size={13} color="#FFFFFF" />
-                    <Text style={[styles.btnText, { color: '#FFFFFF' }]}>Accept</Text>
+                    <Ionicons name="checkmark" size={13} color={Colors.white} />
+                    <Text style={[styles.btnText, { color: Colors.white }]}>Accept</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: 'rgba(16,185,129,0.28)',
-    backgroundColor: 'rgba(16,185,129,0.06)',
+    backgroundColor: Colors.accentGreenAlpha06,
     borderRadius: 14,
     gap: 10,
   },
@@ -194,8 +194,8 @@ const styles = StyleSheet.create({
   },
   headerText: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#10B981',
+    fontSize: FontSize.size12,
+    color: Colors.accentGreen,
     letterSpacing: 0.3,
   },
   row: {
@@ -216,17 +216,17 @@ const styles = StyleSheet.create({
   },
   rowTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
+    fontSize: FontSize.sm,
     color: Colors.textPrimary,
   },
   rowSub: {
     fontFamily: FontFamily.regular,
-    fontSize: 11,
+    fontSize: FontSize.xs,
     color: Colors.textMuted,
   },
   notes: {
     fontFamily: FontFamily.regular,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.textSecondary,
     fontStyle: 'italic',
     lineHeight: 17,
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
   },
   btnText: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     letterSpacing: 0.3,
   },
 });

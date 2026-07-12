@@ -21,14 +21,17 @@ import { FontFamily, FontSize } from '../constants/typography';
 import { useLocation } from '../context/LocationContext';
 import { haversineDistanceMiles } from '../lib/distance';
 
+import { IconButton } from './IconButton';
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
 interface HorizontalVehicleCardProps {
   listing: CarListing;
-  onPress: () => void;
+  /** Receives the listing id so callers can pass a stable, id-keyed callback
+   * instead of a fresh closure per row — see mobile-audit.md P4. */
+  onPress: (id: string) => void;
 }
 
-export const HorizontalVehicleCard: React.FC<HorizontalVehicleCardProps> = ({
+const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
   listing,
   onPress,
 }) => {
@@ -74,7 +77,7 @@ export const HorizontalVehicleCard: React.FC<HorizontalVehicleCardProps> = ({
   return (
     <AnimatedTouchable
       style={[styles.card, animatedStyle]}
-      onPress={onPress}
+      onPress={() => onPress(listing.id)}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       activeOpacity={1}
@@ -89,8 +92,12 @@ export const HorizontalVehicleCard: React.FC<HorizontalVehicleCardProps> = ({
           cachePolicy="memory-disk"
         />
 
-        {/* Yellow Premium/Featured Tag */}
-        {listing.isPremium && (
+        {/* Banner label takes priority over the tier badge — same corner, tight space */}
+        {listing.bannerLabel ? (
+          <View style={styles.bannerBadge}>
+            <Text style={styles.bannerText} numberOfLines={1}>{listing.bannerLabel}</Text>
+          </View>
+        ) : (listing.isPremium || listing.badgeTier === 'PREMIUM') && (
           <View style={styles.premiumBadge}>
             <Text style={styles.premiumText}>• PREMIUM</Text>
           </View>
@@ -125,29 +132,21 @@ export const HorizontalVehicleCard: React.FC<HorizontalVehicleCardProps> = ({
             <Text style={styles.priceText}>{formatPrice(listing.price)}</Text>
           </View>
 
-          <TouchableOpacity
-            style={styles.bookmarkBtn}
-            onPress={handleToggle}
-            hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-          >
-            <Ionicons
-              name={saved ? 'heart' : 'heart-outline'}
-              size={18}
-              color={saved ? Colors.accent : '#FFFFFF'}
-            />
-          </TouchableOpacity>
+          <IconButton style={styles.bookmarkBtn} icon={<Ionicons name={saved ? 'heart' : 'heart-outline'} size={18} color={saved ? Colors.accent : Colors.white} />} onPress={handleToggle} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
         </View>
       </View>
     </AnimatedTouchable>
   );
 };
 
+export const HorizontalVehicleCard = React.memo(HorizontalVehicleCardBase);
+
 const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: '#2A2A32',
+    borderColor: Colors.borderSubtle,
     borderRadius: 16,
     padding: 12,
     alignItems: 'center',
@@ -168,19 +167,35 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 6,
     left: 6,
-    backgroundColor: '#F59E0B', // Gold/Yellow
+    backgroundColor: Colors.warning, // Gold/Yellow
     paddingHorizontal: 6,
     paddingVertical: 3,
     borderRadius: 4,
   },
   premiumText: {
     fontFamily: FontFamily.bold,
-    fontSize: 8,
-    color: '#000000',
+    fontSize: FontSize.size8,
+    color: Colors.black,
     letterSpacing: 0.5,
   },
+  bannerBadge: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    maxWidth: 78,
+    backgroundColor: 'rgba(59,130,246,0.90)',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  bannerText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size8,
+    color: Colors.white,
+    letterSpacing: 0.3,
+  },
   estateBadge: {
-    backgroundColor: 'rgba(160, 160, 171, 0.20)',
+    backgroundColor: Colors.textSecondaryAlpha20,
     borderWidth: 1,
     borderColor: 'rgba(160, 160, 171, 0.30)',
     paddingHorizontal: 8,
@@ -192,7 +207,7 @@ const styles = StyleSheet.create({
   },
   estateText: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     color: Colors.textSecondary,
     letterSpacing: 0.8,
   },
@@ -205,19 +220,19 @@ const styles = StyleSheet.create({
   specsText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs - 2,
-    color: '#8A8A93',
+    color: Colors.textFaint,
     letterSpacing: 0.8,
   },
   titleText: {
     fontFamily: FontFamily.bold,
-    fontSize: 16,
-    color: '#FFFFFF',
+    fontSize: FontSize.md,
+    color: Colors.white,
     marginVertical: 2,
   },
   subSpecsText: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.xs,
-    color: '#A0A0AB',
+    color: Colors.textSecondary,
     marginBottom: 4,
   },
   bottomRow: {
@@ -231,7 +246,7 @@ const styles = StyleSheet.create({
   },
   priceWrapperOutline: {
     borderWidth: 1,
-    borderColor: '#FFFFFF',
+    borderColor: Colors.white,
     borderRadius: 4,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -239,7 +254,7 @@ const styles = StyleSheet.create({
   priceText: {
     fontFamily: FontFamily.mono,
     fontSize: FontSize.base,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   bookmarkBtn: {
     padding: 4,

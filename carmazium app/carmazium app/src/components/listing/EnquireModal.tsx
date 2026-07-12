@@ -1,8 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -13,12 +10,13 @@ import {
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@/components/BrandIcon';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/colors';
-import { FontFamily } from '../../constants/typography';
+import {FontFamily, FontSize } from '../../constants/typography';
 import { apiClient } from '../../lib/apiClient';
 import { createChatRoom } from '../../lib/chatApi';
 import { haptics } from '../../lib/haptics';
+import { BottomSheet } from '../BottomSheet';
+import { Button } from '../Button';
 
 type ContactPref = 'CHAT' | 'PHONE' | 'EMAIL';
 
@@ -74,8 +72,6 @@ export const EnquireModal: React.FC<EnquireModalProps> = ({
   sellerId,
   onSent,
 }) => {
-  const insets = useSafeAreaInsets();
-
   const prefill =
     `Hi — I'm interested in the ${listing.title ?? [listing.year, listing.make, listing.model].filter(Boolean).join(' ') ?? 'listing'}. ` +
     `Could you tell me a bit more about it and let me know when I could see it?`;
@@ -176,44 +172,12 @@ export const EnquireModal: React.FC<EnquireModalProps> = ({
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <KeyboardAvoidingView
-        style={styles.overlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <TouchableOpacity
-          style={StyleSheet.absoluteFillObject}
-          activeOpacity={1}
-          onPress={onClose}
-        />
-        <View
-          style={[
-            styles.sheet,
-            { paddingBottom: Math.max(insets.bottom, 20) + 12 },
-          ]}
-        >
+    <BottomSheet visible={visible} onClose={onClose} title="Enquire about this vehicle" avoidKeyboard>
           <ScrollView
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ paddingBottom: 4 }}
           >
-            <View style={styles.handle} />
-
-            <View style={styles.headerRow}>
-              <Text style={styles.title}>Enquire about this vehicle</Text>
-              <TouchableOpacity
-                onPress={onClose}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                style={styles.closeBtn}
-              >
-                <Ionicons name="close" size={18} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
             <Text style={styles.subtitle} numberOfLines={2}>
               {listing.title ??
                 [listing.year, listing.make, listing.model].filter(Boolean).join(' ')}
@@ -275,7 +239,7 @@ export const EnquireModal: React.FC<EnquireModalProps> = ({
                 setPickerVisible(true);
               }}
             >
-              <Ionicons name="calendar-outline" size={14} color="#60A5FA" />
+              <Ionicons name="calendar-outline" size={14} color={Colors.infoBlueLight} />
               <Text style={styles.dateBtnText}>
                 {testDriveDate ? fmtDate(testDriveDate) : 'Pick a date & time'}
               </Text>
@@ -308,21 +272,15 @@ export const EnquireModal: React.FC<EnquireModalProps> = ({
             )}
 
             {/* Actions */}
-            <TouchableOpacity
-              style={[styles.primaryBtn, submitting && { opacity: 0.6 }]}
+            <Button
+              label="Send enquiry"
               onPress={handleSubmit}
-              disabled={submitting}
-              activeOpacity={0.85}
-            >
-              {submitting ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <>
-                  <Ionicons name="paper-plane-outline" size={16} color="#FFFFFF" />
-                  <Text style={styles.primaryBtnText}>Send enquiry</Text>
-                </>
-              )}
-            </TouchableOpacity>
+              loading={submitting}
+              fullWidth
+              style={{ marginTop: 18 }}
+              icon={<Ionicons name="paper-plane-outline" size={16} color={Colors.white} />}
+              iconPosition="left"
+            />
 
             {/* "Skip form" opens chat with no prefilled message */}
             <TouchableOpacity
@@ -334,68 +292,21 @@ export const EnquireModal: React.FC<EnquireModalProps> = ({
               <Text style={styles.skipText}>Skip form &amp; open chat</Text>
             </TouchableOpacity>
           </ScrollView>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
+    </BottomSheet>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.65)',
-  },
-  sheet: {
-    backgroundColor: '#101015',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    paddingHorizontal: 22,
-    paddingTop: 12,
-    maxHeight: '92%',
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignSelf: 'center',
-    marginBottom: 12,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  title: {
-    fontFamily: FontFamily.bold,
-    fontSize: 17,
-    color: Colors.textPrimary,
-    flex: 1,
-  },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   subtitle: {
     fontFamily: FontFamily.regular,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.textMuted,
     marginTop: 2,
     marginBottom: 4,
   },
   fieldLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     color: Colors.textMuted,
     letterSpacing: 0.8,
     marginTop: 16,
@@ -410,7 +321,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontFamily: FontFamily.regular,
-    fontSize: 14,
+    fontSize: FontSize.size14,
     color: Colors.textPrimary,
     lineHeight: 20,
   },
@@ -422,19 +333,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: Colors.whiteAlpha10,
     borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: Colors.whiteAlpha03,
   },
   contactOptionSelected: {
     borderColor: Colors.accent,
-    backgroundColor: 'rgba(220,31,38,0.08)',
+    backgroundColor: Colors.accentAlpha08,
   },
   contactOptionText: {
     fontFamily: FontFamily.medium,
-    fontSize: 13,
+    fontSize: FontSize.sm,
     color: Colors.textSecondary,
   },
   dateBtn: {
@@ -442,8 +353,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     borderWidth: 1,
-    borderColor: 'rgba(59,130,246,0.28)',
-    backgroundColor: 'rgba(59,130,246,0.06)',
+    borderColor: Colors.infoBlueAlpha28,
+    backgroundColor: Colors.infoBlueAlpha06,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -451,8 +362,8 @@ const styles = StyleSheet.create({
   dateBtnText: {
     flex: 1,
     fontFamily: FontFamily.medium,
-    fontSize: 13,
-    color: '#60A5FA',
+    fontSize: FontSize.sm,
+    color: Colors.infoBlueLight,
   },
   iosDatePicker: {
     marginTop: 6,
@@ -462,9 +373,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 6,
-    backgroundColor: 'rgba(239,68,68,0.10)',
+    backgroundColor: Colors.errorAlpha10,
     borderWidth: 1,
-    borderColor: 'rgba(239,68,68,0.30)',
+    borderColor: Colors.errorAlpha30,
     borderRadius: 10,
     padding: 10,
     marginTop: 12,
@@ -472,25 +383,9 @@ const styles = StyleSheet.create({
   errorText: {
     flex: 1,
     fontFamily: FontFamily.medium,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.error,
     lineHeight: 17,
-  },
-  primaryBtn: {
-    marginTop: 18,
-    height: 50,
-    borderRadius: 12,
-    backgroundColor: Colors.accent,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  primaryBtnText: {
-    fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
-    letterSpacing: 0.4,
   },
   skipRow: {
     marginTop: 12,
@@ -499,7 +394,7 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontFamily: FontFamily.medium,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.textMuted,
     textDecorationLine: 'underline',
   },

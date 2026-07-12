@@ -21,6 +21,13 @@ import { FontFamily, FontSize } from '../../constants/typography';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { CounterLedger } from '../../components/offers/CounterLedger';
 import { haptics } from '../../lib/haptics';
+import {
+  getMyDeliveryRequests,
+  createDeliveryRequest,
+  cancelDeliveryRequest,
+  completeDeliveryRequest,
+  type DeliveryRequest,
+} from '../../lib/deliveryApi';
 
 import { IconButton } from '../../components/IconButton';
 // ─────────────────────────── interfaces ───────────────────────────
@@ -48,6 +55,8 @@ interface Offer {
     title?: string;
     price?: number;
     images?: string[];
+    deliveryAvailable?: boolean;
+    deliveryMaxMiles?: number | null;
   };
   seller?: {
     id?: string;
@@ -165,18 +174,37 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
   const [counterBackLoading, setCounterBackLoading] = useState(false);
   const [counterBackError, setCounterBackError] = useState<string | null>(null);
 
+  // Delivery request — inline on the offer instead of requiring a detour
+  // through the listing detail screen (mobile-web parity audit, 2026-07-12:
+  // web's offers page embeds this per-row; mobile previously had no
+  // delivery UI on this screen at all). Only one form open at a time, same
+  // pattern as the counter-back fields above.
+  const [deliveryRequests, setDeliveryRequests] = useState<DeliveryRequest[]>([]);
+  const [deliveryFormOfferId, setDeliveryFormOfferId] = useState<string | null>(null);
+  const [deliveryStreet, setDeliveryStreet] = useState('');
+  const [deliveryCity, setDeliveryCity] = useState('');
+  const [deliveryPostcode, setDeliveryPostcode] = useState('');
+  const [deliveryNotes, setDeliveryNotes] = useState('');
+  const [deliverySubmitting, setDeliverySubmitting] = useState(false);
+  const [deliveryError, setDeliveryError] = useState<string | null>(null);
+  const [deliveryActionId, setDeliveryActionId] = useState<string | null>(null);
+
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     setError(null);
     try {
-      const [res] = await Promise.allSettled([
+      const [res, deliveryRes] = await Promise.allSettled([
         apiClient<MyOffersResponse>('/offers/my'),
+        getMyDeliveryRequests(),
       ]);
       if (res.status === 'fulfilled' && res.value?.success) {
         const raw = res.value.data;
         setOffers(Array.isArray(raw) ? raw : []);
       } else if (res.status === 'rejected') {
         setError('Could not load offers. Please try again.');
+      }
+      if (deliveryRes.status === 'fulfilled') {
+        setDeliveryRequests(deliveryRes.value);
       }
     } catch {
       setError('Could not load offers. Please try again.');
@@ -295,6 +323,70 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
     }
   };
 
+  const openDeliveryForm = (offer: Offer) => {
+    setDeliveryFormOfferId(offer.id);
+    setDeliveryStreet('');
+    setDeliveryCity('');
+    setDeliveryPostcode('');
+    setDeliveryNotes('');
+    setDeliveryError(null);
+  };
+
+  const handleSubmitDeliveryRequest = async (offer: Offer) => {
+    const listingId = offer.listing?.id ?? offer.listingId;
+    if (!listingId) return;
+    if (!deliveryStreet.trim() || !deliveryCity.trim() || !deliveryPostcode.trim()) {
+      setDeliveryError('Street, city and postcode are required.');
+      return;
+    }
+    setDeliverySubmitting(true);
+    setDeliveryError(null);
+    try {
+      const created = await createDeliveryRequest({
+        listingId,
+        deliveryAddress: {
+          street: deliveryStreet.trim(),
+          city: deliveryCity.trim(),
+          postcode: deliveryPostcode.trim().toUpperCase(),
+        },
+        deliveryNotes: deliveryNotes.trim() || undefined,
+      });
+      haptics.success();
+      setDeliveryRequests(prev => [...prev, created]);
+      setDeliveryFormOfferId(null);
+    } catch (err: any) {
+      setDeliveryError(err?.message ?? 'Could not request delivery. Please try again.');
+    } finally {
+      setDeliverySubmitting(false);
+    }
+  };
+
+  const handleCancelDelivery = async (deliveryId: string) => {
+    setDeliveryActionId(deliveryId);
+    try {
+      const updated = await cancelDeliveryRequest(deliveryId);
+      haptics.medium();
+      setDeliveryRequests(prev => prev.map(r => (r.id === deliveryId ? updated : r)));
+    } catch (err: any) {
+      Alert.alert('Action Failed', err?.message ?? 'Could not cancel delivery request.');
+    } finally {
+      setDeliveryActionId(null);
+    }
+  };
+
+  const handleCompleteDelivery = async (deliveryId: string) => {
+    setDeliveryActionId(deliveryId);
+    try {
+      const updated = await completeDeliveryRequest(deliveryId);
+      haptics.success();
+      setDeliveryRequests(prev => prev.map(r => (r.id === deliveryId ? updated : r)));
+    } catch (err: any) {
+      Alert.alert('Action Failed', err?.message ?? 'Could not mark delivery as received.');
+    } finally {
+      setDeliveryActionId(null);
+    }
+  };
+
   const handleMessageSeller = async (offer: Offer) => {
     const participantId = offer.sellerId ?? offer.seller?.id;
     if (!participantId) {
@@ -370,6 +462,13 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
     const counterExpiry = isCountered
       ? formatCounterExpiry(offer.counterExpiresAt)
       : null;
+    // Delivery is a listing-level feature, available regardless of offer
+    // status (matches web's offers/page.tsx, which shows this row for any
+    // offer whose listing has deliveryAvailable set).
+    const listingId = offer.listing?.id ?? offer.listingId;
+    const deliveryReq = deliveryRequests.find(r => r.listingId === listingId);
+    const deliveryLive = !!deliveryReq && deliveryReq.status !== 'DECLINED' && deliveryReq.status !== 'CANCELLED';
+    const showDeliveryCTA = offer.listing?.deliveryAvailable && !deliveryLive;
 
     return (
       <View
@@ -588,6 +687,113 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
             )}
           </>
         )}
+
+        {/* Delivery — inline request/track/cancel, no detour to the listing page */}
+        {(deliveryLive || showDeliveryCTA) && (
+          <View style={styles.deliverySection}>
+            {deliveryLive && deliveryReq ? (
+              <View style={styles.deliveryStatusRow}>
+                <View style={styles.deliveryStatusLeft}>
+                  <Ionicons name="car-outline" size={13} color={Colors.accentGreen} />
+                  <Text style={styles.deliveryStatusText}>
+                    {deliveryReq.status === 'PENDING' && 'Delivery requested · awaiting seller'}
+                    {deliveryReq.status === 'ACCEPTED' && 'Delivery confirmed by seller'}
+                    {deliveryReq.status === 'COMPLETED' && 'Delivery received'}
+                  </Text>
+                </View>
+                {deliveryReq.status === 'PENDING' && (
+                  <TouchableOpacity
+                    onPress={() => handleCancelDelivery(deliveryReq.id)}
+                    disabled={deliveryActionId === deliveryReq.id}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Text style={styles.deliveryLinkMuted}>Cancel request</Text>
+                  </TouchableOpacity>
+                )}
+                {deliveryReq.status === 'ACCEPTED' && (
+                  <TouchableOpacity
+                    onPress={() => handleCompleteDelivery(deliveryReq.id)}
+                    disabled={deliveryActionId === deliveryReq.id}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Text style={styles.deliveryLinkSuccess}>Mark as received</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : deliveryFormOfferId !== offer.id ? (
+              <TouchableOpacity
+                style={styles.deliveryCtaBtn}
+                activeOpacity={0.75}
+                onPress={() => openDeliveryForm(offer)}
+              >
+                <Ionicons name="car-outline" size={13} color={Colors.accentGreen} />
+                <Text style={styles.deliveryCtaText}>Add delivery request</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.deliveryFormExpand}>
+                <Text style={styles.deliveryFormLabel}>DELIVERY ADDRESS</Text>
+                <TextInput
+                  style={styles.deliveryFormInput}
+                  value={deliveryStreet}
+                  onChangeText={setDeliveryStreet}
+                  placeholder="Street address"
+                  placeholderTextColor={Colors.textMuted}
+                />
+                <View style={styles.deliveryFormRow}>
+                  <TextInput
+                    style={[styles.deliveryFormInput, styles.deliveryFormInputHalf]}
+                    value={deliveryCity}
+                    onChangeText={setDeliveryCity}
+                    placeholder="City"
+                    placeholderTextColor={Colors.textMuted}
+                  />
+                  <TextInput
+                    style={[styles.deliveryFormInput, styles.deliveryFormInputHalf]}
+                    value={deliveryPostcode}
+                    onChangeText={v => setDeliveryPostcode(v.toUpperCase())}
+                    placeholder="Postcode"
+                    placeholderTextColor={Colors.textMuted}
+                    autoCapitalize="characters"
+                  />
+                </View>
+                <TextInput
+                  style={[styles.deliveryFormInput, styles.deliveryFormNotes]}
+                  value={deliveryNotes}
+                  onChangeText={setDeliveryNotes}
+                  placeholder="Delivery notes (optional)"
+                  placeholderTextColor={Colors.textMuted}
+                  multiline
+                />
+                {offer.listing?.deliveryMaxMiles != null && (
+                  <Text style={styles.deliveryFormHint}>
+                    Seller delivers up to {offer.listing.deliveryMaxMiles} miles — exact cost is confirmed once requested.
+                  </Text>
+                )}
+                {deliveryError && <Text style={styles.counterBackError}>{deliveryError}</Text>}
+                <View style={styles.counterBackRow}>
+                  <TouchableOpacity
+                    style={[styles.actionBtn, styles.actionBtnAcceptCounter, { flex: 1 }]}
+                    onPress={() => handleSubmitDeliveryRequest(offer)}
+                    disabled={deliverySubmitting}
+                    activeOpacity={0.8}
+                  >
+                    {deliverySubmitting ? (
+                      <ActivityIndicator size="small" color={Colors.white} />
+                    ) : (
+                      <Text style={[styles.actionBtnText, { color: Colors.white }]}>Request Delivery</Text>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setDeliveryFormOfferId(null)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Text style={styles.counterBackCancel}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
       </View>
     );
   }, [
@@ -600,6 +806,15 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
     handleMessageSeller,
     handleCounterRespond,
     handleCounterBack,
+    deliveryRequests,
+    deliveryFormOfferId,
+    deliveryStreet,
+    deliveryCity,
+    deliveryPostcode,
+    deliveryNotes,
+    deliverySubmitting,
+    deliveryError,
+    deliveryActionId,
   ]);
 
   // ─────────────── main render ───────────────────────
@@ -1003,5 +1218,100 @@ const styles = StyleSheet.create({
     fontSize: FontSize.size12,
     color: Colors.textMuted,
     alignSelf: 'flex-start',
+  },
+
+  // ── Delivery ──
+  deliverySection: {
+    marginTop: 2,
+  },
+  deliveryStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.accentGreenAlpha06,
+    borderWidth: 1,
+    borderColor: Colors.accentGreenAlpha20,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  deliveryStatusLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 1,
+  },
+  deliveryStatusText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: FontSize.size12,
+    color: Colors.accentGreen,
+    flexShrink: 1,
+  },
+  deliveryLinkMuted: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    textDecorationLine: 'underline',
+  },
+  deliveryLinkSuccess: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.xs,
+    color: Colors.accentGreen,
+    textDecorationLine: 'underline',
+  },
+  deliveryCtaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+  },
+  deliveryCtaText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size12,
+    color: Colors.accentGreen,
+  },
+  deliveryFormExpand: {
+    backgroundColor: Colors.whiteAlpha03,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha10,
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+  },
+  deliveryFormLabel: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size9,
+    color: Colors.textMuted,
+    letterSpacing: 0.6,
+  },
+  deliveryFormInput: {
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: Colors.inputBg,
+    borderWidth: 1,
+    borderColor: Colors.inputBorder,
+    color: Colors.textPrimary,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    paddingHorizontal: 12,
+  },
+  deliveryFormRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  deliveryFormInputHalf: {
+    flex: 1,
+  },
+  deliveryFormNotes: {
+    height: 56,
+    paddingTop: 10,
+    textAlignVertical: 'top',
+  },
+  deliveryFormHint: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.size10,
+    color: Colors.textMuted,
+    lineHeight: 14,
   },
 });

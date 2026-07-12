@@ -22,6 +22,7 @@ import { Logo } from '../../components/Logo';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import { Skeleton } from '../../components/ui/Skeleton';
 
+import { IconButton } from '../../components/IconButton';
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
 interface BuyerDashData {
@@ -29,6 +30,7 @@ interface BuyerDashData {
   activeOffers: number;
   watchlistCount: number;
   wonAuctions: number;
+  totalSpent?: number;
   bids: Array<{
     id: string;
     amount: number;
@@ -88,8 +90,9 @@ const KpiCard: React.FC<{
   value: number | string;
   sublabel: string;
   loading: boolean;
-}> = ({ label, icon, tone, value, sublabel, loading }) => (
-  <View style={styles.kpiCard}>
+  fullWidth?: boolean;
+}> = ({ label, icon, tone, value, sublabel, loading, fullWidth }) => (
+  <View style={[styles.kpiCard, fullWidth && styles.kpiCardFull]}>
     <View style={[styles.kpiGlow, { backgroundColor: tone }]} />
     <View style={styles.kpiTopRow}>
       <Text style={styles.kpiEyebrow}>{label}</Text>
@@ -161,10 +164,15 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
     .toUpperCase()
     .slice(0, 2);
 
+  // 7d/30d period toggle — matches web's dashboard/buyer/page.tsx, which
+  // re-queries /dashboard/buyer?period=... and scopes all four stat cards
+  // (including Total Spent, added below) to that window.
+  const [period, setPeriod] = useState<'7d' | '30d'>('30d');
+
   const fetchData = useCallback(async () => {
     try {
       const [dashRes, featuredRes, unreadRes] = await Promise.allSettled([
-        apiClient<BuyerDashResponse>('/dashboard/buyer'),
+        apiClient<BuyerDashResponse>(`/dashboard/buyer?period=${period}`),
         getFeaturedListings(),
         getUnreadCount(),
       ]);
@@ -185,7 +193,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [period]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -199,6 +207,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
   const activeOffers = dash?.activeOffers ?? 0;
   const watchlistCount = dash?.watchlistCount ?? 0;
   const wonAuctions = dash?.wonAuctions ?? 0;
+  const totalSpent = dash?.totalSpent ?? 0;
 
   // Recent activity rows (up to 4): show countered offers first, then active bids
   const recentOffers = (dash?.offers ?? []).slice(0, 2);
@@ -216,7 +225,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(220,31,38,0.07)', 'rgba(10,10,12,0)', '#0A0A0C']}
+        colors={['rgba(220,31,38,0.07)', 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0.6, y: 0.4 }}
         style={StyleSheet.absoluteFillObject}
@@ -231,8 +240,8 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
             style={styles.bellBtn}
             activeOpacity={0.7}
             onPress={() => navigation?.navigate('Notifications')}
-          >
-            <Ionicons name="notifications-outline" size={18} color="#FFFFFF" />
+           accessibilityLabel="Notifications" accessibilityRole="button" hitSlop={{ top: 3, bottom: 3, left: 3, right: 3 }}>
+            <Ionicons name="notifications-outline" size={18} color={Colors.white} />
             {unreadCount > 0 && <View style={styles.bellDot} />}
           </TouchableOpacity>
           <HamburgerButton />
@@ -254,8 +263,26 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
       >
         {/* ── 1. Greeting ── */}
         <View style={styles.greetingSection}>
-          <Text style={styles.greetingHeadline}>Hello, {firstName}</Text>
-          <Text style={styles.greetingSubtitle}>Your buying activity at a glance</Text>
+          <View style={styles.greetingTopRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.greetingHeadline}>Hello, {firstName}</Text>
+              <Text style={styles.greetingSubtitle}>Your buying activity at a glance</Text>
+            </View>
+            <View style={styles.periodPillRow}>
+              {(['7d', '30d'] as const).map((p) => (
+                <TouchableOpacity
+                  key={p}
+                  style={[styles.periodPill, period === p && styles.periodPillActive]}
+                  onPress={() => setPeriod(p)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.periodPillText, period === p && styles.periodPillTextActive]}>
+                    {p === '7d' ? '7D' : '30D'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
         </View>
 
         {/* ── 2. KPI 2×2 Grid ── */}
@@ -271,7 +298,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
           <KpiCard
             label="WATCHING"
             icon="heart"
-            tone="#F59E0B"
+            tone={Colors.warning}
             value={loading ? '–' : watchlistCount}
             sublabel={watchlistCount > 0 ? `${watchlistCount} saved` : 'none saved'}
             loading={loading}
@@ -279,7 +306,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
           <KpiCard
             label="LIVE BIDS"
             icon="hammer-outline"
-            tone="#22C55E"
+            tone={Colors.success}
             value={loading ? '–' : activeBids}
             sublabel={activeBids > 0 ? 'in active auctions' : 'no active bids'}
             loading={loading}
@@ -287,10 +314,19 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
           <KpiCard
             label="AUCTIONS WON"
             icon="trophy"
-            tone="#3B82F6"
+            tone={Colors.infoBlue}
             value={loading ? '–' : wonAuctions}
             sublabel={wonAuctions > 0 ? `${wonAuctions} won` : 'none yet'}
             loading={loading}
+          />
+          <KpiCard
+            label="TOTAL SPENT"
+            icon="cash-outline"
+            tone={Colors.success}
+            value={loading ? '–' : formatPrice(totalSpent)}
+            sublabel={period === '7d' ? 'last 7 days' : 'last 30 days'}
+            loading={loading}
+            fullWidth
           />
         </View>
 
@@ -327,7 +363,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
         <View style={styles.activitySection}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.activitySectionTitle}>RECENT ACTIVITY</Text>
-            <TouchableOpacity activeOpacity={0.7} onPress={() => navigation?.navigate('Alerts')}>
+            <TouchableOpacity activeOpacity={0.7} onPress={() => navigation?.navigate('Notifications')}>
               <Text style={styles.seeAllText}>See all</Text>
             </TouchableOpacity>
           </View>
@@ -359,7 +395,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
                   <ActivityRow
                     key={bid.id}
                     icon="hammer-outline"
-                    tone="#22C55E"
+                    tone={Colors.success}
                     title="Active bid"
                     subtitle={bid.listing?.title || '–'}
                     time={timeAgo(bid.createdAt)}
@@ -372,7 +408,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
               <>
                 <ActivityRow
                   icon="hammer-outline"
-                  tone="#22C55E"
+                  tone={Colors.success}
                   title="Auction Bids"
                   subtitle="Browse live auctions to start bidding"
                   time=""
@@ -407,8 +443,8 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
               activeOpacity={0.8}
               onPress={() => navigation?.navigate('BuyerBids')}
             >
-              <View style={[styles.quickIcon, { backgroundColor: 'rgba(34,197,94,0.12)' }]}>
-                <Ionicons name="hammer-outline" size={18} color="#22C55E" />
+              <View style={[styles.quickIcon, { backgroundColor: Colors.successAlpha12 }]}>
+                <Ionicons name="hammer-outline" size={18} color={Colors.success} />
               </View>
               <Text style={styles.quickLabel}>My Bids</Text>
               {activeBids > 0 && (
@@ -423,12 +459,12 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
               activeOpacity={0.8}
               onPress={() => navigation?.navigate('BuyerOffers')}
             >
-              <View style={[styles.quickIcon, { backgroundColor: 'rgba(245,158,11,0.12)' }]}>
-                <Ionicons name="document-text-outline" size={18} color="#F59E0B" />
+              <View style={[styles.quickIcon, { backgroundColor: Colors.warningAlpha12 }]}>
+                <Ionicons name="document-text-outline" size={18} color={Colors.warning} />
               </View>
               <Text style={styles.quickLabel}>My Offers</Text>
               {activeOffers > 0 && (
-                <View style={[styles.quickBadge, { backgroundColor: '#F59E0B' }]}>
+                <View style={[styles.quickBadge, { backgroundColor: Colors.warning }]}>
                   <Text style={styles.quickBadgeText}>{activeOffers}</Text>
                 </View>
               )}
@@ -439,7 +475,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
               activeOpacity={0.8}
               onPress={() => navigation?.navigate('Tabs', { screen: 'Saved' })}
             >
-              <View style={[styles.quickIcon, { backgroundColor: 'rgba(220,31,38,0.12)' }]}>
+              <View style={[styles.quickIcon, { backgroundColor: Colors.accentAlpha12 }]}>
                 <Ionicons name="heart" size={18} color={Colors.accent} />
               </View>
               <Text style={styles.quickLabel}>Watchlist</Text>
@@ -455,8 +491,8 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
               activeOpacity={0.8}
               onPress={() => navigation?.navigate('BuyerPurchaseHistory')}
             >
-              <View style={[styles.quickIcon, { backgroundColor: 'rgba(59,130,246,0.12)' }]}>
-                <Ionicons name="receipt-outline" size={18} color="#3B82F6" />
+              <View style={[styles.quickIcon, { backgroundColor: Colors.infoBlueAlpha12 }]}>
+                <Ionicons name="receipt-outline" size={18} color={Colors.infoBlue} />
               </View>
               <Text style={styles.quickLabel}>History</Text>
             </TouchableOpacity>
@@ -466,8 +502,8 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
               activeOpacity={0.8}
               onPress={() => navigation?.navigate('BuyerDeliveryRequests')}
             >
-              <View style={[styles.quickIcon, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
-                <Ionicons name="car-outline" size={18} color="#10B981" />
+              <View style={[styles.quickIcon, { backgroundColor: Colors.accentGreenAlpha12 }]}>
+                <Ionicons name="car-outline" size={18} color={Colors.accentGreen} />
               </View>
               <Text style={styles.quickLabel}>Delivery</Text>
             </TouchableOpacity>
@@ -483,17 +519,11 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
             <Text style={styles.profileName} numberOfLines={1}>{displayName}</Text>
             <Text style={styles.profileEmail} numberOfLines={1}>{displayEmail}</Text>
             <View style={styles.verifiedBadge}>
-              <Ionicons name="checkmark-circle-sharp" size={11} color="#22C55E" />
+              <Ionicons name="checkmark-circle-sharp" size={11} color={Colors.success} />
               <Text style={styles.verifiedBadgeText}>VERIFIED BUYER</Text>
             </View>
           </View>
-          <TouchableOpacity
-            style={styles.profileGear}
-            activeOpacity={0.7}
-            onPress={() => navigation?.navigate('Settings')}
-          >
-            <Ionicons name="settings-outline" size={18} color={Colors.textSecondary} />
-          </TouchableOpacity>
+          <IconButton style={styles.profileGear} icon={<Ionicons name="settings-outline" size={18} color={Colors.textSecondary} />} onPress={() => navigation?.navigate('Settings')} accessibilityLabel="Settings" />
         </View>
 
         <View style={{ height: 110 }} />
@@ -505,82 +535,89 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const CARD_BG = 'rgba(20,26,42,0.70)';
-const CARD_BORDER = 'rgba(255,255,255,0.06)';
+const CARD_BORDER = Colors.whiteAlpha06;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0A0A0C' },
+  container: { flex: 1, backgroundColor: Colors.bgPrimary },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 20 },
 
   // Header
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 16 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  bellBtn: { width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)', alignItems: 'center', justifyContent: 'center' },
-  bellDot: { position: 'absolute', top: 8, right: 8, width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#DC1F26', borderWidth: 1.5, borderColor: '#0A0A0C' },
+  bellBtn: { width: 38, height: 38, borderRadius: 10, backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: Colors.whiteAlpha10, alignItems: 'center', justifyContent: 'center' },
+  bellDot: { position: 'absolute', top: 8, right: 8, width: 7, height: 7, borderRadius: 3.5, backgroundColor: Colors.accent, borderWidth: 1.5, borderColor: Colors.bgPrimary },
 
   // Greeting
   greetingSection: { paddingHorizontal: 24, paddingTop: 10, paddingBottom: 24 },
-  greetingHeadline: { fontFamily: FontFamily.extraBold, fontSize: 28, color: '#FFFFFF', letterSpacing: -0.5, marginBottom: 2 },
-  greetingSubtitle: { fontFamily: FontFamily.regular, fontSize: 14, color: '#5C5C6B' },
+  greetingTopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  greetingHeadline: { fontFamily: FontFamily.extraBold, fontSize: FontSize['3xl'], color: Colors.white, letterSpacing: -0.5, marginBottom: 2 },
+  greetingSubtitle: { fontFamily: FontFamily.regular, fontSize: FontSize.size14, color: Colors.textMuted },
+  periodPillRow: { flexDirection: 'row', gap: 6, backgroundColor: Colors.whiteAlpha04, borderRadius: 10, padding: 3 },
+  periodPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  periodPillActive: { backgroundColor: Colors.accent },
+  periodPillText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.iconMuted, letterSpacing: 0.4 },
+  periodPillTextActive: { color: Colors.white },
 
   // KPI Grid
   kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingHorizontal: 24, marginBottom: 28 },
   kpiCard: { width: '47.5%', backgroundColor: CARD_BG, borderRadius: 18, borderWidth: 1, borderColor: CARD_BORDER, padding: 18, overflow: 'hidden', position: 'relative' },
+  kpiCardFull: { width: '100%' },
   kpiGlow: { position: 'absolute', top: -10, right: -10, width: 70, height: 70, borderRadius: 35, opacity: 0.18 },
   kpiTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  kpiEyebrow: { fontFamily: FontFamily.bold, fontSize: 9, color: '#5C5C6B', letterSpacing: 1, textTransform: 'uppercase', flex: 1, marginRight: 4 },
-  kpiValue: { fontFamily: FontFamily.mono, fontSize: 28, color: '#FFFFFF', letterSpacing: -0.56, marginBottom: 4 },
-  kpiDelta: { fontFamily: FontFamily.bold, fontSize: 10 },
-  skeletonValue: { width: 48, height: 28, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.06)', marginBottom: 4 },
-  skeletonDelta: { width: 56, height: 10, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.04)' },
+  kpiEyebrow: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.textMuted, letterSpacing: 1, textTransform: 'uppercase', flex: 1, marginRight: 4 },
+  kpiValue: { fontFamily: FontFamily.mono, fontSize: FontSize['3xl'], color: Colors.white, letterSpacing: -0.56, marginBottom: 4 },
+  kpiDelta: { fontFamily: FontFamily.bold, fontSize: FontSize.size10 },
+  skeletonValue: { width: 48, height: 28, borderRadius: 6, backgroundColor: Colors.whiteAlpha06, marginBottom: 4 },
+  skeletonDelta: { width: 56, height: 10, borderRadius: 4, backgroundColor: Colors.whiteAlpha04 },
 
   // Hot Deal
   hotDealSection: { marginBottom: 28, paddingHorizontal: 24 },
   hotDealCard: { backgroundColor: CARD_BG, borderRadius: 18, borderWidth: 1.5, borderColor: 'rgba(255,0,55,0.25)', flexDirection: 'row', padding: 18, gap: 14, alignItems: 'center' },
   hotDealImage: { width: 96, height: 76, borderRadius: 12 },
-  hotDealImagePlaceholder: { backgroundColor: 'rgba(255,255,255,0.06)' },
+  hotDealImagePlaceholder: { backgroundColor: Colors.whiteAlpha06 },
   hotDealInfo: { flex: 1 },
-  hotDealTitle: { fontFamily: FontFamily.bold, fontSize: 13, color: '#FFFFFF', marginBottom: 8 },
+  hotDealTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, marginBottom: 8 },
   hotDealPriceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  hotDealPrice: { fontFamily: FontFamily.mono, fontSize: 16, color: '#FFFFFF', letterSpacing: -0.32 },
-  hotDealCta: { backgroundColor: '#DC1F26', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 5 },
-  hotDealCtaText: { fontFamily: FontFamily.bold, fontSize: 11, color: '#FFFFFF', letterSpacing: 0.3 },
+  hotDealPrice: { fontFamily: FontFamily.mono, fontSize: FontSize.md, color: Colors.white, letterSpacing: -0.32 },
+  hotDealCta: { backgroundColor: Colors.accent, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 5 },
+  hotDealCtaText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 0.3 },
 
   // Section headers
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
-  sectionEyebrow: { fontFamily: FontFamily.bold, fontSize: 9, color: '#FFFFFF', letterSpacing: 1, textTransform: 'uppercase' },
+  sectionEyebrow: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.white, letterSpacing: 1, textTransform: 'uppercase' },
 
   // Activity
   activitySection: { paddingHorizontal: 24, marginBottom: 28 },
-  activitySectionTitle: { fontFamily: FontFamily.bold, fontSize: 11, color: '#FFFFFF', letterSpacing: 1, textTransform: 'uppercase' },
-  seeAllText: { fontFamily: FontFamily.medium, fontSize: 11, color: '#DC1F26' },
+  activitySectionTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 1, textTransform: 'uppercase' },
+  seeAllText: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.accent },
   activityCard: { backgroundColor: CARD_BG, borderRadius: 16, borderWidth: 1, borderColor: CARD_BORDER, overflow: 'hidden' },
   activityRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 17, gap: 14 },
-  activityRowBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' },
+  activityRowBorder: { borderBottomWidth: 1, borderBottomColor: Colors.whiteAlpha06 },
   activityIcon: { width: 36, height: 36, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   activityText: { flex: 1 },
-  activityTitle: { fontFamily: FontFamily.bold, fontSize: 13, color: '#FFFFFF', marginBottom: 1 },
-  activitySubtitle: { fontFamily: FontFamily.regular, fontSize: 11, color: '#5C5C6B' },
-  activityTime: { fontFamily: FontFamily.regular, fontSize: 10, color: '#5C5C6B', flexShrink: 0 },
-  skeletonRow: { height: 52, marginHorizontal: 16, marginVertical: 7, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.04)' },
+  activityTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, marginBottom: 1 },
+  activitySubtitle: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted },
+  activityTime: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.textMuted, flexShrink: 0 },
+  skeletonRow: { height: 52, marginHorizontal: 16, marginVertical: 7, borderRadius: 8, backgroundColor: Colors.whiteAlpha04 },
 
   // Quick actions
   quickActionsSection: { paddingHorizontal: 24, marginBottom: 28, gap: 14 },
   quickRow: { flexDirection: 'row', gap: 12 },
   quickTile: { flex: 1, backgroundColor: CARD_BG, borderRadius: 16, borderWidth: 1, borderColor: CARD_BORDER, padding: 18, alignItems: 'center', gap: 8, position: 'relative' },
   quickIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  quickLabel: { fontFamily: FontFamily.bold, fontSize: 10, color: '#FFFFFF', letterSpacing: 0.3, textAlign: 'center' },
+  quickLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.white, letterSpacing: 0.3, textAlign: 'center' },
   quickBadge: { position: 'absolute', top: 8, right: 8, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
-  quickBadgeText: { fontFamily: FontFamily.bold, fontSize: 9, color: '#FFFFFF' },
+  quickBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.white },
 
   // Profile Card
   profileCard: { marginHorizontal: 24, marginTop: 8, flexDirection: 'row', alignItems: 'center', backgroundColor: CARD_BG, borderRadius: 20, borderWidth: 1, borderColor: CARD_BORDER, padding: 20, gap: 16 },
   profileAvatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  profileAvatarText: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: '#FFFFFF' },
+  profileAvatarText: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
   profileInfo: { flex: 1 },
-  profileName: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: '#FFFFFF', marginBottom: 2 },
-  profileEmail: { fontFamily: FontFamily.regular, fontSize: 12, color: '#A0A0AB', marginBottom: 6 },
-  verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', backgroundColor: 'rgba(34,197,94,0.08)', borderWidth: 1, borderColor: 'rgba(34,197,94,0.20)', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 20 },
-  verifiedBadgeText: { fontFamily: FontFamily.bold, fontSize: 9, color: '#22C55E', letterSpacing: 0.5 },
-  profileGear: { width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  profileName: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white, marginBottom: 2 },
+  profileEmail: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textSecondary, marginBottom: 6 },
+  verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', backgroundColor: Colors.successAlpha08, borderWidth: 1, borderColor: Colors.successAlpha20, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 20 },
+  verifiedBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.success, letterSpacing: 0.5 },
+  profileGear: { width: 38, height: 38, borderRadius: 10, backgroundColor: Colors.whiteAlpha04, borderWidth: 1, borderColor: Colors.whiteAlpha08, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
 });

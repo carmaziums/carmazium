@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   RefreshControl,
   ScrollView,
   StatusBar,
@@ -27,6 +28,7 @@ import {
 import { apiClient } from '../../lib/apiClient';
 import { haptics } from '../../lib/haptics';
 
+import { IconButton } from '../../components/IconButton';
 // The backend DeliveryRequest payload does NOT include a listing summary —
 // only listingId. We hydrate title/image by fetching each linked listing
 // once and caching by id so a refresh doesn't refetch every row. Typical
@@ -42,32 +44,32 @@ const STATUS_CFG: Record<
 > = {
   PENDING: {
     label: 'PENDING',
-    bg: 'rgba(245,158,11,0.14)',
-    text: '#F59E0B',
+    bg: Colors.warningAlpha14,
+    text: Colors.warning,
     border: 'rgba(245,158,11,0.32)',
   },
   ACCEPTED: {
     label: 'ACCEPTED',
-    bg: 'rgba(34,197,94,0.14)',
-    text: '#22C55E',
+    bg: Colors.successAlpha14,
+    text: Colors.success,
     border: 'rgba(34,197,94,0.32)',
   },
   DECLINED: {
     label: 'DECLINED',
-    bg: 'rgba(255,255,255,0.05)',
+    bg: Colors.whiteAlpha05,
     text: Colors.textMuted,
-    border: 'rgba(255,255,255,0.10)',
+    border: Colors.whiteAlpha10,
   },
   CANCELLED: {
     label: 'CANCELLED',
-    bg: 'rgba(255,255,255,0.05)',
+    bg: Colors.whiteAlpha05,
     text: Colors.textMuted,
-    border: 'rgba(255,255,255,0.10)',
+    border: Colors.whiteAlpha10,
   },
   COMPLETED: {
     label: 'COMPLETED',
-    bg: 'rgba(59,130,246,0.14)',
-    text: '#3B82F6',
+    bg: Colors.infoBlueAlpha14,
+    text: Colors.infoBlue,
     border: 'rgba(59,130,246,0.32)',
   },
 };
@@ -198,7 +200,7 @@ export const BuyerDeliveryRequestsScreen: React.FC<{ navigation?: any }> = ({
     );
   };
 
-  const renderRow = (req: DeliveryRequest) => {
+  const renderRow = useCallback(({ item: req }: { item: DeliveryRequest }) => {
     const cfg = STATUS_CFG[req.status] ?? STATUS_CFG.PENDING;
     const summary = summaries[req.listingId];
     const title = summary?.title ?? 'Vehicle listing';
@@ -206,7 +208,7 @@ export const BuyerDeliveryRequestsScreen: React.FC<{ navigation?: any }> = ({
     const isActioning = actionLoading === req.id;
 
     return (
-      <View key={req.id} style={[styles.card, { borderLeftColor: cfg.border }]}>
+      <View style={[styles.card, { borderLeftColor: cfg.border }]}>
         <View style={styles.cardTop}>
           <Text style={styles.cardTitle} numberOfLines={1}>
             {title}
@@ -252,9 +254,9 @@ export const BuyerDeliveryRequestsScreen: React.FC<{ navigation?: any }> = ({
                 disabled={isActioning}
               >
                 {isActioning ? (
-                  <ActivityIndicator size="small" color="#F87171" />
+                  <ActivityIndicator size="small" color={Colors.paleRed_f87171} />
                 ) : (
-                  <Text style={[styles.actionBtnText, { color: '#F87171' }]}>
+                  <Text style={[styles.actionBtnText, { color: Colors.paleRed_f87171 }]}>
                     Cancel request
                   </Text>
                 )}
@@ -268,11 +270,11 @@ export const BuyerDeliveryRequestsScreen: React.FC<{ navigation?: any }> = ({
                 disabled={isActioning}
               >
                 {isActioning ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color={Colors.white} />
                 ) : (
                   <>
-                    <Ionicons name="checkmark" size={14} color="#FFFFFF" />
-                    <Text style={[styles.actionBtnText, { color: '#FFFFFF' }]}>
+                    <Ionicons name="checkmark" size={14} color={Colors.white} />
+                    <Text style={[styles.actionBtnText, { color: Colors.white }]}>
                       Mark complete
                     </Text>
                   </>
@@ -283,13 +285,13 @@ export const BuyerDeliveryRequestsScreen: React.FC<{ navigation?: any }> = ({
         )}
       </View>
     );
-  };
+  }, [summaries, actionLoading, onCancel, onComplete]);
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(59,130,246,0.06)', 'rgba(10,10,12,0)', '#0A0A0C']}
+        colors={[Colors.infoBlueAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
@@ -297,48 +299,58 @@ export const BuyerDeliveryRequestsScreen: React.FC<{ navigation?: any }> = ({
       <View style={{ height: insets.top }} />
 
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          activeOpacity={0.75}
-          onPress={() => navigation?.goBack()}
-        >
-          <Ionicons name="chevron-back" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
+        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
         <Text style={styles.headerTitle}>Delivery Requests</Text>
         <View style={{ width: 38 }} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => fetchAll(true)}
-            tintColor={Colors.accent}
-          />
-        }
-      >
-        {error && !loading && (
-          <ErrorBanner message={error} onRetry={() => fetchAll()} />
-        )}
-
-        {loading ? (
-          <View style={{ paddingTop: 60, alignItems: 'center' }}>
-            <ActivityIndicator size="large" color={Colors.accent} />
-          </View>
-        ) : requests.length === 0 ? (
-          <EmptyState
-            icon="car-outline"
-            title="No delivery requests yet"
-            subtitle="Once a seller accepts your offer, request delivery from the listing to see it here."
-          />
-        ) : (
-          requests.map(renderRow)
-        )}
-
-        <View style={{ height: 40 }} />
-      </ScrollView>
+      {loading || requests.length === 0 ? (
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => fetchAll(true)}
+              tintColor={Colors.accent}
+            />
+          }
+        >
+          {error && !loading && (
+            <ErrorBanner message={error} onRetry={() => fetchAll()} />
+          )}
+          {loading ? (
+            <View style={{ paddingTop: 60, alignItems: 'center' }}>
+              <ActivityIndicator size="large" color={Colors.accent} />
+            </View>
+          ) : (
+            <EmptyState
+              icon="car-outline"
+              title="No delivery requests yet"
+              subtitle="Once a seller accepts your offer, request delivery from the listing to see it here."
+            />
+          )}
+        </ScrollView>
+      ) : (
+        // FlatList so a long delivery-request history virtualizes instead of
+        // mounting every row at once (mobile-audit.md P3).
+        <FlatList
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => fetchAll(true)}
+              tintColor={Colors.accent}
+            />
+          }
+          data={requests}
+          keyExtractor={(item) => item.id}
+          renderItem={renderRow}
+          ListHeaderComponent={error ? <ErrorBanner message={error} onRetry={() => fetchAll()} /> : null}
+          ListFooterComponent={<View style={{ height: 40 }} />}
+        />
+      )}
     </View>
   );
 };
@@ -359,9 +371,9 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -379,7 +391,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgSecondary,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     borderLeftWidth: 3,
     padding: 14,
     gap: 10,
@@ -393,7 +405,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     flex: 1,
     fontFamily: FontFamily.bold,
-    fontSize: 14,
+    fontSize: FontSize.size14,
     color: Colors.textPrimary,
   },
   chip: {
@@ -405,7 +417,7 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     letterSpacing: 0.5,
   },
   metaRow: {
@@ -414,9 +426,9 @@ const styles = StyleSheet.create({
   },
   metaCell: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: Colors.whiteAlpha03,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 8,
@@ -424,13 +436,13 @@ const styles = StyleSheet.create({
   },
   metaLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     color: Colors.textMuted,
     letterSpacing: 0.8,
   },
   metaValue: {
     fontFamily: FontFamily.mono,
-    fontSize: 14,
+    fontSize: FontSize.size14,
     color: Colors.textPrimary,
   },
   addressBlock: {
@@ -441,13 +453,13 @@ const styles = StyleSheet.create({
   addressText: {
     flex: 1,
     fontFamily: FontFamily.regular,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.textSecondary,
     lineHeight: 17,
   },
   notesText: {
     fontFamily: FontFamily.regular,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.textMuted,
     fontStyle: 'italic',
     lineHeight: 17,
@@ -477,7 +489,7 @@ const styles = StyleSheet.create({
   },
   actionBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     letterSpacing: 0.3,
   },
 });

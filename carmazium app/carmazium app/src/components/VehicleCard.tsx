@@ -25,6 +25,7 @@ import { FontFamily, FontSize } from '../constants/typography';
 import { useLocation } from '../context/LocationContext';
 import { haversineDistanceMiles } from '../lib/distance';
 
+import { IconButton } from './IconButton';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - 48;
 
@@ -32,12 +33,14 @@ const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
 interface VehicleCardProps {
   listing: CarListing;
-  onPress: () => void;
+  /** Receives the listing id so callers can pass a stable, id-keyed callback
+   * instead of a fresh closure per row — see mobile-audit.md P4. */
+  onPress: (id: string) => void;
   width?: number;
   compact?: boolean;
 }
 
-export const VehicleCard: React.FC<VehicleCardProps> = ({
+const VehicleCardBase: React.FC<VehicleCardProps> = ({
   listing,
   onPress,
   width = CARD_WIDTH,
@@ -81,7 +84,7 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
   return (
     <AnimatedTouchable
       style={[styles.card, { width }, animatedStyle]}
-      onPress={onPress}
+      onPress={() => onPress(listing.id)}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       activeOpacity={1}
@@ -100,9 +103,30 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
 
         {/* Top badges */}
         <View style={styles.imageBadgeRow}>
-          {listing.isFeatured && (
+          {listing.bannerLabel && (
+            <View style={styles.bannerBadge}>
+              <Text style={styles.bannerText} numberOfLines={1}>{listing.bannerLabel}</Text>
+            </View>
+          )}
+          {(listing.isFeatured || listing.badgeTier === 'PREMIUM') && (
             <View style={styles.featuredBadge}>
               <Text style={styles.featuredText}>⭐ FEATURED</Text>
+            </View>
+          )}
+          {/* Paid-tier indicator — this is NOT a verification signal, just which
+              listing package the seller bought (mobile-ui-ux-audit.md §C5). */}
+          {(listing.badgeTier === 'STANDARD' || listing.badgeTier === 'PREMIUM') && (
+            <View style={styles.verifiedBadge}>
+              <Ionicons name="shield-checkmark" size={10} color={Colors.infoBlueLight} />
+              <Text style={styles.verifiedText}>{listing.badgeTier}</Text>
+            </View>
+          )}
+          {/* Real seller-verification chip — separate from the tier badge above,
+              only shown when the seller has actually been verified. */}
+          {listing.isSellerVerified === true && (
+            <View style={styles.verifiedBadge}>
+              <Ionicons name="checkmark-circle" size={10} color={Colors.success} />
+              <Text style={styles.verifiedText}>VERIFIED</Text>
             </View>
           )}
           {listing.isNew && (
@@ -118,17 +142,7 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
         </View>
 
         {/* Save button */}
-        <TouchableOpacity
-          style={styles.saveBtn}
-          onPress={handleToggle}
-          hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-        >
-          <Ionicons
-            name={saved ? 'bookmark' : 'bookmark-outline'}
-            size={18}
-            color={saved ? Colors.accent : Colors.white}
-          />
-        </TouchableOpacity>
+        <IconButton style={styles.saveBtn} icon={<Ionicons name={saved ? 'bookmark' : 'bookmark-outline'} size={18} color={saved ? Colors.accent : Colors.white} />} onPress={handleToggle} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
 
         {/* Price tag */}
         <View style={styles.priceTag}>
@@ -148,11 +162,13 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
               {listing.model} {listing.variant}
             </Text>
           </View>
-          {/* Rating */}
-          <View style={styles.ratingBadge}>
-            <Ionicons name="star" size={10} color="#F59E0B" />
-            <Text style={styles.ratingText}>{listing.rating}</Text>
-          </View>
+          {/* Rating — only shown when a real aggregate rating exists */}
+          {listing.rating != null && (
+            <View style={styles.ratingBadge}>
+              <Ionicons name="star" size={10} color={Colors.warning} />
+              <Text style={styles.ratingText}>{listing.rating}</Text>
+            </View>
+          )}
         </View>
 
         {/* Spec row */}
@@ -186,6 +202,8 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
     </AnimatedTouchable>
   );
 };
+
+export const VehicleCard = React.memo(VehicleCardBase);
 
 const styles = StyleSheet.create({
   card: {
@@ -228,7 +246,7 @@ const styles = StyleSheet.create({
   },
   featuredText: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     color: Colors.white,
     letterSpacing: 0.8,
   },
@@ -240,12 +258,42 @@ const styles = StyleSheet.create({
   },
   newText: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     color: Colors.white,
     letterSpacing: 0.8,
   },
+  bannerBadge: {
+    backgroundColor: 'rgba(59,130,246,0.90)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    maxWidth: 140,
+  },
+  bannerText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size9,
+    color: Colors.white,
+    letterSpacing: 0.4,
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: Colors.infoBlueAlpha14,
+    borderWidth: 1,
+    borderColor: 'rgba(96,165,250,0.35)',
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  verifiedText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size9,
+    color: Colors.infoBlueLight,
+    letterSpacing: 0.6,
+  },
   estateBadge: {
-    backgroundColor: 'rgba(160, 160, 171, 0.20)',
+    backgroundColor: Colors.textSecondaryAlpha20,
     borderWidth: 1,
     borderColor: 'rgba(160, 160, 171, 0.30)',
     paddingHorizontal: 8,
@@ -254,7 +302,7 @@ const styles = StyleSheet.create({
   },
   estateText: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     color: Colors.textSecondary,
     letterSpacing: 0.8,
   },
@@ -265,22 +313,22 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 10,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: Colors.blackAlpha50,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: Colors.whiteAlpha15,
   },
   priceTag: {
     position: 'absolute',
     bottom: 12,
     right: 12,
-    backgroundColor: 'rgba(0,0,0,0.75)',
+    backgroundColor: Colors.blackAlpha75,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: Colors.whiteAlpha12,
   },
   priceText: {
     fontFamily: FontFamily.mono,
@@ -319,17 +367,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    backgroundColor: Colors.warningAlpha12,
     paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.2)',
+    borderColor: Colors.warningAlpha20,
   },
   ratingText: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#F59E0B',
+    fontSize: FontSize.xs,
+    color: Colors.warning,
   },
   specRow: {
     flexDirection: 'row',
@@ -342,7 +390,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 6,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.06)',
+    borderTopColor: Colors.whiteAlpha06,
   },
   locationRow: {
     flexDirection: 'row',
@@ -361,15 +409,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 999,
-    backgroundColor: 'rgba(59,130,246,0.10)',
+    backgroundColor: Colors.infoBlueAlpha10,
     borderWidth: 1,
-    borderColor: 'rgba(59,130,246,0.28)',
+    borderColor: Colors.infoBlueAlpha28,
     flexShrink: 0,
   },
   distanceChipText: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#60A5FA',
+    fontSize: FontSize.size9,
+    color: Colors.infoBlueLight,
     letterSpacing: 0.3,
   },
   fuelRow: {

@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../../constants/colors';
-import { FontFamily } from '../../constants/typography';
+import {FontFamily, FontSize } from '../../constants/typography';
 
 // The backend keeps a single Offer row per negotiation, not one row per
 // round. So a full round-by-round ledger isn't derivable — we can only
@@ -201,9 +201,9 @@ export const CounterLedger: React.FC<Props> = ({ offer, viewerRole = 'BUYER' }) 
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: Colors.whiteAlpha03,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     borderRadius: 10,
     padding: 10,
     gap: 8,
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
   },
   headerLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     color: Colors.textMuted,
     letterSpacing: 1,
     flex: 1,
@@ -225,22 +225,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: Colors.whiteAlpha08,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 999,
   },
   expiryChipWarning: {
     borderColor: 'rgba(245,158,11,0.28)',
-    backgroundColor: 'rgba(245,158,11,0.08)',
+    backgroundColor: Colors.warningAlpha08,
   },
   expiryChipError: {
     borderColor: 'rgba(239,68,68,0.32)',
-    backgroundColor: 'rgba(239,68,68,0.08)',
+    backgroundColor: Colors.errorAlpha08,
   },
   expiryChipText: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     color: Colors.textMuted,
     letterSpacing: 0.3,
   },
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
   connector: {
     flex: 1,
     width: 1,
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: Colors.whiteAlpha10,
     marginTop: 2,
     marginBottom: 2,
   },
@@ -292,17 +292,17 @@ const styles = StyleSheet.create({
   },
   rowLabel: {
     fontFamily: FontFamily.medium,
-    fontSize: 11,
+    fontSize: FontSize.xs,
     color: Colors.textSecondary,
   },
   attemptCount: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
+    fontSize: FontSize.size10,
     color: Colors.textMuted,
     letterSpacing: 0.3,
   },
   currentPill: {
-    backgroundColor: 'rgba(220,31,38,0.14)',
+    backgroundColor: Colors.accentAlpha14,
     borderWidth: 1,
     borderColor: 'rgba(220,31,38,0.32)',
     paddingHorizontal: 6,
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
   },
   currentPillText: {
     fontFamily: FontFamily.bold,
-    fontSize: 8,
+    fontSize: FontSize.size8,
     color: Colors.accent,
     letterSpacing: 0.6,
   },
@@ -324,12 +324,12 @@ const styles = StyleSheet.create({
   },
   rowAmount: {
     fontFamily: FontFamily.mono,
-    fontSize: 14,
+    fontSize: FontSize.size14,
     color: Colors.textPrimary,
   },
   rowTimestamp: {
     fontFamily: FontFamily.mono,
-    fontSize: 10,
+    fontSize: FontSize.size10,
     color: Colors.textMuted,
   },
 });

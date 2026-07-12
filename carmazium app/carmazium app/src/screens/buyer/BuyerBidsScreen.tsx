@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   ActivityIndicator,
+  FlatList,
   RefreshControl,
   ScrollView,
   StatusBar,
@@ -15,14 +16,42 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { apiClient } from '../../lib/apiClient';
 import { getListingById } from '../../lib/listingsApi';
+import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { haptics } from '../../lib/haptics';
 
+import { IconButton } from '../../components/IconButton';
 // ─────────────────────────── types ───────────────────────────────
 
 type AuctionStatus = 'SCHEDULED' | 'ACTIVE' | 'ENDED' | 'CANCELLED';
+
+// Raw shape from GET /bids/my — matches web's identical Bid type (listingApi.ts).
+// Richer per-bid derived fields (isWinner, paymentDeadline, ...) that
+// /dashboard/buyer used to compute server-side are now derived client-side
+// below, since this dedicated, paginated endpoint carries the same
+// auction sub-object those were always computed from.
+interface RawBid {
+  id: string;
+  listingId: string;
+  amount: number | string;
+  isWinning: boolean;
+  createdAt: string;
+  listing: {
+    id: string;
+    title: string;
+    images?: string[];
+    sellerId?: string | null;
+    auction?: {
+      id: string;
+      status: AuctionStatus;
+      endTime: string;
+      winnerId: string | null;
+      winningBidAmount: number | string | null;
+    } | null;
+  };
+}
 
 interface Bid {
   id: string;
@@ -33,23 +62,45 @@ interface Bid {
   winningBidAmount?: number | null;
   paymentDeadline?: string | null;
   bidCount?: number | null;
-  listing: { id?: string; title: string; images?: string[] };
+  listing: { id?: string; title: string; images?: string[]; sellerId?: string | null };
   listingId: string;
   createdAt: string;
 }
 
-interface BuyerDashResponse {
+interface BidsResponse {
   success: boolean;
-  data: {
-    activeBids: number;
-    activeOffers: number;
-    watchlistCount: number;
-    wonAuctions: number;
-    bids: Bid[];
-    offers: any[];
-    history: any[];
-  };
+  data: RawBid[];
+  pagination?: { total: number; page: number; limit: number; totalPages: number };
 }
+
+const PAGE_SIZE = 10;
+
+// Same transform dashboard.service.ts used to apply server-side — kept
+// client-side now that mobile reads the dedicated, paginated /bids/my
+// endpoint directly instead of the dashboard's non-paginated bids slice.
+const mapRawBid = (b: RawBid, currentUserId?: string): Bid => {
+  const auction = b.listing.auction;
+  return {
+    id: b.id,
+    amount: Number(b.amount),
+    auctionStatus: auction?.status ?? 'ENDED',
+    auctionId: auction?.id ?? null,
+    isWinner: !!auction?.winnerId && auction.winnerId === currentUserId,
+    winningBidAmount: auction?.winningBidAmount != null ? Number(auction.winningBidAmount) : null,
+    paymentDeadline: auction?.endTime
+      ? new Date(new Date(auction.endTime).getTime() + 24 * 60 * 60 * 1000).toISOString()
+      : null,
+    bidCount: null,
+    listing: {
+      id: b.listing.id,
+      title: b.listing.title,
+      images: b.listing.images,
+      sellerId: b.listing.sellerId,
+    },
+    listingId: b.listingId,
+    createdAt: b.createdAt,
+  };
+};
 
 // ─────────────────────────── helpers ──────────────────────────────
 
@@ -79,28 +130,28 @@ interface StatusCfg {
 const STATUS_CFG: Record<AuctionStatus, StatusCfg> = {
   ACTIVE: {
     borderLeft: Colors.accent,
-    chipBg: 'rgba(220,31,38,0.15)',
+    chipBg: Colors.accentAlpha15,
     chipBorder: 'rgba(220,31,38,0.35)',
     chipText: Colors.accent,
     chipLabel: '● LIVE',
   },
   SCHEDULED: {
-    borderLeft: '#F59E0B',
-    chipBg: 'rgba(245,158,11,0.15)',
+    borderLeft: Colors.warning,
+    chipBg: Colors.warningAlpha15,
     chipBorder: undefined,
-    chipText: '#F59E0B',
+    chipText: Colors.warning,
     chipLabel: 'SCHEDULED',
   },
   ENDED: {
-    borderLeft: 'rgba(255,255,255,0.15)',
-    chipBg: 'rgba(255,255,255,0.06)',
+    borderLeft: Colors.whiteAlpha15,
+    chipBg: Colors.whiteAlpha06,
     chipBorder: undefined,
     chipText: Colors.textMuted,
     chipLabel: 'ENDED',
   },
   CANCELLED: {
-    borderLeft: 'rgba(255,255,255,0.08)',
-    chipBg: 'rgba(255,255,255,0.04)',
+    borderLeft: Colors.whiteAlpha08,
+    chipBg: Colors.whiteAlpha04,
     chipBorder: undefined,
     chipText: Colors.textMuted,
     chipLabel: 'CANCELLED',
@@ -111,27 +162,38 @@ const STATUS_CFG: Record<AuctionStatus, StatusCfg> = {
 
 export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const currentUserId = useAuthStore((s) => s.user?.id);
 
   const [bids, setBids] = useState<Bid[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tappingId, setTappingId] = useState<string | null>(null);
+  const [connectingChatId, setConnectingChatId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
   // ── fetch ──────────────────────────────────────────────────────
+  // Dedicated, paginated /bids/my (same endpoint web uses) instead of the
+  // non-paginated bids slice off /dashboard/buyer.
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     setError(null);
     try {
-      const res = await apiClient<BuyerDashResponse>('/dashboard/buyer');
-      if (res.success) setBids(res.data?.bids || []);
+      const res = await apiClient<BidsResponse>(`/bids/my?page=${page}&limit=${PAGE_SIZE}`);
+      if (res.success) {
+        setBids((res.data || []).map((b) => mapRawBid(b, currentUserId)));
+        setTotalPages(res.pagination?.totalPages ?? 1);
+        setTotalCount(res.pagination?.total ?? (res.data || []).length);
+      }
     } catch {
       setError('Could not load bids. Please try again.');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [page, currentUserId]);
 
   useEffect(() => {
     fetchData();
@@ -151,6 +213,32 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
       Alert.alert('Error', 'Could not load auction details.');
     } finally {
       setTappingId(null);
+    }
+  };
+
+  // ── chat with seller (won auctions) ──────────────────────────
+  const handleChatWithSeller = async (bid: Bid) => {
+    const sellerId = bid.listing?.sellerId;
+    if (!sellerId) {
+      Alert.alert('Unable to open chat', 'Seller information is not available.');
+      return;
+    }
+    setConnectingChatId(bid.id);
+    try {
+      const res = await apiClient<{ success: boolean; data: { id: string } }>(
+        '/chat/rooms',
+        {
+          method: 'POST',
+          body: JSON.stringify({ participantId: sellerId, listingId: bid.listing?.id ?? bid.listingId }),
+        },
+      );
+      if (res?.success && res.data?.id) {
+        navigation?.navigate('ChatScreen', { threadId: res.data.id });
+      }
+    } catch (err: any) {
+      Alert.alert('Could not open chat', err?.message ?? 'Please try again.');
+    } finally {
+      setConnectingChatId(null);
     }
   };
 
@@ -176,7 +264,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
     </View>
   );
 
-  const renderBidCard = (bid: Bid) => {
+  const renderBidCard = useCallback(({ item: bid }: { item: Bid }) => {
     const cfg = STATUS_CFG[bid.auctionStatus] ?? STATUS_CFG.ENDED;
     const isNavigable = bid.auctionStatus === 'ACTIVE' || bid.auctionStatus === 'SCHEDULED';
     const isNavigating = tappingId === bid.id;
@@ -198,7 +286,6 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
 
     return (
       <TouchableOpacity
-        key={bid.id}
         activeOpacity={isNavigable ? 0.75 : 1}
         onPress={isNavigable ? () => handleViewAuction(bid) : undefined}
         disabled={(!isNavigable && !isWon) || isNavigating}
@@ -206,7 +293,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
         <View
           style={[
             styles.bidCard,
-            { borderLeftColor: isWon ? '#10B981' : cfg.borderLeft },
+            { borderLeftColor: isWon ? Colors.accentGreen : cfg.borderLeft },
             isNavigating && { opacity: 0.6 },
           ]}
         >
@@ -225,8 +312,8 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
           <View style={styles.bidRight}>
             {/* Status chip — or WON chip */}
             {isWon ? (
-              <View style={[styles.statusChip, { backgroundColor: 'rgba(16,185,129,0.15)', borderWidth: 1, borderColor: 'rgba(16,185,129,0.4)' }]}>
-                <Text style={[styles.statusChipText, { color: '#10B981' }]}>WON</Text>
+              <View style={[styles.statusChip, { backgroundColor: Colors.accentGreenAlpha15, borderWidth: 1, borderColor: 'rgba(16,185,129,0.4)' }]}>
+                <Text style={[styles.statusChipText, { color: Colors.accentGreen }]}>WON</Text>
               </View>
             ) : (
               <View
@@ -256,20 +343,35 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
           </View>
         </View>
 
-        {/* Winner CTA — pay buyer fee */}
+        {/* Winner CTAs — pay buyer fee, and chat with the seller (matches
+            web's bids page "Chat with Seller" action on a won row) */}
         {isWon && (
-          <TouchableOpacity
-            style={styles.wonCtaBtn}
-            activeOpacity={0.85}
-            onPress={handlePayFee}
-          >
-            <Ionicons name="lock-closed-outline" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
-            <Text style={styles.wonCtaBtnText}>PAY BUYER FEE · £125</Text>
-          </TouchableOpacity>
+          <View style={styles.wonCtaRow}>
+            <TouchableOpacity
+              style={[styles.wonCtaBtn, { flex: 1 }]}
+              activeOpacity={0.85}
+              onPress={handlePayFee}
+            >
+              <Ionicons name="lock-closed-outline" size={14} color={Colors.white} style={{ marginRight: 6 }} />
+              <Text style={styles.wonCtaBtnText}>PAY BUYER FEE · £125</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.wonChatBtn}
+              activeOpacity={0.85}
+              onPress={() => handleChatWithSeller(bid)}
+              disabled={connectingChatId === bid.id}
+            >
+              {connectingChatId === bid.id ? (
+                <ActivityIndicator size="small" color={Colors.accentGreen} />
+              ) : (
+                <Ionicons name="chatbubble-ellipses-outline" size={16} color={Colors.accentGreen} />
+              )}
+            </TouchableOpacity>
+          </View>
         )}
       </TouchableOpacity>
     );
-  };
+  }, [tappingId, handleViewAuction, connectingChatId, handleChatWithSeller]);
 
   // ── main render ────────────────────────────────────────────────
   return (
@@ -278,7 +380,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
 
       {/* Gradient backdrop */}
       <LinearGradient
-        colors={['rgba(220,31,38,0.04)', 'rgba(59,130,246,0.04)', '#0A0A0C']}
+        colors={[Colors.accentAlpha04, Colors.infoBlueAlpha04, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 0.6 }}
         style={StyleSheet.absoluteFillObject}
@@ -289,20 +391,14 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
 
       {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          activeOpacity={0.75}
-          onPress={() => navigation?.goBack()}
-        >
-          <Ionicons name="chevron-back" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
+        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
 
         <Text style={styles.headerTitle}>Auction Bids</Text>
 
-        {bids.length > 0 ? (
+        {totalCount > 0 ? (
           <View style={styles.countBadge}>
             <Text style={styles.countBadgeText}>
-              {bids.length > 99 ? '99+' : bids.length}
+              {totalCount > 99 ? '99+' : totalCount}
             </Text>
           </View>
         ) : (
@@ -311,31 +407,72 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
       </View>
 
       {/* ── Content ── */}
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => fetchData(true)}
-            tintColor={Colors.accent}
-            colors={[Colors.accent]}
-          />
-        }
-      >
-        {error && !loading && (
-          <ErrorBanner message={error} onRetry={() => fetchData()} />
-        )}
-
-        {loading
-          ? renderSkeletons()
-          : bids.length === 0 && !error
-          ? renderEmptyState()
-          : bids.map(renderBidCard)}
-
-        <View style={{ height: 110 }} />
-      </ScrollView>
+      {loading || (bids.length === 0 && !error) ? (
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => fetchData(true)}
+              tintColor={Colors.accent}
+              colors={[Colors.accent]}
+            />
+          }
+        >
+          {error && !loading && (
+            <ErrorBanner message={error} onRetry={() => fetchData()} />
+          )}
+          {loading ? renderSkeletons() : renderEmptyState()}
+        </ScrollView>
+      ) : (
+        // FlatList so a long bid history virtualizes instead of mounting every
+        // card at once (mobile-audit.md P3).
+        <FlatList
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => fetchData(true)}
+              tintColor={Colors.accent}
+              colors={[Colors.accent]}
+            />
+          }
+          data={bids}
+          keyExtractor={(item) => item.id}
+          renderItem={renderBidCard}
+          ListHeaderComponent={error ? <ErrorBanner message={error} onRetry={() => fetchData()} /> : null}
+          ListFooterComponent={
+            <>
+              {totalPages > 1 && (
+                <View style={styles.paginationRow}>
+                  <TouchableOpacity
+                    style={[styles.pageBtn, page === 1 && styles.pageBtnDisabled]}
+                    onPress={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={styles.pageBtnText}>Previous</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.pageIndicator}>Page {page} of {totalPages}</Text>
+                  <TouchableOpacity
+                    style={[styles.pageBtn, page === totalPages && styles.pageBtnDisabled]}
+                    onPress={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={styles.pageBtnText}>Next</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              <View style={{ height: 110 }} />
+            </>
+          }
+        />
+      )}
     </View>
   );
 };
@@ -360,16 +497,16 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.lg,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   headerPlaceholder: {
     width: 38,
@@ -385,8 +522,8 @@ const styles = StyleSheet.create({
   },
   countBadgeText: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#FFFFFF',
+    fontSize: FontSize.xs,
+    color: Colors.white,
   },
 
   // ── Scroll ──
@@ -403,7 +540,7 @@ const styles = StyleSheet.create({
   skeletonCard: {
     height: 76,
     borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
   },
 
   // ── Empty state ──
@@ -414,8 +551,8 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 17,
-    color: '#FFFFFF',
+    fontSize: FontSize.size17,
+    color: Colors.white,
     marginTop: 12,
   },
   emptySub: {
@@ -446,10 +583,10 @@ const styles = StyleSheet.create({
 
   // ── Bid card ──
   bidCard: {
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     borderLeftWidth: 3,
     padding: 18,
     flexDirection: 'row',
@@ -462,13 +599,13 @@ const styles = StyleSheet.create({
   },
   bidTitle: {
     fontFamily: FontFamily.semiBold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
   },
   bidAmount: {
     fontFamily: FontFamily.mono,
-    fontSize: 18,
-    color: '#FFFFFF',
+    fontSize: FontSize.lg,
+    color: Colors.white,
     marginTop: 3,
   },
   bidTime: {
@@ -490,19 +627,23 @@ const styles = StyleSheet.create({
   },
   statusChipText: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     letterSpacing: 0.5,
   },
   viewText: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
+    fontSize: FontSize.xs,
     color: Colors.accent,
   },
-  wonCtaBtn: {
+  wonCtaRow: {
+    flexDirection: 'row',
+    gap: 8,
     marginHorizontal: 16,
     marginBottom: 16,
     marginTop: -4,
-    backgroundColor: '#10B981',
+  },
+  wonCtaBtn: {
+    backgroundColor: Colors.accentGreen,
     borderRadius: 8,
     paddingVertical: 12,
     flexDirection: 'row',
@@ -511,8 +652,47 @@ const styles = StyleSheet.create({
   },
   wonCtaBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#FFFFFF',
+    fontSize: FontSize.size12,
+    color: Colors.white,
     letterSpacing: 0.8,
+  },
+  wonChatBtn: {
+    width: 44,
+    borderRadius: 8,
+    backgroundColor: Colors.accentGreenAlpha15,
+    borderWidth: 1,
+    borderColor: 'rgba(16,185,129,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // ── Pagination ──
+  paginationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 14,
+    paddingTop: 16,
+  },
+  pageBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: Colors.whiteAlpha06,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha10,
+  },
+  pageBtnDisabled: {
+    opacity: 0.4,
+  },
+  pageBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.xs,
+    color: Colors.textPrimary,
+  },
+  pageIndicator: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
   },
 });
