@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Modal,
   Dimensions,
   StatusBar,
   Alert,
@@ -19,10 +18,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { CarListing } from '../../data/listings';
 import { searchListings } from '../../lib/listingsApi';
+import { BottomSheet } from '../../components/BottomSheet';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
+import { IconButton } from '../../components/IconButton';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 const getMonthlyPayment = (listing: CarListing) => {
@@ -211,9 +212,9 @@ export const CompareScreen: React.FC = () => {
 
   // Avatar backgrounds
   const getAvatarBadgeColor = (index: number) => {
-    if (index === 0) return '#DC1F26';
-    if (index === 1) return '#1E40AF';
-    return '#A21CAF'; // Magenta
+    if (index === 0) return Colors.accent;
+    if (index === 1) return Colors.midBlue_1e40af;
+    return Colors.midPink; // Magenta
   };
 
   return (
@@ -222,7 +223,7 @@ export const CompareScreen: React.FC = () => {
 
       {/* Background glow gradient */}
       <LinearGradient
-        colors={['rgba(220, 31, 38, 0.03)', 'rgba(59, 130, 246, 0.03)', '#0A0A0C']}
+        colors={[Colors.accentAlpha03, Colors.infoBlueAlpha03, Colors.bgPrimary]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.6 }}
         style={StyleSheet.absoluteFillObject}
@@ -230,13 +231,7 @@ export const CompareScreen: React.FC = () => {
 
       {/* Dynamic Header */}
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <TouchableOpacity 
-          style={styles.backBtn} 
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
+        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
         
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>
@@ -249,13 +244,9 @@ export const CompareScreen: React.FC = () => {
           )}
         </View>
 
-        <TouchableOpacity 
-          style={styles.shareBtn}
-          onPress={() => Alert.alert('Share', 'Sharing comparison report...')}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="share-social-outline" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
+        {/* Share was alert-only with no real implementation — removed rather
+            than faking it (mobile-ui-ux-audit.md §C13). Spacer keeps the title centered. */}
+        <View style={styles.shareBtn} />
       </View>
 
       <ScrollView 
@@ -267,7 +258,7 @@ export const CompareScreen: React.FC = () => {
         {isThreeCars && (
           <View style={styles.toggleContainer}>
             <View style={styles.toggleLeft}>
-              <Ionicons name="flash" size={15} color="#DC1F26" style={{ marginRight: 8 }} />
+              <Ionicons name="flash" size={15} color={Colors.accent} style={{ marginRight: 8 }} />
               <Text style={styles.toggleLabel}>Highlight winners</Text>
             </View>
             <TouchableOpacity 
@@ -292,13 +283,7 @@ export const CompareScreen: React.FC = () => {
                   <View style={[styles.badgeIndicator, styles.badgeA]}>
                     <Text style={styles.badgeIndicatorText}>A</Text>
                   </View>
-                  <TouchableOpacity 
-                    style={styles.removeBtn}
-                    onPress={() => handleRemoveCar(0)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="close-circle" size={16} color="#A0A0AB" />
-                  </TouchableOpacity>
+                  <IconButton style={styles.removeBtn} icon={<Ionicons name="close-circle" size={16} color={Colors.textSecondary} />} onPress={() => handleRemoveCar(0)} accessibilityLabel="Remove vehicle A from comparison" />
 
                   <View style={styles.carCardMeta}>
                     <Text style={styles.carModel} numberOfLines={2}>{carA.make} {carA.model}</Text>
@@ -313,7 +298,7 @@ export const CompareScreen: React.FC = () => {
                   activeOpacity={0.8}
                   disabled={loadingListings}
                 >
-                  <Ionicons name={loadingListings ? 'hourglass-outline' : 'add'} size={24} color="#5C5C6B" />
+                  <Ionicons name={loadingListings ? 'hourglass-outline' : 'add'} size={24} color={Colors.textMuted} />
                   <Text style={styles.emptyCardText}>{loadingListings ? 'Loading vehicles…' : 'Add vehicle A'}</Text>
                 </TouchableOpacity>
               )}
@@ -327,13 +312,7 @@ export const CompareScreen: React.FC = () => {
                   <View style={[styles.badgeIndicator, styles.badgeB]}>
                     <Text style={styles.badgeIndicatorText}>B</Text>
                   </View>
-                  <TouchableOpacity 
-                    style={styles.removeBtn}
-                    onPress={() => handleRemoveCar(1)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="close-circle" size={16} color="#A0A0AB" />
-                  </TouchableOpacity>
+                  <IconButton style={styles.removeBtn} icon={<Ionicons name="close-circle" size={16} color={Colors.textSecondary} />} onPress={() => handleRemoveCar(1)} accessibilityLabel="Remove vehicle B from comparison" />
 
                   <View style={styles.carCardMeta}>
                     <Text style={styles.carModel} numberOfLines={2}>{carB.make} {carB.model}</Text>
@@ -348,7 +327,7 @@ export const CompareScreen: React.FC = () => {
                   activeOpacity={0.8}
                   disabled={loadingListings}
                 >
-                  <Ionicons name={loadingListings ? 'hourglass-outline' : 'add'} size={24} color="#5C5C6B" />
+                  <Ionicons name={loadingListings ? 'hourglass-outline' : 'add'} size={24} color={Colors.textMuted} />
                   <Text style={styles.emptyCardText}>{loadingListings ? 'Loading vehicles…' : 'Add vehicle B'}</Text>
                 </TouchableOpacity>
               )}
@@ -528,7 +507,7 @@ export const CompareScreen: React.FC = () => {
           <View style={styles.verdictCard}>
             <View style={styles.verdictHeader}>
               <View style={styles.verdictIconBg}>
-                <Ionicons name="document-text" size={16} color="#FFFFFF" />
+                <Ionicons name="document-text" size={16} color={Colors.white} />
               </View>
               <Text style={styles.verdictTitle}>MARCUS' VERDICT</Text>
             </View>
@@ -545,7 +524,7 @@ export const CompareScreen: React.FC = () => {
             onPress={() => handleOpenSelect(2)}
             activeOpacity={0.7}
           >
-            <Ionicons name="add" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Ionicons name="add" size={16} color={Colors.white} style={{ marginRight: 6 }} />
             <Text style={styles.addThirdText}>Add a third car to compare</Text>
           </TouchableOpacity>
         )}
@@ -575,57 +554,46 @@ export const CompareScreen: React.FC = () => {
       )}
 
       {/* Selective overlay modal */}
-      <Modal
+      <BottomSheet
         visible={selectModalVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setSelectModalVisible(false)}
+        onClose={() => setSelectModalVisible(false)}
+        title="Select Vehicle"
+        maxHeightPercent={75}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Vehicle</Text>
-              <TouchableOpacity onPress={() => setSelectModalVisible(false)}>
-                <Ionicons name="close" size={22} color="#FFFFFF" />
+        <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+          {listings.length === 0 && (
+            <Text style={styles.selectCarDetails}>No listings available right now.</Text>
+          )}
+          {listings.map((car) => {
+            const isAlreadySelected = selectedCarIds.includes(car.id);
+            return (
+              <TouchableOpacity
+                key={car.id}
+                style={[
+                  styles.carSelectRow,
+                  isAlreadySelected && styles.carSelectRowDisabled,
+                ]}
+                onPress={() => handleSelectCar(car.id)}
+                disabled={isAlreadySelected}
+                activeOpacity={0.7}
+              >
+                <Image source={{ uri: car.images[0] }} style={styles.selectCarThumb} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+                <View style={styles.selectCarMeta}>
+                  <Text style={styles.selectCarName}>{car.make} {car.model}</Text>
+                  <Text style={styles.selectCarDetails}>
+                    £{car.price.toLocaleString('en-GB')} • {car.year} • {Math.round(car.mileage / 1000)}k mi
+                  </Text>
+                </View>
+                {isAlreadySelected ? (
+                  <Text style={styles.selectedLabelText}>Compared</Text>
+                ) : (
+                  <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
+                )}
               </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              {listings.length === 0 && (
-                <Text style={styles.selectCarDetails}>No listings available right now.</Text>
-              )}
-              {listings.map((car) => {
-                const isAlreadySelected = selectedCarIds.includes(car.id);
-                return (
-                  <TouchableOpacity
-                    key={car.id}
-                    style={[
-                      styles.carSelectRow,
-                      isAlreadySelected && styles.carSelectRowDisabled,
-                    ]}
-                    onPress={() => handleSelectCar(car.id)}
-                    disabled={isAlreadySelected}
-                    activeOpacity={0.7}
-                  >
-                    <Image source={{ uri: car.images[0] }} style={styles.selectCarThumb} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-                    <View style={styles.selectCarMeta}>
-                      <Text style={styles.selectCarName}>{car.make} {car.model}</Text>
-                      <Text style={styles.selectCarDetails}>
-                        £{car.price.toLocaleString('en-GB')} • {car.year} • {Math.round(car.mileage / 1000)}k mi
-                      </Text>
-                    </View>
-                    {isAlreadySelected ? (
-                      <Text style={styles.selectedLabelText}>Compared</Text>
-                    ) : (
-                      <Ionicons name="chevron-forward" size={16} color="#5C5C6B" />
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+            );
+          })}
+        </ScrollView>
+      </BottomSheet>
     </View>
   );
 };
@@ -633,7 +601,7 @@ export const CompareScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0C',
+    backgroundColor: Colors.bgPrimary,
   },
   scroll: {
     flex: 1,
@@ -652,9 +620,9 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: Colors.whiteAlpha06,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -663,23 +631,23 @@ const styles = StyleSheet.create({
   },
   headerTag: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#8A8A93',
+    fontSize: FontSize.size9,
+    color: Colors.textFaint,
     letterSpacing: 1.2,
     marginBottom: 2,
   },
   headerTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.lg - 1,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   shareBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: Colors.whiteAlpha06,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -688,9 +656,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: Colors.whiteAlpha05,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -704,7 +672,7 @@ const styles = StyleSheet.create({
   toggleLabel: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   toggleSwitch: {
     width: 38,
@@ -714,16 +682,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   toggleSwitchActive: {
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
   },
   toggleSwitchInactive: {
-    backgroundColor: '#2A2A32',
+    backgroundColor: Colors.borderSubtle,
   },
   toggleThumb: {
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
   },
   toggleThumbActive: {
     alignSelf: 'flex-end',
@@ -742,7 +710,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   carCard: {
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderRadius: 16,
     borderWidth: 1,
     overflow: 'hidden',
@@ -750,15 +718,15 @@ const styles = StyleSheet.create({
     height: 180,
   },
   carCardA: {
-    borderColor: 'rgba(220, 31, 38, 0.3)',
+    borderColor: Colors.accentAlpha30,
   },
   carCardB: {
-    borderColor: 'rgba(59, 130, 246, 0.25)',
+    borderColor: Colors.infoBlueAlpha25,
   },
   carImg: {
     width: '100%',
     height: 96,
-    backgroundColor: 'rgba(255,255,255,0.02)',
+    backgroundColor: Colors.whiteAlpha02,
   },
   badgeIndicator: {
     position: 'absolute',
@@ -771,15 +739,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   badgeA: {
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
   },
   badgeB: {
-    backgroundColor: '#1E40AF',
+    backgroundColor: Colors.midBlue_1e40af,
   },
   badgeIndicatorText: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#FFFFFF',
+    fontSize: FontSize.size10,
+    color: Colors.white,
   },
   removeBtn: {
     position: 'absolute',
@@ -792,26 +760,26 @@ const styles = StyleSheet.create({
   },
   carModel: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#FFFFFF',
+    fontSize: FontSize.size12,
+    color: Colors.white,
     marginBottom: 3,
   },
   carPrice: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs + 1,
-    color: '#A0A0AB',
+    color: Colors.textSecondary,
     marginBottom: 2,
   },
   carSub: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.xs - 2,
-    color: '#5C5C6B',
+    color: Colors.textMuted,
   },
   emptyCard: {
     height: 180,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#2A2A32',
+    borderColor: Colors.borderSubtle,
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
@@ -819,8 +787,8 @@ const styles = StyleSheet.create({
   },
   emptyCardText: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#5C5C6B',
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
     marginTop: 8,
   },
   // Capsule header row 3-car
@@ -832,10 +800,10 @@ const styles = StyleSheet.create({
   },
   capsuleCard: {
     flex: 1,
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: Colors.whiteAlpha08,
     overflow: 'hidden',
     position: 'relative',
     height: 80,
@@ -843,7 +811,7 @@ const styles = StyleSheet.create({
   capsuleImg: {
     width: '100%',
     height: 52,
-    backgroundColor: 'rgba(255,255,255,0.02)',
+    backgroundColor: Colors.whiteAlpha02,
   },
   capsuleBadge: {
     position: 'absolute',
@@ -852,26 +820,26 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 4,
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2,
   },
   capsuleBadgeText: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#FFFFFF',
+    fontSize: FontSize.size9,
+    color: Colors.white,
   },
   capsuleMeta: {
-    backgroundColor: '#15151B',
+    backgroundColor: Colors.deepBlue_15151b,
     height: 28,
     alignItems: 'center',
     justifyContent: 'center',
   },
   capsuleTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#FFFFFF',
+    fontSize: FontSize.size10,
+    color: Colors.white,
     textAlign: 'center',
   },
   // Highlights box
@@ -883,27 +851,27 @@ const styles = StyleSheet.create({
   },
   highBox: {
     flex: 1,
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
     borderRadius: 16,
     padding: 14,
     alignItems: 'center',
   },
   highBoxA: {
-    borderColor: 'rgba(220, 31, 38, 0.12)',
+    borderColor: Colors.accentAlpha12,
   },
   highBoxB: {
-    borderColor: 'rgba(59, 130, 246, 0.10)',
+    borderColor: Colors.infoBlueAlpha10,
   },
   highBadgeA: {
-    backgroundColor: 'rgba(220, 31, 38, 0.12)',
+    backgroundColor: Colors.accentAlpha12,
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 2,
     marginBottom: 6,
   },
   highBadgeB: {
-    backgroundColor: 'rgba(59, 130, 246, 0.12)',
+    backgroundColor: Colors.infoBlueAlpha12,
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 2,
@@ -912,31 +880,31 @@ const styles = StyleSheet.create({
   highBadgeText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs - 3,
-    color: '#FFFFFF',
+    color: Colors.white,
     letterSpacing: 0.5,
   },
   highTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs - 1,
-    color: '#8A8A93',
+    color: Colors.textFaint,
     marginBottom: 4,
   },
   highValueA: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
-    color: '#DC1F26',
+    fontSize: FontSize.sm,
+    color: Colors.accent,
   },
   highValueB: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
-    color: '#0084FF',
+    fontSize: FontSize.sm,
+    color: Colors.lightBlue_0084ff,
   },
   // Specs Table Grid
   specsTable: {
     marginHorizontal: 24,
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -947,7 +915,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+    borderBottomColor: Colors.whiteAlpha05,
   },
   tableHeaderLabel: {
     flex: 1.2,
@@ -955,7 +923,7 @@ const styles = StyleSheet.create({
   tableHeaderCol: {
     flex: 1,
     fontFamily: FontFamily.bold,
-    fontSize: 13,
+    fontSize: FontSize.sm,
     textAlign: 'center',
   },
   tableRow: {
@@ -963,13 +931,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.03)',
+    borderBottomColor: Colors.whiteAlpha03,
   },
   rowLabel: {
     flex: 1.2,
     fontFamily: FontFamily.medium,
-    fontSize: 13,
-    color: '#A0A0AB',
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
   },
   cellCol: {
     flex: 1,
@@ -987,37 +955,37 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cellValBoxWinner: {
-    borderColor: '#5C1D24',
-    backgroundColor: '#221217',
+    borderColor: Colors.darkRed_5c1d24,
+    backgroundColor: Colors.deepPink_221217,
   },
   rowVal: {
     flex: 1,
     fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#FFFFFF',
+    fontSize: FontSize.size12,
+    color: Colors.white,
     textAlign: 'center',
   },
   rowValWinner: {
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   textRed: {
-    color: '#DC1F26',
+    color: Colors.accent,
   },
   textBlue: {
-    color: '#0084FF',
+    color: Colors.lightBlue_0084ff,
   },
   textMagenta: {
-    color: '#A21CAF',
+    color: Colors.midPink,
   },
   textGreen: {
-    color: '#10B981',
+    color: Colors.accentGreen,
   },
   // Verdict Card
   verdictCard: {
     marginHorizontal: 24,
-    backgroundColor: '#161118',
+    backgroundColor: Colors.deepPurple,
     borderWidth: 1,
-    borderColor: '#3B1E2B',
+    borderColor: Colors.darkPink_3b1e2b,
     borderRadius: 16,
     padding: 16,
     marginBottom: 20,
@@ -1031,21 +999,21 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 6,
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
   },
   verdictTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#DC1F26',
+    fontSize: FontSize.size10,
+    color: Colors.accent,
     letterSpacing: 1.2,
   },
   verdictBody: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.xs + 1,
-    color: '#FFFFFF',
+    color: Colors.white,
     lineHeight: 18,
   },
   // Add third car button
@@ -1055,7 +1023,7 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: Colors.whiteAlpha12,
     backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1064,7 +1032,7 @@ const styles = StyleSheet.create({
   addThirdText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base - 1,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   // Sticky Bottom footer
   footer: {
@@ -1072,9 +1040,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#0D0D12',
+    backgroundColor: Colors.deepBlue_0d0d12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.06)',
+    borderTopColor: Colors.whiteAlpha06,
     paddingHorizontal: 20,
     paddingTop: 12,
     flexDirection: 'row',
@@ -1088,55 +1056,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   footerBtnDark: {
-    backgroundColor: '#1C1D26',
+    backgroundColor: Colors.deepBlue_1c1d26,
     borderWidth: 1,
-    borderColor: '#2A2E3D',
+    borderColor: Colors.darkBlue_2a2e3d,
   },
   footerBtnRed: {
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
   },
   footerBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: '#FFFFFF',
+    color: Colors.white,
     letterSpacing: 1,
   },
   // Modal selection styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#111115',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    height: '75%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
-  },
-  modalTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.lg,
-    color: '#FFFFFF',
-  },
   modalBody: {
     padding: 20,
   },
   carSelectRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#18181E',
+    backgroundColor: Colors.bgTertiary,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.04)',
+    borderColor: Colors.whiteAlpha04,
     borderRadius: 12,
     padding: 12,
     marginBottom: 10,
@@ -1148,7 +1090,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.02)',
+    backgroundColor: Colors.whiteAlpha02,
     marginRight: 12,
   },
   selectCarMeta: {
@@ -1156,18 +1098,18 @@ const styles = StyleSheet.create({
   },
   selectCarName: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
     marginBottom: 4,
   },
   selectCarDetails: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.xs - 1,
-    color: '#A0A0AB',
+    color: Colors.textSecondary,
   },
   selectedLabelText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs - 2,
-    color: '#DC1F26',
+    color: Colors.accent,
   },
 });

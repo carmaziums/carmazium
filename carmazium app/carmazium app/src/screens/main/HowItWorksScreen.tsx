@@ -16,6 +16,7 @@ import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
+import { IconButton } from '../../components/IconButton';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 // ─────────────────────────── data ──────────────────────────────────
@@ -97,7 +98,7 @@ export const HowItWorksScreen: React.FC = () => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(220,31,38,0.05)', 'rgba(10,10,12,0)', '#0A0A0C']}
+        colors={[Colors.accentAlpha05, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 0.6 }}
         style={StyleSheet.absoluteFillObject}
@@ -107,13 +108,7 @@ export const HowItWorksScreen: React.FC = () => {
 
       {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          activeOpacity={0.75}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="chevron-back" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
+        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
         <Text style={styles.headerTitle}>How It Works</Text>
         <View style={styles.headerPlaceholder} />
       </View>
@@ -202,16 +197,16 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.lg,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   headerPlaceholder: { width: 38 },
 
@@ -232,10 +227,10 @@ const styles = StyleSheet.create({
   // ── Toggle ──
   toggleRow: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: Colors.whiteAlpha08,
     padding: 4,
     gap: 4,
   },
@@ -251,20 +246,20 @@ const styles = StyleSheet.create({
   },
   toggleText: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
+    fontSize: FontSize.xs,
     letterSpacing: 0.6,
     color: Colors.textMuted,
   },
   toggleTextActive: {
-    color: '#FFFFFF',
+    color: Colors.white,
   },
 
   // ── Step card ──
   stepCard: {
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     padding: 18,
     gap: 8,
   },
@@ -277,25 +272,25 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 13,
-    backgroundColor: 'rgba(220,31,38,0.10)',
+    backgroundColor: Colors.accentAlpha10,
     borderWidth: 1,
-    borderColor: 'rgba(220,31,38,0.22)',
+    borderColor: Colors.accentAlpha22,
     alignItems: 'center',
     justifyContent: 'center',
   },
   stepNumber: {
     fontFamily: FontFamily.bold,
-    fontSize: 28,
-    color: 'rgba(255,255,255,0.07)',
+    fontSize: FontSize['3xl'],
+    color: Colors.whiteAlpha07,
   },
   stepTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 17,
-    color: '#FFFFFF',
+    fontSize: FontSize.size17,
+    color: Colors.white,
   },
   stepDesc: {
     fontFamily: FontFamily.regular,
-    fontSize: 13,
+    fontSize: FontSize.sm,
     color: Colors.textSecondary,
     lineHeight: 20,
   },
@@ -309,7 +304,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: 'rgba(34,197,94,0.08)',
+    backgroundColor: Colors.successAlpha08,
     borderWidth: 1,
     borderColor: 'rgba(34,197,94,0.18)',
     borderRadius: 20,
@@ -318,7 +313,7 @@ const styles = StyleSheet.create({
   },
   detailChipText: {
     fontFamily: FontFamily.medium,
-    fontSize: 11,
+    fontSize: FontSize.xs,
     color: Colors.textSecondary,
   },
 
@@ -326,7 +321,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.lg,
-    color: '#FFFFFF',
+    color: Colors.white,
     marginTop: 6,
   },
   peaceGrid: {
@@ -336,21 +331,21 @@ const styles = StyleSheet.create({
   },
   peaceCard: {
     width: '48%',
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     padding: 14,
     gap: 6,
   },
   peaceTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
-    color: '#FFFFFF',
+    fontSize: FontSize.sm,
+    color: Colors.white,
   },
   peaceDesc: {
     fontFamily: FontFamily.regular,
-    fontSize: 11,
+    fontSize: FontSize.xs,
     color: Colors.textMuted,
     lineHeight: 16,
   },

@@ -227,13 +227,13 @@ export const LiveScreen: React.FC = () => {
           onPress={() => navigation.navigate('SellCarFlow' as any)}
         >
           <View style={styles.auctionCtaLeft}>
-            <MaterialCommunityIcons name="gavel" size={18} color="#F59E0B" />
+            <MaterialCommunityIcons name="gavel" size={18} color={Colors.warning} />
             <View>
               <Text style={styles.auctionCtaTitle}>Auction your car</Text>
               <Text style={styles.auctionCtaSub}>List it now — bidding starts today</Text>
             </View>
           </View>
-          <Ionicons name="arrow-forward" size={16} color="#F59E0B" />
+          <Ionicons name="arrow-forward" size={16} color={Colors.warning} />
         </TouchableOpacity>
 
         {/* ─── Live Alert Banner ──────────────────────────────────── */}
@@ -308,7 +308,7 @@ export const LiveScreen: React.FC = () => {
                   <Text style={styles.liveBadgeText}>LIVE</Text>
                 </View>
                 <View style={styles.viewerBadge}>
-                  <Ionicons name="eye-outline" size={10} color="#A0A0AB" />
+                  <Ionicons name="eye-outline" size={10} color={Colors.textSecondary} />
                   <Text style={styles.viewerCount}>{auction.viewers}</Text>
                 </View>
 
@@ -348,9 +348,9 @@ export const LiveScreen: React.FC = () => {
                   navigation.navigate('LiveAuctionDetailed', { listing: auction })
                 }
               >
-                <MaterialCommunityIcons name="gavel" size={16} color="#FFFFFF" style={styles.bidBtnIcon} />
+                <MaterialCommunityIcons name="gavel" size={16} color={Colors.white} style={styles.bidBtnIcon} />
                 <Text style={styles.bidNowBtnText}>BID NOW</Text>
-                <Ionicons name="arrow-forward" size={15} color="#FFFFFF" style={styles.bidBtnArrow} />
+                <Ionicons name="arrow-forward" size={15} color={Colors.white} style={styles.bidBtnArrow} />
               </TouchableOpacity>
             </View>
           );
@@ -453,7 +453,7 @@ export const LiveScreen: React.FC = () => {
                   <Ionicons
                     name={alertState ? 'checkmark' : 'notifications-outline'}
                     size={14}
-                    color={alertState ? '#FFFFFF' : '#8A8A93'}
+                    color={alertState ? Colors.white : Colors.textFaint}
                   />
                 </TouchableOpacity>
               </TouchableOpacity>
@@ -461,7 +461,7 @@ export const LiveScreen: React.FC = () => {
           })
         ) : !isLoading ? (
           <View style={styles.emptyUpcoming}>
-            <Ionicons name="calendar-clear-outline" size={28} color="#5C5C6B" />
+            <Ionicons name="calendar-clear-outline" size={28} color={Colors.textMuted} />
             <Text style={styles.emptyUpcomingText}>No upcoming auctions scheduled right now</Text>
           </View>
         ) : null}
@@ -470,7 +470,7 @@ export const LiveScreen: React.FC = () => {
         {topActiveAuction && (
           <View style={styles.marketAiBanner}>
             <View style={styles.marketAiIconWrap}>
-              <Ionicons name="bulb-outline" size={16} color="#FF2D35" />
+              <Ionicons name="bulb-outline" size={16} color={Colors.accentGlow} />
             </View>
             <View style={styles.marketAiBody}>
               <Text style={styles.marketAiTitle}>MARKET INSIGHT</Text>
@@ -494,7 +494,7 @@ export const LiveScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0C',
+    backgroundColor: Colors.bgPrimary,
   },
   scrollContent: {
     paddingHorizontal: 24,
@@ -510,15 +510,15 @@ const styles = StyleSheet.create({
   },
   headerMeta: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#8A8A93',
+    fontSize: FontSize.size10,
+    color: Colors.textFaint,
     letterSpacing: 0.8,
     marginBottom: 4,
   },
   headerTitle: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 26,
-    color: '#FFFFFF',
+    fontSize: FontSize.size26,
+    color: Colors.white,
     letterSpacing: -0.5,
   },
   avatarBtn: {
@@ -526,9 +526,9 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     overflow: 'hidden',
-    backgroundColor: '#1C1C22',
+    backgroundColor: Colors.deepBlue_1c1c22,
     borderWidth: 1,
-    borderColor: '#2A2A35',
+    borderColor: Colors.darkBlue_2a2a35,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -544,9 +544,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(245,158,11,0.08)',
+    backgroundColor: Colors.warningAlpha08,
     borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.25)',
+    borderColor: Colors.warningAlpha25,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -561,13 +561,13 @@ const styles = StyleSheet.create({
   },
   auctionCtaTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#F59E0B',
+    fontSize: FontSize.size14,
+    color: Colors.warning,
   },
   auctionCtaSub: {
     fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: '#A0A0AB',
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
     marginTop: 2,
   },
 
@@ -575,9 +575,9 @@ const styles = StyleSheet.create({
   alertBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#161118',
+    backgroundColor: Colors.deepPurple,
     borderWidth: 1,
-    borderColor: '#3B1E2B',
+    borderColor: Colors.darkPink_3b1e2b,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 13,
@@ -588,21 +588,21 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
   },
   alertText: {
     flex: 1,
     fontFamily: FontFamily.medium,
-    fontSize: 11,
-    color: '#DC1F26',
+    fontSize: FontSize.xs,
+    color: Colors.accent,
     lineHeight: 16,
   },
 
   // ─── Section Titles ─────────────────────────────────────────────
   sectionTitle: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 12,
-    color: '#FFFFFF',
+    fontSize: FontSize.size12,
+    color: Colors.white,
     letterSpacing: 1.4,
     marginBottom: 16,
     marginTop: 4,
@@ -614,25 +614,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 36,
     gap: 10,
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     marginBottom: 24,
   },
   emptyUpcomingText: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.sm,
-    color: '#5C5C6B',
+    color: Colors.textMuted,
     textAlign: 'center',
     paddingHorizontal: 32,
   },
 
   // ─── Auction Card ───────────────────────────────────────────────
   auctionCard: {
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: '#2A2A32',
+    borderColor: Colors.borderSubtle,
     borderRadius: 18,
     overflow: 'hidden',
     marginBottom: 24,
@@ -662,7 +662,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     borderRadius: 7,
     paddingHorizontal: 9,
     paddingVertical: 4,
@@ -671,12 +671,12 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
   },
   liveBadgeText: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#FFFFFF',
+    fontSize: FontSize.size9,
+    color: Colors.white,
     letterSpacing: 0.5,
   },
   viewerBadge: {
@@ -686,17 +686,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: Colors.blackAlpha55,
     borderRadius: 7,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: Colors.whiteAlpha08,
   },
   viewerCount: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#A0A0AB',
+    fontSize: FontSize.size10,
+    color: Colors.textSecondary,
   },
 
   // Car name overlay on image
@@ -708,15 +708,15 @@ const styles = StyleSheet.create({
   },
   imageCarMake: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#C0C0C8',
+    fontSize: FontSize.size10,
+    color: Colors.paleGrey_c0c0c8,
     letterSpacing: 1.2,
     marginBottom: 2,
   },
   imageCarModel: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 20,
-    color: '#FFFFFF',
+    fontSize: FontSize.xl,
+    color: Colors.white,
     letterSpacing: -0.3,
   },
 
@@ -727,7 +727,7 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E1E26',
+    borderBottomColor: Colors.deepBlue_1e1e26,
   },
   statsLeft: {
     flex: 1,
@@ -737,15 +737,15 @@ const styles = StyleSheet.create({
   },
   statsLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 8,
-    color: '#8A8A93',
+    fontSize: FontSize.size8,
+    color: Colors.textFaint,
     letterSpacing: 0.6,
     marginBottom: 4,
   },
   statsPrice: {
     fontFamily: FontFamily.mono,
-    fontSize: 24,
-    color: '#FFFFFF',
+    fontSize: FontSize['2xl'],
+    color: Colors.white,
     marginBottom: 3,
     letterSpacing: -0.5,
   },
@@ -756,13 +756,13 @@ const styles = StyleSheet.create({
   },
   statsAboveReserve: {
     fontFamily: FontFamily.medium,
-    fontSize: 10,
-    color: '#22C55E',
+    fontSize: FontSize.size10,
+    color: Colors.success,
   },
   statsBidderCount: {
     fontFamily: FontFamily.medium,
-    fontSize: 10,
-    color: '#8A8A93',
+    fontSize: FontSize.size10,
+    color: Colors.textFaint,
     marginTop: 3,
   },
 
@@ -780,23 +780,23 @@ const styles = StyleSheet.create({
   digitBox: {
     width: 22,
     height: 26,
-    backgroundColor: '#1A1A22',
+    backgroundColor: Colors.deepBlue_1a1a22,
     borderRadius: 5,
     borderWidth: 1,
-    borderColor: '#2A2A36',
+    borderColor: Colors.darkBlue_2a2a36,
     justifyContent: 'center',
     alignItems: 'center',
   },
   digitText: {
     fontFamily: FontFamily.mono,
-    fontSize: 13,
-    color: '#FFFFFF',
+    fontSize: FontSize.sm,
+    color: Colors.white,
     letterSpacing: 0,
   },
   timerColon: {
     fontFamily: FontFamily.mono,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
     paddingBottom: 1,
   },
 
@@ -805,7 +805,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     marginHorizontal: 16,
     marginVertical: 14,
     height: 50,
@@ -817,8 +817,8 @@ const styles = StyleSheet.create({
   },
   bidNowBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
     letterSpacing: 0.6,
   },
   bidBtnArrow: {
@@ -835,15 +835,15 @@ const styles = StyleSheet.create({
   },
   setAlertLink: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#DC1F26',
+    fontSize: FontSize.size12,
+    color: Colors.accent,
   },
   upcomingItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: '#2A2A32',
+    borderColor: Colors.borderSubtle,
     borderRadius: 14,
     padding: 14,
     marginBottom: 12,
@@ -865,18 +865,18 @@ const styles = StyleSheet.create({
   },
   upcomingCarName: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
-    color: '#FFFFFF',
+    fontSize: FontSize.sm,
+    color: Colors.white,
   },
   upcomingLot: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#8A8A93',
+    fontSize: FontSize.size9,
+    color: Colors.textFaint,
   },
   upcomingSpecs: {
     fontFamily: FontFamily.medium,
-    fontSize: 11,
-    color: '#8A8A93',
+    fontSize: FontSize.xs,
+    color: Colors.textFaint,
     marginBottom: 4,
   },
   upcomingFooter: {
@@ -886,36 +886,36 @@ const styles = StyleSheet.create({
   },
   upcomingTime: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#F59E0B',
+    fontSize: FontSize.xs,
+    color: Colors.warning,
   },
   upcomingEst: {
     fontFamily: FontFamily.medium,
-    fontSize: 10,
-    color: '#5C5C6B',
+    fontSize: FontSize.size10,
+    color: Colors.textMuted,
   },
   alertBellBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#2A2A32',
+    borderColor: Colors.borderSubtle,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
   },
   alertBellBtnActive: {
-    backgroundColor: '#22C55E',
-    borderColor: '#22C55E',
+    backgroundColor: Colors.success,
+    borderColor: Colors.success,
   },
 
   // ─── Market AI Banner ─────────────────────────────────────────
   marketAiBanner: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#161118',
+    backgroundColor: Colors.deepPurple,
     borderWidth: 1,
-    borderColor: '#3B1E2B',
+    borderColor: Colors.darkPink_3b1e2b,
     borderRadius: 14,
     padding: 14,
     marginTop: 8,
@@ -925,7 +925,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: 'rgba(220,31,38,0.12)',
+    backgroundColor: Colors.accentAlpha12,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -934,15 +934,15 @@ const styles = StyleSheet.create({
   },
   marketAiTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#DC1F26',
+    fontSize: FontSize.xs,
+    color: Colors.accent,
     letterSpacing: 0.8,
     marginBottom: 5,
   },
   marketAiText: {
     fontFamily: FontFamily.medium,
-    fontSize: 11,
-    color: '#A0A0AB',
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
     lineHeight: 17,
   },
 });

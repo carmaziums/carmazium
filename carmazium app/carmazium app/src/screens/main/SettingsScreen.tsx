@@ -1,38 +1,31 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Alert, TextInput, ActivityIndicator,
+  StatusBar, Alert, TextInput, ActivityIndicator, Switch,
 } from 'react-native';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../store/authStore';
-import { FontFamily } from '../../constants/typography';
+import {FontFamily, FontSize } from '../../constants/typography';
 import { apiClient } from '../../lib/apiClient';
+import { convertAndCompress, uploadToStorage } from '../../lib/storageHelper';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
+import { Colors } from '../../constants/colors';
 
+import { IconButton } from '../../components/IconButton';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 // ─────────────────────────── helpers ──────────────────────────────
 
-const C = {
-  bg: '#0A0A0C',
-  card: '#111115',
-  border: 'rgba(255,255,255,0.07)',
-  accent: '#DC1F26',
-  success: '#22C55E',
-  warning: '#F59E0B',
-  white: '#FFFFFF',
-  muted: '#606070',
-  secondary: '#A0A0AB',
-};
-
 const SectionHeader: React.FC<{ icon: string; label: string }> = ({ icon, label }) => (
   <View style={styles.sectionHeader}>
     <View style={styles.sectionIconWrap}>
-      <Ionicons name={icon as any} size={14} color={C.accent} />
+      <Ionicons name={icon as any} size={14} color={Colors.accent} />
     </View>
     <Text style={styles.sectionLabel}>{label}</Text>
   </View>
@@ -47,12 +40,63 @@ const FieldLabel: React.FC<{ label: string }> = ({ label }) => (
 export const SettingsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
-  const { user } = useAuthStore();
+  const { user, updateUser } = useAuthStore();
 
   // ── Profile state ──────────────────────────────────────────────
   const [profileEmail] = useState(user?.email ?? '');
   const [profilePhone, setProfilePhone] = useState(user?.phone ?? '');
+  const [firstName, setFirstName] = useState(user?.firstName ?? '');
+  const [lastName, setLastName] = useState(user?.lastName ?? '');
+  const [profileImage, setProfileImage] = useState(user?.profileImage ?? '');
+  // Preferences default to on, matching web's seller settings page defaults
+  // before the real values load — same fields, same PATCH /users/me shape.
+  const [notifyOnSale, setNotifyOnSale] = useState(true);
+  const [showPublicProfile, setShowPublicProfile] = useState(true);
   const [profileSaving, setProfileSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  // ── Load full profile (fields not carried on the lightweight auth-store User) ──
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await apiClient<{ success: boolean; data: any }>('/users/me');
+        if (res?.success && res.data) {
+          const p = res.data;
+          setFirstName(p.firstName ?? '');
+          setLastName(p.lastName ?? '');
+          setProfileImage(p.profileImage ?? '');
+          if (typeof p.notifyOnSale === 'boolean') setNotifyOnSale(p.notifyOnSale);
+          if (typeof p.showPublicProfile === 'boolean') setShowPublicProfile(p.showPublicProfile);
+        }
+      } catch { /* keep store-derived defaults */ }
+    })();
+  }, []);
+
+  const initials = (firstName ? firstName[0] : profileEmail ? profileEmail[0] : '?').toUpperCase();
+
+  const handlePickProfilePhoto = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: 'images' as any,
+      allowsMultipleSelection: false,
+      quality: 1.0,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+    setUploadingPhoto(true);
+    try {
+      const jpegUri = await convertAndCompress(result.assets[0].uri);
+      const userId = user?.id ?? 'anon';
+      const url = await uploadToStorage(jpegUri, 'listings', `${userId}/profile/${Date.now()}.jpg`, 'image/jpeg');
+      setProfileImage(url);
+      // Auto-save immediately, same as web — a photo shouldn't need a
+      // separate "Save" tap to stick.
+      await apiClient('/users/me', { method: 'PATCH', body: JSON.stringify({ profileImage: url }) });
+      updateUser({ profileImage: url });
+    } catch (err: any) {
+      Alert.alert('Error', err?.message ?? 'Could not upload photo. Please try again.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   // ── Password state ─────────────────────────────────────────────
   const [currentPwd, setCurrentPwd] = useState('');
@@ -89,14 +133,25 @@ export const SettingsScreen: React.FC = () => {
     })();
   }, []);
 
-  // ── Save phone number ──
+  // ── Save profile ──
   const handleSaveProfile = async () => {
+    if (!firstName.trim() || !lastName.trim()) {
+      Alert.alert('Missing fields', 'First and last name are required.');
+      return;
+    }
     setProfileSaving(true);
     try {
       await apiClient('/users/me', {
         method: 'PATCH',
-        body: JSON.stringify({ phone: profilePhone }),
+        body: JSON.stringify({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          phone: profilePhone,
+          notifyOnSale,
+          showPublicProfile,
+        }),
       });
+      updateUser({ firstName: firstName.trim(), lastName: lastName.trim(), phone: profilePhone });
       Alert.alert('Saved', 'Profile updated successfully.');
     } catch (err: any) {
       Alert.alert('Error', err?.message ?? 'Could not update profile.');
@@ -195,16 +250,14 @@ export const SettingsScreen: React.FC = () => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(220,31,38,0.04)', 'rgba(10,10,12,0)', '#0A0A0C']}
+        colors={[Colors.accentAlpha04, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.6 }}
         style={StyleSheet.absoluteFillObject}
       />
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
+        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
         <Text style={styles.title}>Settings</Text>
         <View style={{ width: 36 }} />
       </View>
@@ -219,6 +272,51 @@ export const SettingsScreen: React.FC = () => {
         {/* ── 1. PROFILE INFORMATION ── */}
         <SectionHeader icon="person-circle-outline" label="PROFILE INFORMATION" />
         <View style={styles.card}>
+          <TouchableOpacity
+            style={styles.avatarRow}
+            activeOpacity={0.8}
+            onPress={handlePickProfilePhoto}
+            disabled={uploadingPhoto}
+          >
+            <View style={styles.avatarCircle}>
+              {uploadingPhoto ? (
+                <ActivityIndicator size="small" color={Colors.accent} />
+              ) : profileImage ? (
+                <Image source={{ uri: profileImage }} style={styles.avatarImage} contentFit="cover" />
+              ) : (
+                <Text style={styles.avatarInitials}>{initials}</Text>
+              )}
+            </View>
+            <View>
+              <Text style={styles.avatarChangeText}>Change photo</Text>
+              <Text style={styles.avatarHintText}>JPG or PNG, square works best</Text>
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.fieldRow}>
+            <View style={styles.fieldWrap}>
+              <FieldLabel label="FIRST NAME" />
+              <TextInput
+                style={styles.fieldInput}
+                value={firstName}
+                onChangeText={setFirstName}
+                placeholder="First name"
+                placeholderTextColor={Colors.iconMuted}
+              />
+            </View>
+            <View style={styles.fieldDividerV} />
+            <View style={styles.fieldWrap}>
+              <FieldLabel label="LAST NAME" />
+              <TextInput
+                style={styles.fieldInput}
+                value={lastName}
+                onChangeText={setLastName}
+                placeholder="Last name"
+                placeholderTextColor={Colors.iconMuted}
+              />
+            </View>
+          </View>
+
           <View style={styles.fieldRow}>
             <View style={styles.fieldWrap}>
               <FieldLabel label="EMAIL ADDRESS" />
@@ -232,11 +330,39 @@ export const SettingsScreen: React.FC = () => {
                 value={profilePhone}
                 onChangeText={setProfilePhone}
                 placeholder="Not set"
-                placeholderTextColor={C.muted}
+                placeholderTextColor={Colors.iconMuted}
                 keyboardType="phone-pad"
               />
             </View>
           </View>
+
+          <View style={styles.cardDivider} />
+
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleTextWrap}>
+              <Text style={styles.toggleTitle}>Email me when a listing is sold</Text>
+            </View>
+            <Switch
+              value={notifyOnSale}
+              onValueChange={setNotifyOnSale}
+              trackColor={{ false: Colors.whiteAlpha10, true: Colors.accent }}
+              thumbColor={Colors.white}
+              ios_backgroundColor={Colors.whiteAlpha10}
+            />
+          </View>
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleTextWrap}>
+              <Text style={styles.toggleTitle}>Show my profile publicly</Text>
+            </View>
+            <Switch
+              value={showPublicProfile}
+              onValueChange={setShowPublicProfile}
+              trackColor={{ false: Colors.whiteAlpha10, true: Colors.accent }}
+              thumbColor={Colors.white}
+              ios_backgroundColor={Colors.whiteAlpha10}
+            />
+          </View>
+
           <View style={styles.cardDivider} />
           <TouchableOpacity
             style={[styles.saveBtn, profileSaving && { opacity: 0.6 }]}
@@ -245,7 +371,7 @@ export const SettingsScreen: React.FC = () => {
             disabled={profileSaving}
           >
             {profileSaving
-              ? <ActivityIndicator size="small" color="#FFFFFF" />
+              ? <ActivityIndicator size="small" color={Colors.white} />
               : <Text style={styles.saveBtnText}>SAVE PROFILE</Text>}
           </TouchableOpacity>
         </View>
@@ -260,13 +386,11 @@ export const SettingsScreen: React.FC = () => {
               value={currentPwd}
               onChangeText={setCurrentPwd}
               placeholder="••••••••"
-              placeholderTextColor={C.muted}
+              placeholderTextColor={Colors.iconMuted}
               secureTextEntry={!showCurrentPwd}
               autoCapitalize="none"
             />
-            <TouchableOpacity onPress={() => setShowCurrentPwd(v => !v)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name={showCurrentPwd ? 'eye-off-outline' : 'eye-outline'} size={18} color={C.muted} />
-            </TouchableOpacity>
+            <IconButton icon={<Ionicons name={showCurrentPwd ? 'eye-off-outline' : 'eye-outline'} size={18} color={Colors.iconMuted} />} onPress={() => setShowCurrentPwd(v => !v)} accessibilityLabel={showCurrentPwd ? 'Hide password' : 'Show password'} />
           </View>
 
           <View style={styles.pwdRow}>
@@ -278,13 +402,11 @@ export const SettingsScreen: React.FC = () => {
                   value={newPwd}
                   onChangeText={setNewPwd}
                   placeholder="Min. 8 characters"
-                  placeholderTextColor={C.muted}
+                  placeholderTextColor={Colors.iconMuted}
                   secureTextEntry={!showNewPwd}
                   autoCapitalize="none"
                 />
-                <TouchableOpacity onPress={() => setShowNewPwd(v => !v)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Ionicons name={showNewPwd ? 'eye-off-outline' : 'eye-outline'} size={18} color={C.muted} />
-                </TouchableOpacity>
+                <IconButton icon={<Ionicons name={showNewPwd ? 'eye-off-outline' : 'eye-outline'} size={18} color={Colors.iconMuted} />} onPress={() => setShowNewPwd(v => !v)} accessibilityLabel={showNewPwd ? 'Hide password' : 'Show password'} />
               </View>
             </View>
             <View style={{ width: 12 }} />
@@ -296,13 +418,11 @@ export const SettingsScreen: React.FC = () => {
                   value={confirmPwd}
                   onChangeText={setConfirmPwd}
                   placeholder="••••••••"
-                  placeholderTextColor={C.muted}
+                  placeholderTextColor={Colors.iconMuted}
                   secureTextEntry={!showConfirmPwd}
                   autoCapitalize="none"
                 />
-                <TouchableOpacity onPress={() => setShowConfirmPwd(v => !v)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Ionicons name={showConfirmPwd ? 'eye-off-outline' : 'eye-outline'} size={18} color={C.muted} />
-                </TouchableOpacity>
+                <IconButton icon={<Ionicons name={showConfirmPwd ? 'eye-off-outline' : 'eye-outline'} size={18} color={Colors.iconMuted} />} onPress={() => setShowConfirmPwd(v => !v)} accessibilityLabel={showConfirmPwd ? 'Hide password' : 'Show password'} />
               </View>
             </View>
           </View>
@@ -315,7 +435,7 @@ export const SettingsScreen: React.FC = () => {
             disabled={pwdSaving}
           >
             {pwdSaving
-              ? <ActivityIndicator size="small" color="#FFFFFF" />
+              ? <ActivityIndicator size="small" color={Colors.white} />
               : <Text style={styles.saveBtnText}>UPDATE PASSWORD</Text>}
           </TouchableOpacity>
         </View>
@@ -328,17 +448,17 @@ export const SettingsScreen: React.FC = () => {
           </Text>
 
           {stripeLoading ? (
-            <ActivityIndicator size="small" color={C.accent} style={{ marginVertical: 16 }} />
+            <ActivityIndicator size="small" color={Colors.accent} style={{ marginVertical: 16 }} />
           ) : stripeOnboarded ? (
             <View style={styles.stripeConnected}>
-              <Ionicons name="checkmark-circle" size={18} color={C.success} />
+              <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
               <Text style={styles.stripeConnectedText}>Stripe account connected</Text>
             </View>
           ) : (
             <>
               {stripePartial && (
                 <View style={styles.stripeWarning}>
-                  <Ionicons name="alert-circle-outline" size={14} color={C.warning} />
+                  <Ionicons name="alert-circle-outline" size={14} color={Colors.warning} />
                   <Text style={styles.stripeWarningText}>
                     Your Stripe account was created but onboarding is incomplete. Click below to finish.
                   </Text>
@@ -351,9 +471,9 @@ export const SettingsScreen: React.FC = () => {
                 disabled={stripeConnecting}
               >
                 {stripeConnecting
-                  ? <ActivityIndicator size="small" color="#FFFFFF" />
+                  ? <ActivityIndicator size="small" color={Colors.white} />
                   : <>
-                      <Ionicons name="arrow-redo-outline" size={16} color="#FFFFFF" />
+                      <Ionicons name="arrow-redo-outline" size={16} color={Colors.white} />
                       <Text style={styles.stripeBtnText}>CONNECT BANK ACCOUNT</Text>
                     </>}
               </TouchableOpacity>
@@ -377,7 +497,7 @@ export const SettingsScreen: React.FC = () => {
             value={bankName}
             onChangeText={setBankName}
             placeholder="e.g. John Smith"
-            placeholderTextColor={C.muted}
+            placeholderTextColor={Colors.iconMuted}
             autoCapitalize="words"
           />
 
@@ -389,7 +509,7 @@ export const SettingsScreen: React.FC = () => {
                 value={sortCode}
                 onChangeText={setSortCode}
                 placeholder="e.g. 00-00-00"
-                placeholderTextColor={C.muted}
+                placeholderTextColor={Colors.iconMuted}
                 keyboardType="numbers-and-punctuation"
               />
             </View>
@@ -401,7 +521,7 @@ export const SettingsScreen: React.FC = () => {
                 value={accountNumber}
                 onChangeText={setAccountNumber}
                 placeholder="e.g. 12345678"
-                placeholderTextColor={C.muted}
+                placeholderTextColor={Colors.iconMuted}
                 keyboardType="numeric"
                 maxLength={8}
               />
@@ -416,7 +536,7 @@ export const SettingsScreen: React.FC = () => {
             disabled={bankSaving}
           >
             {bankSaving
-              ? <ActivityIndicator size="small" color="#FFFFFF" />
+              ? <ActivityIndicator size="small" color={Colors.white} />
               : <Text style={styles.saveBtnText}>SAVE BANK DETAILS</Text>}
           </TouchableOpacity>
         </View>
@@ -429,17 +549,17 @@ export const SettingsScreen: React.FC = () => {
 // ══════════════════════════ STYLES ════════════════════════════════
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.bg },
+  container: { flex: 1, backgroundColor: Colors.bgPrimary },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 24, marginBottom: 16,
   },
   backBtn: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
+    backgroundColor: Colors.whiteAlpha04, borderWidth: 1, borderColor: Colors.whiteAlpha07,
     alignItems: 'center', justifyContent: 'center',
   },
-  title: { fontFamily: FontFamily.bold, fontSize: 18, color: C.white },
+  title: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, gap: 8 },
 
@@ -447,77 +567,97 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16, marginBottom: 10 },
   sectionIconWrap: {
     width: 26, height: 26, borderRadius: 8,
-    backgroundColor: 'rgba(220,31,38,0.10)', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.accentAlpha10, alignItems: 'center', justifyContent: 'center',
   },
-  sectionLabel: { fontFamily: FontFamily.bold, fontSize: 11, color: C.white, letterSpacing: 1.2 },
+  sectionLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 1.2 },
 
   // Card
   card: {
-    backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border,
+    backgroundColor: Colors.bgSecondary, borderRadius: 16, borderWidth: 1, borderColor: Colors.whiteAlpha07,
     padding: 18, gap: 14,
   },
-  cardDivider: { height: 1, backgroundColor: C.border, marginHorizontal: -2 },
+  cardDivider: { height: 1, backgroundColor: Colors.whiteAlpha07, marginHorizontal: -2 },
 
   // Field label
-  fieldLabel: { fontFamily: FontFamily.bold, fontSize: 9, color: C.muted, letterSpacing: 1, marginBottom: 6 },
+  fieldLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.iconMuted, letterSpacing: 1, marginBottom: 6 },
 
   // Profile info row
   fieldRow: { flexDirection: 'row', gap: 0 },
   fieldWrap: { flex: 1 },
-  fieldDividerV: { width: 1, backgroundColor: C.border, marginHorizontal: 14 },
-  fieldValueReadonly: { fontFamily: FontFamily.regular, fontSize: 13, color: C.secondary, paddingVertical: 10 },
+  fieldDividerV: { width: 1, backgroundColor: Colors.whiteAlpha07, marginHorizontal: 14 },
+  fieldValueReadonly: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary, paddingVertical: 10 },
   fieldInput: {
-    fontFamily: FontFamily.regular, fontSize: 13, color: C.white,
-    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.border,
+    fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.white,
+    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.whiteAlpha07,
   },
+
+  // Avatar / photo upload
+  avatarRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  avatarCircle: {
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: Colors.whiteAlpha04, borderWidth: 1, borderColor: Colors.whiteAlpha10,
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+  },
+  avatarImage: { width: 56, height: 56, borderRadius: 28 },
+  avatarInitials: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.textSecondary },
+  avatarChangeText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.accent },
+  avatarHintText: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted, marginTop: 2 },
+
+  // Preference toggles
+  toggleRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  toggleTextWrap: { flex: 1, paddingRight: 12 },
+  toggleTitle: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary },
 
   // Password
   pwdInputWrap: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 10, borderWidth: 1, borderColor: C.border,
+    backgroundColor: Colors.whiteAlpha04, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha07,
     paddingHorizontal: 14, paddingVertical: 12, gap: 8,
   },
-  pwdInput: { flex: 1, fontFamily: FontFamily.regular, fontSize: 14, color: C.white },
+  pwdInput: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.size14, color: Colors.white },
   pwdRow: { flexDirection: 'row' },
 
   // Buttons
   saveBtn: {
-    backgroundColor: C.accent, borderRadius: 10, height: 44,
+    backgroundColor: Colors.accent, borderRadius: 10, height: 44,
     alignItems: 'center', justifyContent: 'center',
   },
   updatePwdBtn: {
-    backgroundColor: '#1D2030', borderRadius: 10, height: 44,
+    backgroundColor: Colors.darkBlue_1d2030, borderRadius: 10, height: 44,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: C.accent,
+    borderWidth: 1, borderColor: Colors.accent,
   },
-  saveBtnText: { fontFamily: FontFamily.bold, fontSize: 13, color: C.white, letterSpacing: 0.5 },
+  saveBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, letterSpacing: 0.5 },
 
   // Stripe
-  payoutDesc: { fontFamily: FontFamily.regular, fontSize: 13, color: C.secondary, lineHeight: 18 },
+  payoutDesc: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 18 },
   stripeConnected: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 },
-  stripeConnectedText: { fontFamily: FontFamily.bold, fontSize: 13, color: C.success },
+  stripeConnectedText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.success },
   stripeWarning: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 8,
-    backgroundColor: 'rgba(245,158,11,0.08)', borderRadius: 10, borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.25)', padding: 12,
+    backgroundColor: Colors.warningAlpha08, borderRadius: 10, borderWidth: 1,
+    borderColor: Colors.warningAlpha25, padding: 12,
   },
-  stripeWarningText: { flex: 1, fontFamily: FontFamily.regular, fontSize: 12, color: C.warning, lineHeight: 17 },
+  stripeWarningText: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.warning, lineHeight: 17 },
   stripeBtn: {
-    backgroundColor: C.accent, borderRadius: 10, height: 44,
+    backgroundColor: Colors.accent, borderRadius: 10, height: 44,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
   },
-  stripeBtnText: { fontFamily: FontFamily.bold, fontSize: 13, color: C.white, letterSpacing: 0.5 },
-  stripeNote: { fontFamily: FontFamily.regular, fontSize: 11, color: C.muted, textAlign: 'center', marginTop: -4 },
+  stripeBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, letterSpacing: 0.5 },
+  stripeNote: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted, textAlign: 'center', marginTop: -4 },
 
   // Bank details
   inputField: {
-    backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 10, borderWidth: 1, borderColor: C.border,
+    backgroundColor: Colors.whiteAlpha04, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha07,
     paddingHorizontal: 14, paddingVertical: 12,
-    fontFamily: FontFamily.regular, fontSize: 14, color: C.white,
+    fontFamily: FontFamily.regular, fontSize: FontSize.size14, color: Colors.white,
   },
   bankRow: { flexDirection: 'row' },
   bankSaveBtn: {
-    backgroundColor: C.warning, borderRadius: 10, height: 44,
+    backgroundColor: Colors.warning, borderRadius: 10, height: 44,
     alignItems: 'center', justifyContent: 'center',
   },
 });

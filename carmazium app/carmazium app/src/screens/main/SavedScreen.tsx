@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  FlatList,
   RefreshControl,
   StatusBar,
   Dimensions,
@@ -15,8 +16,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { FontFamily } from '../../constants/typography';
+import {FontFamily, FontSize } from '../../constants/typography';
 import { Colors } from '../../constants/colors';
+import { IconButton } from '../../components/IconButton';
 import { CarListing, formatPrice } from '../../data/listings';
 import { useWatchlistStore } from '../../store/watchlistStore';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -24,6 +26,12 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 
 const { width } = Dimensions.get('window');
+
+// Matches web's watchlist page status pill colours (dashboard/buyer/watchlist/page.tsx)
+const STATUS_BADGE_BG: Record<string, string> = {
+  ACTIVE: Colors.success,
+  SOLD: Colors.infoBlue,
+};
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 type ViewMode = 'grid' | 'list';
@@ -35,7 +43,6 @@ export const SavedScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
 
   const [viewMode,   setViewMode]   = useState<ViewMode>('grid');
-  const [activeTab,  setActiveTab]  = useState('All');
   const [refreshing, setRefreshing] = useState(false);
 
   const { savedListings, isLoading, toggle, isSaved, hydrateFromApi } = useWatchlistStore();
@@ -98,123 +105,122 @@ export const SavedScreen: React.FC = () => {
     </View>
   );
 
-  // ─── Grid View ─────────────────────────────────────────────────────────────
+  // ─── Grid View — FlatList (numColumns=2) so a growing watchlist virtualizes
+  // instead of mounting every row at once, same as the list view below
+  // (mobile-audit.md P3). Cards use a fixed CARD_WIDTH rather than flex:1 so a
+  // lone trailing item in an odd-numbered list sits left-aligned at half width
+  // instead of stretching to fill the row. ──
 
-  const renderGridView = () => {
-    if (displayedListings.length === 0) return renderEmptyState();
-
-    // Group pairs for two-column layout
-    const rows: CarListing[][] = [];
-    for (let i = 0; i < displayedListings.length; i += 2) {
-      rows.push(displayedListings.slice(i, i + 2));
-    }
-
+  const renderGridItem = ({ item: listing }: { item: CarListing }) => {
+    const saved = isSaved(listing.id);
     return (
-      <View style={styles.gridContainer}>
-        {rows.map((pair, rowIndex) => (
-          <View key={rowIndex} style={styles.gridRow}>
-            {pair.map((listing) => {
-              const saved = isSaved(listing.id);
-              return (
-                <TouchableOpacity
-                  key={listing.id}
-                  style={styles.gridCard}
-                  activeOpacity={0.88}
-                  onPress={() => handleCardPress(listing)}
-                >
-                  <View style={styles.gridImgWrap}>
-                    {listing.images[0] ? (
-                      <Image source={{ uri: listing.images[0] }} style={styles.gridImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-                    ) : (
-                      <View style={[styles.gridImg, { backgroundColor: '#18181E' }]} />
-                    )}
-                    <TouchableOpacity
-                      style={styles.heartBtnIcon}
-                      activeOpacity={0.7}
-                      onPress={() => toggle(listing)}
-                    >
-                      <Ionicons
-                        name={saved ? 'heart' : 'heart-outline'}
-                        size={16}
-                        color={saved ? Colors.accent : '#FFFFFF'}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                  <View style={styles.gridInfo}>
-                    <Text style={styles.cardMeta}>
-                      {listing.year} · {listing.mileage.toLocaleString('en-GB')} MI
-                    </Text>
-                    <Text style={styles.cardTitle} numberOfLines={1}>
-                      {listing.make} {listing.model}
-                    </Text>
-                    <Text style={styles.cardPrice}>{formatPrice(listing.price)}</Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-            {/* Pad odd rows with an invisible spacer */}
-            {pair.length === 1 && <View style={styles.gridCardSpacer} />}
+      <TouchableOpacity
+        style={styles.gridCard}
+        activeOpacity={0.88}
+        onPress={() => handleCardPress(listing)}
+      >
+        <View style={styles.gridImgWrap}>
+          {listing.images[0] ? (
+            <Image source={{ uri: listing.images[0] }} style={styles.gridImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+          ) : (
+            <View style={[styles.gridImg, { backgroundColor: Colors.bgTertiary }]} />
+          )}
+          {listing.status && (
+            <View style={[styles.statusBadge, { backgroundColor: STATUS_BADGE_BG[listing.status] ?? Colors.textMuted }]}>
+              <Text style={styles.statusBadgeText}>{listing.status}</Text>
+            </View>
+          )}
+          <TouchableOpacity
+            style={styles.heartBtnIcon}
+            activeOpacity={0.7}
+            onPress={() => toggle(listing)}
+            accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'}
+            accessibilityRole="button"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons
+              name={saved ? 'heart' : 'heart-outline'}
+              size={16}
+              color={saved ? Colors.accent : Colors.white}
+            />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.gridInfo}>
+          <Text style={styles.cardMeta}>
+            {listing.year} · {listing.mileage.toLocaleString('en-GB')} MI
+          </Text>
+          <Text style={styles.cardTitle} numberOfLines={1}>
+            {listing.make} {listing.model}
+          </Text>
+          <View style={styles.gridPriceRow}>
+            <Text style={styles.cardPrice}>{formatPrice(listing.price)}</Text>
+            <Text style={styles.viewCountText}>{listing.viewCount ?? 0} views</Text>
           </View>
-        ))}
-      </View>
+        </View>
+      </TouchableOpacity>
     );
   };
 
-  // ─── List View ─────────────────────────────────────────────────────────────
+  // ─── List View — FlatList so a growing watchlist virtualizes instead of
+  // mounting every row at once (mobile-audit.md P3/P6). ──
 
-  const renderListView = () => {
-    if (displayedListings.length === 0) return renderEmptyState();
+  const renderListSortRow = () => (
+    <View style={styles.listSortRow}>
+      <Text style={styles.listSortLabel}>SORTED BY: RECENTLY SAVED</Text>
+      <TouchableOpacity style={styles.listSortChange} activeOpacity={0.7}>
+        <Text style={styles.listSortChangeText}>Change</Text>
+        <Ionicons name="chevron-down" size={12} color={Colors.accent} accessibilityElementsHidden importantForAccessibility="no" />
+      </TouchableOpacity>
+    </View>
+  );
 
+  const renderListItem = ({ item: listing }: { item: CarListing }) => {
+    const saved = isSaved(listing.id);
     return (
-      <View style={styles.listContainer}>
-        <View style={styles.listSortRow}>
-          <Text style={styles.listSortLabel}>SORTED BY: RECENTLY SAVED</Text>
-          <TouchableOpacity style={styles.listSortChange} activeOpacity={0.7}>
-            <Text style={styles.listSortChangeText}>Change</Text>
-            <Ionicons name="chevron-down" size={12} color={Colors.accent} />
-          </TouchableOpacity>
-        </View>
-
-        {displayedListings.map((listing) => {
-          const saved = isSaved(listing.id);
-          return (
-            <TouchableOpacity
-              key={listing.id}
-              style={styles.listCard}
-              activeOpacity={0.85}
-              onPress={() => handleCardPress(listing)}
-            >
-              {listing.images[0] ? (
-                <Image source={{ uri: listing.images[0] }} style={styles.listImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-              ) : (
-                <View style={[styles.listImg, { backgroundColor: '#18181E' }]} />
-              )}
-              <View style={styles.listInfo}>
-                <Text style={styles.listTitle} numberOfLines={1}>
-                  {listing.make} {listing.model}
-                </Text>
-                <Text style={styles.listMeta}>
-                  {listing.year} · {listing.mileage.toLocaleString('en-GB')} mi · {listing.location || ''}
-                </Text>
-                <View style={styles.listPriceRow}>
-                  <Text style={styles.listPrice}>{formatPrice(listing.price)}</Text>
-                </View>
+      <TouchableOpacity
+        style={styles.listCard}
+        activeOpacity={0.85}
+        onPress={() => handleCardPress(listing)}
+      >
+        {listing.images[0] ? (
+          <Image source={{ uri: listing.images[0] }} style={styles.listImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+        ) : (
+          <View style={[styles.listImg, { backgroundColor: Colors.bgTertiary }]} />
+        )}
+        <View style={styles.listInfo}>
+          <View style={styles.listTitleRow}>
+            <Text style={styles.listTitle} numberOfLines={1}>
+              {listing.make} {listing.model}
+            </Text>
+            {listing.status && (
+              <View style={[styles.statusBadgeSmall, { backgroundColor: STATUS_BADGE_BG[listing.status] ?? Colors.textMuted }]}>
+                <Text style={styles.statusBadgeSmallText}>{listing.status}</Text>
               </View>
-              <TouchableOpacity
-                style={styles.listHeartBtn}
-                activeOpacity={0.7}
-                onPress={() => toggle(listing)}
-              >
-                <Ionicons
-                  name={saved ? 'heart' : 'heart-outline'}
-                  size={18}
-                  color={saved ? Colors.accent : Colors.textMuted}
-                />
-              </TouchableOpacity>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+            )}
+          </View>
+          <Text style={styles.listMeta}>
+            {listing.year} · {listing.mileage.toLocaleString('en-GB')} mi · {listing.location || ''}
+          </Text>
+          <View style={styles.listPriceRow}>
+            <Text style={styles.listPrice}>{formatPrice(listing.price)}</Text>
+            <Text style={styles.viewCountText}>{listing.viewCount ?? 0} views</Text>
+          </View>
+        </View>
+        <TouchableOpacity
+          style={styles.listHeartBtn}
+          activeOpacity={0.7}
+          onPress={() => toggle(listing)}
+          accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'}
+          accessibilityRole="button"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons
+            name={saved ? 'heart' : 'heart-outline'}
+            size={18}
+            color={saved ? Colors.accent : Colors.textMuted}
+          />
+        </TouchableOpacity>
+      </TouchableOpacity>
     );
   };
 
@@ -224,7 +230,7 @@ export const SavedScreen: React.FC = () => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(220,31,38,0.03)', 'rgba(0,0,0,0)', '#0A0A0C']}
+        colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.4 }}
@@ -237,48 +243,14 @@ export const SavedScreen: React.FC = () => {
           <Text style={styles.headerTitle}>{headerTitle}</Text>
         </View>
         <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.iconBtn}
+          <IconButton
+            icon={<Ionicons name={viewMode === 'grid' ? 'list-outline' : 'grid-outline'} size={20} color={Colors.textSecondary} />}
+            accessibilityLabel={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
             onPress={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name={viewMode === 'grid' ? 'list-outline' : 'grid-outline'}
-              size={20}
-              color="#A0A0AB"
-            />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7}>
-            <Ionicons name="filter" size={20} color="#A0A0AB" />
-          </TouchableOpacity>
+            style={styles.iconBtn}
+          />
         </View>
       </View>
-
-      {/* Tabs / Filters (grid view only) */}
-      {viewMode === 'grid' && (
-        <View style={styles.tabsWrap}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.tabsContent}
-          >
-            {['All', 'Price drops', 'Auctions', 'Sold'].map((tab) => {
-              const isActive = activeTab === tab;
-              return (
-                <TouchableOpacity
-                  key={tab}
-                  style={[styles.tabBtn, isActive && styles.tabBtnActive]}
-                  onPress={() => setActiveTab(tab)}
-                >
-                  <Text style={[styles.tabBtnText, isActive && styles.tabBtnTextActive]}>
-                    {tab}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-      )}
 
       {/* Content */}
       {isLoading && savedListings.length === 0 ? (
@@ -288,10 +260,11 @@ export const SavedScreen: React.FC = () => {
         >
           {renderSkeleton()}
         </ScrollView>
-      ) : (
-        <ScrollView
-          showsVerticalScrollIndicator={false}
+      ) : viewMode === 'list' ? (
+        <FlatList
+          style={{ flex: 1 }}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
+          showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -300,20 +273,45 @@ export const SavedScreen: React.FC = () => {
               colors={[Colors.accent]}
             />
           }
-        >
-          {viewMode === 'grid' ? renderGridView() : renderListView()}
-        </ScrollView>
+          data={displayedListings}
+          keyExtractor={(item) => item.id}
+          renderItem={renderListItem}
+          ListHeaderComponent={displayedListings.length > 0 ? renderListSortRow() : null}
+          ListEmptyComponent={renderEmptyState()}
+        />
+      ) : (
+        <FlatList
+          style={{ flex: 1 }}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 100, gap: 16 }]}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={Colors.accent}
+              colors={[Colors.accent]}
+            />
+          }
+          data={displayedListings}
+          numColumns={2}
+          columnWrapperStyle={styles.gridRow}
+          keyExtractor={(item) => item.id}
+          renderItem={renderGridItem}
+          ListEmptyComponent={renderEmptyState()}
+        />
       )}
     </View>
   );
 };
 
-const CARD_WIDTH = (width - 40 - 16) / 2; // 20px padding each side + 16px gap
+// scrollContent uses paddingHorizontal: 24 on each side, with a 16px gap
+// between the two grid columns.
+const CARD_WIDTH = (width - 24 * 2 - 16) / 2;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0C',
+    backgroundColor: Colors.bgPrimary,
   },
   header: {
     flexDirection: 'row',
@@ -324,15 +322,15 @@ const styles = StyleSheet.create({
   },
   headerSub: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#A0A0AB',
+    fontSize: FontSize.size9,
+    color: Colors.textSecondary,
     letterSpacing: 1.5,
     marginBottom: 4,
   },
   headerTitle: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 28,
-    color: '#FFFFFF',
+    fontSize: FontSize['3xl'],
+    color: Colors.white,
     letterSpacing: -0.5,
   },
   headerActions: {
@@ -343,42 +341,14 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: Colors.whiteAlpha03,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   // Tabs
-  tabsWrap: {
-    marginBottom: 22,
-  },
-  tabsContent: {
-    paddingHorizontal: 24,
-    gap: 10,
-  },
-  tabBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 20,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  tabBtnActive: {
-    backgroundColor: '#DC1F26',
-    borderColor: '#DC1F26',
-  },
-  tabBtnText: {
-    fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#A0A0AB',
-  },
-  tabBtnTextActive: {
-    color: '#FFFFFF',
-  },
-
   scrollContent: {
     paddingHorizontal: 24,
     paddingBottom: 8,
@@ -391,11 +361,11 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   skeletonCard: {
-    width: (width - 40 - 16) / 2,
-    backgroundColor: '#111116',
+    width: CARD_WIDTH,
+    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     overflow: 'hidden',
   },
   skeletonInfo: {
@@ -404,30 +374,22 @@ const styles = StyleSheet.create({
   },
 
   // Grid View
-  gridContainer: {
-    flexDirection: 'column',
-    gap: 16,
-  },
   gridRow: {
-    flexDirection: 'row',
     gap: 16,
   },
   gridCard: {
-    flex: 1,
-    backgroundColor: '#111116',
+    width: CARD_WIDTH,
+    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     overflow: 'hidden',
-  },
-  gridCardSpacer: {
-    flex: 1,
   },
   gridImgWrap: {
     width: '100%',
     height: 116,
     position: 'relative',
-    backgroundColor: '#1E1E28',
+    backgroundColor: Colors.deepBlue_1e1e28,
   },
   gridImg: {
     width: '100%',
@@ -441,7 +403,7 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: Colors.blackAlpha50,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -450,21 +412,55 @@ const styles = StyleSheet.create({
   },
   cardMeta: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#8A8A93',
+    fontSize: FontSize.size9,
+    color: Colors.textFaint,
     letterSpacing: 0.5,
     marginBottom: 5,
   },
   cardTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
-    color: '#FFFFFF',
+    fontSize: FontSize.sm,
+    color: Colors.white,
     marginBottom: 7,
   },
   cardPrice: {
     fontFamily: FontFamily.mono,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
+  },
+  gridPriceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  statusBadge: {
+    position: 'absolute',
+    bottom: 10,
+    left: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  statusBadgeText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size9,
+    color: Colors.white,
+  },
+  statusBadgeSmall: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 5,
+    marginLeft: 6,
+  },
+  statusBadgeSmallText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size8,
+    color: Colors.white,
+  },
+  viewCountText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.size9,
+    color: Colors.textMuted,
   },
 
   // List View
@@ -480,8 +476,8 @@ const styles = StyleSheet.create({
   },
   listSortLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#A0A0AB',
+    fontSize: FontSize.size10,
+    color: Colors.textSecondary,
     letterSpacing: 1.5,
   },
   listSortChange: {
@@ -491,15 +487,15 @@ const styles = StyleSheet.create({
   },
   listSortChangeText: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#DC1F26',
+    fontSize: FontSize.xs,
+    color: Colors.accent,
   },
   listCard: {
     flexDirection: 'row',
-    backgroundColor: '#111116',
+    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     padding: 14,
     alignItems: 'center',
   },
@@ -513,16 +509,21 @@ const styles = StyleSheet.create({
   listInfo: {
     flex: 1,
   },
+  listTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   listTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
-    marginBottom: 4,
+    fontSize: FontSize.size14,
+    color: Colors.white,
+    flexShrink: 1,
   },
   listMeta: {
     fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: '#A0A0AB',
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
     marginBottom: 10,
   },
   listPriceRow: {
@@ -532,8 +533,8 @@ const styles = StyleSheet.create({
   },
   listPrice: {
     fontFamily: FontFamily.mono,
-    fontSize: 15,
-    color: '#FFFFFF',
+    fontSize: FontSize.base,
+    color: Colors.white,
   },
   listHeartBtn: {
     paddingLeft: 12,

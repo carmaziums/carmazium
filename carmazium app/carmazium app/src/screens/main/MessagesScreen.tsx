@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,7 @@ import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 
+import { IconButton } from '../../components/IconButton';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 // Helper format functions for chat data mapping
@@ -61,6 +62,93 @@ const getInitials = (name: string) => {
     .toUpperCase()
     .slice(0, 2);
 };
+
+// Avatar background colors
+const getAvatarBg = (initials: string) => {
+  if (initials === 'KM') return Colors.darkBlue_2a3047;
+  if (initials === 'MA') return Colors.darkTeal;
+  if (initials === 'GS') return Colors.darkPurple;
+  return Colors.darkRed_3b2424;
+};
+
+interface ThreadRowProps {
+  room: ChatRoom;
+  onPress: (roomId: string) => void;
+}
+
+// Hoisted + memoized so FlatList only re-renders the thread row whose props
+// actually changed, instead of recreating this JSX inline in renderItem on
+// every parent re-render (mobile-audit.md P3/P4).
+const ThreadRow: React.FC<ThreadRowProps> = React.memo(({ room, onPress }) => {
+  const isUnread = room.unreadCount > 0;
+  const displayName = getDisplayName(room.otherUser);
+  const initials = getInitials(displayName);
+  const lastMsgContent = room.lastMessage?.content || 'No messages yet';
+  const hasOfferCounter = lastMsgContent.startsWith('Counter-offer');
+  const isDealer = room.otherUser.role === 'DEALER';
+
+  return (
+    <TouchableOpacity
+      style={[
+        styles.threadCard,
+        styles.threadCardSpacing,
+        isUnread && styles.threadCardUnread,
+      ]}
+      onPress={() => onPress(room.id)}
+      activeOpacity={0.85}
+    >
+      {/* Left avatar with badge */}
+      <View style={styles.avatarContainer}>
+        <View style={[styles.avatar, { backgroundColor: getAvatarBg(initials) }]}>
+          <Text style={styles.avatarText}>{initials}</Text>
+        </View>
+        {isDealer && (
+          <View style={styles.verifiedBadge}>
+            <Ionicons name="checkmark-circle" size={14} color={Colors.lightBlue_0084ff} />
+          </View>
+        )}
+      </View>
+
+      {/* Middle texts */}
+      <View style={styles.metaContainer}>
+        <View style={styles.metaTitleRow}>
+          <Text style={[styles.dealerName, isUnread && styles.textBold]} numberOfLines={1}>
+            {displayName}
+          </Text>
+          <Text style={styles.timeText}>{formatMessageTime(room.lastMessage?.createdAt)}</Text>
+        </View>
+
+        <Text style={styles.carModelText} numberOfLines={1}>
+          {room.listing?.title || 'General Inquiry'}
+        </Text>
+
+        {hasOfferCounter ? (
+          <View style={styles.offerTagRow}>
+            <Ionicons name="pricetag" size={12} color={Colors.accent} style={{ marginRight: 4 }} />
+            <Text style={styles.offerTagText}>{lastMsgContent}</Text>
+          </View>
+        ) : (
+          <Text
+            style={[
+              styles.lastMessageText,
+              isUnread && styles.lastMessageTextUnread
+            ]}
+            numberOfLines={1}
+          >
+            {lastMsgContent}
+          </Text>
+        )}
+      </View>
+
+      {/* Right indicators */}
+      {isUnread && (
+        <View style={styles.unreadBadge}>
+          <Text style={styles.unreadBadgeText}>{room.unreadCount}</Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+});
 
 const renderSkeletonRows = () => (
   <View style={styles.skeletonList}>
@@ -127,18 +215,15 @@ export const MessagesScreen: React.FC = () => {
     return 0;
   };
 
-  const handleThreadPress = (room: ChatRoom) => {
-    markAsRead(room.id);
-    navigation.navigate('ChatScreen', { threadId: room.id });
-  };
+  const handleThreadPress = useCallback((roomId: string) => {
+    markAsRead(roomId);
+    navigation.navigate('ChatScreen', { threadId: roomId });
+  }, [markAsRead, navigation]);
 
-  // Avatar background colors
-  const getAvatarBg = (initials: string) => {
-    if (initials === 'KM') return '#2A3047';
-    if (initials === 'MA') return '#1A3330';
-    if (initials === 'GS') return '#302038';
-    return '#3B2424';
-  };
+  const renderThreadRow = useCallback(
+    ({ item: room }: { item: ChatRoom }) => <ThreadRow room={room} onPress={handleThreadPress} />,
+    [handleThreadPress],
+  );
 
   return (
     <View style={styles.container}>
@@ -146,7 +231,7 @@ export const MessagesScreen: React.FC = () => {
 
       {/* Top red-blue glow backdrop */}
       <LinearGradient
-        colors={['rgba(220, 31, 38, 0.03)', 'rgba(59, 130, 246, 0.03)', '#0A0A0C']}
+        colors={[Colors.accentAlpha03, Colors.infoBlueAlpha03, Colors.bgPrimary]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.6 }}
         style={StyleSheet.absoluteFillObject}
@@ -159,100 +244,19 @@ export const MessagesScreen: React.FC = () => {
         // Virtualized list — only mounts rows near the viewport, which keeps
         // scrolling smooth as a user's conversation history grows over time
         // (unlike the previous ScrollView+.map() that rendered every row upfront).
-        renderItem={({ item: room }) => {
-          const isUnread = room.unreadCount > 0;
-          const displayName = getDisplayName(room.otherUser);
-          const initials = getInitials(displayName);
-          const lastMsgContent = room.lastMessage?.content || 'No messages yet';
-          const hasOfferCounter = lastMsgContent.startsWith('Counter-offer');
-          const isDealer = room.otherUser.role === 'DEALER';
-
-          return (
-            <TouchableOpacity
-              style={[
-                styles.threadCard,
-                styles.threadCardSpacing,
-                isUnread && styles.threadCardUnread,
-              ]}
-              onPress={() => handleThreadPress(room)}
-              activeOpacity={0.85}
-            >
-              {/* Left avatar with badge */}
-              <View style={styles.avatarContainer}>
-                <View style={[styles.avatar, { backgroundColor: getAvatarBg(initials) }]}>
-                  <Text style={styles.avatarText}>{initials}</Text>
-                </View>
-                {isDealer && (
-                  <View style={styles.verifiedBadge}>
-                    <Ionicons name="checkmark-circle" size={14} color="#0084FF" />
-                  </View>
-                )}
-              </View>
-
-              {/* Middle texts */}
-              <View style={styles.metaContainer}>
-                <View style={styles.metaTitleRow}>
-                  <Text style={[styles.dealerName, isUnread && styles.textBold]} numberOfLines={1}>
-                    {displayName}
-                  </Text>
-                  <Text style={styles.timeText}>{formatMessageTime(room.lastMessage?.createdAt)}</Text>
-                </View>
-
-                <Text style={styles.carModelText} numberOfLines={1}>
-                  {room.listing?.title || 'General Inquiry'}
-                </Text>
-
-                {hasOfferCounter ? (
-                  <View style={styles.offerTagRow}>
-                    <Ionicons name="pricetag" size={12} color="#DC1F26" style={{ marginRight: 4 }} />
-                    <Text style={styles.offerTagText}>{lastMsgContent}</Text>
-                  </View>
-                ) : (
-                  <Text
-                    style={[
-                      styles.lastMessageText,
-                      isUnread && styles.lastMessageTextUnread
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {lastMsgContent}
-                  </Text>
-                )}
-              </View>
-
-              {/* Right indicators */}
-              {isUnread && (
-                <View style={styles.unreadBadge}>
-                  <Text style={styles.unreadBadgeText}>{room.unreadCount}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        }}
+        renderItem={renderThreadRow}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         ListHeaderComponent={
           <>
             {/* Header navigation bar */}
             <View style={styles.header}>
               <View>
-                <TouchableOpacity
-                  style={styles.backBtn}
-                  onPress={() => navigation.goBack()}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
-                </TouchableOpacity>
+                <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
                 <Text style={styles.unreadTag}>{unreadCount} UNREAD</Text>
                 <Text style={styles.title}>Messages</Text>
               </View>
 
-              <TouchableOpacity
-                style={styles.searchIconBtn}
-                onPress={() => setSearchOpen(!searchOpen)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="search-outline" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
+              <IconButton style={styles.searchIconBtn} icon={<Ionicons name="search-outline" size={20} color={Colors.white} />} onPress={() => setSearchOpen(!searchOpen)} accessibilityLabel={searchOpen ? 'Hide search' : 'Search conversations'} />
             </View>
 
             {/* Toggleable search bar */}
@@ -270,9 +274,7 @@ export const MessagesScreen: React.FC = () => {
                     autoCapitalize="none"
                   />
                   {searchQuery.length > 0 && (
-                    <TouchableOpacity onPress={() => setSearchQuery('')}>
-                      <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
-                    </TouchableOpacity>
+                    <IconButton icon={<Ionicons name="close-circle" size={16} color={Colors.textMuted} />} onPress={() => setSearchQuery('')} accessibilityLabel="Clear" />
                   )}
                 </View>
               </View>
@@ -345,7 +347,7 @@ export const MessagesScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0C',
+    backgroundColor: Colors.bgPrimary,
   },
   scroll: {
     paddingBottom: 20,
@@ -367,24 +369,24 @@ const styles = StyleSheet.create({
   },
   unreadTag: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#8A8A93',
+    fontSize: FontSize.size10,
+    color: Colors.textFaint,
     letterSpacing: 1.5,
     marginBottom: 2,
   },
   title: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize['3xl'] - 2,
-    color: '#FFFFFF',
+    color: Colors.white,
     letterSpacing: -0.6,
   },
   searchIconBtn: {
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: Colors.whiteAlpha06,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 16,
@@ -399,16 +401,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: '#2A2A32',
+    borderColor: Colors.borderSubtle,
     gap: 10,
   },
   searchInput: {
     flex: 1,
     fontFamily: FontFamily.regular,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
     height: '100%',
   },
   // Tabs
@@ -422,15 +424,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: Colors.whiteAlpha05,
     justifyContent: 'center',
     alignItems: 'center',
   },
   tabPillActive: {
-    backgroundColor: '#DC1F26',
-    borderColor: '#DC1F26',
+    backgroundColor: Colors.accent,
+    borderColor: Colors.accent,
   },
   tabPillContent: {
     flexDirection: 'row',
@@ -439,11 +441,11 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#A0A0AB',
+    fontSize: FontSize.size12,
+    color: Colors.textSecondary,
   },
   tabLabelActive: {
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   tabCount: {
     fontFamily: FontFamily.regular,
@@ -453,7 +455,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
   },
   // Thread list
   threadCardSpacing: {
@@ -462,14 +464,14 @@ const styles = StyleSheet.create({
   threadCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: Colors.whiteAlpha05,
     borderRadius: 16,
     padding: 18,
   },
   threadCardUnread: {
-    borderColor: 'rgba(220, 31, 38, 0.25)',
+    borderColor: Colors.accentAlpha25,
   },
   avatarContainer: {
     position: 'relative',
@@ -484,14 +486,14 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     fontFamily: FontFamily.bold,
-    fontSize: 16,
-    color: '#FFFFFF',
+    fontSize: FontSize.md,
+    color: Colors.white,
   },
   verifiedBadge: {
     position: 'absolute',
     bottom: -2,
     right: -2,
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderRadius: 8,
     padding: 1,
   },
@@ -506,41 +508,41 @@ const styles = StyleSheet.create({
   },
   dealerName: {
     fontFamily: FontFamily.medium,
-    fontSize: 15,
-    color: '#A0A0AB',
+    fontSize: FontSize.base,
+    color: Colors.textSecondary,
     flex: 1,
     marginRight: 8,
   },
   textBold: {
     fontFamily: FontFamily.bold,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   timeText: {
     fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: '#5C5C6B',
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
   },
   carModelText: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#A0A0AB',
+    fontSize: FontSize.size12,
+    color: Colors.textSecondary,
     marginBottom: 4,
   },
   lastMessageText: {
     fontFamily: FontFamily.regular,
-    fontSize: 13,
-    color: '#5C5C6B',
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
   },
   lastMessageTextUnread: {
     fontFamily: FontFamily.medium,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   offerTagRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(220, 31, 38, 0.08)',
+    backgroundColor: Colors.accentAlpha08,
     borderWidth: 1,
-    borderColor: 'rgba(220, 31, 38, 0.15)',
+    borderColor: Colors.accentAlpha15,
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -548,22 +550,22 @@ const styles = StyleSheet.create({
   },
   offerTagText: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#DC1F26',
+    fontSize: FontSize.xs,
+    color: Colors.accent,
   },
   unreadBadge: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 12,
   },
   unreadBadgeText: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#FFFFFF',
+    fontSize: FontSize.size10,
+    color: Colors.white,
   },
   // Skeleton
   skeletonList: {

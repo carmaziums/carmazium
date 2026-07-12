@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   ScrollView,
   StatusBar,
   Alert,
-  Modal,
   TextInput,
   ActivityIndicator,
   FlatList,
@@ -15,6 +14,8 @@ import {
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BottomSheet } from '../../components/BottomSheet';
+import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { useAuthStore } from '../../store/authStore';
 import { apiClient } from '../../lib/apiClient';
 import { startAddressVerification, confirmAddressVerification } from '../../lib/addressVerificationApi';
@@ -22,6 +23,7 @@ import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { GlobalToastContext } from '../../components/GlobalToastProvider';
 
+import { IconButton } from '../../components/IconButton';
 interface WatchlistCountResponse {
   success: boolean;
   data: { count: number };
@@ -32,10 +34,29 @@ interface ListingStatsResponse {
   data: { activeListings: number; totalViews: number; offersReceived: number };
 }
 
+interface ChatBubbleItem {
+  id: string;
+  sender: 'user' | 'agent';
+  text: string;
+}
+
+// Hoisted + memoized so FlatList only re-renders the bubble whose props
+// actually changed (mobile-audit.md P3/P4).
+const ChatBubble: React.FC<{ item: ChatBubbleItem }> = React.memo(({ item }) => (
+  <View
+    style={[
+      styles.chatBubble,
+      item.sender === 'user' ? styles.chatBubbleUser : styles.chatBubbleAgent,
+    ]}
+  >
+    <Text style={styles.chatText}>{item.text}</Text>
+  </View>
+));
+
 // Dynamic Sub-components & Modals
 export const ProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { user, logout, role, initializeAuth } = useAuthStore();
+  const { user, logout, role, initializeAuth, updateUser } = useAuthStore();
   const { showToast } = useContext(GlobalToastContext);
 
   // Profile Information States — derived from real auth store
@@ -44,17 +65,20 @@ export const ProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) =>
     : 'User';
   const displayEmail = user?.email || '';
 
-  const [profileName, setProfileName] = useState(displayName);
-  const [profileEmail, setProfileEmail] = useState(displayEmail);
+  // Edit Profile modal fields — kept as separate first/last name inputs
+  // (matching PATCH /users/me's { firstName, lastName, phone } shape and the
+  // web settings page) rather than a single combined name field, so saving
+  // doesn't require guessing where to split a "Full Name" string back apart.
+  const [editFirstName, setEditFirstName] = useState(user?.firstName || '');
+  const [editLastName, setEditLastName] = useState(user?.lastName || '');
+  const [editPhone, setEditPhone] = useState(user?.phone || '');
+  const [savingProfile, setSavingProfile] = useState(false);
 
   useEffect(() => {
-    setProfileName(
-      user
-        ? `${user.firstName || ''}${user.lastName ? ' ' + user.lastName : ''}`.trim() || user.email
-        : (role === 'dealer' ? 'Knightsbridge Motors' : 'User')
-    );
-    setProfileEmail(user?.email || '');
-  }, [user, role]);
+    setEditFirstName(user?.firstName || '');
+    setEditLastName(user?.lastName || '');
+    setEditPhone(user?.phone || '');
+  }, [user]);
 
   // Interactive States
   const isAddressVerified = !!user?.isAddressVerified;
@@ -106,6 +130,7 @@ export const ProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) =>
   const [verificationCode, setVerificationCode] = useState('');
   const [verifySending, setVerifySending] = useState(false);
   const [verifyConfirming, setVerifyConfirming] = useState(false);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
 
   // Support Chat State
   const [chatMessages, setChatMessages] = useState<Array<{ id: string; sender: 'user' | 'agent'; text: string }>>([
@@ -120,6 +145,30 @@ export const ProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) =>
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign Out', style: 'destructive', onPress: logout },
     ]);
+  };
+
+  const handleSaveProfile = async () => {
+    const firstName = editFirstName.trim();
+    const lastName = editLastName.trim();
+    const phone = editPhone.trim();
+    if (!firstName || !lastName) {
+      showToast('First and last name are required.', 'error');
+      return;
+    }
+    setSavingProfile(true);
+    try {
+      await apiClient('/users/me', {
+        method: 'PATCH',
+        body: JSON.stringify({ firstName, lastName, phone }),
+      });
+      updateUser({ firstName, lastName, phone });
+      setActiveModal(null);
+      showToast('Profile updated!', 'success');
+    } catch (err: any) {
+      showToast(err?.message ?? 'Could not save changes. Please try again.', 'error');
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   const handleStatPress = (type: 'purchased' | 'sold' | 'saved') => {
@@ -142,8 +191,9 @@ export const ProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) =>
 
   const handleSendVerificationCode = async () => {
     const address = verifyAddressInput.trim();
+    setVerifyError(null);
     if (address.length < 5) {
-      Alert.alert('Enter Address', 'Please enter your full residential address to continue.');
+      setVerifyError('Please enter your full residential address to continue.');
       return;
     }
     setVerifySending(true);
@@ -153,15 +203,16 @@ export const ProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) =>
       setVerifyStage('code');
       showToast(result.message || 'Verification code sent to your email', 'success');
     } catch (err: any) {
-      Alert.alert('Could Not Send Code', err?.message || 'Something went wrong. Please try again.');
+      setVerifyError(err?.message || 'Something went wrong. Please try again.');
     } finally {
       setVerifySending(false);
     }
   };
 
   const handleConfirmVerificationCode = async () => {
+    setVerifyError(null);
     if (verificationCode.trim().length !== 6) {
-      Alert.alert('Enter Code', 'Please enter the 6-digit code we emailed you.');
+      setVerifyError('Please enter the 6-digit code we emailed you.');
       return;
     }
     setVerifyConfirming(true);
@@ -171,7 +222,7 @@ export const ProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) =>
       setActiveModal(null);
       showToast('Address verified! Verified Trader badge unlocked.', 'success');
     } catch (err: any) {
-      Alert.alert('Verification Failed', err?.message || 'Incorrect or expired code. Please try again.');
+      setVerifyError(err?.message || 'Incorrect or expired code. Please try again.');
     } finally {
       setVerifyConfirming(false);
     }
@@ -195,13 +246,18 @@ export const ProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) =>
     }, 1500);
   };
 
+  const renderChatItem = useCallback(
+    ({ item }: { item: ChatBubbleItem }) => <ChatBubble item={item} />,
+    [],
+  );
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* Background gradient with top glow matching the target style */}
       <LinearGradient
-        colors={['rgba(220, 31, 38, 0.04)', 'rgba(59, 130, 246, 0.04)', '#0A0A0C']}
+        colors={[Colors.accentAlpha04, Colors.infoBlueAlpha04, Colors.bgPrimary]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.6 }}
         style={StyleSheet.absoluteFillObject}
@@ -214,13 +270,7 @@ export const ProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) =>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Settings</Text>
-          <TouchableOpacity
-            style={styles.settingsHeaderBtn}
-            activeOpacity={0.7}
-            onPress={() => setActiveModal('settings')}
-          >
-            <Ionicons name="settings-outline" size={18} color="#FFFFFF" />
-          </TouchableOpacity>
+          <IconButton style={styles.settingsHeaderBtn} icon={<Ionicons name="settings-outline" size={18} color={Colors.white} />} onPress={() => setActiveModal('settings')} accessibilityLabel="Settings" />
         </View>
 
         {/* Profile Card */}
@@ -228,60 +278,64 @@ export const ProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) =>
           <View style={styles.avatarContainer}>
             <View style={styles.avatarLarge}>
               <Text style={styles.avatarTextLarge}>
-                {profileName
+                {displayName
                   .split(' ')
                   .map((n) => n[0])
                   .join('')
                   .toUpperCase()}
               </Text>
             </View>
-            <View style={styles.checkmarkBadge}>
-              <Ionicons name="checkmark-sharp" size={10} color="#FFFFFF" />
-            </View>
+            {isAddressVerified && (
+              <View style={styles.checkmarkBadge}>
+                <Ionicons name="checkmark-sharp" size={10} color={Colors.white} />
+              </View>
+            )}
           </View>
 
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{profileName}</Text>
-            <Text style={styles.profileEmail}>{profileEmail}</Text>
-            <TouchableOpacity
-              style={[
-                styles.verifiedBuyerBadge,
-                role === 'dealer' && styles.verifiedDealerBadge,
-                role === 'seller' && styles.verifiedSellerBadge,
-              ]}
-              activeOpacity={0.8}
-              onPress={() => {
-                if (role === 'dealer') {
-                  Alert.alert(
-                    'Verified Dealer status',
-                    'Your dealership credentials have been fully verified and approved by Carmazium commercial operations.'
-                  );
-                } else if (role === 'seller') {
-                  Alert.alert(
-                    'Verified Seller status',
-                    'Your identity has been verified. You can list vehicles and receive offers from buyers.'
-                  );
-                } else {
-                  Alert.alert(
-                    'Verified Buyer status',
-                    'Your identity has been fully verified and approved by Carmazium compliance.'
-                  );
-                }
-              }}
-            >
-              <Ionicons
-                name="checkmark-circle-sharp"
-                size={12}
-                color={role === 'dealer' ? '#F59E0B' : role === 'seller' ? '#3B82F6' : '#22C55E'}
-              />
-              <Text style={[
-                styles.verifiedBuyerText,
-                role === 'dealer' && styles.verifiedDealerText,
-                role === 'seller' && styles.verifiedSellerText,
-              ]}>
-                {role === 'dealer' ? 'VERIFIED DEALER' : role === 'seller' ? 'VERIFIED SELLER' : 'VERIFIED BUYER'}
-              </Text>
-            </TouchableOpacity>
+            <Text style={styles.profileName}>{displayName}</Text>
+            <Text style={styles.profileEmail}>{displayEmail}</Text>
+            {isAddressVerified && (
+              <TouchableOpacity
+                style={[
+                  styles.verifiedBuyerBadge,
+                  role === 'dealer' && styles.verifiedDealerBadge,
+                  role === 'seller' && styles.verifiedSellerBadge,
+                ]}
+                activeOpacity={0.8}
+                onPress={() => {
+                  if (role === 'dealer') {
+                    Alert.alert(
+                      'Verified Dealer status',
+                      'Your dealership credentials have been fully verified and approved by Carmazium commercial operations.'
+                    );
+                  } else if (role === 'seller') {
+                    Alert.alert(
+                      'Verified Seller status',
+                      'Your identity has been verified. You can list vehicles and receive offers from buyers.'
+                    );
+                  } else {
+                    Alert.alert(
+                      'Verified Buyer status',
+                      'Your identity has been fully verified and approved by Carmazium compliance.'
+                    );
+                  }
+                }}
+              >
+                <Ionicons
+                  name="checkmark-circle-sharp"
+                  size={12}
+                  color={role === 'dealer' ? Colors.warning : role === 'seller' ? Colors.infoBlue : Colors.success}
+                />
+                <Text style={[
+                  styles.verifiedBuyerText,
+                  role === 'dealer' && styles.verifiedDealerText,
+                  role === 'seller' && styles.verifiedSellerText,
+                ]}>
+                  {role === 'dealer' ? 'VERIFIED DEALER' : role === 'seller' ? 'VERIFIED SELLER' : 'VERIFIED BUYER'}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -328,18 +382,18 @@ export const ProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) =>
         </View>
 
         {/* Trader Verification Card */}
-        <View style={[styles.verificationCard, { borderLeftColor: isAddressVerified ? '#22C55E' : '#DC1F26' }]}>
+        <View style={[styles.verificationCard, { borderLeftColor: isAddressVerified ? Colors.success : Colors.accent }]}>
           <View style={styles.verificationHeader}>
             <View
               style={[
                 styles.verificationIconBg,
-                { backgroundColor: isAddressVerified ? 'rgba(34, 197, 94, 0.12)' : 'rgba(220, 31, 38, 0.12)' }
+                { backgroundColor: isAddressVerified ? Colors.successAlpha12 : Colors.accentAlpha12 }
               ]}
             >
               <Ionicons
                 name={isAddressVerified ? 'shield-checkmark' : 'shield-outline'}
                 size={18}
-                color={isAddressVerified ? '#22C55E' : '#DC1F26'}
+                color={isAddressVerified ? Colors.success : Colors.accent}
               />
             </View>
             <View style={styles.verificationTitleCol}>
@@ -347,7 +401,7 @@ export const ProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) =>
               <Text
                 style={[
                   styles.verificationProgressText,
-                  { color: isAddressVerified ? '#22C55E' : '#DC1F26' },
+                  { color: isAddressVerified ? Colors.success : Colors.accent },
                 ]}
               >
                 {isAddressVerified ? 'Verified' : 'Not verified'}
@@ -376,7 +430,7 @@ export const ProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) =>
             </TouchableOpacity>
           ) : (
             <View style={styles.verifySuccessBadge}>
-              <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
+              <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
               <Text style={styles.verifySuccessBadgeText}>FULLY VERIFIED</Text>
             </View>
           )}
@@ -391,7 +445,7 @@ export const ProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) =>
             onPress={() => setActiveModal('payment')}
           >
             <View style={styles.rowIconBg}>
-              <Ionicons name="card-outline" size={18} color="#FFFFFF" />
+              <Ionicons name="card-outline" size={18} color={Colors.white} />
             </View>
             <Text style={styles.rowLabel}>Payment methods</Text>
             <Text style={styles.rowValue}>{paymentMethod}</Text>
@@ -404,7 +458,7 @@ export const ProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) =>
             onPress={() => navigation?.navigate('SellerDashboard')}
           >
             <View style={styles.rowIconBg}>
-              <Ionicons name="document-text-outline" size={18} color="#FFFFFF" />
+              <Ionicons name="document-text-outline" size={18} color={Colors.white} />
             </View>
             <Text style={styles.rowLabel}>My listings</Text>
             <Text style={styles.rowValue}>{statsLoading ? '…' : `${soldCount} Active`}</Text>
@@ -417,7 +471,7 @@ export const ProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) =>
             onPress={() => navigation?.navigate('BuyerOffers')}
           >
             <View style={styles.rowIconBg}>
-              <Ionicons name="document-text-outline" size={18} color="#FFFFFF" />
+              <Ionicons name="document-text-outline" size={18} color={Colors.white} />
             </View>
             <Text style={styles.rowLabel}>My sent offers</Text>
           </TouchableOpacity>
@@ -433,7 +487,7 @@ export const ProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) =>
             }}
           >
             <View style={styles.rowIconBg}>
-              <Ionicons name="notifications-outline" size={18} color="#FFFFFF" />
+              <Ionicons name="notifications-outline" size={18} color={Colors.white} />
             </View>
             <Text style={styles.rowLabel}>Notifications</Text>
             <Text style={styles.rowValue}>{notificationsEnabled ? 'On' : 'Off'}</Text>
@@ -446,7 +500,7 @@ export const ProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) =>
             onPress={() => setActiveModal('help')}
           >
             <View style={styles.rowIconBg}>
-              <Ionicons name="help-circle-outline" size={18} color="#FFFFFF" />
+              <Ionicons name="help-circle-outline" size={18} color={Colors.white} />
             </View>
             <Text style={styles.rowLabel}>Help & support</Text>
           </TouchableOpacity>
@@ -457,10 +511,10 @@ export const ProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) =>
             activeOpacity={0.7}
             onPress={handleLogout}
           >
-            <View style={[styles.rowIconBg, { backgroundColor: 'rgba(220, 31, 38, 0.1)' }]}>
-              <Ionicons name="log-out-outline" size={18} color="#DC1F26" />
+            <View style={[styles.rowIconBg, { backgroundColor: Colors.accentAlpha10 }]}>
+              <Ionicons name="log-out-outline" size={18} color={Colors.accent} />
             </View>
-            <Text style={[styles.rowLabel, { color: '#DC1F26' }]}>Sign out</Text>
+            <Text style={[styles.rowLabel, { color: Colors.accent }]}>Sign out</Text>
           </TouchableOpacity>
         </View>
 
@@ -470,270 +524,242 @@ export const ProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) =>
       {/* ================= MODAL SHEETS ================= */}
 
       {/* Settings & Profile Edit Modal */}
-      <Modal
+      <BottomSheet
         visible={activeModal === 'settings'}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setActiveModal(null)}
+        onClose={() => setActiveModal(null)}
+        title="Edit Profile"
+        avoidKeyboard
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Edit Profile</Text>
-              <TouchableOpacity onPress={() => setActiveModal(null)}>
-                <Ionicons name="close" size={24} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
+        <View style={styles.modalBody}>
+          <Text style={styles.inputLabel}>First Name</Text>
+          <TextInput
+            style={styles.textInput}
+            value={editFirstName}
+            onChangeText={setEditFirstName}
+            placeholder="Enter first name"
+            placeholderTextColor={Colors.textMuted}
+            editable={!savingProfile}
+          />
 
-            <View style={styles.modalBody}>
-              <Text style={styles.inputLabel}>Full Name</Text>
-              <TextInput
-                style={styles.textInput}
-                value={profileName}
-                onChangeText={setProfileName}
-                placeholder="Enter name"
-                placeholderTextColor="#5C5C6B"
-              />
+          <Text style={styles.inputLabel}>Last Name</Text>
+          <TextInput
+            style={styles.textInput}
+            value={editLastName}
+            onChangeText={setEditLastName}
+            placeholder="Enter last name"
+            placeholderTextColor={Colors.textMuted}
+            editable={!savingProfile}
+          />
 
-              <Text style={styles.inputLabel}>Email Address</Text>
-              <TextInput
-                style={styles.textInput}
-                value={profileEmail}
-                onChangeText={setProfileEmail}
-                placeholder="Enter email"
-                placeholderTextColor="#5C5C6B"
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
+          <Text style={styles.inputLabel}>Phone Number</Text>
+          <TextInput
+            style={styles.textInput}
+            value={editPhone}
+            onChangeText={setEditPhone}
+            placeholder="Enter phone number"
+            placeholderTextColor={Colors.textMuted}
+            keyboardType="phone-pad"
+            editable={!savingProfile}
+          />
 
-              <View style={styles.settingsActions}>
-                <TouchableOpacity
-                  style={styles.saveBtn}
-                  onPress={() => {
-                    setActiveModal(null);
-                    showToast('Profile updated!', 'success');
-                  }}
-                >
-                  <Text style={styles.saveBtnText}>Save Changes</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+          {/* Email changes go through Supabase auth, not this form — matches
+              web's settings page, which also renders this field read-only. */}
+          <Text style={styles.inputLabel}>Email Address</Text>
+          <TextInput
+            style={[styles.textInput, styles.textInputDisabled]}
+            value={displayEmail}
+            editable={false}
+          />
+
+          <View style={styles.settingsActions}>
+            <TouchableOpacity
+              style={[styles.saveBtn, savingProfile && { opacity: 0.6 }]}
+              onPress={handleSaveProfile}
+              disabled={savingProfile}
+            >
+              {savingProfile ? (
+                <ActivityIndicator color={Colors.white} />
+              ) : (
+                <Text style={styles.saveBtnText}>Save Changes</Text>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+      </BottomSheet>
 
       {/* Address Verification Stepper Modal */}
-      <Modal
+      <BottomSheet
         visible={activeModal === 'verify'}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setActiveModal(null)}
+        onClose={() => { setActiveModal(null); setVerifyError(null); }}
+        title={`Trader Verification (Step ${verifyStage === 'address' ? 1 : 2}/2)`}
+        avoidKeyboard
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Trader Verification (Step {verifyStage === 'address' ? 1 : 2}/2)</Text>
-              <TouchableOpacity onPress={() => setActiveModal(null)}>
-                <Ionicons name="close" size={24} color="#FFFFFF" />
-              </TouchableOpacity>
+        <View style={styles.modalBody}>
+          {verifyError ? (
+            <View style={{ marginBottom: 16 }}>
+              <ErrorBanner message={verifyError} />
             </View>
+          ) : null}
+          {verifyStage === 'address' && (
+            <View>
+              <Text style={styles.verifyStepTitle}>Confirm Your Address</Text>
+              <Text style={styles.verifyStepSub}>
+                Enter your current residential address. We'll email a 6-digit verification code to {user?.email || 'your account email'}.
+              </Text>
 
-            <View style={styles.modalBody}>
-              {verifyStage === 'address' && (
-                <View>
-                  <Text style={styles.verifyStepTitle}>Confirm Your Address</Text>
-                  <Text style={styles.verifyStepSub}>
-                    Enter your current residential address. We'll email a 6-digit verification code to {user?.email || 'your account email'}.
-                  </Text>
-
-                  <TextInput
-                    style={[styles.textInput, { height: 72, paddingTop: 12, textAlignVertical: 'top' }]}
-                    value={verifyAddressInput}
-                    onChangeText={setVerifyAddressInput}
-                    placeholder="Enter your full address"
-                    placeholderTextColor="#5C5C6B"
-                    autoCapitalize="words"
-                    multiline
-                  />
-
-                  <TouchableOpacity
-                    style={[styles.verifyStepBtn, verifySending && { opacity: 0.6 }]}
-                    onPress={handleSendVerificationCode}
-                    disabled={verifySending}
-                  >
-                    {verifySending ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      <Text style={styles.verifyStepBtnText}>SEND VERIFICATION CODE</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {verifyStage === 'code' && (
-                <View>
-                  <Text style={styles.verifyStepTitle}>Enter Verification Code</Text>
-                  <Text style={styles.verifyStepSub}>
-                    We've emailed a 6-digit code to {user?.email || 'your account email'}. Enter it below to verify {verifyAddressInput.trim()}.
-                  </Text>
-
-                  <TextInput
-                    style={styles.textInput}
-                    value={verificationCode}
-                    onChangeText={setVerificationCode}
-                    placeholder="Enter 6-digit code"
-                    placeholderTextColor="#5C5C6B"
-                    keyboardType="number-pad"
-                    maxLength={6}
-                  />
-
-                  <TouchableOpacity
-                    style={[styles.verifyStepBtn, verifyConfirming && { opacity: 0.6 }]}
-                    onPress={handleConfirmVerificationCode}
-                    disabled={verifyConfirming}
-                  >
-                    {verifyConfirming ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      <Text style={styles.verifyStepBtnText}>CONFIRM & VERIFY</Text>
-                    )}
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.resendLink}
-                    onPress={() => setVerifyStage('address')}
-                  >
-                    <Text style={styles.resendLinkText}>Wrong address? Go back</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Payment Methods Modal */}
-      <Modal
-        visible={activeModal === 'payment'}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setActiveModal(null)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Payment Method</Text>
-              <TouchableOpacity onPress={() => setActiveModal(null)}>
-                <Ionicons name="close" size={24} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.modalBody}>
-              <TouchableOpacity
-                style={[
-                  styles.paymentOption,
-                  paymentMethod === 'Visa - 4287' && styles.paymentOptionActive,
-                ]}
-                onPress={() => {
-                  setPaymentMethod('Visa - 4287');
-                  setActiveModal(null);
-                  showToast('Payment method updated', 'success');
-                }}
-              >
-                <Ionicons name="card-outline" size={24} color="#FFFFFF" />
-                <Text style={styles.paymentOptionText}>Visa ending in 4287</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.paymentOption,
-                  paymentMethod === 'Mastercard - 8812' && styles.paymentOptionActive,
-                ]}
-                onPress={() => {
-                  setPaymentMethod('Mastercard - 8812');
-                  setActiveModal(null);
-                  showToast('Payment method updated', 'success');
-                }}
-              >
-                <Ionicons name="card" size={24} color="#FFFFFF" />
-                <Text style={styles.paymentOptionText}>Mastercard ending in 8812</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.paymentOption,
-                  paymentMethod === 'Apple Pay' && styles.paymentOptionActive,
-                ]}
-                onPress={() => {
-                  setPaymentMethod('Apple Pay');
-                  setActiveModal(null);
-                  showToast('Payment method updated', 'success');
-                }}
-              >
-                <Ionicons name="logo-apple" size={24} color="#FFFFFF" />
-                <Text style={styles.paymentOptionText}>Apple Pay Express</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Help & Support Modal */}
-      <Modal
-        visible={activeModal === 'help'}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setActiveModal(null)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Carmazium Help & Chat</Text>
-              <TouchableOpacity onPress={() => setActiveModal(null)}>
-                <Ionicons name="close" size={24} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.modalChatBody}>
-              <FlatList
-                data={chatMessages}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.chatList}
-                renderItem={({ item }) => (
-                  <View
-                    style={[
-                      styles.chatBubble,
-                      item.sender === 'user' ? styles.chatBubbleUser : styles.chatBubbleAgent,
-                    ]}
-                  >
-                    <Text style={styles.chatText}>{item.text}</Text>
-                  </View>
-                )}
+              <TextInput
+                style={[styles.textInput, { height: 72, paddingTop: 12, textAlignVertical: 'top' }]}
+                value={verifyAddressInput}
+                onChangeText={setVerifyAddressInput}
+                placeholder="Enter your full address"
+                placeholderTextColor={Colors.textMuted}
+                autoCapitalize="words"
+                multiline
               />
 
-              {sendingMessage && (
-                <View style={styles.typingIndicator}>
-                  <ActivityIndicator size="small" color="#DC1F26" />
-                  <Text style={styles.typingText}>Agent is typing...</Text>
-                </View>
-              )}
-
-              <View style={styles.chatInputRow}>
-                <TextInput
-                  style={styles.chatInput}
-                  value={chatInput}
-                  onChangeText={setChatInput}
-                  placeholder="Ask a question..."
-                  placeholderTextColor="#5C5C6B"
-                />
-                <TouchableOpacity style={styles.sendChatBtn} onPress={handleSendChatMessage}>
-                  <Ionicons name="send" size={18} color="#FFFFFF" />
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                style={[styles.verifyStepBtn, verifySending && { opacity: 0.6 }]}
+                onPress={handleSendVerificationCode}
+                disabled={verifySending}
+              >
+                {verifySending ? (
+                  <ActivityIndicator size="small" color={Colors.white} />
+                ) : (
+                  <Text style={styles.verifyStepBtnText}>SEND VERIFICATION CODE</Text>
+                )}
+              </TouchableOpacity>
             </View>
+          )}
+
+          {verifyStage === 'code' && (
+            <View>
+              <Text style={styles.verifyStepTitle}>Enter Verification Code</Text>
+              <Text style={styles.verifyStepSub}>
+                We've emailed a 6-digit code to {user?.email || 'your account email'}. Enter it below to verify {verifyAddressInput.trim()}.
+              </Text>
+
+              <TextInput
+                style={styles.textInput}
+                value={verificationCode}
+                onChangeText={setVerificationCode}
+                placeholder="Enter 6-digit code"
+                placeholderTextColor={Colors.textMuted}
+                keyboardType="number-pad"
+                maxLength={6}
+              />
+
+              <TouchableOpacity
+                style={[styles.verifyStepBtn, verifyConfirming && { opacity: 0.6 }]}
+                onPress={handleConfirmVerificationCode}
+                disabled={verifyConfirming}
+              >
+                {verifyConfirming ? (
+                  <ActivityIndicator size="small" color={Colors.white} />
+                ) : (
+                  <Text style={styles.verifyStepBtnText}>CONFIRM & VERIFY</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.resendLink}
+                onPress={() => { setVerifyStage('address'); setVerifyError(null); }}
+              >
+                <Text style={styles.resendLinkText}>Wrong address? Go back</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </BottomSheet>
+
+      {/* Payment Methods Modal */}
+      <BottomSheet
+        visible={activeModal === 'payment'}
+        onClose={() => setActiveModal(null)}
+        title="Select Payment Method"
+        maxHeightPercent={60}
+      >
+        <View style={styles.modalBody}>
+          <TouchableOpacity
+            style={[
+              styles.paymentOption,
+              paymentMethod === 'Visa - 4287' && styles.paymentOptionActive,
+            ]}
+            onPress={() => {
+              setPaymentMethod('Visa - 4287');
+              setActiveModal(null);
+              showToast('Payment method updated', 'success');
+            }}
+          >
+            <Ionicons name="card-outline" size={24} color={Colors.white} />
+            <Text style={styles.paymentOptionText}>Visa ending in 4287</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.paymentOption,
+              paymentMethod === 'Mastercard - 8812' && styles.paymentOptionActive,
+            ]}
+            onPress={() => {
+              setPaymentMethod('Mastercard - 8812');
+              setActiveModal(null);
+              showToast('Payment method updated', 'success');
+            }}
+          >
+            <Ionicons name="card" size={24} color={Colors.white} />
+            <Text style={styles.paymentOptionText}>Mastercard ending in 8812</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.paymentOption,
+              paymentMethod === 'Apple Pay' && styles.paymentOptionActive,
+            ]}
+            onPress={() => {
+              setPaymentMethod('Apple Pay');
+              setActiveModal(null);
+              showToast('Payment method updated', 'success');
+            }}
+          >
+            <Ionicons name="logo-apple" size={24} color={Colors.white} />
+            <Text style={styles.paymentOptionText}>Apple Pay Express</Text>
+          </TouchableOpacity>
+        </View>
+      </BottomSheet>
+
+      {/* Help & Support Modal */}
+      <BottomSheet
+        visible={activeModal === 'help'}
+        onClose={() => setActiveModal(null)}
+        title="Carmazium Help & Chat"
+        avoidKeyboard
+      >
+        <View style={styles.modalChatBody}>
+          <FlatList
+            data={chatMessages}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.chatList}
+            renderItem={renderChatItem}
+          />
+
+          {sendingMessage && (
+            <View style={styles.typingIndicator}>
+              <ActivityIndicator size="small" color={Colors.accent} />
+              <Text style={styles.typingText}>Agent is typing...</Text>
+            </View>
+          )}
+
+          <View style={styles.chatInputRow}>
+            <TextInput
+              style={styles.chatInput}
+              value={chatInput}
+              onChangeText={setChatInput}
+              placeholder="Ask a question..."
+              placeholderTextColor={Colors.textMuted}
+            />
+            <IconButton style={styles.sendChatBtn} icon={<Ionicons name="send" size={18} color={Colors.white} />} onPress={handleSendChatMessage} accessibilityLabel="Send message" />
           </View>
         </View>
-      </Modal>
+      </BottomSheet>
     </View>
   );
 };
@@ -741,7 +767,7 @@ export const ProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) =>
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0C',
+    backgroundColor: Colors.bgPrimary,
   },
   scroll: {
     paddingBottom: 20,
@@ -756,16 +782,16 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: FontFamily.extraBold,
     fontSize: FontSize['3xl'],
-    color: '#FFFFFF',
+    color: Colors.white,
     letterSpacing: -0.8,
   },
   settingsHeaderBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: Colors.whiteAlpha05,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: Colors.whiteAlpha08,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -777,7 +803,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: Colors.whiteAlpha06,
     marginBottom: 20,
   },
   avatarContainer: {
@@ -788,14 +814,14 @@ const styles = StyleSheet.create({
     width: 68,
     height: 68,
     borderRadius: 34,
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarTextLarge: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize['2xl'],
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   checkmarkBadge: {
     position: 'absolute',
@@ -804,7 +830,7 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: '#22C55E',
+    backgroundColor: Colors.success,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
@@ -816,13 +842,13 @@ const styles = StyleSheet.create({
   profileName: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.lg,
-    color: '#FFFFFF',
+    color: Colors.white,
     marginBottom: 2,
   },
   profileEmail: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.sm,
-    color: '#A0A0AB',
+    color: Colors.textSecondary,
     marginBottom: 8,
   },
   verifiedBuyerBadge: {
@@ -830,8 +856,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
     borderWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.25)',
-    backgroundColor: 'rgba(34, 197, 94, 0.08)',
+    borderColor: Colors.successAlpha25,
+    backgroundColor: Colors.successAlpha08,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 20,
@@ -839,8 +865,8 @@ const styles = StyleSheet.create({
   },
   verifiedBuyerText: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#22C55E',
+    fontSize: FontSize.size9,
+    color: Colors.success,
     letterSpacing: 0.5,
   },
   statsCardContainer: {
@@ -851,7 +877,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: Colors.whiteAlpha06,
     marginBottom: 20,
   },
   statCol: {
@@ -862,19 +888,19 @@ const styles = StyleSheet.create({
   statNumber: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xl,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   statSubText: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#5C5C6B',
+    fontSize: FontSize.size9,
+    color: Colors.textMuted,
     marginTop: 2,
     letterSpacing: 0.8,
   },
   statDivider: {
     width: 1,
     height: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: Colors.whiteAlpha08,
   },
   verificationCard: {
     marginHorizontal: 24,
@@ -882,9 +908,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: Colors.whiteAlpha06,
     borderLeftWidth: 4,
-    borderLeftColor: '#DC1F26',
+    borderLeftColor: Colors.accent,
     marginBottom: 24,
   },
   verificationHeader: {
@@ -896,7 +922,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -910,7 +936,7 @@ const styles = StyleSheet.create({
   verificationTitle: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.base,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   verificationProgressText: {
     fontFamily: FontFamily.bold,
@@ -919,14 +945,14 @@ const styles = StyleSheet.create({
   verificationSubtext: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.xs + 1,
-    color: '#A0A0AB',
+    color: Colors.textSecondary,
     lineHeight: 18,
     marginBottom: 14,
   },
   progressBarBg: {
     height: 6,
     borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     marginBottom: 16,
     overflow: 'hidden',
   },
@@ -938,14 +964,14 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 44,
     borderRadius: 10,
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
   verifyBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs + 1,
-    color: '#FFFFFF',
+    color: Colors.white,
     letterSpacing: 0.8,
   },
   verifySuccessBadge: {
@@ -958,7 +984,7 @@ const styles = StyleSheet.create({
   verifySuccessBadgeText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs + 1,
-    color: '#22C55E',
+    color: Colors.success,
     letterSpacing: 0.8,
   },
   settingsList: {
@@ -966,7 +992,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgSecondary,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     overflow: 'hidden',
   },
   settingsRow: {
@@ -975,13 +1001,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.04)',
+    borderBottomColor: Colors.whiteAlpha04,
   },
   rowIconBg: {
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
@@ -990,62 +1016,39 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.base,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   rowValue: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.sm,
-    color: '#A0A0AB',
+    color: Colors.textSecondary,
   },
 
   // Modal UI Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.85)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#111115',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    paddingBottom: 40,
-    maxHeight: '85%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
-  },
-  modalTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.lg,
-    color: '#FFFFFF',
-  },
   modalBody: {
     padding: 20,
   },
   inputLabel: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.sm,
-    color: '#A0A0AB',
+    color: Colors.textSecondary,
     marginBottom: 8,
   },
   textInput: {
     height: 48,
     borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    color: '#FFFFFF',
+    borderColor: Colors.whiteAlpha08,
+    color: Colors.white,
     fontFamily: FontFamily.regular,
     fontSize: FontSize.base,
     paddingHorizontal: 16,
     marginBottom: 20,
+  },
+  textInputDisabled: {
+    color: Colors.textMuted,
+    backgroundColor: Colors.whiteAlpha02,
   },
   settingsActions: {
     marginTop: 10,
@@ -1053,25 +1056,25 @@ const styles = StyleSheet.create({
   saveBtn: {
     height: 48,
     borderRadius: 10,
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
   saveBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   verifyStepTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.lg,
-    color: '#FFFFFF',
+    color: Colors.white,
     marginBottom: 8,
   },
   verifyStepSub: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.sm,
-    color: '#A0A0AB',
+    color: Colors.textSecondary,
     lineHeight: 20,
     marginBottom: 24,
   },
@@ -1080,21 +1083,21 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: 'rgba(255,255,255,0.15)',
-    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderColor: Colors.whiteAlpha15,
+    backgroundColor: Colors.whiteAlpha02,
     alignItems: 'center',
     justifyContent: 'center',
   },
   uploadBoxText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: '#FFFFFF',
+    color: Colors.white,
     marginTop: 12,
   },
   uploadBoxSub: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.xs,
-    color: '#5C5C6B',
+    color: Colors.textMuted,
     marginTop: 4,
   },
   uploadProgress: {
@@ -1105,35 +1108,35 @@ const styles = StyleSheet.create({
   uploadProgressText: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.sm,
-    color: '#A0A0AB',
+    color: Colors.textSecondary,
     marginTop: 12,
   },
   addressOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: Colors.whiteAlpha03,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     padding: 16,
     marginBottom: 12,
     gap: 12,
   },
   addressOptionSelected: {
-    borderColor: '#DC1F26',
-    backgroundColor: 'rgba(220,31,38,0.04)',
+    borderColor: Colors.accent,
+    backgroundColor: Colors.accentAlpha04,
   },
   addressText: {
     flex: 1,
     fontFamily: FontFamily.medium,
     fontSize: FontSize.sm,
-    color: '#FFFFFF',
+    color: Colors.white,
     lineHeight: 20,
   },
   verifyStepBtn: {
     height: 48,
     borderRadius: 10,
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 20,
@@ -1141,7 +1144,7 @@ const styles = StyleSheet.create({
   verifyStepBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: '#FFFFFF',
+    color: Colors.white,
     letterSpacing: 0.8,
   },
   resendLink: {
@@ -1153,7 +1156,7 @@ const styles = StyleSheet.create({
   resendLinkText: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.sm,
-    color: '#A0A0AB',
+    color: Colors.textSecondary,
     textDecorationLine: 'underline',
   },
 
@@ -1161,22 +1164,22 @@ const styles = StyleSheet.create({
   paymentOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: Colors.whiteAlpha03,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     padding: 16,
     marginBottom: 12,
     gap: 16,
   },
   paymentOptionActive: {
-    borderColor: '#DC1F26',
-    backgroundColor: 'rgba(220,31,38,0.04)',
+    borderColor: Colors.accent,
+    backgroundColor: Colors.accentAlpha04,
   },
   paymentOptionText: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.base,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
 
   // Help Modal Styles
@@ -1194,21 +1197,21 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   chatBubbleUser: {
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     alignSelf: 'flex-end',
     borderBottomRightRadius: 2,
   },
   chatBubbleAgent: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     alignSelf: 'flex-start',
     borderBottomLeftRadius: 2,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.04)',
+    borderColor: Colors.whiteAlpha04,
   },
   chatText: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.sm,
-    color: '#FFFFFF',
+    color: Colors.white,
     lineHeight: 18,
   },
   typingIndicator: {
@@ -1221,24 +1224,24 @@ const styles = StyleSheet.create({
   typingText: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.xs,
-    color: '#5C5C6B',
+    color: Colors.textMuted,
   },
   chatInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.06)',
+    borderTopColor: Colors.whiteAlpha06,
     gap: 10,
   },
   chatInput: {
     flex: 1,
     height: 40,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: Colors.whiteAlpha08,
     borderRadius: 20,
-    color: '#FFFFFF',
+    color: Colors.white,
     paddingHorizontal: 16,
     fontFamily: FontFamily.regular,
     fontSize: FontSize.sm,
@@ -1247,23 +1250,23 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
   verifiedDealerBadge: {
-    borderColor: 'rgba(245, 158, 11, 0.25)',
-    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderColor: Colors.warningAlpha25,
+    backgroundColor: Colors.warningAlpha08,
   },
   verifiedDealerText: {
-    color: '#F59E0B',
+    color: Colors.warning,
   },
   verifiedSellerBadge: {
-    borderColor: 'rgba(59, 130, 246, 0.25)',
-    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+    borderColor: Colors.infoBlueAlpha25,
+    backgroundColor: Colors.infoBlueAlpha08,
   },
   verifiedSellerText: {
-    color: '#3B82F6',
+    color: Colors.infoBlue,
   },
 });
 

@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  FlatList,
   StatusBar,
   ActivityIndicator,
   RefreshControl,
@@ -27,6 +28,7 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuthStore } from '../../store/authStore';
 
+import { IconButton } from '../../components/IconButton';
 // ─────────────────────────── helpers ──────────────────────────────────────────
 
 function groupByDate(
@@ -181,7 +183,7 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
     />
   );
 
-  const renderRow = (n: AppNotification, isLast: boolean) => {
+  const renderRow = useCallback((n: AppNotification, isLast: boolean) => {
     const { icon, color, bg } = notifStyle(n.type);
     return (
       <TouchableOpacity
@@ -218,7 +220,18 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
         </View>
       </TouchableOpacity>
     );
-  };
+  }, [handleTap]);
+
+  const renderGroup = useCallback(({ item: group }: { item: (typeof groups)[number] }) => (
+    <View style={styles.group}>
+      <Text style={styles.groupLabel}>{group.label}</Text>
+      <View style={styles.groupCard}>
+        {group.items.map((n, idx) =>
+          renderRow(n, idx === group.items.length - 1),
+        )}
+      </View>
+    </View>
+  ), [renderRow]);
 
   // ── main render ──────────────────────────────────────────────────────────────
 
@@ -228,7 +241,7 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
 
       {/* Subtle gradient */}
       <LinearGradient
-        colors={['rgba(220,31,38,0.04)', 'rgba(0,0,0,0)', '#0A0A0C']}
+        colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 0.5 }}
@@ -239,13 +252,7 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
 
       {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          activeOpacity={0.75}
-          onPress={() => navigation?.goBack()}
-        >
-          <Ionicons name="chevron-back" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
+        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
 
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Notifications</Text>
@@ -283,41 +290,50 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
       </View>
 
       {/* ── Content ── */}
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              load(true);
-            }}
-            tintColor={Colors.accent}
-            colors={[Colors.accent]}
-          />
-        }
-      >
-        {loading ? (
-          renderSkeleton()
-        ) : notifications.length === 0 ? (
-          renderEmpty()
-        ) : (
-          groups.map((group) => (
-            <View key={group.label} style={styles.group}>
-              <Text style={styles.groupLabel}>{group.label}</Text>
-              <View style={styles.groupCard}>
-                {group.items.map((n, idx) =>
-                  renderRow(n, idx === group.items.length - 1),
-                )}
-              </View>
-            </View>
-          ))
-        )}
-
-        <View style={{ height: 100 }} />
-      </ScrollView>
+      {loading || notifications.length === 0 ? (
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                load(true);
+              }}
+              tintColor={Colors.accent}
+              colors={[Colors.accent]}
+            />
+          }
+        >
+          {loading ? renderSkeleton() : renderEmpty()}
+        </ScrollView>
+      ) : (
+        // FlatList (one row per date group, each group's card rendered exactly as
+        // before) so the screen virtualizes instead of mounting every group at
+        // once regardless of scroll position (mobile-audit.md P3).
+        <FlatList
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                load(true);
+              }}
+              tintColor={Colors.accent}
+              colors={[Colors.accent]}
+            />
+          }
+          data={groups}
+          keyExtractor={(group) => group.label}
+          renderItem={renderGroup}
+          ListFooterComponent={<View style={{ height: 100 }} />}
+        />
+      )}
     </View>
   );
 };
@@ -342,9 +358,9 @@ const styles = StyleSheet.create({
     width: Spacing.iconBtn,
     height: Spacing.iconBtn,
     borderRadius: Spacing.iconBtn / 2,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -357,7 +373,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.lg,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   unreadBadge: {
     minWidth: 22,
@@ -370,16 +386,16 @@ const styles = StyleSheet.create({
   },
   unreadBadgeText: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#FFFFFF',
+    fontSize: FontSize.size10,
+    color: Colors.white,
   },
   markAllBtn: {
     height: 34,
     paddingHorizontal: 12,
     borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: Colors.whiteAlpha05,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: Colors.whiteAlpha08,
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 76,
@@ -389,7 +405,7 @@ const styles = StyleSheet.create({
   },
   markAllText: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
+    fontSize: FontSize.xs,
     color: Colors.accent,
     letterSpacing: 0.2,
   },
@@ -408,10 +424,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     padding: 14,
     marginBottom: Spacing.itemGap,
   },
@@ -431,7 +447,7 @@ const styles = StyleSheet.create({
   },
   groupLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
+    fontSize: FontSize.size10,
     color: Colors.textMuted,
     letterSpacing: 1.5,
     marginTop: 24,
@@ -439,10 +455,10 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   groupCard: {
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     overflow: 'hidden',
   },
 
@@ -457,7 +473,7 @@ const styles = StyleSheet.create({
   },
   notifRowBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.04)',
+    borderBottomColor: Colors.whiteAlpha04,
   },
   unreadDot: {
     position: 'absolute',
@@ -489,22 +505,22 @@ const styles = StyleSheet.create({
   },
   notifTitle: {
     fontFamily: FontFamily.semiBold,
-    fontSize: 13,
+    fontSize: FontSize.sm,
     color: Colors.textSecondary,
     flex: 1,
   },
   notifTitleUnread: {
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   notifTime: {
     fontFamily: FontFamily.regular,
-    fontSize: 10,
+    fontSize: FontSize.size10,
     color: Colors.textMuted,
     flexShrink: 0,
   },
   notifMessage: {
     fontFamily: FontFamily.regular,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.textMuted,
     lineHeight: 19,
   },

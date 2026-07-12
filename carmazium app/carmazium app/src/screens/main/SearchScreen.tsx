@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity,
-  StatusBar, Dimensions, Modal, ActivityIndicator, FlatList,
+  StatusBar, Dimensions, ActivityIndicator, FlatList,
   RefreshControl, Switch, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
@@ -13,13 +13,16 @@ import { CarListing } from '../../data/listings';
 import { searchListings } from '../../lib/listingsApi';
 import { naturalLanguageSearch } from '../../lib/aiApi';
 import { HorizontalVehicleCard } from '../../components/HorizontalVehicleCard';
+import { BottomSheet } from '../../components/BottomSheet';
 import { Colors } from '../../constants/colors';
-import { FontFamily } from '../../constants/typography';
+import { getBodyTypeIcon } from '../../constants/bodyTypes';
+import {FontFamily, FontSize } from '../../constants/typography';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 
+import { IconButton } from '../../components/IconButton';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 const { width: SW } = Dimensions.get('window');
@@ -52,15 +55,17 @@ const QUICK_FILTERS: QuickFilter[] = [
 
 const MAKES = ['BMW', 'Audi', 'Mercedes', 'Volkswagen', 'Ford', 'Toyota', 'Honda', 'Porsche', 'Range Rover', 'Tesla'];
 const FUELS = ['Petrol', 'Diesel', 'Hybrid', 'Plug-in Hybrid', 'Electric'];
+// Icons sourced from the shared body-type set (src/constants/bodyTypes.ts) so
+// Home/Search/Sell all show identical icons per body type (mobile-ui-ux-audit.md §C6).
 const BODY_TYPES = [
-  { id: 'SUV', label: 'SUV', emoji: '🚙' },
-  { id: 'SALOON', label: 'Saloon', emoji: '🚗' },
-  { id: 'HATCHBACK', label: 'Hatchback', emoji: '🚘' },
-  { id: 'ESTATE', label: 'Estate', emoji: '🚐' },
-  { id: 'COUPE', label: 'Coupé', emoji: '🏎️' },
-  { id: 'CONVERTIBLE', label: 'Convertible', emoji: '🌅' },
-  { id: 'VAN', label: 'Van', emoji: '🚌' },
-  { id: 'PICKUP', label: 'Pickup', emoji: '🛻' },
+  { id: 'SUV', label: 'SUV', icon: getBodyTypeIcon('SUV') },
+  { id: 'SALOON', label: 'Saloon', icon: getBodyTypeIcon('SALOON') },
+  { id: 'HATCHBACK', label: 'Hatchback', icon: getBodyTypeIcon('HATCHBACK') },
+  { id: 'ESTATE', label: 'Estate', icon: getBodyTypeIcon('ESTATE') },
+  { id: 'COUPE', label: 'Coupé', icon: getBodyTypeIcon('COUPE') },
+  { id: 'CONVERTIBLE', label: 'Convertible', icon: getBodyTypeIcon('CONVERTIBLE') },
+  { id: 'VAN', label: 'Van', icon: getBodyTypeIcon('VAN') },
+  { id: 'PICKUP', label: 'Pickup', icon: getBodyTypeIcon('PICKUP') },
 ];
 const SORT_OPTIONS = [
   { id: 'newest', label: 'Newest first' },
@@ -123,6 +128,9 @@ export const SearchScreen: React.FC = () => {
   const [deliveryAvailable, setDeliveryAvailable] = useState(false);
   const [sellerType, setSellerType] = useState<'' | 'DEALER' | 'PRIVATE'>('');
   const [listingType, setListingType] = useState<'' | 'CLASSIFIED' | 'AUCTION'>('');
+  const [vehicleType, setVehicleType] = useState<'' | 'CAR' | 'HGV' | 'MOTORCYCLE'>('');
+  const [locationFilter, setLocationFilter] = useState('');
+  const [modelFilter, setModelFilter] = useState('');
   // AI search state
   const [aiModalVisible, setAiModalVisible] = useState(false);
   const [aiQuery, setAiQuery] = useState('');
@@ -137,6 +145,20 @@ export const SearchScreen: React.FC = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+
+  // Stable id-keyed press handler so HorizontalVehicleCard's React.memo isn't busted by a
+  // fresh closure every render (mobile-audit.md P4) — looked up via ref so its identity
+  // never changes, including across pagination.
+  const listingsRef = useRef<CarListing[]>([]);
+  useEffect(() => { listingsRef.current = listings; }, [listings]);
+  const handleCardPress = useCallback((id: string) => {
+    const item = listingsRef.current.find(l => l.id === id);
+    if (item) navigation.navigate('VehicleDetail', { listing: item });
+  }, [navigation]);
+  const renderListingItem = useCallback(
+    ({ item }: { item: CarListing }) => <HorizontalVehicleCard listing={item} onPress={handleCardPress} />,
+    [handleCardPress],
+  );
 
   const debounceRef = useRef<any>(null);
 
@@ -176,6 +198,9 @@ export const SearchScreen: React.FC = () => {
     return {
       search: query.trim() || undefined,
       make: selectedMakes[0] ?? (qf?.params.bodyType ? undefined : undefined),
+      model: modelFilter.trim() || undefined,
+      vehicleType: vehicleType || undefined,
+      location: locationFilter.trim() || undefined,
       maxPrice: maxPrice < 150000 ? maxPrice : qf?.params.maxPrice,
       minPrice: minPrice > 0 ? minPrice : undefined,
       bodyType: selectedBody || qf?.params.bodyType,
@@ -222,7 +247,7 @@ export const SearchScreen: React.FC = () => {
       setLoadingMore(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, deliveryAvailable, sellerType, listingType, page]);
+  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, deliveryAvailable, sellerType, listingType, vehicleType, locationFilter, modelFilter, page]);
 
   // Initial load
   useEffect(() => { fetch(true); }, []);
@@ -240,7 +265,7 @@ export const SearchScreen: React.FC = () => {
   useEffect(() => {
     fetch(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, deliveryAvailable, sellerType, listingType]);
+  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, deliveryAvailable, sellerType, listingType, vehicleType, locationFilter, modelFilter]);
 
   const onRefresh = () => { setRefreshing(true); fetch(true); };
 
@@ -261,6 +286,9 @@ export const SearchScreen: React.FC = () => {
     deliveryAvailable,
     !!sellerType,
     !!listingType,
+    !!vehicleType,
+    !!locationFilter,
+    !!modelFilter,
   ].filter(Boolean).length;
 
   const resetFilters = () => {
@@ -281,6 +309,9 @@ export const SearchScreen: React.FC = () => {
     setDeliveryAvailable(false);
     setSellerType('');
     setListingType('');
+    setVehicleType('');
+    setLocationFilter('');
+    setModelFilter('');
   };
 
   const applyQuickFilter = (id: string) => {
@@ -316,6 +347,9 @@ export const SearchScreen: React.FC = () => {
       if (f.transmission) setTransmissions([f.transmission]);
       if (f.listingType)  setListingType(f.listingType as any);
       if (f.sellerType)   setSellerType(f.sellerType as any);
+      if (f.vehicleType)  setVehicleType(f.vehicleType as any);
+      if (f.location)     setLocationFilter(f.location);
+      if (f.model)        setModelFilter(f.model);
       if (f.ulezCompliant === 'true') setUlezCompliant(true);
       if (f.deliveryAvailable === 'true') setDeliveryAvailable(true);
       setQuickFilter('custom');
@@ -333,7 +367,7 @@ export const SearchScreen: React.FC = () => {
     <View style={s.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(220,31,38,0.04)', 'rgba(0,0,0,0)', '#0A0A0C']}
+        colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.4 }}
         style={StyleSheet.absoluteFillObject}
       />
@@ -346,29 +380,25 @@ export const SearchScreen: React.FC = () => {
             {total > 0 ? `${total.toLocaleString('en-GB')} listings` : 'Browse cars'}
           </Text>
         </View>
-        <TouchableOpacity style={s.iconBtn} onPress={() => navigation.navigate('Alerts')} activeOpacity={0.7}>
-          <Ionicons name="notifications-outline" size={19} color="#FFFFFF" />
-        </TouchableOpacity>
+        <IconButton style={s.iconBtn} icon={<Ionicons name="notifications-outline" size={19} color={Colors.white} />} onPress={() => navigation.navigate('Notifications')} accessibilityLabel="Notifications" />
       </View>
 
       {/* ── Search bar ── */}
       <View style={s.searchWrap}>
         <View style={s.searchBar}>
-          <Ionicons name="search-outline" size={18} color="#606070" />
+          <Ionicons name="search-outline" size={18} color={Colors.iconMuted} />
           <TextInput
             style={s.searchInput}
             value={query}
             onChangeText={setQuery}
             placeholder="Make, model, or keyword..."
-            placeholderTextColor="#404050"
+            placeholderTextColor={Colors.borderMuted}
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
           />
           {query.length > 0 && (
-            <TouchableOpacity onPress={() => setQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="close" size={16} color="#606070" />
-            </TouchableOpacity>
+            <IconButton icon={<Ionicons name="close" size={16} color={Colors.iconMuted} />} onPress={() => setQuery('')} accessibilityLabel="Clear search" />
           )}
         </View>
       </View>
@@ -376,7 +406,7 @@ export const SearchScreen: React.FC = () => {
       {/* ── AI Search button ── */}
       <View style={s.aiSearchWrap}>
         <TouchableOpacity style={s.aiSearchBtn} onPress={() => setAiModalVisible(true)} activeOpacity={0.8}>
-          <Ionicons name="sparkles" size={13} color="#F59E0B" />
+          <Ionicons name="sparkles" size={13} color={Colors.warning} />
           <Text style={s.aiSearchBtnText}>Try AI Search ✦</Text>
         </TouchableOpacity>
       </View>
@@ -384,11 +414,9 @@ export const SearchScreen: React.FC = () => {
       {/* ── AI Explanation banner ── */}
       {aiExplanation && (
         <View style={s.aiExplanationBanner}>
-          <Ionicons name="sparkles" size={12} color="#F59E0B" />
+          <Ionicons name="sparkles" size={12} color={Colors.warning} />
           <Text style={s.aiExplanationText} numberOfLines={2}>{aiExplanation}</Text>
-          <TouchableOpacity onPress={() => setAiExplanation(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="close" size={14} color="#F59E0B" />
-          </TouchableOpacity>
+          <IconButton icon={<Ionicons name="close" size={14} color={Colors.warning} />} onPress={() => setAiExplanation(null)} accessibilityLabel="Dismiss AI search explanation" />
         </View>
       )}
 
@@ -421,7 +449,7 @@ export const SearchScreen: React.FC = () => {
         <View style={{ flexDirection: 'row', gap: 10 }}>
           {/* Sort */}
           <TouchableOpacity style={s.sortBtn} onPress={() => setShowSortMenu(v => !v)} activeOpacity={0.7}>
-            <Ionicons name="chevron-down" size={12} color="#A0A0AB" />
+            <Ionicons name="chevron-down" size={12} color={Colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no" />
             <Text style={s.sortBtnText}>{sortLabel}</Text>
           </TouchableOpacity>
           {/* Filter */}
@@ -430,8 +458,8 @@ export const SearchScreen: React.FC = () => {
             onPress={() => setFilterOpen(true)}
             activeOpacity={0.7}
           >
-            <Ionicons name="options-outline" size={14} color={filterCount > 0 ? '#FFFFFF' : '#A0A0AB'} />
-            <Text style={[s.filterBtnText, filterCount > 0 && { color: '#FFFFFF' }]}>
+            <Ionicons name="options-outline" size={14} color={filterCount > 0 ? Colors.white : Colors.textSecondary} />
+            <Text style={[s.filterBtnText, filterCount > 0 && { color: Colors.white }]}>
               Filters{filterCount > 0 ? ` (${filterCount})` : ''}
             </Text>
           </TouchableOpacity>
@@ -483,12 +511,7 @@ export const SearchScreen: React.FC = () => {
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.accent} colors={[Colors.accent]} />
           }
-          renderItem={({ item }) => (
-            <HorizontalVehicleCard
-              listing={item}
-              onPress={() => navigation.navigate('VehicleDetail', { listing: item })}
-            />
-          )}
+          renderItem={renderListingItem}
           ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
           onEndReached={() => { if (hasMore && !loadingMore) fetch(false); }}
           onEndReachedThreshold={0.4}
@@ -505,68 +528,60 @@ export const SearchScreen: React.FC = () => {
       )}
 
       {/* ── AI Search Modal ── */}
-      <Modal visible={aiModalVisible} animationType="slide" transparent onRequestClose={() => setAiModalVisible(false)}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          <TouchableOpacity style={s.aiModalOverlay} activeOpacity={1} onPress={() => setAiModalVisible(false)}>
-            <View style={[s.aiModalSheet, { paddingBottom: Math.max(insets.bottom, 24) }]} onStartShouldSetResponder={() => true}>
-              <View style={s.aiModalHandle} />
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                <Ionicons name="sparkles" size={16} color="#F59E0B" />
-                <Text style={s.aiModalTitle}>AI Car Search</Text>
-              </View>
-              <Text style={s.aiModalSubtitle}>Describe what you're looking for in plain English</Text>
-              <TextInput
-                style={s.aiModalInput}
-                value={aiQuery}
-                onChangeText={setAiQuery}
-                placeholder="Describe the car you're looking for…"
-                placeholderTextColor="#404050"
-                multiline
-                numberOfLines={3}
-                onSubmitEditing={handleAiSearch}
-                blurOnSubmit
-                autoFocus
-              />
-              <TouchableOpacity
-                style={[s.aiModalBtn, (aiLoading || !aiQuery.trim()) && { opacity: 0.5 }]}
-                onPress={handleAiSearch}
-                disabled={aiLoading || !aiQuery.trim()}
-                activeOpacity={0.85}
-              >
-                {aiLoading ? (
-                  <ActivityIndicator color="#FFF" size="small" />
-                ) : (
-                  <>
-                    <Ionicons name="sparkles" size={14} color="#FFF" />
-                    <Text style={s.aiModalBtnText}>Search with AI</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
+      <BottomSheet
+        visible={aiModalVisible}
+        onClose={() => setAiModalVisible(false)}
+        title="AI Car Search"
+        avoidKeyboard
+        maxHeightPercent={60}
+      >
+        {/* gap replicates the old aiModalSheet wrapper's spacing, which BottomSheet's
+            own sheet style doesn't provide */}
+        <View style={{ gap: 12 }}>
+          <Text style={s.aiModalSubtitle}>Describe what you're looking for in plain English</Text>
+          <TextInput
+            style={s.aiModalInput}
+            value={aiQuery}
+            onChangeText={setAiQuery}
+            placeholder="Describe the car you're looking for…"
+            placeholderTextColor={Colors.borderMuted}
+            multiline
+            numberOfLines={3}
+            onSubmitEditing={handleAiSearch}
+            blurOnSubmit
+            autoFocus
+          />
+          <TouchableOpacity
+            style={[s.aiModalBtn, (aiLoading || !aiQuery.trim()) && { opacity: 0.5 }]}
+            onPress={handleAiSearch}
+            disabled={aiLoading || !aiQuery.trim()}
+            activeOpacity={0.85}
+          >
+            {aiLoading ? (
+              <ActivityIndicator color={Colors.white} size="small" />
+            ) : (
+              <>
+                <Ionicons name="sparkles" size={14} color={Colors.white} />
+                <Text style={s.aiModalBtnText}>Search with AI</Text>
+              </>
+            )}
           </TouchableOpacity>
-        </KeyboardAvoidingView>
-      </Modal>
+        </View>
+      </BottomSheet>
 
       {/* ── Advanced Filters Modal ── */}
-      <Modal visible={filterOpen} animationType="slide" transparent onRequestClose={() => setFilterOpen(false)}>
-        <View style={s.modalOverlay}>
-          <View style={[s.modalSheet, { paddingBottom: insets.bottom + 16 }]}>
+      <BottomSheet visible={filterOpen} onClose={() => setFilterOpen(false)} maxHeightPercent={92}>
+        {/* Custom header (with Reset) kept as content — BottomSheet's own title
+            row doesn't support a second right-side action. */}
+        <View style={s.modalHeader}>
+          <IconButton style={s.modalClose} icon={<Ionicons name="close" size={18} color={Colors.white} />} onPress={() => setFilterOpen(false)} accessibilityLabel="Close" />
+          <Text style={s.modalTitle}>Refine Search</Text>
+          <TouchableOpacity onPress={resetFilters}>
+            <Text style={s.modalReset}>Reset</Text>
+          </TouchableOpacity>
+        </View>
 
-            {/* Modal header */}
-            <View style={s.modalHeader}>
-              <TouchableOpacity style={s.modalClose} onPress={() => setFilterOpen(false)}>
-                <Ionicons name="close" size={18} color="#FFF" />
-              </TouchableOpacity>
-              <Text style={s.modalTitle}>Refine Search</Text>
-              <TouchableOpacity onPress={resetFilters}>
-                <Text style={s.modalReset}>Reset</Text>
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.modalBody}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.modalBody}>
 
               {/* Make */}
               <Text style={s.filterLabel}>MAKE</Text>
@@ -597,7 +612,7 @@ export const SearchScreen: React.FC = () => {
                     value={minPrice > 0 ? `£${minPrice.toLocaleString()}` : ''}
                     onChangeText={t => setMinPrice(parseInt(t.replace(/[^0-9]/g, '') || '0'))}
                     placeholder="£ 0"
-                    placeholderTextColor="#404050"
+                    placeholderTextColor={Colors.borderMuted}
                     keyboardType="number-pad"
                   />
                 </View>
@@ -608,7 +623,7 @@ export const SearchScreen: React.FC = () => {
                     value={maxPrice < 150000 ? `£${maxPrice.toLocaleString()}` : ''}
                     onChangeText={t => setMaxPrice(parseInt(t.replace(/[^0-9]/g, '') || '150000'))}
                     placeholder="£ Any"
-                    placeholderTextColor="#404050"
+                    placeholderTextColor={Colors.borderMuted}
                     keyboardType="number-pad"
                   />
                 </View>
@@ -626,7 +641,7 @@ export const SearchScreen: React.FC = () => {
                     onPress={() => setSelectedBody(prev => prev === bt.id ? '' : bt.id)}
                     activeOpacity={0.7}
                   >
-                    <Text style={s.bodyChipEmoji}>{bt.emoji}</Text>
+                    <Ionicons name={bt.icon as any} size={16} color={selectedBody === bt.id ? Colors.white : Colors.textSecondary} />
                     <Text style={[s.filterChipText, selectedBody === bt.id && s.filterChipTextActive]}>
                       {bt.label}
                     </Text>
@@ -661,7 +676,7 @@ export const SearchScreen: React.FC = () => {
                   <View style={{ flexDirection: 'row', gap: 6 }}>
                     {YEAR_OPTS.map(y => (
                       <TouchableOpacity key={y} style={[s.miniChip, minYear === y && s.filterChipActive]} onPress={() => setMinYear(y)}>
-                        <Text style={[s.miniChipText, minYear === y && { color: '#FFF' }]}>{y}</Text>
+                        <Text style={[s.miniChipText, minYear === y && { color: Colors.white }]}>{y}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -674,7 +689,7 @@ export const SearchScreen: React.FC = () => {
                     <View style={{ flexDirection: 'row', gap: 6 }}>
                       {YEAR_OPTS_MAX.map(y => (
                         <TouchableOpacity key={y} style={[s.miniChip, maxYear === y && s.filterChipActive]} onPress={() => setMaxYear(y)}>
-                          <Text style={[s.miniChipText, maxYear === y && { color: '#FFF' }]}>{y}</Text>
+                          <Text style={[s.miniChipText, maxYear === y && { color: Colors.white }]}>{y}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -692,7 +707,7 @@ export const SearchScreen: React.FC = () => {
                   <View style={{ flexDirection: 'row', gap: 6 }}>
                     {MILES_OPTS_MIN.map(m => (
                       <TouchableOpacity key={m} style={[s.miniChip, minMiles === m && s.filterChipActive]} onPress={() => setMinMiles(m)}>
-                        <Text style={[s.miniChipText, minMiles === m && { color: '#FFF' }]}>{m}</Text>
+                        <Text style={[s.miniChipText, minMiles === m && { color: Colors.white }]}>{m}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -705,7 +720,7 @@ export const SearchScreen: React.FC = () => {
                     <View style={{ flexDirection: 'row', gap: 6 }}>
                       {MILES_OPTS.map(m => (
                         <TouchableOpacity key={m} style={[s.miniChip, maxMiles === m && s.filterChipActive]} onPress={() => setMaxMiles(m)}>
-                          <Text style={[s.miniChipText, maxMiles === m && { color: '#FFF' }]}>{m}</Text>
+                          <Text style={[s.miniChipText, maxMiles === m && { color: Colors.white }]}>{m}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -768,7 +783,7 @@ export const SearchScreen: React.FC = () => {
                     value={minBhp}
                     onChangeText={setMinBhp}
                     placeholder="0"
-                    placeholderTextColor="#404050"
+                    placeholderTextColor={Colors.borderMuted}
                     keyboardType="number-pad"
                   />
                 </View>
@@ -779,10 +794,63 @@ export const SearchScreen: React.FC = () => {
                     value={maxBhp}
                     onChangeText={setMaxBhp}
                     placeholder="Any"
-                    placeholderTextColor="#404050"
+                    placeholderTextColor={Colors.borderMuted}
                     keyboardType="number-pad"
                   />
                 </View>
+              </View>
+
+              <View style={s.divider} />
+
+              {/* Vehicle Type */}
+              <Text style={s.filterLabel}>VEHICLE TYPE</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {[
+                  { id: '' as const,            label: 'All' },
+                  { id: 'CAR' as const,         label: 'Car' },
+                  { id: 'HGV' as const,         label: 'HGV' },
+                  { id: 'MOTORCYCLE' as const,  label: 'Motorcycle' },
+                ].map(opt => (
+                  <TouchableOpacity
+                    key={opt.id}
+                    style={[s.segmentBtn, vehicleType === opt.id && s.segmentBtnActive]}
+                    onPress={() => setVehicleType(opt.id)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.segmentBtnText, vehicleType === opt.id && s.segmentBtnTextActive]}>{opt.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={s.divider} />
+
+              {/* Model + Location */}
+              <Text style={s.filterLabel}>MODEL</Text>
+              <View style={s.inputBox}>
+                <Text style={s.inputBoxLabel}>MODEL NAME</Text>
+                <TextInput
+                  style={s.inputBoxValue}
+                  value={modelFilter}
+                  onChangeText={setModelFilter}
+                  placeholder="e.g. Q7, 3 Series"
+                  placeholderTextColor={Colors.borderMuted}
+                  autoCapitalize="words"
+                />
+              </View>
+
+              <View style={s.divider} />
+
+              <Text style={s.filterLabel}>LOCATION</Text>
+              <View style={s.inputBox}>
+                <Text style={s.inputBoxLabel}>CITY OR POSTCODE</Text>
+                <TextInput
+                  style={s.inputBoxValue}
+                  value={locationFilter}
+                  onChangeText={setLocationFilter}
+                  placeholder="e.g. London"
+                  placeholderTextColor={Colors.borderMuted}
+                  autoCapitalize="words"
+                />
               </View>
 
               <View style={s.divider} />
@@ -838,8 +906,8 @@ export const SearchScreen: React.FC = () => {
                 <Switch
                   value={ulezCompliant}
                   onValueChange={setUlezCompliant}
-                  trackColor={{ false: '#2A2A35', true: '#DC1F26' }}
-                  thumbColor="#FFFFFF"
+                  trackColor={{ false: Colors.darkBlue_2a2a35, true: Colors.accent }}
+                  thumbColor={Colors.white}
                 />
               </View>
               <View style={[s.toggleRow, { marginTop: 14 }]}>
@@ -850,25 +918,23 @@ export const SearchScreen: React.FC = () => {
                 <Switch
                   value={deliveryAvailable}
                   onValueChange={setDeliveryAvailable}
-                  trackColor={{ false: '#2A2A35', true: '#DC1F26' }}
-                  thumbColor="#FFFFFF"
+                  trackColor={{ false: Colors.darkBlue_2a2a35, true: Colors.accent }}
+                  thumbColor={Colors.white}
                 />
               </View>
 
               <View style={{ height: 80 }} />
             </ScrollView>
 
-            {/* Sticky apply button */}
-            <View style={s.modalFooter}>
-              <PrimaryCTA
-                label={`SHOW ${total > 0 ? total.toLocaleString('en-GB') + ' CARS' : 'RESULTS'}`}
-                onPress={() => { setFilterOpen(false); setQuickFilter('custom'); }}
-                hasChamfer
-              />
-            </View>
-          </View>
+        {/* Sticky apply button */}
+        <View style={s.modalFooter}>
+          <PrimaryCTA
+            label={`SHOW ${total > 0 ? total.toLocaleString('en-GB') + ' CARS' : 'RESULTS'}`}
+            onPress={() => { setFilterOpen(false); setQuickFilter('custom'); }}
+            hasChamfer
+          />
         </View>
-      </Modal>
+      </BottomSheet>
     </View>
   );
 };
@@ -876,97 +942,90 @@ export const SearchScreen: React.FC = () => {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0A0A0C' },
+  container: { flex: 1, backgroundColor: Colors.bgPrimary },
 
   header: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 24, paddingBottom: 18 },
-  headerSub: { fontFamily: FontFamily.bold, fontSize: 10, color: Colors.accent, letterSpacing: 1.5, marginBottom: 4 },
-  headerTitle: { fontFamily: FontFamily.extraBold, fontSize: 22, color: '#FFFFFF' },
-  iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' },
+  headerSub: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.accent, letterSpacing: 1.5, marginBottom: 4 },
+  headerTitle: { fontFamily: FontFamily.extraBold, fontSize: FontSize.size22, color: Colors.white },
+  iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.whiteAlpha05, borderWidth: 1, borderColor: Colors.whiteAlpha08, alignItems: 'center', justifyContent: 'center' },
 
   searchWrap: { paddingHorizontal: 24, marginBottom: 8 },
-  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#111115', borderRadius: 14, borderWidth: 1, borderColor: '#2A2A32', paddingHorizontal: 16, height: 52, gap: 10 },
-  searchInput: { flex: 1, fontFamily: FontFamily.regular, fontSize: 15, color: '#FFFFFF' },
+  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bgSecondary, borderRadius: 14, borderWidth: 1, borderColor: Colors.borderSubtle, paddingHorizontal: 16, height: 52, gap: 10 },
+  searchInput: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.base, color: Colors.white },
 
   quickScroll: { height: 48, marginBottom: 4 },
   quickRow: { paddingHorizontal: 24, gap: 10, alignItems: 'center', flexDirection: 'row' },
-  quickChip: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
+  quickChip: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 20, backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
   quickChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
-  quickChipText: { fontFamily: FontFamily.bold, fontSize: 12, color: '#CCCCCC' },
-  quickChipTextActive: { color: '#FFFFFF' },
+  quickChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.paleGrey_cccccc },
+  quickChipTextActive: { color: Colors.white },
 
   sortRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, marginBottom: 8, marginTop: 4, position: 'relative', zIndex: 10 },
-  resultsCount: { fontFamily: FontFamily.bold, fontSize: 10, color: '#606070', letterSpacing: 1 },
-  sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: '#111115', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-  sortBtnText: { fontFamily: FontFamily.bold, fontSize: 11, color: '#A0A0AB' },
-  filterBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: '#111115', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  resultsCount: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.iconMuted, letterSpacing: 1 },
+  sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: Colors.bgSecondary, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha08 },
+  sortBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
+  filterBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: Colors.bgSecondary, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha08 },
   filterBtnActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
-  filterBtnText: { fontFamily: FontFamily.bold, fontSize: 11, color: '#A0A0AB' },
-  sortDropdown: { position: 'absolute', top: 36, right: 0, backgroundColor: '#18181E', borderRadius: 12, borderWidth: 1, borderColor: '#2A2A32', padding: 4, zIndex: 99, minWidth: 160, shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
+  filterBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
+  sortDropdown: { position: 'absolute', top: 36, right: 0, backgroundColor: Colors.bgTertiary, borderRadius: 12, borderWidth: 1, borderColor: Colors.borderSubtle, padding: 4, zIndex: 99, minWidth: 160, shadowColor: Colors.black, shadowOpacity: 0.4, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
   sortOption: { paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 8 },
-  sortOptionActive: { backgroundColor: 'rgba(220,31,38,0.08)' },
-  sortOptionText: { fontFamily: FontFamily.medium, fontSize: 13, color: '#FFFFFF' },
+  sortOptionActive: { backgroundColor: Colors.accentAlpha08 },
+  sortOptionText: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.white },
 
   listContent: { paddingHorizontal: 24 },
   loadMoreWrap: { alignItems: 'center', paddingVertical: 20 },
-  endText: { textAlign: 'center', fontFamily: FontFamily.regular, fontSize: 11, color: '#404050', paddingVertical: 20 },
+  endText: { textAlign: 'center', fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.borderMuted, paddingVertical: 20 },
   skeletonList: { paddingHorizontal: 24, gap: 14 },
-  skeletonCard: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#111115', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', padding: 14 },
+  skeletonCard: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: Colors.bgSecondary, borderRadius: 14, borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 14 },
   skeletonInfo: { flex: 1, gap: 6 },
 
   // Filter modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: '#0F0F14', borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', maxHeight: '92%' },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' },
-  modalClose: { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center' },
-  modalTitle: { fontFamily: FontFamily.bold, fontSize: 16, color: '#FFFFFF' },
-  modalReset: { fontFamily: FontFamily.bold, fontSize: 13, color: Colors.accent },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, borderBottomWidth: 1, borderBottomColor: Colors.whiteAlpha06 },
+  modalClose: { width: 34, height: 34, borderRadius: 17, backgroundColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center' },
+  modalTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white },
+  modalReset: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.accent },
   modalBody: { paddingHorizontal: 22, paddingTop: 20 },
-  modalFooter: { paddingHorizontal: 22, paddingTop: 14, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)', backgroundColor: '#0F0F14' },
+  modalFooter: { paddingHorizontal: 22, paddingTop: 14, borderTopWidth: 1, borderTopColor: Colors.whiteAlpha06, backgroundColor: Colors.deepBlue_0f0f14 },
 
-  filterLabel: { fontFamily: FontFamily.bold, fontSize: 10, color: '#606070', letterSpacing: 1.5, marginBottom: 14 },
-  divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.05)', marginVertical: 20 },
+  filterLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.iconMuted, letterSpacing: 1.5, marginBottom: 14 },
+  divider: { height: 1, backgroundColor: Colors.whiteAlpha05, marginVertical: 20 },
   chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  filterChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
+  filterChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: Colors.whiteAlpha03, borderWidth: 1, borderColor: Colors.whiteAlpha06 },
   filterChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
-  filterChipText: { fontFamily: FontFamily.medium, fontSize: 12, color: '#A0A0AB' },
-  filterChipTextActive: { color: '#FFFFFF', fontFamily: FontFamily.bold },
-  bodyChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
+  filterChipText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.textSecondary },
+  filterChipTextActive: { color: Colors.white, fontFamily: FontFamily.bold },
+  bodyChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: Colors.whiteAlpha03, borderWidth: 1, borderColor: Colors.whiteAlpha06 },
   bodyChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
-  bodyChipEmoji: { fontSize: 15 },
   twoCol: { gap: 10 },
-  inputBox: { flex: 1, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', padding: 12 },
-  inputBoxLabel: { fontFamily: FontFamily.bold, fontSize: 8, color: '#606070', letterSpacing: 1, marginBottom: 6 },
-  inputBoxValue: { fontFamily: FontFamily.bold, fontSize: 15, color: '#FFFFFF' },
-  miniChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
-  miniChipText: { fontFamily: FontFamily.medium, fontSize: 11, color: '#A0A0AB' },
+  inputBox: { flex: 1, backgroundColor: Colors.whiteAlpha03, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 12 },
+  inputBoxLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size8, color: Colors.iconMuted, letterSpacing: 1, marginBottom: 6 },
+  inputBoxValue: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white },
+  miniChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: Colors.whiteAlpha04, borderWidth: 1, borderColor: Colors.whiteAlpha06 },
+  miniChipText: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textSecondary },
 
   // AI search button
   aiSearchWrap: { paddingHorizontal: 24, marginBottom: 6 },
-  aiSearchBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: 'rgba(245,158,11,0.10)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.25)' },
-  aiSearchBtnText: { fontFamily: FontFamily.bold, fontSize: 12, color: '#F59E0B' },
+  aiSearchBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: Colors.warningAlpha10, borderWidth: 1, borderColor: Colors.warningAlpha25 },
+  aiSearchBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.warning },
 
   // AI explanation banner
-  aiExplanationBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginHorizontal: 24, marginBottom: 6, backgroundColor: 'rgba(245,158,11,0.08)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.20)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9 },
-  aiExplanationText: { flex: 1, fontFamily: FontFamily.regular, fontSize: 12, color: '#FCD34D', lineHeight: 18 },
+  aiExplanationBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginHorizontal: 24, marginBottom: 6, backgroundColor: Colors.warningAlpha08, borderWidth: 1, borderColor: Colors.warningAlpha20, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9 },
+  aiExplanationText: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.lightYellow, lineHeight: 18 },
 
   // AI modal
-  aiModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' },
-  aiModalSheet: { backgroundColor: '#0F0F14', borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', padding: 24, gap: 12 },
-  aiModalHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)', alignSelf: 'center', marginBottom: 4 },
-  aiModalTitle: { fontFamily: FontFamily.bold, fontSize: 18, color: '#FFFFFF' },
-  aiModalSubtitle: { fontFamily: FontFamily.regular, fontSize: 13, color: '#606070', lineHeight: 19 },
-  aiModalInput: { backgroundColor: '#111115', borderRadius: 14, borderWidth: 1, borderColor: '#2A2A32', paddingHorizontal: 16, paddingVertical: 14, fontFamily: FontFamily.regular, fontSize: 15, color: '#FFFFFF', minHeight: 80, textAlignVertical: 'top' },
-  aiModalBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, borderRadius: 12, backgroundColor: '#F59E0B' },
-  aiModalBtnText: { fontFamily: FontFamily.bold, fontSize: 15, color: '#FFFFFF' },
+  aiModalSubtitle: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.iconMuted, lineHeight: 19 },
+  aiModalInput: { backgroundColor: Colors.bgSecondary, borderRadius: 14, borderWidth: 1, borderColor: Colors.borderSubtle, paddingHorizontal: 16, paddingVertical: 14, fontFamily: FontFamily.regular, fontSize: FontSize.base, color: Colors.white, minHeight: 80, textAlignVertical: 'top' },
+  aiModalBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, borderRadius: 12, backgroundColor: Colors.warning },
+  aiModalBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white },
 
   // Segmented controls (listing type / seller type)
-  segmentBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', alignItems: 'center' },
+  segmentBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: Colors.whiteAlpha03, borderWidth: 1, borderColor: Colors.whiteAlpha06, alignItems: 'center' },
   segmentBtnActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
-  segmentBtnText: { fontFamily: FontFamily.medium, fontSize: 13, color: '#A0A0AB' },
-  segmentBtnTextActive: { color: '#FFFFFF', fontFamily: FontFamily.bold },
+  segmentBtnText: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.textSecondary },
+  segmentBtnTextActive: { color: Colors.white, fontFamily: FontFamily.bold },
 
   // Toggle rows
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  toggleLabel: { fontFamily: FontFamily.bold, fontSize: 12, color: '#FFFFFF', marginBottom: 3 },
-  toggleHint: { fontFamily: FontFamily.regular, fontSize: 11, color: '#606070', lineHeight: 15 },
+  toggleLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white, marginBottom: 3 },
+  toggleHint: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted, lineHeight: 15 },
 });

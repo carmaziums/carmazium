@@ -16,6 +16,7 @@ import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
+import { IconButton } from '../../components/IconButton';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 // ─────────────────────────── data ──────────────────────────────────
@@ -34,15 +35,15 @@ const SERVICES: ServiceItem[] = [
     title: 'Vehicle Delivery',
     desc: 'Professional vehicle delivery — your car gets transported to your door safely and on schedule, via trusted third-party couriers.',
     icon: 'car-outline',
-    color: '#60A5FA',
-    bg: 'rgba(59,130,246,0.10)',
+    color: Colors.infoBlueLight,
+    bg: Colors.infoBlueAlpha10,
     border: 'rgba(59,130,246,0.22)',
   },
   {
     title: 'Car Inspection',
     desc: 'Connect with certified inspectors who carry out detailed, independent vehicle evaluations before you commit to a purchase.',
     icon: 'search-outline',
-    color: '#34D399',
+    color: Colors.lightGreen_34d399,
     bg: 'rgba(16,185,129,0.10)',
     border: 'rgba(16,185,129,0.22)',
   },
@@ -50,7 +51,7 @@ const SERVICES: ServiceItem[] = [
     title: 'Warranty Coverage',
     desc: 'Extended third-party warranty options give you protection against unexpected mechanical or electrical failures after purchase.',
     icon: 'ribbon-outline',
-    color: '#C084FC',
+    color: Colors.palePurple_c084fc,
     bg: 'rgba(168,85,247,0.10)',
     border: 'rgba(168,85,247,0.22)',
   },
@@ -58,8 +59,8 @@ const SERVICES: ServiceItem[] = [
     title: 'Vehicle Financing',
     desc: 'Get matched with finance providers offering structured payment plans and pre-approvals tailored to your budget.',
     icon: 'cash-outline',
-    color: '#FBBF24',
-    bg: 'rgba(245,158,11,0.10)',
+    color: Colors.lightOrange_fbbf24,
+    bg: Colors.warningAlpha10,
     border: 'rgba(245,158,11,0.22)',
   },
   {
@@ -67,14 +68,14 @@ const SERVICES: ServiceItem[] = [
     desc: 'Find trusted garages and mobile mechanics for routine servicing, repairs, and specialist maintenance work near you.',
     icon: 'build-outline',
     color: Colors.accent,
-    bg: 'rgba(220,31,38,0.10)',
-    border: 'rgba(220,31,38,0.22)',
+    bg: Colors.accentAlpha10,
+    border: Colors.accentAlpha22,
   },
   {
     title: 'Insurance',
     desc: 'Compare comprehensive vehicle insurance options from trusted providers, with coverage levels to suit every driver.',
     icon: 'umbrella-outline',
-    color: '#22D3EE',
+    color: Colors.lightTeal_22d3ee,
     bg: 'rgba(34,211,238,0.10)',
     border: 'rgba(34,211,238,0.22)',
   },
@@ -90,7 +91,7 @@ export const ServicesScreen: React.FC = () => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(34,211,238,0.05)', 'rgba(10,10,12,0)', '#0A0A0C']}
+        colors={['rgba(34,211,238,0.05)', 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 0.6 }}
         style={StyleSheet.absoluteFillObject}
@@ -100,13 +101,7 @@ export const ServicesScreen: React.FC = () => {
 
       {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          activeOpacity={0.75}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="chevron-back" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
+        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
         <Text style={styles.headerTitle}>Services</Text>
         <View style={styles.headerPlaceholder} />
       </View>
@@ -137,7 +132,7 @@ export const ServicesScreen: React.FC = () => {
         ))}
 
         <View style={styles.noteCard}>
-          <Ionicons name="information-circle-outline" size={18} color={Colors.textSecondary} />
+          <Ionicons name="information-circle-outline" size={18} color={Colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no" />
           <Text style={styles.noteText}>
             Carmazium connects you with independent professionals and partners. Each service is
             provided by a third party — agreements and any costs are between you and that provider.
@@ -166,16 +161,16 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.lg,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   headerPlaceholder: { width: 38 },
 
@@ -189,7 +184,7 @@ const styles = StyleSheet.create({
   introTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xl,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   introSub: {
     fontFamily: FontFamily.regular,
@@ -202,10 +197,10 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     gap: 14,
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     padding: 16,
     alignItems: 'flex-start',
   },
@@ -220,13 +215,13 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 15,
-    color: '#FFFFFF',
+    fontSize: FontSize.base,
+    color: Colors.white,
     marginBottom: 4,
   },
   cardDesc: {
     fontFamily: FontFamily.regular,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.textSecondary,
     lineHeight: 19,
   },
@@ -234,17 +229,17 @@ const styles = StyleSheet.create({
   noteCard: {
     flexDirection: 'row',
     gap: 10,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: Colors.whiteAlpha08,
     padding: 14,
     marginTop: 4,
   },
   noteText: {
     flex: 1,
     fontFamily: FontFamily.regular,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.textSecondary,
     lineHeight: 18,
   },

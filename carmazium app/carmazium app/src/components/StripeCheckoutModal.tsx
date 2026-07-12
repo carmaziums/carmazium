@@ -12,8 +12,9 @@ import { WebView, WebViewNavigation } from 'react-native-webview';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/colors';
-import { FontFamily } from '../constants/typography';
+import {FontFamily, FontSize } from '../constants/typography';
 
+import { IconButton } from './IconButton';
 export interface StripeCheckoutModalProps {
   /** Hosted Stripe Checkout URL (from /payments/*-checkout endpoints). */
   url: string | null;
@@ -70,13 +71,7 @@ export const StripeCheckoutModal: React.FC<StripeCheckoutModalProps> = ({
         <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
         <View style={{ height: insets.top }} />
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.closeBtn}
-            onPress={onClose}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="close" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+          <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={onClose} accessibilityLabel="Close" />
           <Text style={styles.title}>{title}</Text>
           <View style={styles.closeBtn} />
         </View>
@@ -122,32 +117,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
+    borderBottomColor: Colors.whiteAlpha06,
   },
   closeBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   title: {
     fontFamily: FontFamily.bold,
-    fontSize: 15,
-    color: '#FFFFFF',
+    fontSize: FontSize.base,
+    color: Colors.white,
     flex: 1,
     textAlign: 'center',
   },
   webviewWrap: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
   },
   webview: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,

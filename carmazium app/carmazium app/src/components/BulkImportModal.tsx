@@ -17,9 +17,10 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Colors } from '../constants/colors';
-import { FontFamily } from '../constants/typography';
+import {FontFamily, FontSize } from '../constants/typography';
 import { apiClient } from '../lib/apiClient';
 
+import { IconButton } from './IconButton';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ImportStatus = 'idle' | 'parsing' | 'importing' | 'complete';
@@ -255,7 +256,7 @@ export const BulkImportModal: React.FC<Props> = ({ isOpen, onClose, onComplete }
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <View style={st.container}>
         <LinearGradient
-          colors={['rgba(245,158,11,0.05)', 'rgba(10,10,12,0)', '#0A0A0C']}
+          colors={[Colors.warningAlpha05, 'rgba(10,10,12,0)', Colors.bgPrimary]}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0, y: 0.4 }}
           style={StyleSheet.absoluteFillObject}
@@ -264,14 +265,7 @@ export const BulkImportModal: React.FC<Props> = ({ isOpen, onClose, onComplete }
 
         {/* Header */}
         <View style={st.header}>
-          <TouchableOpacity
-            style={st.closeBtn}
-            onPress={() => { if (status !== 'importing') { reset(); onClose(); } }}
-            activeOpacity={0.75}
-            disabled={status === 'importing'}
-          >
-            <Ionicons name="close" size={18} color={status === 'importing' ? Colors.textMuted : '#FFFFFF'} />
-          </TouchableOpacity>
+          <IconButton style={st.closeBtn} icon={<Ionicons name="close" size={18} color={status === 'importing' ? Colors.textMuted : Colors.white} />} onPress={() => { if (status !== 'importing') { reset(); onClose(); } }} disabled={status === 'importing'} accessibilityLabel="Close" />
           <View style={{ flex: 1, alignItems: 'center' }}>
             <Text style={st.headerTitle}>Bulk Import</Text>
             <Text style={st.headerSub}>Import listings from a CSV file</Text>
@@ -304,10 +298,10 @@ export const BulkImportModal: React.FC<Props> = ({ isOpen, onClose, onComplete }
                 activeOpacity={0.8}
               >
                 {sharingTemplate ? (
-                  <ActivityIndicator size="small" color="#F59E0B" />
+                  <ActivityIndicator size="small" color={Colors.warning} />
                 ) : (
                   <>
-                    <Ionicons name="download-outline" size={16} color="#F59E0B" />
+                    <Ionicons name="download-outline" size={16} color={Colors.warning} />
                     <Text style={st.outlineBtnText}>Download CSV Template</Text>
                   </>
                 )}
@@ -315,7 +309,7 @@ export const BulkImportModal: React.FC<Props> = ({ isOpen, onClose, onComplete }
 
               {/* File pick button */}
               <TouchableOpacity style={st.primaryBtn} onPress={handlePickFile} activeOpacity={0.85}>
-                <Ionicons name="document-text-outline" size={16} color="#FFFFFF" />
+                <Ionicons name="document-text-outline" size={16} color={Colors.white} />
                 <Text style={st.primaryBtnText}>Pick CSV File</Text>
               </TouchableOpacity>
             </>
@@ -362,7 +356,7 @@ export const BulkImportModal: React.FC<Props> = ({ isOpen, onClose, onComplete }
               {/* Success count */}
               <View style={st.completeCard}>
                 <View style={st.completeIcon}>
-                  <Ionicons name="checkmark-circle" size={32} color="#10B981" />
+                  <Ionicons name="checkmark-circle" size={32} color={Colors.accentGreen} />
                 </View>
                 <Text style={st.completeTitle}>{importedCount} listing{importedCount !== 1 ? 's' : ''} imported</Text>
                 <Text style={st.completeSub}>All imported listings are saved as drafts. Review and publish them from My Listings.</Text>
@@ -384,7 +378,7 @@ export const BulkImportModal: React.FC<Props> = ({ isOpen, onClose, onComplete }
                   {errorsExpanded && (
                     <View style={st.errorList}>
                       {errorRows.map((e, i) => (
-                        <View key={`err-${i}`} style={[st.errorItem, i < errorRows.length - 1 && { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' }]}>
+                        <View key={`err-${i}`} style={[st.errorItem, i < errorRows.length - 1 && { borderBottomWidth: 1, borderBottomColor: Colors.whiteAlpha05 }]}>
                           <Text style={st.errorVrm}>{e.vrm}</Text>
                           <Text style={st.errorMsg} numberOfLines={2}>{e.error}</Text>
                         </View>
@@ -430,14 +424,14 @@ const st = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: { fontFamily: FontFamily.bold, fontSize: 16, color: '#FFFFFF', textAlign: 'center' },
-  headerSub: { fontFamily: FontFamily.regular, fontSize: 11, color: Colors.textMuted, textAlign: 'center', marginTop: 2 },
+  headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white, textAlign: 'center' },
+  headerSub: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted, textAlign: 'center', marginTop: 2 },
 
   body: { paddingHorizontal: 24, paddingTop: 12, gap: 14 },
 
@@ -445,14 +439,14 @@ const st = StyleSheet.create({
   formatCard: {
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: Colors.whiteAlpha08,
     borderRadius: 14,
     padding: 16,
     gap: 6,
   },
-  formatTitle: { fontFamily: FontFamily.bold, fontSize: 10, color: Colors.textMuted, letterSpacing: 1, marginBottom: 4 },
-  formatCode: { fontFamily: FontFamily.mono, fontSize: 12, color: '#60A5FA' },
-  formatHint: { fontFamily: FontFamily.regular, fontSize: 12, color: Colors.textMuted, lineHeight: 18, marginTop: 8 },
+  formatTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.textMuted, letterSpacing: 1, marginBottom: 4 },
+  formatCode: { fontFamily: FontFamily.mono, fontSize: FontSize.size12, color: Colors.infoBlueLight },
+  formatHint: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textMuted, lineHeight: 18, marginTop: 8 },
 
   // Buttons
   primaryBtn: {
@@ -464,7 +458,7 @@ const st = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: Colors.accent,
   },
-  primaryBtnText: { fontFamily: FontFamily.bold, fontSize: 15, color: '#FFFFFF', letterSpacing: 0.3 },
+  primaryBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white, letterSpacing: 0.3 },
   outlineBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -474,21 +468,21 @@ const st = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(245,158,11,0.40)',
-    backgroundColor: 'rgba(245,158,11,0.06)',
+    backgroundColor: Colors.warningAlpha06,
   },
-  outlineBtnText: { fontFamily: FontFamily.bold, fontSize: 14, color: '#F59E0B' },
+  outlineBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.warning },
   backLink: { alignItems: 'center', paddingVertical: 14 },
-  backLinkText: { fontFamily: FontFamily.medium, fontSize: 13, color: Colors.textMuted },
+  backLinkText: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.textMuted },
 
   // Parsing / importing
   centeredBlock: { alignItems: 'center', paddingVertical: 60, gap: 16 },
-  statusText: { fontFamily: FontFamily.bold, fontSize: 15, color: Colors.textPrimary },
+  statusText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.textPrimary },
   progressBlock: { gap: 12, paddingTop: 16 },
-  progressLabel: { fontFamily: FontFamily.bold, fontSize: 15, color: Colors.textPrimary, textAlign: 'center' },
+  progressLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.textPrimary, textAlign: 'center' },
   progressTrack: {
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: Colors.whiteAlpha08,
     overflow: 'hidden',
   },
   progressFill: {
@@ -496,26 +490,26 @@ const st = StyleSheet.create({
     backgroundColor: Colors.accent,
     borderRadius: 4,
   },
-  progressPct: { fontFamily: FontFamily.mono, fontSize: 13, color: Colors.textMuted, textAlign: 'right' },
-  progressHint: { fontFamily: FontFamily.regular, fontSize: 12, color: Colors.textMuted, textAlign: 'center', lineHeight: 18 },
+  progressPct: { fontFamily: FontFamily.mono, fontSize: FontSize.sm, color: Colors.textMuted, textAlign: 'right' },
+  progressHint: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textMuted, textAlign: 'center', lineHeight: 18 },
   liveErrorRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 7,
-    backgroundColor: 'rgba(245,158,11,0.08)',
+    backgroundColor: Colors.warningAlpha08,
     borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.20)',
+    borderColor: Colors.warningAlpha20,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 9,
   },
-  liveErrorText: { fontFamily: FontFamily.medium, fontSize: 12, color: '#FCD34D' },
+  liveErrorText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.lightYellow },
 
   // Complete
   completeCard: {
-    backgroundColor: 'rgba(16,185,129,0.06)',
+    backgroundColor: Colors.accentGreenAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(16,185,129,0.20)',
+    borderColor: Colors.accentGreenAlpha20,
     borderRadius: 14,
     padding: 20,
     alignItems: 'center',
@@ -525,19 +519,19 @@ const st = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: 'rgba(16,185,129,0.12)',
+    backgroundColor: Colors.accentGreenAlpha12,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
   },
-  completeTitle: { fontFamily: FontFamily.bold, fontSize: 18, color: Colors.textPrimary },
-  completeSub: { fontFamily: FontFamily.regular, fontSize: 13, color: Colors.textMuted, textAlign: 'center', lineHeight: 19 },
+  completeTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.textPrimary },
+  completeSub: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textMuted, textAlign: 'center', lineHeight: 19 },
 
   // Errors
   errorSummary: {
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.20)',
+    borderColor: Colors.warningAlpha20,
     borderRadius: 14,
     overflow: 'hidden',
   },
@@ -548,9 +542,9 @@ const st = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
-  errorSummaryTitle: { fontFamily: FontFamily.bold, fontSize: 13, color: Colors.warning },
+  errorSummaryTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.warning },
   errorList: { paddingHorizontal: 16, paddingBottom: 8 },
   errorItem: { paddingVertical: 10, gap: 2 },
-  errorVrm: { fontFamily: FontFamily.mono, fontSize: 13, color: Colors.textPrimary },
-  errorMsg: { fontFamily: FontFamily.regular, fontSize: 12, color: Colors.textMuted, lineHeight: 17 },
+  errorVrm: { fontFamily: FontFamily.mono, fontSize: FontSize.sm, color: Colors.textPrimary },
+  errorMsg: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textMuted, lineHeight: 17 },
 });

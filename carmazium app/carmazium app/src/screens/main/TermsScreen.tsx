@@ -16,6 +16,7 @@ import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
+import { IconButton } from '../../components/IconButton';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 // ─────────────────────────── data ──────────────────────────────────
@@ -148,9 +149,9 @@ const SECTIONS: Section[] = [
 ];
 
 const CALLOUT_STYLES: Record<Callout['tone'], { bg: string; border: string; color: string; icon: string }> = {
-  info: { bg: 'rgba(59,130,246,0.10)', border: 'rgba(59,130,246,0.25)', color: '#60A5FA', icon: 'information-circle-outline' },
-  warning: { bg: 'rgba(245,158,11,0.10)', border: 'rgba(245,158,11,0.25)', color: '#FBBF24', icon: 'alert-circle-outline' },
-  danger: { bg: 'rgba(239,68,68,0.10)', border: 'rgba(239,68,68,0.25)', color: '#F87171', icon: 'warning-outline' },
+  info: { bg: Colors.infoBlueAlpha10, border: Colors.infoBlueAlpha25, color: Colors.infoBlueLight, icon: 'information-circle-outline' },
+  warning: { bg: Colors.warningAlpha10, border: Colors.warningAlpha25, color: Colors.lightOrange_fbbf24, icon: 'alert-circle-outline' },
+  danger: { bg: Colors.errorAlpha10, border: Colors.errorAlpha25, color: Colors.paleRed_f87171, icon: 'warning-outline' },
 };
 
 // ═══════════════════════════ COMPONENT ════════════════════════════
@@ -163,7 +164,7 @@ export const TermsScreen: React.FC = () => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(220,31,38,0.05)', 'rgba(10,10,12,0)', '#0A0A0C']}
+        colors={[Colors.accentAlpha05, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 0.6 }}
         style={StyleSheet.absoluteFillObject}
@@ -173,13 +174,7 @@ export const TermsScreen: React.FC = () => {
 
       {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          activeOpacity={0.75}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="chevron-back" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
+        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
         <Text style={styles.headerTitle}>Terms & Conditions</Text>
         <View style={styles.headerPlaceholder} />
       </View>
@@ -252,16 +247,16 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.lg,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   headerPlaceholder: { width: 38 },
 
@@ -280,10 +275,10 @@ const styles = StyleSheet.create({
   },
 
   sectionCard: {
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     padding: 16,
     gap: 10,
   },
@@ -296,29 +291,29 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: 'rgba(220,31,38,0.12)',
+    backgroundColor: Colors.accentAlpha12,
     borderWidth: 1,
-    borderColor: 'rgba(220,31,38,0.25)',
+    borderColor: Colors.accentAlpha25,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   numberBadgeText: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
+    fontSize: FontSize.sm,
     color: Colors.accent,
   },
   sectionTitle: {
     flex: 1,
     fontFamily: FontFamily.bold,
-    fontSize: 15,
-    color: '#FFFFFF',
+    fontSize: FontSize.base,
+    color: Colors.white,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
   bodyText: {
     fontFamily: FontFamily.regular,
-    fontSize: 13,
+    fontSize: FontSize.sm,
     color: Colors.textSecondary,
     lineHeight: 20,
   },
@@ -340,7 +335,7 @@ const styles = StyleSheet.create({
   bulletText: {
     flex: 1,
     fontFamily: FontFamily.regular,
-    fontSize: 13,
+    fontSize: FontSize.sm,
     color: Colors.textSecondary,
     lineHeight: 19,
   },
@@ -356,7 +351,7 @@ const styles = StyleSheet.create({
   calloutText: {
     flex: 1,
     fontFamily: FontFamily.medium,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     lineHeight: 18,
   },
 });

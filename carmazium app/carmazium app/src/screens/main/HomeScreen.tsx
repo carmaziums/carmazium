@@ -16,7 +16,8 @@ import { useWatchlistStore } from '../../store/watchlistStore';
 import { Logo } from '../../components/Logo';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import { Colors } from '../../constants/colors';
-import { FontFamily } from '../../constants/typography';
+import { getBodyTypeIcon } from '../../constants/bodyTypes';
+import {FontFamily, FontSize } from '../../constants/typography';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
@@ -35,7 +36,7 @@ const Skeleton: React.FC<{ w: number; h: number; r?: number }> = ({ w, h, r = 14
     p.start();
     return () => p.stop();
   }, [opacity]);
-  return <Animated.View style={{ width: w, height: h, borderRadius: r, backgroundColor: '#1E1E28', opacity }} />;
+  return <Animated.View style={{ width: w, height: h, borderRadius: r, backgroundColor: Colors.deepBlue_1e1e28, opacity }} />;
 };
 
 // ─── Countdown hook ───────────────────────────────────────────────────────────
@@ -83,7 +84,6 @@ function auctionToListingParam(a: AuctionDetail): CarListing & { auctionId: stri
     dealer: l?.seller?.dealerProfile?.companyName
       || `${l?.seller?.firstName || ''} ${l?.seller?.lastName || ''}`.trim()
       || 'Private Seller',
-    rating: 4.5,
     images: l?.images ?? [],
     isFeatured: false,
     isNew: false,
@@ -116,7 +116,7 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
           </View>
           <View style={{ flex: 1, alignItems: 'flex-end' }}>
             <Text style={s.overlayLabel}>ENDS IN</Text>
-            <Text style={[s.overlayVal, { color: '#F59E0B' }]}>{timeLeft}</Text>
+            <Text style={[s.overlayVal, { color: Colors.warning }]}>{timeLeft}</Text>
           </View>
         </View>
       </View>
@@ -127,10 +127,10 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
         </Text>
         <Text style={s.cardTitle} numberOfLines={1}>{l?.make ?? ''} {l?.model ?? ''}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Ionicons name="hammer-outline" size={11} color="#A0A0AB" />
+          <Ionicons name="hammer-outline" size={11} color={Colors.textSecondary} />
           <Text style={s.cardMeta}>{bids} bid{bids !== 1 ? 's' : ''}</Text>
           <Text style={s.cardMeta}> · </Text>
-          <Text style={[s.cardMeta, { color: '#F59E0B' }]}>View auction</Text>
+          <Text style={[s.cardMeta, { color: Colors.warning }]}>View auction</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -150,7 +150,7 @@ const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => voi
       <View style={s.cardImgWrap}>
         {image ? <Image source={{ uri: image }} style={s.cardImg} contentFit="cover" transition={200} cachePolicy="memory-disk" /> : <View style={s.cardImgEmpty} />}
         <View style={[s.livePill, { backgroundColor: 'rgba(59,130,246,0.9)' }]}>
-          <Ionicons name="calendar-outline" size={9} color="#FFF" />
+          <Ionicons name="calendar-outline" size={9} color={Colors.white} />
           <Text style={s.livePillText}>UPCOMING</Text>
         </View>
         <View style={s.bidOverlay}>
@@ -160,7 +160,7 @@ const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => voi
           </View>
           <View style={{ flex: 1, alignItems: 'flex-end' }}>
             <Text style={s.overlayLabel}>STARTS IN</Text>
-            <Text style={[s.overlayVal, { color: '#60A5FA' }]}>{startsIn}</Text>
+            <Text style={[s.overlayVal, { color: Colors.infoBlueLight }]}>{startsIn}</Text>
           </View>
         </View>
       </View>
@@ -170,7 +170,7 @@ const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => voi
         </Text>
         <Text style={s.cardTitle} numberOfLines={1}>{l?.make ?? ''} {l?.model ?? ''}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Ionicons name="calendar-outline" size={11} color="#A0A0AB" />
+          <Ionicons name="calendar-outline" size={11} color={Colors.textSecondary} />
           <Text style={s.cardMeta}>Reserve: {formatPrice(Number(auction.reservePrice ?? 0))}</Text>
         </View>
       </View>
@@ -180,10 +180,12 @@ const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => voi
 
 // ─── Listing Card (retail) ────────────────────────────────────────────────────
 
-const ListingCard: React.FC<{ listing: CarListing; onPress: () => void; onToggle: () => void; saved: boolean }> = ({
+// Memoized + stable-id callbacks so a parent re-render (watchlist toggle, countdown
+// tick from a sibling card, etc.) doesn't re-render every card in the row (mobile-audit.md P4).
+const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => void; onToggle: (id: string) => void; saved: boolean }>(({
   listing, onPress, onToggle, saved
 }) => (
-  <TouchableOpacity style={s.listingCard} onPress={onPress} activeOpacity={0.9}>
+  <TouchableOpacity style={s.listingCard} onPress={() => onPress(listing.id)} activeOpacity={0.9}>
     <View style={s.cardImgWrap}>
       {listing.images?.[0]
         ? <Image source={{ uri: listing.images[0] }} style={s.cardImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
@@ -192,8 +194,14 @@ const ListingCard: React.FC<{ listing: CarListing; onPress: () => void; onToggle
       {listing.isFeatured && (
         <View style={s.featuredBadge}><Text style={s.featuredBadgeText}>FEATURED</Text></View>
       )}
-      <TouchableOpacity style={s.heartBtn} onPress={onToggle} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-        <Ionicons name={saved ? 'heart' : 'heart-outline'} size={15} color={saved ? Colors.accent : '#FFFFFF'} />
+      <TouchableOpacity
+        style={s.heartBtn}
+        onPress={() => onToggle(listing.id)}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'}
+        accessibilityRole="button"
+      >
+        <Ionicons name={saved ? 'heart' : 'heart-outline'} size={15} color={saved ? Colors.accent : Colors.white} />
       </TouchableOpacity>
     </View>
     <View style={s.cardBody}>
@@ -204,7 +212,7 @@ const ListingCard: React.FC<{ listing: CarListing; onPress: () => void; onToggle
       <Text style={s.cardPrice}>{formatPrice(listing.price)}</Text>
     </View>
   </TouchableOpacity>
-);
+));
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 
@@ -231,22 +239,24 @@ const Section: React.FC<{ title: string; onSeeAll?: () => void; children: React.
 
 const EmptyState: React.FC<{ icon: string; text: string }> = ({ icon, text }) => (
   <View style={s.emptyState}>
-    <Ionicons name={icon as any} size={24} color="#404050" />
+    <Ionicons name={icon as any} size={24} color={Colors.borderMuted} />
     <Text style={s.emptyStateText}>{text}</Text>
   </View>
 );
 
 // ─── Body type chips ──────────────────────────────────────────────────────────
 
+// Icons sourced from the shared body-type set (src/constants/bodyTypes.ts) so
+// Home/Search/Sell all show identical icons per body type (mobile-ui-ux-audit.md §C6).
 const BODY_TYPES = [
-  { label: 'SUV', icon: 'car-outline', color: '#3B82F6', bodyType: 'SUV' },
-  { label: 'Saloon', icon: 'car-outline', color: '#10B981', bodyType: 'SALOON' },
-  { label: 'Hatchback', icon: 'car-outline', color: '#A855F7', bodyType: 'HATCHBACK' },
-  { label: 'Estate', icon: 'car-outline', color: '#F59E0B', bodyType: 'ESTATE' },
-  { label: 'Coupé', icon: 'car-sports', color: Colors.accent, bodyType: 'COUPE' },
-  { label: 'Convertible', icon: 'car-sports', color: '#EC4899', bodyType: 'CONVERTIBLE' },
-  { label: 'Van', icon: 'car-outline', color: '#6366F1', bodyType: 'VAN' },
-  { label: 'Pickup', icon: 'car-outline', color: '#14B8A6', bodyType: 'PICKUP' },
+  { label: 'SUV', icon: getBodyTypeIcon('SUV'), color: Colors.infoBlue, bodyType: 'SUV' },
+  { label: 'Saloon', icon: getBodyTypeIcon('SALOON'), color: Colors.accentGreen, bodyType: 'SALOON' },
+  { label: 'Hatchback', icon: getBodyTypeIcon('HATCHBACK'), color: Colors.lightPurple, bodyType: 'HATCHBACK' },
+  { label: 'Estate', icon: getBodyTypeIcon('ESTATE'), color: Colors.warning, bodyType: 'ESTATE' },
+  { label: 'Coupé', icon: getBodyTypeIcon('COUPE'), color: Colors.accent, bodyType: 'COUPE' },
+  { label: 'Convertible', icon: getBodyTypeIcon('CONVERTIBLE'), color: Colors.lightPink, bodyType: 'CONVERTIBLE' },
+  { label: 'Van', icon: getBodyTypeIcon('VAN'), color: Colors.lightBlue_6366f1, bodyType: 'VAN' },
+  { label: 'Pickup', icon: getBodyTypeIcon('PICKUP'), color: Colors.midTeal_14b8a6, bodyType: 'PICKUP' },
 ];
 
 // ─── Home Screen ──────────────────────────────────────────────────────────────
@@ -294,6 +304,24 @@ export const HomeScreen: React.FC = () => {
   const goToAuction = (auction: AuctionDetail) =>
     navigation.navigate('LiveAuctionDetailed', { listing: auctionToListingParam(auction) });
 
+  // Stable-identity callbacks for ListingCard (see its React.memo comment) — looked up
+  // by id from a ref kept in sync with whatever's currently loaded, so neither callback's
+  // identity changes across renders regardless of which listings are on screen.
+  const listingsByIdRef = useRef<Map<string, CarListing>>(new Map());
+  useEffect(() => {
+    for (const l of [...latestListings, ...featuredListings]) listingsByIdRef.current.set(l.id, l);
+  }, [latestListings, featuredListings]);
+
+  const handleCardPress = useCallback((id: string) => {
+    const l = listingsByIdRef.current.get(id);
+    if (l) navigation.navigate('VehicleDetail', { listing: l });
+  }, [navigation]);
+
+  const handleCardToggle = useCallback((id: string) => {
+    const l = listingsByIdRef.current.get(id);
+    if (l) toggle(l);
+  }, [toggle]);
+
   const userName = user?.firstName || 'there';
   const recentGrid = latestListings.slice(4, 10);
 
@@ -318,7 +346,7 @@ export const HomeScreen: React.FC = () => {
         <View style={s.header}>
           <Logo size="sm" />
           <View style={s.headerRight}>
-            <TouchableOpacity style={s.iconBtn} onPress={() => navigation.navigate('Notifications')} activeOpacity={0.7}>
+            <TouchableOpacity style={s.iconBtn} onPress={() => navigation.navigate('Notifications')} activeOpacity={0.7} accessibilityLabel="Notifications" accessibilityRole="button" hitSlop={{ top: 3, bottom: 3, left: 3, right: 3 }}>
               <Ionicons name="notifications-outline" size={20} color={Colors.textPrimary} />
               <View style={s.notifDot} />
             </TouchableOpacity>
@@ -342,15 +370,15 @@ export const HomeScreen: React.FC = () => {
               </View>
             )}
             {upcomingAuctions.length > 0 && (
-              <View style={[s.statChip, { borderColor: 'rgba(59,130,246,0.3)', backgroundColor: 'rgba(59,130,246,0.06)' }]}>
-                <Ionicons name="calendar-outline" size={10} color="#60A5FA" />
-                <Text style={[s.statChipText, { color: '#60A5FA' }]}>{upcomingAuctions.length} Upcoming</Text>
+              <View style={[s.statChip, { borderColor: Colors.infoBlueAlpha30, backgroundColor: Colors.infoBlueAlpha06 }]}>
+                <Ionicons name="calendar-outline" size={10} color={Colors.infoBlueLight} />
+                <Text style={[s.statChipText, { color: Colors.infoBlueLight }]}>{upcomingAuctions.length} Upcoming</Text>
               </View>
             )}
             {latestListings.length > 0 && (
-              <View style={[s.statChip, { borderColor: 'rgba(16,185,129,0.3)', backgroundColor: 'rgba(16,185,129,0.06)' }]}>
-                <Ionicons name="pricetag-outline" size={10} color="#10B981" />
-                <Text style={[s.statChipText, { color: '#10B981' }]}>{latestListings.length}+ Listings</Text>
+              <View style={[s.statChip, { borderColor: Colors.accentGreenAlpha30, backgroundColor: Colors.accentGreenAlpha06 }]}>
+                <Ionicons name="pricetag-outline" size={10} color={Colors.accentGreen} />
+                <Text style={[s.statChipText, { color: Colors.accentGreen }]}>{latestListings.length}+ Listings</Text>
               </View>
             )}
           </View>
@@ -362,10 +390,10 @@ export const HomeScreen: React.FC = () => {
           onPress={() => navigation.navigate('Search' as any)}
           activeOpacity={0.85}
         >
-          <Ionicons name="search-outline" size={18} color="#606070" />
+          <Ionicons name="search-outline" size={18} color={Colors.iconMuted} />
           <Text style={s.searchHint}>Search make, model, budget...</Text>
           <View style={s.aiChip}>
-            <Ionicons name="sparkles" size={10} color="#FFF" />
+            <Ionicons name="sparkles" size={10} color={Colors.white} />
             <Text style={s.aiChipText}>AI</Text>
           </View>
         </TouchableOpacity>
@@ -378,10 +406,10 @@ export const HomeScreen: React.FC = () => {
         >
           {[
             { label: 'Live Auctions', icon: 'hammer-outline', color: Colors.accent, screen: 'Live', params: undefined },
-            { label: 'Under £15k', icon: 'pricetag-outline', color: '#10B981', screen: 'Search', params: { maxPrice: 15000, _t: 0 } },
-            { label: 'Electric', icon: 'flash-outline', color: '#F59E0B', screen: 'Search', params: { fuelType: 'Electric', _t: 0 } },
-            { label: 'SUV', icon: 'car-sharp', color: '#3B82F6', screen: 'Search', params: { bodyType: 'SUV', _t: 0 } },
-            { label: 'New Today', icon: 'time-outline', color: '#A855F7', screen: 'Search', params: { sortBy: 'newest', _t: 0 } },
+            { label: 'Under £15k', icon: 'pricetag-outline', color: Colors.accentGreen, screen: 'Search', params: { maxPrice: 15000, _t: 0 } },
+            { label: 'Electric', icon: 'flash-outline', color: Colors.warning, screen: 'Search', params: { fuelType: 'Electric', _t: 0 } },
+            { label: 'SUV', icon: 'car-sharp', color: Colors.infoBlue, screen: 'Search', params: { bodyType: 'SUV', _t: 0 } },
+            { label: 'New Today', icon: 'time-outline', color: Colors.lightPurple, screen: 'Search', params: { sortBy: 'newest', _t: 0 } },
           ].map((chip) => (
             <TouchableOpacity
               key={chip.label}
@@ -448,8 +476,8 @@ export const HomeScreen: React.FC = () => {
                 <ListingCard
                   key={l.id}
                   listing={l}
-                  onPress={() => goToListing(l)}
-                  onToggle={() => toggle(l)}
+                  onPress={handleCardPress}
+                  onToggle={handleCardToggle}
                   saved={isSaved(l.id)}
                 />
               ))
@@ -473,8 +501,8 @@ export const HomeScreen: React.FC = () => {
                   <ListingCard
                     key={l.id}
                     listing={l}
-                    onPress={() => goToListing(l)}
-                    onToggle={() => toggle(l)}
+                    onPress={handleCardPress}
+                    onToggle={handleCardToggle}
                     saved={isSaved(l.id)}
                   />
                 ))
@@ -527,7 +555,7 @@ export const HomeScreen: React.FC = () => {
                   <View style={s.recentImgWrap}>
                     {l.images?.[0]
                       ? <Image source={{ uri: l.images[0] }} style={s.recentImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-                      : <View style={[s.recentImg, { backgroundColor: '#18181E' }]} />
+                      : <View style={[s.recentImg, { backgroundColor: Colors.bgTertiary }]} />
                     }
                   </View>
                   <View style={s.recentBody}>
@@ -575,89 +603,89 @@ const s = StyleSheet.create({
   // Header
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, marginBottom: 22 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  iconBtn: { width: 38, height: 38, borderRadius: 19, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', backgroundColor: '#111115', alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  iconBtn: { width: 38, height: 38, borderRadius: 19, borderWidth: 1, borderColor: Colors.whiteAlpha10, backgroundColor: Colors.bgSecondary, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   notifDot: { position: 'absolute', top: 9, right: 9, width: 7, height: 7, borderRadius: 3.5, backgroundColor: Colors.accent, borderWidth: 1.5, borderColor: Colors.bgPrimary },
 
   // Greeting
   greeting: { paddingHorizontal: 24, marginBottom: 22 },
-  greetingLine: { fontFamily: FontFamily.extraBold, fontSize: 28, color: '#FFFFFF', lineHeight: 34 },
-  greetingAccent: { fontFamily: FontFamily.extraBold, fontSize: 28, color: Colors.accent, lineHeight: 34 },
+  greetingLine: { fontFamily: FontFamily.extraBold, fontSize: FontSize['3xl'], color: Colors.white, lineHeight: 34 },
+  greetingAccent: { fontFamily: FontFamily.extraBold, fontSize: FontSize['3xl'], color: Colors.accent, lineHeight: 34 },
 
   // Stats bar
   statsBar: { flexDirection: 'row', gap: 8, paddingHorizontal: 24, marginBottom: 16, flexWrap: 'wrap' },
-  statChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(220,31,38,0.3)', backgroundColor: 'rgba(220,31,38,0.06)' },
-  statChipText: { fontFamily: FontFamily.bold, fontSize: 10, color: Colors.accent },
+  statChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: Colors.accentAlpha30, backgroundColor: Colors.accentAlpha06 },
+  statChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.accent },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.accent },
 
   // Search
-  searchBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 24, marginBottom: 20, paddingHorizontal: 16, height: 52, borderRadius: 14, backgroundColor: '#111115', borderWidth: 1, borderColor: '#2A2A32', gap: 10 },
-  searchHint: { flex: 1, fontFamily: FontFamily.regular, fontSize: 14, color: '#505060' },
+  searchBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 24, marginBottom: 20, paddingHorizontal: 16, height: 52, borderRadius: 14, backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.borderSubtle, gap: 10 },
+  searchHint: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.size14, color: Colors.midBlue_505060 },
   aiChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.accent, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
-  aiChipText: { fontFamily: FontFamily.bold, fontSize: 10, color: '#FFF' },
+  aiChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.white },
 
   // Quick chips
   quickChipsRow: { paddingHorizontal: 24, paddingBottom: 4, gap: 8, marginBottom: 36 },
   quickChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
-  quickChipText: { fontFamily: FontFamily.bold, fontSize: 11 },
+  quickChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs },
 
   // Section
   section: { marginBottom: 36 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, marginBottom: 18 },
-  sectionTitle: { fontFamily: FontFamily.bold, fontSize: 11, color: '#FFFFFF', letterSpacing: 1.5 },
+  sectionTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 1.5 },
   sectionBadge: { backgroundColor: Colors.accent, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8 },
-  sectionBadgeText: { fontFamily: FontFamily.bold, fontSize: 9, color: '#FFF', letterSpacing: 0.5 },
-  seeAll: { fontFamily: FontFamily.bold, fontSize: 12, color: Colors.accent },
+  sectionBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.white, letterSpacing: 0.5 },
+  seeAll: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.accent },
 
   // Horizontal scroll
   hScroll: { paddingHorizontal: 24, gap: 16, flexDirection: 'row', alignItems: 'center' },
 
   // Cards shared
-  auctionCard: { width: 282, backgroundColor: '#111115', borderWidth: 1, borderColor: '#2A2A32', borderRadius: 16, overflow: 'hidden' },
-  listingCard: { width: 240, backgroundColor: '#111115', borderWidth: 1, borderColor: '#2A2A32', borderRadius: 16, overflow: 'hidden' },
-  cardImgWrap: { position: 'relative', height: 150, backgroundColor: '#18181E' },
+  auctionCard: { width: 282, backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.borderSubtle, borderRadius: 16, overflow: 'hidden' },
+  listingCard: { width: 240, backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.borderSubtle, borderRadius: 16, overflow: 'hidden' },
+  cardImgWrap: { position: 'relative', height: 150, backgroundColor: Colors.bgTertiary },
   cardImg: { width: '100%', height: '100%' },
-  cardImgEmpty: { width: '100%', height: '100%', backgroundColor: '#18181E' },
+  cardImgEmpty: { width: '100%', height: '100%', backgroundColor: Colors.bgTertiary },
   cardBody: { padding: 16 },
-  cardSpecs: { fontFamily: FontFamily.medium, fontSize: 10, color: '#8A8A93', letterSpacing: 0.5, marginBottom: 4 },
-  cardTitle: { fontFamily: FontFamily.bold, fontSize: 16, color: '#FFFFFF', marginBottom: 10 },
-  cardPrice: { fontFamily: FontFamily.bold, fontSize: 17, color: '#FFFFFF' },
-  cardMeta: { fontFamily: FontFamily.medium, fontSize: 11, color: '#A0A0AB' },
+  cardSpecs: { fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: Colors.textFaint, letterSpacing: 0.5, marginBottom: 4 },
+  cardTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white, marginBottom: 10 },
+  cardPrice: { fontFamily: FontFamily.bold, fontSize: FontSize.size17, color: Colors.white },
+  cardMeta: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textSecondary },
 
   // Auction overlays
   livePill: { position: 'absolute', top: 10, left: 10, flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Colors.accent, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8 },
-  livePillText: { fontFamily: FontFamily.bold, fontSize: 9, color: '#FFF', letterSpacing: 1 },
-  bidOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', backgroundColor: 'rgba(10,10,12,0.78)', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.07)', paddingVertical: 9, paddingHorizontal: 14 },
-  overlayLabel: { fontFamily: FontFamily.medium, fontSize: 8, color: '#A0A0AB', letterSpacing: 1, marginBottom: 2 },
-  overlayVal: { fontFamily: FontFamily.bold, fontSize: 14, color: '#FFFFFF' },
+  livePillText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.white, letterSpacing: 1 },
+  bidOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', backgroundColor: 'rgba(10,10,12,0.78)', borderTopWidth: 1, borderTopColor: Colors.whiteAlpha07, paddingVertical: 9, paddingHorizontal: 14 },
+  overlayLabel: { fontFamily: FontFamily.medium, fontSize: FontSize.size8, color: Colors.textSecondary, letterSpacing: 1, marginBottom: 2 },
+  overlayVal: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white },
 
   // Listing badges
-  featuredBadge: { position: 'absolute', top: 10, left: 10, backgroundColor: '#F59E0B', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 5 },
-  featuredBadgeText: { fontFamily: FontFamily.bold, fontSize: 8, color: '#000', letterSpacing: 0.5 },
-  heartBtn: { position: 'absolute', top: 10, right: 10, width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(0,0,0,0.4)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
+  featuredBadge: { position: 'absolute', top: 10, left: 10, backgroundColor: Colors.warning, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 5 },
+  featuredBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size8, color: Colors.black, letterSpacing: 0.5 },
+  heartBtn: { position: 'absolute', top: 10, right: 10, width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(0,0,0,0.4)', borderWidth: 1, borderColor: Colors.whiteAlpha12, alignItems: 'center', justifyContent: 'center' },
 
   // Body type
-  bodyTypeCard: { width: 80, backgroundColor: '#111115', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 14, alignItems: 'center', paddingVertical: 14, gap: 8 },
+  bodyTypeCard: { width: 80, backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.whiteAlpha07, borderRadius: 14, alignItems: 'center', paddingVertical: 14, gap: 8 },
   bodyTypeIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  bodyTypeLabel: { fontFamily: FontFamily.bold, fontSize: 10, color: '#FFFFFF' },
+  bodyTypeLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.white },
 
   // Recent grid
   recentGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingHorizontal: 24, rowGap: 16 },
-  recentCard: { width: (SW - 56 - 12) / 2, backgroundColor: '#111115', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 16, overflow: 'hidden' },
+  recentCard: { width: (SW - 56 - 12) / 2, backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.whiteAlpha07, borderRadius: 16, overflow: 'hidden' },
   recentImgWrap: { height: 116 },
   recentImg: { width: '100%', height: '100%', resizeMode: 'cover' },
   recentBody: { padding: 16 },
-  recentSpecs: { fontFamily: FontFamily.medium, fontSize: 9, color: '#8A8A93', marginBottom: 4 },
-  recentTitle: { fontFamily: FontFamily.bold, fontSize: 13, color: '#FFFFFF', marginBottom: 6 },
-  recentPrice: { fontFamily: FontFamily.bold, fontSize: 14, color: '#FFFFFF' },
+  recentSpecs: { fontFamily: FontFamily.medium, fontSize: FontSize.size9, color: Colors.textFaint, marginBottom: 4 },
+  recentTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, marginBottom: 6 },
+  recentPrice: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white },
 
   // Empty state
-  emptyState: { width: 240, height: 100, alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
-  emptyStateText: { fontFamily: FontFamily.medium, fontSize: 12, color: '#505060' },
+  emptyState: { width: 240, height: 100, alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.whiteAlpha02, borderRadius: 14, borderWidth: 1, borderColor: Colors.whiteAlpha05 },
+  emptyStateText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.midBlue_505060 },
 
   // Sell CTA
-  sellCta: { marginHorizontal: 24, marginBottom: 8, backgroundColor: '#111115', borderRadius: 18, borderWidth: 1, borderColor: 'rgba(220,31,38,0.25)', padding: 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sellCtaTitle: { fontFamily: FontFamily.bold, fontSize: 16, color: '#FFFFFF', marginBottom: 4 },
-  sellCtaHint: { fontFamily: FontFamily.regular, fontSize: 12, color: '#606070' },
+  sellCta: { marginHorizontal: 24, marginBottom: 8, backgroundColor: Colors.bgSecondary, borderRadius: 18, borderWidth: 1, borderColor: Colors.accentAlpha25, padding: 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sellCtaTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white, marginBottom: 4 },
+  sellCtaHint: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.iconMuted },
   sellCtaBtn: { backgroundColor: Colors.accent, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
-  sellCtaBtnText: { fontFamily: FontFamily.bold, fontSize: 12, color: '#FFF', letterSpacing: 0.8 },
+  sellCtaBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white, letterSpacing: 0.8 },
 });

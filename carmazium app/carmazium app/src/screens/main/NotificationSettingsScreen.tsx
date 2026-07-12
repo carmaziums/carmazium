@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useContext } from 'react';
 import {
   View,
   Text,
@@ -8,18 +8,21 @@ import {
   StatusBar,
   Switch,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FontFamily } from '../../constants/typography';
+import {FontFamily, FontSize } from '../../constants/typography';
 import { apiClient } from '../../lib/apiClient';
+import { Colors } from '../../constants/colors';
+import { GlobalToastContext } from '../../components/GlobalToastProvider';
 
+import { IconButton } from '../../components/IconButton';
 type NotifView = 'main' | 'delivery';
 
 export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { showToast } = useContext(GlobalToastContext);
   const [view, setView] = useState<NotifView>('main');
 
   // Main Toggles
@@ -86,21 +89,21 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
           },
         }),
       });
-      Alert.alert('Saved', 'Your notification preferences have been saved.');
+      showToast('Notification preferences saved', 'success');
     } catch {
-      Alert.alert('Error', 'Could not save preferences. Please try again.');
+      showToast('Could not save preferences. Please try again.', 'error');
     } finally {
       setSaving(false);
     }
   }, [muteAll, outbid, winning, endingSoon, newLot, counterOffer, offerAccepted, offerDeclined, push, email, sms, freq, quietHours]);
 
-  const CustomSwitch = ({ value, onValueChange, activeColor = '#DC1F26' }: any) => (
+  const CustomSwitch = ({ value, onValueChange, activeColor = Colors.accent }: any) => (
     <Switch
        value={value}
        onValueChange={onValueChange}
-       trackColor={{ false: 'rgba(255,255,255,0.1)', true: activeColor }}
-       thumbColor="#FFFFFF"
-       ios_backgroundColor="rgba(255,255,255,0.1)"
+       trackColor={{ false: Colors.whiteAlpha10, true: activeColor }}
+       thumbColor={Colors.white}
+       ios_backgroundColor={Colors.whiteAlpha10}
     />
   );
 
@@ -110,13 +113,11 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
         
         {/* Header */}
         <View style={styles.header}>
-           <TouchableOpacity style={styles.backBtn} onPress={() => navigation?.goBack()} activeOpacity={0.7}>
-              <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
-           </TouchableOpacity>
+           <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
            <Text style={styles.headerTitle}>Notifications</Text>
            <TouchableOpacity onPress={savePreferences} disabled={saving} activeOpacity={0.7}>
               {saving
-                ? <ActivityIndicator size="small" color="#FFFFFF" />
+                ? <ActivityIndicator size="small" color={Colors.white} />
                 : <Text style={styles.resetText}>Save</Text>
               }
            </TouchableOpacity>
@@ -125,13 +126,13 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
         {/* Mute All Box */}
         <View style={styles.muteAllBox}>
            <LinearGradient
-             colors={['rgba(220,31,38,0.15)', 'rgba(220,31,38,0.02)']}
+             colors={[Colors.accentAlpha15, 'rgba(220,31,38,0.02)']}
              style={StyleSheet.absoluteFillObject}
              start={{ x: 0, y: 0 }}
              end={{ x: 1, y: 1 }}
            />
            <View style={styles.muteIconWrap}>
-              <Ionicons name="notifications-off-outline" size={18} color="#DC1F26" />
+              <Ionicons name="notifications-off-outline" size={18} color={Colors.accent} />
            </View>
            <View style={styles.muteTextWrap}>
               <Text style={styles.muteTitle}>Mute all notifications</Text>
@@ -143,7 +144,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
         {/* BIDS & AUCTIONS */}
         <View style={styles.sectionHeaderWrap}>
            <View style={styles.sectionIconWrapRed}>
-              <Ionicons name="hammer-outline" size={12} color="#DC1F26" />
+              <Ionicons name="hammer-outline" size={12} color={Colors.accent} />
            </View>
            <Text style={styles.sectionTitle}>BIDS & AUCTIONS</Text>
         </View>
@@ -185,7 +186,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
         {/* OFFERS */}
         <View style={styles.sectionHeaderWrap}>
            <View style={styles.sectionIconWrapYellow}>
-              <Ionicons name="pricetag-outline" size={12} color="#F59E0B" />
+              <Ionicons name="pricetag-outline" size={12} color={Colors.warning} />
            </View>
            <Text style={styles.sectionTitle}>OFFERS</Text>
         </View>
@@ -196,7 +197,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
                  <Text style={styles.toggleTitle}>Counter-offer received</Text>
                  <Text style={styles.toggleSub}>Seller responded to your offer</Text>
               </View>
-              <CustomSwitch value={counterOffer} onValueChange={setCounterOffer} activeColor="#F59E0B" />
+              <CustomSwitch value={counterOffer} onValueChange={setCounterOffer} activeColor={Colors.warning} />
            </View>
            <View style={styles.divider} />
            <View style={styles.toggleRow}>
@@ -204,7 +205,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
                  <Text style={styles.toggleTitle}>Offer accepted</Text>
                  <Text style={styles.toggleSub}>Great news — proceed to payment</Text>
               </View>
-              <CustomSwitch value={offerAccepted} onValueChange={setOfferAccepted} activeColor="#F59E0B" />
+              <CustomSwitch value={offerAccepted} onValueChange={setOfferAccepted} activeColor={Colors.warning} />
            </View>
            <View style={styles.divider} />
            <View style={styles.toggleRow}>
@@ -212,7 +213,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
                  <Text style={styles.toggleTitle}>Offer declined</Text>
                  <Text style={styles.toggleSub}>Seller rejected your offer</Text>
               </View>
-              <CustomSwitch value={offerDeclined} onValueChange={setOfferDeclined} activeColor="#F59E0B" />
+              <CustomSwitch value={offerDeclined} onValueChange={setOfferDeclined} activeColor={Colors.warning} />
            </View>
         </View>
 
@@ -225,7 +226,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
               <Text style={styles.toggleTitle}>Delivery & quiet hours</Text>
               <Text style={styles.toggleSub}>Manage push, email, SMS and sleep mode</Text>
            </View>
-           <Ionicons name="chevron-forward" size={20} color="#606070" />
+           <Ionicons name="chevron-forward" size={20} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
         </TouchableOpacity>
 
       </ScrollView>
@@ -239,9 +240,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
          
         {/* Header */}
         <View style={[styles.header, { marginBottom: 32 }]}>
-           <TouchableOpacity style={styles.backBtn} onPress={() => setView('main')} activeOpacity={0.7}>
-              <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
-           </TouchableOpacity>
+           <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => setView('main')} accessibilityLabel="Go back" />
            <View style={styles.headerCenter}>
               <Text style={styles.headerSubText}>NOTIFICATIONS</Text>
               <Text style={styles.headerTitleCenter}>Delivery & quiet hours</Text>
@@ -254,7 +253,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
         <View style={styles.cardBlock}>
            <View style={styles.toggleRow}>
               <View style={styles.channelIconRed}>
-                 <Ionicons name="notifications-outline" size={16} color="#DC1F26" />
+                 <Ionicons name="notifications-outline" size={16} color={Colors.accent} />
               </View>
               <View style={styles.toggleTextWrap}>
                  <Text style={styles.toggleTitle}>Push</Text>
@@ -265,7 +264,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
            <View style={styles.divider} />
            <View style={styles.toggleRow}>
               <View style={styles.channelIconRed}>
-                 <Ionicons name="mail-outline" size={16} color="#DC1F26" />
+                 <Ionicons name="mail-outline" size={16} color={Colors.accent} />
               </View>
               <View style={styles.toggleTextWrap}>
                  <Text style={styles.toggleTitle}>Email</Text>
@@ -276,7 +275,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
            <View style={styles.divider} />
            <View style={styles.toggleRow}>
               <View style={styles.channelIconGrey}>
-                 <Ionicons name="chatbubble-outline" size={16} color="#A0A0AB" />
+                 <Ionicons name="chatbubble-outline" size={16} color={Colors.textSecondary} />
               </View>
               <View style={styles.toggleTextWrap}>
                  <Text style={styles.toggleTitle}>SMS</Text>
@@ -336,14 +335,14 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
                  <Text style={styles.timeLabel}>FROM</Text>
                  <View style={styles.timeInput}>
                     <Text style={styles.timeText}>22:00</Text>
-                    <Ionicons name="chevron-down" size={16} color="#A0A0AB" />
+                    <Ionicons name="chevron-down" size={16} color={Colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no" />
                  </View>
               </View>
               <View style={styles.timeBlock}>
                  <Text style={styles.timeLabel}>UNTIL</Text>
                  <View style={styles.timeInput}>
                     <Text style={styles.timeText}>08:00</Text>
-                    <Ionicons name="chevron-down" size={16} color="#A0A0AB" />
+                    <Ionicons name="chevron-down" size={16} color={Colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no" />
                  </View>
               </View>
            </View>
@@ -358,14 +357,14 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(220,31,38,0.03)', 'rgba(0,0,0,0)', '#0A0A0C']}
+        colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.5 }}
       />
       {loading ? (
         <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color="#DC1F26" />
+          <ActivityIndicator size="large" color={Colors.accent} />
         </View>
       ) : (
         view === 'main' ? renderMainView() : renderDeliveryView()
@@ -377,7 +376,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0C',
+    backgroundColor: Colors.bgPrimary,
   },
   loadingWrap: {
     flex: 1,
@@ -398,71 +397,71 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: Colors.whiteAlpha05,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: Colors.whiteAlpha08,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
     flex: 1,
     fontFamily: FontFamily.extraBold,
-    fontSize: 20,
-    color: '#FFFFFF',
+    fontSize: FontSize.xl,
+    color: Colors.white,
     marginLeft: 16,
     letterSpacing: -0.5,
   },
   resetText: {
-     fontFamily: FontFamily.bold, fontSize: 14, color: '#DC1F26'
+     fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.accent
   },
   headerCenter: {
      alignItems: 'center', flex: 1
   },
   headerSubText: {
-     fontFamily: FontFamily.bold, fontSize: 10, color: '#606070', letterSpacing: 1.5, marginBottom: 4
+     fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.iconMuted, letterSpacing: 1.5, marginBottom: 4
   },
   headerTitleCenter: {
-     fontFamily: FontFamily.extraBold, fontSize: 18, color: '#FFFFFF', letterSpacing: -0.5
+     fontFamily: FontFamily.extraBold, fontSize: FontSize.lg, color: Colors.white, letterSpacing: -0.5
   },
 
   // Mute All Box
   muteAllBox: {
-     marginHorizontal: 24, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(220,31,38,0.2)',
-     backgroundColor: '#111116', flexDirection: 'row', alignItems: 'center', padding: 16, marginBottom: 32,
+     marginHorizontal: 24, borderRadius: 16, borderWidth: 1, borderColor: Colors.accentAlpha20,
+     backgroundColor: Colors.bgSecondaryAlt, flexDirection: 'row', alignItems: 'center', padding: 16, marginBottom: 32,
      overflow: 'hidden'
   },
   muteIconWrap: {
-     width: 40, height: 40, borderRadius: 10, backgroundColor: 'rgba(220,31,38,0.1)',
+     width: 40, height: 40, borderRadius: 10, backgroundColor: Colors.accentAlpha10,
      alignItems: 'center', justifyContent: 'center', marginRight: 16
   },
   muteTextWrap: {
      flex: 1
   },
   muteTitle: {
-     fontFamily: FontFamily.bold, fontSize: 15, color: '#FFFFFF', marginBottom: 2
+     fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white, marginBottom: 2
   },
   muteSub: {
-     fontFamily: FontFamily.regular, fontSize: 13, color: '#A0A0AB'
+     fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary
   },
 
   sectionHeaderWrap: {
      flexDirection: 'row', alignItems: 'center', marginHorizontal: 24, marginBottom: 12
   },
   sectionIconWrapRed: {
-     width: 20, height: 20, borderRadius: 6, backgroundColor: 'rgba(220,31,38,0.1)',
+     width: 20, height: 20, borderRadius: 6, backgroundColor: Colors.accentAlpha10,
      alignItems: 'center', justifyContent: 'center', marginRight: 10
   },
   sectionIconWrapYellow: {
-     width: 20, height: 20, borderRadius: 6, backgroundColor: 'rgba(245,158,11,0.1)',
+     width: 20, height: 20, borderRadius: 6, backgroundColor: Colors.warningAlpha10,
      alignItems: 'center', justifyContent: 'center', marginRight: 10
   },
   sectionTitle: {
-     fontFamily: FontFamily.bold, fontSize: 11, color: '#FFFFFF', letterSpacing: 1.5
+     fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 1.5
   },
 
   cardBlock: {
-     marginHorizontal: 24, backgroundColor: '#111116', borderRadius: 16, borderWidth: 1,
-     borderColor: 'rgba(255,255,255,0.06)', marginBottom: 32, overflow: 'hidden'
+     marginHorizontal: 24, backgroundColor: Colors.bgSecondaryAlt, borderRadius: 16, borderWidth: 1,
+     borderColor: Colors.whiteAlpha06, marginBottom: 32, overflow: 'hidden'
   },
   toggleRow: {
      flexDirection: 'row', alignItems: 'center', padding: 16
@@ -471,19 +470,19 @@ const styles = StyleSheet.create({
      flex: 1, marginRight: 16
   },
   toggleTitle: {
-     fontFamily: FontFamily.bold, fontSize: 15, color: '#FFFFFF', marginBottom: 4
+     fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white, marginBottom: 4
   },
   toggleSub: {
-     fontFamily: FontFamily.regular, fontSize: 13, color: '#606070'
+     fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.iconMuted
   },
   divider: {
-     height: 1, backgroundColor: 'rgba(255,255,255,0.05)', marginHorizontal: 16
+     height: 1, backgroundColor: Colors.whiteAlpha05, marginHorizontal: 16
   },
 
   // Delivery Nav Button
   deliveryBtn: {
-     marginHorizontal: 24, backgroundColor: '#111116', borderRadius: 16, borderWidth: 1,
-     borderColor: 'rgba(255,255,255,0.06)', padding: 16, flexDirection: 'row', alignItems: 'center',
+     marginHorizontal: 24, backgroundColor: Colors.bgSecondaryAlt, borderRadius: 16, borderWidth: 1,
+     borderColor: Colors.whiteAlpha06, padding: 16, flexDirection: 'row', alignItems: 'center',
      marginBottom: 32
   },
   deliveryTextWrap: {
@@ -492,38 +491,38 @@ const styles = StyleSheet.create({
 
   // Delivery Channels
   channelIconRed: {
-     width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(220,31,38,0.1)',
+     width: 36, height: 36, borderRadius: 10, backgroundColor: Colors.accentAlpha10,
      alignItems: 'center', justifyContent: 'center', marginRight: 14
   },
   channelIconGrey: {
-     width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.05)',
+     width: 36, height: 36, borderRadius: 10, backgroundColor: Colors.whiteAlpha05,
      alignItems: 'center', justifyContent: 'center', marginRight: 14
   },
 
   // Frequency
   freqRow: {
      flexDirection: 'row', alignItems: 'center', marginHorizontal: 24, padding: 16,
-     backgroundColor: '#111116', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)',
+     backgroundColor: Colors.bgSecondaryAlt, borderRadius: 14, borderWidth: 1, borderColor: Colors.whiteAlpha05,
      marginBottom: 10
   },
   freqRowActive: {
-     borderColor: 'rgba(220,31,38,0.3)', backgroundColor: 'rgba(220,31,38,0.05)'
+     borderColor: Colors.accentAlpha30, backgroundColor: Colors.accentAlpha05
   },
   radioOuter: {
-     width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: '#606070', marginRight: 14
+     width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: Colors.iconMuted, marginRight: 14
   },
   radioInnerActive: {
-     width: 22, height: 22, borderRadius: 11, backgroundColor: '#DC1F26', marginRight: 14,
-     borderWidth: 6, borderColor: 'rgba(220,31,38,0.2)'
+     width: 22, height: 22, borderRadius: 11, backgroundColor: Colors.accent, marginRight: 14,
+     borderWidth: 6, borderColor: Colors.accentAlpha20
   },
   freqTitle: {
-     flex: 1, fontFamily: FontFamily.bold, fontSize: 15, color: '#FFFFFF'
+     flex: 1, fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white
   },
   recBadge: {
-     backgroundColor: 'rgba(220,31,38,0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6
+     backgroundColor: Colors.accentAlpha10, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6
   },
   recText: {
-     fontFamily: FontFamily.bold, fontSize: 10, color: '#DC1F26'
+     fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.accent
   },
 
   // Quiet Hours
@@ -534,26 +533,26 @@ const styles = StyleSheet.create({
      flex: 1
   },
   timeLabel: {
-     fontFamily: FontFamily.bold, fontSize: 10, color: '#606070', letterSpacing: 1.5, marginBottom: 8
+     fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.iconMuted, letterSpacing: 1.5, marginBottom: 8
   },
   timeInput: {
      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-     backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+     backgroundColor: Colors.whiteAlpha05, borderWidth: 1, borderColor: Colors.whiteAlpha10,
      borderRadius: 12, paddingHorizontal: 14, height: 48
   },
   timeText: {
-     fontFamily: FontFamily.bold, fontSize: 16, color: '#FFFFFF'
+     fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white
   },
 
   // Mock Tab Bar
   mockTabBar: {
      position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-around',
-     paddingTop: 12, backgroundColor: '#0A0A0C', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)'
+     paddingTop: 12, backgroundColor: Colors.bgPrimary, borderTopWidth: 1, borderTopColor: Colors.whiteAlpha05
   },
   tabItem: {
      alignItems: 'center', flex: 1
   },
   tabLabel: {
-     fontFamily: FontFamily.bold, fontSize: 9, color: '#606070', marginTop: 4, letterSpacing: 0.5
+     fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.iconMuted, marginTop: 4, letterSpacing: 0.5
   }
 });

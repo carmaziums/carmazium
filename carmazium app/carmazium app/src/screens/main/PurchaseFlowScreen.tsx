@@ -13,11 +13,13 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FontFamily } from '../../constants/typography';
+import {FontFamily, FontSize } from '../../constants/typography';
 import { useStripe } from '@stripe/stripe-react-native';
 import { createPaymentSheet } from '../../lib/paymentsApi';
 import { apiClient } from '../../lib/apiClient';
+import { Colors } from '../../constants/colors';
 
+import { IconButton } from '../../components/IconButton';
 // ─────────────────────────────── types ────────────────────────────────
 
 export interface PurchaseFlowParams {
@@ -118,17 +120,17 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
         defaultBillingDetails: {},
         appearance: {
           colors: {
-            primary: '#DC1F26',
-            background: '#111116',
-            componentBackground: '#18181f',
-            componentBorder: 'rgba(255,255,255,0.08)',
-            componentDivider: 'rgba(255,255,255,0.06)',
-            primaryText: '#FFFFFF',
-            secondaryText: '#A0A0AB',
-            componentText: '#FFFFFF',
-            placeholderText: '#606070',
-            icon: '#A0A0AB',
-            error: '#DC1F26',
+            primary: Colors.accent,
+            background: Colors.bgSecondaryAlt,
+            componentBackground: Colors.deepBlue_18181f,
+            componentBorder: Colors.whiteAlpha08,
+            componentDivider: Colors.whiteAlpha06,
+            primaryText: Colors.white,
+            secondaryText: Colors.textSecondary,
+            componentText: Colors.white,
+            placeholderText: Colors.iconMuted,
+            icon: Colors.textSecondary,
+            error: Colors.accent,
           },
         },
       });
@@ -176,14 +178,14 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
         <LinearGradient
-          colors={['rgba(16,185,129,0.08)', 'rgba(0,0,0,0)', '#0A0A0C']}
+          colors={[Colors.accentGreenAlpha08, 'rgba(0,0,0,0)', Colors.bgPrimary]}
           style={StyleSheet.absoluteFillObject}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0.5, y: 0.4 }}
         />
         <View style={[styles.successWrap, { paddingTop: insets.top + 60 }]}>
           <View style={styles.successCircle}>
-            <Ionicons name="checkmark-circle" size={56} color="#10B981" />
+            <Ionicons name="checkmark-circle" size={56} color={Colors.accentGreen} />
           </View>
           <Text style={styles.successTitle}>Payment successful</Text>
           <Text style={styles.successSub}>
@@ -209,7 +211,7 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(220,31,38,0.03)', 'rgba(0,0,0,0)', '#0A0A0C']}
+        colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.3 }}
@@ -224,13 +226,7 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => navigation?.goBack()}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+          <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
           <View style={styles.headerCenter}>
             <Text style={styles.headerSub}>
               {isCommission ? 'AUCTION WON' : 'OFFER ACCEPTED'}
@@ -248,7 +244,7 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
             <Image source={{ uri: listingImage }} style={styles.heroImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
           ) : (
             <View style={[styles.heroImg, styles.heroImgPlaceholder]}>
-              <Ionicons name="car-outline" size={24} color="#606070" />
+              <Ionicons name="car-outline" size={24} color={Colors.iconMuted} />
             </View>
           )}
           <View style={styles.heroInfo}>
@@ -256,7 +252,7 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
               <Ionicons
                 name={isCommission ? 'trophy-outline' : 'checkmark-circle-outline'}
                 size={14}
-                color="#10B981"
+                color={Colors.accentGreen}
               />
               <Text style={styles.successText}>
                 {isCommission ? 'You won this auction' : 'Seller accepted your offer'}
@@ -311,7 +307,7 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
 
         {/* Payment method note */}
         <View style={styles.paymentNote}>
-          <Ionicons name="lock-closed-outline" size={16} color="#10B981" />
+          <Ionicons name="lock-closed-outline" size={16} color={Colors.accentGreen} />
           <Text style={styles.paymentNoteText}>
             Secure payment via Stripe. Card, Apple Pay &amp; Google Pay accepted.
           </Text>
@@ -331,9 +327,9 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
           disabled={paying}
         >
           {paying ? (
-            <ActivityIndicator color="#FFFFFF" style={{ marginRight: 10 }} />
+            <ActivityIndicator color={Colors.white} style={{ marginRight: 10 }} />
           ) : (
-            <Ionicons name="lock-closed-outline" size={18} color="#FFFFFF" style={styles.btnIconLeft} />
+            <Ionicons name="lock-closed-outline" size={18} color={Colors.white} style={styles.btnIconLeft} />
           )}
           <Text style={styles.mainBtnText}>
             {paying
@@ -351,7 +347,7 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
 // ──────────────────────────── styles ──────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0A0A0C' },
+  container: { flex: 1, backgroundColor: Colors.bgPrimary },
   scrollContent: { paddingHorizontal: 20 },
 
   // Header
@@ -365,28 +361,28 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerCenter: { alignItems: 'center' },
   headerSub: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#10B981',
+    fontSize: FontSize.size10,
+    color: Colors.accentGreen,
     letterSpacing: 1.5,
     marginBottom: 4,
   },
-  headerTitle: { fontFamily: FontFamily.bold, fontSize: 18, color: '#FFFFFF' },
+  headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
 
   // Hero
   heroCard: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(16,185,129,0.05)',
+    backgroundColor: Colors.accentGreenAlpha05,
     borderWidth: 1,
-    borderColor: 'rgba(16,185,129,0.2)',
+    borderColor: Colors.accentGreenAlpha20,
     borderRadius: 16,
     padding: 12,
     alignItems: 'center',
@@ -394,28 +390,28 @@ const styles = StyleSheet.create({
   },
   heroImg: { width: 64, height: 48, borderRadius: 8, marginRight: 16 },
   heroImgPlaceholder: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     alignItems: 'center',
     justifyContent: 'center',
   },
   heroInfo: { flex: 1 },
   successRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  successText: { fontFamily: FontFamily.medium, fontSize: 12, color: '#10B981', marginLeft: 6 },
-  heroCarTitle: { fontFamily: FontFamily.bold, fontSize: 14, color: '#FFFFFF', marginBottom: 2 },
-  heroDealer: { fontFamily: FontFamily.regular, fontSize: 12, color: '#A0A0AB' },
+  successText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.accentGreen, marginLeft: 6 },
+  heroCarTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white, marginBottom: 2 },
+  heroDealer: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textSecondary },
 
   // Summary
   sectionTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#FFFFFF',
+    fontSize: FontSize.xs,
+    color: Colors.white,
     letterSpacing: 1.5,
     marginBottom: 16,
   },
   summaryBox: {
-    backgroundColor: '#111116',
+    backgroundColor: Colors.bgSecondaryAlt,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
@@ -426,19 +422,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  summaryLabel: { fontFamily: FontFamily.regular, fontSize: 14, color: '#A0A0AB' },
-  summaryValue: { fontFamily: FontFamily.medium, fontSize: 14, color: '#FFFFFF' },
-  summaryValueGreen: { fontFamily: FontFamily.bold, fontSize: 14, color: '#10B981' },
+  summaryLabel: { fontFamily: FontFamily.regular, fontSize: FontSize.size14, color: Colors.textSecondary },
+  summaryValue: { fontFamily: FontFamily.medium, fontSize: FontSize.size14, color: Colors.white },
+  summaryValueGreen: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.accentGreen },
   commissionNote: {
     fontFamily: FontFamily.regular,
-    fontSize: 12,
-    color: '#A0A0AB',
+    fontSize: FontSize.size12,
+    color: Colors.textSecondary,
     lineHeight: 18,
     marginBottom: 4,
   },
   summaryDivider: {
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     marginVertical: 4,
     marginBottom: 20,
   },
@@ -449,19 +445,19 @@ const styles = StyleSheet.create({
   },
   summaryTotalLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#FFFFFF',
+    fontSize: FontSize.size12,
+    color: Colors.white,
     letterSpacing: 1,
   },
-  summaryTotalValue: { fontFamily: FontFamily.bold, fontSize: 20, color: '#FFFFFF' },
+  summaryTotalValue: { fontFamily: FontFamily.bold, fontSize: FontSize.xl, color: Colors.white },
 
   // Payment note
   paymentNote: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: 'rgba(16,185,129,0.05)',
+    backgroundColor: Colors.accentGreenAlpha05,
     borderWidth: 1,
-    borderColor: 'rgba(16,185,129,0.15)',
+    borderColor: Colors.accentGreenAlpha15,
     borderRadius: 12,
     padding: 14,
     marginBottom: 16,
@@ -470,15 +466,15 @@ const styles = StyleSheet.create({
   paymentNoteText: {
     flex: 1,
     fontFamily: FontFamily.regular,
-    fontSize: 13,
-    color: '#A0A0AB',
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
     lineHeight: 20,
   },
 
   bottomNote: {
     fontFamily: FontFamily.regular,
-    fontSize: 12,
-    color: '#606070',
+    fontSize: FontSize.size12,
+    color: Colors.iconMuted,
     textAlign: 'center',
     marginTop: 4,
   },
@@ -491,10 +487,10 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 20,
     paddingTop: 20,
-    backgroundColor: '#0A0A0C',
+    backgroundColor: Colors.bgPrimary,
   },
   mainBtn: {
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     borderRadius: 12,
     height: 56,
     flexDirection: 'row',
@@ -504,8 +500,8 @@ const styles = StyleSheet.create({
   mainBtnDisabled: { opacity: 0.6 },
   mainBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
     letterSpacing: 1,
   },
   btnIconLeft: { marginRight: 10 },
@@ -522,42 +518,42 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     backgroundColor: 'rgba(16,185,129,0.1)',
     borderWidth: 2,
-    borderColor: 'rgba(16,185,129,0.3)',
+    borderColor: Colors.accentGreenAlpha30,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
   },
   successTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 24,
-    color: '#FFFFFF',
+    fontSize: FontSize['2xl'],
+    color: Colors.white,
     marginBottom: 8,
   },
   successSub: {
     fontFamily: FontFamily.medium,
-    fontSize: 15,
-    color: '#10B981',
+    fontSize: FontSize.base,
+    color: Colors.accentGreen,
     marginBottom: 16,
     textAlign: 'center',
   },
   successNote: {
     fontFamily: FontFamily.regular,
-    fontSize: 14,
-    color: '#A0A0AB',
+    fontSize: FontSize.size14,
+    color: Colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 40,
   },
   doneBtn: {
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     borderRadius: 12,
     paddingHorizontal: 40,
     paddingVertical: 16,
   },
   doneBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
     letterSpacing: 1,
   },
 });
