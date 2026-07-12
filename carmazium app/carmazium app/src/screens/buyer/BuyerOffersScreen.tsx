@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   RefreshControl,
   ScrollView,
   StatusBar,
@@ -21,6 +22,7 @@ import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { CounterLedger } from '../../components/offers/CounterLedger';
 import { haptics } from '../../lib/haptics';
 
+import { IconButton } from '../../components/IconButton';
 // ─────────────────────────── interfaces ───────────────────────────
 
 type OfferStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'COUNTERED' | 'WITHDRAWN';
@@ -114,33 +116,36 @@ const STATUS_CONFIG: Record<
   }
 > = {
   PENDING: {
-    leftBorder: '#F59E0B',
-    chipBg: 'rgba(245,158,11,0.15)',
-    chipText: '#F59E0B',
+    leftBorder: Colors.warning,
+    chipBg: Colors.warningAlpha15,
+    chipText: Colors.warning,
     chipLabel: 'PENDING',
   },
   COUNTERED: {
     leftBorder: Colors.accent,
-    chipBg: 'rgba(220,31,38,0.12)',
+    chipBg: Colors.accentAlpha12,
     chipText: Colors.accent,
     chipLabel: 'COUNTER-OFFER',
   },
   ACCEPTED: {
-    leftBorder: '#22C55E',
-    chipBg: 'rgba(34,197,94,0.15)',
-    chipText: '#22C55E',
+    leftBorder: Colors.success,
+    chipBg: Colors.successAlpha15,
+    chipText: Colors.success,
     chipLabel: 'ACCEPTED',
   },
   REJECTED: {
-    leftBorder: '#5C5C6B',
-    chipBg: 'rgba(255,255,255,0.06)',
-    chipText: '#5C5C6B',
+    leftBorder: Colors.textMuted,
+    chipBg: Colors.whiteAlpha06,
+    chipText: Colors.textMuted,
     chipLabel: 'REJECTED',
   },
   WITHDRAWN: {
-    leftBorder: '#3A3A47',
-    chipBg: 'rgba(255,255,255,0.04)',
-    chipText: '#3A3A47',
+    // textMuted (not textDisabled) — this is a readable status label, not a
+    // disabled control, and textDisabled's contrast is intentionally too low
+    // for real text (mobile-ui-ux-audit.md contrast finding).
+    leftBorder: Colors.textMuted,
+    chipBg: Colors.whiteAlpha04,
+    chipText: Colors.textMuted,
     chipLabel: 'WITHDRAWN',
   },
 };
@@ -235,11 +240,10 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
               });
               if (status === 'ACCEPTED') {
                 haptics.success();
-                await fetchData(); // refresh to show ACCEPTED state with Message Seller
               } else {
                 haptics.medium();
-                await fetchData();
               }
+              await fetchData();
             } catch (err: any) {
               Alert.alert('Action Failed', err?.message ?? 'Something went wrong.');
             } finally {
@@ -348,7 +352,11 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
     </View>
   );
 
-  const renderOfferCard = (offer: Offer) => {
+  // Wrapped in useCallback (though this row still closes over a lot of local
+  // counter-back state, so its identity churns whenever that state changes —
+  // this is the "at minimum stable when unrelated state is untouched" case,
+  // mobile-audit.md P3/P4).
+  const renderOfferCard = useCallback(({ item: offer }: { item: Offer }) => {
     const cfg = STATUS_CONFIG[offer.status] ?? STATUS_CONFIG.PENDING;
     const isActioning = actionLoading === offer.id;
     const listingTitle = offer.listing?.title ?? 'Vehicle listing';
@@ -456,21 +464,32 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
           </View>
         )}
 
-        {/* Actions: ACCEPTED — message seller */}
+        {/* Actions: ACCEPTED — CarMazium doesn't collect payment for classified-listing
+            sales; buyer and seller agree price/delivery directly between themselves
+            (confirmed against the web dashboard's identical accepted-offer copy at
+            src/app/dashboard/buyer/offers/page.tsx:46-49 — no payment step there
+            either, just "Contact the seller to complete the purchase"). There is no
+            "Pay Now" step here — only Message Seller. */}
         {offer.status === 'ACCEPTED' && (
-          <View style={styles.actionsRow}>
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnMessage, { flex: 1 }]}
-              activeOpacity={0.75}
-              onPress={() => handleMessageSeller(offer)}
-              disabled={isActioning}
-            >
-              <Ionicons name="chatbubble-ellipses-outline" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
-              <Text style={[styles.actionBtnText, { color: '#FFFFFF' }]}>
-                Message Seller
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <>
+            <Text style={styles.acceptedStatusText}>
+              Your offer of {formatPrice(offer.amount)} was accepted! Contact the seller to
+              complete the purchase.
+            </Text>
+            <View style={styles.actionsRow}>
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.actionBtnMessage]}
+                activeOpacity={0.75}
+                onPress={() => handleMessageSeller(offer)}
+                disabled={isActioning}
+              >
+                <Ionicons name="chatbubble-ellipses-outline" size={14} color={Colors.white} style={{ marginRight: 6 }} />
+                <Text style={[styles.actionBtnText, { color: Colors.white }]}>
+                  Message Seller
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </>
         )}
 
         {/* Actions: COUNTERED — decline / accept / counter back */}
@@ -494,7 +513,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
                 onPress={() => handleCounterRespond(offer, 'ACCEPTED')}
                 disabled={isActioning || counterBackLoading}
               >
-                <Text style={[styles.actionBtnText, { color: '#FFFFFF' }]}>
+                <Text style={[styles.actionBtnText, { color: Colors.white }]}>
                   Accept
                 </Text>
               </TouchableOpacity>
@@ -546,9 +565,9 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
                     activeOpacity={0.8}
                   >
                     {counterBackLoading ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <ActivityIndicator size="small" color={Colors.white} />
                     ) : (
-                      <Text style={[styles.actionBtnText, { color: '#FFFFFF' }]}>Submit</Text>
+                      <Text style={[styles.actionBtnText, { color: Colors.white }]}>Submit</Text>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -571,7 +590,17 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
         )}
       </View>
     );
-  };
+  }, [
+    actionLoading,
+    counterBackLoading,
+    counterBackOfferId,
+    counterBackAmount,
+    counterBackError,
+    handleWithdraw,
+    handleMessageSeller,
+    handleCounterRespond,
+    handleCounterBack,
+  ]);
 
   // ─────────────── main render ───────────────────────
 
@@ -579,7 +608,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(220,31,38,0.06)', 'rgba(10,10,12,0)', '#0A0A0C']}
+        colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
@@ -590,13 +619,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
 
       {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          activeOpacity={0.75}
-          onPress={() => navigation?.goBack()}
-        >
-          <Ionicons name="chevron-back" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
+        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
 
         <Text style={styles.headerTitle}>My Sent Offers</Text>
 
@@ -612,31 +635,47 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
       </View>
 
       {/* ── Content ── */}
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => fetchData(true)}
-            tintColor={Colors.accent}
-            colors={[Colors.accent]}
-          />
-        }
-      >
-        {error && !loading && (
-          <ErrorBanner message={error} onRetry={() => fetchData()} />
-        )}
-
-        {loading
-          ? renderSkeleton()
-          : offers.length === 0 && !error
-          ? renderEmptyState()
-          : offers.map(renderOfferCard)}
-
-        <View style={{ height: 40 }} />
-      </ScrollView>
+      {loading || (offers.length === 0 && !error) ? (
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => fetchData(true)}
+              tintColor={Colors.accent}
+              colors={[Colors.accent]}
+            />
+          }
+        >
+          {error && !loading && (
+            <ErrorBanner message={error} onRetry={() => fetchData()} />
+          )}
+          {loading ? renderSkeleton() : renderEmptyState()}
+        </ScrollView>
+      ) : (
+        // FlatList so a long offer history virtualizes instead of mounting every
+        // card at once (mobile-audit.md P3).
+        <FlatList
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => fetchData(true)}
+              tintColor={Colors.accent}
+              colors={[Colors.accent]}
+            />
+          }
+          data={offers}
+          keyExtractor={(item) => item.id}
+          renderItem={renderOfferCard}
+          ListHeaderComponent={error ? <ErrorBanner message={error} onRetry={() => fetchData()} /> : null}
+          ListFooterComponent={<View style={{ height: 40 }} />}
+        />
+      )}
     </View>
   );
 };
@@ -661,9 +700,9 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -686,8 +725,8 @@ const styles = StyleSheet.create({
   },
   counterBadgeText: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#FFFFFF',
+    fontSize: FontSize.xs,
+    color: Colors.white,
   },
 
   // ── Scroll ──
@@ -704,9 +743,9 @@ const styles = StyleSheet.create({
   skeletonCard: {
     height: 140,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.04)',
+    borderColor: Colors.whiteAlpha04,
   },
 
   // ── Empty state ──
@@ -741,7 +780,7 @@ const styles = StyleSheet.create({
   emptyCtaBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
 
   // ── Offer card ──
@@ -749,7 +788,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgSecondary,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     borderLeftWidth: 3,
     padding: 16,
     gap: 10,
@@ -763,7 +802,7 @@ const styles = StyleSheet.create({
   listingTitle: {
     flex: 1,
     fontFamily: FontFamily.bold,
-    fontSize: 15,
+    fontSize: FontSize.base,
     color: Colors.textPrimary,
   },
   statusChip: {
@@ -774,7 +813,7 @@ const styles = StyleSheet.create({
   },
   statusChipText: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     letterSpacing: 0.4,
   },
 
@@ -784,21 +823,21 @@ const styles = StyleSheet.create({
   },
   offerLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     color: Colors.textMuted,
     letterSpacing: 1,
   },
   offerAmount: {
     fontFamily: FontFamily.mono,
-    fontSize: 20,
+    fontSize: FontSize.xl,
     color: Colors.textPrimary,
   },
 
   // ── Counter section ──
   counterSection: {
-    backgroundColor: 'rgba(245,158,11,0.06)',
+    backgroundColor: Colors.warningAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.20)',
+    borderColor: Colors.warningAlpha20,
     borderRadius: 10,
     padding: 12,
     gap: 6,
@@ -810,7 +849,7 @@ const styles = StyleSheet.create({
   },
   counterLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     color: Colors.warning,
     letterSpacing: 1,
   },
@@ -822,28 +861,34 @@ const styles = StyleSheet.create({
   },
   counterAmount: {
     fontFamily: FontFamily.mono,
-    fontSize: 16,
+    fontSize: FontSize.md,
     color: Colors.warning,
   },
   counterDiff: {
     fontFamily: FontFamily.mono,
-    fontSize: 11,
+    fontSize: FontSize.xs,
   },
   counterExpiryText: {
     fontFamily: FontFamily.medium,
-    fontSize: 11,
+    fontSize: FontSize.xs,
     // colour applied inline from formatCounterExpiry()
   },
 
   // ── Time ──
   timeText: {
     fontFamily: FontFamily.mono,
-    fontSize: 10,
+    fontSize: FontSize.size10,
     color: Colors.textMuted,
     alignSelf: 'flex-end',
   },
 
   // ── Actions ──
+  acceptedStatusText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: Colors.success,
+    lineHeight: 18,
+  },
   actionsRow: {
     flexDirection: 'row',
     gap: 8,
@@ -859,11 +904,11 @@ const styles = StyleSheet.create({
   },
   actionBtnWithdraw: {
     backgroundColor: 'transparent',
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: Colors.whiteAlpha15,
   },
   actionBtnWithdrawText: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.textSecondary,
   },
   actionBtnDeclineCounter: {
@@ -878,13 +923,13 @@ const styles = StyleSheet.create({
   },
   actionBtnMessage: {
     flex: 1,
-    backgroundColor: '#3B82F6',
-    borderColor: '#3B82F6',
+    backgroundColor: Colors.infoBlue,
+    borderColor: Colors.infoBlue,
     flexDirection: 'row',
   },
   actionBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     letterSpacing: 0.3,
   },
 
@@ -894,21 +939,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     backgroundColor: 'transparent',
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: Colors.whiteAlpha12,
     alignSelf: 'flex-start',
   },
   actionBtnCounterBackText: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.textSecondary,
     letterSpacing: 0.3,
   },
 
   // ── Inline counter-back expand ──
   counterBackExpand: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: Colors.whiteAlpha03,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: Colors.whiteAlpha10,
     borderRadius: 12,
     padding: 12,
     gap: 8,
@@ -916,7 +961,7 @@ const styles = StyleSheet.create({
   },
   counterBackExpandLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     color: Colors.textMuted,
     letterSpacing: 1,
   },
@@ -937,25 +982,25 @@ const styles = StyleSheet.create({
   },
   counterBackCurrency: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
+    fontSize: FontSize.size14,
     color: Colors.textMuted,
     marginRight: 4,
   },
   counterBackInput: {
     flex: 1,
     fontFamily: FontFamily.mono,
-    fontSize: 16,
+    fontSize: FontSize.md,
     color: Colors.textPrimary,
     paddingVertical: 10,
   },
   counterBackError: {
     fontFamily: FontFamily.medium,
-    fontSize: 11,
+    fontSize: FontSize.xs,
     color: Colors.error,
   },
   counterBackCancel: {
     fontFamily: FontFamily.medium,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.textMuted,
     alignSelf: 'flex-start',
   },

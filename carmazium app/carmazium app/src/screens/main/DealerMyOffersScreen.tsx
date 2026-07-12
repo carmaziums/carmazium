@@ -20,6 +20,7 @@ import { FontFamily, FontSize } from '../../constants/typography';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { CounterLedger } from '../../components/offers/CounterLedger';
 
+import { IconButton } from '../../components/IconButton';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 // ─────────────────────────── interfaces ───────────────────────────
@@ -38,6 +39,7 @@ interface Offer {
   counterExpiresAt?: string | null;
   lastCounteredBy?: 'BUYER' | 'SELLER' | null;
   listingId?: string;
+  sellerId?: string;
   createdAt?: string;
   updatedAt?: string;
   listing?: {
@@ -47,6 +49,7 @@ interface Offer {
     images?: string[];
   };
   seller?: {
+    id?: string;
     firstName?: string;
     lastName?: string;
     dealerProfile?: { companyName?: string } | null;
@@ -87,33 +90,35 @@ const STATUS_CONFIG: Record<
   }
 > = {
   PENDING: {
-    leftBorder: '#F59E0B',
-    chipBg: 'rgba(245,158,11,0.15)',
-    chipText: '#F59E0B',
+    leftBorder: Colors.warning,
+    chipBg: Colors.warningAlpha15,
+    chipText: Colors.warning,
     chipLabel: 'PENDING',
   },
   COUNTERED: {
     leftBorder: Colors.accent,
-    chipBg: 'rgba(220,31,38,0.12)',
+    chipBg: Colors.accentAlpha12,
     chipText: Colors.accent,
     chipLabel: 'COUNTER-OFFER',
   },
   ACCEPTED: {
-    leftBorder: '#22C55E',
-    chipBg: 'rgba(34,197,94,0.15)',
-    chipText: '#22C55E',
+    leftBorder: Colors.success,
+    chipBg: Colors.successAlpha15,
+    chipText: Colors.success,
     chipLabel: 'ACCEPTED',
   },
   REJECTED: {
-    leftBorder: '#5C5C6B',
-    chipBg: 'rgba(255,255,255,0.06)',
-    chipText: '#5C5C6B',
+    leftBorder: Colors.textMuted,
+    chipBg: Colors.whiteAlpha06,
+    chipText: Colors.textMuted,
     chipLabel: 'REJECTED',
   },
   WITHDRAWN: {
-    leftBorder: '#3A3A47',
-    chipBg: 'rgba(255,255,255,0.04)',
-    chipText: '#3A3A47',
+    // textMuted (not textDisabled) — readable status label, not a disabled
+    // control (mobile-ui-ux-audit.md contrast finding).
+    leftBorder: Colors.textMuted,
+    chipBg: Colors.whiteAlpha04,
+    chipText: Colors.textMuted,
     chipLabel: 'WITHDRAWN',
   },
 };
@@ -149,8 +154,45 @@ export const DealerMyOffersScreen: React.FC = () => {
   }, [fetchData]);
 
   // ─────────────── actions ────────────────
+  // Wrapped in useCallback (stable deps: fetchData/navigation only) so the
+  // hoisted renderOfferCard renderItem below can carry a stable identity
+  // instead of recreating on every render (mobile-audit.md P3/P4 pattern).
 
-  const handleWithdraw = (offer: Offer) => {
+  // CarMazium doesn't collect payment for classified-listing sales — buyer and
+  // seller agree price/delivery directly between themselves (confirmed against
+  // the web dashboard's identical accepted-offer copy, which has no payment step
+  // either, just "Contact the seller to complete the purchase"). Once an offer
+  // is ACCEPTED, the only action here is opening a chat with the seller.
+  const handleMessageSeller = useCallback(async (offer: Offer) => {
+    const participantId = offer.sellerId ?? offer.seller?.id;
+    if (!participantId) {
+      Alert.alert('Unable to open chat', 'Seller information is not available.');
+      return;
+    }
+    setActionLoading(offer.id);
+    try {
+      const res = await apiClient<{ success: boolean; data: { id: string } }>(
+        '/chat/rooms',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            participantId,
+            listingId: offer.listing?.id ?? offer.listingId,
+          }),
+        },
+      );
+      if (res?.success && res.data?.id) {
+        navigation.navigate('ChatScreen', { threadId: res.data.id });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Please try again.';
+      Alert.alert('Could not open chat', message);
+    } finally {
+      setActionLoading(null);
+    }
+  }, [navigation]);
+
+  const handleWithdraw = useCallback((offer: Offer) => {
     Alert.alert(
       'Withdraw Offer',
       `Withdraw your offer of ${formatPrice(offer.amount)}?`,
@@ -174,16 +216,16 @@ export const DealerMyOffersScreen: React.FC = () => {
         },
       ],
     );
-  };
+  }, [fetchData]);
 
-  const handleCounterRespond = async (
+  const handleCounterRespond = useCallback(async (
     offer: Offer,
     status: 'ACCEPTED' | 'REJECTED',
   ) => {
     const label = status === 'ACCEPTED' ? 'accept' : 'decline';
     Alert.alert(
       status === 'ACCEPTED' ? 'Accept Counter-Offer' : 'Decline Counter-Offer',
-      `Are you sure you want to ${label} the seller's counter of ${formatPrice(offer.counterAmount ?? 0)}?`,
+      `Are you sure you want to ${label} the seller's counter of ${formatPrice((offer.sellerCounterAmount ?? offer.counterAmount) ?? 0)}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -196,12 +238,7 @@ export const DealerMyOffersScreen: React.FC = () => {
                 method: 'PATCH',
                 body: JSON.stringify({ status }),
               });
-              if (status === 'ACCEPTED') {
-                // Navigate directly to payment flow — the agreed price is the counter amount
-                navigateToPurchase(offer, offer.counterAmount ?? offer.amount);
-              } else {
-                await fetchData();
-              }
+              await fetchData();
             } catch (err) {
               const message = err instanceof Error ? err.message : 'Something went wrong.';
               Alert.alert('Action Failed', message);
@@ -212,22 +249,7 @@ export const DealerMyOffersScreen: React.FC = () => {
         },
       ],
     );
-  };
-
-  const navigateToPurchase = (offer: Offer, agreedAmount: number) => {
-    const sellerName =
-      offer.seller?.dealerProfile?.companyName ??
-      ([offer.seller?.firstName, offer.seller?.lastName].filter(Boolean).join(' ') || undefined);
-    navigation.navigate('PurchaseFlow', {
-      listingId: offer.listing?.id ?? offer.listingId ?? '',
-      salePrice: agreedAmount,
-      buyerFee: 95,
-      listingTitle: offer.listing?.title ?? 'Vehicle',
-      listingImage: offer.listing?.images?.[0],
-      sellerName,
-      paymentType: 'FULL_PAYMENT',
-    });
-  };
+  }, [fetchData]);
 
   // ─────────────── computed ───────────────
 
@@ -257,14 +279,15 @@ export const DealerMyOffersScreen: React.FC = () => {
     </View>
   );
 
-  const renderOfferCard = (offer: Offer) => {
+  const renderOfferCard = useCallback(({ item: offer }: { item: Offer }) => {
     const cfg = STATUS_CONFIG[offer.status] ?? STATUS_CONFIG.PENDING;
     const isActioning = actionLoading === offer.id;
     const listingTitle = offer.listing?.title ?? 'Vehicle listing';
     const isCountered = offer.status === 'COUNTERED';
+    const displayCounterAmount = offer.sellerCounterAmount ?? offer.counterAmount;
     const counterDiff =
-      isCountered && offer.counterAmount != null
-        ? offer.counterAmount - offer.amount
+      isCountered && displayCounterAmount != null
+        ? displayCounterAmount - offer.amount
         : null;
 
     return (
@@ -292,14 +315,14 @@ export const DealerMyOffersScreen: React.FC = () => {
         </View>
 
         {/* Counter-offer section */}
-        {isCountered && offer.counterAmount != null && (
+        {isCountered && displayCounterAmount != null && (
           <View style={styles.counterSection}>
             <View style={styles.counterHeader}>
               <Ionicons name="pricetag-outline" size={13} color={Colors.warning} />
               <Text style={styles.counterLabel}>SELLER’S COUNTER</Text>
             </View>
             <View style={styles.counterAmountRow}>
-              <Text style={styles.counterAmount}>{formatPrice(offer.counterAmount)}</Text>
+              <Text style={styles.counterAmount}>{formatPrice(displayCounterAmount)}</Text>
               {counterDiff != null && (
                 <Text
                   style={[
@@ -354,20 +377,27 @@ export const DealerMyOffersScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Actions: ACCEPTED — complete purchase */}
+        {/* Actions: ACCEPTED — no in-app payment; contact the seller directly */}
         {offer.status === 'ACCEPTED' && (
-          <View style={styles.actionsRow}>
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnAcceptCounter, { flex: 1 }]}
-              activeOpacity={0.75}
-              onPress={() => navigateToPurchase(offer, offer.amount)}
-            >
-              <Ionicons name="lock-closed-outline" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
-              <Text style={[styles.actionBtnText, { color: '#FFFFFF' }]}>
-                Complete Purchase
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <>
+            <Text style={styles.acceptedStatusText}>
+              Your offer of {formatPrice(offer.amount)} was accepted! Contact the seller to
+              complete the purchase.
+            </Text>
+            <View style={styles.actionsRow}>
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.actionBtnAcceptCounter, { flex: 1 }]}
+                activeOpacity={0.75}
+                onPress={() => handleMessageSeller(offer)}
+                disabled={isActioning}
+              >
+                <Ionicons name="chatbubble-ellipses-outline" size={14} color={Colors.white} style={{ marginRight: 6 }} />
+                <Text style={[styles.actionBtnText, { color: Colors.white }]}>
+                  Message Seller
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </>
         )}
 
         {/* Actions: COUNTERED — decline / accept counter */}
@@ -389,7 +419,7 @@ export const DealerMyOffersScreen: React.FC = () => {
               onPress={() => handleCounterRespond(offer, 'ACCEPTED')}
               disabled={isActioning}
             >
-              <Text style={[styles.actionBtnText, { color: '#FFFFFF' }]}>
+              <Text style={[styles.actionBtnText, { color: Colors.white }]}>
                 Accept Counter
               </Text>
             </TouchableOpacity>
@@ -397,7 +427,7 @@ export const DealerMyOffersScreen: React.FC = () => {
         )}
       </View>
     );
-  };
+  }, [actionLoading, handleWithdraw, handleCounterRespond, handleMessageSeller]);
 
   // ─────────────── main render ───────────────────────
 
@@ -405,7 +435,7 @@ export const DealerMyOffersScreen: React.FC = () => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(220,31,38,0.06)', 'rgba(10,10,12,0)', '#0A0A0C']}
+        colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
@@ -416,13 +446,7 @@ export const DealerMyOffersScreen: React.FC = () => {
 
       {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          activeOpacity={0.75}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="chevron-back" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
+        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
         <Text style={styles.headerTitle}>My Offers</Text>
 
@@ -450,7 +474,7 @@ export const DealerMyOffersScreen: React.FC = () => {
           style={styles.scroll}
           data={offers}
           keyExtractor={(o) => o.id}
-          renderItem={({ item }) => renderOfferCard(item)}
+          renderItem={renderOfferCard}
           ListEmptyComponent={renderEmptyState}
           ListFooterComponent={<View style={{ height: 40 }} />}
           contentContainerStyle={[styles.scrollContent, offers.length === 0 && { flexGrow: 1 }]}
@@ -481,9 +505,9 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -506,8 +530,8 @@ const styles = StyleSheet.create({
   },
   counterBadgeText: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#FFFFFF',
+    fontSize: FontSize.xs,
+    color: Colors.white,
   },
 
   // ── Scroll ──
@@ -524,9 +548,9 @@ const styles = StyleSheet.create({
   skeletonCard: {
     height: 140,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.04)',
+    borderColor: Colors.whiteAlpha04,
   },
 
   // ── Empty state ──
@@ -561,7 +585,7 @@ const styles = StyleSheet.create({
   emptyCtaBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
 
   // ── Offer card ──
@@ -569,7 +593,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgSecondary,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     borderLeftWidth: 3,
     padding: 16,
     gap: 10,
@@ -583,7 +607,7 @@ const styles = StyleSheet.create({
   listingTitle: {
     flex: 1,
     fontFamily: FontFamily.bold,
-    fontSize: 15,
+    fontSize: FontSize.base,
     color: Colors.textPrimary,
   },
   statusChip: {
@@ -594,7 +618,7 @@ const styles = StyleSheet.create({
   },
   statusChipText: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     letterSpacing: 0.4,
   },
 
@@ -604,21 +628,21 @@ const styles = StyleSheet.create({
   },
   offerLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     color: Colors.textMuted,
     letterSpacing: 1,
   },
   offerAmount: {
     fontFamily: FontFamily.mono,
-    fontSize: 20,
+    fontSize: FontSize.xl,
     color: Colors.textPrimary,
   },
 
   // ── Counter section ──
   counterSection: {
-    backgroundColor: 'rgba(245,158,11,0.06)',
+    backgroundColor: Colors.warningAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.20)',
+    borderColor: Colors.warningAlpha20,
     borderRadius: 10,
     padding: 12,
     gap: 6,
@@ -630,7 +654,7 @@ const styles = StyleSheet.create({
   },
   counterLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     color: Colors.warning,
     letterSpacing: 1,
   },
@@ -642,23 +666,29 @@ const styles = StyleSheet.create({
   },
   counterAmount: {
     fontFamily: FontFamily.mono,
-    fontSize: 16,
+    fontSize: FontSize.md,
     color: Colors.warning,
   },
   counterDiff: {
     fontFamily: FontFamily.mono,
-    fontSize: 11,
+    fontSize: FontSize.xs,
   },
 
   // ── Time ──
   timeText: {
     fontFamily: FontFamily.mono,
-    fontSize: 10,
+    fontSize: FontSize.size10,
     color: Colors.textMuted,
     alignSelf: 'flex-end',
   },
 
   // ── Actions ──
+  acceptedStatusText: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: Colors.success,
+    lineHeight: 18,
+  },
   actionsRow: {
     flexDirection: 'row',
     gap: 8,
@@ -674,11 +704,11 @@ const styles = StyleSheet.create({
   },
   actionBtnWithdraw: {
     backgroundColor: 'transparent',
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: Colors.whiteAlpha15,
   },
   actionBtnWithdrawText: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.textSecondary,
   },
   actionBtnDeclineCounter: {
@@ -693,7 +723,7 @@ const styles = StyleSheet.create({
   },
   actionBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     letterSpacing: 0.3,
   },
 });

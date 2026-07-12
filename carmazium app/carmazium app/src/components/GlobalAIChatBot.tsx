@@ -1,16 +1,24 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, StyleSheet, TouchableOpacity, Platform, Text,
-  TextInput, ScrollView, KeyboardAvoidingView, Modal, Pressable, Animated,
+  TextInput, ScrollView, Keyboard, Modal, Pressable, Animated,
+  LayoutAnimation, UIManager, useWindowDimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
-import { FontFamily } from '../constants/typography';
+import {FontFamily, FontSize } from '../constants/typography';
 import { useAuthStore } from '../store/authStore';
 import { sendAiChatMessage, AiChatMessage } from '../lib/aiApi';
 import { navigationRef } from '../lib/navigationRef';
 import { CommonActions } from '@react-navigation/native';
+import { Colors } from '../constants/colors';
+
+import { IconButton } from './IconButton';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -86,7 +94,35 @@ const TypingDots: React.FC = () => {
 
 export const GlobalAIChatBot: React.FC = () => {
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  // Track the keyboard directly instead of wrapping the panel in a
+  // KeyboardAvoidingView. The panel is a fixed-size, absolutely-positioned
+  // box anchored via `bottom: chatBottom` — KeyboardAvoidingView's automatic
+  // resize/padding of its flex container compounds with that fixed offset
+  // and shoots the whole panel upward by more than the keyboard height,
+  // often off the top of the screen. Instead, anchor the panel just above
+  // the keyboard and shrink its height so it always stays fully on screen.
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvt, (e) => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setKeyboardHeight(e.endCoordinates?.height ?? 0);
+    });
+    const hideSub = Keyboard.addListener(hideEvt, () => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const [activeRoute, setActiveRoute] = useState('');
   useEffect(() => {
@@ -204,6 +240,10 @@ export const GlobalAIChatBot: React.FC = () => {
 
   // Chat box sits above the floating button (button at insets.bottom + 70, height 64px)
   const chatBottom = (insets.bottom || 16) + 145;
+  const isKeyboardVisible = keyboardHeight > 0;
+  const dynamicBottom = isKeyboardVisible ? keyboardHeight + 8 : chatBottom;
+  const maxBoxHeight = windowHeight - insets.top - dynamicBottom - 24;
+  const dynamicHeight = isKeyboardVisible ? Math.min(420, maxBoxHeight) : 420;
 
   return (
     <>
@@ -214,9 +254,11 @@ export const GlobalAIChatBot: React.FC = () => {
         statusBarTranslucent
         onRequestClose={() => setIsOpen(false)}
       >
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <Pressable style={{ flex: 1 }} onPress={() => setIsOpen(false)}>
-            <Pressable style={[styles.chatBox, { bottom: chatBottom }]} onPress={() => {}}>
+        <Pressable style={{ flex: 1 }} onPress={() => setIsOpen(false)}>
+          <Pressable
+            style={[styles.chatBox, { bottom: dynamicBottom, height: dynamicHeight }]}
+            onPress={() => {}}
+          >
 
               {/* Header */}
               <View style={styles.chatHeader}>
@@ -229,9 +271,7 @@ export const GlobalAIChatBot: React.FC = () => {
                     <Text style={styles.chatStatus}>Always online</Text>
                   </View>
                 </View>
-                <TouchableOpacity onPress={() => setIsOpen(false)} style={styles.closeBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                  <Ionicons name="close" size={20} color="#FFFFFF" />
-                </TouchableOpacity>
+                <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={() => setIsOpen(false)} accessibilityLabel="Close" />
               </View>
 
               {/* Messages */}
@@ -253,13 +293,13 @@ export const GlobalAIChatBot: React.FC = () => {
                         onPress={() => applyFilterCard(msg.filterCard!.params)}
                       >
                         <View style={styles.filterCardIcon}>
-                          <Ionicons name="search-outline" size={13} color="#DC1F26" />
+                          <Ionicons name="search-outline" size={13} color={Colors.accent} />
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text style={styles.filterCardLabel}>APPLY FILTERS</Text>
                           <Text style={styles.filterCardTitle}>{msg.filterCard.label}</Text>
                         </View>
-                        <Ionicons name="arrow-forward" size={13} color="#DC1F26" />
+                        <Ionicons name="arrow-forward" size={13} color={Colors.accent} />
                       </TouchableOpacity>
                     )}
                   </View>
@@ -294,25 +334,18 @@ export const GlobalAIChatBot: React.FC = () => {
                 <TextInput
                   style={styles.chatInput}
                   placeholder="Ask anything about cars..."
-                  placeholderTextColor="#606070"
+                  placeholderTextColor={Colors.iconMuted}
                   value={message}
                   onChangeText={setMessage}
                   onSubmitEditing={() => sendMessage(message)}
                   returnKeyType="send"
                   editable={!isThinking}
                 />
-                <TouchableOpacity
-                  style={[styles.sendBtn, (isThinking || !message.trim()) && { opacity: 0.4 }]}
-                  onPress={() => sendMessage(message)}
-                  disabled={isThinking || !message.trim()}
-                >
-                  <Ionicons name="send" size={16} color="#FFFFFF" />
-                </TouchableOpacity>
+                <IconButton style={[styles.sendBtn, (isThinking || !message.trim()) && { opacity: 0.4 }]} icon={<Ionicons name="send" size={16} color={Colors.white} />} onPress={() => sendMessage(message)} disabled={isThinking || !message.trim()} accessibilityLabel="Send message" />
               </View>
 
-            </Pressable>
           </Pressable>
-        </KeyboardAvoidingView>
+        </Pressable>
       </Modal>
 
       {/* Floating bot button */}
@@ -347,94 +380,94 @@ const styles = StyleSheet.create({
   container: { position: 'absolute', right: 16, zIndex: 9999, alignItems: 'flex-end' },
 
   chatBox: {
-    position: 'absolute', right: 16, width: 320, height: 420,
-    backgroundColor: '#111116', borderRadius: 20,
-    borderWidth: 1, borderColor: 'rgba(220,31,38,0.3)',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 10 },
+    position: 'absolute', right: 16, width: 320,
+    backgroundColor: Colors.bgSecondaryAlt, borderRadius: 20,
+    borderWidth: 1, borderColor: Colors.accentAlpha30,
+    shadowColor: Colors.black, shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.5, shadowRadius: 20, elevation: 20, overflow: 'hidden',
   },
   chatHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    padding: 14, backgroundColor: '#1E1E28',
-    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)',
+    padding: 14, backgroundColor: Colors.deepBlue_1e1e28,
+    borderBottomWidth: 1, borderBottomColor: Colors.whiteAlpha05,
   },
   chatHeaderLeft: { flexDirection: 'row', alignItems: 'center' },
   chatAvatar: {
-    width: 32, height: 32, borderRadius: 16, backgroundColor: '#DC1F26',
+    width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.accent,
     alignItems: 'center', justifyContent: 'center', marginRight: 10,
   },
-  chatAvatarText: { fontFamily: FontFamily.black, fontSize: 15, color: '#FFFFFF' },
-  chatTitle: { fontFamily: FontFamily.bold, fontSize: 14, color: '#FFFFFF' },
-  chatStatus: { fontFamily: FontFamily.medium, fontSize: 10, color: '#10B981' },
+  chatAvatarText: { fontFamily: FontFamily.black, fontSize: FontSize.base, color: Colors.white },
+  chatTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white },
+  chatStatus: { fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: Colors.accentGreen },
   closeBtn: { padding: 4 },
 
-  chatScroll: { flex: 1, backgroundColor: '#0A0A0C' },
+  chatScroll: { flex: 1, backgroundColor: Colors.bgPrimary },
   chatScrollContent: { padding: 14, gap: 10 },
 
   msgBubble: { maxWidth: '85%', padding: 10, borderRadius: 14 },
-  msgAI: { alignSelf: 'flex-start', backgroundColor: '#1E1E28', borderBottomLeftRadius: 4 },
-  msgUser: { alignSelf: 'flex-end', backgroundColor: '#DC1F26', borderBottomRightRadius: 4 },
-  msgText: { fontFamily: FontFamily.regular, fontSize: 13, lineHeight: 18 },
-  msgTextAI: { color: '#E0E0E0' },
-  msgTextUser: { color: '#FFFFFF' },
+  msgAI: { alignSelf: 'flex-start', backgroundColor: Colors.deepBlue_1e1e28, borderBottomLeftRadius: 4 },
+  msgUser: { alignSelf: 'flex-end', backgroundColor: Colors.accent, borderBottomRightRadius: 4 },
+  msgText: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, lineHeight: 18 },
+  msgTextAI: { color: Colors.paleNearWhite_e0e0e0 },
+  msgTextUser: { color: Colors.white },
 
   // Filter card
   filterCard: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     marginTop: 6, padding: 12, borderRadius: 12,
-    backgroundColor: '#1A1A24', borderWidth: 1, borderColor: 'rgba(220,31,38,0.25)',
+    backgroundColor: Colors.deepBlue_1a1a24, borderWidth: 1, borderColor: Colors.accentAlpha25,
     alignSelf: 'flex-start', maxWidth: '90%',
   },
   filterCardIcon: {
     width: 28, height: 28, borderRadius: 8,
-    backgroundColor: 'rgba(220,31,38,0.10)', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.accentAlpha10, alignItems: 'center', justifyContent: 'center',
   },
-  filterCardLabel: { fontFamily: FontFamily.bold, fontSize: 8, color: '#606070', letterSpacing: 1 },
-  filterCardTitle: { fontFamily: FontFamily.bold, fontSize: 12, color: '#FFFFFF', marginTop: 1 },
+  filterCardLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size8, color: Colors.iconMuted, letterSpacing: 1 },
+  filterCardTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white, marginTop: 1 },
 
   // Quick reply chips
   quickPromptsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
   quickPromptChip: {
     paddingHorizontal: 12, paddingVertical: 7, borderRadius: 14,
-    backgroundColor: 'rgba(220,31,38,0.08)', borderWidth: 1, borderColor: 'rgba(220,31,38,0.2)',
+    backgroundColor: Colors.accentAlpha08, borderWidth: 1, borderColor: Colors.accentAlpha20,
   },
-  quickPromptText: { fontFamily: FontFamily.medium, fontSize: 12, color: '#E0E0E0' },
+  quickPromptText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.paleNearWhite_e0e0e0 },
 
   // Typing dots
   dotsRow: { flexDirection: 'row', gap: 4, alignItems: 'center', paddingVertical: 2 },
-  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#A0A0AB' },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: Colors.textSecondary },
 
   // Input row
   chatInputRow: {
     flexDirection: 'row', alignItems: 'center', padding: 10,
-    backgroundColor: '#111116', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', gap: 8,
+    backgroundColor: Colors.bgSecondaryAlt, borderTopWidth: 1, borderTopColor: Colors.whiteAlpha05, gap: 8,
   },
   chatInput: {
-    flex: 1, height: 38, backgroundColor: '#1E1E28', borderRadius: 19,
-    paddingHorizontal: 14, fontFamily: FontFamily.regular, fontSize: 13, color: '#FFFFFF',
+    flex: 1, height: 38, backgroundColor: Colors.deepBlue_1e1e28, borderRadius: 19,
+    paddingHorizontal: 14, fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.white,
   },
   sendBtn: {
-    width: 38, height: 38, borderRadius: 19, backgroundColor: '#DC1F26',
+    width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.accent,
     alignItems: 'center', justifyContent: 'center',
   },
 
   // Bot button
   botButton: {
-    width: 64, height: 64, borderRadius: 32, backgroundColor: '#000000',
+    width: 64, height: 64, borderRadius: 32, backgroundColor: Colors.black,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#DC1F26', shadowOffset: { width: 0, height: 4 },
-    elevation: 8, borderWidth: 1, borderColor: 'rgba(220,31,38,0.2)', overflow: 'visible',
+    shadowColor: Colors.accent, shadowOffset: { width: 0, height: 4 },
+    elevation: 8, borderWidth: 1, borderColor: Colors.accentAlpha20, overflow: 'visible',
   },
   botButtonActive: { opacity: 1, shadowOpacity: 0.8, shadowRadius: 16, transform: [{ scale: 1.05 }] },
   botButtonInactive: { opacity: 0.45, shadowOpacity: 0, shadowRadius: 0 },
-  glowEffect: { position: 'absolute', width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(220,31,38,0.15)', zIndex: -1 },
+  glowEffect: { position: 'absolute', width: 80, height: 80, borderRadius: 40, backgroundColor: Colors.accentAlpha15, zIndex: -1 },
   botImage: { width: 60, height: 60, borderRadius: 30, position: 'absolute', opacity: 0.2 },
   overlayDesign: {
-    width: 48, height: 38, backgroundColor: '#FFFFFF', borderRadius: 16,
-    borderWidth: 3, borderColor: '#DC1F26', alignItems: 'center', paddingTop: 2,
+    width: 48, height: 38, backgroundColor: Colors.white, borderRadius: 16,
+    borderWidth: 3, borderColor: Colors.accent, alignItems: 'center', paddingTop: 2,
   },
-  mockFace: { color: '#DC1F26', fontWeight: '900', fontSize: 14, lineHeight: 16 },
+  mockFace: { color: Colors.accent, fontWeight: '900', fontSize: FontSize.size14, lineHeight: 16 },
   mockSmileRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 4, marginTop: 2 },
-  mockEye: { width: 8, height: 4, backgroundColor: '#000000', borderTopLeftRadius: 4, borderTopRightRadius: 4 },
-  mockSmile: { width: 6, height: 3, backgroundColor: '#000000', borderBottomLeftRadius: 3, borderBottomRightRadius: 3, marginBottom: 1 },
+  mockEye: { width: 8, height: 4, backgroundColor: Colors.black, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
+  mockSmile: { width: 6, height: 3, backgroundColor: Colors.black, borderBottomLeftRadius: 3, borderBottomRightRadius: 3, marginBottom: 1 },
 });

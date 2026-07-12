@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect, useContext } from 'react';
+import React, { useState, useRef, useEffect, useContext, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
   TextInput,
   KeyboardAvoidingView,
@@ -14,7 +14,6 @@ import {
   Animated,
 } from 'react-native';
 import { Image } from 'expo-image';
-import * as WebBrowser from 'expo-web-browser';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -23,12 +22,13 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useChat } from '../../context/ChatContext';
 import { useAuthStore } from '../../store/authStore';
 import { getChatMessages, markMessagesAsRead, type ChatMessage, type ChatRoom, type ChatUser } from '../../lib/chatApi';
-import { apiClient } from '../../lib/apiClient';
+import { getListingById } from '../../lib/listingsApi';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { GlobalToastContext } from '../../components/GlobalToastProvider';
 
+import { IconButton } from '../../components/IconButton';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 const parseSpecialMessage = (content: string) => {
@@ -52,6 +52,13 @@ const formatMessageTime = (dateStr: string) => {
   } catch (e) {
     return '';
   }
+};
+
+const getAvatarBg = (val: string) => {
+  if (val === 'KM') return Colors.darkBlue_2a3047;
+  if (val === 'MA') return Colors.darkTeal;
+  if (val === 'GS') return Colors.darkPurple;
+  return Colors.darkRed_3b2424;
 };
 
 // ─── Animated typing indicator (Instagram/WhatsApp-style bouncing dots) ──────
@@ -91,6 +98,90 @@ const TypingDots: React.FC = () => {
   );
 };
 
+// ─── Message bubble — hoisted to module scope + memoized so FlatList only
+// re-renders the row whose own props actually changed (mobile-audit.md P2). ──
+interface MessageBubbleProps {
+  msg: ChatMessage;
+  isOwn: boolean;
+  isLastOwnMessage: boolean;
+  initials: string;
+}
+
+const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ msg, isOwn, isLastOwnMessage, initials }) => {
+  const parsedSpecial = parseSpecialMessage(msg.content);
+  const showSeenIndicator = isOwn && msg.isRead && isLastOwnMessage;
+
+  if (parsedSpecial?.type === 'offer') {
+    return (
+      <View style={isOwn ? styles.userBubbleWrapper : styles.dealerBubbleWrapper}>
+        <View style={styles.offerMessageBubble}>
+          <View style={styles.offerTagHeader}>
+            <Ionicons name="pricetag" size={12} color={Colors.white} />
+            <Text style={styles.offerTagTitle}>{isOwn ? 'YOUR OFFER' : 'OFFER'}</Text>
+            <Text style={styles.offerTagAmount}>£{parsedSpecial.amount.toLocaleString('en-GB')}</Text>
+          </View>
+          <Text style={styles.offerText}>{msg.content}</Text>
+          <Text style={styles.timeTextRight}>
+            {formatMessageTime(msg.createdAt)}
+            {isOwn && msg.isRead && ' ✓✓'}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (parsedSpecial?.type === 'counter') {
+    return (
+      <View style={isOwn ? styles.userBubbleWrapper : styles.dealerBubbleWrapper}>
+        <View style={styles.counterMessageCard}>
+          <View style={styles.counterHeader}>
+            <Ionicons name="pricetag" size={12} color={Colors.lightGrey} />
+            <Text style={styles.counterTitle}>{isOwn ? 'YOUR COUNTER OFFER' : 'COUNTER OFFER'}</Text>
+            <Text style={styles.counterAmount}>£{parsedSpecial.amount.toLocaleString('en-GB')}</Text>
+          </View>
+          <Text style={isOwn ? styles.timeTextRight : styles.timeTextLeft}>
+            {formatMessageTime(msg.createdAt)}
+            {isOwn && msg.isRead && ' ✓✓'}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={isOwn ? styles.userBubbleWrapper : styles.dealerBubbleWrapper}>
+      <View style={isOwn ? styles.bubbleStackRight : styles.bubbleStackLeft}>
+        <View style={[styles.bubble, isOwn ? styles.bubbleUser : styles.bubbleDealer]}>
+          <Text style={styles.bubbleText}>{msg.content}</Text>
+          <View style={[styles.msgFooter, isOwn ? styles.msgFooterRight : styles.msgFooterLeft]}>
+            <Text style={isOwn ? styles.timeTextRightInline : styles.timeTextLeftInline}>
+              {formatMessageTime(msg.createdAt)}
+            </Text>
+            {isOwn && (
+              <Ionicons
+                name={msg.isRead ? 'checkmark-done' : 'checkmark'}
+                size={14}
+                color={msg.isRead ? Colors.lightBlue_4fa8ff : 'rgba(255,255,255,0.45)'}
+                style={styles.readTick}
+              />
+            )}
+          </View>
+        </View>
+
+        {/* Instagram-style "Seen" indicator beneath the last read bubble */}
+        {showSeenIndicator && (
+          <View style={styles.seenRow}>
+            <View style={[styles.seenAvatar, { backgroundColor: getAvatarBg(initials) }]}>
+              <Text style={styles.seenAvatarText}>{initials.slice(0, 1)}</Text>
+            </View>
+            <Text style={styles.seenText}>Seen {formatMessageTime(msg.updatedAt)}</Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+});
+
 export const ChatScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const route = useRoute<any>();
@@ -118,17 +209,12 @@ export const ChatScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [inputVal, setInputVal] = useState('');
   const [otherUserTyping, setOtherUserTyping] = useState(false);
-  const [isProcessingCheckout, setIsProcessingCheckout] = useState(false);
+  // Must live here, not after the `if (!room) return` guard below — a hook
+  // called only on some renders (e.g. once `loading`/`room` resolve) violates
+  // the Rules of Hooks and crashes the screen to blank on the next render.
+  const [openingListing, setOpeningListing] = useState(false);
 
-  const scrollViewRef = useRef<ScrollView>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Scroll to bottom helper
-  const scrollToBottom = () => {
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
-  };
 
   // Fetch initial messages and mark as read
   useEffect(() => {
@@ -147,11 +233,6 @@ export const ChatScreen: React.FC = () => {
     }
     loadMessages();
   }, [threadId]);
-
-  // Scroll to bottom on new messages
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, otherUserTyping]);
 
   // Subscribe to real-time events
   useEffect(() => {
@@ -210,10 +291,45 @@ export const ChatScreen: React.FC = () => {
     };
   }, [threadId]);
 
+  // Derived values used by the message list — computed before the early returns
+  // below so these hooks always run in the same order (Rules of Hooks).
+  const displayNameForBubbles = room?.otherUser.firstName
+    ? `${room.otherUser.firstName} ${room.otherUser.lastName || ''}`.trim()
+    : 'Anonymous User';
+  const initialsForBubbles = displayNameForBubbles
+    .split(' ')
+    .filter(Boolean)
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
+  // Single backward pass instead of a `.slice(idx + 1).some(...)` per message
+  // (that was O(n²) over the whole thread on every render — mobile-audit.md P2).
+  const lastOwnMessageId = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].senderId === user?.id) return messages[i].id;
+    }
+    return null;
+  }, [messages, user?.id]);
+
+  // FlatList `inverted` expects newest-first data so it can stay pinned to the
+  // bottom as new messages are appended, without any manual scrollToEnd() hack.
+  const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
+
+  const renderMessageItem = useCallback(({ item }: { item: ChatMessage }) => (
+    <MessageBubble
+      msg={item}
+      isOwn={item.senderId === user?.id}
+      isLastOwnMessage={item.id === lastOwnMessageId}
+      initials={initialsForBubbles}
+    />
+  ), [user?.id, lastOwnMessageId, initialsForBubbles]);
+
   if (loading) {
     return (
       <View style={styles.errorContainer}>
-        <ActivityIndicator size="large" color="#DC1F26" />
+        <ActivityIndicator size="large" color={Colors.accent} />
         <Text style={[styles.errorText, { marginTop: 12 }]}>Loading conversation...</Text>
       </View>
     );
@@ -224,7 +340,7 @@ export const ChatScreen: React.FC = () => {
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>Conversation not found</Text>
         <TouchableOpacity style={styles.backBtnText} onPress={() => navigation.goBack()}>
-          <Text style={{ color: '#DC1F26' }}>Go Back</Text>
+          <Text style={{ color: Colors.accent }}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -246,6 +362,23 @@ export const ChatScreen: React.FC = () => {
   const isWinner = room.listing?.auction?.winnerId === user?.id;
   const depositPaid = room.listing?.auction?.buyerFeePaid === true;
   const shouldBlockChat = isAuction && isWinner && !depositPaid;
+
+  // Listing banner used to be alert-only ("Redirecting to listing details for...")
+  // with no real navigation (mobile-ui-ux-audit.md §C13). VehicleDetail needs a
+  // full CarListing, and the chat room only carries a partial ChatListing, so
+  // fetch the real listing before navigating rather than faking the missing fields.
+  // (openingListing/setOpeningListing declared above, before the loading/room
+  // early returns — see comment there.)
+  const handleOpenListing = async () => {
+    if (!room?.listing?.id || openingListing) return;
+    setOpeningListing(true);
+    try {
+      const listing = await getListingById(room.listing.id);
+      if (listing) navigation.navigate('VehicleDetail', { listing });
+    } finally {
+      setOpeningListing(false);
+    }
+  };
 
   const handleSend = () => {
     if (!inputVal.trim()) return;
@@ -303,35 +436,18 @@ export const ChatScreen: React.FC = () => {
     showToast('Counter-offer sent!', 'info');
   };
 
-  const handlePayDeposit = async () => {
+  const handlePayDeposit = () => {
     if (!room.listing) return;
-    try {
-      setIsProcessingCheckout(true);
-      const res = await apiClient<{ success: boolean; data: { url: string } }>('/payments/checkout', {
-        method: 'POST',
-        body: JSON.stringify({
-          listingId: room.listing.id,
-          amount: 125,
-          type: 'COMMISSION',
-          currency: 'gbp',
-        }),
-      });
-
-      if (res.data?.url) {
-        const result = await WebBrowser.openAuthSessionAsync(res.data.url, 'carmazium://');
-        if (result.type === 'success') {
-          showToast('Payment received — seller will be notified', 'success');
-        } else if (result.type === 'cancel' || result.type === 'dismiss') {
-          showToast('Payment cancelled', 'info');
-        }
-      } else {
-        Alert.alert('Checkout Error', 'Unable to initiate Stripe checkout. Please try again.');
-      }
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to start payment. Please try again.');
-    } finally {
-      setIsProcessingCheckout(false);
-    }
+    navigation.navigate('PurchaseFlow', {
+      listingId: room.listing.id,
+      salePrice: 0,
+      buyerFee: 125,
+      listingTitle: room.listing.title,
+      listingImage: room.listing.images?.[0],
+      sellerName: displayName,
+      paymentType: 'COMMISSION',
+      auctionId: room.listing.auction?.id,
+    });
   };
 
   const handleRefreshStatus = async () => {
@@ -344,13 +460,6 @@ export const ChatScreen: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const getAvatarBg = (val: string) => {
-    if (val === 'KM') return '#2A3047';
-    if (val === 'MA') return '#1A3330';
-    if (val === 'GS') return '#302038';
-    return '#3B2424';
   };
 
   const carPrice = room.listing?.price ? parseFloat(String(room.listing.price)) : 0;
@@ -370,9 +479,7 @@ export const ChatScreen: React.FC = () => {
 
       {/* Top Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
+        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
         {/* Avatar */}
         <View style={[styles.avatar, { backgroundColor: getAvatarBg(initials) }]}>
@@ -384,7 +491,7 @@ export const ChatScreen: React.FC = () => {
           <View style={styles.nameRow}>
             <Text style={styles.dealerName} numberOfLines={1}>{displayName}</Text>
             {isDealer && (
-              <Ionicons name="checkmark-circle" size={14} color="#0084FF" style={{ marginLeft: 4 }} />
+              <Ionicons name="checkmark-circle" size={14} color={Colors.lightBlue_0084ff} style={{ marginLeft: 4 }} />
             )}
           </View>
           {otherUserTyping ? (
@@ -396,22 +503,15 @@ export const ChatScreen: React.FC = () => {
           )}
         </View>
 
-        {/* Action button */}
-        <TouchableOpacity 
-          style={styles.callBtn} 
-          activeOpacity={0.7}
-          onPress={() => Alert.alert('Voice Call', `Initiating call to ${displayName}...`)}
-        >
-          <Ionicons name="call-outline" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
       </View>
 
       {/* Listing context banner */}
       {room.listing && (
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.listingBanner}
           activeOpacity={0.8}
-          onPress={() => Alert.alert('Listing Details', `Redirecting to listing details for ${room.listing?.title}...`)}
+          onPress={handleOpenListing}
+          disabled={openingListing}
         >
           <Image
             source={{ uri: room.listing.images?.[0] || 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=900&q=80' }}
@@ -428,118 +528,46 @@ export const ChatScreen: React.FC = () => {
                 : `Price: £${carPrice.toLocaleString('en-GB')}`}
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={16} color="#5C5C6B" />
+          <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
         </TouchableOpacity>
       )}
 
       {/* Main chat body with conditional overlay blocking */}
       <View style={{ flex: 1, position: 'relative' }}>
-        {/* Conversations scroll area */}
-        <ScrollView
-          ref={scrollViewRef}
+        {/* Conversations list — FlatList inverted so it virtualizes long threads and
+            stays pinned to the bottom as new messages are appended, with no manual
+            scrollToEnd() timing hack (mobile-audit.md P2). Inverted flips header/footer:
+            ListHeaderComponent renders at the visual bottom, ListFooterComponent at the top. */}
+        <FlatList
           style={styles.chatArea}
           contentContainerStyle={styles.chatScroll}
           showsVerticalScrollIndicator={false}
-        >
-          {messages.length === 0 ? (
-            <Text style={styles.dateSeparator}>No messages yet</Text>
-          ) : (
-            <Text style={styles.dateSeparator}>LIVE CHAT LOGS</Text>
-          )}
-
-          {messages.map((msg, idx) => {
-            const isOwn = msg.senderId === user?.id;
-            const parsedSpecial = parseSpecialMessage(msg.content);
-            const isLastOwnMessage = isOwn && !messages.slice(idx + 1).some((m) => m.senderId === user?.id);
-            const showSeenIndicator = isOwn && msg.isRead && isLastOwnMessage;
-
-            if (parsedSpecial?.type === 'offer') {
-              return (
-                <View key={msg.id} style={isOwn ? styles.userBubbleWrapper : styles.dealerBubbleWrapper}>
-                  <View style={styles.offerMessageBubble}>
-                    <View style={styles.offerTagHeader}>
-                      <Ionicons name="pricetag" size={12} color="#FFFFFF" />
-                      <Text style={styles.offerTagTitle}>{isOwn ? 'YOUR OFFER' : 'OFFER'}</Text>
-                      <Text style={styles.offerTagAmount}>£{parsedSpecial.amount.toLocaleString('en-GB')}</Text>
-                    </View>
-                    <Text style={styles.offerText}>{msg.content}</Text>
-                    <Text style={styles.timeTextRight}>
-                      {formatMessageTime(msg.createdAt)}
-                      {isOwn && msg.isRead && ' ✓✓'}
-                    </Text>
-                  </View>
-                </View>
-              );
-            }
-
-            if (parsedSpecial?.type === 'counter') {
-              return (
-                <View key={msg.id} style={isOwn ? styles.userBubbleWrapper : styles.dealerBubbleWrapper}>
-                  <View style={styles.counterMessageCard}>
-                    <View style={styles.counterHeader}>
-                      <Ionicons name="pricetag" size={12} color="#A8A8B3" />
-                      <Text style={styles.counterTitle}>{isOwn ? 'YOUR COUNTER OFFER' : 'COUNTER OFFER'}</Text>
-                      <Text style={styles.counterAmount}>£{parsedSpecial.amount.toLocaleString('en-GB')}</Text>
-                    </View>
-                    <Text style={isOwn ? styles.timeTextRight : styles.timeTextLeft}>
-                      {formatMessageTime(msg.createdAt)}
-                      {isOwn && msg.isRead && ' ✓✓'}
-                    </Text>
-                  </View>
-                </View>
-              );
-            }
-
-            return (
-              <View key={msg.id} style={isOwn ? styles.userBubbleWrapper : styles.dealerBubbleWrapper}>
-                <View style={isOwn ? styles.bubbleStackRight : styles.bubbleStackLeft}>
-                  <View style={[styles.bubble, isOwn ? styles.bubbleUser : styles.bubbleDealer]}>
-                    <Text style={styles.bubbleText}>{msg.content}</Text>
-                    <View style={[styles.msgFooter, isOwn ? styles.msgFooterRight : styles.msgFooterLeft]}>
-                      <Text style={isOwn ? styles.timeTextRightInline : styles.timeTextLeftInline}>
-                        {formatMessageTime(msg.createdAt)}
-                      </Text>
-                      {isOwn && (
-                        <Ionicons
-                          name={msg.isRead ? 'checkmark-done' : 'checkmark'}
-                          size={14}
-                          color={msg.isRead ? '#4FA8FF' : 'rgba(255,255,255,0.45)'}
-                          style={styles.readTick}
-                        />
-                      )}
-                    </View>
-                  </View>
-
-                  {/* Instagram-style "Seen" indicator beneath the last read bubble */}
-                  {showSeenIndicator && (
-                    <View style={styles.seenRow}>
-                      <View style={[styles.seenAvatar, { backgroundColor: getAvatarBg(initials) }]}>
-                        <Text style={styles.seenAvatarText}>{initials.slice(0, 1)}</Text>
-                      </View>
-                      <Text style={styles.seenText}>Seen {formatMessageTime(msg.updatedAt)}</Text>
-                    </View>
-                  )}
+          inverted
+          data={reversedMessages}
+          keyExtractor={(item) => item.id}
+          renderItem={renderMessageItem}
+          ListHeaderComponent={
+            otherUserTyping ? (
+              <View style={styles.dealerBubbleWrapper}>
+                <View style={[styles.bubble, styles.bubbleDealer, styles.typingBubble]}>
+                  <TypingDots />
                 </View>
               </View>
-            );
-          })}
-
-          {/* Live typing indicator — animated bouncing dots, Instagram/WhatsApp-style */}
-          {otherUserTyping && (
-            <View style={styles.dealerBubbleWrapper}>
-              <View style={[styles.bubble, styles.bubbleDealer, styles.typingBubble]}>
-                <TypingDots />
-              </View>
-            </View>
-          )}
-        </ScrollView>
+            ) : null
+          }
+          ListFooterComponent={
+            <Text style={styles.dateSeparator}>
+              {messages.length === 0 ? 'No messages yet' : 'LIVE CHAT LOGS'}
+            </Text>
+          }
+        />
 
         {/* Blocking Overlay for deposit check */}
         {shouldBlockChat && (
           <View style={styles.blockingOverlay}>
             <View style={styles.blockingCard}>
               <View style={styles.trophyIconWrap}>
-                <Ionicons name="trophy" size={40} color="#F59E0B" />
+                <Ionicons name="trophy" size={40} color={Colors.warning} />
               </View>
               <Text style={styles.blockingTitle}>£125 Buyer Fee Due</Text>
               <Text style={styles.blockingDesc}>
@@ -551,20 +579,13 @@ export const ChatScreen: React.FC = () => {
                 • The buyer fee is non-refundable; the agreed hammer price is settled directly with the seller at handover.
               </Text>
 
-              <TouchableOpacity 
-                style={styles.payOverlayBtn} 
+              <TouchableOpacity
+                style={styles.payOverlayBtn}
                 onPress={handlePayDeposit}
-                disabled={isProcessingCheckout}
                 activeOpacity={0.8}
               >
-                {isProcessingCheckout ? (
-                  <ActivityIndicator size="small" color="#0A0A0C" />
-                ) : (
-                  <>
-                    <Ionicons name="card" size={18} color="#0A0A0C" style={{ marginRight: 8 }} />
-                    <Text style={styles.payOverlayBtnText}>PAY £125 VIA STRIPE</Text>
-                  </>
-                )}
+                <Ionicons name="card" size={18} color={Colors.bgPrimary} style={{ marginRight: 8 }} />
+                <Text style={styles.payOverlayBtnText}>PAY £125 VIA STRIPE</Text>
               </TouchableOpacity>
 
               <TouchableOpacity 
@@ -572,7 +593,7 @@ export const ChatScreen: React.FC = () => {
                 onPress={handleRefreshStatus}
                 activeOpacity={0.7}
               >
-                <Ionicons name="refresh" size={16} color="#A0A0AB" style={{ marginRight: 6 }} />
+                <Ionicons name="refresh" size={16} color={Colors.textSecondary} style={{ marginRight: 6 }} />
                 <Text style={styles.refreshOverlayBtnText}>I've paid, refresh chat</Text>
               </TouchableOpacity>
             </View>
@@ -588,8 +609,8 @@ export const ChatScreen: React.FC = () => {
             onPress={handleCounterOffer}
             activeOpacity={0.7}
           >
-            <Ionicons name="pricetag-outline" size={13} color="#DC1F26" style={{ marginRight: 4 }} />
-            <Text style={[styles.actionLabel, { color: '#DC1F26' }]}>Counter £{carPrice.toLocaleString('en-GB')}</Text>
+            <Ionicons name="pricetag-outline" size={13} color={Colors.accent} style={{ marginRight: 4 }} />
+            <Text style={[styles.actionLabel, { color: Colors.accent }]}>Counter £{carPrice.toLocaleString('en-GB')}</Text>
           </TouchableOpacity>
 
           {!offerAccepted && (
@@ -598,7 +619,7 @@ export const ChatScreen: React.FC = () => {
               onPress={handleAcceptOffer}
               activeOpacity={0.7}
             >
-              <Ionicons name="checkmark-circle-outline" size={13} color="#FFFFFF" style={{ marginRight: 4 }} />
+              <Ionicons name="checkmark-circle-outline" size={13} color={Colors.white} style={{ marginRight: 4 }} />
               <Text style={styles.actionLabel}>Accept Offer</Text>
             </TouchableOpacity>
           )}
@@ -608,27 +629,19 @@ export const ChatScreen: React.FC = () => {
       {/* Bottom Text bar (hide if blocked) */}
       {!shouldBlockChat && (
         <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-          <TouchableOpacity style={styles.attachBtn} activeOpacity={0.7}>
-            <Ionicons name="attach" size={22} color="#A0A0AB" />
-          </TouchableOpacity>
-          
+          {/* Chat has no file-attachment support in the DTO/socket protocol
+              (ChatMessage is content-only) — removed the dead attach button
+              rather than faking it (mobile-ui-ux-audit.md §C13 precedent). */}
           <TextInput
             style={styles.textInput}
             value={inputVal}
             onChangeText={handleTextChange}
             placeholder="Type a message..."
-            placeholderTextColor="#5C5C6B"
+            placeholderTextColor={Colors.textMuted}
             multiline
           />
 
-          <TouchableOpacity 
-            style={[styles.sendBtn, !inputVal.trim() && styles.sendBtnDisabled]} 
-            onPress={handleSend}
-            disabled={!inputVal.trim()}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="send" size={15} color="#FFFFFF" />
-          </TouchableOpacity>
+          <IconButton style={[styles.sendBtn, !inputVal.trim() && styles.sendBtnDisabled]} icon={<Ionicons name="send" size={15} color={Colors.white} />} onPress={handleSend} disabled={!inputVal.trim()} accessibilityLabel="Send message" />
         </View>
       )}
     </KeyboardAvoidingView>
@@ -638,7 +651,7 @@ export const ChatScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0C',
+    backgroundColor: Colors.bgPrimary,
   },
   header: {
     flexDirection: 'row',
@@ -646,8 +659,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
-    backgroundColor: '#0D0D12',
+    borderBottomColor: Colors.whiteAlpha05,
+    backgroundColor: Colors.deepBlue_0d0d12,
   },
   backBtn: {
     padding: 6,
@@ -664,8 +677,8 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
   },
   headerInfo: {
     flex: 1,
@@ -677,31 +690,21 @@ const styles = StyleSheet.create({
   dealerName: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   onlineStatus: {
     fontFamily: FontFamily.medium,
-    fontSize: 10,
-    color: '#22C55E',
+    fontSize: FontSize.size10,
+    color: Colors.success,
     marginTop: 1,
-  },
-  callBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   // Listing Context banner
   listingBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+    borderBottomColor: Colors.whiteAlpha05,
     paddingHorizontal: 20,
     paddingVertical: 12,
   },
@@ -709,7 +712,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.02)',
+    backgroundColor: Colors.whiteAlpha02,
     marginRight: 12,
   },
   carMeta: {
@@ -717,14 +720,14 @@ const styles = StyleSheet.create({
   },
   carTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
-    color: '#FFFFFF',
+    fontSize: FontSize.sm,
+    color: Colors.white,
     marginBottom: 2,
   },
   carPrice: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs + 1,
-    color: '#A0A0AB',
+    color: Colors.textSecondary,
   },
   // Chat logs view
   chatArea: {
@@ -737,7 +740,7 @@ const styles = StyleSheet.create({
   dateSeparator: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs - 2,
-    color: '#5C5C6B',
+    color: Colors.textMuted,
     textAlign: 'center',
     marginVertical: 16,
     letterSpacing: 1,
@@ -759,14 +762,14 @@ const styles = StyleSheet.create({
     maxWidth: '82%',
   },
   bubbleDealer: {
-    backgroundColor: '#1C1D26',
+    backgroundColor: Colors.deepBlue_1c1d26,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     borderBottomRightRadius: 16,
     borderBottomLeftRadius: 4,
   },
   bubbleUser: {
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     borderBottomLeftRadius: 16,
@@ -774,21 +777,21 @@ const styles = StyleSheet.create({
   },
   bubbleText: {
     fontFamily: FontFamily.regular,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
     lineHeight: 20,
   },
   timeTextLeft: {
     fontFamily: FontFamily.regular,
-    fontSize: 9,
-    color: '#5C5C6B',
+    fontSize: FontSize.size9,
+    color: Colors.textMuted,
     marginTop: 4,
     alignSelf: 'flex-start',
   },
   timeTextRight: {
     fontFamily: FontFamily.regular,
-    fontSize: 9,
-    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: FontSize.size9,
+    color: Colors.whiteAlpha50,
     marginTop: 4,
     alignSelf: 'flex-end',
   },
@@ -812,13 +815,13 @@ const styles = StyleSheet.create({
   },
   timeTextRightInline: {
     fontFamily: FontFamily.regular,
-    fontSize: 9,
-    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: FontSize.size9,
+    color: Colors.whiteAlpha50,
   },
   timeTextLeftInline: {
     fontFamily: FontFamily.regular,
-    fontSize: 9,
-    color: '#5C5C6B',
+    fontSize: FontSize.size9,
+    color: Colors.textMuted,
   },
   readTick: {
     marginLeft: 4,
@@ -840,17 +843,17 @@ const styles = StyleSheet.create({
   },
   seenAvatarText: {
     fontFamily: FontFamily.bold,
-    fontSize: 8,
-    color: '#FFFFFF',
+    fontSize: FontSize.size8,
+    color: Colors.white,
   },
   seenText: {
     fontFamily: FontFamily.regular,
-    fontSize: 10,
-    color: '#5C5C6B',
+    fontSize: FontSize.size10,
+    color: Colors.textMuted,
   },
   // Custom Offer messaging bubble
   offerMessageBubble: {
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     borderBottomLeftRadius: 16,
@@ -869,8 +872,8 @@ const styles = StyleSheet.create({
   },
   offerTagTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#FFFFFF',
+    fontSize: FontSize.size9,
+    color: Colors.white,
     marginLeft: 6,
     flex: 1,
     letterSpacing: 0.8,
@@ -878,19 +881,19 @@ const styles = StyleSheet.create({
   offerTagAmount: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   offerText: {
     fontFamily: FontFamily.regular,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
     lineHeight: 20,
   },
   // Custom Counter Card
   counterMessageCard: {
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: Colors.whiteAlpha05,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -902,8 +905,8 @@ const styles = StyleSheet.create({
   },
   counterTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#A0A0AB',
+    fontSize: FontSize.size9,
+    color: Colors.textSecondary,
     marginLeft: 6,
     flex: 1,
     letterSpacing: 0.8,
@@ -911,7 +914,7 @@ const styles = StyleSheet.create({
   counterAmount: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   // Typing state details
   typingBubble: {
@@ -920,8 +923,8 @@ const styles = StyleSheet.create({
   },
   typingText: {
     fontFamily: FontFamily.bold,
-    fontSize: 16,
-    color: '#8A8A93',
+    fontSize: FontSize.md,
+    color: Colors.textFaint,
   },
   typingDotsRow: {
     flexDirection: 'row',
@@ -932,16 +935,16 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: '#8A8A93',
+    backgroundColor: Colors.textFaint,
   },
   // Sticky action CTA bar
   actionsBar: {
     flexDirection: 'row',
     paddingHorizontal: 16,
     paddingVertical: 14,
-    backgroundColor: '#0D0D12',
+    backgroundColor: Colors.deepBlue_0d0d12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.05)',
+    borderTopColor: Colors.whiteAlpha05,
     gap: 10,
   },
   actionBtn: {
@@ -954,60 +957,56 @@ const styles = StyleSheet.create({
   },
   actionBtnOutlineRed: {
     borderWidth: 1,
-    borderColor: '#DC1F26',
+    borderColor: Colors.accent,
     backgroundColor: 'transparent',
   },
   actionBtnOutlineDark: {
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: Colors.whiteAlpha15,
     backgroundColor: 'transparent',
   },
   actionBtnGreen: {
-    backgroundColor: '#10B981',
+    backgroundColor: Colors.accentGreen,
   },
   actionLabel: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   // Input row
   inputBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0D0D12',
+    backgroundColor: Colors.deepBlue_0d0d12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.05)',
+    borderTopColor: Colors.whiteAlpha05,
     paddingHorizontal: 16,
     paddingTop: 12,
   },
-  attachBtn: {
-    padding: 6,
-    marginRight: 4,
-  },
   textInput: {
     flex: 1,
-    backgroundColor: '#16161C',
+    backgroundColor: Colors.deepBlue_16161c,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#2A2A32',
+    borderColor: Colors.borderSubtle,
     paddingHorizontal: 16,
     paddingVertical: 8,
     fontFamily: FontFamily.regular,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
     maxHeight: 80,
   },
   sendBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 8,
   },
   sendBtnDisabled: {
-    backgroundColor: '#1E1E24',
+    backgroundColor: Colors.deepBlue_1e1e24,
     opacity: 0.6,
   },
   // General Errors
@@ -1015,12 +1014,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0A0A0C',
+    backgroundColor: Colors.bgPrimary,
   },
   errorText: {
     fontFamily: FontFamily.bold,
-    fontSize: 16,
-    color: '#FFFFFF',
+    fontSize: FontSize.md,
+    color: Colors.white,
     marginBottom: 10,
   },
   backBtnText: {
@@ -1036,14 +1035,14 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   blockingCard: {
-    backgroundColor: '#16161C',
+    backgroundColor: Colors.deepBlue_16161c,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.2)',
+    borderColor: Colors.warningAlpha20,
     padding: 24,
     width: '100%',
     alignItems: 'center',
-    shadowColor: '#F59E0B',
+    shadowColor: Colors.warning,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.15,
     shadowRadius: 20,
@@ -1053,43 +1052,43 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    backgroundColor: Colors.warningAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.25)',
+    borderColor: Colors.warningAlpha25,
   },
   blockingTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 20,
-    color: '#FFFFFF',
+    fontSize: FontSize.xl,
+    color: Colors.white,
     marginBottom: 12,
     textAlign: 'center',
   },
   blockingDesc: {
     fontFamily: FontFamily.regular,
-    fontSize: 14,
-    color: '#A0A0AB',
+    fontSize: FontSize.size14,
+    color: Colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 16,
   },
   blockingSubDesc: {
     fontFamily: FontFamily.medium,
-    fontSize: 12,
-    color: '#F59E0B',
+    fontSize: FontSize.size12,
+    color: Colors.warning,
     lineHeight: 18,
     marginBottom: 24,
     width: '100%',
-    backgroundColor: 'rgba(245, 158, 11, 0.05)',
+    backgroundColor: Colors.warningAlpha05,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.1)',
+    borderColor: Colors.warningAlpha10,
   },
   payOverlayBtn: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: Colors.warning,
     height: 50,
     borderRadius: 12,
     flexDirection: 'row',
@@ -1100,8 +1099,8 @@ const styles = StyleSheet.create({
   },
   payOverlayBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#0A0A0C',
+    fontSize: FontSize.size14,
+    color: Colors.bgPrimary,
     letterSpacing: 1,
   },
   refreshOverlayBtn: {
@@ -1112,11 +1111,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: '100%',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: Colors.whiteAlpha10,
   },
   refreshOverlayBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
-    color: '#A0A0AB',
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
   },
 });
