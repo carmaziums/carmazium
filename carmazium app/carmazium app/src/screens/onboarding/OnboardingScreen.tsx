@@ -17,7 +17,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
-import { FontFamily } from '../../constants/typography';
+import {FontFamily, FontSize } from '../../constants/typography';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -70,7 +70,7 @@ const SlideItem: React.FC<{
   item: SlideData;
   index: number;
   scrollX: RNAnimated.Value;
-}> = ({ item, index, scrollX }) => {
+}> = React.memo(({ item, index, scrollX }) => {
   const inputRange = [
     (index - 1) * SCREEN_WIDTH,
     index * SCREEN_WIDTH,
@@ -99,7 +99,7 @@ const SlideItem: React.FC<{
       >
         {/* Dark vertical gradient overlay to make text highly legible */}
         <LinearGradient
-          colors={['rgba(10, 10, 12, 0.1)', 'rgba(10, 10, 12, 0.5)', '#0A0A0C']}
+          colors={['rgba(10, 10, 12, 0.1)', 'rgba(10, 10, 12, 0.5)', Colors.bgPrimary]}
           locations={[0, 0.45, 0.85]}
           style={StyleSheet.absoluteFillObject}
         />
@@ -123,7 +123,7 @@ const SlideItem: React.FC<{
       </RNAnimated.View>
     </View>
   );
-};
+});
 
 export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -140,6 +140,13 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
     const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
     setActiveIndex(index);
   }, []);
+
+  const renderSlide = useCallback(
+    ({ item, index }: { item: SlideData; index: number }) => (
+      <SlideItem item={item} index={index} scrollX={scrollX} />
+    ),
+    [scrollX],
+  );
 
   const handlePressCTA = () => {
     if (activeIndex < SLIDES.length - 1) {
@@ -181,9 +188,7 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
           offset: SCREEN_WIDTH * index,
           index,
         })}
-        renderItem={({ item, index }) => (
-          <SlideItem item={item} index={index} scrollX={scrollX} />
-        )}
+        renderItem={renderSlide}
       />
 
       {/* Bottom Controls (Indicators + Full width Chamfer Button) */}
@@ -225,7 +230,7 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
                     {
                       width: dotWidth,
                       opacity: dotOpacity,
-                      backgroundColor: i === activeIndex ? Colors.accent : '#5C5C6B',
+                      backgroundColor: i === activeIndex ? Colors.accent : Colors.textMuted,
                     },
                   ]}
                 />
@@ -242,7 +247,7 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
         >
           <View style={styles.ctaContent}>
             <Text style={styles.ctaText}>{SLIDES[activeIndex].buttonLabel}</Text>
-            <Ionicons name="arrow-forward" size={16} color="#FFFFFF" style={styles.ctaIcon} />
+            <Ionicons name="arrow-forward" size={16} color={Colors.white} style={styles.ctaIcon} />
           </View>
           
           {/* Visual Chamfer diagonal cut on bottom right corner */}
@@ -270,7 +275,7 @@ const styles = StyleSheet.create({
   },
   slideEyebrow: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.accent,
     letterSpacing: 2,
     textTransform: 'uppercase',
@@ -281,23 +286,23 @@ const styles = StyleSheet.create({
   },
   headlineLight: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 38,
+    fontSize: FontSize['5xl'],
     lineHeight: 44,
-    color: '#FFFFFF',
+    color: Colors.white,
     letterSpacing: -1,
   },
   headlineRed: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 38,
+    fontSize: FontSize['5xl'],
     lineHeight: 44,
     color: Colors.accent,
     letterSpacing: -1,
   },
   slideDescription: {
     fontFamily: FontFamily.regular,
-    fontSize: 15,
+    fontSize: FontSize.base,
     lineHeight: 24,
-    color: '#A0A0AB',
+    color: Colors.textSecondary,
     maxWidth: SCREEN_WIDTH * 0.85,
   },
   // Skip button (Top Right)
@@ -310,8 +315,8 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontFamily: FontFamily.medium,
-    fontSize: 12,
-    color: '#A0A0AB',
+    fontSize: FontSize.size12,
+    color: Colors.textSecondary,
     letterSpacing: 1.5,
   },
   // Bottom Controls
@@ -349,8 +354,8 @@ const styles = StyleSheet.create({
   },
   ctaText: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
     letterSpacing: 1.5,
   },
   ctaIcon: {
@@ -362,7 +367,7 @@ const styles = StyleSheet.create({
     right: -12,
     width: 24,
     height: 24,
-    backgroundColor: '#0A0A0C', // Cuts corner with background color
+    backgroundColor: Colors.bgPrimary, // Cuts corner with background color
     transform: [{ rotate: '45deg' }],
   },
 });

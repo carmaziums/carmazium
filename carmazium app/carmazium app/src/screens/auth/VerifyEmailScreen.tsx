@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: 'rgba(220,31,38,0.12)',
+    backgroundColor: Colors.accentAlpha12,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 28,
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
   primaryBtnText: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.base,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   secondaryBtn: {
     width: '100%',

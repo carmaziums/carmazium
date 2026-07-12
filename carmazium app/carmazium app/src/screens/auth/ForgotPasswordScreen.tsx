@@ -20,6 +20,7 @@ import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 
+import { IconButton } from '../../components/IconButton';
 type Props = NativeStackScreenProps<AuthStackParamList, 'ForgotPassword'>;
 
 export const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
@@ -54,7 +55,7 @@ export const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       <LinearGradient
-        colors={['rgba(220, 31, 38, 0.08)', Colors.bgPrimary, Colors.bgPrimary]}
+        colors={[Colors.accentAlpha08, Colors.bgPrimary, Colors.bgPrimary]}
         locations={[0, 0.4, 1]}
         style={StyleSheet.absoluteFillObject}
       />
@@ -69,13 +70,7 @@ export const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
         >
           {/* Back button */}
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+          <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
           {/* Logo */}
           <Logo size="sm" style={styles.logoAlign} />
@@ -189,11 +184,11 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: Colors.whiteAlpha15,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 32,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: Colors.whiteAlpha03,
   },
   logoAlign: {
     alignSelf: 'flex-start',
@@ -204,22 +199,22 @@ const styles = StyleSheet.create({
   },
   titleText: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 32,
-    color: '#FFFFFF',
+    fontSize: FontSize['4xl'],
+    color: Colors.white,
     letterSpacing: -0.5,
     marginBottom: 12,
   },
   titleAccent: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 32,
+    fontSize: FontSize['4xl'],
     color: Colors.accent,
     letterSpacing: -0.5,
   },
   subtitleText: {
     fontFamily: FontFamily.regular,
-    fontSize: 15,
+    fontSize: FontSize.base,
     lineHeight: 22,
-    color: '#A0A0AB',
+    color: Colors.textSecondary,
   },
   formContainer: {
     width: '100%',
@@ -229,17 +224,17 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#A0A0AB',
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
     letterSpacing: 1.5,
     marginBottom: 8,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: '#2A2A32',
+    borderColor: Colors.borderSubtle,
     borderRadius: 12,
     paddingHorizontal: 16,
     height: 54,
@@ -256,13 +251,13 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontFamily: FontFamily.regular,
-    fontSize: 15,
-    color: '#FFFFFF',
+    fontSize: FontSize.base,
+    color: Colors.white,
     height: '100%',
   },
   errorText: {
     fontFamily: FontFamily.medium,
-    fontSize: 13,
+    fontSize: FontSize.sm,
     color: Colors.error,
     marginTop: 8,
   },
@@ -280,28 +275,28 @@ const styles = StyleSheet.create({
   },
   successTitle: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 22,
-    color: '#FFFFFF',
+    fontSize: FontSize.size22,
+    color: Colors.white,
     marginBottom: 12,
     textAlign: 'center',
   },
   successBody: {
     fontFamily: FontFamily.regular,
-    fontSize: 15,
+    fontSize: FontSize.base,
     lineHeight: 22,
-    color: '#A0A0AB',
+    color: Colors.textSecondary,
     textAlign: 'center',
   },
   successEmail: {
     fontFamily: FontFamily.semiBold,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   backToSignInRow: {
     alignItems: 'center',
   },
   backToSignInText: {
     fontFamily: FontFamily.bold,
-    fontSize: 15,
+    fontSize: FontSize.base,
     color: Colors.accent,
   },
   bottomSpacer: {

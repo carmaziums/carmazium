@@ -50,7 +50,7 @@ export const SplashScreen: React.FC = () => {
 
       {/* Dark background gradient */}
       <LinearGradient
-        colors={[Colors.bgPrimary, '#050507', Colors.bgPrimary]}
+        colors={[Colors.bgPrimary, Colors.deepBlue_050507, Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
       />
 

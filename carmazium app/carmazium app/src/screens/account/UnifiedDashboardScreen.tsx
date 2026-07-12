@@ -17,7 +17,7 @@ import { HamburgerButton } from '../../components/HamburgerButton';
 import { apiClient } from '../../lib/apiClient';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
-import { FontFamily } from '../../constants/typography';
+import {FontFamily, FontSize } from '../../constants/typography';
 
 // ─────────────────────────── types ───────────────────────────────
 
@@ -52,7 +52,7 @@ const Skeleton: React.FC<{ w?: number | string; h: number; r?: number }> = ({ w 
     p.start();
     return () => p.stop();
   }, [opacity]);
-  return <Animated.View style={{ width: w as any, height: h, borderRadius: r, backgroundColor: 'rgba(255,255,255,0.05)', opacity }} />;
+  return <Animated.View style={{ width: w as any, height: h, borderRadius: r, backgroundColor: Colors.whiteAlpha05, opacity }} />;
 };
 
 // ─────────────────────── tile component ──────────────────────────
@@ -95,7 +95,7 @@ const Tile: React.FC<TileProps> = ({ label, icon, iconLib = 'ion', accentColor, 
         {sublabel ? <Text style={styles.tileSublabel} numberOfLines={1}>{sublabel}</Text> : null}
       </>
     )}
-    {wide && <Ionicons name="chevron-forward" size={16} color="#404050" />}
+    {wide && <Ionicons name="chevron-forward" size={16} color={Colors.borderMuted} accessibilityElementsHidden importantForAccessibility="no" />}
   </TouchableOpacity>
 );
 
@@ -140,7 +140,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(220,31,38,0.06)', 'rgba(59,130,246,0.03)', '#0A0A0C']}
+        colors={[Colors.accentAlpha06, Colors.infoBlueAlpha03, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
       />
@@ -150,7 +150,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
       <View style={styles.header}>
         <Logo size="sm" />
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.bellBtn} activeOpacity={0.75} onPress={() => nav('NotificationSettings')}>
+          <TouchableOpacity style={styles.bellBtn} activeOpacity={0.75} onPress={() => nav('NotificationSettings')} accessibilityLabel="Notifications" accessibilityRole="button" hitSlop={{ top: 3, bottom: 3, left: 3, right: 3 }}>
             {unreadMessages > 0 && <View style={styles.bellDot} />}
             <Ionicons name="notifications-outline" size={18} color={Colors.textPrimary} />
           </TouchableOpacity>
@@ -165,7 +165,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
           <View style={[styles.avatar, isDealer && styles.avatarDealer, isSeller && !isDealer && styles.avatarSeller]}>
             <Text style={styles.avatarText}>{initials}</Text>
             <View style={styles.avatarCheck}>
-              <Ionicons name="checkmark" size={10} color="#FFF" />
+              <Ionicons name="checkmark" size={10} color={Colors.white} />
             </View>
           </View>
           <View style={styles.profileInfo}>
@@ -173,7 +173,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
             <Text style={styles.profileEmail} numberOfLines={1}>{email}</Text>
           </View>
           <View style={[styles.rolePill, isDealer ? styles.rolePillAmber : isSeller ? styles.rolePillBlue : styles.rolePillGreen]}>
-            <Text style={[styles.rolePillText, isDealer ? { color: '#F59E0B' } : isSeller ? { color: '#3B82F6' } : { color: '#22C55E' }]}>
+            <Text style={[styles.rolePillText, isDealer ? { color: Colors.warning } : isSeller ? { color: Colors.infoBlue } : { color: Colors.success }]}>
               {isDealer ? 'DEALER' : isSeller ? 'SELLER' : 'BUYER'}
             </Text>
           </View>
@@ -215,7 +215,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
           <Tile
             label="Inventory"
             icon="car-outline"
-            accentColor="#22C55E"
+            accentColor={Colors.success}
             sublabel={isSeller ? `${seller.activeListings} active` : 'Sell a car'}
             onPress={() => isSeller ? nav('SellerListings') : nav('SellCarFlow')}
           />
@@ -223,7 +223,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
             label="Auctions"
             icon="gavel"
             iconLib="mci"
-            accentColor="#3B82F6"
+            accentColor={Colors.infoBlue}
             sublabel={`${buyer.activeBids} bid${buyer.activeBids !== 1 ? 's' : ''}`}
             onPress={() => navTab('Live')}
           />
@@ -232,7 +232,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
           <Tile
             label="Offers"
             icon="pricetag-outline"
-            accentColor="#F59E0B"
+            accentColor={Colors.warning}
             badge={isSeller ? seller.incomingOffers : undefined}
             sublabel={isSeller ? `${seller.incomingOffers} incoming` : 'No offers yet'}
             onPress={() => isSeller ? nav('SellerOffers') : nav('BuyerOffers')}
@@ -240,7 +240,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
           <Tile
             label="My Offers"
             icon="document-text-outline"
-            accentColor="#DC1F26"
+            accentColor={Colors.accent}
             badge={buyer.counteredOffersPending || undefined}
             sublabel={buyer.counteredOffersPending > 0 ? `${buyer.counteredOffersPending} pending` : `${buyer.activeBids} active`}
             onPress={() => nav('BuyerOffers')}
@@ -250,7 +250,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
           <Tile
             label="Watchlist"
             icon="heart-outline"
-            accentColor="#EC4899"
+            accentColor={Colors.lightPink}
             badge={buyer.watchlistCount || undefined}
             sublabel={`${buyer.watchlistCount} saved`}
             onPress={() => navTab('Saved')}
@@ -258,7 +258,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
           <Tile
             label="Stats"
             icon="bar-chart-outline"
-            accentColor="#A855F7"
+            accentColor={Colors.lightPurple}
             sublabel={`${seller.totalViews > 0 ? seller.totalViews.toLocaleString('en-GB') + ' views' : 'Performance'}`}
             onPress={() => nav('SellerPerformance')}
           />
@@ -267,7 +267,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
           <Tile
             label="Messages"
             icon="chatbubble-ellipses-outline"
-            accentColor="#06B6D4"
+            accentColor={Colors.midTeal_06b6d4}
             badge={unreadMessages || undefined}
             sublabel={unreadMessages > 0 ? `${unreadMessages} unread` : 'All caught up'}
             onPress={() => nav('Messages')}
@@ -275,7 +275,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
           <Tile
             label="Earnings"
             icon="wallet-outline"
-            accentColor="#10B981"
+            accentColor={Colors.accentGreen}
             sublabel={isSeller ? `£${seller.totalRevenue.toLocaleString('en-GB')}` : 'N/A'}
             onPress={() => isSeller ? nav('Earnings') : nav('BuyerPurchaseHistory')}
           />
@@ -284,7 +284,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
           <Tile
             label="Settings"
             icon="settings-outline"
-            accentColor="#6B7280"
+            accentColor={Colors.midBlue_6b7280}
             sublabel="Profile, password, payouts & bank details"
             wide
             onPress={() => nav('Settings')}
@@ -298,7 +298,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
             <Ionicons name="log-out-outline" size={17} color={Colors.accent} />
           </View>
           <Text style={styles.signOutText}>Sign out</Text>
-          <Ionicons name="chevron-forward" size={14} color={Colors.accent} />
+          <Ionicons name="chevron-forward" size={14} color={Colors.accent} accessibilityElementsHidden importantForAccessibility="no" />
         </TouchableOpacity>
 
       </ScrollView>
@@ -308,45 +308,45 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
 
 // ═══════════════════════════ STYLES ════════════════════════════════
 
-const CARD_BG = '#111115';
-const BORDER = 'rgba(255,255,255,0.07)';
+const CARD_BG = Colors.bgSecondary;
+const BORDER = Colors.whiteAlpha07;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0A0A0C' },
+  container: { flex: 1, backgroundColor: Colors.bgPrimary },
   scroll: { flex: 1 },
   scrollContent: { paddingTop: 8 },
 
   // Header
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 14 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  bellBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' },
+  bellBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: Colors.whiteAlpha05, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' },
   bellDot: { position: 'absolute', top: 8, right: 8, width: 7, height: 7, borderRadius: 4, backgroundColor: Colors.accent },
 
   // Profile card
   profileCard: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 20, backgroundColor: CARD_BG, borderRadius: 16, borderWidth: 1, borderColor: BORDER, padding: 16, gap: 14 },
   avatar: { width: 50, height: 50, borderRadius: 14, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
-  avatarDealer: { backgroundColor: '#B8860B', borderWidth: 1.5, borderColor: '#F59E0B' },
-  avatarSeller: { backgroundColor: '#1D4ED8', borderWidth: 1.5, borderColor: '#3B82F6' },
-  avatarText: { fontFamily: FontFamily.bold, fontSize: 20, color: '#FFF' },
-  avatarCheck: { position: 'absolute', bottom: -2, right: -2, width: 16, height: 16, borderRadius: 8, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#0A0A0C' },
+  avatarDealer: { backgroundColor: Colors.midOrange_b8860b, borderWidth: 1.5, borderColor: Colors.warning },
+  avatarSeller: { backgroundColor: Colors.midBlue_1d4ed8, borderWidth: 1.5, borderColor: Colors.infoBlue },
+  avatarText: { fontFamily: FontFamily.bold, fontSize: FontSize.xl, color: Colors.white },
+  avatarCheck: { position: 'absolute', bottom: -2, right: -2, width: 16, height: 16, borderRadius: 8, backgroundColor: Colors.success, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: Colors.bgPrimary },
   profileInfo: { flex: 1 },
-  profileName: { fontFamily: FontFamily.bold, fontSize: 16, color: '#FFF', marginBottom: 2 },
-  profileEmail: { fontFamily: FontFamily.regular, fontSize: 12, color: '#A0A0AB' },
+  profileName: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white, marginBottom: 2 },
+  profileEmail: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textSecondary },
   rolePill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, borderWidth: 1 },
-  rolePillAmber: { backgroundColor: 'rgba(245,158,11,0.10)', borderColor: 'rgba(245,158,11,0.3)' },
-  rolePillBlue: { backgroundColor: 'rgba(59,130,246,0.10)', borderColor: 'rgba(59,130,246,0.3)' },
-  rolePillGreen: { backgroundColor: 'rgba(34,197,94,0.10)', borderColor: 'rgba(34,197,94,0.3)' },
-  rolePillText: { fontFamily: FontFamily.bold, fontSize: 9, letterSpacing: 1 },
+  rolePillAmber: { backgroundColor: Colors.warningAlpha10, borderColor: Colors.warningAlpha30 },
+  rolePillBlue: { backgroundColor: Colors.infoBlueAlpha10, borderColor: Colors.infoBlueAlpha30 },
+  rolePillGreen: { backgroundColor: Colors.successAlpha10, borderColor: 'rgba(34,197,94,0.3)' },
+  rolePillText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, letterSpacing: 1 },
 
   // Section header
   sectionHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, marginBottom: 12 },
-  sectionLabel: { fontFamily: FontFamily.bold, fontSize: 10, color: '#606070', letterSpacing: 1.6 },
+  sectionLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.iconMuted, letterSpacing: 1.6 },
 
   // Overview stats
   statsRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 24, backgroundColor: CARD_BG, borderRadius: 16, borderWidth: 1, borderColor: BORDER, paddingVertical: 18 },
   statCell: { flex: 1, alignItems: 'center' },
-  statValue: { fontFamily: FontFamily.extraBold, fontSize: 22, color: '#FFF', marginBottom: 2 },
-  statName: { fontFamily: FontFamily.medium, fontSize: 10, color: '#606070', letterSpacing: 0.5 },
+  statValue: { fontFamily: FontFamily.extraBold, fontSize: FontSize.size22, color: Colors.white, marginBottom: 2 },
+  statName: { fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: Colors.iconMuted, letterSpacing: 0.5 },
   statDivider: { width: 1, height: 30, backgroundColor: BORDER },
 
   // Tile grid
@@ -355,13 +355,13 @@ const styles = StyleSheet.create({
   tileWide: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 14 },
   tileTextWrap: { flex: 1, gap: 3 },
   tileIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', position: 'relative' },
-  tileBadge: { position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, borderWidth: 1.5, borderColor: '#0A0A0C' },
-  tileBadgeText: { fontFamily: FontFamily.bold, fontSize: 9, color: '#FFF' },
-  tileLabel: { fontFamily: FontFamily.bold, fontSize: 14, color: '#FFF' },
-  tileSublabel: { fontFamily: FontFamily.regular, fontSize: 11, color: '#606070' },
+  tileBadge: { position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, borderWidth: 1.5, borderColor: Colors.bgPrimary },
+  tileBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.white },
+  tileLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white },
+  tileSublabel: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted },
 
   // Sign out
-  signOutRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, backgroundColor: 'rgba(220,31,38,0.07)', borderWidth: 1, borderColor: 'rgba(220,31,38,0.2)', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
-  signOutIcon: { width: 34, height: 34, borderRadius: 10, backgroundColor: 'rgba(220,31,38,0.12)', alignItems: 'center', justifyContent: 'center' },
-  signOutText: { flex: 1, fontFamily: FontFamily.bold, fontSize: 14, color: Colors.accent },
+  signOutRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, backgroundColor: 'rgba(220,31,38,0.07)', borderWidth: 1, borderColor: Colors.accentAlpha20, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
+  signOutIcon: { width: 34, height: 34, borderRadius: 10, backgroundColor: Colors.accentAlpha12, alignItems: 'center', justifyContent: 'center' },
+  signOutText: { flex: 1, fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.accent },
 });

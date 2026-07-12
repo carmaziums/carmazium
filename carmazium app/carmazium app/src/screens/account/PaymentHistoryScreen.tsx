@@ -15,8 +15,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
-import { FontFamily } from '../../constants/typography';
+import {FontFamily, FontSize } from '../../constants/typography';
 
+import { IconButton } from '../../components/IconButton';
 // ─────────────────────────── interfaces ───────────────────────────
 
 type TransactionType = 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' | 'REFUND' | 'HPI_REPORT' | 'LISTING_FEE' | 'BOOST';
@@ -82,10 +83,10 @@ const TYPE_ICONS: Record<TransactionType, string> = {
 };
 
 const STATUS_STYLE: Record<TransactionStatus, { color: string; bg: string; label: string }> = {
-  PENDING: { color: Colors.warning, bg: 'rgba(245,158,11,0.12)', label: 'Pending' },
-  COMPLETED: { color: Colors.success, bg: 'rgba(34,197,94,0.12)', label: 'Completed' },
+  PENDING: { color: Colors.warning, bg: Colors.warningAlpha12, label: 'Pending' },
+  COMPLETED: { color: Colors.success, bg: Colors.successAlpha12, label: 'Completed' },
   FAILED: { color: Colors.error, bg: 'rgba(239,68,68,0.12)', label: 'Failed' },
-  REFUNDED: { color: '#3B82F6', bg: 'rgba(59,130,246,0.12)', label: 'Refunded' },
+  REFUNDED: { color: Colors.infoBlue, bg: Colors.infoBlueAlpha12, label: 'Refunded' },
 };
 
 const FILTERS: { key: 'ALL' | TransactionStatus; label: string }[] = [
@@ -145,7 +146,7 @@ export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigatio
     </View>
   );
 
-  const renderTxCard = (t: Transaction) => {
+  const renderTxCard = useCallback(({ item: t }: { item: Transaction }) => {
     const statusStyle = STATUS_STYLE[t.status];
     const thumbnail = t.listing?.images?.[0];
 
@@ -178,13 +179,13 @@ export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigatio
         </View>
       </View>
     );
-  };
+  }, []);
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(220,31,38,0.06)', 'rgba(10,10,12,0)', '#0A0A0C']}
+        colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
@@ -193,9 +194,7 @@ export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} activeOpacity={0.75} onPress={() => navigation?.goBack()}>
-          <Ionicons name="chevron-back" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
+        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
         <Text style={styles.headerTitle}>Payment History</Text>
         <View style={{ width: 36 }} />
       </View>
@@ -239,7 +238,7 @@ export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigatio
         <FlatList
           data={filtered}
           keyExtractor={(t) => t.id}
-          renderItem={({ item }) => renderTxCard(item)}
+          renderItem={renderTxCard}
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
           ListEmptyComponent={renderEmptyState}
           contentContainerStyle={[
@@ -269,14 +268,14 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 15,
+    fontSize: FontSize.base,
     fontFamily: FontFamily.semiBold,
     color: Colors.textPrimary,
   },
@@ -292,19 +291,19 @@ const styles = StyleSheet.create({
     borderColor: Colors.glassBorder,
   },
   summaryLabel: {
-    fontSize: 10,
+    fontSize: FontSize.size10,
     fontFamily: FontFamily.bold,
     color: Colors.textMuted,
     letterSpacing: 1,
   },
   summaryValue: {
-    fontSize: 26,
+    fontSize: FontSize.size26,
     fontFamily: FontFamily.bold,
     color: Colors.textPrimary,
     marginTop: 6,
   },
   summarySub: {
-    fontSize: 11,
+    fontSize: FontSize.xs,
     fontFamily: FontFamily.regular,
     color: Colors.textSecondary,
     marginTop: 4,
@@ -319,21 +318,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: Colors.whiteAlpha05,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: Colors.whiteAlpha08,
   },
   filterChipActive: {
     backgroundColor: Colors.accent,
     borderColor: Colors.accent,
   },
   filterChipText: {
-    fontSize: 12,
+    fontSize: FontSize.size12,
     fontFamily: FontFamily.medium,
     color: Colors.textSecondary,
   },
   filterChipTextActive: {
-    color: '#FFFFFF',
+    color: Colors.white,
     fontFamily: FontFamily.semiBold,
   },
 
@@ -357,7 +356,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   txTitle: {
-    fontSize: 13,
+    fontSize: FontSize.sm,
     fontFamily: FontFamily.semiBold,
     color: Colors.textPrimary,
   },
@@ -368,16 +367,16 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   txMeta: {
-    fontSize: 11,
+    fontSize: FontSize.xs,
     fontFamily: FontFamily.regular,
     color: Colors.textMuted,
   },
   txMetaDot: {
-    fontSize: 11,
+    fontSize: FontSize.xs,
     color: Colors.textMuted,
   },
   txAmount: {
-    fontSize: 14,
+    fontSize: FontSize.size14,
     fontFamily: FontFamily.bold,
     color: Colors.textPrimary,
   },
@@ -388,13 +387,13 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   statusPillText: {
-    fontSize: 9,
+    fontSize: FontSize.size9,
     fontFamily: FontFamily.semiBold,
     letterSpacing: 0.3,
   },
 
   skeletonBlock: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
   },
 
   emptyWrap: {
@@ -405,13 +404,13 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   emptyTitle: {
-    fontSize: 14,
+    fontSize: FontSize.size14,
     fontFamily: FontFamily.semiBold,
     color: Colors.textPrimary,
     textAlign: 'center',
   },
   emptySub: {
-    fontSize: 12,
+    fontSize: FontSize.size12,
     fontFamily: FontFamily.regular,
     color: Colors.textMuted,
     textAlign: 'center',

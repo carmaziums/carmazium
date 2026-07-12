@@ -21,9 +21,11 @@ import { useAuthStore } from '../../store/authStore';
 import { supabase } from '../../lib/supabase';
 import { Logo } from '../../components/Logo';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
+import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 
+import { IconButton } from '../../components/IconButton';
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 export const LoginScreen: React.FC<Props> = ({ navigation }) => {
@@ -37,8 +39,10 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
   const { login, isLoading } = useAuthStore();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const handleGoogleLogin = async () => {
+    setFormError(null);
     setIsGoogleLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -55,7 +59,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
         throw new Error('Could not get sign-in URL. Is Google enabled in Supabase?');
       }
     } catch (err: any) {
-      Alert.alert('Sign In Failed', err.message || 'Unable to start Google sign-in.');
+      setFormError(err.message || 'Unable to start Google sign-in.');
     } finally {
       setIsGoogleLoading(false);
     }
@@ -63,10 +67,11 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleLogin = async () => {
     if (!email || !password) return;
+    setFormError(null);
     try {
       await login(email.trim(), password);
     } catch (err: any) {
-      Alert.alert('Login Failed', err.message || 'An error occurred during sign in.');
+      setFormError(err.message || 'An error occurred during sign in.');
     }
   };
 
@@ -76,7 +81,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
       {/* Background gradient with top red glow */}
       <LinearGradient
-        colors={['rgba(220, 31, 38, 0.08)', Colors.bgPrimary, Colors.bgPrimary]}
+        colors={[Colors.accentAlpha08, Colors.bgPrimary, Colors.bgPrimary]}
         locations={[0, 0.4, 1]}
         style={StyleSheet.absoluteFillObject}
       />
@@ -105,6 +110,11 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
           {/* Form Fields */}
           <View style={styles.formContainer}>
+            {formError ? (
+              <View style={{ marginBottom: 16 }}>
+                <ErrorBanner message={formError} />
+              </View>
+            ) : null}
             {/* Email Field */}
             <View style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>EMAIL</Text>
@@ -164,16 +174,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                   onBlur={() => setPasswordFocused(false)}
                   onSubmitEditing={handleLogin}
                 />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeBtn}
-                >
-                  <Ionicons
-                    name={showPassword ? 'eye-outline' : 'eye-off-outline'}
-                    size={20}
-                    color={Colors.textMuted}
-                  />
-                </TouchableOpacity>
+                <IconButton style={styles.eyeBtn} icon={<Ionicons name={showPassword ? 'eye-outline' : 'eye-off-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowPassword(!showPassword)} accessibilityLabel={showPassword ? 'Show password' : 'Hide password'} />
               </View>
             </View>
 
@@ -185,7 +186,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 onPress={() => setRememberMe(!rememberMe)}
               >
                 <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-                  {rememberMe && <Ionicons name="checkmark" size={12} color="#FFFFFF" />}
+                  {rememberMe && <Ionicons name="checkmark" size={12} color={Colors.white} />}
                 </View>
                 <Text style={styles.checkboxLabel}>Remember me</Text>
               </TouchableOpacity>
@@ -222,7 +223,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 disabled={isGoogleLoading || isLoading}
               >
                 {isGoogleLoading ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color={Colors.white} />
                 ) : (
                   <GoogleIcon size={18} />
                 )}
@@ -234,7 +235,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 activeOpacity={0.8}
                 onPress={() => Alert.alert('Coming Soon', 'Apple sign-in will be available in an upcoming update.')}
               >
-                <AppleIcon size={18} color="#FFFFFF" />
+                <AppleIcon size={18} color={Colors.white} />
                 <Text style={styles.socialBtnText}>APPLE</Text>
               </TouchableOpacity>
             </View>
@@ -281,21 +282,21 @@ const styles = StyleSheet.create({
   },
   titleText: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 32,
-    color: '#FFFFFF',
+    fontSize: FontSize['4xl'],
+    color: Colors.white,
     letterSpacing: -0.5,
   },
   titleRed: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 32,
+    fontSize: FontSize['4xl'],
     color: Colors.accent,
     letterSpacing: -0.5,
   },
   subtitleText: {
     fontFamily: FontFamily.regular,
-    fontSize: 15,
+    fontSize: FontSize.base,
     lineHeight: 22,
-    color: '#A0A0AB',
+    color: Colors.textSecondary,
   },
   formContainer: {
     width: '100%',
@@ -305,17 +306,17 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#A0A0AB',
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
     letterSpacing: 1.5,
     marginBottom: 8,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: '#2A2A32',
+    borderColor: Colors.borderSubtle,
     borderRadius: 12,
     paddingHorizontal: 16,
     height: 54,
@@ -329,8 +330,8 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontFamily: FontFamily.regular,
-    fontSize: 15,
-    color: '#FFFFFF',
+    fontSize: FontSize.base,
+    color: Colors.white,
     height: '100%',
   },
   eyeBtn: {
@@ -354,10 +355,10 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#2A2A32',
+    borderColor: Colors.borderSubtle,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
   },
   checkboxChecked: {
     backgroundColor: Colors.accent,
@@ -365,12 +366,12 @@ const styles = StyleSheet.create({
   },
   checkboxLabel: {
     fontFamily: FontFamily.medium,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
   },
   forgotText: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
+    fontSize: FontSize.size14,
     color: Colors.accent,
   },
   // CTA
@@ -387,12 +388,12 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: Colors.whiteAlpha08,
   },
   dividerText: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#5C5C6B',
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
     letterSpacing: 1,
   },
   // Social
@@ -410,16 +411,16 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    backgroundColor: '#111115',
+    borderColor: Colors.whiteAlpha08,
+    backgroundColor: Colors.bgSecondary,
   },
   socialBtnDisabled: {
     opacity: 0.6,
   },
   socialBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
-    color: '#FFFFFF',
+    fontSize: FontSize.sm,
+    color: Colors.white,
     letterSpacing: 1,
   },
   // Signup link
@@ -430,12 +431,12 @@ const styles = StyleSheet.create({
   },
   signupText: {
     fontFamily: FontFamily.regular,
-    fontSize: 15,
-    color: '#A0A0AB',
+    fontSize: FontSize.base,
+    color: Colors.textSecondary,
   },
   signupLink: {
     fontFamily: FontFamily.bold,
-    fontSize: 15,
+    fontSize: FontSize.base,
     color: Colors.accent,
   },
   bottomSpacer: {

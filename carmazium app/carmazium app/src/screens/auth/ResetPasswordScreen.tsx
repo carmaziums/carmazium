@@ -20,6 +20,7 @@ import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { IconButton } from '../../components/IconButton';
 export const ResetPasswordScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -77,7 +78,7 @@ export const ResetPasswordScreen: React.FC<{ navigation?: any }> = ({ navigation
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       <LinearGradient
-        colors={['rgba(220, 31, 38, 0.08)', Colors.bgPrimary, Colors.bgPrimary]}
+        colors={[Colors.accentAlpha08, Colors.bgPrimary, Colors.bgPrimary]}
         locations={[0, 0.4, 1]}
         style={StyleSheet.absoluteFillObject}
       />
@@ -148,13 +149,7 @@ export const ResetPasswordScreen: React.FC<{ navigation?: any }> = ({ navigation
                       onBlur={() => setNewFocused(false)}
                       onSubmitEditing={() => confirmRef.current?.focus()}
                     />
-                    <TouchableOpacity onPress={() => setShowNew(!showNew)} style={styles.eyeBtn}>
-                      <Ionicons
-                        name={showNew ? 'eye-outline' : 'eye-off-outline'}
-                        size={20}
-                        color={Colors.textMuted}
-                      />
-                    </TouchableOpacity>
+                    <IconButton style={styles.eyeBtn} icon={<Ionicons name={showNew ? 'eye-outline' : 'eye-off-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowNew(!showNew)} accessibilityLabel={showNew ? 'Show password' : 'Hide password'} />
                   </View>
                 </View>
 
@@ -184,13 +179,7 @@ export const ResetPasswordScreen: React.FC<{ navigation?: any }> = ({ navigation
                       onBlur={() => setConfirmFocused(false)}
                       onSubmitEditing={isFormValid ? handleSetPassword : undefined}
                     />
-                    <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)} style={styles.eyeBtn}>
-                      <Ionicons
-                        name={showConfirm ? 'eye-outline' : 'eye-off-outline'}
-                        size={20}
-                        color={Colors.textMuted}
-                      />
-                    </TouchableOpacity>
+                    <IconButton style={styles.eyeBtn} icon={<Ionicons name={showConfirm ? 'eye-outline' : 'eye-off-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowConfirm(!showConfirm)} accessibilityLabel={showConfirm ? 'Show password' : 'Hide password'} />
                   </View>
                 </View>
 
@@ -248,22 +237,22 @@ const styles = StyleSheet.create({
   },
   titleText: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 32,
-    color: '#FFFFFF',
+    fontSize: FontSize['4xl'],
+    color: Colors.white,
     letterSpacing: -0.5,
     marginBottom: 12,
   },
   titleAccent: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 32,
+    fontSize: FontSize['4xl'],
     color: Colors.accent,
     letterSpacing: -0.5,
   },
   subtitleText: {
     fontFamily: FontFamily.regular,
-    fontSize: 15,
+    fontSize: FontSize.base,
     lineHeight: 22,
-    color: '#A0A0AB',
+    color: Colors.textSecondary,
   },
   formContainer: {
     width: '100%',
@@ -273,17 +262,17 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#A0A0AB',
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
     letterSpacing: 1.5,
     marginBottom: 8,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: '#2A2A32',
+    borderColor: Colors.borderSubtle,
     borderRadius: 12,
     paddingHorizontal: 16,
     height: 54,
@@ -297,8 +286,8 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontFamily: FontFamily.regular,
-    fontSize: 15,
-    color: '#FFFFFF',
+    fontSize: FontSize.base,
+    color: Colors.white,
     height: '100%',
   },
   eyeBtn: {
@@ -306,7 +295,7 @@ const styles = StyleSheet.create({
   },
   validationError: {
     fontFamily: FontFamily.medium,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.error,
     marginBottom: 16,
     marginTop: -8,
@@ -317,7 +306,7 @@ const styles = StyleSheet.create({
   },
   submitError: {
     fontFamily: FontFamily.medium,
-    fontSize: 13,
+    fontSize: FontSize.sm,
     color: Colors.error,
     textAlign: 'center',
     marginBottom: 16,
@@ -333,16 +322,16 @@ const styles = StyleSheet.create({
   },
   successTitle: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 24,
-    color: '#FFFFFF',
+    fontSize: FontSize['2xl'],
+    color: Colors.white,
     marginBottom: 10,
     textAlign: 'center',
   },
   successBody: {
     fontFamily: FontFamily.regular,
-    fontSize: 15,
+    fontSize: FontSize.base,
     lineHeight: 22,
-    color: '#A0A0AB',
+    color: Colors.textSecondary,
     textAlign: 'center',
     marginBottom: 28,
   },
@@ -355,7 +344,7 @@ const styles = StyleSheet.create({
   },
   signInBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: 15,
+    fontSize: FontSize.base,
     color: Colors.accent,
     letterSpacing: 0.5,
   },
@@ -365,7 +354,7 @@ const styles = StyleSheet.create({
   },
   backLink: {
     fontFamily: FontFamily.bold,
-    fontSize: 15,
+    fontSize: FontSize.base,
     color: Colors.accent,
   },
   bottomSpacer: {

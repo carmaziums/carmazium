@@ -288,7 +288,7 @@ export const PostSignupOnboardingScreen: React.FC = () => {
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       <LinearGradient
-        colors={['rgba(220, 31, 38, 0.08)', Colors.bgPrimary, Colors.bgPrimary]}
+        colors={[Colors.accentAlpha08, Colors.bgPrimary, Colors.bgPrimary]}
         locations={[0, 0.4, 1]}
         style={StyleSheet.absoluteFillObject}
       />
@@ -369,7 +369,7 @@ export const PostSignupOnboardingScreen: React.FC = () => {
                   onPress={handleVerifyCheck}
                   isLoading={verifyLoading}
                   hasChamfer={true}
-                  icon={<Ionicons name="checkmark" size={16} color="#FFFFFF" />}
+                  icon={<Ionicons name="checkmark" size={16} color={Colors.white} />}
                   iconPosition="right"
                 />
               </View>
@@ -432,7 +432,7 @@ export const PostSignupOnboardingScreen: React.FC = () => {
                   onPress={handlePostcodeContinue}
                   disabled={postcode.trim() === '' || postcodeError !== ''}
                   hasChamfer={true}
-                  icon={<Ionicons name="arrow-forward" size={16} color="#FFFFFF" />}
+                  icon={<Ionicons name="arrow-forward" size={16} color={Colors.white} />}
                   iconPosition="right"
                 />
               </View>
@@ -515,7 +515,7 @@ export const PostSignupOnboardingScreen: React.FC = () => {
                   hasChamfer={true}
                   icon={
                     saving ? undefined : (
-                      <Ionicons name="checkmark-done" size={16} color="#FFFFFF" />
+                      <Ionicons name="checkmark-done" size={16} color={Colors.white} />
                     )
                   }
                   iconPosition="right"
@@ -549,7 +549,7 @@ const styles = StyleSheet.create({
   // Step indicator
   stepIndicator: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.accent,
     letterSpacing: 2,
     marginBottom: 12,
@@ -629,9 +629,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 8,
     marginBottom: 12,
-    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    backgroundColor: Colors.warningAlpha08,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.25)',
+    borderColor: Colors.warningAlpha25,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -666,7 +666,7 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
+    fontSize: FontSize.xs,
     color: Colors.textSecondary,
     letterSpacing: 1.5,
     marginBottom: 8,
@@ -676,7 +676,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: '#2A2A32',
+    borderColor: Colors.borderSubtle,
     borderRadius: 12,
     paddingHorizontal: 16,
     height: 54,
@@ -707,7 +707,7 @@ const styles = StyleSheet.create({
   // Section labels (Step 3)
   sectionLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
+    fontSize: FontSize.xs,
     color: Colors.textSecondary,
     letterSpacing: 1.5,
     marginBottom: 12,
@@ -726,9 +726,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    backgroundColor: 'rgba(34, 197, 94, 0.08)',
+    backgroundColor: Colors.successAlpha08,
     borderWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.25)',
+    borderColor: Colors.successAlpha25,
     borderRadius: 10,
   },
   toastText: {
