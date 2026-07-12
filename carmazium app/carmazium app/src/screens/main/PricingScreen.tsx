@@ -14,12 +14,19 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { PRICING } from '../../constants/pricing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
 import { IconButton } from '../../components/IconButton';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 // ─────────────────────────── data ──────────────────────────────────
+// Mirrors the web app's pricing page (src/app/pricing/page.tsx) and its
+// single source of truth, src/lib/pricingConfig.ts — these are listing-fee
+// tiers (how much it costs to publish a car), not account/role plans. The
+// previous version of this screen modeled buyer/seller/dealer subscription
+// tiers with "Coming Soon" placeholders, which doesn't match the real
+// pricing model at all.
 
 interface PlanCard {
   id: string;
@@ -27,64 +34,122 @@ interface PlanCard {
   subtitle: string;
   price: string;
   period: string;
+  badge?: string;
   accentColor: string;
   accentBg: string;
   accentBorder: string;
-  features: string[];
+  features: { label: string; included: boolean }[];
 }
 
 const PLANS: PlanCard[] = [
   {
-    id: 'buyer',
-    title: 'Buyer',
-    subtitle: 'Always free for verified buyers',
-    price: '£0',
-    period: 'forever',
-    accentColor: Colors.success,
-    accentBg: Colors.successAlpha10,
-    accentBorder: Colors.successAlpha25,
-    features: [
-      'Browse all verified listings',
-      'Live auction bidding',
-      'Saved searches & alerts',
-      'Side-by-side compare',
-      'Direct messaging with sellers',
-    ],
-  },
-  {
-    id: 'private-seller',
-    title: 'Private Seller',
-    subtitle: 'For individual car owners',
-    price: 'Coming Soon',
-    period: '',
-    accentColor: Colors.infoBlue,
-    accentBg: Colors.infoBlueAlpha10,
-    accentBorder: Colors.infoBlueAlpha25,
-    features: [
-      'Priority listing placement',
-      'AI-powered vehicle valuation',
-      'Analytics & view stats',
-      'Auction listing access',
-      'Offer management tools',
-    ],
-  },
-  {
-    id: 'dealer',
-    title: 'Dealer',
-    subtitle: 'For professional car dealers',
-    price: 'Coming Soon',
+    id: 'auction',
+    title: 'Auction',
+    subtitle: '24-hour live open auction',
+    price: 'Free',
     period: '',
     accentColor: Colors.warning,
     accentBg: Colors.warningAlpha10,
     accentBorder: Colors.warningAlpha25,
     features: [
-      'Unlimited inventory listings',
-      'Dealer analytics dashboard',
-      'Team management tools',
-      'AI insights & lead scoring',
-      'Priority dealer support',
-      'KYC-verified dealer badge',
+      { label: 'Live bidding marketplace', included: true },
+      { label: 'Open to all buyers', included: true },
+      { label: '24-hour auction duration', included: true },
+      { label: 'Anti-snipe protection', included: true },
+      { label: 'Real-time bid feed', included: true },
+      { label: 'Post-auction seller chat', included: true },
     ],
+  },
+  {
+    id: 'basic',
+    title: 'Basic',
+    subtitle: 'Standard listing, quick to list',
+    price: `£${PRICING.listing.basic.price}`,
+    period: 'one-off',
+    accentColor: Colors.textSecondary,
+    accentBg: Colors.whiteAlpha06,
+    accentBorder: Colors.whiteAlpha15,
+    features: [
+      { label: 'Public marketplace listing', included: true },
+      { label: 'Up to 20 photos', included: true },
+      { label: 'Offer & negotiation system', included: true },
+      { label: 'Direct buyer chat', included: true },
+      { label: 'DVLA auto-fill', included: true },
+      { label: 'Analytics', included: false },
+      { label: 'Priority placement', included: false },
+    ],
+  },
+  {
+    id: 'standard',
+    title: 'Standard',
+    subtitle: '30-day listing, more reach',
+    price: `£${PRICING.listing.standard.price}`,
+    period: 'one-off',
+    accentColor: Colors.infoBlue,
+    accentBg: Colors.infoBlueAlpha10,
+    accentBorder: Colors.infoBlueAlpha25,
+    features: [
+      { label: 'Everything in Basic', included: true },
+      { label: 'Up to 50 photos', included: true },
+      { label: 'Performance analytics', included: true },
+      { label: 'Featured boost eligible', included: true },
+      { label: '30-day listing duration', included: true },
+      { label: 'Priority search placement', included: false },
+      { label: 'Free HPI included', included: false },
+    ],
+  },
+  {
+    id: 'premium',
+    title: 'Premium',
+    subtitle: 'Advertise until sold, maximum exposure',
+    price: `£${PRICING.listing.premium.price}`,
+    period: 'one-off',
+    badge: 'MOST POPULAR',
+    accentColor: Colors.accent,
+    accentBg: Colors.accentAlpha10,
+    accentBorder: Colors.accentAlpha25,
+    features: [
+      { label: 'Everything in Standard', included: true },
+      { label: 'Up to 100 photos', included: true },
+      { label: 'Priority search placement', included: true },
+      { label: 'HPI Verified badge included', included: true },
+      { label: 'Advertise until sold', included: true },
+      { label: 'Featured boost eligible', included: true },
+      { label: 'Full analytics: views, enquiries, offers & earnings', included: true },
+    ],
+  },
+];
+
+interface AddOn {
+  id: string;
+  title: string;
+  subtitle: string;
+  price: string;
+  meta?: string;
+  icon: string;
+  accentColor: string;
+  accentBg: string;
+}
+
+const ADD_ONS: AddOn[] = [
+  {
+    id: 'hpi',
+    title: 'HPI Vehicle Check',
+    subtitle: 'Outstanding finance, write-off history, mileage anomalies, stolen records, and plate changes. Adds a verified badge to your listing.',
+    price: `£${PRICING.hpiReport.price}`,
+    icon: 'shield-checkmark-outline',
+    accentColor: Colors.success,
+    accentBg: Colors.successAlpha10,
+  },
+  {
+    id: 'boost',
+    title: 'Featured Boost',
+    subtitle: 'Pin your listing to the homepage carousel and top of search results. Renewable at any time.',
+    price: `£${PRICING.featuredBoost.price}`,
+    meta: `${PRICING.featuredBoost.durationDays} days`,
+    icon: 'flash-outline',
+    accentColor: Colors.warning,
+    accentBg: Colors.warningAlpha10,
   },
 ];
 
@@ -120,10 +185,10 @@ export const PricingScreen: React.FC = () => {
       >
         {/* ── Intro ── */}
         <View style={styles.introSection}>
-          <Text style={styles.introHeading}>Simple, transparent pricing</Text>
+          <Text style={styles.introHeading}>Simple, honest pricing</Text>
           <Text style={styles.introSub}>
-            Premium dealer and private seller plans coming soon — priority listings,
-            AI insights and more.
+            List your car for free at auction, or pay a one-off fee for a retail
+            listing. No subscriptions. No surprises.
           </Text>
         </View>
 
@@ -139,17 +204,18 @@ export const PricingScreen: React.FC = () => {
             {/* Card top accent bar */}
             <View style={[styles.planTopBar, { backgroundColor: plan.accentColor }]} />
 
+            {plan.badge && (
+              <View style={styles.mostPopularBadge}>
+                <Ionicons name="star" size={10} color={Colors.white} />
+                <Text style={styles.mostPopularText}>{plan.badge}</Text>
+              </View>
+            )}
+
             {/* Card header */}
             <View style={styles.planHeader}>
               <View style={[styles.planIconWrap, { backgroundColor: plan.accentBg }]}>
                 <Ionicons
-                  name={
-                    plan.id === 'buyer'
-                      ? 'person-outline'
-                      : plan.id === 'private-seller'
-                      ? 'car-outline'
-                      : 'storefront-outline'
-                  }
+                  name={plan.id === 'auction' ? 'hammer-outline' : 'pricetag-outline'}
                   size={20}
                   color={plan.accentColor}
                 />
@@ -158,13 +224,6 @@ export const PricingScreen: React.FC = () => {
                 <Text style={styles.planTitle}>{plan.title}</Text>
                 <Text style={styles.planSubtitle}>{plan.subtitle}</Text>
               </View>
-              {plan.id !== 'buyer' && (
-                <View style={[styles.comingSoonBadge, { backgroundColor: plan.accentBg, borderColor: plan.accentBorder }]}>
-                  <Text style={[styles.comingSoonText, { color: plan.accentColor }]}>
-                    SOON
-                  </Text>
-                </View>
-              )}
             </View>
 
             {/* Price */}
@@ -173,7 +232,7 @@ export const PricingScreen: React.FC = () => {
                 {plan.price}
               </Text>
               {plan.period ? (
-                <Text style={styles.planPeriod}> / {plan.period}</Text>
+                <Text style={styles.planPeriod}> {plan.period}</Text>
               ) : null}
             </View>
 
@@ -183,20 +242,66 @@ export const PricingScreen: React.FC = () => {
             {/* Features */}
             <View style={styles.featuresSection}>
               {plan.features.map((feat) => (
-                <View key={feat} style={styles.featureRow}>
-                  <Ionicons name="checkmark" size={14} color={plan.accentColor} />
-                  <Text style={styles.featureText}>{feat}</Text>
+                <View key={feat.label} style={styles.featureRow}>
+                  <Ionicons
+                    name={feat.included ? 'checkmark' : 'close'}
+                    size={14}
+                    color={feat.included ? plan.accentColor : Colors.textFaint}
+                  />
+                  <Text style={[styles.featureText, !feat.included && styles.featureTextExcluded]}>
+                    {feat.label}
+                  </Text>
                 </View>
               ))}
             </View>
           </View>
         ))}
 
+        {/* ── Add-ons ── */}
+        <View style={styles.sectionHeadingWrap}>
+          <Text style={styles.sectionHeading}>Optional add-ons</Text>
+          <Text style={styles.sectionSub}>Enhance any listing at any time — buy once, apply instantly.</Text>
+        </View>
+
+        {ADD_ONS.map((addon) => (
+          <View key={addon.id} style={styles.addonCard}>
+            <View style={[styles.addonIconWrap, { backgroundColor: addon.accentBg }]}>
+              <Ionicons name={addon.icon as any} size={22} color={addon.accentColor} />
+            </View>
+            <View style={styles.addonBody}>
+              <View style={styles.addonTitleRow}>
+                <Text style={styles.addonTitle}>{addon.title}</Text>
+                <View style={styles.addonPriceWrap}>
+                  <Text style={styles.addonPrice}>{addon.price}</Text>
+                  {addon.meta && <Text style={styles.addonMeta}>{addon.meta}</Text>}
+                </View>
+              </View>
+              <Text style={styles.addonSubtitle}>{addon.subtitle}</Text>
+            </View>
+          </View>
+        ))}
+
+        {/* ── Dealer prompt ── */}
+        <TouchableOpacity
+          style={styles.dealerPrompt}
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate('DealerOnboarding')}
+        >
+          <View style={styles.dealerPromptIconWrap}>
+            <Ionicons name="business-outline" size={20} color={Colors.accent} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.dealerPromptTitle}>Need to list multiple vehicles?</Text>
+            <Text style={styles.dealerPromptSub}>Dealers get a dashboard with CRM, inventory management, and analytics.</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
+        </TouchableOpacity>
+
         {/* ── Footer note ── */}
         <View style={styles.footerNote}>
           <Ionicons name="information-circle-outline" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
           <Text style={styles.footerNoteText}>
-            Paid plans are in development. All prices will be displayed in GBP and include VAT where applicable.
+            All payments are handled via Stripe and shown in GBP. CarMazium never stores your card details.
           </Text>
         </View>
 
@@ -274,6 +379,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     overflow: 'hidden',
+    position: 'relative',
   },
   planTopBar: {
     height: 3,
@@ -308,16 +414,23 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     color: Colors.textMuted,
   },
-  comingSoonBadge: {
-    paddingHorizontal: 8,
+  mostPopularBadge: {
+    position: 'absolute',
+    top: 11,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.accent,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    flexShrink: 0,
+    borderRadius: 10,
+    zIndex: 1,
   },
-  comingSoonText: {
+  mostPopularText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size9,
+    color: Colors.white,
     letterSpacing: 0.5,
   },
 
@@ -360,6 +473,109 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     flex: 1,
     lineHeight: 20,
+  },
+  featureTextExcluded: {
+    color: Colors.textFaint,
+  },
+
+  // ── Add-ons / Dealer prompt ──
+  sectionHeadingWrap: {
+    gap: 4,
+    paddingTop: 8,
+  },
+  sectionHeading: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.xl,
+    color: Colors.textPrimary,
+  },
+  sectionSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+  },
+  addonCard: {
+    flexDirection: 'row',
+    gap: 14,
+    backgroundColor: Colors.bgSecondary,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha06,
+    padding: 16,
+  },
+  addonIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  addonBody: {
+    flex: 1,
+    gap: 4,
+  },
+  addonTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  addonTitle: {
+    flex: 1,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.base,
+    color: Colors.textPrimary,
+  },
+  addonPriceWrap: {
+    alignItems: 'flex-end',
+  },
+  addonPrice: {
+    fontFamily: FontFamily.mono,
+    fontSize: FontSize.base,
+    color: Colors.textPrimary,
+  },
+  addonMeta: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size9,
+    color: Colors.textMuted,
+    letterSpacing: 0.5,
+    marginTop: 2,
+  },
+  addonSubtitle: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
+    lineHeight: 18,
+  },
+  dealerPrompt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: Colors.bgSecondary,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha06,
+    padding: 16,
+  },
+  dealerPromptIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: Colors.accentAlpha10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  dealerPromptTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.sm,
+    color: Colors.textPrimary,
+    marginBottom: 2,
+  },
+  dealerPromptSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
   },
 
   // ── Footer note ──

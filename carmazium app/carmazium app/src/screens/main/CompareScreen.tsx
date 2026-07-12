@@ -26,15 +26,56 @@ import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { IconButton } from '../../components/IconButton';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
-const getMonthlyPayment = (listing: CarListing) => {
-  if (listing.monthlyPayment) {
-    return `£${parseInt(listing.monthlyPayment.replace(/[^0-9]/g, ''), 10)}`;
-  }
-  const monthly = Math.round((listing.price * 0.9) / 60);
-  return `£${monthly}`;
-};
-
 const getMileageText = (car: CarListing) => `${(car.mileage / 1000).toFixed(1)}k`;
+
+// ─── Comparison rows — mirrors the web app's compare page field set
+// (src/app/compare/page.tsx: Key Details / Engine & Performance / Style
+// sections). Engine size, CO2, doors, and seats are shown on web but are
+// not present on CarListing/ApiListing on mobile — omitted rather than
+// guessed (CLAUDE.md: never ship a field the backend hasn't confirmed).
+// A single data-driven row list (rather than one hand-written JSX block
+// per field) is used deliberately so every row renders identically. ──
+
+type BestMode = 'lowest' | 'highest';
+
+interface SpecRow {
+  label: string;
+  getValue: (car: CarListing) => string;
+  best?: { getValue: (car: CarListing) => number | null | undefined; mode: BestMode };
+}
+
+const SPEC_ROWS: SpecRow[] = [
+  { label: 'Make', getValue: (c) => c.make || '—' },
+  { label: 'Model', getValue: (c) => c.model || '—' },
+  { label: 'Year', getValue: (c) => `${c.year}`, best: { getValue: (c) => c.year, mode: 'highest' } },
+  { label: 'Mileage', getValue: (c) => `${getMileageText(c)} mi`, best: { getValue: (c) => c.mileage, mode: 'lowest' } },
+  { label: 'Price', getValue: (c) => `£${c.price.toLocaleString('en-GB')}`, best: { getValue: (c) => c.price, mode: 'lowest' } },
+  { label: 'Condition', getValue: (c) => (c.condition ? String(c.condition).replace(/_/g, ' ') : '—') },
+  { label: 'Fuel', getValue: (c) => c.fuelType || '—' },
+  { label: 'Gearbox', getValue: (c) => (c.transmission === 'Automatic' ? 'Auto' : c.transmission) || '—' },
+  { label: 'Power', getValue: (c) => (c.bhp ? `${c.bhp} bhp` : '—'), best: { getValue: (c) => c.bhp, mode: 'highest' } },
+  { label: 'Body', getValue: (c) => c.category || '—' },
+  { label: 'Colour', getValue: (c) => c.colour || '—' },
+];
+
+const getBestIndex = (
+  cars: (CarListing | null)[],
+  getValue: (c: CarListing) => number | null | undefined,
+  mode: BestMode,
+): number | null => {
+  let bestIdx: number | null = null;
+  let bestVal: number | null = null;
+  cars.forEach((car, idx) => {
+    if (!car) return;
+    const v = getValue(car);
+    if (v == null) return;
+    if (bestVal === null || (mode === 'lowest' ? v < bestVal : v > bestVal)) {
+      bestVal = v;
+      bestIdx = idx;
+    }
+  });
+  return bestIdx;
+};
 
 const getCapsuleTitle = (car: CarListing) => {
   const title = `${car.make} ${car.model}`;
@@ -75,64 +116,7 @@ export const CompareScreen: React.FC = () => {
   const activeCarsCount = selectedCarIds.filter(Boolean).length;
   const isThreeCars = activeCarsCount === 3;
 
-  // Determine winner for a field (Lower is better unless specified)
-  const getWinnerForField = (field: string) => {
-    const cars = [carA, carB, carC].filter(Boolean) as CarListing[];
-    if (cars.length < 2) return { a: false, b: false, c: false };
-
-    const getVal = (car: CarListing) => {
-      if (field === 'price') return car.price;
-      if (field === 'year') return car.year;
-      if (field === 'mileage') return car.mileage;
-      if (field === 'monthly') return parseInt(getMonthlyPayment(car).replace(/[^0-9]/g, ''), 10);
-      return 0;
-    };
-
-    const values = [
-      carA ? getVal(carA) : null,
-      carB ? getVal(carB) : null,
-      carC ? getVal(carC) : null,
-    ];
-
-    const validValues = values.filter((v) => v !== null) as number[];
-
-    if (field === 'year') {
-      const maxYear = Math.max(...validValues);
-      const candidates = cars.filter(c => getVal(c) === maxYear);
-      if (candidates.length === 1) {
-        return {
-          a: carA ? getVal(carA) === maxYear : false,
-          b: carB ? getVal(carB) === maxYear : false,
-          c: carC ? getVal(carC) === maxYear : false,
-        };
-      } else {
-        // Tie-breaker: lowest mileage
-        const minMileage = Math.min(...candidates.map(c => c.mileage));
-        const winner = candidates.find(c => c.mileage === minMileage);
-        return {
-          a: carA?.id === winner?.id,
-          b: carB?.id === winner?.id,
-          c: carC?.id === winner?.id,
-        };
-      }
-    }
-
-    // Lower is better for price, mileage, and monthly cost
-    const targetVal = Math.min(...validValues);
-
-    return {
-      a: carA ? getVal(carA) === targetVal : false,
-      b: carB ? getVal(carB) === targetVal : false,
-      c: carC ? getVal(carC) === targetVal : false,
-    };
-  };
-
-  const wins = {
-    price: getWinnerForField('price'),
-    year: getWinnerForField('year'),
-    mileage: getWinnerForField('mileage'),
-    monthly: getWinnerForField('monthly'),
-  };
+  const compareCars = isThreeCars ? [carA, carB, carC] : [carA, carB];
 
   // 2-car verdict paragraph, derived entirely from real listing data
   const getVerdictText = () => {
@@ -179,35 +163,6 @@ export const CompareScreen: React.FC = () => {
     const updated = [...selectedCarIds];
     updated.splice(index, 1);
     setSelectedCarIds(updated);
-  };
-
-  // Render values helper with dynamic boxed highlight styling
-  const renderCellValue = (car: CarListing | null, field: string, valueString: string, isA: boolean, isB: boolean, isC: boolean) => {
-    if (!car) return <Text style={styles.rowVal}>-</Text>;
-    
-    const isWinnerColumn = (isA && wins[field as keyof typeof wins]?.a) ||
-                           (isB && wins[field as keyof typeof wins]?.b) ||
-                           (isC && wins[field as keyof typeof wins]?.c);
-
-    if (isThreeCars) {
-      const showBox = highlightWinners && isWinnerColumn;
-      return (
-        <View style={styles.cellCol}>
-          <View style={[styles.cellValBox, showBox && styles.cellValBoxWinner]}>
-            <Text style={[styles.rowVal, showBox && styles.rowValWinner]}>
-              {valueString}
-            </Text>
-          </View>
-        </View>
-      );
-    } else {
-      const showGreen = isWinnerColumn;
-      return (
-        <Text style={[styles.rowVal, showGreen && styles.textGreen]}>
-          {valueString} {showGreen ? '✔' : ''}
-        </Text>
-      );
-    }
   };
 
   // Avatar backgrounds
@@ -391,7 +346,9 @@ export const CompareScreen: React.FC = () => {
           );
         })()}
 
-        {/* Specs Table container */}
+        {/* Specs Table container — data-driven from SPEC_ROWS so every row
+            renders through the same path (see mobile-audit.md-style note
+            above SPEC_ROWS for why this replaced 8 hand-duplicated blocks) */}
         <View style={styles.specsTable}>
           {/* Header Row — always shown so column labels stay visible when scrolling */}
           <View style={styles.tableHeaderRow}>
@@ -401,105 +358,44 @@ export const CompareScreen: React.FC = () => {
             {isThreeCars && <Text style={[styles.tableHeaderCol, styles.textMagenta]}>C</Text>}
           </View>
 
-          {/* Price Row */}
-          <View style={styles.tableRow}>
-            <Text style={styles.rowLabel}>Price</Text>
-            {renderCellValue(carA, 'price', carA ? `£${carA.price.toLocaleString('en-GB')}` : '-', true, false, false)}
-            {renderCellValue(carB, 'price', carB ? `£${carB.price.toLocaleString('en-GB')}` : '-', false, true, false)}
-            {isThreeCars && renderCellValue(carC, 'price', carC ? `£${carC.price.toLocaleString('en-GB')}` : '-', false, false, true)}
-          </View>
-
-          {/* Year Row */}
-          <View style={styles.tableRow}>
-            <Text style={styles.rowLabel}>Year</Text>
-            {renderCellValue(carA, 'year', carA ? `${carA.year}` : '-', true, false, false)}
-            {renderCellValue(carB, 'year', carB ? `${carB.year}` : '-', false, true, false)}
-            {isThreeCars && renderCellValue(carC, 'year', carC ? `${carC.year}` : '-', false, false, true)}
-          </View>
-
-          {/* Mileage Row */}
-          <View style={styles.tableRow}>
-            <Text style={styles.rowLabel}>Mileage</Text>
-            {renderCellValue(carA, 'mileage', carA ? `${getMileageText(carA)}` : '-', true, false, false)}
-            {renderCellValue(carB, 'mileage', carB ? `${getMileageText(carB)}` : '-', false, true, false)}
-            {isThreeCars && renderCellValue(carC, 'mileage', carC ? `${getMileageText(carC)}` : '-', false, false, true)}
-          </View>
-
-          {/* Fuel Row */}
-          <View style={styles.tableRow}>
-            <Text style={styles.rowLabel}>Fuel</Text>
-            {isThreeCars ? (
-              <>
-                {renderCellValue(carA, 'fuel', carA ? carA.fuelType : '-', false, false, false)}
-                {renderCellValue(carB, 'fuel', carB ? carB.fuelType : '-', false, false, false)}
-                {renderCellValue(carC, 'fuel', carC ? carC.fuelType : '-', false, false, false)}
-              </>
-            ) : (
-              <>
-                <Text style={styles.rowVal}>{carA ? carA.fuelType : '-'}</Text>
-                <Text style={styles.rowVal}>{carB ? carB.fuelType : '-'}</Text>
-              </>
-            )}
-          </View>
-
-          {/* Body Type Row */}
-          <View style={styles.tableRow}>
-            <Text style={styles.rowLabel}>Body</Text>
-            {isThreeCars ? (
-              <>
-                {renderCellValue(carA, 'body', carA ? carA.category : '-', false, false, false)}
-                {renderCellValue(carB, 'body', carB ? carB.category : '-', false, false, false)}
-                {renderCellValue(carC, 'body', carC ? carC.category : '-', false, false, false)}
-              </>
-            ) : (
-              <>
-                <Text style={styles.rowVal}>{carA ? carA.category : '-'}</Text>
-                <Text style={styles.rowVal}>{carB ? carB.category : '-'}</Text>
-              </>
-            )}
-          </View>
-
-          {/* Monthly Row */}
-          <View style={styles.tableRow}>
-            <Text style={styles.rowLabel}>Monthly</Text>
-            {renderCellValue(carA, 'monthly', carA ? getMonthlyPayment(carA) : '-', true, false, false)}
-            {renderCellValue(carB, 'monthly', carB ? getMonthlyPayment(carB) : '-', false, true, false)}
-            {isThreeCars && renderCellValue(carC, 'monthly', carC ? getMonthlyPayment(carC) : '-', false, false, true)}
-          </View>
-
-          {/* Transmission Row */}
-          <View style={styles.tableRow}>
-            <Text style={styles.rowLabel}>Gearbox</Text>
-            {isThreeCars ? (
-              <>
-                {renderCellValue(carA, 'trans', carA ? (carA.transmission === 'Automatic' ? 'Auto' : carA.transmission) : '-', false, false, false)}
-                {renderCellValue(carB, 'trans', carB ? (carB.transmission === 'Automatic' ? 'Auto' : carB.transmission) : '-', false, false, false)}
-                {renderCellValue(carC, 'trans', carC ? (carC.transmission === 'Automatic' ? 'Auto' : carC.transmission) : '-', false, false, false)}
-              </>
-            ) : (
-              <>
-                <Text style={styles.rowVal}>{carA ? (carA.transmission === 'Automatic' ? 'Auto' : carA.transmission) : '-'}</Text>
-                <Text style={styles.rowVal}>{carB ? (carB.transmission === 'Automatic' ? 'Auto' : carB.transmission) : '-'}</Text>
-              </>
-            )}
-          </View>
-
-          {/* Colour Row */}
-          <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
-            <Text style={styles.rowLabel}>Colour</Text>
-            {isThreeCars ? (
-              <>
-                {renderCellValue(carA, 'colour', carA ? (carA.colour ?? '-') : '-', false, false, false)}
-                {renderCellValue(carB, 'colour', carB ? (carB.colour ?? '-') : '-', false, false, false)}
-                {renderCellValue(carC, 'colour', carC ? (carC.colour ?? '-') : '-', false, false, false)}
-              </>
-            ) : (
-              <>
-                <Text style={styles.rowVal}>{carA ? (carA.colour ?? '-') : '-'}</Text>
-                <Text style={styles.rowVal}>{carB ? (carB.colour ?? '-') : '-'}</Text>
-              </>
-            )}
-          </View>
+          {SPEC_ROWS.map((row, rowIndex) => {
+            const bestIdx = row.best ? getBestIndex(compareCars, row.best.getValue, row.best.mode) : null;
+            return (
+              <View
+                key={row.label}
+                style={[styles.tableRow, rowIndex === SPEC_ROWS.length - 1 && { borderBottomWidth: 0 }]}
+              >
+                <Text style={styles.rowLabel}>{row.label}</Text>
+                {compareCars.map((car, idx) => {
+                  const isWinner = highlightWinners && bestIdx === idx;
+                  if (!car) {
+                    return isThreeCars ? (
+                      <View key={idx} style={styles.cellCol}>
+                        <Text style={styles.rowVal}>-</Text>
+                      </View>
+                    ) : (
+                      <Text key={idx} style={styles.rowVal}>-</Text>
+                    );
+                  }
+                  const value = row.getValue(car);
+                  if (isThreeCars) {
+                    return (
+                      <View key={idx} style={styles.cellCol}>
+                        <View style={[styles.cellValBox, isWinner && styles.cellValBoxWinner]}>
+                          <Text style={[styles.rowVal, isWinner && styles.rowValWinner]}>{value}</Text>
+                        </View>
+                      </View>
+                    );
+                  }
+                  return (
+                    <Text key={idx} style={[styles.rowVal, isWinner && styles.textGreen]}>
+                      {value}{isWinner ? ' ✔' : ''}
+                    </Text>
+                  );
+                })}
+              </View>
+            );
+          })}
         </View>
 
         {/* 2-Car Verdict Card (Hidden in 3-car view) */}
