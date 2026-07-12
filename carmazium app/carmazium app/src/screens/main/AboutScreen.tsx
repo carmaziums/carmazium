@@ -16,6 +16,7 @@ import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
+import { IconButton } from '../../components/IconButton';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 // ─────────────────────────── data ──────────────────────────────────
@@ -53,7 +54,7 @@ export const AboutScreen: React.FC = () => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(220,31,38,0.06)', 'rgba(10,10,12,0)', '#0A0A0C']}
+        colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 0.6 }}
         style={StyleSheet.absoluteFillObject}
@@ -63,13 +64,7 @@ export const AboutScreen: React.FC = () => {
 
       {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          activeOpacity={0.75}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="chevron-back" size={18} color={Colors.textPrimary} />
-        </TouchableOpacity>
+        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.textPrimary} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
         <Text style={styles.headerTitle}>About</Text>
         <View style={styles.headerPlaceholder} />
       </View>
@@ -144,9 +139,9 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -179,9 +174,9 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 22,
-    backgroundColor: 'rgba(220,31,38,0.12)',
+    backgroundColor: Colors.accentAlpha12,
     borderWidth: 1,
-    borderColor: 'rgba(220,31,38,0.25)',
+    borderColor: Colors.accentAlpha25,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
@@ -224,16 +219,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgSecondary,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     padding: 16,
   },
   bulletIconWrap: {
     width: 44,
     height: 44,
     borderRadius: 13,
-    backgroundColor: 'rgba(220,31,38,0.10)',
+    backgroundColor: Colors.accentAlpha10,
     borderWidth: 1,
-    borderColor: 'rgba(220,31,38,0.20)',
+    borderColor: Colors.accentAlpha20,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -261,7 +256,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginTop: 8,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.06)',
+    borderTopColor: Colors.whiteAlpha06,
     gap: 6,
   },
   footerWordmark: {

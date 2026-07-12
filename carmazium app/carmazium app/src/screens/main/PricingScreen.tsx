@@ -16,6 +16,7 @@ import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
+import { IconButton } from '../../components/IconButton';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 // ─────────────────────────── data ──────────────────────────────────
@@ -40,8 +41,8 @@ const PLANS: PlanCard[] = [
     price: '£0',
     period: 'forever',
     accentColor: Colors.success,
-    accentBg: 'rgba(34,197,94,0.10)',
-    accentBorder: 'rgba(34,197,94,0.25)',
+    accentBg: Colors.successAlpha10,
+    accentBorder: Colors.successAlpha25,
     features: [
       'Browse all verified listings',
       'Live auction bidding',
@@ -56,9 +57,9 @@ const PLANS: PlanCard[] = [
     subtitle: 'For individual car owners',
     price: 'Coming Soon',
     period: '',
-    accentColor: '#3B82F6',
-    accentBg: 'rgba(59,130,246,0.10)',
-    accentBorder: 'rgba(59,130,246,0.25)',
+    accentColor: Colors.infoBlue,
+    accentBg: Colors.infoBlueAlpha10,
+    accentBorder: Colors.infoBlueAlpha25,
     features: [
       'Priority listing placement',
       'AI-powered vehicle valuation',
@@ -73,9 +74,9 @@ const PLANS: PlanCard[] = [
     subtitle: 'For professional car dealers',
     price: 'Coming Soon',
     period: '',
-    accentColor: '#F59E0B',
-    accentBg: 'rgba(245,158,11,0.10)',
-    accentBorder: 'rgba(245,158,11,0.25)',
+    accentColor: Colors.warning,
+    accentBg: Colors.warningAlpha10,
+    accentBorder: Colors.warningAlpha25,
     features: [
       'Unlimited inventory listings',
       'Dealer analytics dashboard',
@@ -97,7 +98,7 @@ export const PricingScreen: React.FC = () => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(220,31,38,0.06)', 'rgba(10,10,12,0)', '#0A0A0C']}
+        colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 0.6 }}
         style={StyleSheet.absoluteFillObject}
@@ -107,13 +108,7 @@ export const PricingScreen: React.FC = () => {
 
       {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          activeOpacity={0.75}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="chevron-back" size={18} color={Colors.textPrimary} />
-        </TouchableOpacity>
+        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.textPrimary} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
         <Text style={styles.headerTitle}>Pricing</Text>
         <View style={styles.headerPlaceholder} />
       </View>
@@ -199,7 +194,7 @@ export const PricingScreen: React.FC = () => {
 
         {/* ── Footer note ── */}
         <View style={styles.footerNote}>
-          <Ionicons name="information-circle-outline" size={16} color={Colors.textMuted} />
+          <Ionicons name="information-circle-outline" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
           <Text style={styles.footerNoteText}>
             Paid plans are in development. All prices will be displayed in GBP and include VAT where applicable.
           </Text>
@@ -231,9 +226,9 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -322,7 +317,7 @@ const styles = StyleSheet.create({
   },
   comingSoonText: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     letterSpacing: 0.5,
   },
 
@@ -345,7 +340,7 @@ const styles = StyleSheet.create({
   // ── Divider ──
   planDivider: {
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     marginHorizontal: 16,
   },
 

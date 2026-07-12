@@ -6,6 +6,7 @@ import { AuthNavigator } from './AuthNavigator';
 import { MainStackNavigator, MainStackParamList } from './MainStackNavigator';
 import { PostSignupOnboardingScreen } from '../screens/auth/PostSignupOnboardingScreen';
 import { VerifyEmailScreen } from '../screens/auth/VerifyEmailScreen';
+import { Colors } from '../constants/colors';
 
 export type RootStackParamList = {
   Auth: undefined;
@@ -26,7 +27,7 @@ export const RootNavigator: React.FC = () => {
       screenOptions={{
         headerShown: false,
         animation: 'fade',
-        contentStyle: { backgroundColor: '#0A0A0C' },
+        contentStyle: { backgroundColor: Colors.bgPrimary },
       }}
     >
       {pendingEmailVerification ? (

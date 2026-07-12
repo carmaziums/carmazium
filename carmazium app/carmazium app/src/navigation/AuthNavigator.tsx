@@ -5,6 +5,7 @@ import { LoginScreen } from '../screens/auth/LoginScreen';
 import { SignupScreen } from '../screens/auth/SignupScreen';
 import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
 import { ResetPasswordScreen } from '../screens/auth/ResetPasswordScreen';
+import { Colors } from '../constants/colors';
 
 export type AuthStackParamList = {
   Onboarding: undefined;
@@ -22,7 +23,7 @@ export const AuthNavigator: React.FC = () => {
       screenOptions={{
         headerShown: false,
         animation: 'fade_from_bottom',
-        contentStyle: { backgroundColor: '#0A0A0C' },
+        contentStyle: { backgroundColor: Colors.bgPrimary },
       }}
     >
       <Stack.Screen name="Onboarding" component={OnboardingScreen} />

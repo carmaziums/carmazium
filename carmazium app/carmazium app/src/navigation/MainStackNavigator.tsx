@@ -7,7 +7,6 @@ import { AuctionDetailScreen } from '../screens/vehicle/AuctionDetailScreen';
 import { MessagesScreen } from '../screens/main/MessagesScreen';
 import { ChatScreen } from '../screens/main/ChatScreen';
 import { CompareScreen } from '../screens/main/CompareScreen';
-import { AlertsScreen } from '../screens/main/AlertsScreen';
 import { SettingsScreen } from '../screens/main/SettingsScreen';
 import { DealerAnalyticsScreen } from '../screens/main/DealerAnalyticsScreen';
 import { DealerInventoryScreen } from '../screens/main/DealerInventoryScreen';
@@ -18,6 +17,7 @@ import { DealerOnboardingScreen } from '../screens/main/DealerOnboardingScreen';
 import { DealerOffersScreen } from '../screens/main/DealerOffersScreen';
 import { DealerMyOffersScreen } from '../screens/main/DealerMyOffersScreen';
 import { DealerPurchasesScreen } from '../screens/main/DealerPurchasesScreen';
+import { DealerEarningsScreen } from '../screens/main/DealerEarningsScreen';
 import { ServicesScreen } from '../screens/main/ServicesScreen';
 import { TermsScreen } from '../screens/main/TermsScreen';
 import { HowItWorksScreen } from '../screens/main/HowItWorksScreen';
@@ -45,6 +45,7 @@ import { PaymentHistoryScreen } from '../screens/account/PaymentHistoryScreen';
 import { SellerListingsScreen } from '../screens/seller/SellerListingsScreen';
 import { SellerAuctionsScreen } from '../screens/seller/SellerAuctionsScreen';
 import { CarListing } from '../data/listings';
+import { Colors } from '../constants/colors';
 
 export type MainStackParamList = {
   Tabs: NavigatorScreenParams<TabParamList> | undefined;
@@ -54,7 +55,6 @@ export type MainStackParamList = {
   Messages: undefined;
   ChatScreen: { threadId: string };
   Compare: undefined;
-  Alerts: undefined;
   Settings: undefined;
   DealerAnalytics: undefined;
   DealerInventory: undefined;
@@ -65,6 +65,7 @@ export type MainStackParamList = {
   DealerOffers: undefined;
   DealerMyOffers: undefined;
   DealerPurchases: undefined;
+  DealerEarnings: undefined;
   Services: undefined;
   Terms: undefined;
   HowItWorks: undefined;
@@ -96,7 +97,7 @@ export type MainStackParamList = {
   } | undefined;
   SellCarFlow: { listingId?: string } | undefined;
   SellerListings: undefined;
-  SellerAuctions: undefined;
+  SellerAuctions: { preselectListingId?: string } | undefined;
   BuyerDashboard: undefined;
   SellerDashboard: undefined;
   AccountProfile: undefined;
@@ -120,7 +121,7 @@ export const MainStackNavigator: React.FC = () => {
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
-        contentStyle: { backgroundColor: '#0A0A0C' },
+        contentStyle: { backgroundColor: Colors.bgPrimary },
       }}
     >
       <Stack.Screen name="Tabs" component={TabNavigator} />
@@ -147,11 +148,6 @@ export const MainStackNavigator: React.FC = () => {
       <Stack.Screen
         name="Compare"
         component={CompareScreen}
-        options={{ animation: 'slide_from_bottom' }}
-      />
-      <Stack.Screen
-        name="Alerts"
-        component={AlertsScreen}
         options={{ animation: 'slide_from_bottom' }}
       />
       <Stack.Screen
@@ -188,6 +184,7 @@ export const MainStackNavigator: React.FC = () => {
       <Stack.Screen name="DealerOffers" component={DealerOffersScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="DealerMyOffers" component={DealerMyOffersScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="DealerPurchases" component={DealerPurchasesScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="DealerEarnings" component={DealerEarningsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="Services" component={ServicesScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="Terms" component={TermsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="HowItWorks" component={HowItWorksScreen} options={{ animation: 'slide_from_right' }} />

@@ -20,27 +20,14 @@ import { useAuthStore } from '../store/authStore';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { MainStackParamList } from '../navigation/MainStackNavigator';
 import { TabParamList } from '../navigation/TabNavigator';
+import { Colors } from '../constants/colors';
+import { FontSize } from '../constants/typography';
 
+import { IconButton } from './IconButton';
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DRAWER_WIDTH = Math.min(SCREEN_WIDTH * 0.82, 320);
-
-// ─── Colour palette used exclusively inside the drawer ────────────────────────
-const C = {
-  bg: '#13131A',
-  border: 'rgba(255,255,255,0.08)',
-  accent: '#DC1F26',
-  accentLight: 'rgba(220,31,38,0.14)',
-  white: '#FFFFFF',
-  grey1: '#E2E2EA',   // primary text
-  grey2: '#A8A8B3',   // secondary text
-  grey3: '#606070',   // muted
-  activeRow: 'rgba(220,31,38,0.10)',
-  iconBg: 'rgba(255,255,255,0.07)',
-  success: '#22C55E',
-  divider: 'rgba(255,255,255,0.09)',
-};
 
 interface MenuItem {
   id: string;
@@ -131,14 +118,19 @@ const DEALER_ITEMS: MenuItem[] = [
     iconLib: 'ion', 
     stackScreen: 'DealerKYC',
   },
-  { 
-    id: 'dealer-auctions', 
-    label: 'Dealer auction manager', 
-    icon: 'gavel', 
-    iconLib: 'mci', 
-    action: 'alert', 
-    alertTitle: 'Dealer Auction Manager', 
-    alertMsg: 'Schedule and manage active vehicle auctions, adjust reserve prices, and view historical sales data.' 
+  {
+    // No dedicated dealer-auction-management screen exists yet — the previous
+    // alert copy described reserve-price editing and sales history as if they
+    // were live features, which was misleading. Match the "Coming Soon"
+    // labeling convention used elsewhere in the app (Pricing tiers, Finance
+    // Calculator) instead of implying a feature that isn't built.
+    id: 'dealer-auctions',
+    label: 'Dealer auction manager',
+    icon: 'gavel',
+    iconLib: 'mci',
+    action: 'alert',
+    alertTitle: 'Coming Soon',
+    alertMsg: 'Scheduling auctions, adjusting reserve prices, and viewing sales history from here is on the roadmap — not available yet.',
   },
   { 
     id: 'dealer-leads', 
@@ -204,7 +196,7 @@ export const GlobalDrawer: React.FC = () => {
   const logout  = useAuthStore((s) => s.logout);
   const role    = useAuthStore((s) => s.role);
   const setRole = useAuthStore((s) => s.setRole);
-  const isActualDealer = user?.role === 'DEALER';
+  const isActualDealer = role === 'dealer';
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
 
@@ -316,7 +308,7 @@ export const GlobalDrawer: React.FC = () => {
   const initial   = userName.charAt(0).toUpperCase();
 
   const renderIcon = (item: MenuItem, active: boolean, goldMode?: boolean, blueMode?: boolean) => {
-    const color = active ? C.accent : goldMode ? '#F59E0B' : blueMode ? '#3B82F6' : C.grey2;
+    const color = active ? Colors.accent : goldMode ? Colors.warning : blueMode ? Colors.infoBlue : Colors.lightGrey;
     return item.iconLib === 'mci'
       ? <MaterialCommunityIcons name={item.icon} size={19} color={color} />
       : <Ionicons name={item.icon} size={19} color={color} />;
@@ -347,9 +339,7 @@ export const GlobalDrawer: React.FC = () => {
         ]}
       >
         {/* ── Close button ─────────────────────────────── */}
-        <TouchableOpacity style={styles.closeBtn} onPress={closeDrawer} activeOpacity={0.7}>
-          <Ionicons name="close" size={20} color={C.grey1} />
-        </TouchableOpacity>
+        <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={20} color={Colors.paleBlue_e2e2ea} />} onPress={closeDrawer} accessibilityLabel="Close" />
 
         {/* ── User card ────────────────────────────────── */}
         <View style={styles.userCard}>
@@ -362,9 +352,11 @@ export const GlobalDrawer: React.FC = () => {
               <Text style={styles.userEmail} numberOfLines={1}>{userEmail}</Text>
             )}
           </View>
-          <View style={styles.verifiedDot}>
-            <Ionicons name="checkmark-circle" size={18} color={role === 'dealer' ? '#F59E0B' : role === 'seller' ? '#3B82F6' : C.success} />
-          </View>
+          {(user?.isAddressVerified === true) && (
+            <View style={styles.verifiedDot}>
+              <Ionicons name="checkmark-circle" size={18} color={role === 'dealer' ? Colors.warning : role === 'seller' ? Colors.infoBlue : Colors.success} />
+            </View>
+          )}
         </View>
 
         <View style={styles.divider} />
@@ -428,7 +420,7 @@ export const GlobalDrawer: React.FC = () => {
                   <Text style={styles.rowLabelSeller}>
                     {item.label}
                   </Text>
-                  <Ionicons name="chevron-forward" size={14} color="#606070" />
+                  <Ionicons name="chevron-forward" size={14} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
                 </TouchableOpacity>
               ))}
             </>
@@ -452,7 +444,7 @@ export const GlobalDrawer: React.FC = () => {
                   <Text style={styles.rowLabelDealer}>
                     {item.label}
                   </Text>
-                  <Ionicons name="chevron-forward" size={14} color="#606070" />
+                  <Ionicons name="chevron-forward" size={14} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
                 </TouchableOpacity>
               ))}
               {/* Allow dealer to browse as a regular buyer */}
@@ -463,10 +455,10 @@ export const GlobalDrawer: React.FC = () => {
               >
                 <View style={styles.bar} />
                 <View style={[styles.iconWrap, styles.iconWrapGold]}>
-                  <Ionicons name="swap-horizontal-outline" size={19} color="#F59E0B" />
+                  <Ionicons name="swap-horizontal-outline" size={19} color={Colors.warning} />
                 </View>
                 <Text style={styles.rowLabelDealer}>Browse as buyer</Text>
-                <Ionicons name="chevron-forward" size={14} color="#606070" />
+                <Ionicons name="chevron-forward" size={14} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
               </TouchableOpacity>
             </>
           )}
@@ -483,14 +475,20 @@ export const GlobalDrawer: React.FC = () => {
                   setTimeout(() => {
                     if (isActualDealer && user?.isVerified) {
                       setRole('dealer');
-                    } else {
+                    } else if (isActualDealer) {
+                      // Already a dealer, just not verified yet — resume at KYC (step 2).
                       navigation.navigate('Main', { screen: 'DealerKYC' } as never);
+                    } else {
+                      // Not a dealer at all — start at onboarding (step 1), which grants
+                      // the DEALER role before KYC. Sending these users straight to
+                      // DealerKYC skipped the role-elevation step entirely.
+                      navigation.navigate('Main', { screen: 'DealerOnboarding' } as never);
                     }
                   }, 160);
                 }}
               >
                 <View style={styles.dealerToggleIcon}>
-                  <Ionicons name="briefcase-outline" size={20} color="#F59E0B" />
+                  <Ionicons name="briefcase-outline" size={20} color={Colors.warning} />
                 </View>
                 <View style={styles.dealerToggleText}>
                   <Text style={styles.dealerToggleTitle}>
@@ -499,10 +497,12 @@ export const GlobalDrawer: React.FC = () => {
                   <Text style={styles.dealerToggleSub}>
                     {isActualDealer && user?.isVerified
                       ? 'Your account is verified — tap to switch'
-                      : 'Complete KYC to unlock dealer features'}
+                      : isActualDealer
+                      ? 'Complete KYC to unlock dealer features'
+                      : 'Set up your dealership to unlock dealer features'}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={15} color="#F59E0B" />
+                <Ionicons name="chevron-forward" size={15} color={Colors.warning} accessibilityElementsHidden importantForAccessibility="no" />
               </TouchableOpacity>
             </>
           )}
@@ -513,7 +513,7 @@ export const GlobalDrawer: React.FC = () => {
           <TouchableOpacity style={styles.row} onPress={handleSignOut} activeOpacity={0.7}>
             <View style={styles.bar} />
             <View style={[styles.iconWrap, styles.iconWrapRed]}>
-              <Ionicons name="log-out-outline" size={19} color={C.accent} />
+              <Ionicons name="log-out-outline" size={19} color={Colors.accent} />
             </View>
             <Text style={styles.rowLabelRed}>Sign Out</Text>
           </TouchableOpacity>
@@ -533,7 +533,7 @@ const styles = StyleSheet.create({
   // Backdrop
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.75)',
+    backgroundColor: Colors.blackAlpha75,
   },
 
   // Sliding panel
@@ -543,10 +543,10 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     width: DRAWER_WIDTH,
-    backgroundColor: C.bg,
+    backgroundColor: Colors.deepBlue_13131a,
     borderLeftWidth: 1,
-    borderLeftColor: C.border,
-    shadowColor: '#000',
+    borderLeftColor: Colors.whiteAlpha08,
+    shadowColor: Colors.black,
     shadowOffset: { width: -6, height: 0 },
     shadowOpacity: 0.55,
     shadowRadius: 24,
@@ -561,9 +561,9 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    backgroundColor: Colors.whiteAlpha07,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: Colors.whiteAlpha08,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -579,39 +579,39 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 14,
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   avatarDealer: {
-    backgroundColor: '#B8860B',
+    backgroundColor: Colors.midOrange_b8860b,
     borderWidth: 1.5,
-    borderColor: '#F59E0B',
+    borderColor: Colors.warning,
   },
   avatarSeller: {
-    backgroundColor: '#1D4ED8',
+    backgroundColor: Colors.midBlue_1d4ed8,
     borderWidth: 1.5,
-    borderColor: '#3B82F6',
+    borderColor: Colors.infoBlue,
   },
   avatarText: {
-    fontSize: 20,
+    fontSize: FontSize.xl,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   userMeta: {
     flex: 1,
   },
   userName: {
-    fontSize: 15,
+    fontSize: FontSize.base,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: Colors.white,
     marginBottom: 2,
   },
   userEmail: {
-    fontSize: 11,
+    fontSize: FontSize.xs,
     fontWeight: '400',
-    color: '#A8A8B3',
+    color: Colors.lightGrey,
   },
   verifiedDot: {
     padding: 2,
@@ -620,7 +620,7 @@ const styles = StyleSheet.create({
   // Divider
   divider: {
     height: 1,
-    backgroundColor: C.divider,
+    backgroundColor: Colors.whiteAlpha09,
     marginHorizontal: 20,
     marginVertical: 8,
   },
@@ -633,9 +633,9 @@ const styles = StyleSheet.create({
 
   // Group label
   groupLabel: {
-    fontSize: 9,
+    fontSize: FontSize.size9,
     fontWeight: '700',
-    color: '#606070',
+    color: Colors.iconMuted,
     letterSpacing: 1.6,
     marginLeft: 24,
     marginBottom: 8,
@@ -651,7 +651,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   rowActive: {
-    backgroundColor: 'rgba(220,31,38,0.10)',
+    backgroundColor: Colors.accentAlpha10,
     borderRadius: 12,
     marginHorizontal: 8,
     paddingRight: 10,
@@ -666,7 +666,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   barActive: {
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
   },
 
   // Icon wrapper
@@ -674,71 +674,71 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    backgroundColor: Colors.whiteAlpha07,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 13,
   },
   iconWrapActive: {
-    backgroundColor: 'rgba(220,31,38,0.15)',
+    backgroundColor: Colors.accentAlpha15,
   },
   iconWrapRed: {
-    backgroundColor: 'rgba(220,31,38,0.08)',
+    backgroundColor: Colors.accentAlpha08,
   },
   iconWrapGold: {
-    backgroundColor: 'rgba(245,158,11,0.12)',
+    backgroundColor: Colors.warningAlpha12,
   },
   iconWrapBlue: {
-    backgroundColor: 'rgba(59,130,246,0.12)',
+    backgroundColor: Colors.infoBlueAlpha12,
   },
 
   // Labels
   rowLabel: {
     flex: 1,
-    fontSize: 15,
+    fontSize: FontSize.base,
     fontWeight: '500',
-    color: '#A8A8B3',
+    color: Colors.lightGrey,
   },
   rowLabelActive: {
     fontWeight: '700',
-    color: '#DC1F26',
+    color: Colors.accent,
   },
   rowLabelRed: {
     flex: 1,
-    fontSize: 15,
+    fontSize: FontSize.base,
     fontWeight: '500',
-    color: '#DC1F26',
+    color: Colors.accent,
   },
   rowLabelDealer: {
     flex: 1,
-    fontSize: 14,
+    fontSize: FontSize.size14,
     fontWeight: '500',
-    color: '#D4A017',
+    color: Colors.midOrange_d4a017,
   },
   rowLabelSeller: {
     flex: 1,
-    fontSize: 14,
+    fontSize: FontSize.size14,
     fontWeight: '500',
-    color: '#60A5FA',
+    color: Colors.infoBlueLight,
   },
   groupLabelDealer: {
-    color: '#F59E0B',
+    color: Colors.warning,
   },
   groupLabelSeller: {
-    color: '#3B82F6',
+    color: Colors.infoBlue,
   },
 
   // Active pill badge
   activePill: {
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: 6,
   },
   activePillText: {
-    fontSize: 8,
+    fontSize: FontSize.size8,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: Colors.white,
     letterSpacing: 0.5,
   },
 
@@ -748,9 +748,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: 16,
     marginVertical: 6,
-    backgroundColor: 'rgba(245,158,11,0.08)',
+    backgroundColor: Colors.warningAlpha08,
     borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.25)',
+    borderColor: Colors.warningAlpha25,
     borderRadius: 14,
     padding: 14,
     gap: 12,
@@ -759,7 +759,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: 'rgba(245,158,11,0.15)',
+    backgroundColor: Colors.warningAlpha15,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -769,14 +769,14 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   dealerToggleTitle: {
-    fontSize: 14,
+    fontSize: FontSize.size14,
     fontWeight: '700',
-    color: '#F59E0B',
+    color: Colors.warning,
   },
   dealerToggleSub: {
-    fontSize: 11,
+    fontSize: FontSize.xs,
     fontWeight: '400',
-    color: '#A0783A',
+    color: Colors.midOrange_a0783a,
   },
 
   // Footer
@@ -784,19 +784,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: C.divider,
+    borderTopColor: Colors.whiteAlpha09,
   },
   footerBrand: {
-    fontSize: 12,
+    fontSize: FontSize.size12,
     fontWeight: '800',
-    color: '#DC1F26',
+    color: Colors.accent,
     letterSpacing: 2,
     marginBottom: 2,
   },
   footerTagline: {
-    fontSize: 10,
+    fontSize: FontSize.size10,
     fontWeight: '400',
-    color: '#606070',
+    color: Colors.iconMuted,
     letterSpacing: 0.2,
   },
 });
