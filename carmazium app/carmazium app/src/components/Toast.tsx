@@ -10,6 +10,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../constants/colors';
 import { FontFamily, FontSize } from '../constants/typography';
 
+import { IconButton } from './IconButton';
 export type ToastType = 'success' | 'error' | 'info' | 'saved';
 
 interface ToastProps {
@@ -99,9 +100,7 @@ export const Toast: React.FC<ToastProps> = ({
         <Ionicons name={ICON_MAP[type]} size={18} color={accentColor} />
       </View>
       <Text style={styles.message}>{message}</Text>
-      <TouchableOpacity onPress={onHide} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
-        <Ionicons name="close" size={16} color={Colors.textMuted} />
-      </TouchableOpacity>
+      <IconButton icon={<Ionicons name="close" size={16} color={Colors.textMuted} />} onPress={onHide} accessibilityLabel="Close" />
     </RNAnimated.View>
   );
 };
@@ -139,7 +138,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.glassBorderStrong,
     zIndex: 9999,
-    shadowColor: '#000',
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.4,
     shadowRadius: 20,

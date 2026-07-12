@@ -48,16 +48,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: Colors.whiteAlpha05,
     borderWidth: 1,
     borderColor: Colors.glassBorder,
   },
   pillActive: {
     backgroundColor: Colors.accentSubtle,
-    borderColor: 'rgba(220,31,38,0.4)',
+    borderColor: Colors.accentAlpha40,
   },
   icon: {
-    fontSize: 13,
+    fontSize: FontSize.sm,
   },
   label: {
     fontFamily: FontFamily.medium,

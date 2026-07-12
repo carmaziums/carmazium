@@ -1,5 +1,15 @@
 // Carmazium – Typography System
 
+import { PixelRatio } from 'react-native';
+
+/**
+ * Scales a design-time font size by the user's system font-scale setting
+ * (Settings → Display → Font size on Android, Dynamic Type on iOS), so text
+ * doesn't clip when a user has cranked accessibility text scaling up
+ * (mobile-ui-ux-audit.md §A-series Dynamic Type finding).
+ */
+export const scaledFontSize = (base: number): number => base * PixelRatio.getFontScale();
+
 export const FontFamily = {
   // Body & UI Tones (Montserrat)
   regular: 'Montserrat_400Regular',
@@ -29,6 +39,25 @@ export const FontSize = {
   '4xl': 32,
   '5xl': 38,
   hero: 44,
+  /** Dealer/power-user compact-row label (mobile-ui-ux-audit.md §C9) */
+  rowLabel: 13,
+  /** Dealer/power-user compact-row meta text */
+  rowMeta: 11,
+  // --- Auto-added by UI/UX Stage 2 font-size codemod (2026-07-11) ---
+  size7: 7,
+  size8: 8,
+  size9: 9,
+  size10: 10,
+  size10_5: 10.5,
+  size11_5: 11.5,
+  size12: 12,
+  size14: 14,
+  size17: 17,
+  size19: 19,
+  size22: 22,
+  size26: 26,
+  size30: 30,
+  size42: 42,
 } as const;
 
 export const LineHeight = {

@@ -1,0 +1,139 @@
+import React from 'react';
+import {
+  Modal,
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@/components/BrandIcon';
+import { Colors } from '../constants/colors';
+import { FontFamily, FontSize } from '../constants/typography';
+
+import { IconButton } from './IconButton';
+// Shared bottom-sheet shell. Before this component, every modal in the app
+// (EnquireModal, DealerLeadsScreen's create-lead sheet, SearchScreen filters,
+// etc.) hand-rolled its own overlay + sheet + handle + close-button, each with
+// slightly different backdrop opacity, sheet background shade, and close-button
+// style — reading as several different products stitched together rather than
+// one. This standardizes on the most polished existing version of the pattern.
+//
+// Web has no bottom-sheet equivalent (its modals are centered desktop dialogs),
+// so this doesn't copy web 1:1 — it keeps the native mobile bottom-sheet
+// convention but aligns the backdrop/border/shadow language (dark, blurred-feel
+// backdrop, rounded card, subtle border) to match the web app's dialog styling.
+
+interface BottomSheetProps {
+  visible: boolean;
+  onClose: () => void;
+  title?: string;
+  children: React.ReactNode;
+  /** Wrap content in KeyboardAvoidingView — enable for sheets with text inputs. */
+  avoidKeyboard?: boolean;
+  maxHeightPercent?: number;
+}
+
+export const BottomSheet: React.FC<BottomSheetProps> = ({
+  visible,
+  onClose,
+  title,
+  children,
+  avoidKeyboard = false,
+  maxHeightPercent = 92,
+}) => {
+  const insets = useSafeAreaInsets();
+
+  const sheetContent = (
+    <>
+      <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={onClose} />
+      <View
+        style={[
+          styles.sheet,
+          { maxHeight: `${maxHeightPercent}%`, paddingBottom: Math.max(insets.bottom, 20) + 12 },
+        ]}
+      >
+        <View style={styles.handle} />
+
+        {!!title && (
+          <View style={styles.headerRow}>
+            <Text style={styles.title} numberOfLines={1}>{title}</Text>
+            <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={18} color={Colors.textPrimary} />} onPress={onClose} accessibilityLabel="Close" />
+          </View>
+        )}
+
+        {children}
+      </View>
+    </>
+  );
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
+      {/* Conditionally rendering a component *type* (rather than this JSX
+          ternary) would create a new component identity on every render,
+          forcing React to unmount/remount the whole subtree — including any
+          focused TextInput — on every keystroke from a sibling field. */}
+      {avoidKeyboard ? (
+        // RN's Modal opens a separate native Window on Android that the
+        // Activity's automatic keyboard-resize handling doesn't reach, so
+        // KeyboardAvoidingView must actively shrink content itself here —
+        // 'height' (not the no-op `undefined`) is required on Android.
+        <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          {sheetContent}
+        </KeyboardAvoidingView>
+      ) : (
+        <View style={styles.overlay}>{sheetContent}</View>
+      )}
+    </Modal>
+  );
+};
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: Colors.blackAlpha75,
+  },
+  sheet: {
+    backgroundColor: Colors.bgSecondary,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
+    paddingHorizontal: 22,
+    paddingTop: 12,
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.whiteAlpha15,
+    alignSelf: 'center',
+    marginBottom: 12,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 12,
+  },
+  title: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.lg,
+    color: Colors.textPrimary,
+    flex: 1,
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.whiteAlpha06,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

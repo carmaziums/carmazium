@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,60 @@ interface HeroCarouselProps {
   listings: CarListing[];
   onPress: (listing: CarListing) => void;
 }
+
+// Hoisted + memoized so FlatList only re-renders the slide whose props
+// actually changed (mobile-audit.md P3/P4).
+const HeroSlide: React.FC<{ item: CarListing; onPress: (listing: CarListing) => void }> = React.memo(({ item, onPress }) => (
+  <TouchableOpacity
+    style={styles.slide}
+    onPress={() => onPress(item)}
+    activeOpacity={0.92}
+  >
+    <Image
+      source={{ uri: item.images[0] }}
+      style={styles.image}
+      contentFit="cover"
+      transition={200}
+      cachePolicy="memory-disk"
+    />
+
+    {/* Dark bottom gradient overlay */}
+    <View style={styles.overlay} />
+
+    {/* Top badge */}
+    <View style={styles.topRow}>
+      <View style={styles.featuredPill}>
+        <View style={styles.featuredDot} />
+        <Text style={styles.featuredLabel}>FEATURED</Text>
+      </View>
+      <View style={styles.categoryPill}>
+        <Text style={styles.categoryText}>{item.category.toUpperCase()}</Text>
+      </View>
+    </View>
+
+    {/* Bottom info */}
+    <View style={styles.info}>
+      <Text style={styles.makeLabel}>{item.make.toUpperCase()}</Text>
+      <Text style={styles.modelLabel}>
+        {item.model} {item.variant}
+      </Text>
+      <View style={styles.bottomRow}>
+        <Text style={styles.price}>{formatPrice(item.price)}</Text>
+        <View style={styles.cta}>
+          <Text style={styles.ctaText}>View</Text>
+          <Ionicons name="arrow-forward" size={12} color={Colors.white} />
+        </View>
+      </View>
+      <View style={styles.quickSpecs}>
+        <Text style={styles.specItem}>{item.year}</Text>
+        <View style={styles.specDot} />
+        <Text style={styles.specItem}>{item.bhp} bhp</Text>
+        <View style={styles.specDot} />
+        <Text style={styles.specItem}>{item.zeroToSixty}s 0-60</Text>
+      </View>
+    </View>
+  </TouchableOpacity>
+));
 
 export const HeroCarousel: React.FC<HeroCarouselProps> = ({ listings, onPress }) => {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -60,6 +114,11 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({ listings, onPress })
     startAutoPlay();
   };
 
+  const renderSlide = useCallback(
+    ({ item }: { item: CarListing }) => <HeroSlide item={item} onPress={onPress} />,
+    [onPress],
+  );
+
   return (
     <View style={styles.container}>
       <FlatList
@@ -79,57 +138,7 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({ listings, onPress })
         scrollEventThrottle={16}
         onMomentumScrollEnd={handleScrollEnd}
         onScrollBeginDrag={handleUserScroll}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.slide}
-            onPress={() => onPress(item)}
-            activeOpacity={0.92}
-          >
-            <Image
-              source={{ uri: item.images[0] }}
-              style={styles.image}
-              contentFit="cover"
-              transition={200}
-              cachePolicy="memory-disk"
-            />
-
-            {/* Dark bottom gradient overlay */}
-            <View style={styles.overlay} />
-
-            {/* Top badge */}
-            <View style={styles.topRow}>
-              <View style={styles.featuredPill}>
-                <View style={styles.featuredDot} />
-                <Text style={styles.featuredLabel}>FEATURED</Text>
-              </View>
-              <View style={styles.categoryPill}>
-                <Text style={styles.categoryText}>{item.category.toUpperCase()}</Text>
-              </View>
-            </View>
-
-            {/* Bottom info */}
-            <View style={styles.info}>
-              <Text style={styles.makeLabel}>{item.make.toUpperCase()}</Text>
-              <Text style={styles.modelLabel}>
-                {item.model} {item.variant}
-              </Text>
-              <View style={styles.bottomRow}>
-                <Text style={styles.price}>{formatPrice(item.price)}</Text>
-                <View style={styles.cta}>
-                  <Text style={styles.ctaText}>View</Text>
-                  <Ionicons name="arrow-forward" size={12} color={Colors.white} />
-                </View>
-              </View>
-              <View style={styles.quickSpecs}>
-                <Text style={styles.specItem}>{item.year}</Text>
-                <View style={styles.specDot} />
-                <Text style={styles.specItem}>{item.bhp} bhp</Text>
-                <View style={styles.specDot} />
-                <Text style={styles.specItem}>{item.zeroToSixty}s 0-60</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        )}
+        renderItem={renderSlide}
       />
 
       {/* Dot indicators */}
@@ -218,21 +227,21 @@ const styles = StyleSheet.create({
   },
   featuredLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     color: Colors.white,
     letterSpacing: 1.2,
   },
   categoryPill: {
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: Colors.blackAlpha50,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: Colors.whiteAlpha15,
   },
   categoryText: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     color: Colors.white,
     letterSpacing: 1,
   },
@@ -243,7 +252,7 @@ const styles = StyleSheet.create({
     right: 0,
     padding: 16,
     paddingBottom: 18,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: Colors.blackAlpha55,
   },
   makeLabel: {
     fontFamily: FontFamily.medium,

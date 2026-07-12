@@ -21,3 +21,11 @@ export const Spacing = {
   /** Section label (all-caps category) top margin */
   sectionLabelMt: 28,
 } as const;
+
+// Row density presets — buyer surfaces stay spacious, but dealer/power-user
+// surfaces (managing 30+ listings) reuse buyer-card padding today, which reads
+// amateurish at scale (mobile-ui-ux-audit.md §C9).
+export const RowDensity = {
+  comfortable: { padding: 16, gap: 12, borderRadius: 18, rowHeight: 76 }, // buyer
+  compact:     { padding: 10, gap: 8,  borderRadius: 10, rowHeight: 56 }, // dealer / power-user
+} as const;

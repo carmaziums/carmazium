@@ -47,13 +47,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: Colors.whiteAlpha08,
   },
   badgeAccent: {
     backgroundColor: Colors.accentSubtle,
-    borderColor: 'rgba(220,31,38,0.25)',
+    borderColor: Colors.accentAlpha25,
   },
   value: {
     fontFamily: FontFamily.medium,

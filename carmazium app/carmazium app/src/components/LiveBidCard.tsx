@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
   upcomingBadge: {
     backgroundColor: 'rgba(0,0,0,0.65)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: Colors.whiteAlpha15,
   },
   liveDot: {
     width: 6,
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
   },
   liveText: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
+    fontSize: FontSize.size10,
     color: Colors.white,
     letterSpacing: 1.5,
   },
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: Colors.blackAlpha55,
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 8,
@@ -290,22 +290,22 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   reserveMet: {
-    backgroundColor: 'rgba(34,197,94,0.15)',
+    backgroundColor: Colors.successAlpha15,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: 'rgba(34,197,94,0.25)',
+    borderColor: Colors.successAlpha25,
   },
   reserveMetText: {
     fontFamily: FontFamily.medium,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     color: Colors.success,
     letterSpacing: 0.3,
   },
   reserveNotMet: {
     fontFamily: FontFamily.medium,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     color: Colors.textMuted,
   },
   // Countdown
@@ -327,17 +327,17 @@ const styles = StyleSheet.create({
   },
   timeBlock: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    backgroundColor: Colors.whiteAlpha07,
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 5,
     minWidth: 38,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: Colors.whiteAlpha08,
   },
   timeBlockUrgent: {
     backgroundColor: Colors.accentSubtle,
-    borderColor: 'rgba(220,31,38,0.3)',
+    borderColor: Colors.accentAlpha30,
   },
   timeValue: {
     fontFamily: FontFamily.bold,
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
   },
   timeLabel: {
     fontFamily: FontFamily.medium,
-    fontSize: 8,
+    fontSize: FontSize.size8,
     color: Colors.textMuted,
     letterSpacing: 0.8,
   },

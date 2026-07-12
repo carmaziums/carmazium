@@ -1,13 +1,14 @@
 import React from 'react';
 import { TouchableOpacity, View, StyleSheet } from 'react-native';
 import { useDrawer } from '../context/DrawerContext';
+import { Colors } from '../constants/colors';
 
 interface HamburgerButtonProps {
   color?: string;
 }
 
 export const HamburgerButton: React.FC<HamburgerButtonProps> = ({
-  color = '#FFFFFF',
+  color = Colors.white,
 }) => {
   const { openDrawer } = useDrawer();
 
@@ -31,9 +32,9 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: Colors.whiteAlpha10,
     alignItems: 'flex-start',
     justifyContent: 'center',
     gap: 4,

@@ -9,8 +9,8 @@ interface ErrorBannerProps {
   onRetry?: () => void;
 }
 
-const ERROR_BG = 'rgba(239,68,68,0.10)';
-const ERROR_BORDER = 'rgba(239,68,68,0.30)';
+const ERROR_BG = Colors.errorAlpha10;
+const ERROR_BORDER = Colors.errorAlpha30;
 
 export const ErrorBanner: React.FC<ErrorBannerProps> = ({ message, onRetry }) => {
   return (
