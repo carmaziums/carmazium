@@ -22,7 +22,7 @@ import { FontFamily, FontSize } from '../../constants/typography';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { Logo } from '../../components/Logo';
 
-type Step = 1 | 2 | 3;
+type Step = 0 | 1 | 2 | 3;
 
 const UK_POSTCODE_REGEX = /^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i;
 
@@ -39,9 +39,9 @@ const BUDGET_OPTIONS: { label: string; value: number }[] = [
 
 // ─── Step Dots ───────────────────────────────────────────────────────────────
 
-const StepDots: React.FC<{ step: Step }> = ({ step }) => (
+const StepDots: React.FC<{ step: Step; steps: Step[] }> = ({ step, steps }) => (
   <View style={dotStyles.row}>
-    {([1, 2, 3] as Step[]).map((n) => (
+    {steps.map((n) => (
       <View
         key={n}
         style={[
@@ -124,9 +124,26 @@ const chipStyles = StyleSheet.create({
 export const PostSignupOnboardingScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
+  const updateUser = useAuthStore((s) => s.updateUser);
   const completeOnboarding = useAuthStore((s) => s.completeOnboarding);
 
-  const [step, setStep] = useState<Step>(1);
+  // Google sign-up leaves firstName/lastName null whenever Google's OAuth
+  // profile can't be resolved into a name — web has a mandatory name step
+  // for exactly this case (src/app/auth/onboarding/page.tsx), mobile had
+  // none, so nameless accounts sailed straight into the app. Frozen at
+  // mount so saving the name mid-flow doesn't yank the step list out from
+  // under the user.
+  const [needsName] = useState(() => !user?.firstName?.trim() || !user?.lastName?.trim());
+  const steps: Step[] = needsName ? [0, 1, 2, 3] : [1, 2, 3];
+  const stepPosition = (s: Step) => steps.indexOf(s) + 1;
+
+  const [step, setStep] = useState<Step>(needsName ? 0 : 1);
+
+  // Step 0 state
+  const [onbFirstName, setOnbFirstName] = useState('');
+  const [onbLastName, setOnbLastName] = useState('');
+  const [nameError, setNameError] = useState('');
+  const [nameSaving, setNameSaving] = useState(false);
 
   // Step 1 state
   const [resendDisabled, setResendDisabled] = useState(false);
@@ -147,6 +164,31 @@ export const PostSignupOnboardingScreen: React.FC = () => {
   const [selectedBudget, setSelectedBudget] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveToast, setSaveToast] = useState('');
+
+  // ── Step 0 handlers ──────────────────────────────────────────────────────
+
+  const handleNameContinue = useCallback(async () => {
+    const trimmedFirst = onbFirstName.trim();
+    const trimmedLast = onbLastName.trim();
+    if (!trimmedFirst || !trimmedLast) {
+      setNameError('Please enter your first and last name.');
+      return;
+    }
+    setNameError('');
+    setNameSaving(true);
+    try {
+      await apiClient('/users/me', {
+        method: 'PATCH',
+        body: JSON.stringify({ firstName: trimmedFirst, lastName: trimmedLast }),
+      });
+      updateUser({ firstName: trimmedFirst, lastName: trimmedLast });
+      setStep(1);
+    } catch (err: any) {
+      setNameError(err?.message || 'Could not save your name. Please try again.');
+    } finally {
+      setNameSaving(false);
+    }
+  }, [onbFirstName, onbLastName, updateUser]);
 
   // ── Step 1 handlers ──────────────────────────────────────────────────────
 
@@ -309,12 +351,69 @@ export const PostSignupOnboardingScreen: React.FC = () => {
           <Logo size="sm" style={styles.logo} />
 
           {/* Progress dots */}
-          <StepDots step={step} />
+          <StepDots step={step} steps={steps} />
+
+          {/* ── Step 0: Name (only when Google/OAuth sign-up left it blank) ── */}
+          {step === 0 && (
+            <View>
+              <Text style={styles.stepIndicator}>STEP {stepPosition(0)} OF {steps.length}</Text>
+              <Text style={styles.titleText}>
+                What's your <Text style={styles.titleAccent}>name?</Text>
+              </Text>
+              <Text style={styles.subtitleText}>
+                We need this so buyers and sellers know who they're dealing with.
+              </Text>
+
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>FIRST NAME</Text>
+                <View style={styles.inputWrapper}>
+                  <Ionicons name="person-outline" size={20} color={Colors.textMuted} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    value={onbFirstName}
+                    onChangeText={(v) => { setOnbFirstName(v); if (nameError) setNameError(''); }}
+                    placeholder="First name"
+                    placeholderTextColor={Colors.inputPlaceholder}
+                    autoCapitalize="words"
+                    returnKeyType="next"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>LAST NAME</Text>
+                <View style={styles.inputWrapper}>
+                  <Ionicons name="person-outline" size={20} color={Colors.textMuted} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    value={onbLastName}
+                    onChangeText={(v) => { setOnbLastName(v); if (nameError) setNameError(''); }}
+                    placeholder="Last name"
+                    placeholderTextColor={Colors.inputPlaceholder}
+                    autoCapitalize="words"
+                    returnKeyType="done"
+                  />
+                </View>
+                {nameError !== '' && <Text style={styles.errorText}>{nameError}</Text>}
+              </View>
+
+              <View style={styles.ctaWrapper}>
+                <PrimaryCTA
+                  label="CONTINUE"
+                  onPress={handleNameContinue}
+                  isLoading={nameSaving}
+                  hasChamfer={true}
+                  icon={<Ionicons name="arrow-forward" size={16} color={Colors.white} />}
+                  iconPosition="right"
+                />
+              </View>
+            </View>
+          )}
 
           {/* ── Step 1: Email Verification ─────────────────────────────── */}
           {step === 1 && (
             <View>
-              <Text style={styles.stepIndicator}>STEP 1 OF 3</Text>
+              <Text style={styles.stepIndicator}>STEP {stepPosition(1)} OF {steps.length}</Text>
               <Text style={styles.titleText}>
                 Verify your <Text style={styles.titleAccent}>email.</Text>
               </Text>
@@ -379,7 +478,7 @@ export const PostSignupOnboardingScreen: React.FC = () => {
           {/* ── Step 2: Location ───────────────────────────────────────── */}
           {step === 2 && (
             <View>
-              <Text style={styles.stepIndicator}>STEP 2 OF 3</Text>
+              <Text style={styles.stepIndicator}>STEP {stepPosition(2)} OF {steps.length}</Text>
               <Text style={styles.titleText}>
                 Where are <Text style={styles.titleAccent}>you based?</Text>
               </Text>
@@ -450,7 +549,7 @@ export const PostSignupOnboardingScreen: React.FC = () => {
           {/* ── Step 3: Preferences ────────────────────────────────────── */}
           {step === 3 && (
             <View>
-              <Text style={styles.stepIndicator}>STEP 3 OF 3</Text>
+              <Text style={styles.stepIndicator}>STEP {stepPosition(3)} OF {steps.length}</Text>
               <Text style={styles.titleText}>
                 What are you <Text style={styles.titleAccent}>looking for?</Text>
               </Text>
