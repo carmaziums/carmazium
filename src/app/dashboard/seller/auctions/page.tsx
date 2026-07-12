@@ -518,7 +518,148 @@ function SellerAuctionsPage() {
 
                     {/* Auctions table */}
                     <div className="glass-card overflow-hidden">
-                        <div className="overflow-x-auto">
+                        {/* ── Mobile cards (< sm) ── */}
+                        <div className="sm:hidden divide-y divide-[var(--border-default)]">
+                            {loading ? (
+                                <div className="px-6 py-12 text-center">
+                                    <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+                                </div>
+                            ) : error ? (
+                                <div className="px-6 py-8 text-center">
+                                    <div className="flex items-center justify-center gap-2 text-red-400">
+                                        <AlertCircle size={16} />
+                                        <span className="text-sm">{error}</span>
+                                    </div>
+                                </div>
+                            ) : auctions.length === 0 ? (
+                                <div className="px-6 py-12 text-center text-[var(--text-muted)]">
+                                    <Gavel className="h-10 w-10 text-gray-700 mx-auto mb-2" />
+                                    <p className="font-bold">No auctions yet.</p>
+                                    <button
+                                        onClick={openForm}
+                                        className="mt-3 inline-flex items-center gap-1.5 text-primary hover:underline text-sm font-bold"
+                                    >
+                                        <PlusCircle size={14} /> Create your first auction
+                                    </button>
+                                </div>
+                            ) : (
+                                auctions.map(auction => (
+                                    <div key={auction.id} className="p-4">
+                                        <div className="flex gap-3">
+                                            {auction.listing.images?.[0] && (
+                                                <img
+                                                    src={auction.listing.images[0]}
+                                                    alt=""
+                                                    className="w-20 h-16 rounded-xl object-cover shrink-0"
+                                                />
+                                            )}
+                                            <div className="min-w-0 flex-1">
+                                                <p className="font-bold text-base leading-snug truncate">{auction.listing.title}</p>
+                                                <p className="text-xs text-[var(--text-muted)] mt-0.5 truncate">
+                                                    {auction.listing.year} &middot; {auction.listing.make} {auction.listing.model}
+                                                </p>
+                                                <span className={`inline-flex items-center mt-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[auction.status] ?? STATUS_STYLES.ENDED}`}>
+                                                    {auction.status === "ACTIVE" && (
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1.5" />
+                                                    )}
+                                                    {auction.status}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between gap-2 mt-3 text-xs">
+                                            <div className="flex items-center gap-1.5 text-[var(--text-muted)] min-w-0">
+                                                <Calendar size={11} className="shrink-0" />
+                                                <span className="truncate">{formatDate(auction.startTime)}</span>
+                                            </div>
+                                            {auction.status === "ACTIVE" ? (
+                                                <div className="flex items-center gap-1.5 text-primary font-bold shrink-0">
+                                                    <Clock size={11} />
+                                                    <span key={tick}>{formatCountdown(new Date(auction.endTime))}</span>
+                                                </div>
+                                            ) : auction.status === "SCHEDULED" ? (
+                                                <div className="text-blue-400 shrink-0">
+                                                    Starts in {formatCountdown(new Date(auction.startTime))}
+                                                </div>
+                                            ) : null}
+                                        </div>
+
+                                        <div className="flex items-center justify-between mt-2">
+                                            <span className="font-mono font-bold text-lg">£{getCurrentBid(auction).toLocaleString()}</span>
+                                            <span className="text-sm text-[var(--text-muted)]">{getBidCount(auction)} bid{getBidCount(auction) === 1 ? '' : 's'}</span>
+                                        </div>
+
+                                        <div className="flex flex-wrap gap-2 mt-3">
+                                            {auction.status === "ACTIVE" && (
+                                                <>
+                                                    <Link
+                                                        href={`/auctions/live/${auction.id}`}
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold hover:bg-emerald-500/20 transition-colors"
+                                                    >
+                                                        <Eye size={13} /> View Live
+                                                    </Link>
+                                                    <button
+                                                        disabled={closing === auction.id}
+                                                        onClick={() => handleClose(auction.id)}
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-bold hover:bg-amber-500/20 transition-colors disabled:opacity-50"
+                                                    >
+                                                        {closing === auction.id
+                                                            ? <Loader2 size={13} className="animate-spin" />
+                                                            : <Gavel size={13} />
+                                                        }
+                                                        Close Bids
+                                                    </button>
+                                                </>
+                                            )}
+                                            {(auction.status === "ACTIVE" || auction.status === "SCHEDULED") && !(auction.listing as any).linkedListing && (
+                                                <button
+                                                    onClick={() => { setAlsoRetailAuction(auction); setAlsoRetailPrice(""); setAlsoRetailTier('BASIC'); setAlsoRetailError(null) }}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-bold hover:bg-blue-500/20 transition-colors"
+                                                >
+                                                    <Tag size={13} /> Also Retail
+                                                </button>
+                                            )}
+                                            {(auction.status === "ACTIVE" || auction.status === "SCHEDULED") && (auction.listing as any).linkedListing?.status === 'DRAFT' && (
+                                                <button
+                                                    onClick={async () => {
+                                                        const linked = (auction.listing as any).linkedListing
+                                                        const { url } = await createListingCheckout(linked.id, linked.badgeTier || 'BASIC')
+                                                        window.location.href = url
+                                                    }}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-bold hover:bg-amber-500/20 transition-colors"
+                                                >
+                                                    <Tag size={13} /> Resume Retail Payment
+                                                </button>
+                                            )}
+                                            {auction.status === "SCHEDULED" && (
+                                                <button
+                                                    disabled={cancelling === auction.id}
+                                                    onClick={() => handleCancel(auction.id)}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-bold hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                                                >
+                                                    {cancelling === auction.id
+                                                        ? <Loader2 size={13} className="animate-spin" />
+                                                        : <XCircle size={13} />
+                                                    }
+                                                    Cancel
+                                                </button>
+                                            )}
+                                            {(auction.status === "ENDED" || auction.status === "CANCELLED") && (
+                                                <button
+                                                    onClick={() => setResultsAuction(auction)}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--bg-card)] text-[var(--text-muted)] border border-[var(--border-default)] text-xs font-bold hover:bg-white/10 transition-colors"
+                                                >
+                                                    <BarChart2 size={13} /> Results
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        {/* ── Full table (>= sm) ── */}
+                        <div className="hidden sm:block overflow-x-auto">
                             <table className="w-full text-left">
                                 <thead className="bg-[var(--bg-input)] text-[var(--text-muted)] text-xs uppercase font-bold">
                                     <tr>

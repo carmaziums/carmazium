@@ -145,7 +145,7 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
             </form>
 
             {/* Powered by AI badge */}
-            <div className="text-xs text-[var(--text-muted)] mb-6 flex items-start justify-center gap-1.5 text-left md:text-center max-w-[260px] md:max-w-none mx-auto md:items-center">
+            <div className="text-xs text-white/80 mb-6 flex items-start justify-center gap-1.5 text-left md:text-center max-w-[260px] md:max-w-none mx-auto md:items-center">
               <Sparkles size={14} className="text-primary shrink-0 mt-0.5 md:mt-0" />
               <span>Powered by Mazium AI — describe your dream car in your own words</span>
             </div>
@@ -517,8 +517,8 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
                   </div>
                 ))}
               </div>
-              <Link href="/auth/signup?role=DEALER">
-                <Button size="lg" shape="pill" className="px-10 py-6 text-lg shadow-neon hover:scale-105 transition-transform">
+              <Link href="/auth/signup?role=DEALER" className="block sm:inline-block">
+                <Button size="lg" shape="pill" className="w-full sm:w-auto justify-center px-6 py-5 text-base sm:px-10 sm:py-6 sm:text-lg shadow-neon hover:scale-105 transition-transform">
                   Apply as a Dealer <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>

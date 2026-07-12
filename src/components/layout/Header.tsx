@@ -63,7 +63,7 @@ export function Header() {
                     transform: 'translate3d(0,0,0)' 
                 }} 
             />
-            <div className="container mx-auto px-6 flex items-center justify-between h-20 relative z-10">
+            <div className="container mx-auto px-6 flex items-center justify-between gap-6 h-20 relative z-10">
 
                 {/* Logo Area */}
                 <div className="flex-1 flex items-center justify-start gap-6">
@@ -74,7 +74,7 @@ export function Header() {
                             width={160}
                             height={40}
                             sizes="160px"
-                            className="h-8 md:h-10 w-auto object-contain dark:hidden"
+                            className="h-9 md:h-10 w-auto object-contain dark:hidden"
                             priority
                         />
                         <Image
@@ -83,7 +83,7 @@ export function Header() {
                             width={160}
                             height={40}
                             sizes="160px"
-                            className="h-8 md:h-10 w-auto object-contain hidden dark:block"
+                            className="h-9 md:h-10 w-auto object-contain hidden dark:block"
                             priority
                         />
                     </Link>
@@ -117,8 +117,10 @@ export function Header() {
                 </nav>
 
                 {/* Action Buttons */}
-                <div className="flex-1 flex items-center justify-end gap-3">
-                    <ThemeToggle />
+                <div className="flex-1 flex items-center justify-end gap-2 lg:gap-3">
+                    <div className="hidden lg:block">
+                        <ThemeToggle />
+                    </div>
 
                     {!loading && user && (
                         <NotificationBell />
@@ -128,7 +130,7 @@ export function Header() {
                         <div className="relative">
                             <button
                                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                                className="flex items-center gap-3 px-3 py-2 rounded-xl hover:opacity-90 border transition-all group"
+                                className="flex items-center gap-2 lg:gap-3 px-2.5 py-2 lg:px-3 rounded-xl hover:opacity-90 border transition-all group"
                                 style={{
                                     background: 'var(--bg-card)',
                                     borderColor: 'var(--border-default)',
@@ -172,6 +174,13 @@ export function Header() {
                                     >
                                         <UserIcon size={16} /> Profile Settings
                                     </Link>
+                                    <div
+                                        className="lg:hidden flex items-center justify-between px-4 py-2 text-sm"
+                                        style={{ color: 'var(--text-secondary)' }}
+                                    >
+                                        <span>Theme</span>
+                                        <ThemeToggle />
+                                    </div>
                                     <button
                                         onClick={handleSignOut}
                                         className="w-full flex items-center gap-3 px-4 py-2 hover:bg-red-500/10 text-red-400 hover:text-red-300 text-sm mt-2 border-t pt-4 pb-2"
@@ -227,9 +236,11 @@ export function Header() {
                     }}
                 >
                     <nav className="flex flex-col p-6 gap-4 text-center">
-                        <div className="flex items-center justify-center pb-2">
-                            <ThemeToggle />
-                        </div>
+                        {!user && (
+                            <div className="flex items-center justify-center pb-2">
+                                <ThemeToggle />
+                            </div>
+                        )}
                         {navLinks.map((link) => (
                             <Link
                                 key={link.name}
