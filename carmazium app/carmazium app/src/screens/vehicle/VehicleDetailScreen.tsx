@@ -34,6 +34,7 @@ import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { useWatchlistStore } from '../../store/watchlistStore';
 import { apiClient } from '../../lib/apiClient';
+import { getListingById } from '../../lib/listingsApi';
 import { createChatRoom } from '../../lib/chatApi';
 import { useChat } from '../../context/ChatContext';
 import { DamageMapViewer } from '../../components/DamageMapViewer';
@@ -42,14 +43,28 @@ import { haptics } from '../../lib/haptics';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { createDeliveryRequest, calcDeliveryFeeExVat } from '../../lib/deliveryApi';
 import { StripeCheckoutModal } from '../../components/StripeCheckoutModal';
+import { BottomSheet } from '../../components/BottomSheet';
 import { EnquireModal } from '../../components/listing/EnquireModal';
 import { useLocation } from '../../context/LocationContext';
 import { haversineDistanceMiles } from '../../lib/distance';
 
+import { IconButton } from '../../components/IconButton';
 type Props = NativeStackScreenProps<MainStackParamList, 'VehicleDetail'>;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const GALLERY_HEIGHT = 320;
+
+function extractYouTubeId(url: string): string | null {
+  const match = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/);
+  return match ? match[1] : null;
+}
+
+function getVideoPlatformLabel(url: string): string {
+  if (/instagram\.com/i.test(url)) return 'Instagram';
+  if (/facebook\.com|fb\.watch/i.test(url)) return 'Facebook';
+  if (/(?:^|\/\/)x\.com|twitter\.com/i.test(url)) return 'X';
+  return 'Video';
+}
 
 export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { listing } = route.params;
@@ -211,6 +226,22 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     setTimeout(() => {
       setOfferSubmitted(false);
     }, 300);
+  };
+
+  // "Also in Live Auction" banner used to just alert() with no real navigation
+  // (mobile-ui-ux-audit.md §C13). LiveAuctionDetailed needs a full CarListing,
+  // and listing.linkedListing only carries {id, type, auction}, so fetch the
+  // real linked listing before navigating rather than faking the missing fields.
+  const [openingLinkedAuction, setOpeningLinkedAuction] = useState(false);
+  const handleOpenLinkedAuction = async () => {
+    if (!listing.linkedListing?.id || openingLinkedAuction) return;
+    setOpeningLinkedAuction(true);
+    try {
+      const linked = await getListingById(listing.linkedListing.id);
+      if (linked) navigation.navigate('LiveAuctionDetailed', { listing: linked });
+    } finally {
+      setOpeningLinkedAuction(false);
+    }
   };
 
   const handleOpenChat = async () => {
@@ -521,33 +552,11 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {/* Floating Header Actions */}
           <View style={[styles.floatingHeader, { top: insets.top + 8 }]}>
-            <TouchableOpacity
-              style={styles.iconCircleBtn}
-              activeOpacity={0.7}
-              onPress={() => navigation.goBack()}
-            >
-              <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
-            </TouchableOpacity>
+            <IconButton style={styles.iconCircleBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
             <View style={styles.headerRightActions}>
-              <TouchableOpacity
-                style={styles.iconCircleBtn}
-                activeOpacity={0.7}
-                onPress={() => Share.share({ message: `Check out this ${listing.year} ${listing.make} ${listing.model} on Carmazium!` })}
-              >
-                <Ionicons name="share-social-outline" size={18} color="#FFFFFF" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.iconCircleBtn}
-                activeOpacity={0.7}
-                onPress={handleToggleSaved}
-              >
-                <Ionicons
-                  name={saved ? 'heart' : 'heart-outline'}
-                  size={18}
-                  color={saved ? Colors.accent : '#FFFFFF'}
-                />
-              </TouchableOpacity>
+              <IconButton style={styles.iconCircleBtn} icon={<Ionicons name="share-social-outline" size={18} color={Colors.white} />} onPress={() => Share.share({ message: `Check out this ${listing.year} ${listing.make} ${listing.model} on Carmazium!` })} accessibilityLabel="Share this listing" />
+              <IconButton style={styles.iconCircleBtn} icon={<Ionicons name={saved ? 'heart' : 'heart-outline'} size={18} color={saved ? Colors.accent : Colors.white} />} onPress={handleToggleSaved} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
             </View>
           </View>
 
@@ -562,10 +571,19 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <Text style={styles.colorLabel}>
               {listing.colour.toUpperCase()}
             </Text>
-            <View style={styles.verifiedBadge}>
-              <Text style={styles.verifiedText}>✓ VERIFIED</Text>
-            </View>
+            {listing.isSellerVerified === true && (
+              <View style={styles.verifiedBadge}>
+                <Text style={styles.verifiedText}>✓ VERIFIED</Text>
+              </View>
+            )}
           </View>
+
+          {/* Seller-set banner ribbon (e.g. "Price Drop", "Just Arrived") */}
+          {listing.bannerLabel && (
+            <View style={styles.detailBannerChip}>
+              <Text style={styles.detailBannerText}>{listing.bannerLabel}</Text>
+            </View>
+          )}
 
           {/* Car Name & Model */}
           <Text style={styles.carTitle}>
@@ -574,8 +592,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {/* Location row */}
           <View style={styles.locationRow}>
-            <Ionicons name="location-outline" size={14} color="#8A8A93" />
-            <Text style={styles.locationText}>{listing.location} W1</Text>
+            <Ionicons name="location-outline" size={14} color={Colors.textFaint} />
+            <Text style={styles.locationText}>{listing.location}</Text>
           </View>
 
           {/* Price & Monthly Pricing */}
@@ -638,15 +656,10 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <TouchableOpacity
               style={styles.linkedAuctionBanner}
               activeOpacity={0.75}
-              onPress={() =>
-                Alert.alert(
-                  'Live Auction Available',
-                  'This vehicle is also running in a live auction. View auctions in the Live tab.',
-                  [{ text: 'OK' }],
-                )
-              }
+              onPress={handleOpenLinkedAuction}
+              disabled={openingLinkedAuction}
             >
-              <Ionicons name="hammer-outline" size={14} color="#F59E0B" />
+              <Ionicons name="hammer-outline" size={14} color={Colors.warning} />
               <Text style={styles.linkedAuctionText}>
                 {'Also in Live Auction — ends '}
                 {new Date(listing.linkedListing.auction.endTime).toLocaleString('en-GB', {
@@ -660,11 +673,60 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {/* Section: About This Car */}
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionHeaderTitle}>ABOUT THIS CAR</Text>
-            <Text style={styles.aboutText}>
-              {listing.description ||
-                `${listing.colour} over black Merino leather. Carbon bucket seats, M Driver's package and full ${listing.make} main-dealer service history. One owner from new, HPI clear and recently serviced — ready to drive away or finance.`}
-            </Text>
+            {listing.description ? (
+              <Text style={styles.aboutText}>{listing.description}</Text>
+            ) : (
+              <Text style={[styles.aboutText, { color: Colors.textMuted, fontStyle: 'italic' }]}>
+                No description provided
+              </Text>
+            )}
           </View>
+
+          {/* Section: Videos — YouTube gets a tappable thumbnail, other
+              platforms (Instagram/Facebook/X) get a labelled link chip */}
+          {listing.videoUrls != null && listing.videoUrls.length > 0 && (
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionHeaderTitle}>VIDEOS</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+                {listing.videoUrls.map((url, i) => {
+                  const ytId = extractYouTubeId(url);
+                  if (ytId) {
+                    return (
+                      <TouchableOpacity
+                        key={`video-${i}`}
+                        style={styles.videoThumbWrap}
+                        activeOpacity={0.85}
+                        onPress={() => Linking.openURL(url)}
+                        accessibilityLabel="Play video"
+                        accessibilityRole="button"
+                      >
+                        <Image
+                          source={{ uri: `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` }}
+                          style={styles.videoThumb}
+                          contentFit="cover"
+                        />
+                        <View style={styles.videoPlayOverlay}>
+                          <Ionicons name="play-circle" size={36} color={Colors.white} />
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  }
+                  const platform = getVideoPlatformLabel(url);
+                  return (
+                    <TouchableOpacity
+                      key={`video-${i}`}
+                      style={styles.videoLinkChip}
+                      activeOpacity={0.85}
+                      onPress={() => Linking.openURL(url)}
+                    >
+                      <Ionicons name="videocam-outline" size={16} color={Colors.accent} />
+                      <Text style={styles.videoLinkText}>{platform}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
 
           {/* Section: Specifications list card */}
           <View style={styles.sectionContainer}>
@@ -688,15 +750,19 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </View>
               <View style={styles.specRow}>
                 <Text style={styles.specRowLabel}>Owners</Text>
-                <Text style={styles.specRowValue}>1 (Full FSH)</Text>
-              </View>
-              <View style={styles.specRow}>
-                <Text style={styles.specRowLabel}>HPI status</Text>
-                <Text style={styles.specRowValue}>Clear</Text>
+                <Text style={styles.specRowValue}>
+                  {listing.owners != null
+                    ? `${listing.owners}${listing.serviceHistory ? ` (${listing.serviceHistory})` : ''}`
+                    : 'Not disclosed'}
+                </Text>
               </View>
               <View style={styles.specRow}>
                 <Text style={styles.specRowLabel}>MOT until</Text>
-                <Text style={styles.specRowValue}>Mar 2026</Text>
+                <Text style={styles.specRowValue}>
+                  {listing.motExpiry
+                    ? new Date(listing.motExpiry).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                    : 'Not disclosed'}
+                </Text>
               </View>
               <View style={[styles.specRow, { borderBottomWidth: 0 }]}>
                 <Text style={styles.specRowLabel}>Colour</Text>
@@ -705,33 +771,73 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </View>
           </View>
 
-          {/* Section: Vehicle History */}
+          {/* Section: Vehicle History — real DVLA/seller-declared fields only.
+              Paid HPI report below (:314-360, 1399-1406) is the actual verified check;
+              this grid must never imply that outcome for free. */}
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionHeaderTitle}>VEHICLE HISTORY</Text>
             <View style={styles.historyGrid}>
               <View style={styles.historyBox}>
-                <Text style={styles.historyLabel}>HPI</Text>
-                <Text style={[styles.historyValue, styles.greenText]}>Clear</Text>
+                <Text style={styles.historyLabel}>WRITE-OFF</Text>
+                <Text style={[
+                  styles.historyValue,
+                  listing.writeOffCategory == null ? undefined
+                    : listing.writeOffCategory === 'NONE' ? styles.greenText : styles.warnText,
+                ]}>
+                  {listing.writeOffCategory == null
+                    ? 'Not disclosed'
+                    : listing.writeOffCategory === 'NONE' ? 'None' : listing.writeOffCategory}
+                </Text>
               </View>
               <View style={styles.historyBox}>
                 <Text style={styles.historyLabel}>FINANCE</Text>
-                <Text style={[styles.historyValue, styles.greenText]}>None owed</Text>
+                <Text style={[
+                  styles.historyValue,
+                  listing.hasOutstandingFinance == null ? undefined
+                    : listing.hasOutstandingFinance ? styles.warnText : styles.greenText,
+                ]}>
+                  {listing.hasOutstandingFinance == null
+                    ? 'Not disclosed'
+                    : listing.hasOutstandingFinance ? 'Outstanding' : 'None declared'}
+                </Text>
               </View>
               <View style={styles.historyBox}>
                 <Text style={styles.historyLabel}>STOLEN</Text>
-                <Text style={[styles.historyValue, styles.greenText]}>No marker</Text>
+                <Text style={[
+                  styles.historyValue,
+                  listing.stolenRecovered == null ? undefined
+                    : listing.stolenRecovered ? styles.warnText : styles.greenText,
+                ]}>
+                  {listing.stolenRecovered == null
+                    ? 'Not disclosed'
+                    : listing.stolenRecovered ? 'Marker found' : 'No marker'}
+                </Text>
               </View>
               <View style={styles.historyBox}>
                 <Text style={styles.historyLabel}>OWNERS</Text>
-                <Text style={styles.historyValue}>1</Text>
+                <Text style={styles.historyValue}>
+                  {listing.owners != null ? String(listing.owners) : 'Not disclosed'}
+                </Text>
               </View>
               <View style={styles.historyBox}>
                 <Text style={styles.historyLabel}>MOT</Text>
-                <Text style={[styles.historyValue, styles.greenText]}>5 clean</Text>
+                <Text style={[
+                  styles.historyValue,
+                  listing.motStatus == null ? undefined
+                    : listing.motStatus.toLowerCase() === 'valid' ? styles.greenText : styles.warnText,
+                ]}>
+                  {listing.motStatus ?? 'Not disclosed'}
+                </Text>
               </View>
               <View style={styles.historyBox}>
-                <Text style={styles.historyLabel}>VIC</Text>
-                <Text style={styles.historyValue}>Present</Text>
+                <Text style={styles.historyLabel}>TAX</Text>
+                <Text style={[
+                  styles.historyValue,
+                  listing.taxStatus == null ? undefined
+                    : listing.taxStatus.toLowerCase() === 'taxed' ? styles.greenText : styles.warnText,
+                ]}>
+                  {listing.taxStatus ?? 'Not disclosed'}
+                </Text>
               </View>
             </View>
           </View>
@@ -770,7 +876,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   onPress={() => setHpiModalVisible(true)}
                 >
                   <Text style={styles.hpiViewFullText}>View Full Report</Text>
-                  <Ionicons name="chevron-forward" size={14} color="#3B82F6" />
+                  <Ionicons name="chevron-forward" size={14} color={Colors.infoBlue} accessibilityElementsHidden importantForAccessibility="no" />
                 </TouchableOpacity>
               </View>
             ) : (
@@ -782,7 +888,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               >
                 <View style={styles.hpiReportLeft}>
                   <View style={styles.hpiIconBg}>
-                    <Ionicons name="document-text-outline" size={16} color="#3B82F6" />
+                    <Ionicons name="document-text-outline" size={16} color={Colors.infoBlue} />
                   </View>
                   <View>
                     <Text style={styles.hpiReportTitle}>Check HPI (£9.99)</Text>
@@ -791,7 +897,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </View>
                 {hpiLoading
                   ? <ActivityIndicator size="small" color={Colors.textMuted} />
-                  : <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+                  : <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
                 }
               </TouchableOpacity>
             )}
@@ -825,10 +931,12 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <View style={styles.sellerInfo}>
                 <View style={styles.sellerNameRow}>
                   <Text style={styles.sellerName}>{listing.dealer}</Text>
-                  <Ionicons name="checkmark-circle" size={15} color="#3B82F6" style={styles.blueCheck} />
+                  <Ionicons name="checkmark-circle" size={15} color={Colors.infoBlue} style={styles.blueCheck} />
                 </View>
                 <Text style={styles.sellerSubtext}>
-                  {listing.location} W1 · {listing.rating} ★ (216 sales)
+                  {listing.location}
+                  {listing.rating != null ? ` · ${listing.rating} ★` : ''}
+                  {listing.totalSales != null ? ` (${listing.totalSales} sales)` : ''}
                 </Text>
               </View>
               <TouchableOpacity
@@ -843,9 +951,9 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   }
                 }}
               >
-                <Ionicons name="chatbubble-ellipses-outline" size={17} color="#FFFFFF" />
+                <Ionicons name="chatbubble-ellipses-outline" size={17} color={Colors.white} />
               </TouchableOpacity>
-              <Ionicons name="chevron-forward" size={18} color="#8A8A93" />
+              <Ionicons name="chevron-forward" size={18} color={Colors.textFaint} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
           </View>
 
@@ -858,13 +966,13 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             >
               <View style={styles.dealerToolsHeader}>
                 <View style={styles.dealerToolsIconWrap}>
-                  <Ionicons name="briefcase-outline" size={18} color="#F59E0B" />
+                  <Ionicons name="briefcase-outline" size={18} color={Colors.warning} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.dealerToolsTitle}>Dealer Tools</Text>
                   <Text style={styles.dealerToolsSub}>Trade valuation & enquiry options</Text>
                 </View>
-                <Ionicons name={dealerPanelOpen ? 'chevron-up' : 'chevron-down'} size={18} color="#F59E0B" />
+                <Ionicons name={dealerPanelOpen ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.warning} />
               </View>
               {dealerPanelOpen && (
                 <View style={styles.dealerToolsBody}>
@@ -875,7 +983,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                       <Text style={styles.dealerStatValue}>£{capEstimate.toLocaleString('en-GB')}</Text>
                       <Text style={styles.dealerStatSub}>~18% below asking</Text>
                     </View>
-                    <View style={[styles.dealerStatBox, { borderLeftWidth: 1, borderLeftColor: 'rgba(245,158,11,0.15)' }]}>
+                    <View style={[styles.dealerStatBox, { borderLeftWidth: 1, borderLeftColor: Colors.warningAlpha15 }]}>
                       <Text style={styles.dealerStatLabel}>RETAIL MARGIN</Text>
                       <Text style={styles.dealerStatValue}>£{(listing.price - capEstimate).toLocaleString('en-GB')}</Text>
                       <Text style={styles.dealerStatSub}>estimated upside</Text>
@@ -895,7 +1003,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                       ]
                     )}
                   >
-                    <Ionicons name="pricetag-outline" size={15} color="#000" style={{ marginRight: 6 }} />
+                    <Ionicons name="pricetag-outline" size={15} color={Colors.black} style={{ marginRight: 6 }} />
                     <Text style={styles.dealerTradeBtnText}>SEND TRADE OFFER</Text>
                   </TouchableOpacity>
                 </View>
@@ -910,7 +1018,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             onPress={() => setFinanceExpanded(!financeExpanded)}
           >
             <View style={styles.financeIconWrapper}>
-              <Ionicons name="calculator-outline" size={18} color="#DC1F26" />
+              <Ionicons name="calculator-outline" size={18} color={Colors.accent} />
             </View>
             <View style={styles.financeTextContent}>
               <Text style={styles.financeTitle}>
@@ -985,7 +1093,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {/* Verification Banner */}
           <View style={styles.protectionCard}>
-            <Ionicons name="shield-checkmark" size={16} color="#00D28E" />
+            <Ionicons name="shield-checkmark" size={16} color={Colors.midGreen_00d28e} />
             <Text style={styles.protectionText}>
               HPI clear · VIN verified
             </Text>
@@ -997,7 +1105,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               {/* Header row */}
               <View style={styles.deliveryHeader}>
                 <View style={styles.deliveryIconWrap}>
-                  <Ionicons name="car-outline" size={16} color="#10B981" />
+                  <Ionicons name="car-outline" size={16} color={Colors.accentGreen} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.deliveryTitle}>Delivery available</Text>
@@ -1027,14 +1135,14 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </Text>
               ) : (
                 <View style={styles.postcodeEntryRow}>
-                  <Ionicons name="location-outline" size={13} color="#60A5FA" />
+                  <Ionicons name="location-outline" size={13} color={Colors.infoBlueLight} />
                   <TextInput
                     style={styles.postcodeInput}
                     value={postcodeDraft}
                     onChangeText={setPostcodeDraft}
                     autoCapitalize="characters"
                     placeholder="Enter your postcode"
-                    placeholderTextColor="#606070"
+                    placeholderTextColor={Colors.iconMuted}
                     editable={!postcodeSaving}
                     returnKeyType="done"
                     onSubmitEditing={async () => {
@@ -1065,7 +1173,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
                     {postcodeSaving ? (
-                      <ActivityIndicator size="small" color="#60A5FA" />
+                      <ActivityIndicator size="small" color={Colors.infoBlueLight} />
                     ) : (
                       <Text style={styles.postcodeSaveText}>Save</Text>
                     )}
@@ -1076,7 +1184,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               {/* Outside-radius warning */}
               {outsideRadius && (
                 <View style={styles.deliveryOutsideRadius}>
-                  <Ionicons name="alert-circle-outline" size={13} color="#F87171" />
+                  <Ionicons name="alert-circle-outline" size={13} color={Colors.paleRed_f87171} />
                   <Text style={styles.deliveryOutsideRadiusText}>
                     Outside your delivery radius ({deliveryDistanceMiles} mi &gt; {listing.deliveryMaxMiles} mi)
                   </Text>
@@ -1090,13 +1198,13 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   onPress={() => setDeliveryModalVisible(true)}
                   activeOpacity={0.85}
                 >
-                  <Ionicons name="car-outline" size={15} color="#FFFFFF" />
+                  <Ionicons name="car-outline" size={15} color={Colors.white} />
                   <Text style={styles.deliveryRequestBtnText}>Request Delivery</Text>
                 </TouchableOpacity>
               )}
               {deliverySubmitted && (
                 <View style={styles.deliverySuccessRow}>
-                  <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                  <Ionicons name="checkmark-circle" size={14} color={Colors.accentGreen} />
                   <Text style={styles.deliverySuccessText}>Delivery request sent — seller will confirm soon.</Text>
                 </View>
               )}
@@ -1111,104 +1219,87 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       </ScrollView>
 
       {/* ── Delivery Request Modal ── */}
-      <Modal
+      <BottomSheet
         visible={deliveryModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => { setDeliveryModalVisible(false); setDeliveryError(null); }}
+        onClose={() => { setDeliveryModalVisible(false); setDeliveryError(null); }}
+        title="Request Delivery"
+        avoidKeyboard
       >
-        <View style={styles.modalBackdrop}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFillObject}
-            activeOpacity={1}
-            onPress={() => { setDeliveryModalVisible(false); setDeliveryError(null); }}
-          />
-          <View style={[styles.modalSheet, { paddingBottom: insets.bottom + 20 }]}>
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalSheetTitle}>Request Delivery</Text>
-            <Text style={styles.modalSheetSubtitle}>
-              Enter your delivery address. The seller will confirm and arrange logistics.
-            </Text>
+        <Text style={styles.modalSheetSubtitle}>
+          Enter your delivery address. The seller will confirm and arrange logistics.
+        </Text>
 
-            {/* Street */}
-            <Text style={styles.deliveryInputLabel}>STREET ADDRESS</Text>
-            <TextInput
-              style={styles.deliveryInput}
-              value={deliveryStreet}
-              onChangeText={v => { setDeliveryStreet(v); setDeliveryError(null); }}
-              placeholder="e.g. 42 Park Lane"
-              placeholderTextColor="#404050"
-              autoCapitalize="words"
-            />
+        {/* Street */}
+        <Text style={styles.deliveryInputLabel}>STREET ADDRESS</Text>
+        <TextInput
+          style={styles.deliveryInput}
+          value={deliveryStreet}
+          onChangeText={v => { setDeliveryStreet(v); setDeliveryError(null); }}
+          placeholder="e.g. 42 Park Lane"
+          placeholderTextColor={Colors.borderMuted}
+          autoCapitalize="words"
+        />
 
-            {/* City */}
-            <Text style={styles.deliveryInputLabel}>CITY / TOWN</Text>
-            <TextInput
-              style={styles.deliveryInput}
-              value={deliveryCity}
-              onChangeText={v => { setDeliveryCity(v); setDeliveryError(null); }}
-              placeholder="e.g. London"
-              placeholderTextColor="#404050"
-              autoCapitalize="words"
-            />
+        {/* City */}
+        <Text style={styles.deliveryInputLabel}>CITY / TOWN</Text>
+        <TextInput
+          style={styles.deliveryInput}
+          value={deliveryCity}
+          onChangeText={v => { setDeliveryCity(v); setDeliveryError(null); }}
+          placeholder="e.g. London"
+          placeholderTextColor={Colors.borderMuted}
+          autoCapitalize="words"
+        />
 
-            {/* Postcode */}
-            <Text style={styles.deliveryInputLabel}>POSTCODE</Text>
-            <TextInput
-              style={styles.deliveryInput}
-              value={deliveryPostcode}
-              onChangeText={v => { setDeliveryPostcode(v.toUpperCase()); setDeliveryError(null); }}
-              placeholder="e.g. SW1A 1AA"
-              placeholderTextColor="#404050"
-              autoCapitalize="characters"
-            />
+        {/* Postcode */}
+        <Text style={styles.deliveryInputLabel}>POSTCODE</Text>
+        <TextInput
+          style={styles.deliveryInput}
+          value={deliveryPostcode}
+          onChangeText={v => { setDeliveryPostcode(v.toUpperCase()); setDeliveryError(null); }}
+          placeholder="e.g. SW1A 1AA"
+          placeholderTextColor={Colors.borderMuted}
+          autoCapitalize="characters"
+        />
 
-            {/* Notes (optional) */}
-            <Text style={styles.deliveryInputLabel}>NOTES (OPTIONAL)</Text>
-            <TextInput
-              style={[styles.deliveryInput, { height: 72, textAlignVertical: 'top', paddingTop: 12 }]}
-              value={deliveryNotes}
-              onChangeText={setDeliveryNotes}
-              placeholder="e.g. Leave at reception, call on arrival…"
-              placeholderTextColor="#404050"
-              multiline
-            />
+        {/* Notes (optional) */}
+        <Text style={styles.deliveryInputLabel}>NOTES (OPTIONAL)</Text>
+        <TextInput
+          style={[styles.deliveryInput, { height: 72, textAlignVertical: 'top', paddingTop: 12 }]}
+          value={deliveryNotes}
+          onChangeText={setDeliveryNotes}
+          placeholder="e.g. Leave at reception, call on arrival…"
+          placeholderTextColor={Colors.borderMuted}
+          multiline
+        />
 
-            {deliveryError && (
-              <ErrorBanner message={deliveryError} />
-            )}
+        {deliveryError && (
+          <ErrorBanner message={deliveryError} />
+        )}
 
-            <TouchableOpacity
-              style={[styles.deliveryModalSubmitBtn, deliverySubmitting && { opacity: 0.6 }]}
-              onPress={handleDeliveryRequest}
-              disabled={deliverySubmitting}
-              activeOpacity={0.85}
-            >
-              {deliverySubmitting ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <Text style={styles.deliveryModalSubmitText}>Confirm Delivery Request</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        <TouchableOpacity
+          style={[styles.deliveryModalSubmitBtn, deliverySubmitting && { opacity: 0.6 }]}
+          onPress={handleDeliveryRequest}
+          disabled={deliverySubmitting}
+          activeOpacity={0.85}
+        >
+          {deliverySubmitting ? (
+            <ActivityIndicator color={Colors.white} size="small" />
+          ) : (
+            <Text style={styles.deliveryModalSubmitText}>Confirm Delivery Request</Text>
+          )}
+        </TouchableOpacity>
+      </BottomSheet>
 
       {/* Sticky Bottom Actions Bar */}
       <View style={[styles.stickyCTAOuter, { paddingBottom: insets.bottom + 12 }]}>
-        <TouchableOpacity
-          style={styles.chatButton}
-          activeOpacity={0.7}
-          onPress={() => {
+        <IconButton style={styles.chatButton} icon={<Ionicons name="chatbubble-ellipses-outline" size={20} color={Colors.white} />} onPress={() => {
             if (listing.seller?.id) {
               setEnquireVisible(true);
             } else {
               handleOpenChat();
             }
-          }}
-        >
-          <Ionicons name="chatbubble-ellipses-outline" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
+          }} accessibilityLabel="Message seller" />
 
         <TouchableOpacity
           style={styles.makeOfferButton}
@@ -1216,102 +1307,74 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           onPress={() => setOfferModalVisible(true)}
         >
           <Text style={styles.makeOfferText}>MAKE AN OFFER</Text>
-          <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={styles.offerArrow} />
+          <Ionicons name="arrow-forward" size={18} color={Colors.white} style={styles.offerArrow} />
         </TouchableOpacity>
       </View>
 
       {/* DYNAMIC MAKE AN OFFER MODAL */}
-      <Modal
+      <BottomSheet
         visible={offerModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={closeOfferFlow}
+        onClose={closeOfferFlow}
+        title="Make an Offer"
       >
-        <View style={styles.modalBackdrop}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFillObject}
-            activeOpacity={1}
-            onPress={closeOfferFlow}
-          />
-          <View style={[styles.modalSheet, { paddingBottom: insets.bottom + 20 }]}>
-            {/* Header */}
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Make an Offer</Text>
-              <TouchableOpacity onPress={closeOfferFlow} style={styles.modalCloseBtn}>
-                <Ionicons name="close" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
+        {!offerSubmitted ? (
+          <View style={styles.modalBody}>
+            <Text style={styles.modalSubheading}>
+              Submit a custom purchase offer to {listing.dealer}.
+            </Text>
+
+            {/* Offer details */}
+            <View style={styles.offerBoxContainer}>
+              <Text style={styles.offerLabel}>ASKING PRICE</Text>
+              <Text style={styles.askingPriceValue}>{formatPrice(listing.price)}</Text>
             </View>
 
-            {!offerSubmitted ? (
-              <View style={styles.modalBody}>
-                <Text style={styles.modalSubheading}>
-                  Submit a custom purchase offer to {listing.dealer}.
+            {/* Adjuster input */}
+            <View style={styles.offerAdjusterContainer}>
+              <Text style={styles.offerLabel}>YOUR OFFER</Text>
+              <View style={styles.adjusterRow}>
+                <IconButton style={styles.adjustBtn} icon={<Ionicons name="remove" size={20} color={Colors.white} />} onPress={() => adjustOffer(-500)} accessibilityLabel="Decrease offer by £500" />
+
+                <Text style={styles.offerAmountText}>
+                  {formatPrice(offerAmount)}
                 </Text>
 
-                {/* Offer details */}
-                <View style={styles.offerBoxContainer}>
-                  <Text style={styles.offerLabel}>ASKING PRICE</Text>
-                  <Text style={styles.askingPriceValue}>{formatPrice(listing.price)}</Text>
-                </View>
-
-                {/* Adjuster input */}
-                <View style={styles.offerAdjusterContainer}>
-                  <Text style={styles.offerLabel}>YOUR OFFER</Text>
-                  <View style={styles.adjusterRow}>
-                    <TouchableOpacity
-                      style={styles.adjustBtn}
-                      onPress={() => adjustOffer(-500)}
-                    >
-                      <Ionicons name="remove" size={20} color="#FFFFFF" />
-                    </TouchableOpacity>
-
-                    <Text style={styles.offerAmountText}>
-                      {formatPrice(offerAmount)}
-                    </Text>
-
-                    <TouchableOpacity
-                      style={styles.adjustBtn}
-                      onPress={() => adjustOffer(500)}
-                    >
-                      <Ionicons name="add" size={20} color="#FFFFFF" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.submitOfferBtn, isSubmittingOffer && { opacity: 0.7 }]}
-                  activeOpacity={0.8}
-                  onPress={handleSubmitOffer}
-                  disabled={isSubmittingOffer}
-                >
-                  {isSubmittingOffer ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.submitOfferText}>Submit Offer</Text>
-                  )}
-                </TouchableOpacity>
+                <IconButton style={styles.adjustBtn} icon={<Ionicons name="add" size={20} color={Colors.white} />} onPress={() => adjustOffer(500)} accessibilityLabel="Increase offer by £500" />
               </View>
-            ) : (
-              <View style={styles.successContainer}>
-                <View style={styles.successIconWrapper}>
-                  <Ionicons name="checkmark" size={32} color="#FFFFFF" />
-                </View>
-                <Text style={styles.successTitle}>Offer Sent!</Text>
-                <Text style={styles.successSubtitle}>
-                  We have forwarded your offer of <Text style={styles.boldText}>{formatPrice(offerAmount)}</Text> to {listing.dealer}. They will review and respond to you shortly.
-                </Text>
-                <TouchableOpacity
-                  style={styles.successCloseBtn}
-                  activeOpacity={0.8}
-                  onPress={closeOfferFlow}
-                >
-                  <Text style={styles.successCloseText}>Close</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+            </View>
+
+            <TouchableOpacity
+              style={[styles.submitOfferBtn, isSubmittingOffer && { opacity: 0.7 }]}
+              activeOpacity={0.8}
+              onPress={handleSubmitOffer}
+              disabled={isSubmittingOffer}
+            >
+              {isSubmittingOffer ? (
+                <ActivityIndicator size="small" color={Colors.white} />
+              ) : (
+                <Text style={styles.submitOfferText}>Submit Offer</Text>
+              )}
+            </TouchableOpacity>
           </View>
-        </View>
-      </Modal>
+        ) : (
+          <View style={styles.successContainer}>
+            <View style={styles.successIconWrapper}>
+              <Ionicons name="checkmark" size={32} color={Colors.white} />
+            </View>
+            <Text style={styles.successTitle}>Offer Sent!</Text>
+            <Text style={styles.successSubtitle}>
+              We have forwarded your offer of <Text style={styles.boldText}>{formatPrice(offerAmount)}</Text> to {listing.dealer}. They will review and respond to you shortly.
+            </Text>
+            <TouchableOpacity
+              style={styles.successCloseBtn}
+              activeOpacity={0.8}
+              onPress={closeOfferFlow}
+            >
+              <Text style={styles.successCloseText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </BottomSheet>
 
       {/* ENQUIRE MODAL — structured form the buyer fills before chatting */}
       <EnquireModal
@@ -1343,85 +1406,72 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       />
 
       {/* HPI REPORT MODAL */}
-      <Modal
+      <BottomSheet
         visible={hpiModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setHpiModalVisible(false)}
+        onClose={() => setHpiModalVisible(false)}
+        maxHeightPercent={85}
       >
-        <View style={styles.modalBackdrop}>
-          <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => setHpiModalVisible(false)} />
-          <View style={[styles.modalSheet, { paddingBottom: insets.bottom + 20, maxHeight: '85%' }]}>
-            <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalTitle}>HPI Check Report</Text>
-                {hpiData && (
-                  <Text style={{ fontFamily: FontFamily.medium, fontSize: 11, color: Colors.textMuted, marginTop: 2 }}>
-                    {hpiData.vrm} · {hpiData.make} {hpiData.model}
-                  </Text>
-                )}
-              </View>
-              <TouchableOpacity onPress={() => setHpiModalVisible(false)} style={styles.modalCloseBtn}>
-                <Ionicons name="close" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
-
+        {/* Custom header (with vrm/make/model subline) kept as content —
+            BottomSheet's own title row only supports a single line of text. */}
+        <View style={styles.modalHeader}>
+          <View>
+            <Text style={styles.modalTitle}>HPI Check Report</Text>
             {hpiData && (
-              <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 8 }}>
-                {/* Overall status */}
-                <View style={[styles.hpiOverallBanner, { backgroundColor: hpiData.isClear ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)', borderColor: hpiData.isClear ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)' }]}>
-                  <Ionicons name={hpiData.isClear ? 'shield-checkmark' : 'warning'} size={20} color={hpiData.isClear ? '#22C55E' : '#EF4444'} />
-                  <Text style={[styles.hpiOverallText, { color: hpiData.isClear ? '#22C55E' : '#EF4444' }]}>
-                    {hpiData.isClear ? 'HPI CLEAR — No issues found' : 'ISSUES DETECTED — Review checks below'}
-                  </Text>
-                </View>
-
-                {/* Check rows */}
-                {hpiData.checks && Object.entries(hpiData.checks).map(([key, check]: [string, any]) => {
-                  const labels: Record<string, string> = {
-                    stolen: 'Stolen Check',
-                    writeOff: 'Insurance Write-Off',
-                    scrapped: 'Scrapped',
-                    financeOutstanding: 'Outstanding Finance',
-                    plateChange: 'Plate Changes',
-                    mileageAnomaly: 'Mileage Anomaly',
-                  };
-                  return (
-                    <View key={key} style={styles.hpiCheckRow}>
-                      <Ionicons
-                        name={check.passed ? 'checkmark-circle' : 'close-circle'}
-                        size={18}
-                        color={check.passed ? '#22C55E' : '#EF4444'}
-                      />
-                      <View style={styles.hpiCheckText}>
-                        <Text style={styles.hpiCheckLabel}>{labels[key] || key}</Text>
-                        <Text style={styles.hpiCheckDetail}>{check.detail}</Text>
-                      </View>
-                    </View>
-                  );
-                })}
-
-                <View style={{ height: 20 }} />
-              </ScrollView>
+              <Text style={{ fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 }}>
+                {hpiData.vrm} · {hpiData.make} {hpiData.model}
+              </Text>
             )}
           </View>
+          <IconButton style={styles.modalCloseBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={() => setHpiModalVisible(false)} accessibilityLabel="Close" />
         </View>
-      </Modal>
+
+        {hpiData && (
+          <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 8 }}>
+            {/* Overall status */}
+            <View style={[styles.hpiOverallBanner, { backgroundColor: hpiData.isClear ? Colors.successAlpha08 : Colors.errorAlpha08, borderColor: hpiData.isClear ? Colors.successAlpha25 : Colors.errorAlpha25 }]}>
+              <Ionicons name={hpiData.isClear ? 'shield-checkmark' : 'warning'} size={20} color={hpiData.isClear ? Colors.success : Colors.error} />
+              <Text style={[styles.hpiOverallText, { color: hpiData.isClear ? Colors.success : Colors.error }]}>
+                {hpiData.isClear ? 'HPI CLEAR — No issues found' : 'ISSUES DETECTED — Review checks below'}
+              </Text>
+            </View>
+
+            {/* Check rows */}
+            {hpiData.checks && Object.entries(hpiData.checks).map(([key, check]: [string, any]) => {
+              const labels: Record<string, string> = {
+                stolen: 'Stolen Check',
+                writeOff: 'Insurance Write-Off',
+                scrapped: 'Scrapped',
+                financeOutstanding: 'Outstanding Finance',
+                plateChange: 'Plate Changes',
+                mileageAnomaly: 'Mileage Anomaly',
+              };
+              return (
+                <View key={key} style={styles.hpiCheckRow}>
+                  <Ionicons
+                    name={check.passed ? 'checkmark-circle' : 'close-circle'}
+                    size={18}
+                    color={check.passed ? Colors.success : Colors.error}
+                  />
+                  <View style={styles.hpiCheckText}>
+                    <Text style={styles.hpiCheckLabel}>{labels[key] || key}</Text>
+                    <Text style={styles.hpiCheckDetail}>{check.detail}</Text>
+                  </View>
+                </View>
+              );
+            })}
+
+            <View style={{ height: 20 }} />
+          </ScrollView>
+        )}
+      </BottomSheet>
 
       {/* DYNAMIC LIVE CHAT MODAL */}
-      <Modal
+      <BottomSheet
         visible={chatVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setChatVisible(false)}
+        onClose={() => setChatVisible(false)}
+        maxHeightPercent={80}
       >
-        <View style={styles.modalBackdrop}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFillObject}
-            activeOpacity={1}
-            onPress={() => setChatVisible(false)}
-          />
-          <View style={[styles.chatSheet, { height: '80%', paddingBottom: insets.bottom + 10 }]}>
+        <>
             {/* Header */}
             <View style={styles.chatHeader}>
               <View style={styles.chatHeaderLeft}>
@@ -1436,12 +1486,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </View>
               </View>
               <View style={styles.chatHeaderRight}>
-                <TouchableOpacity onPress={resetChat} style={styles.chatResetBtn}>
-                  <Ionicons name="refresh" size={16} color="#8A8A93" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setChatVisible(false)} style={styles.modalCloseBtn}>
-                  <Ionicons name="close" size={20} color="#FFFFFF" />
-                </TouchableOpacity>
+                <IconButton style={styles.chatResetBtn} icon={<Ionicons name="refresh" size={16} color={Colors.textFaint} />} onPress={resetChat} accessibilityLabel="Reset conversation" />
+                <IconButton style={styles.modalCloseBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={() => setChatVisible(false)} accessibilityLabel="Close" />
               </View>
             </View>
 
@@ -1497,9 +1543,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </TouchableOpacity>
               </ScrollView>
             </View>
-          </View>
-        </View>
-      </Modal>
+        </>
+      </BottomSheet>
 
       {/* FULLSCREEN PHOTO VIEWER (pinch-to-zoom) */}
       <Modal
@@ -1510,13 +1555,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       >
         <View style={styles.fullscreenBackdrop}>
           {/* Close button */}
-          <TouchableOpacity
-            style={[styles.fullscreenCloseBtn, { top: insets.top + 12 }]}
-            onPress={() => setFullscreenVisible(false)}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="close" size={22} color="#FFFFFF" />
-          </TouchableOpacity>
+          <IconButton style={[styles.fullscreenCloseBtn, { top: insets.top + 12 }]} icon={<Ionicons name="close" size={22} color={Colors.white} />} onPress={() => setFullscreenVisible(false)} accessibilityLabel="Close" />
 
           {/* Photo counter */}
           <View style={[styles.fullscreenCounter, { top: insets.top + 14 }]}>
@@ -1547,7 +1586,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0C',
+    backgroundColor: Colors.bgPrimary,
   },
   scrollView: {
     flex: 1,
@@ -1592,7 +1631,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.35)',
   },
   pageDotActive: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
     width: 18,
     borderRadius: 3,
   },
@@ -1600,7 +1639,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 16,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: Colors.blackAlpha55,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -1608,8 +1647,8 @@ const styles = StyleSheet.create({
   },
   photoCounterText: {
     fontFamily: FontFamily.mono,
-    fontSize: 12,
-    color: '#FFFFFF',
+    fontSize: FontSize.size12,
+    color: Colors.white,
   },
   floatingHeader: {
     position: 'absolute',
@@ -1623,9 +1662,9 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    backgroundColor: Colors.blackAlpha45,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: Colors.whiteAlpha10,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1649,12 +1688,12 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 8,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: Colors.whiteAlpha15,
     overflow: 'hidden',
     position: 'relative',
   },
   thumbnailActive: {
-    borderColor: '#FFFFFF',
+    borderColor: Colors.white,
   },
   thumbnailImage: {
     width: '100%',
@@ -1668,8 +1707,8 @@ const styles = StyleSheet.create({
   },
   thumbnailOverlayText: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#FFFFFF',
+    fontSize: FontSize.size12,
+    color: Colors.white,
   },
   // Details Block
   detailsBlock: {
@@ -1684,13 +1723,13 @@ const styles = StyleSheet.create({
   },
   colorLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#8A8A93',
+    fontSize: FontSize.size10,
+    color: Colors.textFaint,
     letterSpacing: 1,
   },
   verifiedBadge: {
-    backgroundColor: '#1E293B',
-    borderColor: 'rgba(59, 130, 246, 0.3)',
+    backgroundColor: Colors.darkBlue_1e293b,
+    borderColor: Colors.infoBlueAlpha30,
     borderWidth: 1,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -1698,14 +1737,30 @@ const styles = StyleSheet.create({
   },
   verifiedText: {
     fontFamily: FontFamily.bold,
-    fontSize: 8,
-    color: '#3B82F6',
+    fontSize: FontSize.size8,
+    color: Colors.infoBlue,
     letterSpacing: 0.5,
+  },
+  detailBannerChip: {
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.infoBlueAlpha14,
+    borderWidth: 1,
+    borderColor: 'rgba(59,130,246,0.35)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginTop: 8,
+  },
+  detailBannerText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.xs,
+    color: Colors.infoBlueLight,
+    letterSpacing: 0.3,
   },
   carTitle: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 26,
-    color: '#FFFFFF',
+    fontSize: FontSize.size26,
+    color: Colors.white,
     marginBottom: 6,
   },
   locationRow: {
@@ -1716,8 +1771,8 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontFamily: FontFamily.medium,
-    fontSize: 13,
-    color: '#8A8A93',
+    fontSize: FontSize.sm,
+    color: Colors.textFaint,
   },
   priceContainerRow: {
     flexDirection: 'row',
@@ -1727,21 +1782,21 @@ const styles = StyleSheet.create({
   },
   priceText: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 28,
-    color: '#FFFFFF',
+    fontSize: FontSize['3xl'],
+    color: Colors.white,
   },
   monthlyText: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#8A8A93',
+    fontSize: FontSize.size14,
+    color: Colors.textFaint,
   },
   linkedAuctionBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: 'rgba(245,158,11,0.08)',
+    backgroundColor: Colors.warningAlpha08,
     borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.25)',
+    borderColor: Colors.warningAlpha25,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -1750,14 +1805,14 @@ const styles = StyleSheet.create({
   linkedAuctionText: {
     flex: 1,
     fontFamily: FontFamily.medium,
-    fontSize: 12,
-    color: '#FCD34D',
+    fontSize: FontSize.size12,
+    color: Colors.lightYellow,
     lineHeight: 17,
   },
   linkedAuctionCta: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#F59E0B',
+    fontSize: FontSize.size12,
+    color: Colors.warning,
     flexShrink: 0,
   },
   importedBadge: {
@@ -1765,7 +1820,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: 5,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
     borderColor: Colors.glassBorder,
     borderRadius: 20,
@@ -1775,7 +1830,7 @@ const styles = StyleSheet.create({
   },
   importedBadgeText: {
     fontFamily: FontFamily.medium,
-    fontSize: 11,
+    fontSize: FontSize.xs,
     color: Colors.textMuted,
   },
   // Specs boxes row
@@ -1788,23 +1843,23 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 56,
     borderRadius: 12,
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: '#2A2A32',
+    borderColor: Colors.borderSubtle,
     justifyContent: 'center',
     paddingHorizontal: 12,
   },
   specBadgeLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 8,
-    color: '#8A8A93',
+    fontSize: FontSize.size8,
+    color: Colors.textFaint,
     marginBottom: 2,
     letterSpacing: 0.5,
   },
   specBadgeValue: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
-    color: '#FFFFFF',
+    fontSize: FontSize.sm,
+    color: Colors.white,
   },
   // Sections container
   sectionContainer: {
@@ -1812,22 +1867,56 @@ const styles = StyleSheet.create({
   },
   sectionHeaderTitle: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 12,
-    color: '#FFFFFF',
+    fontSize: FontSize.size12,
+    color: Colors.white,
     letterSpacing: 1.2,
     marginBottom: 16,
   },
   aboutText: {
     fontFamily: FontFamily.regular,
-    fontSize: 14,
-    color: '#A0A0AB',
+    fontSize: FontSize.size14,
+    color: Colors.textSecondary,
     lineHeight: 22,
+  },
+  // Videos
+  videoThumbWrap: {
+    width: 160,
+    height: 90,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: Colors.bgSecondary,
+  },
+  videoThumb: {
+    width: '100%',
+    height: '100%',
+  },
+  videoPlayOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.25)',
+  },
+  videoLinkChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 90,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: Colors.bgSecondary,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+  },
+  videoLinkText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size12,
+    color: Colors.accent,
   },
   // Specifications Table Card
   specCardContainer: {
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: '#2A2A32',
+    borderColor: Colors.borderSubtle,
     borderRadius: 16,
     paddingHorizontal: 18,
   },
@@ -1837,17 +1926,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: 52,
     borderBottomWidth: 1,
-    borderBottomColor: '#2A2A32',
+    borderBottomColor: Colors.borderSubtle,
   },
   specRowLabel: {
     fontFamily: FontFamily.medium,
-    fontSize: 13,
-    color: '#8A8A93',
+    fontSize: FontSize.sm,
+    color: Colors.textFaint,
   },
   specRowValue: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
-    color: '#FFFFFF',
+    fontSize: FontSize.sm,
+    color: Colors.white,
   },
   // Vehicle History Grid
   historyGrid: {
@@ -1859,26 +1948,29 @@ const styles = StyleSheet.create({
     width: (SCREEN_WIDTH - 60) / 3, // 3 columns
     height: 58,
     borderRadius: 12,
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: '#2A2A32',
+    borderColor: Colors.borderSubtle,
     justifyContent: 'center',
     paddingHorizontal: 12,
   },
   historyLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 8,
-    color: '#8A8A93',
+    fontSize: FontSize.size8,
+    color: Colors.textFaint,
     marginBottom: 2,
     letterSpacing: 0.5,
   },
   historyValue: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#FFFFFF',
+    fontSize: FontSize.size12,
+    color: Colors.white,
   },
   greenText: {
-    color: '#22C55E',
+    color: Colors.success,
+  },
+  warnText: {
+    color: Colors.warning,
   },
   // Seller Card
   sellerCard: {
@@ -1886,26 +1978,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: 68,
     borderRadius: 16,
-    backgroundColor: '#11131E',
+    backgroundColor: Colors.deepBlue_11131e,
     borderWidth: 1,
-    borderColor: '#222636',
+    borderColor: Colors.darkBlue_222636,
     paddingHorizontal: 16,
   },
   sellerAvatar: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#1C2033',
+    backgroundColor: Colors.darkBlue_1c2033,
     borderWidth: 1,
-    borderColor: '#2B3252',
+    borderColor: Colors.darkBlue_2b3252,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   sellerAvatarText: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#FFFFFF',
+    fontSize: FontSize.size12,
+    color: Colors.white,
     letterSpacing: 0.5,
   },
   sellerInfo: {
@@ -1918,24 +2010,24 @@ const styles = StyleSheet.create({
   },
   sellerName: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
   },
   blueCheck: {
     marginLeft: 4,
   },
   sellerSubtext: {
     fontFamily: FontFamily.medium,
-    fontSize: 11,
-    color: '#8A8A93',
+    fontSize: FontSize.xs,
+    color: Colors.textFaint,
   },
   sellerChatBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#1C2033',
+    backgroundColor: Colors.darkBlue_1c2033,
     borderWidth: 1,
-    borderColor: '#2B3252',
+    borderColor: Colors.darkBlue_2b3252,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
@@ -1944,9 +2036,9 @@ const styles = StyleSheet.create({
   // ── Dealer Tools Panel ──
   dealerToolsCard: {
     borderRadius: 16,
-    backgroundColor: '#16140A',
+    backgroundColor: Colors.deepYellow,
     borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.25)',
+    borderColor: Colors.warningAlpha25,
     padding: 16,
     marginBottom: 14,
     overflow: 'hidden',
@@ -1960,19 +2052,19 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 8,
-    backgroundColor: 'rgba(245,158,11,0.12)',
+    backgroundColor: Colors.warningAlpha12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   dealerToolsTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#F59E0B',
+    fontSize: FontSize.size14,
+    color: Colors.warning,
   },
   dealerToolsSub: {
     fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: '#A0803A',
+    fontSize: FontSize.xs,
+    color: Colors.midOrange_a0803a,
     marginTop: 1,
   },
   dealerToolsBody: {
@@ -1981,10 +2073,10 @@ const styles = StyleSheet.create({
   },
   dealerStatRow: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(245,158,11,0.06)',
+    backgroundColor: Colors.warningAlpha06,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.12)',
+    borderColor: Colors.warningAlpha12,
     overflow: 'hidden',
   },
   dealerStatBox: {
@@ -1994,19 +2086,19 @@ const styles = StyleSheet.create({
   },
   dealerStatLabel: {
     fontFamily: FontFamily.medium,
-    fontSize: 9,
-    color: '#A0803A',
+    fontSize: FontSize.size9,
+    color: Colors.midOrange_a0803a,
     letterSpacing: 0.8,
   },
   dealerStatValue: {
     fontFamily: FontFamily.bold,
-    fontSize: 16,
-    color: '#F59E0B',
+    fontSize: FontSize.md,
+    color: Colors.warning,
   },
   dealerStatSub: {
     fontFamily: FontFamily.regular,
-    fontSize: 10,
-    color: '#706050',
+    fontSize: FontSize.size10,
+    color: Colors.midOrange_706050,
   },
   dealerTradeBtn: {
     flexDirection: 'row',
@@ -2014,12 +2106,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#F59E0B',
+    backgroundColor: Colors.warning,
   },
   dealerTradeBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
-    color: '#000000',
+    fontSize: FontSize.sm,
+    color: Colors.black,
     letterSpacing: 1,
   },
 
@@ -2027,9 +2119,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 16,
-    backgroundColor: '#161118',
+    backgroundColor: Colors.deepPurple,
     borderWidth: 1,
-    borderColor: '#3B1E2B',
+    borderColor: Colors.darkPink_3b1e2b,
     padding: 16,
     marginBottom: 14,
   },
@@ -2037,9 +2129,9 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 8,
-    backgroundColor: '#33111C',
+    backgroundColor: Colors.deepPink_33111c,
     borderWidth: 1,
-    borderColor: '#521626',
+    borderColor: Colors.darkPink_521626,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -2049,39 +2141,39 @@ const styles = StyleSheet.create({
   },
   financeTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
     marginBottom: 2,
   },
   financeSubtext: {
     fontFamily: FontFamily.medium,
-    fontSize: 11,
-    color: '#8A8A93',
+    fontSize: FontSize.xs,
+    color: Colors.textFaint,
   },
   // Green Protection Banner
   protectionCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#0B1713',
+    backgroundColor: Colors.deepGreen,
     borderWidth: 1,
-    borderColor: '#1A3B2F',
+    borderColor: Colors.darkGreen,
     borderRadius: 14,
     padding: 14,
   },
   protectionText: {
     flex: 1,
     fontFamily: FontFamily.medium,
-    fontSize: 11,
-    color: '#00D28E',
+    fontSize: FontSize.xs,
+    color: Colors.midGreen_00d28e,
     lineHeight: 16,
   },
 
   // Delivery section
   deliveryCard: {
-    backgroundColor: 'rgba(16,185,129,0.06)',
+    backgroundColor: Colors.accentGreenAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(16,185,129,0.20)',
+    borderColor: Colors.accentGreenAlpha20,
     borderRadius: 14,
     padding: 14,
     marginTop: 12,
@@ -2096,20 +2188,20 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 10,
-    backgroundColor: 'rgba(16,185,129,0.12)',
+    backgroundColor: Colors.accentGreenAlpha12,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   deliveryTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#10B981',
+    fontSize: FontSize.size14,
+    color: Colors.accentGreen,
   },
   deliverySubtitle: {
     fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: '#6EE7B7',
+    fontSize: FontSize.xs,
+    color: Colors.lightGreen_6ee7b7,
     marginTop: 2,
   },
   deliveryFeeWrap: {
@@ -2118,19 +2210,19 @@ const styles = StyleSheet.create({
   },
   deliveryFeeLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 8,
-    color: '#6EE7B7',
+    fontSize: FontSize.size8,
+    color: Colors.lightGreen_6ee7b7,
     letterSpacing: 0.8,
   },
   deliveryFeeValue: {
     fontFamily: FontFamily.mono,
-    fontSize: 16,
-    color: '#10B981',
+    fontSize: FontSize.md,
+    color: Colors.accentGreen,
   },
   deliveryFeeHint: {
     fontFamily: FontFamily.regular,
-    fontSize: 9,
-    color: '#6EE7B7',
+    fontSize: FontSize.size9,
+    color: Colors.lightGreen_6ee7b7,
   },
   deliveryRequestBtn: {
     flexDirection: 'row',
@@ -2139,12 +2231,12 @@ const styles = StyleSheet.create({
     gap: 7,
     height: 42,
     borderRadius: 10,
-    backgroundColor: '#10B981',
+    backgroundColor: Colors.accentGreen,
   },
   deliveryRequestBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
-    color: '#FFFFFF',
+    fontSize: FontSize.sm,
+    color: Colors.white,
   },
   deliverySuccessRow: {
     flexDirection: 'row',
@@ -2153,30 +2245,30 @@ const styles = StyleSheet.create({
   },
   deliverySuccessText: {
     fontFamily: FontFamily.medium,
-    fontSize: 12,
-    color: '#10B981',
+    fontSize: FontSize.size12,
+    color: Colors.accentGreen,
     flex: 1,
     lineHeight: 17,
   },
   deliveryPendingHint: {
     fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: '#6EE7B7',
+    fontSize: FontSize.xs,
+    color: Colors.lightGreen_6ee7b7,
     opacity: 0.7,
     lineHeight: 16,
   },
   deliveryDistanceLine: {
     fontFamily: FontFamily.medium,
-    fontSize: 11,
-    color: '#A0A0AB',
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
   },
   postcodeEntryRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     borderWidth: 1,
-    borderColor: 'rgba(59,130,246,0.28)',
-    backgroundColor: 'rgba(59,130,246,0.06)',
+    borderColor: Colors.infoBlueAlpha28,
+    backgroundColor: Colors.infoBlueAlpha06,
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -2184,21 +2276,21 @@ const styles = StyleSheet.create({
   postcodeInput: {
     flex: 1,
     fontFamily: FontFamily.mono,
-    fontSize: 13,
-    color: '#FFFFFF',
+    fontSize: FontSize.sm,
+    color: Colors.white,
     paddingVertical: 6,
   },
   postcodeSaveText: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#60A5FA',
+    fontSize: FontSize.size12,
+    color: Colors.infoBlueLight,
     letterSpacing: 0.3,
   },
   deliveryOutsideRadius: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(239,68,68,0.08)',
+    backgroundColor: Colors.errorAlpha08,
     borderWidth: 1,
     borderColor: 'rgba(239,68,68,0.28)',
     borderRadius: 10,
@@ -2208,64 +2300,50 @@ const styles = StyleSheet.create({
   deliveryOutsideRadiusText: {
     flex: 1,
     fontFamily: FontFamily.medium,
-    fontSize: 12,
-    color: '#F87171',
+    fontSize: FontSize.size12,
+    color: Colors.paleRed_f87171,
     lineHeight: 17,
   },
 
   // Delivery modal fields
-  modalSheetTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: 18,
-    color: '#FFFFFF',
-    marginBottom: 6,
-  },
   modalSheetSubtitle: {
     fontFamily: FontFamily.regular,
-    fontSize: 13,
-    color: '#606070',
+    fontSize: FontSize.sm,
+    color: Colors.iconMuted,
     lineHeight: 19,
-    marginBottom: 16,
-  },
-  modalHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignSelf: 'center',
     marginBottom: 16,
   },
   deliveryInputLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#606070',
+    fontSize: FontSize.size9,
+    color: Colors.iconMuted,
     letterSpacing: 0.8,
     marginBottom: 6,
     marginTop: 12,
   },
   deliveryInput: {
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#2A2A32',
+    borderColor: Colors.borderSubtle,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontFamily: FontFamily.regular,
-    fontSize: 15,
-    color: '#FFFFFF',
+    fontSize: FontSize.base,
+    color: Colors.white,
   },
   deliveryModalSubmitBtn: {
     height: 50,
     borderRadius: 12,
-    backgroundColor: '#10B981',
+    backgroundColor: Colors.accentGreen,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 20,
   },
   deliveryModalSubmitText: {
     fontFamily: FontFamily.bold,
-    fontSize: 15,
-    color: '#FFFFFF',
+    fontSize: FontSize.base,
+    color: Colors.white,
   },
 
   // Bottom Sticky Actions Bar
@@ -2278,9 +2356,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 24,
-    backgroundColor: '#0A0A0C',
+    backgroundColor: Colors.bgPrimary,
     borderTopWidth: 1,
-    borderTopColor: '#2A2A32',
+    borderTopColor: Colors.borderSubtle,
     gap: 14,
   },
   chatButton: {
@@ -2288,8 +2366,8 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#2A2E3D',
-    backgroundColor: '#1B1D26',
+    borderColor: Colors.darkBlue_2a2e3d,
+    backgroundColor: Colors.deepBlue_1b1d26,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -2297,15 +2375,15 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 52,
     borderRadius: 14,
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
   },
   makeOfferText: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
     letterSpacing: 1,
   },
   offerArrow: {
@@ -2313,19 +2391,6 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   // Modals Styling
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    justifyContent: 'flex-end',
-  },
-  modalSheet: {
-    backgroundColor: '#111115',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    borderWidth: 1,
-    borderColor: '#2A2A32',
-    padding: 24,
-  },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -2334,8 +2399,8 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 18,
-    color: '#FFFFFF',
+    fontSize: FontSize.lg,
+    color: Colors.white,
   },
   modalCloseBtn: {
     padding: 4,
@@ -2345,33 +2410,33 @@ const styles = StyleSheet.create({
   },
   modalSubheading: {
     fontFamily: FontFamily.medium,
-    fontSize: 13,
-    color: '#8A8A93',
+    fontSize: FontSize.sm,
+    color: Colors.textFaint,
   },
   offerBoxContainer: {
-    backgroundColor: '#0A0A0C',
+    backgroundColor: Colors.bgPrimary,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#2A2A32',
+    borderColor: Colors.borderSubtle,
     padding: 14,
   },
   offerLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#8A8A93',
+    fontSize: FontSize.size9,
+    color: Colors.textFaint,
     letterSpacing: 0.5,
     marginBottom: 6,
   },
   askingPriceValue: {
     fontFamily: FontFamily.bold,
-    fontSize: 20,
-    color: '#FFFFFF',
+    fontSize: FontSize.xl,
+    color: Colors.white,
   },
   offerAdjusterContainer: {
-    backgroundColor: '#0A0A0C',
+    backgroundColor: Colors.bgPrimary,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#2A2A32',
+    borderColor: Colors.borderSubtle,
     padding: 14,
   },
   adjusterRow: {
@@ -2384,29 +2449,29 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#1C2033',
+    backgroundColor: Colors.darkBlue_1c2033,
     borderWidth: 1,
-    borderColor: '#2B3252',
+    borderColor: Colors.darkBlue_2b3252,
     justifyContent: 'center',
     alignItems: 'center',
   },
   offerAmountText: {
     fontFamily: FontFamily.bold,
-    fontSize: 24,
-    color: '#FFFFFF',
+    fontSize: FontSize['2xl'],
+    color: Colors.white,
   },
   submitOfferBtn: {
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 10,
   },
   submitOfferText: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
   },
   successContainer: {
     alignItems: 'center',
@@ -2417,59 +2482,52 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#22C55E',
+    backgroundColor: Colors.success,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 10,
   },
   successTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 22,
-    color: '#FFFFFF',
+    fontSize: FontSize.size22,
+    color: Colors.white,
   },
   successSubtitle: {
     fontFamily: FontFamily.medium,
-    fontSize: 13,
-    color: '#8A8A93',
+    fontSize: FontSize.sm,
+    color: Colors.textFaint,
     textAlign: 'center',
     lineHeight: 20,
     paddingHorizontal: 12,
   },
   boldText: {
-    color: '#FFFFFF',
+    color: Colors.white,
     fontFamily: FontFamily.bold,
   },
   successCloseBtn: {
     height: 44,
     width: '100%',
     borderRadius: 12,
-    backgroundColor: '#1C2033',
+    backgroundColor: Colors.darkBlue_1c2033,
     borderWidth: 1,
-    borderColor: '#2B3252',
+    borderColor: Colors.darkBlue_2b3252,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 16,
   },
   successCloseText: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
-    color: '#FFFFFF',
+    fontSize: FontSize.sm,
+    color: Colors.white,
   },
   // Chat Sheet
-  chatSheet: {
-    backgroundColor: '#111115',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    borderWidth: 1,
-    borderColor: '#2A2A32',
-  },
   chatHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#2A2A32',
+    borderBottomColor: Colors.borderSubtle,
   },
   chatHeaderLeft: {
     flexDirection: 'row',
@@ -2480,26 +2538,26 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: '#1C2033',
+    backgroundColor: Colors.darkBlue_1c2033,
     borderWidth: 1,
-    borderColor: '#2B3252',
+    borderColor: Colors.darkBlue_2b3252,
     justifyContent: 'center',
     alignItems: 'center',
   },
   sellerAvatarTextSmall: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#FFFFFF',
+    fontSize: FontSize.xs,
+    color: Colors.white,
   },
   chatDealerName: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
   },
   chatOnlineStatus: {
     fontFamily: FontFamily.medium,
-    fontSize: 10,
-    color: '#22C55E',
+    fontSize: FontSize.size10,
+    color: Colors.success,
   },
   chatHeaderRight: {
     flexDirection: 'row',
@@ -2524,21 +2582,21 @@ const styles = StyleSheet.create({
     maxWidth: '80%',
   },
   userBubble: {
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     alignSelf: 'flex-end',
     borderBottomRightRadius: 2,
   },
   dealerBubble: {
-    backgroundColor: '#1A1A24',
+    backgroundColor: Colors.deepBlue_1a1a24,
     borderWidth: 1,
-    borderColor: '#2A2A32',
+    borderColor: Colors.borderSubtle,
     alignSelf: 'flex-start',
     borderBottomLeftRadius: 2,
   },
   messageText: {
     fontFamily: FontFamily.medium,
-    fontSize: 13,
-    color: '#FFFFFF',
+    fontSize: FontSize.sm,
+    color: Colors.white,
     lineHeight: 18,
   },
   typingBubble: {
@@ -2546,15 +2604,15 @@ const styles = StyleSheet.create({
   },
   typingText: {
     fontFamily: FontFamily.medium,
-    fontSize: 11,
-    color: '#8A8A93',
+    fontSize: FontSize.xs,
+    color: Colors.textFaint,
     fontStyle: 'italic',
   },
   quickRepliesContainer: {
     borderTopWidth: 1,
-    borderTopColor: '#2A2A32',
+    borderTopColor: Colors.borderSubtle,
     paddingVertical: 12,
-    backgroundColor: '#0A0A0C',
+    backgroundColor: Colors.bgPrimary,
   },
   quickRepliesContent: {
     paddingHorizontal: 16,
@@ -2564,100 +2622,100 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 16,
-    backgroundColor: '#1C2033',
+    backgroundColor: Colors.darkBlue_1c2033,
     borderWidth: 1,
-    borderColor: '#2B3252',
+    borderColor: Colors.darkBlue_2b3252,
   },
   quickReplyPillText: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#FFFFFF',
+    fontSize: FontSize.size12,
+    color: Colors.white,
   },
 
   // HPI Report button
   hpiReportBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#111115', borderRadius: 14, borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)', padding: 14,
+    backgroundColor: Colors.bgSecondary, borderRadius: 14, borderWidth: 1,
+    borderColor: Colors.whiteAlpha06, padding: 14,
   },
   hpiButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#111115', borderRadius: 14, borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)', padding: 14,
+    backgroundColor: Colors.bgSecondary, borderRadius: 14, borderWidth: 1,
+    borderColor: Colors.whiteAlpha06, padding: 14,
   },
   hpiReportLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   hpiIconBg: {
-    width: 34, height: 34, borderRadius: 10, backgroundColor: 'rgba(59,130,246,0.12)',
+    width: 34, height: 34, borderRadius: 10, backgroundColor: Colors.infoBlueAlpha12,
     alignItems: 'center', justifyContent: 'center',
   },
-  hpiReportTitle: { fontFamily: FontFamily.bold, fontSize: 13, color: '#FFFFFF' },
-  hpiReportSub: { fontFamily: FontFamily.regular, fontSize: 11, color: '#A0A0AB', marginTop: 2 },
+  hpiReportTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
+  hpiReportSub: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary, marginTop: 2 },
 
   // HPI inline card (shown after payment)
   hpiInlineCard: {
     backgroundColor: Colors.bgTertiary, borderRadius: 14, borderWidth: 1,
-    borderColor: 'rgba(59,130,246,0.2)', padding: 16, gap: 8,
+    borderColor: Colors.infoBlueAlpha20, padding: 16, gap: 8,
   },
   hpiInlineTitle: {
-    fontFamily: FontFamily.bold, fontSize: 14, color: '#FFFFFF', marginBottom: 4,
+    fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white, marginBottom: 4,
   },
   hpiInlineField: {
-    fontFamily: FontFamily.medium, fontSize: 13, color: '#A0A0AB',
+    fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.textSecondary,
   },
   hpiViewFullBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8,
   },
   hpiViewFullText: {
-    fontFamily: FontFamily.bold, fontSize: 12, color: '#3B82F6',
+    fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.infoBlue,
   },
 
   // Finance calculator body
   financeCalcBody: {
-    backgroundColor: '#111115', borderRadius: 14, borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)', padding: 16, marginTop: 8, marginBottom: 12,
+    backgroundColor: Colors.bgSecondary, borderRadius: 14, borderWidth: 1,
+    borderColor: Colors.whiteAlpha06, padding: 16, marginTop: 8, marginBottom: 12,
   },
   calcRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  calcLabel: { fontFamily: FontFamily.bold, fontSize: 9, color: '#A0A0AB', letterSpacing: 1 },
-  calcValue: { fontFamily: FontFamily.bold, fontSize: 13, color: '#FFFFFF' },
+  calcLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.textSecondary, letterSpacing: 1 },
+  calcValue: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
   depositStepsRow: { flexDirection: 'row', gap: 8 },
   depositStep: {
-    flex: 1, height: 34, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.04)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center',
+    flex: 1, height: 34, borderRadius: 8, backgroundColor: Colors.whiteAlpha04,
+    borderWidth: 1, borderColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center',
   },
   depositStepActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
-  depositStepText: { fontFamily: FontFamily.bold, fontSize: 11, color: '#A0A0AB' },
-  depositStepTextActive: { color: '#FFFFFF' },
+  depositStepText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
+  depositStepTextActive: { color: Colors.white },
   calcResult: {
-    marginTop: 16, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 12,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', padding: 16, alignItems: 'center',
+    marginTop: 16, backgroundColor: Colors.whiteAlpha03, borderRadius: 12,
+    borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 16, alignItems: 'center',
   },
-  calcResultLabel: { fontFamily: FontFamily.bold, fontSize: 9, color: '#A0A0AB', letterSpacing: 1, marginBottom: 6 },
-  calcResultValue: { fontFamily: FontFamily.bold, fontSize: 28, color: '#FFFFFF' },
-  calcResultSub: { fontFamily: FontFamily.regular, fontSize: 11, color: '#A0A0AB', marginTop: 4, textAlign: 'center' },
+  calcResultLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.textSecondary, letterSpacing: 1, marginBottom: 6 },
+  calcResultValue: { fontFamily: FontFamily.bold, fontSize: FontSize['3xl'], color: Colors.white },
+  calcResultSub: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary, marginTop: 4, textAlign: 'center' },
   financeApplyBtn: {
     marginTop: 14, height: 44, borderRadius: 10, borderWidth: 1,
-    borderColor: Colors.accent, backgroundColor: 'rgba(220,31,38,0.08)', alignItems: 'center', justifyContent: 'center',
+    borderColor: Colors.accent, backgroundColor: Colors.accentAlpha08, alignItems: 'center', justifyContent: 'center',
   },
-  financeApplyBtnText: { fontFamily: FontFamily.bold, fontSize: 13, color: Colors.accent, letterSpacing: 0.5 },
+  financeApplyBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.accent, letterSpacing: 0.5 },
 
   // HPI Modal
   hpiOverallBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 16,
   },
-  hpiOverallText: { fontFamily: FontFamily.bold, fontSize: 13, flex: 1 },
+  hpiOverallText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, flex: 1 },
   hpiCheckRow: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)',
+    borderBottomWidth: 1, borderBottomColor: Colors.whiteAlpha04,
   },
   hpiCheckText: { flex: 1 },
-  hpiCheckLabel: { fontFamily: FontFamily.semiBold, fontSize: 13, color: '#FFFFFF', marginBottom: 2 },
-  hpiCheckDetail: { fontFamily: FontFamily.regular, fontSize: 11, color: '#A0A0AB', lineHeight: 16 },
+  hpiCheckLabel: { fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.white, marginBottom: 2 },
+  hpiCheckDetail: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary, lineHeight: 16 },
 
   // Finance Coming Soon
   comingSoonBadge: {
-    backgroundColor: 'rgba(245,158,11,0.12)',
+    backgroundColor: Colors.warningAlpha12,
     borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.30)',
+    borderColor: Colors.warningAlpha30,
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -2665,29 +2723,29 @@ const styles = StyleSheet.create({
   },
   comingSoonText: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     color: Colors.warning,
     letterSpacing: 0.3,
   },
   financeComingSoonBox: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.02)',
+    backgroundColor: Colors.whiteAlpha02,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     padding: 20,
     marginBottom: 16,
     gap: 8,
   },
   financeComingSoonLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
+    fontSize: FontSize.sm,
     color: Colors.textSecondary,
     marginTop: 4,
   },
   financeComingSoonSub: {
     fontFamily: FontFamily.regular,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.textMuted,
     textAlign: 'center',
     lineHeight: 18,
@@ -2696,7 +2754,7 @@ const styles = StyleSheet.create({
   // Fullscreen photo viewer
   fullscreenBackdrop: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: Colors.black,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -2707,7 +2765,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2715,15 +2773,15 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 20,
     zIndex: 99,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: Colors.blackAlpha55,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   fullscreenCounterText: {
     fontFamily: FontFamily.mono,
-    fontSize: 13,
-    color: '#FFFFFF',
+    fontSize: FontSize.sm,
+    color: Colors.white,
   },
   fullscreenImageWrap: {
     width: SCREEN_WIDTH,

@@ -21,7 +21,7 @@ import Animated, {
   interpolateColor,
 } from 'react-native-reanimated';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
-import { FontFamily } from '../../constants/typography';
+import {FontFamily, FontSize } from '../../constants/typography';
 import { Colors } from '../../constants/colors';
 import { useAuthStore } from '../../store/authStore';
 import {
@@ -36,7 +36,9 @@ import { getAccessToken } from '../../lib/supabase';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { haptics } from '../../lib/haptics';
 import { DamageMapViewer } from '../../components/DamageMapViewer';
+import { Button } from '../../components/Button';
 
+import { IconButton } from '../../components/IconButton';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Props = NativeStackScreenProps<MainStackParamList, 'LiveAuctionDetailed'>;
@@ -267,9 +269,10 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     let socket: any = null;
 
     (async () => {
-      const token = await getAccessToken();
       socket = io(`${API_URL}/auctions`, {
-        ...(token && { auth: { token } }),
+        // Function form re-fetches a fresh token on every reconnect attempt —
+        // see ChatContext.tsx for why a plain-object `auth` goes stale.
+        auth: (cb) => getAccessToken().then((t) => cb(t ? { token: t } : {})),
         transports: ['websocket'],
         reconnection: true,
         reconnectionAttempts: 5,
@@ -660,7 +663,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     return (
       <View style={[s.container, { alignItems: 'center', justifyContent: 'center', gap: 12 }]}>
         <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-        <Ionicons name="hammer-outline" size={40} color="#404050" />
+        <Ionicons name="hammer-outline" size={40} color={Colors.borderMuted} />
         <Text style={s.muted}>{loadError}</Text>
         <TouchableOpacity style={s.retryBtn} onPress={loadAuction}>
           <Text style={s.retryBtnText}>Try Again</Text>
@@ -678,16 +681,14 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       {/* Anti-snipe floating toast */}
       {antiSnipeToast && (
         <View style={[s.antiSnipeToast, { top: insets.top + 60 }]}>
-          <Ionicons name="flash" size={13} color="#000" />
+          <Ionicons name="flash" size={13} color={Colors.black} />
           <Text style={s.antiSnipeToastText}>Anti-Snipe — Auction extended 3 min!</Text>
         </View>
       )}
 
       {/* Header */}
       <View style={[s.header, { paddingTop: insets.top + 10 }]}>
-        <TouchableOpacity style={s.iconBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Ionicons name="chevron-back" size={20} color="#FFF" />
-        </TouchableOpacity>
+        <IconButton style={s.iconBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
         <View style={s.headerCenter}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
@@ -698,8 +699,8 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </View>
             )}
             {isScheduled && (
-              <View style={[s.statusPill, { backgroundColor: 'rgba(59,130,246,0.2)', borderColor: 'rgba(59,130,246,0.3)' }]}>
-                <Text style={[s.statusPillText, { color: '#60A5FA' }]}>SCHEDULED</Text>
+              <View style={[s.statusPill, { backgroundColor: Colors.infoBlueAlpha20, borderColor: Colors.infoBlueAlpha30 }]}>
+                <Text style={[s.statusPillText, { color: Colors.infoBlueLight }]}>SCHEDULED</Text>
               </View>
             )}
             {isEnded && (
@@ -708,14 +709,14 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </View>
             )}
             {isCancelled && (
-              <View style={[s.statusPill, { backgroundColor: 'rgba(220,31,38,0.1)', borderColor: 'rgba(220,31,38,0.2)' }]}>
-                <Text style={[s.statusPillText, { color: '#DC1F26' }]}>CANCELLED</Text>
+              <View style={[s.statusPill, { backgroundColor: Colors.accentAlpha10, borderColor: Colors.accentAlpha20 }]}>
+                <Text style={[s.statusPillText, { color: Colors.accent }]}>CANCELLED</Text>
               </View>
             )}
             {antiSnipeActive && isActive && (
-              <View style={[s.statusPill, { backgroundColor: 'rgba(245,158,11,0.2)', borderColor: 'rgba(245,158,11,0.3)' }]}>
-                <Ionicons name="flash" size={8} color="#F59E0B" />
-                <Text style={[s.statusPillText, { color: '#F59E0B' }]}>ANTI-SNIPE</Text>
+              <View style={[s.statusPill, { backgroundColor: Colors.warningAlpha20, borderColor: Colors.warningAlpha30 }]}>
+                <Ionicons name="flash" size={8} color={Colors.warning} />
+                <Text style={[s.statusPillText, { color: Colors.warning }]}>ANTI-SNIPE</Text>
               </View>
             )}
           </View>
@@ -724,33 +725,27 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <View style={s.watcherChip}>
-            <Ionicons name="eye-outline" size={11} color="#DC1F26" />
+            <Ionicons name="eye-outline" size={11} color={Colors.accent} />
             <Text style={s.watcherText}>{watchers}</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <View style={[s.connDot, { backgroundColor: connected ? '#10B981' : '#DC1F26' }]} />
+            <View style={[s.connDot, { backgroundColor: connected ? Colors.accentGreen : Colors.accent }]} />
           </View>
-          <TouchableOpacity
-            style={s.iconBtn}
-            onPress={() => Share.share({ message: `Check out this auction: ${title}` })}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="share-social-outline" size={17} color="#FFF" />
-          </TouchableOpacity>
+          <IconButton style={s.iconBtn} icon={<Ionicons name="share-social-outline" size={17} color={Colors.white} />} onPress={() => Share.share({ message: `Check out this auction: ${title}` })} accessibilityLabel="Share" />
         </View>
       </View>
 
       {/* Status banners */}
       {isCancelled && (
         <View style={[s.banner, s.bannerRed]}>
-          <Ionicons name="ban-outline" size={14} color="#DC1F26" />
-          <Text style={[s.bannerText, { color: '#DC1F26' }]}>This auction has been cancelled by the seller.</Text>
+          <Ionicons name="ban-outline" size={14} color={Colors.accent} />
+          <Text style={[s.bannerText, { color: Colors.accent }]}>This auction has been cancelled by the seller.</Text>
         </View>
       )}
       {isSeller && !isCancelled && (
         <View style={[s.banner, s.bannerBlue]}>
-          <Ionicons name="information-circle-outline" size={14} color="#60A5FA" />
-          <Text style={[s.bannerText, { color: '#93C5FD' }]}>
+          <Ionicons name="information-circle-outline" size={14} color={Colors.infoBlueLight} accessibilityElementsHidden importantForAccessibility="no" />
+          <Text style={[s.bannerText, { color: Colors.paleBlue_93c5fd }]}>
             <Text style={{ fontFamily: FontFamily.bold }}>This is your auction. </Text>
             {isActive ? 'Bids appear in real time.' : isScheduled ? 'Will start automatically.' : 'Your auction has ended.'}
           </Text>
@@ -759,7 +754,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       {/* Seller quick-close control — only when auction is actively running */}
       {isSeller && isActive && (
         <View style={s.sellerToolsRow}>
-          <Ionicons name="settings-outline" size={13} color="#F59E0B" />
+          <Ionicons name="settings-outline" size={13} color={Colors.warning} />
           <Text style={s.sellerToolsLabel}>Seller Tools</Text>
           <TouchableOpacity
             style={[s.sellerCloseBtn, closingEarly && { opacity: 0.6 }]}
@@ -768,7 +763,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             activeOpacity={0.8}
           >
             {closingEarly
-              ? <ActivityIndicator size="small" color="#DC1F26" />
+              ? <ActivityIndicator size="small" color={Colors.accent} />
               : <Text style={s.sellerCloseBtnText}>Close Auction Now</Text>
             }
           </TouchableOpacity>
@@ -776,8 +771,8 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       )}
       {isScheduled && !isSeller && startTime && (
         <View style={[s.banner, s.bannerBlue]}>
-          <Ionicons name="calendar-outline" size={14} color="#60A5FA" />
-          <Text style={[s.bannerText, { color: '#93C5FD' }]}>
+          <Ionicons name="calendar-outline" size={14} color={Colors.infoBlueLight} />
+          <Text style={[s.bannerText, { color: Colors.paleBlue_93c5fd }]}>
             This auction hasn't started yet — opens automatically at{' '}
             <Text style={{ fontFamily: FontFamily.bold }}>{fmtDate(startTime.toISOString())}</Text>.
           </Text>
@@ -785,20 +780,20 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       )}
       {!connected && isActive && (
         <View style={[s.banner, s.bannerAmber]}>
-          <Ionicons name="wifi-outline" size={14} color="#F59E0B" />
-          <Text style={[s.bannerText, { color: '#FCD34D' }]}>Connection lost — bids may not update in real time.</Text>
+          <Ionicons name="wifi-outline" size={14} color={Colors.warning} />
+          <Text style={[s.bannerText, { color: Colors.lightYellow }]}>Connection lost — bids may not update in real time.</Text>
         </View>
       )}
       {/* ── Seller BIN confirmation panel ── */}
       {isSeller && isActive && binPendingBuyerId && auction?.buyItNowPrice && (
         <View style={s.binSellerPanel}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <Ionicons name="pricetag" size={16} color="#F59E0B" />
+            <Ionicons name="pricetag" size={16} color={Colors.warning} />
             <Text style={s.binSellerTitle}>Buy It Now Request</Text>
           </View>
           <Text style={s.binSellerBody}>
             A buyer wants to purchase this vehicle right now at{' '}
-            <Text style={{ fontFamily: FontFamily.mono, color: '#FFFFFF' }}>{fmt(Number(auction.buyItNowPrice))}</Text>.
+            <Text style={{ fontFamily: FontFamily.mono, color: Colors.white }}>{fmt(Number(auction.buyItNowPrice))}</Text>.
             {'\n'}Confirm to end the auction immediately, or decline to continue bidding.
           </Text>
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
@@ -817,7 +812,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               activeOpacity={0.8}
             >
               {binLoading
-                ? <ActivityIndicator size="small" color="#FFF" />
+                ? <ActivityIndicator size="small" color={Colors.white} />
                 : <Text style={s.binSellerConfirmText}>Confirm Sale — {fmt(Number(auction.buyItNowPrice))}</Text>
               }
             </TouchableOpacity>
@@ -826,22 +821,17 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       )}
       {binPendingBuyerId && !isSeller && !binBannerDismissed && (
         <View style={[s.banner, s.bannerAmber, { alignItems: 'center' }]}>
-          <Ionicons name="pricetag-outline" size={14} color="#F59E0B" />
-          <Text style={[s.bannerText, { color: '#FCD34D' }]}>
+          <Ionicons name="pricetag-outline" size={14} color={Colors.warning} />
+          <Text style={[s.bannerText, { color: Colors.lightYellow }]}>
             A buyer has requested to Buy It Now — seller is reviewing.
           </Text>
-          <TouchableOpacity
-            onPress={() => setBinBannerDismissed(true)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="close" size={16} color="#F59E0B" />
-          </TouchableOpacity>
+          <IconButton icon={<Ionicons name="close" size={16} color={Colors.warning} />} onPress={() => setBinBannerDismissed(true)} accessibilityLabel="Close" />
         </View>
       )}
       {auction?.listing?.linkedListingId && auction.listing.linkedListing?.type === 'CLASSIFIED' && (
         <View style={[s.banner, s.bannerDark]}>
-          <Ionicons name="pricetag-outline" size={14} color="#A0A0AB" />
-          <Text style={[s.bannerText, { color: '#A0A0AB' }]}>
+          <Ionicons name="pricetag-outline" size={14} color={Colors.textSecondary} />
+          <Text style={[s.bannerText, { color: Colors.textSecondary }]}>
             Also available as a classified listing — make an offer without bidding.
           </Text>
         </View>
@@ -850,10 +840,10 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         <View style={[s.banner, userWon ? s.bannerGreen : s.bannerDark]}>
           {userWon ? (
             <>
-              <Ionicons name="trophy" size={16} color="#10B981" />
+              <Ionicons name="trophy" size={16} color={Colors.accentGreen} />
               <View style={{ flex: 1 }}>
-                <Text style={[s.bannerText, { color: '#10B981', fontFamily: FontFamily.bold }]}>You won this auction!</Text>
-                <Text style={[s.bannerText, { color: '#6EE7B7', fontSize: 11 }]}>
+                <Text style={[s.bannerText, { color: Colors.accentGreen, fontFamily: FontFamily.bold }]}>You won this auction!</Text>
+                <Text style={[s.bannerText, { color: Colors.lightGreen_6ee7b7, fontSize: FontSize.xs }]}>
                   Winning bid: {fmt(Number(endedPayload?.winningBidAmount ?? 0))}
                 </Text>
               </View>
@@ -876,7 +866,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   }}
                 >
                   {connectingChat
-                    ? <ActivityIndicator size="small" color="#FFF" />
+                    ? <ActivityIndicator size="small" color={Colors.white} />
                     : <Text style={s.bannerBtnText}>Message Seller</Text>
                   }
                 </TouchableOpacity>
@@ -904,22 +894,22 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </>
           ) : endedPayload?.reserveMet === false ? (
             <>
-              <Ionicons name="alert-circle-outline" size={14} color="#F59E0B" />
-              <Text style={[s.bannerText, { color: '#A0A0AB' }]}>
+              <Ionicons name="alert-circle-outline" size={14} color={Colors.warning} />
+              <Text style={[s.bannerText, { color: Colors.textSecondary }]}>
                 Auction ended — reserve price was not met. No sale completed.
               </Text>
             </>
           ) : endedPayload?.winnerId ? (
             <>
-              <Ionicons name="hammer-outline" size={14} color="#606070" />
-              <Text style={[s.bannerText, { color: '#A0A0AB' }]}>
-                Auction ended. Winning bid: <Text style={{ color: '#FFFFFF', fontFamily: FontFamily.bold }}>{fmt(Number(endedPayload?.winningBidAmount ?? 0))}</Text>
+              <Ionicons name="hammer-outline" size={14} color={Colors.iconMuted} />
+              <Text style={[s.bannerText, { color: Colors.textSecondary }]}>
+                Auction ended. Winning bid: <Text style={{ color: Colors.white, fontFamily: FontFamily.bold }}>{fmt(Number(endedPayload?.winningBidAmount ?? 0))}</Text>
               </Text>
             </>
           ) : (
             <>
-              <Ionicons name="hammer-outline" size={14} color="#606070" />
-              <Text style={[s.bannerText, { color: '#A0A0AB' }]}>Auction ended with no bids placed.</Text>
+              <Ionicons name="hammer-outline" size={14} color={Colors.iconMuted} />
+              <Text style={[s.bannerText, { color: Colors.textSecondary }]}>Auction ended with no bids placed.</Text>
             </>
           )}
         </View>
@@ -951,13 +941,13 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           <View style={s.heroTopRight}>
             {isActive && isWinning && !isSeller && (
               <View style={s.winningBadge}>
-                <Ionicons name="checkmark-circle" size={11} color="#10B981" />
+                <Ionicons name="checkmark-circle" size={11} color={Colors.accentGreen} />
                 <Text style={s.winningBadgeText}>WINNING</Text>
               </View>
             )}
             {isActive && !isWinning && currentUser && !isSeller && bidHistory.length > 0 && (
               <View style={s.outbidBadge}>
-                <Ionicons name="alert-circle" size={11} color="#DC1F26" />
+                <Ionicons name="alert-circle" size={11} color={Colors.accent} />
                 <Text style={s.outbidBadgeText}>OUTBID</Text>
               </View>
             )}
@@ -975,9 +965,9 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </Animated.View>
             )}
             {isScheduled && startTime && (
-              <View style={[s.timerBox, { borderColor: 'rgba(59,130,246,0.3)' }]}>
-                <Text style={[s.timerBoxLabel, { color: '#93C5FD' }]}>STARTS IN</Text>
-                <Text style={[s.timerBoxValue, { color: '#60A5FA', fontFamily: FontFamily.mono }]}>{fmtCountdown(secondsLeft)}</Text>
+              <View style={[s.timerBox, { borderColor: Colors.infoBlueAlpha30 }]}>
+                <Text style={[s.timerBoxLabel, { color: Colors.paleBlue_93c5fd }]}>STARTS IN</Text>
+                <Text style={[s.timerBoxValue, { color: Colors.infoBlueLight, fontFamily: FontFamily.mono }]}>{fmtCountdown(secondsLeft)}</Text>
               </View>
             )}
           </View>
@@ -988,8 +978,8 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <Text style={[s.heroBid, { fontFamily: FontFamily.mono }]}>{fmt(currentBid)}</Text>
               {reserveMet && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                  <Ionicons name="shield-checkmark" size={11} color="#10B981" />
-                  <Text style={{ fontFamily: FontFamily.bold, fontSize: 10, color: '#10B981' }}>Reserve Met</Text>
+                  <Ionicons name="shield-checkmark" size={11} color={Colors.accentGreen} />
+                  <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.accentGreen }}>Reserve Met</Text>
                 </View>
               )}
             </View>
@@ -999,7 +989,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         {/* Anti-snipe alert */}
         {antiSnipeActive && isActive && (
           <View style={s.antiSnipeBar}>
-            <Ionicons name="flash" size={13} color="#F59E0B" />
+            <Ionicons name="flash" size={13} color={Colors.warning} />
             <Text style={s.antiSnipeBarText}>
               Anti-Snipe Active — any bid in the final 3 minutes extends the auction by 3 minutes
             </Text>
@@ -1051,8 +1041,8 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {/* Write-off warning */}
             {(auction?.listing as any)?.writeOffCategory && (auction?.listing as any).writeOffCategory !== 'NONE' && (
               <View style={[s.banner, s.bannerAmber]}>
-                <Ionicons name="warning-outline" size={14} color="#F59E0B" />
-                <Text style={[s.bannerText, { color: '#FCD34D' }]}>
+                <Ionicons name="warning-outline" size={14} color={Colors.warning} />
+                <Text style={[s.bannerText, { color: Colors.lightYellow }]}>
                   <Text style={{ fontFamily: FontFamily.bold }}>{(auction?.listing as any).writeOffCategory.replace(/_/g, ' ')} Write-off</Text> — Review condition carefully before bidding.
                 </Text>
               </View>
@@ -1109,7 +1099,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   ].filter(([, v]) => v).map(([k, v]) => (
                     <View key={k as string} style={s.specRow}>
                       <Text style={s.specKey}>{k}</Text>
-                      <Text style={[s.specVal, (v === 'Valid' || v === 'Taxed') && { color: '#10B981' }]}>{String(v)}</Text>
+                      <Text style={[s.specVal, (v === 'Valid' || v === 'Taxed') && { color: Colors.accentGreen }]}>{String(v)}</Text>
                     </View>
                   ))}
                 </View>
@@ -1123,7 +1113,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                   {((auction!.listing as any).features as string[]).map((f: string) => (
                     <View key={f} style={s.featureChip}>
-                      <Ionicons name="checkmark-circle" size={10} color="#10B981" />
+                      <Ionicons name="checkmark-circle" size={10} color={Colors.accentGreen} />
                       <Text style={s.featureChipText}>{f}</Text>
                     </View>
                   ))}
@@ -1133,10 +1123,10 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
             {/* Auction details */}
             {auction && (
-              <View style={[s.card, { borderColor: 'rgba(220,31,38,0.2)', backgroundColor: 'rgba(220,31,38,0.04)' }]}>
+              <View style={[s.card, { borderColor: Colors.accentAlpha20, backgroundColor: Colors.accentAlpha04 }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-                  <Ionicons name="hammer-outline" size={13} color="#DC1F26" />
-                  <Text style={[s.cardSectionTitle, { color: '#DC1F26', marginBottom: 0 }]}>Auction Details</Text>
+                  <Ionicons name="hammer-outline" size={13} color={Colors.accent} />
+                  <Text style={[s.cardSectionTitle, { color: Colors.accent, marginBottom: 0 }]}>Auction Details</Text>
                 </View>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 0 }}>
                   {[
@@ -1148,7 +1138,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   ].map(([k, v]) => (
                     <View key={k} style={{ width: '50%', paddingBottom: 10, paddingRight: 8 }}>
                       <Text style={s.specKey}>{k}</Text>
-                      <Text style={[s.specVal, { fontFamily: FontFamily.mono, color: '#FFFFFF' }]}>{v}</Text>
+                      <Text style={[s.specVal, { fontFamily: FontFamily.mono, color: Colors.white }]}>{v}</Text>
                     </View>
                   ))}
                 </View>
@@ -1158,7 +1148,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {/* Damage report — parity with VehicleDetailScreen */}
             <View style={s.card}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-                <Ionicons name="warning-outline" size={13} color="#F59E0B" />
+                <Ionicons name="warning-outline" size={13} color={Colors.warning} />
                 <Text style={[s.cardSectionTitle, { marginBottom: 0 }]}>Damage Report</Text>
               </View>
               <DamageMapViewer records={damageRecords} isLoading={damageLoading} />
@@ -1166,8 +1156,8 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
             {/* Trust note */}
             <View style={[s.banner, s.bannerDark]}>
-              <Ionicons name="information-circle-outline" size={12} color="#606070" />
-              <Text style={[s.bannerText, { color: '#606070', fontSize: 10 }]}>
+              <Ionicons name="information-circle-outline" size={12} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
+              <Text style={[s.bannerText, { color: Colors.iconMuted, fontSize: FontSize.size10 }]}>
                 All transactions are arranged directly between buyer and seller. A chat opens automatically when the auction ends with the winner.
               </Text>
             </View>
@@ -1189,19 +1179,19 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               />
               {bidHistory.length === 0 ? (
                 <View style={{ alignItems: 'center', paddingVertical: 40, gap: 8 }}>
-                  <Ionicons name="hammer-outline" size={28} color="#404050" />
+                  <Ionicons name="hammer-outline" size={28} color={Colors.borderMuted} />
                   <Text style={s.muted}>No bids yet — be the first.</Text>
                 </View>
               ) : (
                 <>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: Colors.whiteAlpha05 }}>
                     <Text style={s.specKey}>BIDDER</Text>
                     <Text style={s.specKey}>AMOUNT</Text>
                   </View>
                   {bidHistory.map((bid, i) => (
                     <View key={bid.id} style={[s.bidRow, i === bidHistory.length - 1 && { borderBottomWidth: 0 }]}>
-                      <View style={[s.bidAvatar, i === 0 && { backgroundColor: 'rgba(220,31,38,0.2)', borderColor: '#DC1F26' }]}>
-                        <Text style={[s.bidAvatarText, i === 0 && { color: '#DC1F26' }]}>{bid.initials}</Text>
+                      <View style={[s.bidAvatar, i === 0 && { backgroundColor: Colors.accentAlpha20, borderColor: Colors.accent }]}>
+                        <Text style={[s.bidAvatarText, i === 0 && { color: Colors.accent }]}>{bid.initials}</Text>
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={s.bidInitials} numberOfLines={1}>{bid.name}</Text>
@@ -1221,7 +1211,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                             activeOpacity={0.8}
                           >
                             {acceptingBidId === bid.id
-                              ? <ActivityIndicator size="small" color="#FFF" />
+                              ? <ActivityIndicator size="small" color={Colors.white} />
                               : <Text style={s.acceptBidBtnText}>Accept</Text>
                             }
                           </TouchableOpacity>
@@ -1245,8 +1235,8 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <View style={{ flex: 1 }}>
                 <Text style={s.sellerName}>{sellerName}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                  <Ionicons name="shield-checkmark" size={11} color="#10B981" />
-                  <Text style={{ fontFamily: FontFamily.bold, fontSize: 11, color: '#10B981' }}>Verified Seller</Text>
+                  <Ionicons name="shield-checkmark" size={11} color={Colors.accentGreen} />
+                  <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accentGreen }}>Verified Seller</Text>
                 </View>
                 <Text style={[s.muted, { marginTop: 8, lineHeight: 18 }]}>
                   Win the auction and a direct chat with this seller opens automatically to arrange the deal.
@@ -1261,7 +1251,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           binPendingBuyerId ? (
             // BIN is pending — show waiting state
             <View style={s.binPendingBanner}>
-              <Ionicons name="time-outline" size={14} color="#F59E0B" />
+              <Ionicons name="time-outline" size={14} color={Colors.warning} />
               <Text style={s.binPendingText}>
                 Buy It Now requested — awaiting seller confirmation
               </Text>
@@ -1283,9 +1273,9 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 activeOpacity={0.85}
               >
                 {binLoading
-                  ? <ActivityIndicator size="small" color="#FFF" />
+                  ? <ActivityIndicator size="small" color={Colors.white} />
                   : <>
-                      <Ionicons name="pricetag-outline" size={15} color="#FFF" />
+                      <Ionicons name="pricetag-outline" size={15} color={Colors.white} />
                       <Text style={s.binBtnText}>Buy Now — {fmt(Number(auction.buyItNowPrice))}</Text>
                     </>
                 }
@@ -1302,16 +1292,16 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       <View style={[s.bidConsole, { paddingBottom: insets.bottom || 16 }]}>
         {isCancelled ? (
           <View style={s.bidStateBox}>
-            <Ionicons name="ban-outline" size={20} color="#606070" />
+            <Ionicons name="ban-outline" size={20} color={Colors.iconMuted} />
             <Text style={s.bidStateText}>Auction Cancelled</Text>
           </View>
         ) : isEnded ? (
           <View style={s.bidStateBox}>
-            <Ionicons name="hammer-outline" size={20} color="#606070" />
+            <Ionicons name="hammer-outline" size={20} color={Colors.iconMuted} />
             <Text style={s.bidStateText}>{userWon ? 'You Won!' : 'Auction Ended'}</Text>
             {userWon && auction?.buyerFeePaid && (
               <TouchableOpacity
-                style={[s.bidBtn, { backgroundColor: '#10B981', marginTop: 8 }]}
+                style={[s.bidBtn, { backgroundColor: Colors.accentGreen, marginTop: 8 }]}
                 disabled={connectingChat}
                 onPress={async () => {
                   const sellerId = auction?.listing?.sellerId;
@@ -1326,9 +1316,9 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 }}
               >
                 {connectingChat
-                  ? <ActivityIndicator color="#FFF" size="small" />
+                  ? <ActivityIndicator color={Colors.white} size="small" />
                   : <>
-                      <Ionicons name="chatbubble-outline" size={15} color="#FFF" />
+                      <Ionicons name="chatbubble-outline" size={15} color={Colors.white} />
                       <Text style={s.bidBtnText}>Message Seller</Text>
                     </>
                 }
@@ -1336,7 +1326,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             )}
             {userWon && !auction?.buyerFeePaid && (
               <TouchableOpacity
-                style={[s.bidBtn, { backgroundColor: '#DC1F26', marginTop: 8 }]}
+                style={[s.bidBtn, { backgroundColor: Colors.accent, marginTop: 8 }]}
                 onPress={() =>
                   navigation.navigate('PurchaseFlow' as any, {
                     listingId: auction?.listingId,
@@ -1351,34 +1341,34 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   })
                 }
               >
-                <Ionicons name="lock-closed-outline" size={15} color="#FFF" />
+                <Ionicons name="lock-closed-outline" size={15} color={Colors.white} />
                 <Text style={s.bidBtnText}>Pay £125 Fee to Unlock Chat</Text>
               </TouchableOpacity>
             )}
           </View>
         ) : isScheduled ? (
           <View style={s.bidStateBox}>
-            <Ionicons name="calendar-outline" size={20} color="#3B82F6" />
-            <Text style={[s.bidStateText, { color: '#60A5FA' }]}>Bidding Opens Soon</Text>
+            <Ionicons name="calendar-outline" size={20} color={Colors.infoBlue} />
+            <Text style={[s.bidStateText, { color: Colors.infoBlueLight }]}>Bidding Opens Soon</Text>
             {startTime && <Text style={s.muted}>{fmtDate(startTime.toISOString())}</Text>}
           </View>
         ) : isSeller ? (
           <View style={{ gap: 10 }}>
             {/* Seller context row */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Ionicons name="briefcase-outline" size={16} color="#F59E0B" />
-              <Text style={[s.bidStateText, { color: '#F59E0B', flex: 1 }]}>You are the seller</Text>
+              <Ionicons name="briefcase-outline" size={16} color={Colors.warning} />
+              <Text style={[s.bidStateText, { color: Colors.warning, flex: 1 }]}>You are the seller</Text>
               <Text style={s.muted}>{bidHistory.length} bid{bidHistory.length !== 1 ? 's' : ''}</Text>
             </View>
 
             {/* Reserve status */}
-            <View style={[s.antiSnipeBar, { borderColor: reserveMet ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)', backgroundColor: reserveMet ? 'rgba(16,185,129,0.08)' : 'rgba(245,158,11,0.08)' }]}>
+            <View style={[s.antiSnipeBar, { borderColor: reserveMet ? Colors.accentGreenAlpha30 : Colors.warningAlpha30, backgroundColor: reserveMet ? Colors.accentGreenAlpha08 : Colors.warningAlpha08 }]}>
               <Ionicons
                 name={reserveMet ? 'shield-checkmark-outline' : 'shield-outline'}
                 size={13}
-                color={reserveMet ? '#10B981' : '#F59E0B'}
+                color={reserveMet ? Colors.accentGreen : Colors.warning}
               />
-              <Text style={[s.antiSnipeBarText, { color: reserveMet ? '#10B981' : '#F59E0B' }]}>
+              <Text style={[s.antiSnipeBarText, { color: reserveMet ? Colors.accentGreen : Colors.warning }]}>
                 {reserveMet
                   ? `Reserve met — current bid ${fmt(currentBid)}`
                   : `Reserve not yet met — need ${fmt(reservePrice)}`}
@@ -1388,7 +1378,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {/* Seller action buttons */}
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <TouchableOpacity
-                style={[s.quickBidBtn, { flex: 1, backgroundColor: 'rgba(245,158,11,0.12)', borderColor: 'rgba(245,158,11,0.3)', borderWidth: 1 }]}
+                style={[s.quickBidBtn, { flex: 1, backgroundColor: Colors.warningAlpha12, borderColor: Colors.warningAlpha30, borderWidth: 1 }]}
                 activeOpacity={0.8}
                 onPress={() =>
                   Alert.alert(
@@ -1401,18 +1391,18 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   )
                 }
               >
-                <Text style={[s.quickBidBtnText, { color: '#F59E0B' }]}>RESERVE</Text>
+                <Text style={[s.quickBidBtnText, { color: Colors.warning }]}>RESERVE</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[s.quickBidBtn, { flex: 1, backgroundColor: 'rgba(220,31,38,0.1)', borderColor: 'rgba(220,31,38,0.25)', borderWidth: 1 }, closingEarly && { opacity: 0.6 }]}
+                style={[s.quickBidBtn, { flex: 1, backgroundColor: Colors.accentAlpha10, borderColor: Colors.accentAlpha25, borderWidth: 1 }, closingEarly && { opacity: 0.6 }]}
                 activeOpacity={0.8}
                 onPress={handleCloseEarly}
                 disabled={closingEarly}
               >
                 {closingEarly
-                  ? <ActivityIndicator size="small" color="#DC1F26" />
-                  : <Text style={[s.quickBidBtnText, { color: '#DC1F26' }]}>CLOSE NOW</Text>
+                  ? <ActivityIndicator size="small" color={Colors.accent} />
+                  : <Text style={[s.quickBidBtnText, { color: Colors.accent }]}>CLOSE NOW</Text>
                 }
               </TouchableOpacity>
             </View>
@@ -1420,13 +1410,26 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         ) : !currentUser ? (
           <View style={s.bidStateBox}>
             <Text style={s.muted}>Sign in to place bids in live auctions.</Text>
-            <TouchableOpacity
-              style={[s.bidBtn, { marginTop: 8 }]}
+            <Button
+              label="Sign In to Bid"
+              size="sm"
+              style={{ marginTop: 8 }}
               onPress={() => navigation.navigate('Login' as any)}
-              activeOpacity={0.8}
-            >
-              <Text style={s.bidBtnText}>Sign In to Bid</Text>
-            </TouchableOpacity>
+            />
+          </View>
+        ) : role !== 'dealer' ? (
+          <View style={s.bidStateBox}>
+            <Text style={s.muted}>Only verified dealers can bid in auctions.</Text>
+          </View>
+        ) : !currentUser.isVerified ? (
+          <View style={s.bidStateBox}>
+            <Text style={s.muted}>Verify your dealership to place bids.</Text>
+            <Button
+              label="Complete KYC"
+              size="sm"
+              style={{ marginTop: 8 }}
+              onPress={() => navigation.navigate('DealerKYC')}
+            />
           </View>
         ) : (
           <View style={{ gap: 10 }}>
@@ -1436,7 +1439,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <Text style={s.specKey}>CURRENT BID</Text>
                 <Text style={[s.currentBidVal, { fontFamily: FontFamily.mono }]}>{fmt(currentBid)}</Text>
               </View>
-              <Text style={s.minNextBid}>Min next: <Text style={{ color: '#FFF', fontFamily: FontFamily.mono }}>{fmt(currentBid + minIncrement)}</Text></Text>
+              <Text style={s.minNextBid}>Min next: <Text style={{ color: Colors.white, fontFamily: FontFamily.mono }}>{fmt(currentBid + minIncrement)}</Text></Text>
             </View>
 
             {/* Quick bid buttons */}
@@ -1464,7 +1467,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   value={bidAmount}
                   onChangeText={t => { setBidAmount(t); setBidError(null); }}
                   placeholder="Custom amount"
-                  placeholderTextColor="#404050"
+                  placeholderTextColor={Colors.borderMuted}
                   keyboardType="number-pad"
                   onSubmitEditing={() => bidAmount && handleBid(Number(bidAmount))}
                 />
@@ -1476,9 +1479,9 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 activeOpacity={0.8}
               >
                 {bidLoading
-                  ? <ActivityIndicator color="#FFF" size="small" />
+                  ? <ActivityIndicator color={Colors.white} size="small" />
                   : <>
-                      <Ionicons name="hammer-outline" size={15} color="#FFF" />
+                      <Ionicons name="hammer-outline" size={15} color={Colors.white} />
                       <Text style={s.bidBtnText}>BID</Text>
                     </>
                 }
@@ -1487,16 +1490,16 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
             {bidError && (
               <View style={[s.banner, s.bannerRed, { marginTop: -4 }]}>
-                <Ionicons name="alert-circle-outline" size={12} color="#DC1F26" />
-                <Text style={[s.bannerText, { color: '#FCA5A5' }]} numberOfLines={2} ellipsizeMode="tail">{bidError}</Text>
+                <Ionicons name="alert-circle-outline" size={12} color={Colors.accent} />
+                <Text style={[s.bannerText, { color: Colors.paleRed_fca5a5 }]} numberOfLines={2} ellipsizeMode="tail">{bidError}</Text>
               </View>
             )}
 
             {/* Cancel bid countdown banner — visible for 120s after own bid lands */}
             {cancelableBidId && (
               <View style={[s.banner, s.bannerRed, s.cancelBidBanner]}>
-                <Ionicons name="timer-outline" size={12} color="#DC1F26" />
-                <Text style={[s.bannerText, { color: '#FCA5A5', flex: 1 }]} numberOfLines={1}>
+                <Ionicons name="timer-outline" size={12} color={Colors.accent} />
+                <Text style={[s.bannerText, { color: Colors.paleRed_fca5a5, flex: 1 }]} numberOfLines={1}>
                   {'Cancel window — '}
                   <Text style={{ fontFamily: FontFamily.mono }}>
                     {Math.ceil(cancelWindowMs / 1000)}s
@@ -1510,7 +1513,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   activeOpacity={0.8}
                 >
                   {cancelLoading
-                    ? <ActivityIndicator size="small" color="#FFF" />
+                    ? <ActivityIndicator size="small" color={Colors.white} />
                     : <Text style={s.cancelBidBtnText}>Cancel Bid</Text>
                   }
                 </TouchableOpacity>
@@ -1535,122 +1538,122 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0A0A0C' },
+  container: { flex: 1, backgroundColor: Colors.bgPrimary },
   scroll: { paddingHorizontal: 14, paddingTop: 8 },
-  muted: { fontFamily: FontFamily.regular, fontSize: 12, color: '#606070' },
+  muted: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.iconMuted },
 
   // Header
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingBottom: 10, backgroundColor: '#0A0A0C', zIndex: 10 },
-  iconBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingBottom: 10, backgroundColor: Colors.bgPrimary, zIndex: 10 },
+  iconBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.whiteAlpha05, borderWidth: 1, borderColor: Colors.whiteAlpha08, alignItems: 'center', justifyContent: 'center' },
   headerCenter: { flex: 1, alignItems: 'center', paddingHorizontal: 8 },
-  headerTitle: { fontFamily: FontFamily.bold, fontSize: 13, color: '#FFFFFF', maxWidth: SW - 160 },
-  watcherChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-  watcherText: { fontFamily: FontFamily.bold, fontSize: 11, color: '#FFFFFF' },
+  headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, maxWidth: SW - 160 },
+  watcherChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.whiteAlpha05, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: Colors.whiteAlpha08 },
+  watcherText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white },
   connDot: { width: 8, height: 8, borderRadius: 4 },
 
   // Status pills
-  livePill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#DC1F26', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
-  liveDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#FFF' },
-  livePillText: { fontFamily: FontFamily.bold, fontSize: 8, color: '#FFF', letterSpacing: 1 },
-  statusPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(255,255,255,0.06)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  statusPillText: { fontFamily: FontFamily.bold, fontSize: 8, color: '#A0A0AB', letterSpacing: 0.8 },
+  livePill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.accent, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  liveDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: Colors.white },
+  livePillText: { fontFamily: FontFamily.bold, fontSize: FontSize.size8, color: Colors.white, letterSpacing: 1 },
+  statusPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: Colors.whiteAlpha06, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha10 },
+  statusPillText: { fontFamily: FontFamily.bold, fontSize: FontSize.size8, color: Colors.textSecondary, letterSpacing: 0.8 },
 
   // Banners
   banner: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingHorizontal: 14, paddingVertical: 10 },
-  bannerRed: { backgroundColor: 'rgba(220,31,38,0.08)', borderBottomWidth: 1, borderBottomColor: 'rgba(220,31,38,0.15)' },
-  bannerBlue: { backgroundColor: 'rgba(59,130,246,0.08)', borderBottomWidth: 1, borderBottomColor: 'rgba(59,130,246,0.15)' },
-  bannerGreen: { backgroundColor: 'rgba(16,185,129,0.08)', borderBottomWidth: 1, borderBottomColor: 'rgba(16,185,129,0.15)' },
-  bannerAmber: { backgroundColor: 'rgba(245,158,11,0.08)', borderBottomWidth: 1, borderBottomColor: 'rgba(245,158,11,0.15)' },
-  bannerDark: { backgroundColor: 'rgba(255,255,255,0.02)', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
-  bannerText: { fontFamily: FontFamily.regular, fontSize: 12, lineHeight: 18, flex: 1 },
-  bannerBtn: { backgroundColor: '#DC1F26', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, alignSelf: 'center' },
-  bannerBtnText: { fontFamily: FontFamily.bold, fontSize: 11, color: '#FFF' },
+  bannerRed: { backgroundColor: Colors.accentAlpha08, borderBottomWidth: 1, borderBottomColor: Colors.accentAlpha15 },
+  bannerBlue: { backgroundColor: Colors.infoBlueAlpha08, borderBottomWidth: 1, borderBottomColor: Colors.infoBlueAlpha15 },
+  bannerGreen: { backgroundColor: Colors.accentGreenAlpha08, borderBottomWidth: 1, borderBottomColor: Colors.accentGreenAlpha15 },
+  bannerAmber: { backgroundColor: Colors.warningAlpha08, borderBottomWidth: 1, borderBottomColor: Colors.warningAlpha15 },
+  bannerDark: { backgroundColor: Colors.whiteAlpha02, borderBottomWidth: 1, borderBottomColor: Colors.whiteAlpha05 },
+  bannerText: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, lineHeight: 18, flex: 1 },
+  bannerBtn: { backgroundColor: Colors.accent, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, alignSelf: 'center' },
+  bannerBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white },
 
   // Anti-snipe
-  antiSnipeToast: { position: 'absolute', alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F59E0B', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 24, zIndex: 100, shadowColor: '#F59E0B', shadowOpacity: 0.5, shadowRadius: 12, elevation: 20 },
-  antiSnipeToastText: { fontFamily: FontFamily.bold, fontSize: 12, color: '#000' },
-  antiSnipeBar: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(245,158,11,0.08)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.2)', borderRadius: 10, padding: 10, marginBottom: 12 },
-  antiSnipeBarText: { fontFamily: FontFamily.bold, fontSize: 11, color: '#F59E0B', flex: 1 },
+  antiSnipeToast: { position: 'absolute', alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Colors.warning, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 24, zIndex: 100, shadowColor: Colors.warning, shadowOpacity: 0.5, shadowRadius: 12, elevation: 20 },
+  antiSnipeToastText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.black },
+  antiSnipeBar: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.warningAlpha08, borderWidth: 1, borderColor: Colors.warningAlpha20, borderRadius: 10, padding: 10, marginBottom: 12 },
+  antiSnipeBarText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.warning, flex: 1 },
 
   // Hero image
-  heroWrap: { height: 240, borderRadius: 16, overflow: 'hidden', marginBottom: 14, position: 'relative', backgroundColor: '#111115' },
+  heroWrap: { height: 240, borderRadius: 16, overflow: 'hidden', marginBottom: 14, position: 'relative', backgroundColor: Colors.bgSecondary },
   heroImg: { width: '100%', height: '100%' },
   heroTopLeft: { position: 'absolute', top: 12, left: 12, flexDirection: 'row', gap: 6, zIndex: 2 },
   heroTopRight: { position: 'absolute', top: 12, right: 12, gap: 6, alignItems: 'flex-end', zIndex: 2 },
   heroBottom: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 14, zIndex: 2 },
-  heroBidLabel: { fontFamily: FontFamily.bold, fontSize: 9, color: 'rgba(255,255,255,0.5)', letterSpacing: 1.5, marginBottom: 4 },
-  heroBid: { fontFamily: FontFamily.extraBold, fontSize: 32, color: '#FFFFFF' },
-  winningBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(16,185,129,0.2)', borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  winningBadgeText: { fontFamily: FontFamily.bold, fontSize: 9, color: '#10B981' },
-  outbidBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(220,31,38,0.2)', borderWidth: 1, borderColor: 'rgba(220,31,38,0.3)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  outbidBadgeText: { fontFamily: FontFamily.bold, fontSize: 9, color: '#DC1F26' },
-  timerBox: { backgroundColor: 'rgba(10,10,12,0.8)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' },
-  timerBoxLabel: { fontFamily: FontFamily.bold, fontSize: 7, color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, marginBottom: 2 },
-  timerBoxValue: { fontFamily: FontFamily.mono, fontSize: 16, color: '#FFFFFF' },
+  heroBidLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.whiteAlpha50, letterSpacing: 1.5, marginBottom: 4 },
+  heroBid: { fontFamily: FontFamily.extraBold, fontSize: FontSize['4xl'], color: Colors.white },
+  winningBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.accentGreenAlpha20, borderWidth: 1, borderColor: Colors.accentGreenAlpha30, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  winningBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.accentGreen },
+  outbidBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.accentAlpha20, borderWidth: 1, borderColor: Colors.accentAlpha30, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  outbidBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.accent },
+  timerBox: { backgroundColor: 'rgba(10,10,12,0.8)', borderWidth: 1, borderColor: Colors.whiteAlpha10, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' },
+  timerBoxLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size7, color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, marginBottom: 2 },
+  timerBoxValue: { fontFamily: FontFamily.mono, fontSize: FontSize.md, color: Colors.white },
 
   // Tabs
-  tabs: { flexDirection: 'row', backgroundColor: '#111116', borderRadius: 10, marginBottom: 14, padding: 3 },
+  tabs: { flexDirection: 'row', backgroundColor: Colors.bgSecondaryAlt, borderRadius: 10, marginBottom: 14, padding: 3 },
   tab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 8 },
-  tabActive: { backgroundColor: '#DC1F26' },
-  tabText: { fontFamily: FontFamily.bold, fontSize: 10, color: '#606070', letterSpacing: 0.8 },
-  tabTextActive: { color: '#FFFFFF' },
+  tabActive: { backgroundColor: Colors.accent },
+  tabText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.iconMuted, letterSpacing: 0.8 },
+  tabTextActive: { color: Colors.white },
 
   // Card
-  card: { backgroundColor: '#111116', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', padding: 14, marginBottom: 0 },
-  cardSectionTitle: { fontFamily: FontFamily.bold, fontSize: 11, color: '#FFFFFF', letterSpacing: 1, marginBottom: 12, borderLeftWidth: 2, borderLeftColor: '#DC1F26', paddingLeft: 8 },
+  card: { backgroundColor: Colors.bgSecondaryAlt, borderRadius: 14, borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 14, marginBottom: 0 },
+  cardSectionTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 1, marginBottom: 12, borderLeftWidth: 2, borderLeftColor: Colors.accent, paddingLeft: 8 },
 
   // Stats row
   statsRow: { flexDirection: 'row', gap: 8, marginBottom: 0 },
-  statBox: { flex: 1, backgroundColor: '#111116', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', padding: 10, alignItems: 'center' },
-  statLabel: { fontFamily: FontFamily.bold, fontSize: 8, color: '#606070', letterSpacing: 1, marginBottom: 4 },
-  statValue: { fontFamily: FontFamily.bold, fontSize: 12, color: '#FFFFFF', textAlign: 'center' },
+  statBox: { flex: 1, backgroundColor: Colors.bgSecondaryAlt, borderRadius: 12, borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 10, alignItems: 'center' },
+  statLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size8, color: Colors.iconMuted, letterSpacing: 1, marginBottom: 4 },
+  statValue: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white, textAlign: 'center' },
 
   // Specs
   specsSection: {},
-  specGroup: { fontFamily: FontFamily.bold, fontSize: 9, color: '#606070', letterSpacing: 1.5, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)', marginBottom: 8 },
+  specGroup: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.iconMuted, letterSpacing: 1.5, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: Colors.whiteAlpha05, marginBottom: 8 },
   specRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 },
-  specKey: { fontFamily: FontFamily.regular, fontSize: 11, color: '#606070', flexShrink: 0 },
-  specVal: { fontFamily: FontFamily.medium, fontSize: 11, color: '#C0C0CB', textAlign: 'right', flex: 1, marginLeft: 12 },
-  descText: { fontFamily: FontFamily.regular, fontSize: 13, color: '#A0A0AB', lineHeight: 20 },
+  specKey: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted, flexShrink: 0 },
+  specVal: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.paleBlue_c0c0cb, textAlign: 'right', flex: 1, marginLeft: 12 },
+  descText: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 20 },
 
   // Features
-  featureChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(16,185,129,0.08)', borderWidth: 1, borderColor: 'rgba(16,185,129,0.2)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20 },
-  featureChipText: { fontFamily: FontFamily.medium, fontSize: 10, color: '#6EE7B7' },
+  featureChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.accentGreenAlpha08, borderWidth: 1, borderColor: Colors.accentGreenAlpha20, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20 },
+  featureChipText: { fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: Colors.lightGreen_6ee7b7 },
 
   // Bids tab
-  bidRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)', gap: 10 },
-  bidAvatar: { width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' },
-  bidAvatarText: { fontFamily: FontFamily.bold, fontSize: 9, color: '#A0A0AB' },
-  bidInitials: { fontFamily: FontFamily.bold, fontSize: 12, color: '#FFFFFF' },
-  bidAmt: { fontFamily: FontFamily.mono, fontSize: 14, color: '#FFFFFF' },
-  bidTime: { fontFamily: FontFamily.regular, fontSize: 9, color: '#606070' },
-  leaderChip: { backgroundColor: 'rgba(220,31,38,0.2)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, alignSelf: 'flex-start', marginTop: 2 },
-  leaderChipText: { fontFamily: FontFamily.bold, fontSize: 7, color: '#DC1F26', letterSpacing: 0.8 },
+  bidRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.whiteAlpha04, gap: 10 },
+  bidAvatar: { width: 30, height: 30, borderRadius: 15, backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: Colors.whiteAlpha08, alignItems: 'center', justifyContent: 'center' },
+  bidAvatarText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.textSecondary },
+  bidInitials: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white },
+  bidAmt: { fontFamily: FontFamily.mono, fontSize: FontSize.size14, color: Colors.white },
+  bidTime: { fontFamily: FontFamily.regular, fontSize: FontSize.size9, color: Colors.iconMuted },
+  leaderChip: { backgroundColor: Colors.accentAlpha20, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, alignSelf: 'flex-start', marginTop: 2 },
+  leaderChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size7, color: Colors.accent, letterSpacing: 0.8 },
 
   // Seller tab
-  sellerAvatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(220,31,38,0.1)', borderWidth: 1, borderColor: 'rgba(220,31,38,0.2)', alignItems: 'center', justifyContent: 'center' },
-  sellerAvatarText: { fontFamily: FontFamily.bold, fontSize: 16, color: '#DC1F26' },
-  sellerName: { fontFamily: FontFamily.bold, fontSize: 15, color: '#FFFFFF' },
+  sellerAvatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: Colors.accentAlpha10, borderWidth: 1, borderColor: Colors.accentAlpha20, alignItems: 'center', justifyContent: 'center' },
+  sellerAvatarText: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.accent },
+  sellerName: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white },
 
   // Bid console
-  bidConsole: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#0D0D11', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)', paddingHorizontal: 14, paddingTop: 12 },
+  bidConsole: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: Colors.deepBlue_0d0d11, borderTopWidth: 1, borderTopColor: Colors.whiteAlpha06, paddingHorizontal: 14, paddingTop: 12 },
   bidStateBox: { alignItems: 'center', paddingVertical: 12, gap: 6 },
-  bidStateText: { fontFamily: FontFamily.bold, fontSize: 14, color: '#FFFFFF' },
-  currentBidVal: { fontFamily: FontFamily.mono, fontSize: 22, color: '#FFFFFF' },
-  minNextBid: { fontFamily: FontFamily.regular, fontSize: 11, color: '#606070' },
-  quickBidBtn: { flex: 1, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', paddingVertical: 8, alignItems: 'center', gap: 2 },
-  quickBidLabel: { fontFamily: FontFamily.bold, fontSize: 9, color: '#606070' },
-  quickBidAmt: { fontFamily: FontFamily.mono, fontSize: 12, color: '#FFFFFF' },
-  quickBidBtnText: { fontFamily: FontFamily.bold, fontSize: 12, color: '#FFFFFF', letterSpacing: 0.5 },
-  customBidWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', paddingHorizontal: 12 },
-  customBidCurrency: { fontFamily: FontFamily.bold, fontSize: 14, color: '#606070', marginRight: 4 },
-  customBidInput: { flex: 1, fontFamily: FontFamily.mono, fontSize: 16, color: '#FFFFFF', paddingVertical: 10 },
-  bidBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#DC1F26', borderRadius: 10, paddingHorizontal: 20, paddingVertical: 12 },
-  bidBtnText: { fontFamily: FontFamily.bold, fontSize: 13, color: '#FFFFFF', letterSpacing: 0.8 },
-  feeNotice: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(245,158,11,0.06)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.15)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
-  feeNoticeLabel: { fontFamily: FontFamily.bold, fontSize: 9, color: '#F59E0B', letterSpacing: 1 },
-  feeNoticeHint: { fontFamily: FontFamily.regular, fontSize: 10, color: '#606070', marginTop: 1 },
-  feeNoticeAmt: { fontFamily: FontFamily.mono, fontSize: 20, color: '#F59E0B' },
+  bidStateText: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white },
+  currentBidVal: { fontFamily: FontFamily.mono, fontSize: FontSize.size22, color: Colors.white },
+  minNextBid: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted },
+  quickBidBtn: { flex: 1, backgroundColor: Colors.whiteAlpha04, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha08, paddingVertical: 8, alignItems: 'center', gap: 2 },
+  quickBidLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.iconMuted },
+  quickBidAmt: { fontFamily: FontFamily.mono, fontSize: FontSize.size12, color: Colors.white },
+  quickBidBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white, letterSpacing: 0.5 },
+  customBidWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.whiteAlpha04, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha08, paddingHorizontal: 12 },
+  customBidCurrency: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.iconMuted, marginRight: 4 },
+  customBidInput: { flex: 1, fontFamily: FontFamily.mono, fontSize: FontSize.md, color: Colors.white, paddingVertical: 10 },
+  bidBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: Colors.accent, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 12 },
+  bidBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, letterSpacing: 0.8 },
+  feeNotice: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: Colors.warningAlpha06, borderWidth: 1, borderColor: Colors.warningAlpha15, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
+  feeNoticeLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.warning, letterSpacing: 1 },
+  feeNoticeHint: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.iconMuted, marginTop: 1 },
+  feeNoticeAmt: { fontFamily: FontFamily.mono, fontSize: FontSize.xl, color: Colors.warning },
 
   // Seller tools row (top strip, below header banners)
   sellerToolsRow: {
@@ -1659,14 +1662,14 @@ const s = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    backgroundColor: 'rgba(245,158,11,0.06)',
+    backgroundColor: Colors.warningAlpha06,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(245,158,11,0.15)',
+    borderBottomColor: Colors.warningAlpha15,
   },
   sellerToolsLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#F59E0B',
+    fontSize: FontSize.xs,
+    color: Colors.warning,
     flex: 1,
   },
   sellerCloseBtn: {
@@ -1678,14 +1681,14 @@ const s = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: 'rgba(220,31,38,0.5)',
-    backgroundColor: 'rgba(220,31,38,0.08)',
+    backgroundColor: Colors.accentAlpha08,
     minWidth: 44,
     justifyContent: 'center',
   },
   sellerCloseBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#DC1F26',
+    fontSize: FontSize.xs,
+    color: Colors.accent,
   },
 
   // Bid row: seller Accept button
@@ -1700,15 +1703,15 @@ const s = StyleSheet.create({
   },
   acceptBidBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#FFFFFF',
+    fontSize: FontSize.size10,
+    color: Colors.white,
     letterSpacing: 0.2,
   },
 
   // Cancel bid banner
   cancelBidBanner: { alignItems: 'center' },
   cancelBidBtn: {
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 7,
@@ -1716,17 +1719,17 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     minWidth: 80,
   },
-  cancelBidBtnText: { fontFamily: FontFamily.bold, fontSize: 11, color: '#FFFFFF' },
+  cancelBidBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white },
 
   // Error/retry
-  retryBtn: { backgroundColor: '#DC1F26', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10 },
-  retryBtnText: { fontFamily: FontFamily.bold, fontSize: 13, color: '#FFF' },
+  retryBtn: { backgroundColor: Colors.accent, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10 },
+  retryBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
 
   // ── Buy It Now (buyer) ──
   binPanel: {
-    backgroundColor: 'rgba(220,31,38,0.06)',
+    backgroundColor: Colors.accentAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(220,31,38,0.25)',
+    borderColor: Colors.accentAlpha25,
     borderRadius: 14,
     padding: 14,
     marginHorizontal: 14,
@@ -1740,19 +1743,19 @@ const s = StyleSheet.create({
   },
   binPanelLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#DC1F26',
+    fontSize: FontSize.size9,
+    color: Colors.accent,
     letterSpacing: 1.2,
     marginBottom: 4,
   },
   binPanelPrice: {
-    fontSize: 22,
-    color: '#FFFFFF',
+    fontSize: FontSize.size22,
+    color: Colors.white,
   },
   binPanelHint: {
     fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: '#606070',
+    fontSize: FontSize.xs,
+    color: Colors.iconMuted,
     textAlign: 'right',
     lineHeight: 16,
   },
@@ -1763,12 +1766,12 @@ const s = StyleSheet.create({
     gap: 8,
     height: 46,
     borderRadius: 11,
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
   },
   binBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
     letterSpacing: 0.3,
   },
 
@@ -1777,9 +1780,9 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: 'rgba(245,158,11,0.08)',
+    backgroundColor: Colors.warningAlpha08,
     borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.20)',
+    borderColor: Colors.warningAlpha20,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -1788,8 +1791,8 @@ const s = StyleSheet.create({
   },
   binPendingText: {
     fontFamily: FontFamily.medium,
-    fontSize: 13,
-    color: '#FCD34D',
+    fontSize: FontSize.sm,
+    color: Colors.lightYellow,
     flex: 1,
     lineHeight: 18,
   },
@@ -1798,21 +1801,21 @@ const s = StyleSheet.create({
   binSellerPanel: {
     marginHorizontal: 14,
     marginBottom: 4,
-    backgroundColor: 'rgba(245,158,11,0.08)',
+    backgroundColor: Colors.warningAlpha08,
     borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.30)',
+    borderColor: Colors.warningAlpha30,
     borderRadius: 14,
     padding: 14,
   },
   binSellerTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#F59E0B',
+    fontSize: FontSize.size14,
+    color: Colors.warning,
   },
   binSellerBody: {
     fontFamily: FontFamily.regular,
-    fontSize: 13,
-    color: '#FCD34D',
+    fontSize: FontSize.sm,
+    color: Colors.lightYellow,
     lineHeight: 19,
   },
   binSellerDeclineBtn: {
@@ -1820,27 +1823,27 @@ const s = StyleSheet.create({
     height: 40,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.20)',
+    borderColor: Colors.whiteAlpha20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   binSellerDeclineText: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
-    color: '#A0A0AB',
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
   },
   binSellerConfirmBtn: {
     flex: 2,
     height: 40,
     borderRadius: 10,
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10,
   },
   binSellerConfirmText: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
-    color: '#FFFFFF',
+    fontSize: FontSize.sm,
+    color: Colors.white,
   },
 });

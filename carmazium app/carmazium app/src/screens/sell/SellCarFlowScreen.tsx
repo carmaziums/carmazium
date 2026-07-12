@@ -454,6 +454,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // Ownership
   const [owners, setOwners] = useState('');
   const [isImported, setIsImported] = useState(false);
+  const [markedForExport, setMarkedForExport] = useState(false);
   const [condition, setCondition] = useState('');
   const [isDepartedSale, setIsDepartedSale] = useState(false);
   const [departedRelSelect, setDepartedRelSelect] = useState('');
@@ -653,6 +654,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       if (data.taxStatus) setTaxStatus(String(data.taxStatus));
       if (data.motExpiryDate) setMotExpiry(String(data.motExpiryDate));
       if (data.taxDueDate) setTaxDue(String(data.taxDueDate));
+      if (data.markedForExport !== undefined) setMarkedForExport(!!data.markedForExport);
       if (data.monthOfFirstRegistration) setFirstRegistered(String(data.monthOfFirstRegistration));
       if (data.wheelplan) setWheelplan(String(data.wheelplan));
       if (data.typeApproval) setTypeApproval(String(data.typeApproval));
@@ -879,6 +881,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         features, title, description, condition,
         owners: owners || undefined,
         isImported,
+        markedForExport,
         isDepartedSale: isDepartedSale || undefined,
         departedRelationship: isDepartedSale ? (departedRelationship || undefined) : undefined,
         writeOffCategory: writeOffCat,
@@ -1432,6 +1435,16 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             <Switch
               value={isImported}
               onValueChange={setIsImported}
+              trackColor={{ false: Colors.darkBlue_2a2a35, true: Colors.accent }}
+              thumbColor={Colors.white}
+            />
+          </View>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
+            <Text style={s.sectionLabel}>MARKED FOR EXPORT</Text>
+            <Switch
+              value={markedForExport}
+              onValueChange={setMarkedForExport}
               trackColor={{ false: Colors.darkBlue_2a2a35, true: Colors.accent }}
               thumbColor={Colors.white}
             />

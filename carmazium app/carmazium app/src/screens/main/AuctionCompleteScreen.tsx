@@ -15,7 +15,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FontFamily } from '../../constants/typography';
+import {FontFamily, FontSize } from '../../constants/typography';
 import { Colors } from '../../constants/colors';
 import { useStripe } from '@stripe/stripe-react-native';
 import { createPaymentSheet } from '../../lib/paymentsApi';
@@ -23,6 +23,7 @@ import { apiClient } from '../../lib/apiClient';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { haptics } from '../../lib/haptics';
 
+import { IconButton } from '../../components/IconButton';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ─────────────────────────────── types ────────────────────────────────
@@ -192,17 +193,17 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
         allowsDelayedPaymentMethods: false,
         appearance: {
           colors: {
-            primary: '#DC1F26',
-            background: '#111116',
-            componentBackground: '#18181f',
-            componentBorder: 'rgba(255,255,255,0.08)',
-            componentDivider: 'rgba(255,255,255,0.06)',
-            primaryText: '#FFFFFF',
-            secondaryText: '#A0A0AB',
-            componentText: '#FFFFFF',
-            placeholderText: '#606070',
-            icon: '#A0A0AB',
-            error: '#DC1F26',
+            primary: Colors.accent,
+            background: Colors.bgSecondaryAlt,
+            componentBackground: Colors.deepBlue_18181f,
+            componentBorder: Colors.whiteAlpha08,
+            componentDivider: Colors.whiteAlpha06,
+            primaryText: Colors.white,
+            secondaryText: Colors.textSecondary,
+            componentText: Colors.white,
+            placeholderText: Colors.iconMuted,
+            icon: Colors.textSecondary,
+            error: Colors.accent,
           },
         },
       });
@@ -275,7 +276,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
       <View style={styles.container}>
         <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
         <LinearGradient
-          colors={['rgba(16,185,129,0.08)', 'rgba(0,0,0,0)', '#0A0A0C']}
+          colors={[Colors.accentGreenAlpha08, 'rgba(0,0,0,0)', Colors.bgPrimary]}
           style={StyleSheet.absoluteFillObject}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0.5, y: 0.4 }}
@@ -302,13 +303,13 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
               <Image source={{ uri: listingImage }} style={styles.carImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
             ) : (
               <View style={[styles.carImg, styles.carImgPlaceholder]}>
-                <Ionicons name="car-outline" size={20} color="#606070" />
+                <Ionicons name="car-outline" size={20} color={Colors.iconMuted} />
               </View>
             )}
             <View style={styles.carInfo}>
               <Text style={styles.carTitle} numberOfLines={2}>{listingTitle}</Text>
               <View style={styles.carStatusRow}>
-                <Ionicons name="checkmark-circle-outline" size={14} color="#10B981" />
+                <Ionicons name="checkmark-circle-outline" size={14} color={Colors.accentGreen} />
                 <Text style={styles.carStatusText}>Fee paid · Handover to be arranged</Text>
               </View>
             </View>
@@ -327,7 +328,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
                 <View style={styles.journeyItem}>
                   <View style={[styles.journeyCircle, item.done && styles.journeyCircleDone]}>
                     {item.done ? (
-                      <Ionicons name="checkmark" size={14} color="#10B981" />
+                      <Ionicons name="checkmark" size={14} color={Colors.accentGreen} />
                     ) : (
                       <View style={styles.journeyCirclePending} />
                     )}
@@ -365,7 +366,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
 
               {reviewDone ? (
                 <View style={styles.reviewDoneRow}>
-                  <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                  <Ionicons name="checkmark-circle" size={20} color={Colors.accentGreen} />
                   <Text style={styles.reviewDoneText}>Review submitted — thank you!</Text>
                 </View>
               ) : (
@@ -373,18 +374,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
                   {/* Stars */}
                   <View style={styles.starsRow}>
                     {[1, 2, 3, 4, 5].map((star) => (
-                      <TouchableOpacity
-                        key={star}
-                        onPress={() => setReviewRating(star)}
-                        activeOpacity={0.7}
-                        hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-                      >
-                        <Ionicons
-                          name={star <= reviewRating ? 'star' : 'star-outline'}
-                          size={32}
-                          color={star <= reviewRating ? '#F59E0B' : 'rgba(255,255,255,0.25)'}
-                        />
-                      </TouchableOpacity>
+                      <IconButton key={star} icon={<Ionicons name={star <= reviewRating ? 'star' : 'star-outline'} size={32} color={star <= reviewRating ? Colors.warning : 'rgba(255,255,255,0.25)'} />} onPress={() => setReviewRating(star)} accessibilityLabel={`Rate ${star} star${star === 1 ? '' : 's'}`} />
                     ))}
                   </View>
 
@@ -412,7 +402,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
                     disabled={reviewRating === 0 || submittingReview}
                   >
                     {submittingReview ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <ActivityIndicator size="small" color={Colors.white} />
                     ) : (
                       <Text style={styles.reviewBtnText}>SUBMIT REVIEW</Text>
                     )}
@@ -439,7 +429,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(16,185,129,0.06)', 'rgba(0,0,0,0)', '#0A0A0C']}
+        colors={[Colors.accentGreenAlpha06, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.5 }}
@@ -454,7 +444,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
         autoStart
         explosionSpeed={350}
         fallSpeed={2800}
-        colors={[Colors.accent, Colors.accentGlow, Colors.white, '#F59E0B']}
+        colors={[Colors.accent, Colors.accentGlow, Colors.white, Colors.warning]}
       />
 
       <ScrollView
@@ -466,13 +456,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => navigation?.goBack()}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+          <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
           <Text style={styles.headerLabelGreen}>AUCTION COMPLETE</Text>
           <View style={{ width: 38 }} />
         </View>
@@ -481,7 +465,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
         <View style={styles.heroWrap}>
           <View style={styles.trophyWrap}>
             <View style={styles.trophyGlow} />
-            <Ionicons name="trophy-outline" size={42} color="#10B981" />
+            <Ionicons name="trophy-outline" size={42} color={Colors.accentGreen} />
           </View>
           <Text style={styles.heroSubGreen}>YOU WON THE AUCTION</Text>
           <Text style={styles.heroTitle} numberOfLines={2}>{listingTitle}</Text>
@@ -504,7 +488,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
             <Ionicons
               name="time-outline"
               size={20}
-              color={timeLeft < 3600 ? '#EF4444' : '#F59E0B'}
+              color={timeLeft < 3600 ? Colors.error : Colors.warning}
               style={{ marginRight: 10 }}
             />
             <View>
@@ -553,7 +537,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
 
         {/* Stripe badge */}
         <View style={styles.paymentNote}>
-          <Ionicons name="lock-closed-outline" size={16} color="#10B981" />
+          <Ionicons name="lock-closed-outline" size={16} color={Colors.accentGreen} />
           <Text style={styles.paymentNoteText}>
             Secure payment via Stripe. Card, Apple Pay &amp; Google Pay accepted.
           </Text>
@@ -569,15 +553,15 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
           disabled={paying || timeLeft === 0}
         >
           <LinearGradient
-            colors={['#FF2D35', '#DC1F26']}
+            colors={[Colors.accentGlow, Colors.accent]}
             style={StyleSheet.absoluteFillObject}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           />
           {paying ? (
-            <ActivityIndicator color="#FFFFFF" style={{ marginRight: 12 }} />
+            <ActivityIndicator color={Colors.white} style={{ marginRight: 12 }} />
           ) : (
-            <Ionicons name="lock-closed-outline" size={18} color="#FFFFFF" style={{ marginRight: 12 }} />
+            <Ionicons name="lock-closed-outline" size={18} color={Colors.white} style={{ marginRight: 12 }} />
           )}
           <Text style={styles.payBtnText}>
             {paying ? 'PROCESSING…' : `COMPLETE PAYMENT · ${fmt(buyerFee)}`}
@@ -592,7 +576,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
 // ──────────────────────────── styles ──────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0A0A0C' },
+  container: { flex: 1, backgroundColor: Colors.bgPrimary },
   scrollContent: { paddingHorizontal: 20 },
 
   // Header
@@ -606,24 +590,24 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: Colors.whiteAlpha05,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: Colors.whiteAlpha08,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerCenter: { alignItems: 'center' },
   headerLabelGreen: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#10B981',
+    fontSize: FontSize.size10,
+    color: Colors.accentGreen,
     letterSpacing: 2,
     textAlign: 'center',
   },
   headerTitle: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 18,
-    color: '#FFFFFF',
+    fontSize: FontSize.lg,
+    color: Colors.white,
     marginTop: 4,
   },
 
@@ -634,7 +618,7 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     borderWidth: 2,
-    borderColor: '#10B981',
+    borderColor: Colors.accentGreen,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
@@ -645,57 +629,57 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: 'rgba(16,185,129,0.2)',
+    backgroundColor: Colors.accentGreenAlpha20,
   },
   heroSubGreen: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#10B981',
+    fontSize: FontSize.size10,
+    color: Colors.accentGreen,
     letterSpacing: 1.5,
     marginBottom: 8,
   },
   heroTitle: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 22,
-    color: '#FFFFFF',
+    fontSize: FontSize.size22,
+    color: Colors.white,
     textAlign: 'center',
   },
 
   // Hammer box
   hammerBox: {
-    backgroundColor: 'rgba(16,185,129,0.05)',
+    backgroundColor: Colors.accentGreenAlpha05,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(16,185,129,0.2)',
+    borderColor: Colors.accentGreenAlpha20,
     paddingVertical: 24,
     alignItems: 'center',
     marginBottom: 24,
   },
   hammerLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#A0A0AB',
+    fontSize: FontSize.size10,
+    color: Colors.textSecondary,
     letterSpacing: 2,
     marginBottom: 10,
   },
   hammerPrice: {
     // Mono font for price — per spec (was FontFamily.black)
     fontFamily: FontFamily.mono,
-    fontSize: 42,
-    color: '#FFFFFF',
+    fontSize: FontSize.size42,
+    color: Colors.white,
     letterSpacing: -1,
     marginBottom: 8,
   },
-  hammerMeta: { fontFamily: FontFamily.medium, fontSize: 13, color: '#606070' },
+  hammerMeta: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.iconMuted },
 
   // Timer
   timerBox: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(245,158,11,0.05)',
+    backgroundColor: Colors.warningAlpha05,
     borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.3)',
+    borderColor: Colors.warningAlpha30,
     borderRadius: 24,
     paddingHorizontal: 20,
     paddingVertical: 16,
@@ -703,56 +687,56 @@ const styles = StyleSheet.create({
   },
   timerBoxUrgent: {
     backgroundColor: 'rgba(239,68,68,0.05)',
-    borderColor: 'rgba(239,68,68,0.3)',
+    borderColor: Colors.errorAlpha30,
   },
   timerLeft: { flexDirection: 'row', alignItems: 'center' },
-  timerTitle: { fontFamily: FontFamily.bold, fontSize: 12, color: '#F59E0B', marginBottom: 2 },
-  timerTitleUrgent: { color: '#EF4444' },
-  timerValue: { fontFamily: FontFamily.mono, fontSize: 22, color: '#FFFFFF', letterSpacing: 1 },
-  timerValueUrgent: { color: '#EF4444' },
+  timerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.warning, marginBottom: 2 },
+  timerTitleUrgent: { color: Colors.error },
+  timerValue: { fontFamily: FontFamily.mono, fontSize: FontSize.size22, color: Colors.white, letterSpacing: 1 },
+  timerValueUrgent: { color: Colors.error },
   timerRight: { alignItems: 'flex-end' },
-  timerRightText: { fontFamily: FontFamily.regular, fontSize: 11, color: '#A0A0AB' },
+  timerRightText: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary },
 
   sectionLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#FFFFFF',
+    fontSize: FontSize.xs,
+    color: Colors.white,
     letterSpacing: 1.5,
     marginBottom: 16,
   },
 
   // Summary
   summaryBox: {
-    backgroundColor: '#111116',
+    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     padding: 20,
     marginBottom: 20,
   },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
-  summaryLabel: { fontFamily: FontFamily.regular, fontSize: 14, color: '#A0A0AB' },
-  summaryLabelNote: { fontFamily: FontFamily.regular, fontSize: 11, color: '#606070', marginTop: 2 },
+  summaryLabel: { fontFamily: FontFamily.regular, fontSize: FontSize.size14, color: Colors.textSecondary },
+  summaryLabelNote: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted, marginTop: 2 },
   // Mono font for price values in summary
-  summaryValue: { fontFamily: FontFamily.mono, fontSize: 14, color: '#FFFFFF' },
+  summaryValue: { fontFamily: FontFamily.mono, fontSize: FontSize.size14, color: Colors.white },
   summaryDivider: {
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     marginBottom: 16,
   },
   summaryTotalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   summaryTotalLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#FFFFFF',
+    fontSize: FontSize.size12,
+    color: Colors.white,
     letterSpacing: 1,
   },
   // Mono font for total price
-  summaryTotalValue: { fontFamily: FontFamily.mono, fontSize: 20, color: '#FFFFFF' },
+  summaryTotalValue: { fontFamily: FontFamily.mono, fontSize: FontSize.xl, color: Colors.white },
   summaryTotalNote: {
     fontFamily: FontFamily.regular,
-    fontSize: 12,
-    color: '#606070',
+    fontSize: FontSize.size12,
+    color: Colors.iconMuted,
     lineHeight: 18,
   },
 
@@ -760,9 +744,9 @@ const styles = StyleSheet.create({
   paymentNote: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: 'rgba(16,185,129,0.05)',
+    backgroundColor: Colors.accentGreenAlpha05,
     borderWidth: 1,
-    borderColor: 'rgba(16,185,129,0.15)',
+    borderColor: Colors.accentGreenAlpha15,
     borderRadius: 12,
     padding: 14,
     gap: 10,
@@ -770,8 +754,8 @@ const styles = StyleSheet.create({
   paymentNoteText: {
     flex: 1,
     fontFamily: FontFamily.regular,
-    fontSize: 13,
-    color: '#A0A0AB',
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
     lineHeight: 20,
   },
 
@@ -783,7 +767,7 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 20,
     paddingTop: 16,
-    backgroundColor: '#0A0A0C',
+    backgroundColor: Colors.bgPrimary,
   },
   payBtn: {
     height: 56,
@@ -795,11 +779,11 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   payBtnDisabled: { opacity: 0.6 },
-  payBtnText: { fontFamily: FontFamily.bold, fontSize: 14, color: '#FFFFFF', letterSpacing: 1.2 },
+  payBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white, letterSpacing: 1.2 },
   footerNote: {
     fontFamily: FontFamily.medium,
-    fontSize: 12,
-    color: '#606070',
+    fontSize: FontSize.size12,
+    color: Colors.iconMuted,
     textAlign: 'center',
   },
 
@@ -807,29 +791,29 @@ const styles = StyleSheet.create({
   carCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111116',
+    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(16,185,129,0.2)',
+    borderColor: Colors.accentGreenAlpha20,
     padding: 16,
     marginBottom: 32,
   },
   carImg: { width: 70, height: 50, borderRadius: 8, marginRight: 16 },
   carImgPlaceholder: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     alignItems: 'center',
     justifyContent: 'center',
   },
   carInfo: { flex: 1 },
-  carTitle: { fontFamily: FontFamily.bold, fontSize: 15, color: '#FFFFFF', marginBottom: 6 },
+  carTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white, marginBottom: 6 },
   carStatusRow: { flexDirection: 'row', alignItems: 'center' },
-  carStatusText: { fontFamily: FontFamily.bold, fontSize: 11, color: '#10B981', marginLeft: 4 },
+  carStatusText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accentGreen, marginLeft: 4 },
 
   journeyBox: {
-    backgroundColor: '#111116',
+    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     padding: 20,
     marginBottom: 24,
   },
@@ -839,70 +823,70 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: Colors.whiteAlpha12,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
   },
   journeyCircleDone: {
-    backgroundColor: 'rgba(16,185,129,0.15)',
-    borderColor: '#10B981',
+    backgroundColor: Colors.accentGreenAlpha15,
+    borderColor: Colors.accentGreen,
   },
   journeyCirclePending: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#606070',
+    backgroundColor: Colors.iconMuted,
   },
-  journeyLabel: { flex: 1, fontFamily: FontFamily.medium, fontSize: 14, color: '#606070' },
-  journeyLabelDone: { color: '#A0A0AB' },
-  journeyLabelBold: { fontFamily: FontFamily.bold, color: '#FFFFFF' },
+  journeyLabel: { flex: 1, fontFamily: FontFamily.medium, fontSize: FontSize.size14, color: Colors.iconMuted },
+  journeyLabelDone: { color: Colors.textSecondary },
+  journeyLabelBold: { fontFamily: FontFamily.bold, color: Colors.white },
   journeyLine: {
     position: 'absolute',
     top: 36,
     left: 11,
     width: 1,
     height: 20,
-    backgroundColor: 'rgba(16,185,129,0.3)',
+    backgroundColor: Colors.accentGreenAlpha30,
   },
-  journeyLinePending: { backgroundColor: 'rgba(255,255,255,0.08)' },
+  journeyLinePending: { backgroundColor: Colors.whiteAlpha08 },
 
   nextBox: {
-    backgroundColor: '#111116',
+    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     padding: 20,
     marginBottom: 28,
   },
   nextText: {
     fontFamily: FontFamily.regular,
-    fontSize: 14,
-    color: '#A0A0AB',
+    fontSize: FontSize.size14,
+    color: Colors.textSecondary,
     lineHeight: 22,
   },
 
   // ── Seller review ──
   reviewBox: {
-    backgroundColor: '#111116',
+    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.2)',
+    borderColor: Colors.warningAlpha20,
     padding: 20,
     marginBottom: 28,
   },
   reviewTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 15,
-    color: '#FFFFFF',
+    fontSize: FontSize.base,
+    color: Colors.white,
     marginBottom: 4,
   },
   reviewSub: {
     fontFamily: FontFamily.regular,
-    fontSize: 12,
-    color: '#A0A0AB',
+    fontSize: FontSize.size12,
+    color: Colors.textSecondary,
     marginBottom: 18,
   },
   starsRow: {
@@ -911,15 +895,15 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   reviewInput: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: Colors.whiteAlpha08,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontFamily: FontFamily.regular,
-    fontSize: 13,
-    color: '#FFFFFF',
+    fontSize: FontSize.sm,
+    color: Colors.white,
     lineHeight: 20,
     marginBottom: 16,
     minHeight: 72,
@@ -928,7 +912,7 @@ const styles = StyleSheet.create({
   reviewBtn: {
     height: 46,
     borderRadius: 10,
-    backgroundColor: '#F59E0B',
+    backgroundColor: Colors.warning,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -937,8 +921,8 @@ const styles = StyleSheet.create({
   },
   reviewBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#000000',
+    fontSize: FontSize.size12,
+    color: Colors.black,
     letterSpacing: 0.8,
   },
   reviewDoneRow: {
@@ -949,12 +933,12 @@ const styles = StyleSheet.create({
   },
   reviewDoneText: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#10B981',
+    fontSize: FontSize.size14,
+    color: Colors.accentGreen,
   },
 
   doneBtn: {
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     borderRadius: 12,
     height: 56,
     alignItems: 'center',
@@ -963,8 +947,8 @@ const styles = StyleSheet.create({
   },
   doneBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
     letterSpacing: 1,
   },
 });
