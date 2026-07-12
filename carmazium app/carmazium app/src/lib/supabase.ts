@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -8,16 +9,56 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('Missing Supabase environment variables in Expo config.');
 }
 
-// Custom storage adapter using expo-secure-store for device-level JWT encryption
-const expoSecureStoreAdapter = {
-  getItem: (key: string): Promise<string | null> => {
-    return SecureStore.getItemAsync(key);
+// Supabase persists the whole session (access + refresh tokens, expiry, token_type,
+// AND the full `user` object incl. metadata) as one JSON blob under one key. Storing
+// all of that in SecureStore routinely exceeds its ~2048-byte soft limit (the observed
+// "Value being stored in SecureStore is larger than 2048 bytes" warning) — a real
+// reliability risk on older Android (mobile-audit.md W9). Split it: only the two
+// actual secrets go in SecureStore; everything else (expiry, user object) goes in
+// AsyncStorage. Supabase itself only ever sees the combined getItem/setItem/removeItem
+// interface, never the split.
+const SECURE_SESSION_FIELDS = ['access_token', 'refresh_token'] as const;
+
+const hybridStorageAdapter = {
+  getItem: async (key: string): Promise<string | null> => {
+    const [securePart, restPart] = await Promise.all([
+      SecureStore.getItemAsync(key),
+      AsyncStorage.getItem(key),
+    ]);
+    if (!securePart && !restPart) return null;
+    try {
+      const secure = securePart ? JSON.parse(securePart) : {};
+      const rest = restPart ? JSON.parse(restPart) : {};
+      return JSON.stringify({ ...rest, ...secure });
+    } catch {
+      // Corrupt half — fall back to whichever part is still valid rather than
+      // failing the whole session read.
+      return restPart ?? securePart ?? null;
+    }
   },
-  setItem: (key: string, value: string): Promise<void> => {
-    return SecureStore.setItemAsync(key, value);
+  setItem: async (key: string, value: string): Promise<void> => {
+    try {
+      const parsed = JSON.parse(value);
+      const secure: Record<string, unknown> = {};
+      const rest: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(parsed)) {
+        if ((SECURE_SESSION_FIELDS as readonly string[]).includes(k)) secure[k] = v;
+        else rest[k] = v;
+      }
+      await Promise.all([
+        SecureStore.setItemAsync(key, JSON.stringify(secure)),
+        AsyncStorage.setItem(key, JSON.stringify(rest)),
+      ]);
+    } catch {
+      // Not JSON (shouldn't happen for Supabase's session blob) — keep prior behavior.
+      await SecureStore.setItemAsync(key, value);
+    }
   },
-  removeItem: (key: string): Promise<void> => {
-    return SecureStore.deleteItemAsync(key);
+  removeItem: async (key: string): Promise<void> => {
+    await Promise.all([
+      SecureStore.deleteItemAsync(key),
+      AsyncStorage.removeItem(key),
+    ]);
   },
 };
 
@@ -26,7 +67,7 @@ export const supabase = createClient(
   supabaseAnonKey || 'placeholder-key',
   {
     auth: {
-      storage: expoSecureStoreAdapter,
+      storage: hybridStorageAdapter,
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: false,

@@ -32,7 +32,7 @@ export interface CarListing {
   latitude?: number | null;
   longitude?: number | null;
   dealer: string;
-  rating: number;
+  rating?: number;
   images: string[];
   isFeatured: boolean;
   isNew: boolean;
@@ -53,6 +53,27 @@ export interface CarListing {
   deliveryAvailable?: boolean;
   deliveryMaxMiles?: number | null;
   deliveryPricePerMile?: number | null;
+  bannerLabel?: string | null;
+  videoUrls?: string[] | null;
+  badgeTier?: 'FREE' | 'BASIC' | 'STANDARD' | 'PREMIUM' | null;
+  // Real DVLA / seller-declared history fields (see mobile-audit.md W1) — null/undefined means
+  // "not disclosed", never assume a positive value as a fallback.
+  motStatus?: string | null;
+  motExpiry?: string | null;
+  taxStatus?: string | null;
+  taxDueDate?: string | null;
+  owners?: number | null;
+  serviceHistory?: string | null;
+  writeOffCategory?: string | null;
+  stolenRecovered?: boolean | null;
+  hasOutstandingFinance?: boolean | null;
+  wheelplan?: string | null;
+  typeApproval?: string | null;
+  monthOfFirstRegistration?: string | null;
+  isSellerVerified?: boolean;
+  totalSales?: number | null;
+  viewCount?: number;
+  status?: string;
 }
 
 export interface AuctionListing extends CarListing {

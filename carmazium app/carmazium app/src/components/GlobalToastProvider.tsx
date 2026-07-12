@@ -54,7 +54,9 @@ export const GlobalToastProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!token) return;
 
       const socket = io(`${API_URL}/notifications`, {
-        auth: { token },
+        // Function form re-fetches a fresh token on every reconnect attempt —
+        // see ChatContext.tsx for why a plain-object `auth` goes stale.
+        auth: (cb) => getAccessToken().then((t) => cb(t ? { token: t } : {})),
         transports: ['websocket'],
         reconnection: true,
         reconnectionAttempts: 5,

@@ -1,4 +1,5 @@
 import { apiClient } from './apiClient';
+import { Colors } from '../constants/colors';
 
 export interface AppNotification {
   id: string;
@@ -61,16 +62,16 @@ export async function getUnreadCount(): Promise<number> {
 // Notification type → icon + color mapping for the UI
 export function notifStyle(type: string): { icon: string; color: string; bg: string } {
   switch (type) {
-    case 'AUCTION_WON':       return { icon: 'trophy', color: '#10B981', bg: 'rgba(16,185,129,0.12)' };
-    case 'AUCTION_ENDED':     return { icon: 'hammer-outline', color: '#606070', bg: 'rgba(255,255,255,0.04)' };
-    case 'OFFER_RECEIVED':    return { icon: 'pricetag-outline', color: '#F59E0B', bg: 'rgba(245,158,11,0.12)' };
-    case 'OFFER_ACCEPTED':    return { icon: 'checkmark-circle', color: '#10B981', bg: 'rgba(16,185,129,0.12)' };
-    case 'OFFER_REJECTED':    return { icon: 'close', color: '#DC1F26', bg: 'rgba(220,31,38,0.12)' };
-    case 'OFFER_COUNTERED':   return { icon: 'arrow-forward', color: '#3B82F6', bg: 'rgba(59,130,246,0.12)' };
-    case 'OFFER_WITHDRAWN':   return { icon: 'arrow-back', color: '#606070', bg: 'rgba(255,255,255,0.04)' };
-    case 'MESSAGE_RECEIVED':  return { icon: 'chatbubble-outline', color: '#3B82F6', bg: 'rgba(59,130,246,0.12)' };
-    case 'DEAL_CLOSED':       return { icon: 'checkmark-circle', color: '#10B981', bg: 'rgba(16,185,129,0.12)' };
-    default:                  return { icon: 'notifications-outline', color: '#A0A0AB', bg: 'rgba(255,255,255,0.04)' };
+    case 'AUCTION_WON':       return { icon: 'trophy', color: Colors.accentGreen, bg: Colors.accentGreenAlpha12 };
+    case 'AUCTION_ENDED':     return { icon: 'hammer-outline', color: Colors.iconMuted, bg: Colors.whiteAlpha04 };
+    case 'OFFER_RECEIVED':    return { icon: 'pricetag-outline', color: Colors.warning, bg: Colors.warningAlpha12 };
+    case 'OFFER_ACCEPTED':    return { icon: 'checkmark-circle', color: Colors.accentGreen, bg: Colors.accentGreenAlpha12 };
+    case 'OFFER_REJECTED':    return { icon: 'close', color: Colors.accent, bg: Colors.accentAlpha12 };
+    case 'OFFER_COUNTERED':   return { icon: 'arrow-forward', color: Colors.infoBlue, bg: Colors.infoBlueAlpha12 };
+    case 'OFFER_WITHDRAWN':   return { icon: 'arrow-back', color: Colors.iconMuted, bg: Colors.whiteAlpha04 };
+    case 'MESSAGE_RECEIVED':  return { icon: 'chatbubble-outline', color: Colors.infoBlue, bg: Colors.infoBlueAlpha12 };
+    case 'DEAL_CLOSED':       return { icon: 'checkmark-circle', color: Colors.accentGreen, bg: Colors.accentGreenAlpha12 };
+    default:                  return { icon: 'notifications-outline', color: Colors.textSecondary, bg: Colors.whiteAlpha04 };
   }
 }
 

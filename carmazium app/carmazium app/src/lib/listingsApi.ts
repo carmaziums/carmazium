@@ -29,11 +29,13 @@ export interface ApiListing {
   variant?: string | null;
   slug?: string;
   viewCount?: number;
+  status?: string;
   seller?: {
     id: string;
     firstName?: string;
     lastName?: string;
-    dealerProfile?: { companyName?: string; logo?: string } | null;
+    dealerProfile?: { companyName?: string; logo?: string; isVerified?: boolean } | null;
+    sellerProfile?: { totalSales?: number } | null;
   } | null;
   isDepartedSale?: boolean | null;
   importedFromUrl?: string | null;
@@ -47,6 +49,23 @@ export interface ApiListing {
   deliveryAvailable?: boolean | null;
   deliveryMaxMiles?: number | null;
   deliveryPricePerMile?: number | null;
+  bannerLabel?: string | null;
+  videoUrls?: string[] | null;
+  badgeTier?: 'FREE' | 'BASIC' | 'STANDARD' | 'PREMIUM' | null;
+  // Real DVLA / seller-declared history fields — confirmed present on GET /listings/{id}
+  // response (2026-07-11 live check). See mobile-audit.md W1.
+  motStatus?: string | null;
+  motExpiryDate?: string | null;
+  taxStatus?: string | null;
+  taxDueDate?: string | null;
+  owners?: string | number | null;
+  serviceHistory?: string | null;
+  writeOffCategory?: string | null;
+  stolenRecovered?: boolean | null;
+  hasOutstandingFinance?: boolean | null;
+  wheelplan?: string | null;
+  typeApproval?: string | null;
+  monthOfFirstRegistration?: string | null;
 }
 
 export interface PaginatedApiResponse<T> {
@@ -169,7 +188,6 @@ export function mapApiListingToCarListing(l: ApiListing): CarListing {
     latitude:     l.latitude     ?? null,
     longitude:    l.longitude    ?? null,
     dealer,
-    rating:       4.5,
     images:       l.images?.length ? l.images : [],
     isFeatured:   l.isFeatured   ?? false,
     isNew:        false,
@@ -184,6 +202,25 @@ export function mapApiListingToCarListing(l: ApiListing): CarListing {
     deliveryAvailable:    l.deliveryAvailable    ?? false,
     deliveryMaxMiles:     l.deliveryMaxMiles     ?? null,
     deliveryPricePerMile: l.deliveryPricePerMile ?? null,
+    bannerLabel:          l.bannerLabel          ?? null,
+    videoUrls:            l.videoUrls            ?? null,
+    badgeTier:            l.badgeTier            ?? null,
+    motStatus:                l.motStatus                ?? null,
+    motExpiry:                l.motExpiryDate            ?? null,
+    taxStatus:                l.taxStatus                ?? null,
+    taxDueDate:               l.taxDueDate               ?? null,
+    owners:                   l.owners != null ? Number(l.owners) : null,
+    serviceHistory:           l.serviceHistory           ?? null,
+    writeOffCategory:         l.writeOffCategory         ?? null,
+    stolenRecovered:          l.stolenRecovered          ?? null,
+    hasOutstandingFinance:    l.hasOutstandingFinance    ?? null,
+    wheelplan:                l.wheelplan                ?? null,
+    typeApproval:             l.typeApproval             ?? null,
+    monthOfFirstRegistration: l.monthOfFirstRegistration ?? null,
+    isSellerVerified:         l.seller?.dealerProfile?.isVerified === true,
+    totalSales:               l.seller?.sellerProfile?.totalSales ?? null,
+    viewCount:                l.viewCount ?? 0,
+    status:                   l.status ?? undefined,
   };
 }
 
@@ -231,6 +268,9 @@ export async function getFeaturedListings(): Promise<CarListing[]> {
 export async function searchListings(params: {
   search?: string;
   make?: string;
+  model?: string;
+  vehicleType?: 'CAR' | 'HGV' | 'MOTORCYCLE';
+  location?: string;
   minPrice?: number;
   maxPrice?: number;
   minYear?: number;
@@ -257,6 +297,9 @@ export async function searchListings(params: {
 
     if (params.search)    query.set('search',    params.search);
     if (params.make)      query.set('make',      params.make);
+    if (params.model)     query.set('model',     params.model);
+    if (params.vehicleType) query.set('vehicleType', params.vehicleType);
+    if (params.location) query.set('location', params.location);
     if (params.minPrice != null) query.set('minPrice', String(params.minPrice));
     if (params.maxPrice != null) query.set('maxPrice', String(params.maxPrice));
     if (params.minYear  != null) query.set('minYear',  String(params.minYear));

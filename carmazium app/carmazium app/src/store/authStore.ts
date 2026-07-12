@@ -50,6 +50,7 @@ interface AuthState {
   logout: () => Promise<void>;
   setLoading: (loading: boolean) => void;
   setRole: (role: 'buyer' | 'seller' | 'dealer') => void;
+  updateUser: (updates: Partial<User>) => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -67,6 +68,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setLoading: (loading: boolean) => set({ isLoading: loading }),
   setRole: (role: 'buyer' | 'seller' | 'dealer') => set({ role }),
+  updateUser: (updates) => set((state) => ({ user: state.user ? { ...state.user, ...updates } : state.user })),
 
   initializeAuth: async () => {
     set({ isLoading: true });

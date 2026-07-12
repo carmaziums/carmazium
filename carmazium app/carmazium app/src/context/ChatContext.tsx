@@ -65,7 +65,11 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Socket.io namespaces (/chat)
       socket = io(`${API_URL}/chat`, {
-        auth: { token },
+        // Function form so socket.io-client re-fetches a fresh token on every
+        // (re)connection attempt instead of freezing the one captured here —
+        // a plain object is never re-evaluated, so a reconnect after Supabase's
+        // silent background token refresh would otherwise auth with a stale token.
+        auth: (cb) => getAccessToken().then((t) => cb(t ? { token: t } : {})),
         transports: ['websocket'],
         reconnection: true,
         reconnectionAttempts: 5,
