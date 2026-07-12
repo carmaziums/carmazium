@@ -572,8 +572,14 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
         {offer.status === 'ACCEPTED' && (
           <>
             <Text style={styles.acceptedStatusText}>
-              Your offer of {formatPrice(offer.amount)} was accepted! Contact the seller to
-              complete the purchase.
+              {/* Was always offer.amount (the original ask) — when a seller's
+                  counter was what actually got accepted, this showed the wrong
+                  price. displayedCounter already resolves the canonical
+                  accepted counter amount, falling back to the original offer
+                  when there was no counter. */}
+              {displayedCounter != null
+                ? `Your negotiated price of ${formatPrice(displayedCounter)} was accepted! Contact the seller to complete the purchase.`
+                : `Your offer of ${formatPrice(offer.amount)} was accepted! Contact the seller to complete the purchase.`}
             </Text>
             <View style={styles.actionsRow}>
               <TouchableOpacity
