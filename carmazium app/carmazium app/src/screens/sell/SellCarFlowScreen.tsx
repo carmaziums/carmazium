@@ -47,14 +47,25 @@ interface DamageEntry {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
+// Full parity with web's FuelType enum (ListingWizard.tsx) — was missing 9 of
+// 14 values, silently blocking sellers with e.g. an LPG or hydrogen car from
+// listing accurately.
 const FUEL_TYPES = [
   { v: 'PETROL', l: 'Petrol' }, { v: 'DIESEL', l: 'Diesel' },
   { v: 'ELECTRIC', l: 'Electric' }, { v: 'HYBRID', l: 'Hybrid' },
+  { v: 'PETROL_HYBRID', l: 'Petrol Hybrid' }, { v: 'DIESEL_HYBRID', l: 'Diesel Hybrid' },
   { v: 'PLUGIN_HYBRID', l: 'Plug-in Hybrid' },
+  { v: 'PETROL_PLUGIN_HYBRID', l: 'Petrol Plug-in Hybrid' },
+  { v: 'DIESEL_PLUGIN_HYBRID', l: 'Diesel Plug-in Hybrid' },
+  { v: 'LPG', l: 'LPG' }, { v: 'BI_FUEL', l: 'Bi Fuel' },
+  { v: 'NATURAL_GAS', l: 'Natural Gas' }, { v: 'HYDROGEN_CELL', l: 'Hydrogen' },
+  { v: 'UNLISTED', l: 'Unlisted' },
 ];
 const TRANSMISSIONS = [
   { v: 'AUTOMATIC', l: 'Automatic' }, { v: 'MANUAL', l: 'Manual' },
-  { v: 'SEMI_AUTO', l: 'Semi-Auto' },
+  // Was 'SEMI_AUTO' — the backend's Transmission enum only accepts
+  // SEMI_AUTOMATIC, so selecting this used to fail listing submission.
+  { v: 'SEMI_AUTOMATIC', l: 'Semi-Auto' }, { v: 'CVT', l: 'CVT' },
 ];
 const DRIVE_TYPES = [
   { v: 'FWD', l: 'FWD' }, { v: 'RWD', l: 'RWD' },
