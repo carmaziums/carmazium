@@ -1,20 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  FlatList,
   StatusBar,
   Dimensions,
   Alert,
-  ActivityIndicator,
   RefreshControl,
-  Modal,
   TextInput,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
@@ -22,12 +19,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Colors } from '../../constants/colors';
+import { RowDensity } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
+import { haptics } from '../../lib/haptics';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { ImportListingModal } from '../../components/ImportListingModal';
 import { BulkImportModal } from '../../components/BulkImportModal';
+import { BottomSheet } from '../../components/BottomSheet';
+import { StripeCheckoutModal } from '../../components/StripeCheckoutModal';
+import { IconButton } from '../../components/IconButton';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const VIEW_MODE_STORAGE_KEY = 'czm_dealer_inventory_view_mode';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -39,6 +44,7 @@ interface Listing {
   id: string;
   title: string;
   price: string;
+  rawPrice: number;
   daysListed: number;
   views: number;
   leads: number;
@@ -54,6 +60,7 @@ const mapApiListing = (l: any): Listing => ({
   id: l.id,
   title: l.title || `${l.year ?? ''} ${l.make ?? ''} ${l.model ?? ''}`.trim() || 'Untitled',
   price: l.price ? `£${Number(l.price).toLocaleString('en-GB')}` : '–',
+  rawPrice: l.price ? Number(l.price) : 0,
   daysListed: l.createdAt ? Math.floor((Date.now() - new Date(l.createdAt).getTime()) / 86400000) : 0,
   views: l.viewCount ?? 0,
   leads: 0,
@@ -66,20 +73,90 @@ const mapApiListing = (l: any): Listing => ({
 
 // ─── Status badge colors ─────────────────────────────────────────────────────
 const STATUS_STYLE: Record<StatusTag, { bg: string; color: string; label: string }> = {
-  LIVE:    { bg: '#22C55E', color: '#FFFFFF', label: 'LIVE' },
-  PENDING: { bg: '#F59E0B', color: '#FFFFFF', label: 'PRICING' },
-  SOLD:    { bg: '#6B7280', color: '#FFFFFF', label: 'SOLD' },
+  LIVE:    { bg: Colors.success, color: Colors.white, label: 'LIVE' },
+  PENDING: { bg: Colors.warning, color: Colors.white, label: 'PRICING' },
+  SOLD:    { bg: Colors.midBlue_6b7280, color: Colors.white, label: 'SOLD' },
 };
 
 // ─── LISTING DETAIL SUBSCREEN ────────────────────────────────────────────────
 const ListingDetail: React.FC<{
   listing: Listing;
   onBack: () => void;
-}> = ({ listing, onBack }) => {
+  navigation?: any;
+  onSold: () => void;
+}> = ({ listing, onBack, navigation, onSold }) => {
   const insets = useSafeAreaInsets();
   const [selectedImg, setSelectedImg] = useState(0);
   const [offersStatus, setOffersStatus] = useState(listing.offersStatus);
   const thumbW = (SCREEN_WIDTH - 48 - 12) / 3;
+
+  // Boost — same in-app Stripe checkout pattern already used by
+  // SellerListingsScreen.tsx (POST /featured-boost/:id -> checkoutUrl).
+  const [boosting, setBoosting] = useState(false);
+  const [boostCheckoutUrl, setBoostCheckoutUrl] = useState<string | null>(null);
+  const [boostToast, setBoostToast] = useState<string | null>(null);
+
+  const handleBoost = async () => {
+    setBoosting(true);
+    try {
+      const res = await apiClient<{ success: boolean; data: { checkoutUrl: string } }>(
+        `/featured-boost/${listing.id}`,
+        { method: 'POST' },
+      );
+      const checkoutUrl = res?.data?.checkoutUrl;
+      if (checkoutUrl) {
+        setBoostCheckoutUrl(checkoutUrl);
+      } else {
+        Alert.alert('Error', 'No checkout URL returned.');
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err?.message ?? 'Could not initiate boost.');
+    } finally {
+      setBoosting(false);
+    }
+  };
+
+  const handleBoostSuccess = useCallback(() => {
+    setBoostCheckoutUrl(null);
+    haptics.success();
+    setBoostToast('Boosted for 7 days');
+    setTimeout(() => setBoostToast(null), 3000);
+  }, []);
+
+  // Mark Sold — same PATCH /listings/:id/sold pattern as SellerListingsScreen.tsx.
+  const [markSoldVisible, setMarkSoldVisible] = useState(false);
+  const [soldPriceInput, setSoldPriceInput] = useState('');
+  const [markSoldSubmitting, setMarkSoldSubmitting] = useState(false);
+  const [markSoldError, setMarkSoldError] = useState<string | null>(null);
+
+  const openMarkSold = () => {
+    setSoldPriceInput(listing.rawPrice ? listing.rawPrice.toLocaleString('en-GB') : '');
+    setMarkSoldError(null);
+    setMarkSoldVisible(true);
+  };
+
+  const handleConfirmMarkSold = async () => {
+    const soldPrice = parseFloat(soldPriceInput.replace(/[^0-9.]/g, ''));
+    if (isNaN(soldPrice) || soldPrice <= 0) {
+      setMarkSoldError('Enter a valid sale price.');
+      return;
+    }
+    setMarkSoldSubmitting(true);
+    setMarkSoldError(null);
+    try {
+      await apiClient(`/listings/${listing.id}/sold`, {
+        method: 'PATCH',
+        body: JSON.stringify({ soldPrice }),
+      });
+      haptics.success();
+      setMarkSoldVisible(false);
+      onSold();
+    } catch (err: any) {
+      setMarkSoldError(err?.message ?? 'Could not mark as sold. Please try again.');
+    } finally {
+      setMarkSoldSubmitting(false);
+    }
+  };
 
   const handleEdit = (field: string) => {
     if (field === 'offers') {
@@ -103,7 +180,7 @@ const ListingDetail: React.FC<{
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(220,31,38,0.05)', 'rgba(0,0,0,0)', '#0A0A0C']}
+        colors={[Colors.accentAlpha05, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.5 }}
@@ -115,9 +192,7 @@ const ListingDetail: React.FC<{
       >
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <View style={[styles.detailHeader, { paddingTop: insets.top + 14 }]}>
-          <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.7}>
-            <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+          <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={onBack} accessibilityLabel="Go back" />
           <View style={styles.detailHeaderCenter}>
             <View style={styles.listingLivePill}>
               <View style={[styles.liveDot, { backgroundColor: statusS.bg }]} />
@@ -125,20 +200,14 @@ const ListingDetail: React.FC<{
             </View>
             <Text style={styles.detailTitle} numberOfLines={1}>{listing.title}</Text>
           </View>
-          <TouchableOpacity
-            style={styles.backBtn}
-            activeOpacity={0.7}
-            onPress={() =>
+          <IconButton style={styles.backBtn} icon={<Ionicons name="ellipsis-horizontal" size={20} color={Colors.white} />} onPress={() =>
               Alert.alert('Options', '', [
                 { text: 'Edit listing', onPress: () => {} },
                 { text: 'Duplicate listing', onPress: () => {} },
                 { text: 'Archive', style: 'destructive', onPress: () => {} },
                 { text: 'Cancel', style: 'cancel' },
               ])
-            }
-          >
-            <Ionicons name="ellipsis-horizontal" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+            } accessibilityLabel="More options" />
         </View>
 
         {/* ── Image thumbnails ─────────────────────────────────────────────── */}
@@ -167,18 +236,18 @@ const ListingDetail: React.FC<{
         {/* ── Stat pills ───────────────────────────────────────────────────── */}
         <View style={styles.statPillRow}>
           <View style={styles.statPill}>
-            <Ionicons name="eye-outline" size={18} color="#A0A0AB" />
+            <Ionicons name="eye-outline" size={18} color={Colors.textSecondary} />
             <Text style={styles.statPillVal}>{listing.views}</Text>
             <Text style={styles.statPillLabel}>VIEWS</Text>
           </View>
           <View style={[styles.statPill, styles.statPillMiddle]}>
-            <Ionicons name="mail-outline" size={18} color="#A0A0AB" />
+            <Ionicons name="mail-outline" size={18} color={Colors.textSecondary} />
             <Text style={styles.statPillVal}>{listing.leads}</Text>
             <Text style={styles.statPillLabel}>LEADS</Text>
           </View>
           <View style={styles.statPill}>
-            <Ionicons name="pricetag-outline" size={18} color="#DC1F26" />
-            <Text style={[styles.statPillVal, { color: '#DC1F26' }]}>{listing.offers}</Text>
+            <Ionicons name="pricetag-outline" size={18} color={Colors.accent} />
+            <Text style={[styles.statPillVal, { color: Colors.accent }]}>{listing.offers}</Text>
             <Text style={styles.statPillLabel}>OFFERS</Text>
           </View>
         </View>
@@ -194,7 +263,7 @@ const ListingDetail: React.FC<{
               activeOpacity={0.7}
             >
               <Text style={styles.detailRowValue}>{listing.price}</Text>
-              <Ionicons name="pencil-outline" size={14} color="#606070" style={{ marginLeft: 8 }} />
+              <Ionicons name="pencil-outline" size={14} color={Colors.iconMuted} style={{ marginLeft: 8 }} />
             </TouchableOpacity>
           </View>
           <View style={styles.detailDivider} />
@@ -209,12 +278,12 @@ const ListingDetail: React.FC<{
             >
               <Text style={[
                 styles.detailRowValue,
-                offersStatus === 'Accepting' && { color: '#DC1F26' },
-                offersStatus === 'Not accepting' && { color: '#6B7280' },
+                offersStatus === 'Accepting' && { color: Colors.accent },
+                offersStatus === 'Not accepting' && { color: Colors.midBlue_6b7280 },
               ]}>
                 {offersStatus}
               </Text>
-              <Ionicons name="pencil-outline" size={14} color="#606070" style={{ marginLeft: 8 }} />
+              <Ionicons name="pencil-outline" size={14} color={Colors.iconMuted} style={{ marginLeft: 8 }} />
             </TouchableOpacity>
           </View>
           <View style={styles.detailDivider} />
@@ -228,7 +297,7 @@ const ListingDetail: React.FC<{
               activeOpacity={0.7}
             >
               <Text style={styles.detailRowValue}>{listing.visibility}</Text>
-              <Ionicons name="pencil-outline" size={14} color="#606070" style={{ marginLeft: 8 }} />
+              <Ionicons name="pencil-outline" size={14} color={Colors.iconMuted} style={{ marginLeft: 8 }} />
             </TouchableOpacity>
           </View>
           <View style={styles.detailDivider} />
@@ -242,46 +311,190 @@ const ListingDetail: React.FC<{
       </ScrollView>
 
       {/* ── Bottom CTAs ─────────────────────────────────────────────────────── */}
-      <View style={[styles.detailFooter, { paddingBottom: insets.bottom + 16 }]}>
+      <View style={[styles.detailFooterWrap, { paddingBottom: insets.bottom + 16 }]}>
+        {/* Put on Auction — only ACTIVE listings can be converted; the
+            destination screen (SellerAuctionsScreen) re-validates eligibility
+            itself, so this is a convenience shortcut, not the only gate. */}
+        {listing.status === 'LIVE' && (
+          <TouchableOpacity
+            style={styles.putOnAuctionBtn}
+            activeOpacity={0.85}
+            onPress={() => navigation?.navigate('SellerAuctions', { preselectListingId: listing.id })}
+          >
+            <MaterialCommunityIcons name="gavel" size={16} color={Colors.white} style={{ marginRight: 6 }} />
+            <Text style={styles.putOnAuctionBtnText}>PUT ON AUCTION</Text>
+          </TouchableOpacity>
+        )}
+        <View style={styles.detailFooter}>
         <TouchableOpacity
-          style={styles.boostBtn}
+          style={[styles.boostBtn, boosting && { opacity: 0.6 }]}
           activeOpacity={0.85}
-          onPress={() =>
-            Alert.alert(
-              'Boost Listing',
-              'Boosting promotes your listing to the top of search results for 7 days.',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Boost — £24.99', onPress: () => {} },
-              ]
-            )
-          }
+          onPress={handleBoost}
+          disabled={boosting}
         >
-          <MaterialCommunityIcons name="rocket-launch-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-          <Text style={styles.boostBtnText}>BOOST</Text>
+          {boosting ? (
+            <ActivityIndicator size="small" color={Colors.white} />
+          ) : (
+            <>
+              <MaterialCommunityIcons name="rocket-launch-outline" size={16} color={Colors.white} style={{ marginRight: 6 }} />
+              <Text style={styles.boostBtnText}>BOOST</Text>
+            </>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.markSoldBtn, listing.status === 'SOLD' && styles.markSoldBtnDim]}
           activeOpacity={0.85}
-          onPress={() =>
-            listing.status !== 'SOLD'
-              ? Alert.alert('Mark as Sold', `Confirm this vehicle has been sold?`, [
-                  { text: 'Cancel', style: 'cancel' },
-                  { text: 'Confirm', style: 'destructive', onPress: () => {} },
-                ])
-              : undefined
-          }
+          onPress={listing.status !== 'SOLD' ? openMarkSold : undefined}
         >
-          <Ionicons name="checkmark-circle-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+          <Ionicons name="checkmark-circle-outline" size={16} color={Colors.white} style={{ marginRight: 6 }} />
           <Text style={styles.markSoldBtnText}>
             {listing.status === 'SOLD' ? 'SOLD' : 'MARK SOLD'}
           </Text>
         </TouchableOpacity>
+        </View>
       </View>
+
+      {/* Featured boost checkout — hosted Stripe checkout in-app */}
+      <StripeCheckoutModal
+        url={boostCheckoutUrl}
+        title="Featured Boost Checkout"
+        onSuccess={handleBoostSuccess}
+        onCancel={() => setBoostCheckoutUrl(null)}
+        onClose={() => setBoostCheckoutUrl(null)}
+      />
+      {boostToast && (
+        <View style={styles.boostToast} pointerEvents="none">
+          <Ionicons name="checkmark-circle" size={16} color={Colors.white} />
+          <Text style={styles.boostToastText}>{boostToast}</Text>
+        </View>
+      )}
+
+      {/* Mark Sold — sale price confirmation */}
+      <BottomSheet
+        visible={markSoldVisible}
+        onClose={() => setMarkSoldVisible(false)}
+        title="Mark as Sold"
+        avoidKeyboard
+      >
+        <View style={styles.markSoldModalBody}>
+          <Text style={styles.markSoldModalHint}>Confirm the price this vehicle sold for.</Text>
+          <Text style={styles.soldPriceLabel}>SALE PRICE</Text>
+          <View style={styles.soldPriceInputWrap}>
+            <Text style={styles.soldPriceCurrency}>£</Text>
+            <TextInput
+              style={styles.soldPriceInput}
+              value={soldPriceInput}
+              onChangeText={v => { setSoldPriceInput(v); setMarkSoldError(null); }}
+              keyboardType="number-pad"
+              placeholder="0"
+              placeholderTextColor={Colors.iconMuted}
+              autoFocus
+            />
+          </View>
+          {markSoldError && <ErrorBanner message={markSoldError} />}
+          <TouchableOpacity
+            style={[styles.markSoldConfirmBtn, markSoldSubmitting && { opacity: 0.6 }]}
+            activeOpacity={0.85}
+            onPress={handleConfirmMarkSold}
+            disabled={markSoldSubmitting}
+          >
+            {markSoldSubmitting ? (
+              <ActivityIndicator color={Colors.white} />
+            ) : (
+              <Text style={styles.markSoldConfirmBtnText}>Confirm Sold</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </BottomSheet>
     </View>
   );
 };
+
+// ─── Inventory row — hoisted + memoized so FlatList only re-renders the row
+// whose own props changed (mobile-audit.md P3/P4). ──
+const InventoryRow: React.FC<{ listing: Listing; onPress: (id: string) => void }> = React.memo(({ listing, onPress }) => {
+  const s = STATUS_STYLE[listing.status];
+  return (
+    <TouchableOpacity
+      style={styles.listingCard}
+      onPress={() => onPress(listing.id)}
+      activeOpacity={0.85}
+    >
+      {/* Thumbnail + status badge */}
+      <View style={styles.listingThumbWrap}>
+        <Image
+          source={{ uri: listing.images[0] }}
+          style={styles.listingThumb}
+          contentFit="cover"
+          transition={200}
+          cachePolicy="memory-disk"
+        />
+        <View style={[styles.statusBadge, { backgroundColor: s.bg }]}>
+          <Text style={styles.statusBadgeText}>{s.label}</Text>
+        </View>
+      </View>
+
+      {/* Info */}
+      <View style={styles.listingInfo}>
+        <Text style={styles.listingTitle} numberOfLines={1}>{listing.title}</Text>
+        <View style={styles.listingPriceRow}>
+          <Text style={styles.listingPrice}>{listing.price}</Text>
+          <Text style={styles.listingDays}> · {listing.daysListed}d listed</Text>
+        </View>
+        <View style={styles.listingStats}>
+          <Ionicons name="eye-outline" size={13} color={Colors.iconMuted} />
+          <Text style={styles.statNum}>{listing.views}</Text>
+          <Ionicons name="mail-outline" size={13} color={Colors.iconMuted} style={{ marginLeft: 10 }} />
+          <Text style={styles.statNum}>{listing.leads}</Text>
+          {listing.offers > 0 && (
+            <>
+              <Ionicons name="heart-outline" size={13} color={Colors.accent} style={{ marginLeft: 10 }} />
+              <Text style={styles.statOffers}>{listing.offers} offers</Text>
+            </>
+          )}
+        </View>
+      </View>
+
+      {/* Chevron */}
+      <Ionicons name="chevron-forward" size={16} color={Colors.borderSubtle} accessibilityElementsHidden importantForAccessibility="no" />
+    </TouchableOpacity>
+  );
+});
+
+// ─── Inventory grid card — compact thumbnail-forward alternative to the row
+// view, for dealers scanning many listings at once (mobile-ui-ux-audit.md §C9). ──
+const InventoryGridCard: React.FC<{ listing: Listing; onPress: (id: string) => void }> = React.memo(({ listing, onPress }) => {
+  const s = STATUS_STYLE[listing.status];
+  return (
+    <TouchableOpacity
+      style={styles.gridCard}
+      onPress={() => onPress(listing.id)}
+      activeOpacity={0.85}
+    >
+      <View style={styles.gridThumbWrap}>
+        <Image
+          source={{ uri: listing.images[0] }}
+          style={styles.gridThumb}
+          contentFit="cover"
+          transition={200}
+          cachePolicy="memory-disk"
+        />
+        <View style={[styles.statusBadge, { backgroundColor: s.bg }]}>
+          <Text style={styles.statusBadgeText}>{s.label}</Text>
+        </View>
+      </View>
+      <Text style={styles.gridTitle} numberOfLines={1}>{listing.title}</Text>
+      <Text style={styles.gridPrice}>{listing.price}</Text>
+      <View style={styles.listingStats}>
+        <Ionicons name="eye-outline" size={12} color={Colors.iconMuted} />
+        <Text style={styles.statNum}>{listing.views}</Text>
+        <Ionicons name="mail-outline" size={12} color={Colors.iconMuted} style={{ marginLeft: 8 }} />
+        <Text style={styles.statNum}>{listing.leads}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+});
 
 // ─── MAIN INVENTORY SCREEN ───────────────────────────────────────────────────
 export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
@@ -292,37 +505,27 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+
+  // Persist the dealer's list/grid preference across sessions (SE8-style
+  // affordance, mobile-ui-ux-audit.md §C9).
+  useEffect(() => {
+    AsyncStorage.getItem(VIEW_MODE_STORAGE_KEY).then((saved) => {
+      if (saved === 'grid' || saved === 'list') setViewMode(saved);
+    });
+  }, []);
+  const toggleViewMode = useCallback(() => {
+    setViewMode((prev) => {
+      const next = prev === 'list' ? 'grid' : 'list';
+      AsyncStorage.setItem(VIEW_MODE_STORAGE_KEY, next).catch(() => {});
+      return next;
+    });
+  }, []);
 
   // Bulk import
   const [showAddSheet, setShowAddSheet] = useState(false);
-  const [showBulkModal, setShowBulkModal] = useState(false);
-  const [bulkText, setBulkText] = useState('');
   const [showImportModal, setShowImportModal] = useState(false);
   const [showBulkImportModal, setShowBulkImportModal] = useState(false);
-  const [bulkImporting, setBulkImporting] = useState(false);
-  const [bulkDone, setBulkDone] = useState(false);
-
-  const parsedUrls = bulkText
-    .split('\n')
-    .map((l) => l.trim())
-    .filter((l) => l.length > 5 && (l.startsWith('http') || l.match(/^[A-Z]{2}\d{2}\s?[A-Z]{3}$/i)));
-  const parsedCount = parsedUrls.length;
-
-  const handleBulkImport = async () => {
-    if (parsedCount === 0) return;
-    setBulkImporting(true);
-    try {
-      for (const url of parsedUrls) {
-        await apiClient('/listings/import-url', { method: 'POST', body: { url } });
-      }
-    } catch {
-      // Silently continue — partial imports are ok
-    } finally {
-      setBulkImporting(false);
-      setBulkDone(true);
-      setTimeout(() => fetchListings(), 1000);
-    }
-  };
 
   const fetchListings = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -338,11 +541,34 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
 
   useEffect(() => { fetchListings(); }, []);
 
+  // Stable id-keyed handler so InventoryRow's React.memo isn't busted by a fresh
+  // closure every render (mobile-audit.md P4) — identity only changes when
+  // `listings` itself changes (fetch/refresh), not on filter-tab switches.
+  // Hooks must stay unconditional, so this is declared before the early
+  // return below (Rules of Hooks).
+  const handleRowPress = useCallback((id: string) => {
+    const l = listings.find((x) => x.id === id);
+    if (l) setSelectedListing(l);
+  }, [listings]);
+  const renderInventoryRow = useCallback(
+    ({ item }: { item: Listing }) => <InventoryRow listing={item} onPress={handleRowPress} />,
+    [handleRowPress],
+  );
+  const renderInventoryGrid = useCallback(
+    ({ item }: { item: Listing }) => <InventoryGridCard listing={item} onPress={handleRowPress} />,
+    [handleRowPress],
+  );
+
   if (selectedListing) {
     return (
       <ListingDetail
         listing={selectedListing}
         onBack={() => setSelectedListing(null)}
+        navigation={navigation}
+        onSold={() => {
+          setSelectedListing(null);
+          fetchListings();
+        }}
       />
     );
   }
@@ -362,7 +588,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(220,31,38,0.04)', 'rgba(0,0,0,0)', '#0A0A0C']}
+        colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.5 }}
@@ -370,20 +596,17 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
       <View style={[styles.listHeader, { paddingTop: insets.top + 14 }]}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => navigation?.goBack()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
+        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
         <View style={styles.listHeaderCenter}>
           <Text style={styles.listHeaderSub}>DEALER · {listings.length} LISTINGS</Text>
           <Text style={styles.listHeaderTitle}>Inventory</Text>
         </View>
-        <TouchableOpacity style={styles.backBtn} activeOpacity={0.7}>
-          <Ionicons name="search-outline" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
+        <IconButton
+          style={styles.backBtn}
+          icon={<Ionicons name={viewMode === 'list' ? 'grid-outline' : 'list-outline'} size={20} color={Colors.white} />}
+          onPress={toggleViewMode}
+          accessibilityLabel={viewMode === 'list' ? 'Switch to grid view' : 'Switch to list view'}
+        />
       </View>
 
       {/* ── Filter tabs ──────────────────────────────────────────────────── */}
@@ -420,23 +643,11 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
       </ScrollView>
 
       {/* ── Sort row ─────────────────────────────────────────────────────── */}
+      {/* Sort picker used to be an alert with every option a no-op — removed
+          rather than faking it (mobile-ui-ux-audit.md §C13). Label alone is
+          still accurate: the list really is fetched newest-first. */}
       <View style={styles.sortRow}>
         <Text style={styles.sortLabel}>SORTED: NEWEST</Text>
-        <TouchableOpacity
-          style={styles.filterIcon}
-          activeOpacity={0.7}
-          onPress={() =>
-            Alert.alert('Sort by', '', [
-              { text: 'Newest first', onPress: () => {} },
-              { text: 'Oldest first', onPress: () => {} },
-              { text: 'Most views', onPress: () => {} },
-              { text: 'Most offers', onPress: () => {} },
-              { text: 'Cancel', style: 'cancel' },
-            ])
-          }
-        >
-          <Ionicons name="funnel-outline" size={16} color="#606070" />
-        </TouchableOpacity>
       </View>
 
       {/* ── Listing cards ─────────────────────────────────────────────────── */}
@@ -451,13 +662,18 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
           ))}
         </View>
       ) : (
-      <ScrollView
+      <FlatList
+        key={viewMode}
         style={styles.listScroll}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 110 }}
+        contentContainerStyle={viewMode === 'grid' ? styles.gridContent : { paddingBottom: 110 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchListings(true)} tintColor={Colors.accent} colors={[Colors.accent]} />}
-      >
-        {filtered.length === 0 ? (
+        data={filtered}
+        numColumns={viewMode === 'grid' ? 2 : 1}
+        columnWrapperStyle={viewMode === 'grid' ? styles.gridRow : undefined}
+        keyExtractor={(item) => item.id}
+        renderItem={viewMode === 'grid' ? renderInventoryGrid : renderInventoryRow}
+        ListEmptyComponent={
           <View style={{ marginTop: 40 }}>
             <EmptyState
               icon="car-outline"
@@ -465,57 +681,8 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
               subtitle={activeFilter === 'All' ? 'Add your first vehicle to start selling.' : `Switch filters or add more listings.`}
             />
           </View>
-        ) : null}
-        {filtered.map((listing) => {
-          const s = STATUS_STYLE[listing.status];
-          return (
-            <TouchableOpacity
-              key={listing.id}
-              style={styles.listingCard}
-              onPress={() => setSelectedListing(listing)}
-              activeOpacity={0.85}
-            >
-              {/* Thumbnail + status badge */}
-              <View style={styles.listingThumbWrap}>
-                <Image
-                  source={{ uri: listing.images[0] }}
-                  style={styles.listingThumb}
-                  contentFit="cover"
-                  transition={200}
-                  cachePolicy="memory-disk"
-                />
-                <View style={[styles.statusBadge, { backgroundColor: s.bg }]}>
-                  <Text style={styles.statusBadgeText}>{s.label}</Text>
-                </View>
-              </View>
-
-              {/* Info */}
-              <View style={styles.listingInfo}>
-                <Text style={styles.listingTitle} numberOfLines={1}>{listing.title}</Text>
-                <View style={styles.listingPriceRow}>
-                  <Text style={styles.listingPrice}>{listing.price}</Text>
-                  <Text style={styles.listingDays}> · {listing.daysListed}d listed</Text>
-                </View>
-                <View style={styles.listingStats}>
-                  <Ionicons name="eye-outline" size={13} color="#606070" />
-                  <Text style={styles.statNum}>{listing.views}</Text>
-                  <Ionicons name="mail-outline" size={13} color="#606070" style={{ marginLeft: 10 }} />
-                  <Text style={styles.statNum}>{listing.leads}</Text>
-                  {listing.offers > 0 && (
-                    <>
-                      <Ionicons name="heart-outline" size={13} color="#DC1F26" style={{ marginLeft: 10 }} />
-                      <Text style={styles.statOffers}>{listing.offers} offers</Text>
-                    </>
-                  )}
-                </View>
-              </View>
-
-              {/* Chevron */}
-              <Ionicons name="chevron-forward" size={16} color="#2A2A32" />
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+        }
+      />
       )}
 
       {/* ── Add listing CTA ──────────────────────────────────────────────── */}
@@ -526,12 +693,12 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
           onPress={() => navigation?.navigate('SellCarFlow')}
         >
           <LinearGradient
-            colors={['#FF2D35', '#DC1F26']}
+            colors={[Colors.accentGlow, Colors.accent]}
             style={StyleSheet.absoluteFillObject}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           />
-          <Ionicons name="add" size={22} color="#FFFFFF" style={{ marginRight: 6 }} />
+          <Ionicons name="add" size={22} color={Colors.white} style={{ marginRight: 6 }} />
           <Text style={styles.addListingText}>ADD LISTING</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -539,115 +706,18 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
           activeOpacity={0.85}
           onPress={() => setShowImportModal(true)}
         >
-          <Ionicons name="link-outline" size={20} color="#60A5FA" />
-          <Text style={[styles.bulkImportText, { color: '#60A5FA' }]}>IMPORT</Text>
+          <Ionicons name="link-outline" size={20} color={Colors.infoBlueLight} />
+          <Text style={[styles.bulkImportText, { color: Colors.infoBlueLight }]}>IMPORT</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.bulkImportBtn}
           activeOpacity={0.85}
           onPress={() => setShowBulkImportModal(true)}
         >
-          <Ionicons name="cloud-upload-outline" size={20} color="#F59E0B" />
+          <Ionicons name="cloud-upload-outline" size={20} color={Colors.warning} />
           <Text style={styles.bulkImportText}>CSV</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.bulkImportBtn}
-          activeOpacity={0.85}
-          onPress={() => { setBulkDone(false); setBulkText(''); setShowBulkModal(true); }}
-        >
-          <Ionicons name="list-outline" size={20} color="#A0A0AB" />
-          <Text style={[styles.bulkImportText, { color: '#A0A0AB' }]}>VRMS</Text>
-        </TouchableOpacity>
       </View>
-
-      {/* ── Bulk import modal ─────────────────────────────────────────────── */}
-      <Modal
-        visible={showBulkModal}
-        transparent
-        animationType="slide"
-        statusBarTranslucent
-        onRequestClose={() => setShowBulkModal(false)}
-      >
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <Pressable style={styles.bulkBackdrop} onPress={() => setShowBulkModal(false)}>
-            <Pressable style={styles.bulkSheet} onPress={() => {}}>
-              {/* Handle */}
-              <View style={styles.bulkHandle} />
-
-              {bulkDone ? (
-                /* ── Success state ── */
-                <View style={styles.bulkSuccess}>
-                  <View style={styles.bulkSuccessIcon}>
-                    <Ionicons name="checkmark-circle" size={44} color="#22C55E" />
-                  </View>
-                  <Text style={styles.bulkSuccessTitle}>Import queued!</Text>
-                  <Text style={styles.bulkSuccessSub}>
-                    {parsedCount} vehicle{parsedCount !== 1 ? 's' : ''} added to your inventory. Processing may take a few moments.
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.bulkDoneBtn}
-                    activeOpacity={0.85}
-                    onPress={() => setShowBulkModal(false)}
-                  >
-                    <Text style={styles.bulkDoneBtnText}>VIEW INVENTORY</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                /* ── Input state ── */
-                <>
-                  <Text style={styles.bulkTitle}>Bulk Import</Text>
-                  <Text style={styles.bulkSub}>
-                    Paste listing URLs (AutoTrader, CarGurus, CarWow) or UK registration plates — one per line.
-                  </Text>
-
-                  <TextInput
-                    style={styles.bulkInput}
-                    value={bulkText}
-                    onChangeText={setBulkText}
-                    placeholder={'https://autotrader.co.uk/…\nhttps://cargurus.co.uk/…\nAB12 CDE'}
-                    placeholderTextColor="#404050"
-                    multiline
-                    numberOfLines={6}
-                    textAlignVertical="top"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-
-                  <View style={styles.bulkSupportedRow}>
-                    <Text style={styles.bulkSupportedLabel}>SUPPORTED PLATFORMS</Text>
-                    {['AutoTrader', 'CarGurus', 'CarWow'].map((p) => (
-                      <View key={p} style={styles.bulkPlatformChip}>
-                        <Text style={styles.bulkPlatformText}>{p}</Text>
-                      </View>
-                    ))}
-                  </View>
-
-                  {parsedCount > 0 && (
-                    <Text style={styles.bulkCountHint}>
-                      {parsedCount} valid entr{parsedCount !== 1 ? 'ies' : 'y'} detected
-                    </Text>
-                  )}
-
-                  <TouchableOpacity
-                    style={[styles.bulkSubmitBtn, (parsedCount === 0 || bulkImporting) && { opacity: 0.45 }]}
-                    activeOpacity={0.85}
-                    onPress={handleBulkImport}
-                    disabled={parsedCount === 0 || bulkImporting}
-                  >
-                    {bulkImporting ? (
-                      <ActivityIndicator color="#FFFFFF" size="small" />
-                    ) : (
-                      <Text style={styles.bulkSubmitText}>
-                        IMPORT {parsedCount > 0 ? `${parsedCount} VEHICLE${parsedCount !== 1 ? 'S' : ''}` : 'VEHICLES'}
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                </>
-              )}
-            </Pressable>
-          </Pressable>
-        </KeyboardAvoidingView>
-      </Modal>
 
       {/* Bulk CSV Import Modal */}
       <BulkImportModal
@@ -671,7 +741,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0C',
+    backgroundColor: Colors.bgPrimary,
   },
 
   // ── Back / icon button ──────────────────────────────────────────────────
@@ -679,9 +749,9 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: Colors.whiteAlpha05,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: Colors.whiteAlpha08,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -699,15 +769,15 @@ const styles = StyleSheet.create({
   },
   listHeaderSub: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#606070',
+    fontSize: FontSize.size9,
+    color: Colors.iconMuted,
     letterSpacing: 1.8,
     marginBottom: 2,
   },
   listHeaderTitle: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 26,
-    color: '#FFFFFF',
+    fontSize: FontSize.size26,
+    color: Colors.white,
     letterSpacing: -0.8,
   },
 
@@ -727,26 +797,26 @@ const styles = StyleSheet.create({
     height: 34,
     paddingHorizontal: 14,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
+    borderColor: Colors.whiteAlpha07,
   },
   filterTabActive: {
-    backgroundColor: '#DC1F26',
-    borderColor: '#DC1F26',
+    backgroundColor: Colors.accent,
+    borderColor: Colors.accent,
   },
   filterTabText: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
-    color: '#606070',
+    fontSize: FontSize.sm,
+    color: Colors.iconMuted,
   },
   filterTabTextActive: {
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   filterTabCount: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
-    color: '#606070',
+    fontSize: FontSize.sm,
+    color: Colors.iconMuted,
   },
   filterTabCountActive: {
     color: 'rgba(255,255,255,0.80)',
@@ -763,46 +833,38 @@ const styles = StyleSheet.create({
   },
   sortLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#606070',
+    fontSize: FontSize.size10,
+    color: Colors.iconMuted,
     letterSpacing: 1.2,
   },
-  filterIcon: {
-    width: 30,
-    height: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-  },
-
   // Listing cards
   listScroll: {
     flex: 1,
   },
+  // Dealer inventory is a power-user surface (30+ listings), so it uses the
+  // compact row density preset instead of buyer-card spacing (mobile-ui-ux-audit.md §C9).
   listingCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingHorizontal: 16,
+    paddingVertical: RowDensity.compact.padding,
+    minHeight: RowDensity.compact.rowHeight,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.04)',
+    borderBottomColor: Colors.whiteAlpha04,
   },
   listingThumbWrap: {
-    width: 84,
-    height: 64,
-    borderRadius: 10,
+    width: 56,
+    height: 40,
+    borderRadius: RowDensity.compact.borderRadius,
     overflow: 'hidden',
-    marginRight: 14,
+    marginRight: RowDensity.compact.gap,
     position: 'relative',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
   },
   listingThumb: {
-    width: 84,
-    height: 64,
-    borderRadius: 10,
+    width: 56,
+    height: 40,
+    borderRadius: RowDensity.compact.borderRadius,
   },
   statusBadge: {
     position: 'absolute',
@@ -814,8 +876,8 @@ const styles = StyleSheet.create({
   },
   statusBadgeText: {
     fontFamily: FontFamily.bold,
-    fontSize: 8,
-    color: '#FFFFFF',
+    fontSize: FontSize.size8,
+    color: Colors.white,
     letterSpacing: 0.5,
   },
   listingInfo: {
@@ -823,24 +885,24 @@ const styles = StyleSheet.create({
   },
   listingTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 15,
-    color: '#FFFFFF',
-    marginBottom: 3,
+    fontSize: FontSize.rowLabel,
+    color: Colors.white,
+    marginBottom: 2,
   },
   listingPriceRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    marginBottom: 6,
+    marginBottom: 2,
   },
   listingPrice: {
     fontFamily: FontFamily.mono,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.rowLabel,
+    color: Colors.white,
   },
   listingDays: {
     fontFamily: FontFamily.regular,
-    fontSize: 12,
-    color: '#606070',
+    fontSize: FontSize.rowMeta,
+    color: Colors.iconMuted,
   },
   listingStats: {
     flexDirection: 'row',
@@ -848,15 +910,53 @@ const styles = StyleSheet.create({
   },
   statNum: {
     fontFamily: FontFamily.regular,
-    fontSize: 12,
-    color: '#606070',
+    fontSize: FontSize.size12,
+    color: Colors.iconMuted,
     marginLeft: 4,
   },
   statOffers: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#DC1F26',
+    fontSize: FontSize.size12,
+    color: Colors.accent,
     marginLeft: 4,
+  },
+  // Grid view — compact thumbnail-forward alternative to the row view
+  // (mobile-ui-ux-audit.md §C9).
+  gridContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 110,
+  },
+  gridRow: {
+    justifyContent: 'space-between',
+  },
+  gridCard: {
+    width: '48%',
+    marginBottom: RowDensity.compact.gap * 2,
+  },
+  gridThumbWrap: {
+    width: '100%',
+    aspectRatio: 4 / 3,
+    borderRadius: RowDensity.compact.borderRadius,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: Colors.whiteAlpha04,
+    marginBottom: 6,
+  },
+  gridThumb: {
+    width: '100%',
+    height: '100%',
+  },
+  gridTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.rowLabel,
+    color: Colors.white,
+    marginBottom: 2,
+  },
+  gridPrice: {
+    fontFamily: FontFamily.mono,
+    fontSize: FontSize.rowLabel,
+    color: Colors.white,
+    marginBottom: 4,
   },
 
   // Add listing button
@@ -869,7 +969,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     backgroundColor: 'rgba(10,10,12,0.92)',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.05)',
+    borderTopColor: Colors.whiteAlpha05,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -877,17 +977,17 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 16,
-    backgroundColor: 'rgba(245,158,11,0.12)',
+    backgroundColor: Colors.warningAlpha12,
     borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.3)',
+    borderColor: Colors.warningAlpha30,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
   },
   bulkImportText: {
     fontFamily: FontFamily.bold,
-    fontSize: 8,
-    color: '#F59E0B',
+    fontSize: FontSize.size8,
+    color: Colors.warning,
     letterSpacing: 0.8,
   },
 
@@ -898,11 +998,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
   bulkSheet: {
-    backgroundColor: '#111116',
+    backgroundColor: Colors.bgSecondaryAlt,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
+    borderColor: Colors.whiteAlpha07,
     padding: 24,
     paddingBottom: 36,
   },
@@ -910,33 +1010,33 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: Colors.whiteAlpha15,
     alignSelf: 'center',
     marginBottom: 20,
   },
   bulkTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 20,
-    color: '#FFFFFF',
+    fontSize: FontSize.xl,
+    color: Colors.white,
     marginBottom: 8,
   },
   bulkSub: {
     fontFamily: FontFamily.regular,
-    fontSize: 13,
-    color: '#A0A0B0',
+    fontSize: FontSize.sm,
+    color: Colors.lightBlue_a0a0b0,
     lineHeight: 18,
     marginBottom: 16,
   },
   bulkInput: {
-    backgroundColor: '#1A1A22',
+    backgroundColor: Colors.deepBlue_1a1a22,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: Colors.whiteAlpha10,
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontFamily: FontFamily.regular,
-    fontSize: 13,
-    color: '#FFFFFF',
+    fontSize: FontSize.sm,
+    color: Colors.white,
     minHeight: 120,
     marginBottom: 14,
   },
@@ -949,40 +1049,40 @@ const styles = StyleSheet.create({
   },
   bulkSupportedLabel: {
     fontFamily: FontFamily.medium,
-    fontSize: 9,
-    color: '#606070',
+    fontSize: FontSize.size9,
+    color: Colors.iconMuted,
     letterSpacing: 1,
   },
   bulkPlatformChip: {
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
-    backgroundColor: 'rgba(245,158,11,0.1)',
+    backgroundColor: Colors.warningAlpha10,
     borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.25)',
+    borderColor: Colors.warningAlpha25,
   },
   bulkPlatformText: {
     fontFamily: FontFamily.medium,
-    fontSize: 10,
-    color: '#F59E0B',
+    fontSize: FontSize.size10,
+    color: Colors.warning,
   },
   bulkCountHint: {
     fontFamily: FontFamily.medium,
-    fontSize: 12,
-    color: '#22C55E',
+    fontSize: FontSize.size12,
+    color: Colors.success,
     marginBottom: 12,
   },
   bulkSubmitBtn: {
     height: 52,
     borderRadius: 16,
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
   bulkSubmitText: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
     letterSpacing: 1.2,
   },
   bulkSuccess: {
@@ -994,14 +1094,14 @@ const styles = StyleSheet.create({
   },
   bulkSuccessTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 22,
-    color: '#FFFFFF',
+    fontSize: FontSize.size22,
+    color: Colors.white,
     marginBottom: 8,
   },
   bulkSuccessSub: {
     fontFamily: FontFamily.regular,
-    fontSize: 14,
-    color: '#A0A0B0',
+    fontSize: FontSize.size14,
+    color: Colors.lightBlue_a0a0b0,
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 24,
@@ -1010,15 +1110,15 @@ const styles = StyleSheet.create({
   bulkDoneBtn: {
     height: 52,
     borderRadius: 16,
-    backgroundColor: '#22C55E',
+    backgroundColor: Colors.success,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 32,
   },
   bulkDoneBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
     letterSpacing: 1.2,
   },
   addListingBtn: {
@@ -1028,7 +1128,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    shadowColor: '#DC1F26',
+    shadowColor: Colors.accent,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 12,
@@ -1036,8 +1136,8 @@ const styles = StyleSheet.create({
   },
   addListingText: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
     letterSpacing: 1.2,
   },
 
@@ -1067,14 +1167,14 @@ const styles = StyleSheet.create({
   },
   listingLiveLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#606070',
+    fontSize: FontSize.size9,
+    color: Colors.iconMuted,
     letterSpacing: 1.6,
   },
   detailTitle: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 18,
-    color: '#FFFFFF',
+    fontSize: FontSize.lg,
+    color: Colors.white,
     letterSpacing: -0.3,
     textAlign: 'center',
   },
@@ -1095,7 +1195,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   thumbWrapActive: {
-    borderColor: '#DC1F26',
+    borderColor: Colors.accent,
   },
   thumbImg: {
     height: 90,
@@ -1106,15 +1206,15 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 6,
     left: 6,
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
   heroBadgeText: {
     fontFamily: FontFamily.bold,
-    fontSize: 8,
-    color: '#FFFFFF',
+    fontSize: FontSize.size8,
+    color: Colors.white,
     letterSpacing: 0.5,
   },
 
@@ -1127,10 +1227,10 @@ const styles = StyleSheet.create({
   },
   statPill: {
     flex: 1,
-    backgroundColor: '#111116',
+    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     paddingVertical: 14,
     alignItems: 'center',
     gap: 4,
@@ -1141,24 +1241,24 @@ const styles = StyleSheet.create({
   },
   statPillVal: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 22,
-    color: '#FFFFFF',
+    fontSize: FontSize.size22,
+    color: Colors.white,
     letterSpacing: -0.5,
   },
   statPillLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#606070',
+    fontSize: FontSize.size9,
+    color: Colors.iconMuted,
     letterSpacing: 1.2,
   },
 
   // Detail rows
   detailCard: {
     marginHorizontal: 20,
-    backgroundColor: '#111116',
+    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     paddingHorizontal: 18,
   },
   detailRow: {
@@ -1169,8 +1269,8 @@ const styles = StyleSheet.create({
   },
   detailRowLabel: {
     fontFamily: FontFamily.regular,
-    fontSize: 15,
-    color: '#A0A0AB',
+    fontSize: FontSize.base,
+    color: Colors.textSecondary,
   },
   detailRowRight: {
     flexDirection: 'row',
@@ -1178,68 +1278,156 @@ const styles = StyleSheet.create({
   },
   detailRowValue: {
     fontFamily: FontFamily.bold,
-    fontSize: 15,
-    color: '#FFFFFF',
+    fontSize: FontSize.base,
+    color: Colors.white,
   },
   detailDivider: {
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: Colors.whiteAlpha05,
   },
 
   // Footer CTAs
-  detailFooter: {
+  detailFooterWrap: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    flexDirection: 'row',
     paddingHorizontal: 20,
     paddingTop: 14,
-    gap: 12,
+    gap: 10,
     backgroundColor: 'rgba(10,10,12,0.95)',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.05)',
+    borderTopColor: Colors.whiteAlpha05,
+  },
+  detailFooter: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  putOnAuctionBtn: {
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: Colors.accent,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  putOnAuctionBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.sm,
+    color: Colors.white,
+    letterSpacing: 0.5,
   },
   boostBtn: {
     flex: 1,
     height: 52,
     borderRadius: 16,
-    backgroundColor: '#1C1C22',
+    backgroundColor: Colors.deepBlue_1c1c22,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: Colors.whiteAlpha10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
   boostBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
     letterSpacing: 1,
   },
   markSoldBtn: {
     flex: 1.4,
     height: 52,
     borderRadius: 16,
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#DC1F26',
+    shadowColor: Colors.accent,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 12,
     elevation: 6,
   },
   markSoldBtnDim: {
-    backgroundColor: '#3A3A42',
+    backgroundColor: Colors.darkGrey,
     shadowOpacity: 0,
     elevation: 0,
   },
   markSoldBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
     letterSpacing: 1,
+  },
+
+  // ── Boost success toast ──
+  boostToast: {
+    position: 'absolute',
+    bottom: 130,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Colors.success,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  boostToastText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.sm,
+    color: Colors.white,
+  },
+
+  // ── Mark Sold modal ──
+  markSoldModalBody: {
+    gap: 10,
+  },
+  markSoldModalHint: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+    marginBottom: 4,
+  },
+  soldPriceLabel: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size9,
+    color: Colors.iconMuted,
+    letterSpacing: 1,
+  },
+  soldPriceInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.whiteAlpha04,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha08,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+  },
+  soldPriceCurrency: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.md,
+    color: Colors.textMuted,
+    marginRight: 4,
+  },
+  soldPriceInput: {
+    flex: 1,
+    fontFamily: FontFamily.mono,
+    fontSize: FontSize.md,
+    color: Colors.textPrimary,
+    paddingVertical: 12,
+  },
+  markSoldConfirmBtn: {
+    height: 48,
+    borderRadius: 10,
+    backgroundColor: Colors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  markSoldConfirmBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.base,
+    color: Colors.white,
   },
 });

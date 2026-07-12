@@ -20,10 +20,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BarChart, LineChart } from 'react-native-gifted-charts';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Colors } from '../../constants/colors';
+import { RowDensity } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 
+import { IconButton } from '../../components/IconButton';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_GAP = 12;
 const HALF_CARD = (SCREEN_WIDTH - 48 - CARD_GAP) / 2;
@@ -100,7 +102,7 @@ const renderTrend = (
 ) => {
   const positive = value > 0;
   const neutral = value === 0;
-  const color = neutral ? '#9CA3AF' : positive ? '#22C55E' : '#EF4444';
+  const color = neutral ? Colors.lightBlue_9ca3af : positive ? Colors.success : Colors.error;
   const icon = neutral ? 'remove' : positive ? 'trending-up' : 'trending-down';
   return (
     <View style={wrapStyle}>
@@ -125,14 +127,24 @@ const toLineData = (points: RevenueTrendPoint[]): { value: number; label: string
 
 const toLeadBarData = (lf: LeadFunnel): { value: number; label: string; frontColor: string }[] => {
   const entries: { key: keyof LeadFunnel; label: string; color: string }[] = [
-    { key: 'NEW', label: 'New', color: '#3B82F6' },
-    { key: 'CONTACTED', label: 'Ctd', color: '#F59E0B' },
-    { key: 'QUALIFIED', label: 'Qual', color: '#A78BFA' },
-    { key: 'NEGOTIATING', label: 'Neg', color: '#EC4899' },
+    { key: 'NEW', label: 'New', color: Colors.infoBlue },
+    { key: 'CONTACTED', label: 'Ctd', color: Colors.warning },
+    { key: 'QUALIFIED', label: 'Qual', color: Colors.palePurple_a78bfa },
+    { key: 'NEGOTIATING', label: 'Neg', color: Colors.lightPink },
     { key: 'WON', label: 'Won', color: Colors.success },
-    { key: 'LOST', label: 'Lost', color: '#606070' },
+    { key: 'LOST', label: 'Lost', color: Colors.iconMuted },
   ];
   return entries.map(e => ({ value: Math.max(lf[e.key], 0), label: e.label, frontColor: e.color }));
+};
+
+const toAgingBarData = (buckets: Record<string, number>): { value: number; label: string; frontColor: string }[] => {
+  const entries: { key: string; label: string; color: string }[] = [
+    { key: '0-7d',   label: '0-7d',   color: Colors.success },
+    { key: '8-30d',  label: '8-30d',  color: Colors.infoBlue },
+    { key: '31-60d', label: '31-60d', color: Colors.warning },
+    { key: '60d+',   label: '60d+',   color: Colors.accent },
+  ];
+  return entries.map(e => ({ value: Math.max(buckets[e.key] ?? 0, 0), label: e.label, frontColor: e.color }));
 };
 
 // ─── Circular gauge ─────────────────────────────────────────────────────────
@@ -156,7 +168,7 @@ const CircularGauge: React.FC<{ value: number; size: number }> = ({ value, size 
           height: size,
           borderRadius: size / 2,
           borderWidth: strokeWidth,
-          borderColor: 'rgba(255,255,255,0.06)',
+          borderColor: Colors.whiteAlpha06,
         }}
       />
       {/* Progress arc using conic-like approach with segments */}
@@ -176,14 +188,14 @@ const CircularGauge: React.FC<{ value: number; size: number }> = ({ value, size 
               transformOrigin: `1px ${r + strokeWidth / 2}px`,
               transform: [{ rotate: `${angle}deg` }],
               borderTopWidth: strokeWidth,
-              borderTopColor: '#22C55E',
+              borderTopColor: Colors.success,
               borderRadius: 2,
             }}
           />
         );
       })}
       {/* Centre text */}
-      <Text style={{ fontFamily: FontFamily.extraBold, fontSize: 20, color: '#FFFFFF' }}>
+      <Text style={{ fontFamily: FontFamily.extraBold, fontSize: FontSize.xl, color: Colors.white }}>
         {value}%
       </Text>
     </View>
@@ -259,20 +271,20 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
     const totalOffers = ob ? ob.PENDING + ob.ACCEPTED + ob.REJECTED + ob.COUNTERED + ob.WITHDRAWN : 0;
 
     const FUNNEL_STAGES: { key: keyof LeadFunnel; label: string; color: string }[] = [
-      { key: 'NEW', label: 'New', color: '#3B82F6' },
-      { key: 'CONTACTED', label: 'Contacted', color: '#F59E0B' },
-      { key: 'QUALIFIED', label: 'Qualified', color: '#A78BFA' },
-      { key: 'NEGOTIATING', label: 'Negotiating', color: '#EC4899' },
-      { key: 'WON', label: 'Won', color: '#22C55E' },
-      { key: 'LOST', label: 'Lost', color: '#606070' },
+      { key: 'NEW', label: 'New', color: Colors.infoBlue },
+      { key: 'CONTACTED', label: 'Contacted', color: Colors.warning },
+      { key: 'QUALIFIED', label: 'Qualified', color: Colors.palePurple_a78bfa },
+      { key: 'NEGOTIATING', label: 'Negotiating', color: Colors.lightPink },
+      { key: 'WON', label: 'Won', color: Colors.success },
+      { key: 'LOST', label: 'Lost', color: Colors.iconMuted },
     ];
 
     const OFFER_STAGES: { key: 'PENDING' | 'ACCEPTED' | 'COUNTERED' | 'REJECTED' | 'WITHDRAWN'; label: string; color: string }[] = [
-      { key: 'PENDING', label: 'Pending', color: '#3B82F6' },
-      { key: 'ACCEPTED', label: 'Accepted', color: '#22C55E' },
-      { key: 'COUNTERED', label: 'Countered', color: '#F59E0B' },
-      { key: 'REJECTED', label: 'Rejected', color: '#EF4444' },
-      { key: 'WITHDRAWN', label: 'Withdrawn', color: '#606070' },
+      { key: 'PENDING', label: 'Pending', color: Colors.infoBlue },
+      { key: 'ACCEPTED', label: 'Accepted', color: Colors.success },
+      { key: 'COUNTERED', label: 'Countered', color: Colors.warning },
+      { key: 'REJECTED', label: 'Rejected', color: Colors.error },
+      { key: 'WITHDRAWN', label: 'Withdrawn', color: Colors.iconMuted },
     ];
 
     return (
@@ -282,13 +294,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => setSubView('analytics')}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+          <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => setSubView('analytics')} accessibilityLabel="Go back" />
           <Text style={styles.headerTitle}>CONVERSION DEEP DIVE</Text>
           <View style={{ width: 38 }} />
         </View>
@@ -296,7 +302,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
         {/* Circular gauge card */}
         <View style={styles.convCard}>
           <LinearGradient
-            colors={['rgba(34,197,94,0.06)', 'rgba(34,197,94,0.01)']}
+            colors={[Colors.successAlpha06, 'rgba(34,197,94,0.01)']}
             style={StyleSheet.absoluteFillObject}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -371,14 +377,14 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
               <View style={styles.benchRow}>
                 <Text style={[styles.benchLabel, { width: 170 }]}>Avg accepted offer</Text>
                 <View style={{ flex: 1 }} />
-                <Text style={{ fontFamily: FontFamily.bold, fontSize: 14, color: '#22C55E' }}>
+                <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.success }}>
                   {formatGBP(ob.avgAcceptedAmount)}
                 </Text>
               </View>
               <View style={styles.benchRow}>
                 <Text style={[styles.benchLabel, { width: 170 }]}>Avg time to respond</Text>
                 <View style={{ flex: 1 }} />
-                <Text style={{ fontFamily: FontFamily.bold, fontSize: 14, color: '#3B82F6' }}>
+                <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.infoBlue }}>
                   {ob.avgTimeToRespond < 1 ? '< 1h' : `${ob.avgTimeToRespond}h`}
                 </Text>
               </View>
@@ -396,6 +402,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
     const barData = revenueTrend.length > 0 ? toBarData(revenueTrend.slice(-6)) : [];
     const lineData = revenueTrend.length > 0 ? toLineData(revenueTrend.slice(-6)) : [];
     const leadFunnelData = analytics?.leadFunnel ? toLeadBarData(analytics.leadFunnel) : [];
+    const agingData = analytics?.inventoryHealth?.agingBuckets ? toAgingBarData(analytics.inventoryHealth.agingBuckets) : [];
     const hasData = !!analytics && (revenueTrend.length > 0 || (kpis?.totalUnitsSold ?? 0) > 0);
 
     return (
@@ -413,20 +420,15 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
     >
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => navigation?.goBack()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
+        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
         <View style={styles.headerCenter}>
           <Text style={styles.headerSub}>SALES · LAST {period}</Text>
           <Text style={styles.headerTitleMain}>Analytics</Text>
         </View>
-        <TouchableOpacity style={styles.backBtn} activeOpacity={0.7}>
-          <Ionicons name="cloud-download-outline" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
+        {/* No export-report backend endpoint exists yet — removed the dead
+            button rather than faking it (mobile-ui-ux-audit.md §C13
+            precedent). Spacer keeps the title centered. */}
+        <View style={{ width: 38 }} />
       </View>
 
       {/* Period pills */}
@@ -459,7 +461,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
           {/* Revenue BarChart card */}
           <Animated.View style={[styles.revenueCard, { opacity: fadeAnim }]}>
             <LinearGradient
-              colors={['rgba(220,31,38,0.04)', 'rgba(0,0,0,0)']}
+              colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)']}
               style={StyleSheet.absoluteFillObject}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -487,14 +489,14 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
                   hideYAxisText
                   xAxisColor="transparent"
                   yAxisColor="transparent"
-                  xAxisLabelTextStyle={{ fontFamily: FontFamily.mono, fontSize: 8, color: Colors.textMuted }}
+                  xAxisLabelTextStyle={{ fontFamily: FontFamily.mono, fontSize: FontSize.size8, color: Colors.textMuted }}
                   noOfSections={3}
                   maxValue={Math.max(...barData.map(d => d.value), 1)}
                   isAnimated
                 />
               ) : (
                 <View style={{ height: 90, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontFamily: FontFamily.regular, fontSize: 12, color: Colors.textMuted }}>
+                  <Text style={{ fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textMuted }}>
                     Not enough sales yet to chart a trend
                   </Text>
                 </View>
@@ -508,7 +510,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
               <View style={styles.revenueTop}>
                 <View>
                   <Text style={styles.revLabel}>UNITS SOLD TREND</Text>
-                  <Text style={[styles.revValue, { fontSize: 24 }]}>
+                  <Text style={[styles.revValue, { fontSize: FontSize['2xl'] }]}>
                     {kpis?.totalUnitsSold ?? 0}
                   </Text>
                 </View>
@@ -531,7 +533,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
                   hideYAxisText
                   xAxisColor="transparent"
                   yAxisColor="transparent"
-                  xAxisLabelTextStyle={{ fontFamily: FontFamily.mono, fontSize: 8, color: Colors.textMuted }}
+                  xAxisLabelTextStyle={{ fontFamily: FontFamily.mono, fontSize: FontSize.size8, color: Colors.textMuted }}
                   isAnimated
                 />
               </View>
@@ -601,8 +603,31 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
                   hideYAxisText
                   xAxisColor="transparent"
                   yAxisColor="transparent"
-                  xAxisLabelTextStyle={{ fontFamily: FontFamily.mono, fontSize: 8, color: Colors.textMuted }}
+                  xAxisLabelTextStyle={{ fontFamily: FontFamily.mono, fontSize: FontSize.size8, color: Colors.textMuted }}
                   maxValue={Math.max(...leadFunnelData.map(d => d.value), 1)}
+                  isAnimated
+                />
+              </View>
+            </>
+          )}
+
+          {/* Inventory Aging BarChart */}
+          {agingData.length > 0 && (
+            <>
+              <Text style={styles.sectionLabel}>INVENTORY AGING</Text>
+              <View style={[styles.monthCard, { flexDirection: 'column', alignItems: 'flex-start', paddingTop: 20 }]}>
+                <BarChart
+                  data={agingData}
+                  width={chartW - 8}
+                  height={100}
+                  barWidth={Math.floor((chartW - 60) / 4) - 4}
+                  barBorderRadius={4}
+                  hideRules
+                  hideYAxisText
+                  xAxisColor="transparent"
+                  yAxisColor="transparent"
+                  xAxisLabelTextStyle={{ fontFamily: FontFamily.mono, fontSize: FontSize.size8, color: Colors.textMuted }}
+                  maxValue={Math.max(...agingData.map(d => d.value), 1)}
                   isAnimated
                 />
               </View>
@@ -614,7 +639,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
           <View style={styles.topSection}>
             {(analytics?.topVehicles ?? []).length === 0 ? (
               <View style={{ paddingVertical: 28, paddingHorizontal: 12, alignItems: 'center' }}>
-                <Text style={{ fontFamily: FontFamily.regular, fontSize: 12, color: Colors.textMuted, textAlign: 'center' }}>
+                <Text style={{ fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textMuted, textAlign: 'center' }}>
                   No listings yet — your top performers will appear here once your cars start getting views.
                 </Text>
               </View>
@@ -653,7 +678,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
             activeOpacity={0.85}
           >
             <LinearGradient
-              colors={['rgba(34,197,94,0.10)', 'rgba(34,197,94,0.04)']}
+              colors={[Colors.successAlpha10, 'rgba(34,197,94,0.04)']}
               style={StyleSheet.absoluteFillObject}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -671,7 +696,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
             </View>
             <View style={styles.convCTARight}>
               <Text style={styles.convCTALink}>Deep dive</Text>
-              <Ionicons name="chevron-forward" size={14} color={Colors.success} />
+              <Ionicons name="chevron-forward" size={14} color={Colors.success} accessibilityElementsHidden importantForAccessibility="no" />
             </View>
           </TouchableOpacity>
 
@@ -688,7 +713,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
 
       {/* Background */}
       <LinearGradient
-        colors={['rgba(220,31,38,0.05)', 'rgba(59,130,246,0.03)', '#0A0A0C']}
+        colors={[Colors.accentAlpha05, Colors.infoBlueAlpha03, Colors.bgPrimary]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.7 }}
         style={StyleSheet.absoluteFillObject}
@@ -702,7 +727,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0C',
+    backgroundColor: Colors.bgPrimary,
   },
   scrollContent: {
     paddingBottom: 24,
@@ -720,9 +745,9 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: Colors.whiteAlpha05,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: Colors.whiteAlpha08,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -731,21 +756,21 @@ const styles = StyleSheet.create({
   },
   headerSub: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#606070',
+    fontSize: FontSize.size9,
+    color: Colors.iconMuted,
     letterSpacing: 1.8,
     marginBottom: 2,
   },
   headerTitleMain: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 22,
-    color: '#FFFFFF',
+    fontSize: FontSize.size22,
+    color: Colors.white,
     letterSpacing: -0.5,
   },
   headerTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
-    color: '#FFFFFF',
+    fontSize: FontSize.sm,
+    color: Colors.white,
     letterSpacing: 1.4,
   },
 
@@ -762,31 +787,31 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
   },
   pillActive: {
-    backgroundColor: '#DC1F26',
-    borderColor: '#DC1F26',
+    backgroundColor: Colors.accent,
+    borderColor: Colors.accent,
   },
   pillText: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#606070',
+    fontSize: FontSize.xs,
+    color: Colors.iconMuted,
     letterSpacing: 0.5,
   },
   pillTextActive: {
-    color: '#FFFFFF',
+    color: Colors.white,
   },
 
   // ── Revenue card ─────────────────────────────────────────────────────────
   revenueCard: {
     marginHorizontal: 24,
-    backgroundColor: '#111116',
+    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     overflow: 'hidden',
     marginBottom: 14,
     paddingTop: 20,
@@ -797,15 +822,15 @@ const styles = StyleSheet.create({
   },
   revLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#606070',
+    fontSize: FontSize.size9,
+    color: Colors.iconMuted,
     letterSpacing: 1.6,
     marginBottom: 6,
   },
   revValue: {
     fontFamily: FontFamily.mono,
-    fontSize: 30,
-    color: '#FFFFFF',
+    fontSize: FontSize.size30,
+    color: Colors.white,
     letterSpacing: -1,
     marginBottom: 6,
   },
@@ -815,8 +840,8 @@ const styles = StyleSheet.create({
   },
   revChangeText: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#22C55E',
+    fontSize: FontSize.size12,
+    color: Colors.success,
   },
   chartArea: {
     marginHorizontal: -4,
@@ -838,25 +863,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     marginBottom: 24,
   },
+  // Dealer analytics is a power-user surface, so KPI cards use the compact row
+  // density preset instead of buyer-card spacing (mobile-ui-ux-audit.md §DA1).
   statCard: {
     width: HALF_CARD,
-    backgroundColor: '#111116',
-    borderRadius: 18,
+    backgroundColor: Colors.bgSecondaryAlt,
+    borderRadius: RowDensity.compact.borderRadius,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-    padding: 16,
+    borderColor: Colors.whiteAlpha06,
+    padding: RowDensity.compact.padding,
   },
   statLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#606070',
+    fontSize: FontSize.size9,
+    color: Colors.iconMuted,
     letterSpacing: 1.4,
     marginBottom: 8,
   },
   statValue: {
     fontFamily: FontFamily.mono,
-    fontSize: 26,
-    color: '#FFFFFF',
+    fontSize: FontSize.size26,
+    color: Colors.white,
     letterSpacing: -0.5,
     marginBottom: 6,
   },
@@ -866,15 +893,15 @@ const styles = StyleSheet.create({
   },
   statChangeGreen: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#22C55E',
+    fontSize: FontSize.xs,
+    color: Colors.success,
   },
 
   // ── Section label ────────────────────────────────────────────────────────
   sectionLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#606070',
+    fontSize: FontSize.size10,
+    color: Colors.iconMuted,
     letterSpacing: 1.6,
     marginHorizontal: 28,
     marginBottom: 12,
@@ -883,10 +910,10 @@ const styles = StyleSheet.create({
   // ── Top Performers ───────────────────────────────────────────────────────
   topSection: {
     marginHorizontal: 24,
-    backgroundColor: '#111116',
+    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     paddingHorizontal: 16,
     paddingVertical: 6,
     marginBottom: 16,
@@ -900,24 +927,24 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
   },
   rankBadgeRed: {
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
   },
   rankText: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#FFFFFF',
+    fontSize: FontSize.xs,
+    color: Colors.white,
   },
   perfThumb: {
     width: 52,
     height: 38,
     borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     marginRight: 12,
   },
   perfInfo: {
@@ -925,26 +952,26 @@ const styles = StyleSheet.create({
   },
   perfTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
-    color: '#FFFFFF',
+    fontSize: FontSize.sm,
+    color: Colors.white,
     marginBottom: 3,
   },
   perfSub: {
     fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: '#606070',
+    fontSize: FontSize.xs,
+    color: Colors.iconMuted,
   },
   perfPrice: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
-    color: '#FFFFFF',
+    fontSize: FontSize.sm,
+    color: Colors.white,
   },
   perfPriceUnder: {
     textDecorationLine: 'underline',
   },
   perfDivider: {
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
   },
 
   // ── Conversion CTA ───────────────────────────────────────────────────────
@@ -952,8 +979,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 24,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(34,197,94,0.20)',
-    backgroundColor: '#111116',
+    borderColor: Colors.successAlpha20,
+    backgroundColor: Colors.bgSecondaryAlt,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -964,21 +991,21 @@ const styles = StyleSheet.create({
   convCTALeft: {},
   convCTALabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#606070',
+    fontSize: FontSize.size9,
+    color: Colors.iconMuted,
     letterSpacing: 1.4,
     marginBottom: 5,
   },
   convCTAValue: {
     fontFamily: FontFamily.mono,
-    fontSize: 20,
-    color: '#22C55E',
+    fontSize: FontSize.xl,
+    color: Colors.success,
     letterSpacing: -0.5,
   },
   convCTABench: {
     fontFamily: FontFamily.regular,
-    fontSize: 12,
-    color: '#606070',
+    fontSize: FontSize.size12,
+    color: Colors.iconMuted,
   },
   convCTARight: {
     flexDirection: 'row',
@@ -987,17 +1014,17 @@ const styles = StyleSheet.create({
   },
   convCTALink: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
-    color: '#22C55E',
+    fontSize: FontSize.sm,
+    color: Colors.success,
   },
 
   // ── Monthly breakdown bars ───────────────────────────────────────────────
   monthCard: {
     marginHorizontal: 24,
-    backgroundColor: '#111116',
+    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
@@ -1010,15 +1037,15 @@ const styles = StyleSheet.create({
   },
   monthRev: {
     fontFamily: FontFamily.bold,
-    fontSize: 7,
-    color: '#606070',
+    fontSize: FontSize.size7,
+    color: Colors.iconMuted,
     marginBottom: 6,
     textAlign: 'center',
   },
   monthBarTrack: {
     width: 22,
     height: 60,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     borderRadius: 4,
     justifyContent: 'flex-end',
     marginBottom: 6,
@@ -1030,23 +1057,23 @@ const styles = StyleSheet.create({
   },
   monthSold: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#FFFFFF',
+    fontSize: FontSize.size12,
+    color: Colors.white,
     marginBottom: 2,
   },
   monthName: {
     fontFamily: FontFamily.regular,
-    fontSize: 10,
-    color: '#606070',
+    fontSize: FontSize.size10,
+    color: Colors.iconMuted,
   },
 
   // ── Conversion Deep Dive ─────────────────────────────────────────────────
   convCard: {
     marginHorizontal: 24,
-    backgroundColor: '#111116',
+    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(34,197,94,0.15)',
+    borderColor: Colors.successAlpha15,
     padding: 20,
     overflow: 'hidden',
     marginBottom: 28,
@@ -1061,31 +1088,31 @@ const styles = StyleSheet.create({
   },
   convCardLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#22C55E',
+    fontSize: FontSize.size9,
+    color: Colors.success,
     letterSpacing: 1.4,
     marginBottom: 6,
   },
   convCardBig: {
     fontFamily: FontFamily.extraBold,
-    fontSize: 22,
-    color: '#FFFFFF',
+    fontSize: FontSize.size22,
+    color: Colors.white,
     letterSpacing: -0.5,
     marginBottom: 4,
   },
   convCardSub: {
     fontFamily: FontFamily.regular,
-    fontSize: 12,
-    color: '#606070',
+    fontSize: FontSize.size12,
+    color: Colors.iconMuted,
   },
 
   // Funnel card
   funnelCard: {
     marginHorizontal: 24,
-    backgroundColor: '#111116',
+    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     paddingHorizontal: 18,
     paddingVertical: 6,
     marginBottom: 16,
@@ -1101,17 +1128,17 @@ const styles = StyleSheet.create({
   },
   funnelStep: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
     marginBottom: 3,
   },
   funnelArrow: {
-    color: '#DC1F26',
+    color: Colors.accent,
   },
   funnelSub: {
     fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: '#606070',
+    fontSize: FontSize.xs,
+    color: Colors.iconMuted,
   },
   funnelBadge: {
     paddingHorizontal: 12,
@@ -1122,11 +1149,11 @@ const styles = StyleSheet.create({
   },
   funnelPct: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
+    fontSize: FontSize.size14,
   },
   funnelDivider: {
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
   },
 
   // AI Card
@@ -1134,8 +1161,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 24,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(220,31,38,0.20)',
-    backgroundColor: '#111116',
+    borderColor: Colors.accentAlpha20,
+    backgroundColor: Colors.bgSecondaryAlt,
     flexDirection: 'row',
     alignItems: 'flex-start',
     padding: 18,
@@ -1147,9 +1174,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: 'rgba(220,31,38,0.12)',
+    backgroundColor: Colors.accentAlpha12,
     borderWidth: 1,
-    borderColor: 'rgba(220,31,38,0.20)',
+    borderColor: Colors.accentAlpha20,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
@@ -1159,25 +1186,25 @@ const styles = StyleSheet.create({
   },
   aiLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#DC1F26',
+    fontSize: FontSize.size9,
+    color: Colors.accent,
     letterSpacing: 1.4,
     marginBottom: 6,
   },
   aiBody: {
     fontFamily: FontFamily.regular,
-    fontSize: 13,
-    color: '#D0D0DA',
+    fontSize: FontSize.sm,
+    color: Colors.paleBlue_d0d0da,
     lineHeight: 20,
   },
 
   // Benchmark card
   benchCard: {
     marginHorizontal: 24,
-    backgroundColor: '#111116',
+    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     padding: 20,
     gap: 14,
   },
@@ -1188,14 +1215,14 @@ const styles = StyleSheet.create({
   },
   benchLabel: {
     fontFamily: FontFamily.medium,
-    fontSize: 12,
-    color: '#A0A0AB',
+    fontSize: FontSize.size12,
+    color: Colors.textSecondary,
     width: 110,
   },
   benchTrack: {
     flex: 1,
     height: 6,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderRadius: 3,
     overflow: 'hidden',
   },
@@ -1205,7 +1232,7 @@ const styles = StyleSheet.create({
   },
   benchVal: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
+    fontSize: FontSize.sm,
     width: 42,
     textAlign: 'right',
   },

@@ -3,7 +3,6 @@ import {
   Dimensions,
   FlatList,
   Linking,
-  Modal,
   RefreshControl,
   ScrollView,
   StatusBar,
@@ -16,6 +15,7 @@ import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@/components/BrandIcon';
+import { BottomSheet } from '../../components/BottomSheet';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../lib/apiClient';
@@ -26,6 +26,7 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 
+import { IconButton } from '../../components/IconButton';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
@@ -78,28 +79,28 @@ const STATUS_CONFIG: Record<
   AWAITING_CONFIRMATION: {
     label: 'Awaiting Confirmation',
     icon: 'time-outline',
-    color: '#F59E0B',
-    bg: 'rgba(245,158,11,0.12)',
-    border: 'rgba(245,158,11,0.25)',
+    color: Colors.warning,
+    bg: Colors.warningAlpha12,
+    border: Colors.warningAlpha25,
   },
   REVIEWING_DOCS: {
     label: 'Reviewing Documents',
     icon: 'document-text-outline',
-    color: '#3B82F6',
-    bg: 'rgba(59,130,246,0.12)',
-    border: 'rgba(59,130,246,0.25)',
+    color: Colors.infoBlue,
+    bg: Colors.infoBlueAlpha12,
+    border: Colors.infoBlueAlpha25,
   },
   CHECKS_COMPLETE: {
     label: 'Checks Complete',
     icon: 'checkmark-circle-outline',
-    color: '#22C55E',
-    bg: 'rgba(34,197,94,0.12)',
-    border: 'rgba(34,197,94,0.25)',
+    color: Colors.success,
+    bg: Colors.successAlpha12,
+    border: Colors.successAlpha25,
   },
   DELIVERY_REQUESTED: {
     label: 'Delivery Requested',
     icon: 'car-sport-outline',
-    color: '#A78BFA',
+    color: Colors.palePurple_a78bfa,
     bg: 'rgba(167,139,250,0.12)',
     border: 'rgba(167,139,250,0.25)',
   },
@@ -183,7 +184,7 @@ export const DealerPurchasesScreen: React.FC = () => {
     </View>
   );
 
-  const renderPurchaseCard = (item: PurchaseItem) => {
+  const renderPurchaseCard = useCallback(({ item }: { item: PurchaseItem }) => {
     const cfg = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.AWAITING_CONFIRMATION;
 
     return (
@@ -223,7 +224,7 @@ export const DealerPurchasesScreen: React.FC = () => {
         </View>
       </TouchableOpacity>
     );
-  };
+  }, []);
 
   // ─────────────── main render ───────────────────────
 
@@ -232,7 +233,7 @@ export const DealerPurchasesScreen: React.FC = () => {
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       <LinearGradient
-        colors={['rgba(167,139,250,0.05)', 'rgba(10,10,12,0)', '#0A0A0C']}
+        colors={['rgba(167,139,250,0.05)', 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 0.6 }}
         style={StyleSheet.absoluteFillObject}
@@ -242,13 +243,7 @@ export const DealerPurchasesScreen: React.FC = () => {
 
       {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          activeOpacity={0.75}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="chevron-back" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
+        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
         <Text style={styles.headerTitle}>Purchases</Text>
 
@@ -280,7 +275,7 @@ export const DealerPurchasesScreen: React.FC = () => {
           style={styles.scroll}
           data={purchases}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => renderPurchaseCard(item)}
+          renderItem={renderPurchaseCard}
           ListHeaderComponent={purchases.length > 0 ? renderTotalsBar : null}
           ListEmptyComponent={renderEmptyState}
           ListFooterComponent={<View style={{ height: 110 }} />}
@@ -298,22 +293,14 @@ export const DealerPurchasesScreen: React.FC = () => {
       )}
 
       {/* ── Purchase summary / seller contact modal ── */}
-      <Modal
+      <BottomSheet
         visible={summaryItem != null}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setSummaryItem(null)}
+        onClose={() => setSummaryItem(null)}
       >
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFillObject}
-            activeOpacity={1}
-            onPress={() => setSummaryItem(null)}
-          />
           {summaryItem && (
-            <View style={[styles.modalSheet, { paddingBottom: Math.max(insets.bottom, 20) }]}>
-              <View style={styles.modalHandle} />
-
+            // gap replicates the old modalSheet wrapper's spacing, which BottomSheet's
+            // own sheet style doesn't provide
+            <View style={{ gap: 12 }}>
               <View style={styles.modalTopRow}>
                 {summaryItem.imageUrl ? (
                   <Image source={{ uri: summaryItem.imageUrl }} style={styles.modalThumb} contentFit="cover" transition={200} cachePolicy="memory-disk" alt={summaryItem.vehicleTitle} />
@@ -403,8 +390,7 @@ export const DealerPurchasesScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
           )}
-        </View>
-      </Modal>
+      </BottomSheet>
     </View>
   );
 };
@@ -429,31 +415,31 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.lg,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   headerPlaceholder: { width: 38 },
   countBadge: {
     minWidth: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#A78BFA',
+    backgroundColor: Colors.palePurple_a78bfa,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 6,
   },
   countBadgeText: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#FFFFFF',
+    fontSize: FontSize.xs,
+    color: Colors.white,
   },
 
   // ── Scroll ──
@@ -466,10 +452,10 @@ const styles = StyleSheet.create({
 
   // ── Totals bar ──
   totalsCard: {
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -479,12 +465,12 @@ const styles = StyleSheet.create({
   totalDivider: {
     width: 1,
     height: 36,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: Colors.whiteAlpha08,
     marginHorizontal: 16,
   },
   totalLabel: {
     fontFamily: FontFamily.medium,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     color: Colors.textMuted,
     letterSpacing: 1,
     textTransform: 'uppercase',
@@ -492,14 +478,14 @@ const styles = StyleSheet.create({
   totalValue: {
     fontFamily: FontFamily.mono,
     fontSize: FontSize.xl,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
 
   // ── Skeleton ──
   skeletonCard: {
     height: 100,
     borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
   },
 
   // ── Empty state ──
@@ -510,8 +496,8 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 17,
-    color: '#FFFFFF',
+    fontSize: FontSize.size17,
+    color: Colors.white,
     marginTop: 12,
   },
   emptySub: {
@@ -526,10 +512,10 @@ const styles = StyleSheet.create({
 
   // ── Purchase card ──
   purchaseCard: {
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     padding: 14,
     gap: 12,
   },
@@ -545,33 +531,33 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   thumbPlaceholder: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cardCenter: { flex: 1, gap: 2 },
   vehicleTitle: {
     fontFamily: FontFamily.semiBold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
   },
   vehicleSubtitle: {
     fontFamily: FontFamily.regular,
-    fontSize: 11,
+    fontSize: FontSize.xs,
     color: Colors.textMuted,
   },
   purchaseDate: {
     fontFamily: FontFamily.regular,
-    fontSize: 11,
+    fontSize: FontSize.xs,
     color: Colors.textMuted,
     marginTop: 2,
   },
   purchasePrice: {
     fontFamily: FontFamily.mono,
-    fontSize: 16,
-    color: '#FFFFFF',
+    fontSize: FontSize.md,
+    color: Colors.white,
   },
 
   // ── Status chip ──
@@ -587,33 +573,11 @@ const styles = StyleSheet.create({
   },
   statusChipText: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
+    fontSize: FontSize.size10,
     letterSpacing: 0.3,
   },
 
   // ── Modal ──
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  },
-  modalSheet: {
-    backgroundColor: '#16161C',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    gap: 12,
-  },
-  modalHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignSelf: 'center',
-    marginBottom: 4,
-  },
   modalTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -638,7 +602,7 @@ const styles = StyleSheet.create({
   },
   modalDivider: {
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: Colors.whiteAlpha08,
   },
   modalRow: {
     flexDirection: 'row',
@@ -647,7 +611,7 @@ const styles = StyleSheet.create({
   },
   modalLabel: {
     fontFamily: FontFamily.medium,
-    fontSize: 10,
+    fontSize: FontSize.size10,
     color: Colors.textMuted,
     letterSpacing: 1,
     textTransform: 'uppercase',
@@ -666,7 +630,7 @@ const styles = StyleSheet.create({
   // ── Seller section ──
   sellerSectionLabel: {
     fontFamily: FontFamily.medium,
-    fontSize: 10,
+    fontSize: FontSize.size10,
     color: Colors.textMuted,
     letterSpacing: 1,
     textTransform: 'uppercase',
@@ -680,25 +644,25 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(220,31,38,0.12)',
+    backgroundColor: Colors.accentAlpha12,
     borderWidth: 1,
-    borderColor: 'rgba(220,31,38,0.25)',
+    borderColor: Colors.accentAlpha25,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sellerInitial: {
     fontFamily: FontFamily.bold,
-    fontSize: 16,
+    fontSize: FontSize.md,
     color: Colors.accent,
   },
   sellerName: {
     fontFamily: FontFamily.semiBold,
-    fontSize: 14,
+    fontSize: FontSize.size14,
     color: Colors.textPrimary,
   },
   sellerSub: {
     fontFamily: FontFamily.regular,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.textMuted,
     marginTop: 2,
   },
@@ -714,16 +678,16 @@ const styles = StyleSheet.create({
     gap: 7,
     height: 44,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: Colors.whiteAlpha10,
   },
   sellerActionBtnDisabled: {
     opacity: 0.4,
   },
   sellerActionText: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
+    fontSize: FontSize.sm,
     color: Colors.textPrimary,
   },
   modalCloseBtn: {
@@ -731,9 +695,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: Colors.whiteAlpha10,
     marginTop: 4,
   },
   modalCloseBtnText: {

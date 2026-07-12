@@ -28,6 +28,7 @@ import { apiClient } from '../../lib/apiClient';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 import { useAuthStore } from '../../store/authStore';
 
+import { IconButton } from '../../components/IconButton';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ─── Backend response shapes (see GET /dealers/stats & /dealers/analytics) ──
@@ -74,9 +75,9 @@ const formatGBP = (value: number): string => {
   return `£${Math.round(value)}`;
 };
 
-const trendColor = (value: number) => (value > 0 ? '#22C55E' : value < 0 ? '#EF4444' : '#9CA3AF');
+const trendColor = (value: number) => (value > 0 ? Colors.success : value < 0 ? Colors.error : Colors.lightBlue_9ca3af);
 const trendStyle = (value: number) =>
-  value > 0 ? { color: '#22C55E' } : value < 0 ? { color: '#EF4444' } : { color: '#9CA3AF' };
+  value > 0 ? { color: Colors.success } : value < 0 ? { color: Colors.error } : { color: Colors.lightBlue_9ca3af };
 const trendLabel = (value: number) => (value === 0 ? '—' : `${value > 0 ? '+' : ''}${value}%`);
 
 export const DealerProfileScreen: React.FC = () => {
@@ -127,11 +128,11 @@ export const DealerProfileScreen: React.FC = () => {
   const topListings = analytics?.topVehicles?.slice(0, 3) ?? [];
 
   const funnelStages = [
-    { label: 'New leads', value: analytics?.leadFunnel?.NEW ?? 0, color: '#3B82F6' },
-    { label: 'Contacted', value: analytics?.leadFunnel?.CONTACTED ?? 0, color: '#A855F7' },
-    { label: 'Qualified', value: analytics?.leadFunnel?.QUALIFIED ?? 0, color: '#EF4444' },
-    { label: 'Negotiating', value: analytics?.leadFunnel?.NEGOTIATING ?? 0, color: '#F59E0B' },
-    { label: 'Won', value: analytics?.leadFunnel?.WON ?? 0, color: '#22C55E' },
+    { label: 'New leads', value: analytics?.leadFunnel?.NEW ?? 0, color: Colors.infoBlue },
+    { label: 'Contacted', value: analytics?.leadFunnel?.CONTACTED ?? 0, color: Colors.lightPurple },
+    { label: 'Qualified', value: analytics?.leadFunnel?.QUALIFIED ?? 0, color: Colors.error },
+    { label: 'Negotiating', value: analytics?.leadFunnel?.NEGOTIATING ?? 0, color: Colors.warning },
+    { label: 'Won', value: analytics?.leadFunnel?.WON ?? 0, color: Colors.success },
   ];
   const funnelMax = Math.max(1, ...funnelStages.map((s) => s.value));
 
@@ -152,27 +153,27 @@ export const DealerProfileScreen: React.FC = () => {
           <View style={styles.segmentBar}>
             {totalInventory > 0 ? (
               <>
-                <View style={[styles.segment, { flex: liveCount, backgroundColor: '#22C55E' }]} />
-                <View style={[styles.segment, { flex: pendingCount, backgroundColor: '#F59E0B' }]} />
-                <View style={[styles.segment, { flex: soldCount, backgroundColor: '#EF4444' }]} />
+                <View style={[styles.segment, { flex: liveCount, backgroundColor: Colors.success }]} />
+                <View style={[styles.segment, { flex: pendingCount, backgroundColor: Colors.warning }]} />
+                <View style={[styles.segment, { flex: soldCount, backgroundColor: Colors.error }]} />
               </>
             ) : (
-              <View style={[styles.segment, { flex: 1, backgroundColor: 'rgba(255,255,255,0.06)' }]} />
+              <View style={[styles.segment, { flex: 1, backgroundColor: Colors.whiteAlpha06 }]} />
             )}
           </View>
 
           {/* Legend */}
           <View style={styles.legendRow}>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#22C55E' }]} />
+              <View style={[styles.legendDot, { backgroundColor: Colors.success }]} />
               <Text style={styles.legendText}>{liveCount} Live</Text>
             </View>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#F59E0B' }]} />
+              <View style={[styles.legendDot, { backgroundColor: Colors.warning }]} />
               <Text style={styles.legendText}>{pendingCount} Pending</Text>
             </View>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
+              <View style={[styles.legendDot, { backgroundColor: Colors.error }]} />
               <Text style={styles.legendText}>{soldCount} Sold</Text>
             </View>
           </View>
@@ -206,9 +207,9 @@ export const DealerProfileScreen: React.FC = () => {
                     <View style={styles.listingInfo}>
                       <Text style={styles.listingTitle} numberOfLines={1}>{vehicle.title}</Text>
                       <View style={styles.listingMeta}>
-                        <Ionicons name="eye-outline" size={13} color="#A0A0AB" />
+                        <Ionicons name="eye-outline" size={13} color={Colors.textSecondary} />
                         <Text style={styles.metaText}>{vehicle.views}</Text>
-                        <Ionicons name="pricetag-outline" size={13} color="#A0A0AB" style={{ marginLeft: 10 }} />
+                        <Ionicons name="pricetag-outline" size={13} color={Colors.textSecondary} style={{ marginLeft: 10 }} />
                         <Text style={styles.metaText}>{vehicle.offerCount}</Text>
                       </View>
                     </View>
@@ -236,16 +237,16 @@ export const DealerProfileScreen: React.FC = () => {
             <TouchableOpacity
               style={styles.attentionRow}
               activeOpacity={0.8}
-              onPress={() => navigation.navigate('Messages')}
+              onPress={() => navigation.navigate('DealerLeads')}
             >
-              <View style={[styles.attentionIconWrap, { backgroundColor: 'rgba(239, 68, 68, 0.08)', borderColor: 'rgba(239, 68, 68, 0.15)' }]}>
-                <Ionicons name="chatbubble-ellipses" size={18} color="#EF4444" />
+              <View style={[styles.attentionIconWrap, { backgroundColor: Colors.errorAlpha08, borderColor: 'rgba(239, 68, 68, 0.15)' }]}>
+                <Ionicons name="chatbubble-ellipses" size={18} color={Colors.error} />
               </View>
               <View style={styles.attentionTextCol}>
                 <Text style={styles.attentionTitle}>{activeLeads} active lead{activeLeads === 1 ? '' : 's'}</Text>
                 <Text style={styles.attentionSub}>Tap to view your CRM pipeline</Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color="#606070" />
+              <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
 
             {/* Direct offers */}
@@ -254,14 +255,14 @@ export const DealerProfileScreen: React.FC = () => {
               activeOpacity={0.8}
               onPress={() => navigation.navigate('DealerOffers')}
             >
-              <View style={[styles.attentionIconWrap, { backgroundColor: 'rgba(245, 158, 11, 0.08)', borderColor: 'rgba(245, 158, 11, 0.15)' }]}>
-                <Ionicons name="pricetag" size={18} color="#F59E0B" />
+              <View style={[styles.attentionIconWrap, { backgroundColor: Colors.warningAlpha08, borderColor: Colors.warningAlpha15 }]}>
+                <Ionicons name="pricetag" size={18} color={Colors.warning} />
               </View>
               <View style={styles.attentionTextCol}>
                 <Text style={styles.attentionTitle}>Direct offers</Text>
                 <Text style={styles.attentionSub}>Review and respond to buyer offers</Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color="#606070" />
+              <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
 
             {/* My Offers */}
@@ -271,13 +272,13 @@ export const DealerProfileScreen: React.FC = () => {
               onPress={() => navigation.navigate('DealerMyOffers')}
             >
               <View style={[styles.attentionIconWrap, { backgroundColor: 'rgba(96, 165, 250, 0.08)', borderColor: 'rgba(96, 165, 250, 0.15)' }]}>
-                <Ionicons name="send-outline" size={18} color="#60A5FA" />
+                <Ionicons name="send-outline" size={18} color={Colors.infoBlueLight} />
               </View>
               <View style={styles.attentionTextCol}>
                 <Text style={styles.attentionTitle}>My offers</Text>
                 <Text style={styles.attentionSub}>Track offers your dealership has sent</Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color="#606070" />
+              <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
 
             {/* Purchases */}
@@ -287,29 +288,63 @@ export const DealerProfileScreen: React.FC = () => {
               onPress={() => navigation.navigate('DealerPurchases')}
             >
               <View style={[styles.attentionIconWrap, { backgroundColor: 'rgba(167, 139, 250, 0.08)', borderColor: 'rgba(167, 139, 250, 0.15)' }]}>
-                <Ionicons name="receipt-outline" size={18} color="#A78BFA" />
+                <Ionicons name="receipt-outline" size={18} color={Colors.palePurple_a78bfa} />
               </View>
               <View style={styles.attentionTextCol}>
                 <Text style={styles.attentionTitle}>Purchases</Text>
                 <Text style={styles.attentionSub}>Vehicles bought by your dealership</Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color="#606070" />
+              <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
 
-            {/* Live auctions */}
+            {/* Earnings */}
+            <TouchableOpacity
+              style={styles.attentionRow}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('DealerEarnings')}
+            >
+              <View style={[styles.attentionIconWrap, { backgroundColor: Colors.successAlpha08, borderColor: Colors.successAlpha20 }]}>
+                <Ionicons name="cash-outline" size={18} color={Colors.success} />
+              </View>
+              <View style={styles.attentionTextCol}>
+                <Text style={styles.attentionTitle}>Earnings</Text>
+                <Text style={styles.attentionSub}>Revenue, sales registry and receipts</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
+            </TouchableOpacity>
+
+            {/* Live auctions (watch) */}
             <TouchableOpacity
               style={styles.attentionRow}
               activeOpacity={0.8}
               onPress={() => navigation.navigate('Tabs', { screen: 'Live' })}
             >
-              <View style={[styles.attentionIconWrap, { backgroundColor: 'rgba(59, 130, 246, 0.08)', borderColor: 'rgba(59, 130, 246, 0.15)' }]}>
-                <Ionicons name="time" size={18} color="#3B82F6" />
+              <View style={[styles.attentionIconWrap, { backgroundColor: Colors.infoBlueAlpha08, borderColor: Colors.infoBlueAlpha15 }]}>
+                <Ionicons name="time" size={18} color={Colors.infoBlue} />
               </View>
               <View style={styles.attentionTextCol}>
                 <Text style={styles.attentionTitle}>Live auctions</Text>
                 <Text style={styles.attentionSub}>Track your dealership's auctions in real time</Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color="#606070" />
+              <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
+            </TouchableOpacity>
+
+            {/* Manage auctions (create/schedule/cancel — was previously
+                watch-only for dealers; SellerAuctionsScreen's create flow
+                already works generically, it just had no dealer entry point) */}
+            <TouchableOpacity
+              style={styles.attentionRow}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('SellerAuctions')}
+            >
+              <View style={[styles.attentionIconWrap, { backgroundColor: Colors.accentAlpha08, borderColor: Colors.accentAlpha15 }]}>
+                <Ionicons name="hammer-outline" size={18} color={Colors.accent} />
+              </View>
+              <View style={styles.attentionTextCol}>
+                <Text style={styles.attentionTitle}>Manage auctions</Text>
+                <Text style={styles.attentionSub}>Schedule, edit or put a listing up for auction</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
 
             {/* Team */}
@@ -319,13 +354,13 @@ export const DealerProfileScreen: React.FC = () => {
               onPress={() => navigation.navigate('DealerTeam')}
             >
               <View style={[styles.attentionIconWrap, { backgroundColor: 'rgba(167, 139, 250, 0.08)', borderColor: 'rgba(167, 139, 250, 0.15)' }]}>
-                <Ionicons name="people-outline" size={18} color="#A78BFA" />
+                <Ionicons name="people-outline" size={18} color={Colors.palePurple_a78bfa} />
               </View>
               <View style={styles.attentionTextCol}>
                 <Text style={styles.attentionTitle}>Team</Text>
                 <Text style={styles.attentionSub}>{staffCount} member{staffCount === 1 ? '' : 's'} on your team</Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+              <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
           </View>
         </View>
@@ -359,7 +394,7 @@ export const DealerProfileScreen: React.FC = () => {
         {/* REVENUE SALES CARD */}
         <View style={styles.salesCard}>
           <LinearGradient
-            colors={['rgba(220, 31, 38, 0.12)', 'rgba(59, 130, 246, 0.02)']}
+            colors={[Colors.accentAlpha12, 'rgba(59, 130, 246, 0.02)']}
             style={StyleSheet.absoluteFillObject}
           />
           <Text style={styles.salesLabel}>SALES VALUE • LAST 7 DAYS</Text>
@@ -376,7 +411,7 @@ export const DealerProfileScreen: React.FC = () => {
           <View style={styles.metricCard}>
             <View style={styles.metricHeader}>
               <Text style={styles.metricTitle}>LIVE LISTINGS</Text>
-              <Ionicons name="cube-outline" size={14} color="#DC1F26" />
+              <Ionicons name="cube-outline" size={14} color={Colors.accent} />
             </View>
             <View style={styles.metricValRow}>
               <Text style={styles.metricNumber}>{liveCount}</Text>
@@ -387,7 +422,7 @@ export const DealerProfileScreen: React.FC = () => {
           <View style={styles.metricCard}>
             <View style={styles.metricHeader}>
               <Text style={styles.metricTitle}>UNITS SOLD</Text>
-              <Ionicons name="checkmark-done-outline" size={14} color="#DC1F26" />
+              <Ionicons name="checkmark-done-outline" size={14} color={Colors.accent} />
             </View>
             <View style={styles.metricValRow}>
               <Text style={styles.metricNumber}>{kpis?.totalUnitsSold ?? 0}</Text>
@@ -401,7 +436,7 @@ export const DealerProfileScreen: React.FC = () => {
           <View style={styles.metricCard}>
             <View style={styles.metricHeader}>
               <Text style={styles.metricTitle}>AVG DAYS TO SELL</Text>
-              <Ionicons name="time-outline" size={14} color="#F59E0B" />
+              <Ionicons name="time-outline" size={14} color={Colors.warning} />
             </View>
             <View style={styles.metricValRow}>
               <Text style={styles.metricNumber}>{kpis?.avgDaysToSell ?? 0}</Text>
@@ -415,7 +450,7 @@ export const DealerProfileScreen: React.FC = () => {
           <View style={styles.metricCard}>
             <View style={styles.metricHeader}>
               <Text style={styles.metricTitle}>OFFER CONVERSION</Text>
-              <Ionicons name="bar-chart-outline" size={14} color="#22C55E" />
+              <Ionicons name="bar-chart-outline" size={14} color={Colors.success} />
             </View>
             <View style={styles.metricValRow}>
               <Text style={styles.metricNumber}>{kpis?.offerConversionRate ?? 0}%</Text>
@@ -446,7 +481,7 @@ export const DealerProfileScreen: React.FC = () => {
           activeOpacity={0.8}
           onPress={() => navigation.navigate('SellCarFlow')}
         >
-          <Ionicons name="add" size={20} color="#FFFFFF" style={{ marginRight: 6 }} />
+          <Ionicons name="add" size={20} color={Colors.white} style={{ marginRight: 6 }} />
           <Text style={styles.addListingCTAText}>ADD LISTING</Text>
         </TouchableOpacity>
 
@@ -476,22 +511,16 @@ export const DealerProfileScreen: React.FC = () => {
             <TouchableOpacity
               style={styles.bellBtnCircle}
               activeOpacity={0.7}
-              onPress={() => navigation.navigate('Alerts')}
+              onPress={() => navigation.navigate('Notifications')}
             >
-              <Ionicons name="notifications" size={20} color="#FFFFFF" />
+              <Ionicons name="notifications" size={20} color={Colors.white} />
               {activeLeads > 0 && (
                 <View style={styles.bellBadgeRed}>
                   <Text style={styles.bellBadgeText}>{badgeCount}</Text>
                 </View>
               )}
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.bellBtnCircle, { marginLeft: 8 }]}
-              activeOpacity={0.7}
-              onPress={() => navigation.navigate('Settings')}
-            >
-              <Ionicons name="settings-outline" size={20} color="#FFFFFF" />
-            </TouchableOpacity>
+            <IconButton style={[styles.bellBtnCircle, { marginLeft: 8 }]} icon={<Ionicons name="settings-outline" size={20} color={Colors.white} />} onPress={() => navigation.navigate('Settings')} accessibilityLabel="Settings" />
           </View>
         </View>
       );
@@ -510,20 +539,8 @@ export const DealerProfileScreen: React.FC = () => {
             <Text style={styles.headerWeekTitle}>This week</Text>
           </View>
           <View style={styles.headerRightRow}>
-            <TouchableOpacity
-              style={styles.bellBtnCircle}
-              activeOpacity={0.7}
-              onPress={() => navigation.navigate('Alerts')}
-            >
-              <Ionicons name="notifications-outline" size={20} color="#FFFFFF" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.bellBtnCircle, { marginLeft: 8 }]}
-              activeOpacity={0.7}
-              onPress={() => navigation.navigate('Settings')}
-            >
-              <Ionicons name="settings-outline" size={20} color="#FFFFFF" />
-            </TouchableOpacity>
+            <IconButton style={styles.bellBtnCircle} icon={<Ionicons name="notifications-outline" size={20} color={Colors.white} />} onPress={() => navigation.navigate('Notifications')} accessibilityLabel="Notifications" />
+            <IconButton style={[styles.bellBtnCircle, { marginLeft: 8 }]} icon={<Ionicons name="settings-outline" size={20} color={Colors.white} />} onPress={() => navigation.navigate('Settings')} accessibilityLabel="Settings" />
           </View>
         </View>
       );
@@ -536,7 +553,7 @@ export const DealerProfileScreen: React.FC = () => {
 
       {/* Background gradient glow matching the dashboard styling */}
       <LinearGradient
-        colors={['rgba(220, 31, 38, 0.04)', 'rgba(59, 130, 246, 0.04)', '#0A0A0C']}
+        colors={[Colors.accentAlpha04, Colors.infoBlueAlpha04, Colors.bgPrimary]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.6 }}
         style={StyleSheet.absoluteFillObject}
@@ -546,7 +563,7 @@ export const DealerProfileScreen: React.FC = () => {
         contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 16 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} tintColor="#DC1F26" />
+          <RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} tintColor={Colors.accent} />
         }
       >
         {/* Render Dynamic Header */}
@@ -582,7 +599,7 @@ export const DealerProfileScreen: React.FC = () => {
 
         {loading && !stats && !analytics ? (
           <View style={styles.loadingWrap}>
-            <ActivityIndicator size="small" color="#DC1F26" />
+            <ActivityIndicator size="small" color={Colors.accent} />
             <Text style={styles.loadingText}>Loading your dashboard…</Text>
           </View>
         ) : (
@@ -598,7 +615,7 @@ export const DealerProfileScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0C',
+    backgroundColor: Colors.bgPrimary,
   },
   scroll: {
     paddingBottom: 20,
@@ -624,25 +641,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dealerProSub: {
-    fontSize: 9,
+    fontSize: FontSize.size9,
     fontFamily: FontFamily.bold,
-    color: '#DC1F26',
+    color: Colors.accent,
     letterSpacing: 1.5,
     marginBottom: 2,
   },
   headerTodayTitle: {
     fontSize: FontSize['3xl'] - 2,
     fontFamily: FontFamily.extraBold,
-    color: '#FFFFFF',
+    color: Colors.white,
     letterSpacing: -0.8,
   },
   bellBtnCircle: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: Colors.whiteAlpha05,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: Colors.whiteAlpha08,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -651,19 +668,19 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -2,
     right: -2,
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     width: 15,
     height: 15,
     borderRadius: 7.5,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: '#0A0A0C',
+    borderColor: Colors.bgPrimary,
   },
   bellBadgeText: {
-    fontSize: 8,
+    fontSize: FontSize.size8,
     fontFamily: FontFamily.bold,
-    color: '#FFFFFF',
+    color: Colors.white,
     lineHeight: 11,
   },
 
@@ -684,36 +701,36 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   dealerSub: {
-    fontSize: 9,
+    fontSize: FontSize.size9,
     fontFamily: FontFamily.bold,
-    color: '#606070',
+    color: Colors.iconMuted,
     letterSpacing: 1.2,
   },
   proBadge: {
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     paddingHorizontal: 5,
     paddingVertical: 1,
     borderRadius: 4,
   },
   proBadgeText: {
-    fontSize: 8,
+    fontSize: FontSize.size8,
     fontFamily: FontFamily.bold,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   headerWeekTitle: {
     fontSize: FontSize['3xl'] - 2,
     fontFamily: FontFamily.extraBold,
-    color: '#FFFFFF',
+    color: Colors.white,
     letterSpacing: -0.8,
   },
 
   // Toggle sub-tabs
   tabToggleRow: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    backgroundColor: Colors.whiteAlpha02,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: Colors.whiteAlpha05,
     padding: 3,
     marginHorizontal: 24,
     marginBottom: 20,
@@ -725,16 +742,16 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   tabToggleBtnActive: {
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
   },
   tabToggleText: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#606070',
+    fontSize: FontSize.size10,
+    color: Colors.iconMuted,
     letterSpacing: 1,
   },
   tabToggleTextActive: {
-    color: '#FFFFFF',
+    color: Colors.white,
   },
 
   tabContent: {
@@ -749,16 +766,16 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontFamily: FontFamily.medium,
-    fontSize: 12,
-    color: '#606070',
+    fontSize: FontSize.size12,
+    color: Colors.iconMuted,
   },
 
   // Today View - Inventory Snapshot
   card: {
-    backgroundColor: '#111116',
+    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: Colors.whiteAlpha06,
     padding: 20,
     marginHorizontal: 24,
   },
@@ -770,14 +787,14 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#606070',
+    fontSize: FontSize.size10,
+    color: Colors.iconMuted,
     letterSpacing: 1.2,
   },
   cardRightText: {
     fontFamily: FontFamily.medium,
-    fontSize: 11,
-    color: '#606070',
+    fontSize: FontSize.xs,
+    color: Colors.iconMuted,
   },
   segmentBar: {
     flexDirection: 'row',
@@ -806,8 +823,8 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontFamily: FontFamily.medium,
-    fontSize: 12,
-    color: '#A0A0AB',
+    fontSize: FontSize.size12,
+    color: Colors.textSecondary,
   },
 
   // Today View - Top Listings
@@ -822,39 +839,39 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#606070',
+    fontSize: FontSize.size10,
+    color: Colors.iconMuted,
     letterSpacing: 1.2,
     marginLeft: 4,
     marginBottom: 10,
   },
   sectionActionText: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#DC1F26',
+    fontSize: FontSize.size12,
+    color: Colors.accent,
     marginRight: 4,
   },
   listingsList: {
-    backgroundColor: '#111116',
+    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: Colors.whiteAlpha06,
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
   emptyCard: {
-    backgroundColor: '#111116',
+    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: Colors.whiteAlpha06,
     paddingVertical: 28,
     paddingHorizontal: 20,
     alignItems: 'center',
   },
   emptyCardText: {
     fontFamily: FontFamily.medium,
-    fontSize: 12,
-    color: '#606070',
+    fontSize: FontSize.size12,
+    color: Colors.iconMuted,
     textAlign: 'center',
   },
   listingRow: {
@@ -866,7 +883,7 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -875,21 +892,21 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: Colors.whiteAlpha08,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   rankBadgeText: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#FFFFFF',
+    fontSize: FontSize.xs,
+    color: Colors.white,
   },
   listingThumb: {
     width: 48,
     height: 36,
     borderRadius: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    backgroundColor: Colors.whiteAlpha02,
     marginRight: 12,
   },
   listingInfo: {
@@ -898,7 +915,7 @@ const styles = StyleSheet.create({
   listingTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base - 1,
-    color: '#FFFFFF',
+    color: Colors.white,
     marginBottom: 3,
   },
   listingMeta: {
@@ -907,18 +924,18 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: '#A0A0AB',
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
     marginLeft: 4,
   },
   listingPrice: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base - 1,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   listDivider: {
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: Colors.whiteAlpha04,
   },
 
   // Today View - Needs Attention
@@ -928,10 +945,10 @@ const styles = StyleSheet.create({
   attentionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111116',
+    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: Colors.whiteAlpha06,
     padding: 16,
   },
   attentionIconWrap: {
@@ -949,21 +966,21 @@ const styles = StyleSheet.create({
   attentionTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base - 1,
-    color: '#FFFFFF',
+    color: Colors.white,
     marginBottom: 2,
   },
   attentionSub: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.xs + 1,
-    color: '#A0A0AB',
+    color: Colors.textSecondary,
   },
 
   // This Week View - Revenue Sales Card
   salesCard: {
-    backgroundColor: '#111116',
+    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: Colors.whiteAlpha06,
     padding: 24,
     marginHorizontal: 24,
     overflow: 'hidden',
@@ -973,15 +990,15 @@ const styles = StyleSheet.create({
   },
   salesLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#606070',
+    fontSize: FontSize.size9,
+    color: Colors.iconMuted,
     letterSpacing: 1.5,
     marginBottom: 6,
   },
   salesValue: {
     fontFamily: FontFamily.extraBold,
     fontSize: FontSize['3xl'] + 2,
-    color: '#FFFFFF',
+    color: Colors.white,
     letterSpacing: -1,
   },
   sparklineIllustration: {
@@ -997,7 +1014,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     position: 'absolute',
     right: 4,
     top: 12,
@@ -1005,7 +1022,7 @@ const styles = StyleSheet.create({
   sparklineLine: {
     width: 60,
     height: 2,
-    backgroundColor: 'rgba(220, 31, 38, 0.3)',
+    backgroundColor: Colors.accentAlpha30,
     transform: [{ rotate: '-15deg' }],
   },
 
@@ -1018,10 +1035,10 @@ const styles = StyleSheet.create({
   },
   metricCard: {
     width: (SCREEN_WIDTH - 58) / 2,
-    backgroundColor: '#111116',
+    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: Colors.whiteAlpha06,
     padding: 14,
   },
   metricHeader: {
@@ -1032,8 +1049,8 @@ const styles = StyleSheet.create({
   },
   metricTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
-    color: '#606070',
+    fontSize: FontSize.size9,
+    color: Colors.iconMuted,
     letterSpacing: 1,
   },
   metricValRow: {
@@ -1044,17 +1061,17 @@ const styles = StyleSheet.create({
   metricNumber: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.lg + 1,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   metricChangeGreen: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#22C55E',
+    fontSize: FontSize.size10,
+    color: Colors.success,
   },
   metricChangeYellow: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#F59E0B',
+    fontSize: FontSize.size10,
+    color: Colors.warning,
   },
 
   // This Week View - Lead Funnel
@@ -1066,16 +1083,16 @@ const styles = StyleSheet.create({
   },
   funnelRightText: {
     fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: '#DC1F26',
+    fontSize: FontSize.size10,
+    color: Colors.accent,
     letterSpacing: 0.5,
     marginRight: 4,
   },
   funnelCard: {
-    backgroundColor: '#111116',
+    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: Colors.whiteAlpha06,
     padding: 20,
   },
   funnelItem: {
@@ -1090,17 +1107,17 @@ const styles = StyleSheet.create({
   funnelLabel: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.sm - 1,
-    color: '#A0A0AB',
+    color: Colors.textSecondary,
   },
   funnelVal: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm - 1,
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   funnelTrack: {
     height: 6,
     borderRadius: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     overflow: 'hidden',
   },
   funnelFill: {
@@ -1113,11 +1130,11 @@ const styles = StyleSheet.create({
     marginHorizontal: 24,
     height: 50,
     borderRadius: 16,
-    backgroundColor: '#DC1F26',
+    backgroundColor: Colors.accent,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#DC1F26',
+    shadowColor: Colors.accent,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 10,
@@ -1125,8 +1142,8 @@ const styles = StyleSheet.create({
   },
   addListingCTAText: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
     letterSpacing: 1,
   },
   switchProfileBtn: {
@@ -1135,7 +1152,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderStyle: 'dashed',
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: Colors.whiteAlpha12,
     backgroundColor: 'rgba(255, 255, 255, 0.01)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1143,8 +1160,8 @@ const styles = StyleSheet.create({
   },
   switchProfileText: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
-    color: '#DC1F26',
+    fontSize: FontSize.size12,
+    color: Colors.accent,
     letterSpacing: 0.8,
   },
 });

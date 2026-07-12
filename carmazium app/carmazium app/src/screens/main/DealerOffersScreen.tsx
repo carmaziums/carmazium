@@ -1,11 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Dimensions,
   FlatList,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
   RefreshControl,
   ScrollView,
   StatusBar,
@@ -21,6 +19,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../lib/apiClient';
+import { haptics } from '../../lib/haptics';
+import { BottomSheet } from '../../components/BottomSheet';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -30,6 +30,7 @@ import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { CounterLedger } from '../../components/offers/CounterLedger';
 import { ReceivedDeliveryRequestsPanel } from '../../components/delivery/ReceivedDeliveryRequestsPanel';
 
+import { IconButton } from '../../components/IconButton';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
@@ -49,13 +50,18 @@ interface Offer {
   counterAttemptsSeller?: number | null;
   counterExpiresAt?: string | null;
   lastCounteredBy?: 'BUYER' | 'SELLER' | null;
+  listingId?: string;
+  buyerId?: string;
   listing?: {
+    id?: string;
     title?: string;
     price?: number;
   };
   buyer?: {
+    id?: string;
     firstName?: string;
     lastName?: string;
+    email?: string;
   };
   createdAt?: string;
   updatedAt?: string;
@@ -105,27 +111,27 @@ const STATUS_CONFIG: Record<
   { leftBorder: string; chipBg: string; chipText: string; chipLabel: string }
 > = {
   PENDING: {
-    leftBorder: '#F59E0B',
-    chipBg: 'rgba(245,158,11,0.15)',
-    chipText: '#F59E0B',
+    leftBorder: Colors.warning,
+    chipBg: Colors.warningAlpha15,
+    chipText: Colors.warning,
     chipLabel: 'PENDING',
   },
   ACCEPTED: {
-    leftBorder: '#22C55E',
-    chipBg: 'rgba(34,197,94,0.15)',
-    chipText: '#22C55E',
+    leftBorder: Colors.success,
+    chipBg: Colors.successAlpha15,
+    chipText: Colors.success,
     chipLabel: 'ACCEPTED',
   },
   REJECTED: {
-    leftBorder: '#5C5C6B',
-    chipBg: 'rgba(255,255,255,0.06)',
-    chipText: '#5C5C6B',
+    leftBorder: Colors.textMuted,
+    chipBg: Colors.whiteAlpha06,
+    chipText: Colors.textMuted,
     chipLabel: 'REJECTED',
   },
   COUNTERED: {
-    leftBorder: '#3B82F6',
-    chipBg: 'rgba(59,130,246,0.15)',
-    chipText: '#3B82F6',
+    leftBorder: Colors.infoBlue,
+    chipBg: Colors.infoBlueAlpha15,
+    chipText: Colors.infoBlue,
     chipLabel: 'COUNTERED',
   },
 };
@@ -144,6 +150,15 @@ export const DealerOffersScreen: React.FC = () => {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [counterModalOffer, setCounterModalOffer] = useState<Offer | null>(null);
   const [counterAmount, setCounterAmount] = useState('');
+  const [messagingBuyerId, setMessagingBuyerId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  // Mark as Sold — same recordSale/PATCH /listings/:id/sold pattern as
+  // SellerOffersScreen.tsx; web's offers page has this for dealers too.
+  const [saleModalOffer, setSaleModalOffer] = useState<Offer | null>(null);
+  const [saleSoldPrice, setSaleSoldPrice] = useState('');
+  const [saleSubmitting, setSaleSubmitting] = useState(false);
+  const [saleError, setSaleError] = useState<string | null>(null);
 
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -246,6 +261,92 @@ export const DealerOffersScreen: React.FC = () => {
     await handleRespond(counterModalOffer, 'COUNTER', parsed);
   };
 
+  const handleMessageBuyer = async (offer: Offer) => {
+    const participantId = offer.buyerId ?? offer.buyer?.id;
+    if (!participantId) {
+      Alert.alert('Unable to open chat', 'Buyer information is not available.');
+      return;
+    }
+    setMessagingBuyerId(offer.id);
+    try {
+      const res = await apiClient<{ success: boolean; data: { id: string } }>(
+        '/chat/rooms',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            participantId,
+            listingId: offer.listing?.id ?? offer.listingId,
+          }),
+        },
+      );
+      if (res?.success && res.data?.id) {
+        navigation.navigate('ChatScreen', { threadId: res.data.id });
+      }
+    } catch (err: any) {
+      Alert.alert('Could not open chat', err?.message ?? 'Please try again.');
+    } finally {
+      setMessagingBuyerId(null);
+    }
+  };
+
+  const handleCancelAndRelist = (offer: Offer) => {
+    Alert.alert(
+      'Cancel & Relist',
+      'Are you sure you want to cancel this offer and relist?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm',
+          style: 'destructive',
+          onPress: () => handleRespond(offer, 'REJECTED'),
+        },
+      ],
+    );
+  };
+
+  const openSaleModal = (offer: Offer) => {
+    setSaleModalOffer(offer);
+    setSaleSoldPrice(String(offer.amount));
+    setSaleError(null);
+  };
+
+  const handleConfirmSale = async () => {
+    if (!saleModalOffer) return;
+    const listingId = saleModalOffer.listing?.id ?? saleModalOffer.listingId;
+    if (!listingId) {
+      setSaleError('Missing listing information — please refresh and try again.');
+      return;
+    }
+    const soldPrice = parseFloat(saleSoldPrice.replace(/[^0-9.]/g, ''));
+    if (isNaN(soldPrice) || soldPrice <= 0) {
+      setSaleError('Enter a valid sale price.');
+      return;
+    }
+    setSaleSubmitting(true);
+    setSaleError(null);
+    try {
+      const buyerNameParts = [saleModalOffer.buyer?.firstName, saleModalOffer.buyer?.lastName].filter(Boolean);
+      await apiClient(`/listings/${listingId}/sold`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          soldPrice,
+          buyerId: saleModalOffer.buyerId ?? saleModalOffer.buyer?.id,
+          ...(buyerNameParts.length > 0 && { buyerName: buyerNameParts.join(' ') }),
+          ...(saleModalOffer.buyer?.email && { buyerEmail: saleModalOffer.buyer.email }),
+        }),
+      });
+      haptics.success();
+      setSaleModalOffer(null);
+      setToast('✓ Sale recorded! Your earnings have been updated.');
+      setTimeout(() => setToast(null), 5000);
+      await fetchData();
+    } catch (err: any) {
+      setSaleError(err?.message ?? 'Could not record the sale. Please try again.');
+    } finally {
+      setSaleSubmitting(false);
+    }
+  };
+
   // ─────────────── render helpers ─────────────────────
 
   const renderSkeleton = () => (
@@ -266,7 +367,7 @@ export const DealerOffersScreen: React.FC = () => {
     </View>
   );
 
-  const renderOfferCard = (offer: Offer) => {
+  const renderOfferCard = useCallback(({ item: offer }: { item: Offer }) => {
     const cfg = STATUS_CONFIG[offer.status] ?? STATUS_CONFIG.PENDING;
     const initials = getBuyerInitials(offer.buyer);
     const name = getBuyerName(offer.buyer);
@@ -283,7 +384,7 @@ export const DealerOffersScreen: React.FC = () => {
         <View style={styles.cardTopRow}>
           {/* Buyer avatar */}
           <LinearGradient
-            colors={['#2d3c63', '#1a2238']}
+            colors={[Colors.darkBlue_2d3c63, Colors.darkBlue_1a2238]}
             style={styles.buyerAvatar}
           >
             <Text style={styles.buyerInitials}>{initials}</Text>
@@ -341,7 +442,7 @@ export const DealerOffersScreen: React.FC = () => {
         {/* Counter sent label */}
         {isCountered && (
           <View style={styles.counterSentChip}>
-            <Ionicons name="time-outline" size={12} color="#3B82F6" />
+            <Ionicons name="time-outline" size={12} color={Colors.infoBlue} />
             <Text style={styles.counterSentText}>Counter sent — awaiting buyer response</Text>
           </View>
         )}
@@ -373,13 +474,58 @@ export const DealerOffersScreen: React.FC = () => {
               onPress={() => handleAccept(offer)}
               disabled={isActioning}
             >
-              <Text style={[styles.actionBtnText, { color: '#FFFFFF' }]}>Accept</Text>
+              <Text style={[styles.actionBtnText, { color: Colors.white }]}>Accept</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Actions: ACCEPTED — Message / Mark as Sold / Cancel & Relist,
+            matching web's offers page (this row didn't exist on mobile at all). */}
+        {offer.status === 'ACCEPTED' && (
+          <View style={[styles.actionsRow, { flexWrap: 'wrap' }]}>
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.actionBtnMessage]}
+              activeOpacity={0.75}
+              onPress={() => handleMessageBuyer(offer)}
+              disabled={messagingBuyerId === offer.id}
+            >
+              {messagingBuyerId === offer.id ? (
+                <ActivityIndicator size="small" color={Colors.infoBlue} />
+              ) : (
+                <Text style={[styles.actionBtnText, { color: Colors.infoBlue }]}>Message</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.actionBtnMarkSold]}
+              activeOpacity={0.75}
+              onPress={() => openSaleModal(offer)}
+            >
+              <Text style={[styles.actionBtnText, { color: Colors.white }]}>Mark as Sold</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.actionBtnDecline]}
+              activeOpacity={0.75}
+              onPress={() => handleCancelAndRelist(offer)}
+              disabled={isActioning}
+            >
+              <Text style={[styles.actionBtnText, { color: Colors.accent }]}>Cancel & Relist</Text>
             </TouchableOpacity>
           </View>
         )}
       </View>
     );
-  };
+  }, [
+    actionLoading,
+    handleDecline,
+    openCounterModal,
+    handleAccept,
+    messagingBuyerId,
+    handleMessageBuyer,
+    handleCancelAndRelist,
+    openSaleModal,
+  ]);
 
   // ─────────────── main render ───────────────────────
 
@@ -387,7 +533,7 @@ export const DealerOffersScreen: React.FC = () => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(245,158,11,0.05)', 'rgba(10,10,12,0)', '#0A0A0C']}
+        colors={[Colors.warningAlpha05, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
@@ -398,13 +544,7 @@ export const DealerOffersScreen: React.FC = () => {
 
       {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          activeOpacity={0.75}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="chevron-back" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
+        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
         <Text style={styles.headerTitle}>Direct Offers</Text>
 
@@ -435,7 +575,7 @@ export const DealerOffersScreen: React.FC = () => {
           style={styles.scroll}
           data={offers}
           keyExtractor={(o) => o.id}
-          renderItem={({ item }) => renderOfferCard(item)}
+          renderItem={renderOfferCard}
           ListHeaderComponent={<ReceivedDeliveryRequestsPanel contextLabel="your inventory" />}
           ListEmptyComponent={renderEmptyState}
           ListFooterComponent={<View style={{ height: 40 }} />}
@@ -453,61 +593,113 @@ export const DealerOffersScreen: React.FC = () => {
       )}
 
       {/* ── Counter modal ── */}
-      <Modal
+      <BottomSheet
         visible={counterModalOffer != null}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setCounterModalOffer(null)}
+        onClose={() => setCounterModalOffer(null)}
+        title="Send Counter Offer"
+        avoidKeyboard
+        maxHeightPercent={60}
       >
-        <KeyboardAvoidingView
-          style={styles.modalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          <TouchableOpacity
-            style={StyleSheet.absoluteFillObject}
-            activeOpacity={1}
-            onPress={() => setCounterModalOffer(null)}
+        {/* gap replicates the old modalSheet wrapper's spacing, which BottomSheet's
+            own sheet style doesn't provide */}
+        <View style={{ gap: 14 }}>
+          {counterModalOffer && (
+            <Text style={styles.modalSubtitle}>
+              Buyer offered {formatPrice(counterModalOffer.amount)} on{' '}
+              {counterModalOffer.listing?.title ?? 'your listing'}
+            </Text>
+          )}
+
+          <Text style={styles.inputLabel}>Your counter amount (£)</Text>
+          <TextInput
+            style={styles.counterInput}
+            value={counterAmount}
+            onChangeText={setCounterAmount}
+            keyboardType="numeric"
+            placeholder="Enter amount"
+            placeholderTextColor={Colors.textMuted}
+            selectionColor={Colors.accent}
           />
-          <View style={[styles.modalSheet, { paddingBottom: Math.max(insets.bottom, 20) }]}>
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Send Counter Offer</Text>
-            {counterModalOffer && (
-              <Text style={styles.modalSubtitle}>
-                Buyer offered {formatPrice(counterModalOffer.amount)} on{' '}
-                {counterModalOffer.listing?.title ?? 'your listing'}
-              </Text>
-            )}
 
-            <Text style={styles.inputLabel}>Your counter amount (£)</Text>
-            <TextInput
-              style={styles.counterInput}
-              value={counterAmount}
-              onChangeText={setCounterAmount}
-              keyboardType="numeric"
-              placeholder="Enter amount"
-              placeholderTextColor={Colors.textMuted}
-              selectionColor={Colors.accent}
-            />
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[styles.modalBtn, styles.modalBtnCancel]}
-                activeOpacity={0.75}
-                onPress={() => setCounterModalOffer(null)}
-              >
-                <Text style={styles.modalBtnCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalBtn, styles.modalBtnConfirm]}
-                activeOpacity={0.75}
-                onPress={submitCounter}
-              >
-                <Text style={styles.modalBtnConfirmText}>Send Counter</Text>
-              </TouchableOpacity>
-            </View>
+          <View style={styles.modalActions}>
+            <TouchableOpacity
+              style={[styles.modalBtn, styles.modalBtnCancel]}
+              activeOpacity={0.75}
+              onPress={() => setCounterModalOffer(null)}
+            >
+              <Text style={styles.modalBtnCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modalBtn, styles.modalBtnConfirm]}
+              activeOpacity={0.75}
+              onPress={submitCounter}
+            >
+              <Text style={styles.modalBtnConfirmText}>Send Counter</Text>
+            </TouchableOpacity>
           </View>
-        </KeyboardAvoidingView>
-      </Modal>
+        </View>
+      </BottomSheet>
+
+      {/* ── Mark as Sold modal ── */}
+      <BottomSheet
+        visible={saleModalOffer != null}
+        onClose={() => setSaleModalOffer(null)}
+        title="Mark as Sold"
+        avoidKeyboard
+        maxHeightPercent={60}
+      >
+        <View style={{ gap: 14 }}>
+          {saleModalOffer && (
+            <Text style={styles.modalSubtitle}>
+              Confirm the price {getBuyerName(saleModalOffer.buyer)} paid for{' '}
+              {saleModalOffer.listing?.title ?? 'this listing'}.
+            </Text>
+          )}
+
+          <Text style={styles.inputLabel}>Sale price (£)</Text>
+          <TextInput
+            style={styles.counterInput}
+            value={saleSoldPrice}
+            onChangeText={v => { setSaleSoldPrice(v); setSaleError(null); }}
+            keyboardType="numeric"
+            placeholder="Enter sale price"
+            placeholderTextColor={Colors.textMuted}
+            selectionColor={Colors.accent}
+          />
+
+          {saleError && <ErrorBanner message={saleError} />}
+
+          <View style={styles.modalActions}>
+            <TouchableOpacity
+              style={[styles.modalBtn, styles.modalBtnCancel]}
+              activeOpacity={0.75}
+              onPress={() => setSaleModalOffer(null)}
+              disabled={saleSubmitting}
+            >
+              <Text style={styles.modalBtnCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modalBtn, styles.modalBtnConfirmSale, saleSubmitting && { opacity: 0.6 }]}
+              activeOpacity={0.75}
+              onPress={handleConfirmSale}
+              disabled={saleSubmitting}
+            >
+              {saleSubmitting ? (
+                <ActivityIndicator color={Colors.white} />
+              ) : (
+                <Text style={styles.modalBtnConfirmSaleText}>Confirm Sold</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </BottomSheet>
+
+      {toast && (
+        <View style={styles.toastBanner} pointerEvents="none">
+          <Ionicons name="checkmark-circle" size={14} color={Colors.success} />
+          <Text style={styles.toastBannerText}>{toast}</Text>
+        </View>
+      )}
     </View>
   );
 };
@@ -532,9 +724,9 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -557,8 +749,8 @@ const styles = StyleSheet.create({
   },
   pendingBadgeText: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#FFFFFF',
+    fontSize: FontSize.xs,
+    color: Colors.white,
   },
 
   // ── Scroll ──
@@ -575,9 +767,9 @@ const styles = StyleSheet.create({
   skeletonCard: {
     height: 160,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.04)',
+    borderColor: Colors.whiteAlpha04,
   },
 
   // ── Empty state ──
@@ -606,7 +798,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgSecondary,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     borderLeftWidth: 3,
     padding: 16,
     gap: 10,
@@ -626,8 +818,8 @@ const styles = StyleSheet.create({
   },
   buyerInitials: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
-    color: '#FFFFFF',
+    fontSize: FontSize.sm,
+    color: Colors.white,
   },
   cardTopCenter: {
     flex: 1,
@@ -635,7 +827,7 @@ const styles = StyleSheet.create({
   },
   buyerName: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
+    fontSize: FontSize.size14,
     color: Colors.textPrimary,
   },
   statusChip: {
@@ -646,12 +838,12 @@ const styles = StyleSheet.create({
   },
   statusChipText: {
     fontFamily: FontFamily.bold,
-    fontSize: 9,
+    fontSize: FontSize.size9,
     letterSpacing: 0.5,
   },
   timeAgo: {
     fontFamily: FontFamily.mono,
-    fontSize: 10,
+    fontSize: FontSize.size10,
     color: Colors.textMuted,
     flexShrink: 0,
   },
@@ -663,16 +855,16 @@ const styles = StyleSheet.create({
   },
   offerAmount: {
     fontFamily: FontFamily.mono,
-    fontSize: 22,
+    fontSize: FontSize.size22,
     color: Colors.textPrimary,
   },
   diffText: {
     fontFamily: FontFamily.mono,
-    fontSize: 12,
+    fontSize: FontSize.size12,
   },
   listingName: {
     fontFamily: FontFamily.regular,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.textMuted,
   },
   counterSentChip: {
@@ -680,17 +872,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(59,130,246,0.10)',
+    backgroundColor: Colors.infoBlueAlpha10,
     borderWidth: 1,
-    borderColor: 'rgba(59,130,246,0.25)',
+    borderColor: Colors.infoBlueAlpha25,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
   },
   counterSentText: {
     fontFamily: FontFamily.medium,
-    fontSize: 11,
-    color: '#3B82F6',
+    fontSize: FontSize.xs,
+    color: Colors.infoBlue,
   },
 
   // ── Action buttons ──
@@ -719,41 +911,21 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.success,
     borderColor: Colors.success,
   },
+  actionBtnMessage: {
+    backgroundColor: 'transparent',
+    borderColor: Colors.infoBlue,
+  },
+  actionBtnMarkSold: {
+    backgroundColor: Colors.success,
+    borderColor: Colors.success,
+  },
   actionBtnText: {
     fontFamily: FontFamily.bold,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     letterSpacing: 0.3,
   },
 
   // ── Counter modal ──
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  },
-  modalSheet: {
-    backgroundColor: '#16161C',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    gap: 14,
-  },
-  modalHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignSelf: 'center',
-    marginBottom: 4,
-  },
-  modalTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.lg,
-    color: Colors.textPrimary,
-    textAlign: 'center',
-  },
   modalSubtitle: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.sm,
@@ -763,7 +935,7 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontFamily: FontFamily.medium,
-    fontSize: 11,
+    fontSize: FontSize.xs,
     color: Colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
@@ -792,12 +964,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   modalBtnCancel: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: Colors.whiteAlpha10,
   },
   modalBtnConfirm: {
     backgroundColor: Colors.warning,
+  },
+  modalBtnConfirmSale: {
+    backgroundColor: Colors.success,
+  },
+  modalBtnConfirmSaleText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.base,
+    color: Colors.white,
   },
   modalBtnCancelText: {
     fontFamily: FontFamily.bold,
@@ -807,6 +987,27 @@ const styles = StyleSheet.create({
   modalBtnConfirmText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: '#000000',
+    color: Colors.black,
+  },
+  toastBanner: {
+    position: 'absolute',
+    bottom: 40,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Colors.bgSecondary,
+    borderWidth: 1,
+    borderColor: Colors.successAlpha25,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    maxWidth: '90%',
+  },
+  toastBannerText: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.xs,
+    color: Colors.textPrimary,
+    flexShrink: 1,
   },
 });
