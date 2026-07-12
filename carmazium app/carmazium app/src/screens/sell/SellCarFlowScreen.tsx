@@ -23,6 +23,7 @@ import { useStripe } from '@stripe/stripe-react-native';
 import { createPaymentSheet } from '../../lib/paymentsApi';
 import { ThreeDVehicleViewer } from '../../components/damage/ThreeDVehicleViewer';
 import { DAMAGE_ZONES_3D, DAMAGE_ZONE_SECTIONS } from '../../components/damage/damageZones';
+import { getRawListingById } from '../../lib/listingsApi';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -503,6 +504,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [isPublishing, setIsPublishing] = useState(false);
   const [editMode] = useState<boolean>(!!(route?.params?.listingId));
   const [editListingId] = useState<string | null>(route?.params?.listingId ?? null);
+  // Gates the form while the existing listing loads in edit mode — without this,
+  // editing a listing used to open a blank form and Save would silently overwrite
+  // the real listing with defaults (mobile-audit.md, critical finding).
+  const [editLoading, setEditLoading] = useState<boolean>(!!(route?.params?.listingId));
 
   // ── Draft persistence ──
   const { updateDraft, clearDraft } = useSellWizardStore();
@@ -556,6 +561,125 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     });
     return () => unsub();
   }, []);
+
+  // ── Edit mode — prefill the form from the existing listing ─────────────────
+  // Mirrors ListingWizard.tsx's edit-prefill effect (web). Without this, opening
+  // an existing listing for edit showed a blank form and Save (a real PATCH)
+  // silently overwrote the listing with defaults.
+  useEffect(() => {
+    if (!editMode || !editListingId) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const l = await getRawListingById(editListingId);
+        if (!l || cancelled) return;
+
+        if (l.vin) setVin(String(l.vin));
+        if (l.vehicleType) setVehicleType(l.vehicleType);
+        setMake(l.make ?? '');
+        setModel(l.model ?? '');
+        if (l.year) setYear(String(l.year));
+        if (l.motStatus) setMotStatus(String(l.motStatus));
+        if (l.motExpiryDate) setMotExpiry(String(l.motExpiryDate));
+        if (l.taxStatus) setTaxStatus(String(l.taxStatus));
+        if (l.taxDueDate) setTaxDue(String(l.taxDueDate));
+        if (l.monthOfFirstRegistration) setFirstRegistered(String(l.monthOfFirstRegistration));
+        if (l.wheelplan) setWheelplan(String(l.wheelplan));
+        if (l.typeApproval) setTypeApproval(String(l.typeApproval));
+        setVariant(l.variant ?? '');
+        if (l.driveType) setDriveType(String(l.driveType));
+        if (l.serviceHistory) setServiceHistory(String(l.serviceHistory));
+        if (l.numberOfKeys != null) setNumberOfKeys(String(l.numberOfKeys));
+        if (l.zeroTo60Mph != null) setZeroTo60(String(l.zeroTo60Mph));
+        if (l.topSpeedMph != null) setTopSpeed(String(l.topSpeedMph));
+        if (l.torqueNm != null) setTorque(String(l.torqueNm));
+        if (l.combinedMpg != null) setCombinedMpg(String(l.combinedMpg));
+        if (l.extraUrbanMpg != null) setExtraUrbanMpg(String(l.extraUrbanMpg));
+        setBodyType(l.bodyType ?? '');
+        setLocation(l.location ?? '');
+        if (l.mileage != null) setMileage(String(l.mileage));
+        if (l.fuelType) setFuelType(l.fuelType);
+        if (l.transmission) setTransmission(l.transmission);
+        setColour(l.color ?? '');
+        if (l.engineSize != null) setEngineSize(String(l.engineSize));
+        if (l.bhp != null) setBhp(String(l.bhp));
+        if (l.doors != null) setDoors(String(l.doors));
+        if (l.seats != null) setSeats(String(l.seats));
+        if (l.ulezCompliant != null) setUlezCompliant(!!l.ulezCompliant);
+        if (l.euroStandard) setEuroStandard(String(l.euroStandard));
+        if (l.co2Emissions != null) setCo2Emissions(String(l.co2Emissions));
+        setFeatures(l.features ?? []);
+        setTitle(l.title ?? '');
+        setDescription(l.description ?? '');
+        if (l.owners != null) setOwners(String(l.owners));
+        setIsImported(!!l.isImported);
+        setMarkedForExport(!!l.markedForExport);
+        setIsDepartedSale(!!l.isDepartedSale);
+        if (l.departedRelationship) {
+          const opt = RELATIONSHIP_OPTIONS.find(o => o === l.departedRelationship);
+          if (opt) { setDepartedRelSelect(opt); } else { setDepartedRelSelect('Other'); setDepartedRelOther(String(l.departedRelationship)); }
+        }
+        setWriteOffCat(l.writeOffCategory ?? '');
+        if (l.stolenRecovered != null) setStolenRecovered(!!l.stolenRecovered);
+        if (l.hasOutstandingFinance != null) setOutstandingFinance(!!l.hasOutstandingFinance);
+        if (l.isLegalRegisteredKeeper != null) setIsLegalKeeper(!!l.isLegalRegisteredKeeper);
+        // Editing an already-published listing implies the declaration was
+        // already made and accepted at initial publish time.
+        setDeclAcknowledged(true);
+        // The three photo tabs (Exterior/Interior/Damage) are flattened into one
+        // `images` array server-side with no category preserved — put everything
+        // under Exterior so nothing is lost; the seller can still remove/re-add.
+        if (l.images?.length) setExteriorImages(l.images);
+        if (l.videoUrls?.length) setVideoUrls(l.videoUrls);
+        if (l.priceMin != null) setPriceMin(String(l.priceMin));
+        setPriceAsking(l.price != null ? String(l.price) : '');
+        setBannerLabel(l.bannerLabel ?? '');
+        if (l.deliveryAvailable) {
+          setDeliveryAvailable(true);
+          if (l.deliveryMaxMiles != null) setDeliveryMaxMiles(String(l.deliveryMaxMiles));
+          if (l.deliveryPricePerMile != null) setDeliveryPricePerMile(String(l.deliveryPricePerMile));
+        }
+        if (l.badgeTier && l.badgeTier !== 'FREE') setBadgeTier(l.badgeTier);
+        if (l.linkedListing?.type === 'AUCTION' || (l as any).type === 'AUCTION') setListingType('AUCTION');
+
+        // Load existing damage records (separate endpoint, not part of /listings).
+        try {
+          const dmgRes = await apiClient<{ success: boolean; data: any[] }>(`/damage/${editListingId}`);
+          const records = dmgRes?.data ?? [];
+          if (records.length && !cancelled) {
+            const mappedEntries: DamageEntry[] = [];
+            // Note: the backend's damageRecord model has no `hidden` column, so
+            // that toggle has never been persisted — nothing to restore here.
+            const nextPhotos: Record<string, string> = {};
+            records.forEach((r: any) => {
+              const zone = DAMAGE_ZONES_3D.find(z => z.id === r.part);
+              mappedEntries.push({
+                id: `${r.part}-${Date.now()}-${Math.random()}`,
+                zone: zone?.label ?? r.part,
+                type: (r.type as DamageEntry['type']) || 'OTHER',
+                description: '',
+              });
+              if (zone && r.imageUrl) nextPhotos[zone.id] = r.imageUrl;
+            });
+            setDamageRecords(mappedEntries);
+            if (Object.keys(nextPhotos).length) setZonePhotos(nextPhotos);
+          }
+        } catch (err) {
+          console.warn(`Failed to load damage records for listing ${editListingId}:`, err);
+        }
+
+        setStep(1);
+      } catch (err) {
+        console.error('Failed to load listing for edit:', err);
+        Alert.alert('Could not load listing', 'Failed to load this listing for editing. Please try again.');
+      } finally {
+        if (!cancelled) setEditLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [editMode, editListingId]);
 
   // Validation rules — returns null (valid) or an error string (invalid)
   const fieldError = (key: string): string | null => {
@@ -920,15 +1044,23 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             // `part` sends the zone id (e.g. "front-bumper") to match the web app's
             // convention (VehicleDamageMapper.tsx sends r.zone = a zoneId string) —
             // fall back to the raw label for manually-typed zones with no matching id.
+            //
+            // Field names below match damage.service.ts's DamageDetection interface
+            // exactly (part/type/size/coords/imageUrl) — the previous payload sent
+            // severity/description/hidden/photoUrl, none of which the backend reads
+            // (it destructures d.size/d.coords/d.imageUrl), and never sent `coords`
+            // at all. That meant every damage pin saved from mobile silently lost
+            // its position and photo — DamageMapViewer.tsx positions pins from
+            // record.coords, which was always empty. `hidden` has no column on the
+            // backend's damageRecord model, so it's intentionally not sent.
             detections: damageRecords.map(r => {
-              const zoneId = DAMAGE_ZONES_3D.find(z => z.label === r.zone)?.id;
+              const zone = DAMAGE_ZONES_3D.find(z => z.label === r.zone);
               return {
-                part: zoneId ?? r.zone,
+                part: zone?.id ?? r.zone,
                 type: r.type,
-                severity: 'MODERATE',
-                description: r.description || undefined,
-                hidden: zoneId ? hiddenZoneIds.includes(zoneId) : undefined,
-                photoUrl: zoneId ? zonePhotos[zoneId] : undefined,
+                size: 'MODERATE',
+                coords: zone?.coords,
+                imageUrl: zone ? zonePhotos[zone.id] : undefined,
               };
             }),
           }),
@@ -2248,57 +2380,66 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         )}
       </View>
 
-      {renderStepper()}
+      {editLoading ? (
+        <View style={s.editLoadingWrap}>
+          <ActivityIndicator color={Colors.accent} size="large" />
+          <Text style={s.editLoadingText}>Loading your listing…</Text>
+        </View>
+      ) : (
+        <>
+          {renderStepper()}
 
-      <View style={{ flex: 1 }}>
-        {step === 1 && renderStep1()}
-        {step === 2 && renderStep2()}
-        {step === 3 && renderStep3()}
-        {step === 4 && isAuction && renderAuctionSchedule()}
-        {((step === 4 && !isAuction) || step === 5) && renderStep4()}
-      </View>
+          <View style={{ flex: 1 }}>
+            {step === 1 && renderStep1()}
+            {step === 2 && renderStep2()}
+            {step === 3 && renderStep3()}
+            {step === 4 && isAuction && renderAuctionSchedule()}
+            {((step === 4 && !isAuction) || step === 5) && renderStep4()}
+          </View>
 
-      {/* Bottom Actions */}
-      <View style={[s.bottomBar, { paddingBottom: insets.bottom || 20 }]}>
-        {step > 1 && (
-          <TouchableOpacity style={s.backBtnSm} onPress={handleBack} activeOpacity={0.8}>
-            <Ionicons name="arrow-back" size={16} color={Colors.white} />
-            <Text style={s.backBtnSmText}>BACK</Text>
-          </TouchableOpacity>
-        )}
-        {step < totalSteps ? (
-          <TouchableOpacity
-            style={[s.nextBtn, ((step === 1 && step1HasErrors()) || (step === 3 && step3HasErrors())) ? { opacity: 0.5 } : {}]}
-            onPress={handleNext}
-            activeOpacity={0.8}
-            disabled={(step === 1 && step1HasErrors()) || (step === 3 && step3HasErrors())}
-          >
-            <Text style={s.nextBtnText}>
-              {step === 1 ? 'NEXT · MEDIA'
-                : step === 2 ? 'NEXT · PRICING'
-                : step === 3 && isAuction ? 'NEXT · AUCTION'
-                : step === 3 ? 'REVIEW LISTING'
-                : 'REVIEW LISTING'}
-            </Text>
-            <Ionicons name="arrow-forward" size={16} color={Colors.white} style={{ marginLeft: 8 }} />
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={[s.nextBtn, s.publishBtn, isPublishing && { opacity: 0.7 }]}
-            onPress={handlePublish}
-            activeOpacity={0.8}
-            disabled={isPublishing}
-          >
-            {isPublishing
-              ? <ActivityIndicator color={Colors.white} size="small" />
-              : <>
-                  <Text style={s.nextBtnText}>{editMode ? 'SAVE CHANGES' : 'PUBLISH LISTING'}</Text>
-                  <Ionicons name="checkmark" size={16} color={Colors.white} style={{ marginLeft: 8 }} />
-                </>
-            }
-          </TouchableOpacity>
-        )}
-      </View>
+          {/* Bottom Actions */}
+          <View style={[s.bottomBar, { paddingBottom: insets.bottom || 20 }]}>
+            {step > 1 && (
+              <TouchableOpacity style={s.backBtnSm} onPress={handleBack} activeOpacity={0.8}>
+                <Ionicons name="arrow-back" size={16} color={Colors.white} />
+                <Text style={s.backBtnSmText}>BACK</Text>
+              </TouchableOpacity>
+            )}
+            {step < totalSteps ? (
+              <TouchableOpacity
+                style={[s.nextBtn, ((step === 1 && step1HasErrors()) || (step === 3 && step3HasErrors())) ? { opacity: 0.5 } : {}]}
+                onPress={handleNext}
+                activeOpacity={0.8}
+                disabled={(step === 1 && step1HasErrors()) || (step === 3 && step3HasErrors())}
+              >
+                <Text style={s.nextBtnText}>
+                  {step === 1 ? 'NEXT · MEDIA'
+                    : step === 2 ? 'NEXT · PRICING'
+                    : step === 3 && isAuction ? 'NEXT · AUCTION'
+                    : step === 3 ? 'REVIEW LISTING'
+                    : 'REVIEW LISTING'}
+                </Text>
+                <Ionicons name="arrow-forward" size={16} color={Colors.white} style={{ marginLeft: 8 }} />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[s.nextBtn, s.publishBtn, isPublishing && { opacity: 0.7 }]}
+                onPress={handlePublish}
+                activeOpacity={0.8}
+                disabled={isPublishing}
+              >
+                {isPublishing
+                  ? <ActivityIndicator color={Colors.white} size="small" />
+                  : <>
+                      <Text style={s.nextBtnText}>{editMode ? 'SAVE CHANGES' : 'PUBLISH LISTING'}</Text>
+                      <Ionicons name="checkmark" size={16} color={Colors.white} style={{ marginLeft: 8 }} />
+                    </>
+                }
+              </TouchableOpacity>
+            )}
+          </View>
+        </>
+      )}
     </View>
   );
 };
@@ -2307,6 +2448,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
+  editLoadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  editLoadingText: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.textSecondary },
   scroll: { paddingHorizontal: 16, paddingTop: 12 },
 
   // Header

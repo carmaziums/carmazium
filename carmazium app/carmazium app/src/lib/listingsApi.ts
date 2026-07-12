@@ -66,6 +66,29 @@ export interface ApiListing {
   wheelplan?: string | null;
   typeApproval?: string | null;
   monthOfFirstRegistration?: string | null;
+  // Fields the create payload (SellCarFlowScreen.tsx) sends but this type never
+  // declared — needed for the edit-mode prefill fetch, not just display. Field
+  // names confirmed against that same payload (proven-correct, already accepted
+  // by the backend), not guessed. See mobile-audit.md: editing a listing used to
+  // load a blank form and silently overwrite the real listing on save.
+  vin?: string | null;
+  vehicleType?: 'CAR' | 'HGV' | 'MOTORCYCLE' | null;
+  doors?: number | null;
+  seats?: number | null;
+  engineSize?: number | null;
+  driveType?: string | null;
+  numberOfKeys?: number | null;
+  torqueNm?: number | null;
+  combinedMpg?: number | null;
+  extraUrbanMpg?: number | null;
+  ulezCompliant?: boolean | null;
+  euroStandard?: string | null;
+  co2Emissions?: number | null;
+  isImported?: boolean | null;
+  markedForExport?: boolean | null;
+  departedRelationship?: string | null;
+  isLegalRegisteredKeeper?: boolean | null;
+  priceMin?: number | null;
 }
 
 export interface PaginatedApiResponse<T> {
@@ -343,6 +366,18 @@ export async function getListingById(id: string): Promise<CarListing | null> {
   try {
     const res = await apiClient<ApiResponse<ApiListing>>(`/listings/${id}`);
     return res?.data ? mapApiListingToCarListing(res.data) : null;
+  } catch {
+    return null;
+  }
+}
+
+// Raw (unmapped) fetch for the sell-flow edit prefill — CarListing is a
+// display-oriented projection and drops several fields (vin, doors, seats,
+// engineSize, driveType, etc.) that the edit form needs to round-trip.
+export async function getRawListingById(id: string): Promise<ApiListing | null> {
+  try {
+    const res = await apiClient<ApiResponse<ApiListing>>(`/listings/${id}`);
+    return res?.data ?? null;
   } catch {
     return null;
   }
