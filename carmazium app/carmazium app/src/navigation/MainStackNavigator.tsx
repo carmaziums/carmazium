@@ -30,7 +30,6 @@ import { MyListingDashboardScreen } from '../screens/sell/MyListingDashboardScre
 import { PurchaseFlowScreen } from '../screens/main/PurchaseFlowScreen';
 import { SellCarFlowScreen } from '../screens/sell/SellCarFlowScreen';
 import { BuyerDashboardScreen } from '../screens/buyer/BuyerDashboardScreen';
-import { ProfileScreen } from '../screens/main/ProfileScreen';
 import { SellerDashboardScreen } from '../screens/seller/SellerDashboardScreen';
 import { UnifiedDashboardScreen } from '../screens/account/UnifiedDashboardScreen';
 import { SellerOffersScreen } from '../screens/seller/SellerOffersScreen';
@@ -100,7 +99,6 @@ export type MainStackParamList = {
   SellerAuctions: { preselectListingId?: string } | undefined;
   BuyerDashboard: undefined;
   SellerDashboard: undefined;
-  AccountProfile: undefined;
   UnifiedDashboard: undefined;
   SellerOffers: undefined;
   BuyerOffers: undefined;
@@ -225,11 +223,6 @@ export const MainStackNavigator: React.FC = () => {
       <Stack.Screen
         name="BuyerDashboard"
         component={BuyerDashboardScreen}
-        options={{ animation: 'slide_from_bottom' }}
-      />
-      <Stack.Screen
-        name="AccountProfile"
-        component={ProfileScreen}
         options={{ animation: 'slide_from_bottom' }}
       />
       <Stack.Screen

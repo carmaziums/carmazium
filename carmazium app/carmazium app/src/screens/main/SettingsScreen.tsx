@@ -14,11 +14,14 @@ import { useAuthStore } from '../../store/authStore';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { apiClient } from '../../lib/apiClient';
 import { convertAndCompress, uploadToStorage } from '../../lib/storageHelper';
+import { startAddressVerification, confirmAddressVerification } from '../../lib/addressVerificationApi';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { BottomSheet } from '../../components/BottomSheet';
+import { ErrorBanner } from '../../components/ui/ErrorBanner';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 // ─────────────────────────── helpers ──────────────────────────────
@@ -41,7 +44,7 @@ const FieldLabel: React.FC<{ label: string }> = ({ label }) => (
 export const SettingsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
-  const { user, updateUser } = useAuthStore();
+  const { user, updateUser, initializeAuth } = useAuthStore();
 
   // ── Profile state ──────────────────────────────────────────────
   const [profileEmail] = useState(user?.email ?? '');
@@ -122,6 +125,61 @@ export const SettingsScreen: React.FC = () => {
   const [sortCode, setSortCode] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [bankSaving, setBankSaving] = useState(false);
+
+  // ── Trader (address) verification state ─────────────────────────
+  // Ported from the dead ProfileScreen.tsx (main/ProfileScreen.tsx), which was
+  // fully built but unreachable from anywhere in the app — this was the only
+  // genuinely real, backend-wired feature in it that SettingsScreen didn't
+  // already cover (the rest duplicated this screen or was mock UI: fake
+  // payment-method picker, fake local "help chat"). Moved the real feature
+  // here instead of wiring up the dead screen as-is.
+  const isAddressVerified = !!user?.isAddressVerified;
+  const [verifyModalVisible, setVerifyModalVisible] = useState(false);
+  const [verifyStage, setVerifyStage] = useState<'address' | 'code'>('address');
+  const [verifyAddressInput, setVerifyAddressInput] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [verifySending, setVerifySending] = useState(false);
+  const [verifyConfirming, setVerifyConfirming] = useState(false);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+
+  const handleSendVerificationCode = async () => {
+    const address = verifyAddressInput.trim();
+    setVerifyError(null);
+    if (address.length < 5) {
+      setVerifyError('Please enter your full residential address to continue.');
+      return;
+    }
+    setVerifySending(true);
+    try {
+      const result = await startAddressVerification(address);
+      setVerificationCode('');
+      setVerifyStage('code');
+      Alert.alert('Code sent', result.message || 'Verification code sent to your email');
+    } catch (err: any) {
+      setVerifyError(err?.message || 'Something went wrong. Please try again.');
+    } finally {
+      setVerifySending(false);
+    }
+  };
+
+  const handleConfirmVerificationCode = async () => {
+    setVerifyError(null);
+    if (verificationCode.trim().length !== 6) {
+      setVerifyError('Please enter the 6-digit code we emailed you.');
+      return;
+    }
+    setVerifyConfirming(true);
+    try {
+      await confirmAddressVerification(verificationCode.trim());
+      await initializeAuth();
+      setVerifyModalVisible(false);
+      Alert.alert('Verified!', 'Address verified — Verified Trader badge unlocked.');
+    } catch (err: any) {
+      setVerifyError(err?.message || 'Incorrect or expired code. Please try again.');
+    } finally {
+      setVerifyConfirming(false);
+    }
+  };
 
   // ── Load Stripe status ──
   useEffect(() => {
@@ -377,7 +435,37 @@ export const SettingsScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* ── 2. SECURITY & PASSWORD ── */}
+        {/* ── 2. TRADER VERIFICATION ── */}
+        <SectionHeader icon={isAddressVerified ? 'shield-checkmark-outline' : 'shield-outline'} label="TRADER VERIFICATION" />
+        <View style={styles.card}>
+          <Text style={styles.payoutDesc}>
+            {isAddressVerified
+              ? 'Address verified! Your account shows a Verified Trader badge to buyers and sellers.'
+              : 'Verify your address to earn a Verified Trader badge and build trust with buyers and sellers.'}
+          </Text>
+          {isAddressVerified ? (
+            <View style={styles.stripeConnected}>
+              <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
+              <Text style={styles.stripeConnectedText}>Address verified</Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.stripeBtn}
+              activeOpacity={0.8}
+              onPress={() => {
+                setVerifyStage('address');
+                setVerifyAddressInput('');
+                setVerificationCode('');
+                setVerifyError(null);
+                setVerifyModalVisible(true);
+              }}
+            >
+              <Text style={styles.stripeBtnText}>VERIFY ADDRESS</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* ── 3. SECURITY & PASSWORD ── */}
         <SectionHeader icon="lock-closed-outline" label="SECURITY & PASSWORD" />
         <View style={styles.card}>
           <FieldLabel label="CURRENT PASSWORD" />
@@ -441,7 +529,7 @@ export const SettingsScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* ── 3. PAYOUTS ── */}
+        {/* ── 4. PAYOUTS ── */}
         <SectionHeader icon="card-outline" label="PAYOUTS" />
         <View style={styles.card}>
           <Text style={styles.payoutDesc}>
@@ -485,7 +573,7 @@ export const SettingsScreen: React.FC = () => {
           )}
         </View>
 
-        {/* ── 4. BANK ACCOUNT DETAILS ── */}
+        {/* ── 5. BANK ACCOUNT DETAILS ── */}
         <SectionHeader icon="business-outline" label="BANK ACCOUNT DETAILS" />
         <View style={styles.card}>
           <Text style={styles.payoutDesc}>
@@ -543,6 +631,77 @@ export const SettingsScreen: React.FC = () => {
         </View>
 
       </ScrollView>
+
+      {/* Address Verification Stepper Modal */}
+      <BottomSheet
+        visible={verifyModalVisible}
+        onClose={() => { setVerifyModalVisible(false); setVerifyError(null); }}
+        title={`Trader Verification (Step ${verifyStage === 'address' ? 1 : 2}/2)`}
+        avoidKeyboard
+      >
+        <View style={styles.verifyModalBody}>
+          {verifyError ? (
+            <View style={{ marginBottom: 16 }}>
+              <ErrorBanner message={verifyError} />
+            </View>
+          ) : null}
+          {verifyStage === 'address' && (
+            <View>
+              <Text style={styles.verifyStepTitle}>Confirm Your Address</Text>
+              <Text style={styles.verifyStepSub}>
+                Enter your current residential address. We'll email a 6-digit verification code to {user?.email || 'your account email'}.
+              </Text>
+              <TextInput
+                style={[styles.inputField, { height: 72, paddingTop: 12, textAlignVertical: 'top' }]}
+                value={verifyAddressInput}
+                onChangeText={setVerifyAddressInput}
+                placeholder="Enter your full address"
+                placeholderTextColor={Colors.iconMuted}
+                autoCapitalize="words"
+                multiline
+              />
+              <TouchableOpacity
+                style={[styles.stripeBtn, { marginTop: 16 }, verifySending && { opacity: 0.6 }]}
+                onPress={handleSendVerificationCode}
+                disabled={verifySending}
+              >
+                {verifySending
+                  ? <ActivityIndicator size="small" color={Colors.white} />
+                  : <Text style={styles.stripeBtnText}>SEND VERIFICATION CODE</Text>}
+              </TouchableOpacity>
+            </View>
+          )}
+          {verifyStage === 'code' && (
+            <View>
+              <Text style={styles.verifyStepTitle}>Enter Verification Code</Text>
+              <Text style={styles.verifyStepSub}>
+                We've emailed a 6-digit code to {user?.email || 'your account email'}. Enter it below to verify {verifyAddressInput.trim()}.
+              </Text>
+              <TextInput
+                style={styles.inputField}
+                value={verificationCode}
+                onChangeText={setVerificationCode}
+                placeholder="Enter 6-digit code"
+                placeholderTextColor={Colors.iconMuted}
+                keyboardType="number-pad"
+                maxLength={6}
+              />
+              <TouchableOpacity
+                style={[styles.stripeBtn, { marginTop: 16 }, verifyConfirming && { opacity: 0.6 }]}
+                onPress={handleConfirmVerificationCode}
+                disabled={verifyConfirming}
+              >
+                {verifyConfirming
+                  ? <ActivityIndicator size="small" color={Colors.white} />
+                  : <Text style={styles.stripeBtnText}>CONFIRM & VERIFY</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity style={{ alignItems: 'center', marginTop: 14 }} onPress={() => { setVerifyStage('address'); setVerifyError(null); }}>
+                <Text style={styles.resendLinkText}>Wrong address? Go back</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </BottomSheet>
     </View>
   );
 };
@@ -661,4 +820,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.warning, borderRadius: 10, height: 44,
     alignItems: 'center', justifyContent: 'center',
   },
+
+  // Address verification modal
+  verifyModalBody: { padding: 20 },
+  verifyStepTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white, marginBottom: 8 },
+  verifyStepSub: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 20, marginBottom: 20 },
+  resendLinkText: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.textSecondary, textDecorationLine: 'underline' },
 });
