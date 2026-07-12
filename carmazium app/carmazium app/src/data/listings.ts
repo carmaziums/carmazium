@@ -28,6 +28,13 @@ export interface CarListing {
   bhp: number;
   zeroToSixty: number;
   topSpeed: number;
+  // Present on ApiListing/the backend response but previously dropped by the
+  // mapper — Search/Compare/VehicleDetail couldn't show or filter on these
+  // as a result (mobile-audit.md finding).
+  engineSize?: number | null;
+  doors?: number | null;
+  seats?: number | null;
+  co2Emissions?: number | null;
   location: string;
   latitude?: number | null;
   longitude?: number | null;

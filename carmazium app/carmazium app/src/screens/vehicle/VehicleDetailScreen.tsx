@@ -741,12 +741,30 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <View style={styles.specRow}>
                 <Text style={styles.specRowLabel}>Engine</Text>
                 <Text style={styles.specRowValue}>
-                  3.0L - {listing.bhp} bhp
+                  {/* Was a hardcoded "3.0L" for every listing regardless of the
+                      real vehicle — now uses the real engineSize field, with
+                      an honest fallback instead of a fabricated number. */}
+                  {listing.engineSize ? `${(listing.engineSize / 1000).toFixed(1)}L` : 'Not disclosed'}
+                  {listing.bhp ? ` - ${listing.bhp} bhp` : ''}
                 </Text>
               </View>
               <View style={styles.specRow}>
                 <Text style={styles.specRowLabel}>0-60 mph</Text>
                 <Text style={styles.specRowValue}>{listing.zeroToSixty}s</Text>
+              </View>
+              <View style={styles.specRow}>
+                <Text style={styles.specRowLabel}>Doors / Seats</Text>
+                <Text style={styles.specRowValue}>
+                  {listing.doors != null || listing.seats != null
+                    ? `${listing.doors ?? '—'} / ${listing.seats ?? '—'}`
+                    : 'Not disclosed'}
+                </Text>
+              </View>
+              <View style={styles.specRow}>
+                <Text style={styles.specRowLabel}>CO₂ emissions</Text>
+                <Text style={styles.specRowValue}>
+                  {listing.co2Emissions != null ? `${listing.co2Emissions} g/km` : 'Not disclosed'}
+                </Text>
               </View>
               <View style={styles.specRow}>
                 <Text style={styles.specRowLabel}>Owners</Text>

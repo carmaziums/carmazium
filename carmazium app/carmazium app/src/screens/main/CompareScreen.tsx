@@ -31,8 +31,8 @@ const getMileageText = (car: CarListing) => `${(car.mileage / 1000).toFixed(1)}k
 
 // ─── Comparison rows — mirrors the web app's compare page field set
 // (src/app/compare/page.tsx: Key Details / Engine & Performance / Style
-// sections). Engine size, CO2, doors, and seats are shown on web but are
-// not present on CarListing/ApiListing on mobile — omitted rather than
+// sections). Engine size/CO2/doors/seats are confirmed-present fields on
+// the backend response (ApiListing/CarListing now carry them) rather than
 // guessed (CLAUDE.md: never ship a field the backend hasn't confirmed).
 // A single data-driven row list (rather than one hand-written JSX block
 // per field) is used deliberately so every row renders identically. ──
@@ -55,8 +55,12 @@ const SPEC_ROWS: SpecRow[] = [
   { label: 'Fuel', getValue: (c) => c.fuelType || '—' },
   { label: 'Gearbox', getValue: (c) => (c.transmission === 'Automatic' ? 'Auto' : c.transmission) || '—' },
   { label: 'Power', getValue: (c) => (c.bhp ? `${c.bhp} bhp` : '—'), best: { getValue: (c) => c.bhp, mode: 'highest' } },
+  { label: 'Engine Size', getValue: (c) => (c.engineSize ? `${c.engineSize} cc` : '—'), best: { getValue: (c) => c.engineSize, mode: 'highest' } },
+  { label: 'CO₂ Emissions', getValue: (c) => (c.co2Emissions != null ? `${c.co2Emissions} g/km` : '—'), best: { getValue: (c) => c.co2Emissions, mode: 'lowest' } },
   { label: 'Body', getValue: (c) => c.category || '—' },
   { label: 'Colour', getValue: (c) => c.colour || '—' },
+  { label: 'Doors', getValue: (c) => (c.doors != null ? `${c.doors}` : '—') },
+  { label: 'Seats', getValue: (c) => (c.seats != null ? `${c.seats}` : '—'), best: { getValue: (c) => c.seats, mode: 'highest' } },
 ];
 
 const getBestIndex = (
