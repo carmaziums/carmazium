@@ -6,12 +6,16 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../../constants/colors';
-import { FontFamily } from '../../constants/typography';
+import { FontFamily, FontSize } from '../../constants/typography';
 import { DamageZone3D } from './damageZones';
 
 // ── Assets resolved once at module level so require() runs at build time ──────
 const HTML_MODULE = require('../../assets/3d/viewer.html');
 const GLB_MODULE  = require('../../assets/3d/vehicle.glb');
+// Bundled, dependency-free Three.js + GLTFLoader + OrbitControls (see
+// scripts/three-bundle-entry.mjs) — spliced into viewer.html in place of the
+// CDN import so the viewer works fully offline.
+const THREE_BUNDLE_MODULE = require('../../assets/3d/three-bundle.txt');
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -52,16 +56,33 @@ export function ThreeDVehicleViewer({
   const [zonePhotos, setZonePhotos] = useState<Record<string, string>>({});
   const [pillZoneId, setPillZoneId] = useState<string | null>(null);
 
-  // ── Load viewer.html from the bundled asset on mount ────────────────────────
+  // Live screen position of each 3D-positioned zone, projected through the
+  // WebView's camera every few frames — see viewer.html's postZonePositions.
+  // Only zones with a `box` (exterior) fraction get an entry here; interior
+  // zones have no exterior 3D position and are never rendered as hotspots.
+  const [zoneScreenPos, setZoneScreenPos] = useState<Record<string, { x: number; y: number; visible: boolean }>>({});
+  const hotspotZones = zones.filter((z) => z.box);
+  const hotspotZonesRef = useRef(hotspotZones);
+  hotspotZonesRef.current = hotspotZones;
+
+  // ── Load viewer.html + the vendored Three.js bundle on mount ────────────────
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const htmlAsset = Asset.fromModule(HTML_MODULE);
-        await htmlAsset.downloadAsync();
-        const html = await FileSystem.readAsStringAsync(htmlAsset.localUri!);
-        if (!cancelled) setViewerHtml(html);
-      } catch {
+        const bundleAsset = Asset.fromModule(THREE_BUNDLE_MODULE);
+        await Promise.all([htmlAsset.downloadAsync(), bundleAsset.downloadAsync()]);
+        const [html, threeBundle] = await Promise.all([
+          FileSystem.readAsStringAsync(htmlAsset.localUri!),
+          FileSystem.readAsStringAsync(bundleAsset.localUri!),
+        ]);
+        // A function replacer avoids String.prototype.replace's special
+        // $-pattern handling (e.g. a literal "$&" in the minified bundle
+        // gets read as "insert matched substring" and corrupts the splice).
+        const spliced = html.replace('/*__THREE_BUNDLE__*/', () => threeBundle);
+        if (!cancelled) setViewerHtml(spliced);
+      } catch (e: any) {
         if (!cancelled) setLoadError('Could not initialise 3D viewer');
       }
     })();
@@ -83,8 +104,28 @@ export function ThreeDVehicleViewer({
       webViewRef.current?.injectJavaScript(
         'window.loadGLB("data:model/gltf-binary;base64,' + base64 + '"); true;'
       );
+
+      const zonesForWire = hotspotZonesRef.current.map((z) => ({ id: z.id, ...z.box }));
+      webViewRef.current?.injectJavaScript(
+        'window.setZones(' + JSON.stringify(JSON.stringify(zonesForWire)) + '); true;'
+      );
     } catch {
       // The viewer.html error overlay handles the visible failure state
+    }
+  }, []);
+
+  const handleWebViewMessage = useCallback((event: { nativeEvent: { data: string } }) => {
+    try {
+      const msg = JSON.parse(event.nativeEvent.data);
+      if (msg.type === 'zonePositions' && Array.isArray(msg.positions)) {
+        setZoneScreenPos((prev) => {
+          const next = { ...prev };
+          for (const p of msg.positions) next[p.id] = { x: p.x, y: p.y, visible: p.visible };
+          return next;
+        });
+      }
+    } catch {
+      // Ignore malformed messages
     }
   }, []);
 
@@ -130,6 +171,7 @@ export function ThreeDVehicleViewer({
           ref={webViewRef}
           source={{ html: viewerHtml }}
           onLoad={handleWebViewLoad}
+          onMessage={handleWebViewMessage}
           scrollEnabled={false}
           javaScriptEnabled
           originWhitelist={['*']}
@@ -147,9 +189,13 @@ export function ThreeDVehicleViewer({
         </View>
       )}
 
-      {/* Model identity badge — top-left corner */}
-      <View style={styles.badge} pointerEvents="none">
-        <Text style={styles.badgeText}>vehicle.glb · {bodyTypeLabel || 'Generic'}</Text>
+      {/* Generic-model disclosure banner — deliberately prominent, not a small
+          corner label, so it's easy to notice regardless of the viewer's age. */}
+      <View style={styles.disclosureBanner} pointerEvents="none">
+        <Ionicons name="information-circle" size={16} color={Colors.warning} style={{ marginRight: 6 }} accessibilityElementsHidden importantForAccessibility="no" />
+        <Text style={styles.disclosureText} numberOfLines={2}>
+          Generic {bodyTypeLabel || 'vehicle'} shape shown for reference — your car's actual panels may look different.
+        </Text>
       </View>
 
       {/* Tap-outside-to-dismiss backdrop — only present while a pill is open,
@@ -166,7 +212,12 @@ export function ThreeDVehicleViewer({
           pointerEvents="box-none" lets touches that miss a hotspot fall
           through to the WebView so orbit drag still works */}
       <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
-        {zones.map((zone) => {
+        {hotspotZones.map((zone) => {
+          const screenPos = zoneScreenPos[zone.id];
+          // Nothing projected yet (viewer/model still loading) or the zone is
+          // on the far side of the car / off-screen from the current angle.
+          if (!screenPos || !screenPos.visible) return null;
+
           const isMarked   = markedZones.includes(zone.label);
           const isSelected = selectedZone === zone.label;
           const isHidden   = hiddenZones.has(zone.id);
@@ -177,12 +228,15 @@ export function ThreeDVehicleViewer({
               style={[
                 styles.hotspot,
                 {
-                  left: `${zone.coords.x}%` as any,
-                  top:  `${zone.coords.y}%` as any,
+                  left: `${screenPos.x}%` as any,
+                  top:  `${screenPos.y}%` as any,
                 },
               ]}
               onPress={() => handleHotspotPress(zone)}
               activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel={`${zone.label}${isMarked ? ' (damage marked)' : ''}`}
+              accessibilityRole="button"
             >
               {isHidden ? (
                 <View style={styles.dotHidden} />
@@ -195,22 +249,23 @@ export function ThreeDVehicleViewer({
               )}
               {hasPhoto && (
                 <View style={styles.photoBadge}>
-                  <Ionicons name="camera" size={8} color="#fff" />
+                  <Ionicons name="camera" size={8} color={Colors.white} />
                 </View>
               )}
             </TouchableOpacity>
           );
         })}
 
-        {/* Action pill for the currently tapped zone */}
-        {pillZone && (
+        {/* Action pill for the currently tapped zone — follows the zone's
+            live projected position so it stays anchored while orbiting */}
+        {pillZone && zoneScreenPos[pillZone.id]?.visible && (
           <View
             style={[
               styles.pill,
               {
-                left: `${pillZone.coords.x}%` as any,
-                top: `${pillZone.coords.y}%` as any,
-                marginTop: pillZone.coords.y > 65 ? -66 : 18,
+                left: `${zoneScreenPos[pillZone.id].x}%` as any,
+                top: `${zoneScreenPos[pillZone.id].y}%` as any,
+                marginTop: zoneScreenPos[pillZone.id].y > 65 ? -66 : 18,
               },
             ]}
           >
@@ -219,7 +274,7 @@ export function ThreeDVehicleViewer({
               onPress={() => onZoneClick(pillZone.label)}
               activeOpacity={0.7}
             >
-              <Ionicons name="alert-circle-outline" size={13} color="#fff" />
+              <Ionicons name="alert-circle-outline" size={13} color={Colors.white} />
               <Text style={styles.pillBtnText}>Mark</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -227,7 +282,7 @@ export function ThreeDVehicleViewer({
               onPress={() => handleHideToggle(pillZone.id)}
               activeOpacity={0.7}
             >
-              <Ionicons name={hiddenZones.has(pillZone.id) ? 'eye-off' : 'eye-off-outline'} size={13} color="#fff" />
+              <Ionicons name={hiddenZones.has(pillZone.id) ? 'eye-off' : 'eye-off-outline'} size={13} color={Colors.white} />
               <Text style={styles.pillBtnText}>{hiddenZones.has(pillZone.id) ? 'Unhide' : 'Hide'}</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -235,7 +290,7 @@ export function ThreeDVehicleViewer({
               onPress={() => handlePhotoPick(pillZone.id)}
               activeOpacity={0.7}
             >
-              <Ionicons name="camera-outline" size={13} color="#fff" />
+              <Ionicons name="camera-outline" size={13} color={Colors.white} />
               <Text style={styles.pillBtnText}>{zonePhotos[pillZone.id] ? 'Retake' : 'Photo'}</Text>
             </TouchableOpacity>
           </View>
@@ -256,7 +311,7 @@ export function ThreeDVehicleViewer({
 const styles = StyleSheet.create({
   wrap: {
     width: '100%',
-    backgroundColor: '#111113',
+    backgroundColor: Colors.deepNearBlack,
     borderRadius: 12,
     overflow: 'hidden',
     position: 'relative',
@@ -276,29 +331,32 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: Colors.textMuted,
-    fontSize: 13,
+    fontSize: FontSize.sm,
     fontFamily: FontFamily.regular,
     textAlign: 'center',
   },
 
-  // Model badge
-  badge: {
+  // Generic-model disclosure banner
+  disclosureBanner: {
     position: 'absolute',
-    top: 10,
-    left: 10,
+    top: 0,
+    left: 0,
+    right: 0,
     zIndex: 10,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(20,20,24,0.85)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.whiteAlpha08,
   },
-  badgeText: {
-    color: '#A0A0AB',
-    fontSize: 10,
+  disclosureText: {
+    flex: 1,
+    color: Colors.paleNearWhite_e4e4e7,
+    fontSize: FontSize.xs,
     fontFamily: FontFamily.medium,
-    letterSpacing: 0.5,
+    lineHeight: 15,
   },
 
   // Zone hotspots (same sizing as the original SVG overlay)
@@ -321,11 +379,11 @@ const styles = StyleSheet.create({
   },
   dotMarked: {
     backgroundColor: Colors.error,
-    borderColor: '#FF4444',
+    borderColor: Colors.lightRed_ff4444,
   },
   dotSelected: {
     backgroundColor: Colors.accent,
-    borderColor: '#fff',
+    borderColor: Colors.white,
     width: 18,
     height: 18,
     borderRadius: 9,
@@ -350,7 +408,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#111113',
+    borderColor: Colors.deepNearBlack,
   },
 
   // Zone action pill
@@ -362,7 +420,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(17,17,19,0.96)',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: Colors.whiteAlpha12,
     padding: 4,
     gap: 4,
     zIndex: 20,
@@ -376,11 +434,11 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   pillBtnActive: {
-    backgroundColor: 'rgba(220,31,38,0.22)',
+    backgroundColor: Colors.accentAlpha22,
   },
   pillBtnText: {
-    color: '#fff',
-    fontSize: 9,
+    color: Colors.white,
+    fontSize: FontSize.size9,
     fontFamily: FontFamily.medium,
   },
 
@@ -389,14 +447,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 8,
     alignSelf: 'center',
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: Colors.blackAlpha45,
     borderRadius: 6,
     paddingHorizontal: 10,
     paddingVertical: 3,
   },
   hintText: {
     color: Colors.textMuted,
-    fontSize: 10,
+    fontSize: FontSize.size10,
     fontFamily: FontFamily.regular,
   },
 });

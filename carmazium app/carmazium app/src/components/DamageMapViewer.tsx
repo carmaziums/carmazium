@@ -24,17 +24,25 @@ interface Props {
 }
 
 const PIN_COLORS: Record<string, string> = {
-  Scratch: '#F59E0B',   // amber
-  Scuff: '#3B82F6',     // blue
-  Dent: '#EF4444',      // red
+  Scratch: Colors.warning,   // amber
+  Scuff: Colors.infoBlue,     // blue
+  Dent: Colors.error,      // red
 };
 
 const getPinColor = (type: string): string => PIN_COLORS[type] ?? Colors.textMuted;
 
-const VIEW_ORDER: string[] = ['FRONT', 'SIDE', 'REAR', 'TOP'];
+const VIEW_ORDER: string[] = ['FRONT', 'SIDE', 'REAR', 'TOP', 'INTERIOR'];
+
+const hasResolvedCoords = (r: DamageRecord): boolean =>
+  !!r.coords && typeof r.coords.x === 'number' && typeof r.coords.y === 'number' && typeof r.coords.view === 'string';
 
 export const DamageMapViewer: React.FC<Props> = ({ records, isLoading }) => {
-  const viewsWithRecords = VIEW_ORDER.filter(v => records.some(r => r.coords.view === v));
+  const validRecords = records.filter(r => {
+    if (hasResolvedCoords(r)) return true;
+    if (__DEV__) console.warn(`[DamageMapViewer] skipping damage record with unresolved coords for part "${r.part}"`, r);
+    return false;
+  });
+  const viewsWithRecords = VIEW_ORDER.filter(v => validRecords.some(r => r.coords.view === v));
   const [activeView, setActiveView] = useState<string>(viewsWithRecords[0] ?? 'FRONT');
   const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
 
@@ -43,16 +51,16 @@ export const DamageMapViewer: React.FC<Props> = ({ records, isLoading }) => {
       <View
         style={[
           styles.skeletonRect,
-          { backgroundColor: `rgba(255,255,255,0.06)`, borderRadius: 12, height: 180 },
+          { backgroundColor: Colors.whiteAlpha06, borderRadius: 12, height: 180 },
         ]}
       />
     );
   }
 
-  if (records.length === 0) {
+  if (validRecords.length === 0) {
     return (
       <View style={styles.emptyState}>
-        <Ionicons name="shield-checkmark-outline" size={22} color="#22C55E" />
+        <Ionicons name="shield-checkmark-outline" size={22} color={Colors.success} />
         <View style={styles.emptyTextBlock}>
           <Text style={styles.emptyTitle}>No damage recorded</Text>
           <Text style={styles.emptySubtitle}>Vehicle checked clean</Text>
@@ -61,8 +69,8 @@ export const DamageMapViewer: React.FC<Props> = ({ records, isLoading }) => {
     );
   }
 
-  const pinsForView = records.filter(r => r.coords.view === activeView);
-  const selectedPin = records.find(r => r.id === selectedPinId) ?? null;
+  const pinsForView = validRecords.filter(r => r.coords.view === activeView);
+  const selectedPin = validRecords.find(r => r.id === selectedPinId) ?? null;
 
   return (
     <View>
@@ -111,7 +119,7 @@ export const DamageMapViewer: React.FC<Props> = ({ records, isLoading }) => {
                   marginTop: -8,
                   backgroundColor: pinColor,
                   borderWidth: isSelected ? 2 : 1,
-                  borderColor: isSelected ? '#FFFFFF' : 'rgba(255,255,255,0.4)',
+                  borderColor: isSelected ? Colors.white : 'rgba(255,255,255,0.4)',
                 },
               ]}
               onPress={() =>
@@ -165,9 +173,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: 'rgba(34,197,94,0.06)',
+    backgroundColor: Colors.successAlpha06,
     borderWidth: 1,
-    borderColor: 'rgba(34,197,94,0.20)',
+    borderColor: Colors.successAlpha20,
     borderRadius: 12,
     padding: 16,
   },
@@ -176,12 +184,12 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: '#FFFFFF',
+    fontSize: FontSize.size14,
+    color: Colors.white,
   },
   emptySubtitle: {
     fontFamily: FontFamily.regular,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.textMuted,
     marginTop: 2,
   },
@@ -195,9 +203,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: Colors.whiteAlpha08,
   },
   tabPillActive: {
     backgroundColor: Colors.accent,
@@ -205,19 +213,19 @@ const styles = StyleSheet.create({
   },
   tabPillText: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
+    fontSize: FontSize.xs,
     color: Colors.textMuted,
   },
   tabPillTextActive: {
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   // Car panel
   carPanel: {
     height: 180,
     borderRadius: 12,
-    backgroundColor: '#111115',
+    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.whiteAlpha06,
     position: 'relative',
     overflow: 'hidden',
     marginBottom: 10,
@@ -235,9 +243,9 @@ const styles = StyleSheet.create({
     width: '55%',
     height: '38%',
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: Colors.whiteAlpha05,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: Colors.whiteAlpha08,
     marginBottom: -4,
     alignSelf: 'center',
   },
@@ -245,9 +253,9 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '52%',
     borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: Colors.whiteAlpha05,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: Colors.whiteAlpha08,
   },
   // Pins
   pin: {
@@ -262,7 +270,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
   },
   // Detail row
   detailRow: {
@@ -279,17 +287,17 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontFamily: FontFamily.regular,
-    fontSize: 13,
-    color: '#FFFFFF',
+    fontSize: FontSize.sm,
+    color: Colors.white,
   },
   detailPart: {
     fontFamily: FontFamily.bold,
-    fontSize: 13,
-    color: '#FFFFFF',
+    fontSize: FontSize.sm,
+    color: Colors.white,
   },
   detailPlaceholder: {
     fontFamily: FontFamily.regular,
-    fontSize: 12,
+    fontSize: FontSize.size12,
     color: Colors.textMuted,
     fontStyle: 'italic',
   },
@@ -310,7 +318,7 @@ const styles = StyleSheet.create({
   },
   legendLabel: {
     fontFamily: FontFamily.medium,
-    fontSize: 11,
+    fontSize: FontSize.xs,
     color: Colors.textMuted,
   },
 });
