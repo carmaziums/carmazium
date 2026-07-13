@@ -67,14 +67,20 @@ const TRANSMISSIONS = [
   // SEMI_AUTOMATIC, so selecting this used to fail listing submission.
   { v: 'SEMI_AUTOMATIC', l: 'Semi-Auto' }, { v: 'CVT', l: 'CVT' },
 ];
+// Values match web's ListingWizard.tsx exactly (raw display strings, not
+// enum codes — the backend DTO has no enum for either field, just
+// @IsString(), so web's literal strings are the real contract). Mobile used
+// to send '4x4'/'FULL_MAIN_DEALER'-style values that never matched what web
+// wrote, silently breaking edit-prefill pill highlighting and any
+// buyer-facing display expecting web's format.
 const DRIVE_TYPES = [
   { v: 'FWD', l: 'FWD' }, { v: 'RWD', l: 'RWD' },
-  { v: 'AWD', l: 'AWD' }, { v: '4x4', l: '4x4' },
+  { v: 'AWD', l: 'AWD' }, { v: '4WD', l: '4WD' },
 ];
 const SERVICE_HISTORY_OPTS = [
-  { v: 'FULL_MAIN_DEALER', l: 'Full Main Dealer' },
-  { v: 'FULL_INDEPENDENT', l: 'Full Independent' },
-  { v: 'PARTIAL', l: 'Partial' }, { v: 'NONE', l: 'None' },
+  { v: 'Full Main Dealer', l: 'Full Main Dealer' },
+  { v: 'Full Independent', l: 'Full Independent' },
+  { v: 'Partial', l: 'Partial' }, { v: 'None', l: 'None' },
 ];
 const CONDITIONS = [
   { v: 'EXCELLENT', l: 'Excellent' }, { v: 'GOOD', l: 'Good' },
@@ -1066,9 +1072,16 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             // backend's damageRecord model, so it's intentionally not sent.
             detections: damageRecords.map(r => {
               const zone = DAMAGE_ZONES_3D.find(z => z.label === r.zone);
+              // `type` is a free-form string on the backend (no enum) — web
+              // sends the user's typed description directly as `type`. Mobile
+              // additionally collects a category picker (Scratch/Dent/etc),
+              // which used to win outright and silently drop whatever the
+              // user typed in the description box. Keep the category as a
+              // prefix so it isn't lost, but no longer discard the text.
+              const type = r.description.trim() ? `${r.type} - ${r.description.trim()}` : r.type;
               return {
                 part: zone?.id ?? r.zone,
-                type: r.type,
+                type,
                 size: 'MODERATE',
                 coords: zone?.coords,
                 imageUrl: zone ? zonePhotos[zone.id] : undefined,
@@ -1309,19 +1322,25 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           )}
         </SectionBox>
 
-        {/* Registration & Compliance — DVLA auto-filled */}
+        {/* Registration & Compliance — DVLA auto-filled but editable, matching
+            web (ListingWizard.tsx) — these used to render as read-only text
+            even though the banner above claimed they were editable. Last V5C
+            Issued and First Registered stay read-only: dateOfLastV5CIssued
+            isn't in the backend's CreateListingDto at all (dead on web too),
+            and monthOfFirstRegistration has no manual-entry field on web
+            either — both are DVLA-lookup-only. */}
         <SectionBox title="Registration & Compliance" accent={Colors.infoBlue}>
-          <Text style={s.fieldHint}>These fields are filled from the DVLA and VIN database. They may not always be accurate.</Text>
+          <Text style={s.fieldHint}>These fields are auto-filled from the DVLA and MOT databases, but can be manually adjusted.</Text>
           <View style={s.dvlaGrid}>
             <DVLAField label="LAST V5C ISSUED" value={lastV5C} />
-            <DVLAField label="MOT STATUS" value={motStatus} />
-            <DVLAField label="MOT EXPIRY DATE" value={motExpiry} />
-            <DVLAField label="TAX STATUS" value={taxStatus} />
-            <DVLAField label="TAX DUE DATE" value={taxDue} />
             <DVLAField label="FIRST REGISTERED" value={firstRegistered} />
-            <DVLAField label="WHEELPLAN" value={wheelplan} />
-            <DVLAField label="TYPE APPROVAL" value={typeApproval} />
           </View>
+          <FieldInput label="MOT STATUS" value={motStatus} onChange={setMotStatus} placeholder="e.g. Valid" />
+          <FieldInput label="MOT EXPIRY DATE" value={motExpiry} onChange={setMotExpiry} placeholder="YYYY-MM-DD" />
+          <FieldInput label="TAX STATUS" value={taxStatus} onChange={setTaxStatus} placeholder="e.g. Taxed" />
+          <FieldInput label="TAX DUE DATE" value={taxDue} onChange={setTaxDue} placeholder="YYYY-MM-DD" />
+          <FieldInput label="TYPE APPROVAL" value={typeApproval} onChange={setTypeApproval} placeholder="e.g. M1" />
+          <FieldInput label="WHEELPLAN" value={wheelplan} onChange={setWheelplan} placeholder="e.g. 2 AXLE RIGID BODY" />
           <FieldInput label="VIN" value={vin} onChange={setVin} placeholder="17-character VIN" hint="Optional — from VIN database" />
         </SectionBox>
 
