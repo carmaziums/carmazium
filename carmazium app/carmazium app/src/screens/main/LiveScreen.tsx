@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Dimensions,
   StatusBar,
-  Alert,
   RefreshControl,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -77,9 +76,6 @@ export const LiveScreen: React.FC = () => {
 
   // Global ticker reference time
   const [now, setNow] = useState(Date.now());
-
-  // Per-auction alert toggles for upcoming auctions, keyed by auction id
-  const [auctionAlerts, setAuctionAlerts] = useState<Record<string, boolean>>({});
 
   const fetchData = async () => {
     try {
@@ -161,32 +157,6 @@ export const LiveScreen: React.FC = () => {
   const getRemainingSeconds = (endsAt: Date | string) => {
     const endMs = new Date(endsAt).getTime();
     return Math.max(0, Math.floor((endMs - now) / 1000));
-  };
-
-  const handleToggleAlert = (auctionId: string, carModel: string) => {
-    setAuctionAlerts((prev) => {
-      const next = { ...prev, [auctionId]: !prev[auctionId] };
-      if (next[auctionId]) {
-        Alert.alert(
-          'Alert Set',
-          `We'll notify you 15 minutes before the bidding starts for the ${carModel}.`
-        );
-      }
-      return next;
-    });
-  };
-
-  const handleSetAllAlerts = () => {
-    if (upcomingAuctions.length === 0) return;
-    setAuctionAlerts((prev) => {
-      const next = { ...prev };
-      upcomingAuctions.forEach((auc) => { next[auc.id] = true; });
-      return next;
-    });
-    Alert.alert(
-      'Alerts Enabled',
-      "We'll notify you for all upcoming auctions on today's schedule!"
-    );
   };
 
   const activeList = liveAuctions;
@@ -359,14 +329,10 @@ export const LiveScreen: React.FC = () => {
         {/* ─── UPCOMING Section ─────────────────────────────────── */}
         <View style={styles.upcomingHeaderRow}>
           <Text style={styles.sectionTitle}>UPCOMING</Text>
-          <TouchableOpacity activeOpacity={0.7} onPress={handleSetAllAlerts}>
-            <Text style={styles.setAlertLink}>Set alert</Text>
-          </TouchableOpacity>
         </View>
 
         {upcomingList.length > 0 ? (
           upcomingList.map((auc, idx) => {
-            const alertState = !!auctionAlerts[auc.id];
             const estPriceRange = `Est. £${Math.round(Number(auc.startingBid) / 1000)}k – £${Math.round(Number(auc.reservePrice) / 1000)}k`;
             const startTimeDate = new Date(auc.startTime);
             const timeText = `Starts ${startTimeDate.toLocaleDateString('en-GB')} ${startTimeDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
@@ -440,22 +406,6 @@ export const LiveScreen: React.FC = () => {
                     <Text style={styles.upcomingEst}>{estPriceRange}</Text>
                   </View>
                 </View>
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  style={[
-                    styles.alertBellBtn,
-                    alertState && styles.alertBellBtnActive,
-                  ]}
-                  onPress={() =>
-                    handleToggleAlert(auc.id, `${auc.listing.make} ${auc.listing.model}`)
-                  }
-                >
-                  <Ionicons
-                    name={alertState ? 'checkmark' : 'notifications-outline'}
-                    size={14}
-                    color={alertState ? Colors.white : Colors.textFaint}
-                  />
-                </TouchableOpacity>
               </TouchableOpacity>
             );
           })
@@ -833,11 +783,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     marginTop: 6,
   },
-  setAlertLink: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.size12,
-    color: Colors.accent,
-  },
   upcomingItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -894,21 +839,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.size10,
     color: Colors.textMuted,
   },
-  alertBellBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.borderSubtle,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 8,
-  },
-  alertBellBtnActive: {
-    backgroundColor: Colors.success,
-    borderColor: Colors.success,
-  },
-
   // ─── Market AI Banner ─────────────────────────────────────────
   marketAiBanner: {
     flexDirection: 'row',

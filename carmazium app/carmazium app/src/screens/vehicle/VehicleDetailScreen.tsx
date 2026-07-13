@@ -170,12 +170,6 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     listing.deliveryMaxMiles != null &&
     deliveryDistanceMiles > listing.deliveryMaxMiles;
 
-  // Dealer tools panel
-  const role = useAuthStore((s) => s.role);
-  const isDealer = role === 'dealer';
-  const [dealerPanelOpen, setDealerPanelOpen] = useState(false);
-  const capEstimate = Math.round(listing.price * 0.82);
-
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -387,7 +381,10 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const calcMonthlyPayment = (): number => {
     const deposit = listing.price * (depositPct / 100);
     const principal = listing.price - deposit;
-    const monthlyRate = 9.9 / 1200;
+    // Was 9.9% — web's FinanceCalculator.tsx uses a 9–49% adjustable range
+    // with a 19% representative default; mobile's fixed rate undershot the
+    // real quoted figure by ~15-20% for the same inputs.
+    const monthlyRate = 19 / 1200;
     return principal * (monthlyRate * Math.pow(1 + monthlyRate, termMonths)) / (Math.pow(1 + monthlyRate, termMonths) - 1);
   };
 
@@ -976,60 +973,6 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </TouchableOpacity>
           </View>
 
-          {/* ── Dealer Tools Panel (visible only to verified dealers) ── */}
-          {isDealer && (
-            <TouchableOpacity
-              style={styles.dealerToolsCard}
-              activeOpacity={0.85}
-              onPress={() => setDealerPanelOpen((v) => !v)}
-            >
-              <View style={styles.dealerToolsHeader}>
-                <View style={styles.dealerToolsIconWrap}>
-                  <Ionicons name="briefcase-outline" size={18} color={Colors.warning} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.dealerToolsTitle}>Dealer Tools</Text>
-                  <Text style={styles.dealerToolsSub}>Trade valuation & enquiry options</Text>
-                </View>
-                <Ionicons name={dealerPanelOpen ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.warning} />
-              </View>
-              {dealerPanelOpen && (
-                <View style={styles.dealerToolsBody}>
-                  {/* CAP trade value estimate */}
-                  <View style={styles.dealerStatRow}>
-                    <View style={styles.dealerStatBox}>
-                      <Text style={styles.dealerStatLabel}>CAP TRADE EST.</Text>
-                      <Text style={styles.dealerStatValue}>£{capEstimate.toLocaleString('en-GB')}</Text>
-                      <Text style={styles.dealerStatSub}>~18% below asking</Text>
-                    </View>
-                    <View style={[styles.dealerStatBox, { borderLeftWidth: 1, borderLeftColor: Colors.warningAlpha15 }]}>
-                      <Text style={styles.dealerStatLabel}>RETAIL MARGIN</Text>
-                      <Text style={styles.dealerStatValue}>£{(listing.price - capEstimate).toLocaleString('en-GB')}</Text>
-                      <Text style={styles.dealerStatSub}>estimated upside</Text>
-                    </View>
-                  </View>
-
-                  {/* Trade offer CTA */}
-                  <TouchableOpacity
-                    style={styles.dealerTradeBtn}
-                    activeOpacity={0.85}
-                    onPress={() => Alert.alert(
-                      'Trade Enquiry',
-                      `Submit a trade offer for this ${listing.make} ${listing.model}?\n\nYour offer will be sent to the seller as a verified dealer enquiry.`,
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        { text: `Offer £${capEstimate.toLocaleString('en-GB')}`, onPress: () => Alert.alert('Trade Offer Sent', 'The seller has been notified of your dealer trade enquiry.') },
-                      ]
-                    )}
-                  >
-                    <Ionicons name="pricetag-outline" size={15} color={Colors.black} style={{ marginRight: 6 }} />
-                    <Text style={styles.dealerTradeBtnText}>SEND TRADE OFFER</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </TouchableOpacity>
-          )}
-
           {/* Expandable Finance Calculator — Coming Soon */}
           <TouchableOpacity
             style={styles.financeCard}
@@ -1044,7 +987,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 Finance Calculator
               </Text>
               <Text style={styles.financeSubtext}>
-                9.9% APR representative · tap to expand
+                19% APR representative · tap to expand
               </Text>
             </View>
             {/* Coming Soon badge */}
@@ -2051,89 +1994,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 8,
   },
-  // Finance Box Banner
-  // ── Dealer Tools Panel ──
-  dealerToolsCard: {
-    borderRadius: 16,
-    backgroundColor: Colors.deepYellow,
-    borderWidth: 1,
-    borderColor: Colors.warningAlpha25,
-    padding: 16,
-    marginBottom: 14,
-    overflow: 'hidden',
-  },
-  dealerToolsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  dealerToolsIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: Colors.warningAlpha12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dealerToolsTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.size14,
-    color: Colors.warning,
-  },
-  dealerToolsSub: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.xs,
-    color: Colors.midOrange_a0803a,
-    marginTop: 1,
-  },
-  dealerToolsBody: {
-    marginTop: 16,
-    gap: 12,
-  },
-  dealerStatRow: {
-    flexDirection: 'row',
-    backgroundColor: Colors.warningAlpha06,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.warningAlpha12,
-    overflow: 'hidden',
-  },
-  dealerStatBox: {
-    flex: 1,
-    padding: 12,
-    gap: 2,
-  },
-  dealerStatLabel: {
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.size9,
-    color: Colors.midOrange_a0803a,
-    letterSpacing: 0.8,
-  },
-  dealerStatValue: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.md,
-    color: Colors.warning,
-  },
-  dealerStatSub: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.size10,
-    color: Colors.midOrange_706050,
-  },
-  dealerTradeBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: Colors.warning,
-  },
-  dealerTradeBtnText: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.sm,
-    color: Colors.black,
-    letterSpacing: 1,
-  },
-
   financeCard: {
     flexDirection: 'row',
     alignItems: 'center',
