@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   StatusBar, Dimensions, Animated, RefreshControl,
+  TextInput, ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@/components/BrandIcon';
@@ -11,6 +12,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CarListing, formatPrice } from '../../data/listings';
 import { getFeaturedListings, searchListings } from '../../lib/listingsApi';
 import { getActiveAuctions, getScheduledAuctions, AuctionDetail } from '../../lib/auctionApi';
+import { naturalLanguageSearch } from '../../lib/aiApi';
 import { useAuthStore } from '../../store/authStore';
 import { useWatchlistStore } from '../../store/watchlistStore';
 import { Logo } from '../../components/Logo';
@@ -265,6 +267,7 @@ export const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const user = useAuthStore((s) => s.user);
+  const role = useAuthStore((s) => s.role);
   const { isSaved, toggle } = useWatchlistStore();
 
   const [liveAuctions, setLiveAuctions] = useState<AuctionDetail[]>([]);
@@ -273,6 +276,16 @@ export const HomeScreen: React.FC = () => {
   const [latestListings, setLatestListings] = useState<CarListing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Inline AI search — was just a TouchableOpacity that navigated straight
+  // to Search with no query state at all; web's home page (HomeClient.tsx)
+  // shows the AI's answer inline before the user commits to leaving the
+  // page. Reuses the same naturalLanguageSearch API SearchScreen's AI modal
+  // already calls.
+  const [aiQuery, setAiQuery] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState<{ explanation: string; filters: Record<string, string> } | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -300,6 +313,28 @@ export const HomeScreen: React.FC = () => {
   }, [fetchAll]);
 
   const goToListing = (listing: CarListing) => navigation.navigate('VehicleDetail', { listing });
+
+  const handleAiSearch = async () => {
+    const query = aiQuery.trim();
+    if (!query || aiLoading) return;
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const result = await naturalLanguageSearch(query);
+      setAiResult(result);
+    } catch (err: any) {
+      setAiError(err?.message ?? 'AI search failed. Please try again.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const viewAiResults = () => {
+    if (!aiResult) return;
+    navigation.navigate('Search' as any, { aiFilters: aiResult.filters, aiExplanation: aiResult.explanation, _t: Date.now() });
+    setAiResult(null);
+    setAiQuery('');
+  };
 
   const goToAuction = (auction: AuctionDetail) =>
     navigation.navigate('LiveAuctionDetailed', { listing: auctionToListingParam(auction) });
@@ -384,19 +419,51 @@ export const HomeScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Search bar */}
-        <TouchableOpacity
-          style={s.searchBar}
-          onPress={() => navigation.navigate('Search' as any)}
-          activeOpacity={0.85}
-        >
+        {/* Search bar — was a TouchableOpacity with no query state at all
+            (tapping anywhere just navigated to Search); now a real input
+            that runs AI search inline, matching web's HomeClient.tsx. */}
+        <View style={s.searchBar}>
           <Ionicons name="search-outline" size={18} color={Colors.iconMuted} />
-          <Text style={s.searchHint}>Search make, model, budget...</Text>
-          <View style={s.aiChip}>
-            <Ionicons name="sparkles" size={10} color={Colors.white} />
-            <Text style={s.aiChipText}>AI</Text>
+          <TextInput
+            style={s.searchInput}
+            value={aiQuery}
+            onChangeText={(t) => { setAiQuery(t); if (aiResult) setAiResult(null); if (aiError) setAiError(null); }}
+            placeholder="Search make, model, budget..."
+            placeholderTextColor={Colors.iconMuted}
+            returnKeyType="search"
+            onSubmitEditing={handleAiSearch}
+          />
+          <TouchableOpacity style={s.aiChip} onPress={handleAiSearch} disabled={aiLoading} activeOpacity={0.8}>
+            {aiLoading
+              ? <ActivityIndicator size="small" color={Colors.white} />
+              : <>
+                  <Ionicons name="sparkles" size={10} color={Colors.white} />
+                  <Text style={s.aiChipText}>AI</Text>
+                </>}
+          </TouchableOpacity>
+        </View>
+
+        {aiError && (
+          <View style={s.aiResultCard}>
+            <Text style={s.aiResultError}>{aiError}</Text>
           </View>
-        </TouchableOpacity>
+        )}
+
+        {aiResult && (
+          <View style={s.aiResultCard}>
+            <View style={s.aiResultHeader}>
+              <Ionicons name="sparkles" size={13} color={Colors.warning} />
+              <Text style={s.aiResultLabel}>MAZIUM AI</Text>
+            </View>
+            <Text style={s.aiResultText}>{aiResult.explanation}</Text>
+            {Object.keys(aiResult.filters ?? {}).length > 0 && (
+              <TouchableOpacity style={s.aiResultBtn} onPress={viewAiResults} activeOpacity={0.85}>
+                <Text style={s.aiResultBtnText}>VIEW MATCHING CARS</Text>
+                <Ionicons name="arrow-forward" size={14} color={Colors.white} />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
 
         {/* Quick category chips */}
         <ScrollView
@@ -584,6 +651,26 @@ export const HomeScreen: React.FC = () => {
           </View>
         </TouchableOpacity>
 
+        {/* Apply as a Dealer CTA — web's home page (HomeClient.tsx) has a
+            full "Are You a Car Dealer?" section linking to dealer signup;
+            mobile had no equivalent entry point anywhere on the home screen. */}
+        {role !== 'dealer' && (
+          <TouchableOpacity
+            style={s.dealerCta}
+            onPress={() => navigation.navigate('DealerOnboarding' as any)}
+            activeOpacity={0.85}
+          >
+            <View style={s.dealerCtaIconWrap}>
+              <Ionicons name="business-outline" size={20} color={Colors.infoBlueLight} />
+            </View>
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Text style={s.dealerCtaTitle}>Are you a car dealer?</Text>
+              <Text style={s.dealerCtaHint}>Apply for a dealer account to list your full stock</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
+          </TouchableOpacity>
+        )}
+
         <View style={{ height: 110 }} />
       </ScrollView>
     </View>
@@ -618,10 +705,31 @@ const s = StyleSheet.create({
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.accent },
 
   // Search
-  searchBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 24, marginBottom: 20, paddingHorizontal: 16, height: 52, borderRadius: 14, backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.borderSubtle, gap: 10 },
-  searchHint: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.size14, color: Colors.midBlue_505060 },
-  aiChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.accent, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
+  searchBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 24, marginBottom: 12, paddingHorizontal: 16, height: 52, borderRadius: 14, backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.borderSubtle, gap: 10 },
+  searchInput: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.size14, color: Colors.white },
+  aiChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.accent, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, minWidth: 40, justifyContent: 'center' },
   aiChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.white },
+
+  // Inline AI search result
+  aiResultCard: {
+    marginHorizontal: 24,
+    marginBottom: 10,
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: Colors.warningAlpha08,
+    borderWidth: 1,
+    borderColor: Colors.warningAlpha20,
+    gap: 10,
+  },
+  aiResultHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  aiResultLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.warning, letterSpacing: 1 },
+  aiResultText: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 20 },
+  aiResultError: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.error },
+  aiResultBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    height: 42, borderRadius: 10, backgroundColor: Colors.accent,
+  },
+  aiResultBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, letterSpacing: 0.5 },
 
   // Quick chips
   quickChipsRow: { paddingHorizontal: 24, paddingBottom: 4, gap: 8, marginBottom: 36 },
@@ -688,4 +796,9 @@ const s = StyleSheet.create({
   sellCtaHint: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.iconMuted },
   sellCtaBtn: { backgroundColor: Colors.accent, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
   sellCtaBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white, letterSpacing: 0.8 },
+
+  dealerCta: { marginHorizontal: 24, marginBottom: 8, backgroundColor: Colors.bgSecondary, borderRadius: 18, borderWidth: 1, borderColor: Colors.infoBlueAlpha20, padding: 18, flexDirection: 'row', alignItems: 'center', gap: 14 },
+  dealerCtaIconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: Colors.infoBlueAlpha12, alignItems: 'center', justifyContent: 'center' },
+  dealerCtaTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, marginBottom: 2 },
+  dealerCtaHint: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted },
 });

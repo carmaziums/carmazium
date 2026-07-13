@@ -207,6 +207,27 @@ export const SearchScreen: React.FC = () => {
     const p = route.params as any;
     if (!p?._t) return;
     let hasNew = false;
+    // AI filters from HomeScreen's inline search ("View matching cars") —
+    // same mapping this screen's own AI Search modal already applies.
+    if (p.aiFilters) {
+      const f = p.aiFilters;
+      if (f.make) { setSelectedMakes([f.make]); hasNew = true; }
+      if (f.fuelType) { setSelectedFuels([f.fuelType]); hasNew = true; }
+      if (f.bodyType) { setSelectedBody(f.bodyType); hasNew = true; }
+      if (f.maxPrice) { setMaxPrice(parseInt(f.maxPrice)); hasNew = true; }
+      if (f.minPrice) { setMinPrice(parseInt(f.minPrice)); hasNew = true; }
+      if (f.minYear) { setMinYear(f.minYear); hasNew = true; }
+      if (f.maxYear) { setMaxYear(f.maxYear); hasNew = true; }
+      if (f.transmission) { setTransmissions([f.transmission]); hasNew = true; }
+      if (f.listingType) { setListingType(f.listingType as any); hasNew = true; }
+      if (f.sellerType) { setSellerType(f.sellerType as any); hasNew = true; }
+      if (f.vehicleType) { setVehicleType(f.vehicleType as any); hasNew = true; }
+      if (f.location) { setLocationFilter(f.location); hasNew = true; }
+      if (f.model) { setModelFilter(f.model); hasNew = true; }
+      if (f.ulezCompliant === 'true') { setUlezCompliant(true); hasNew = true; }
+      if (f.deliveryAvailable === 'true') { setDeliveryAvailable(true); hasNew = true; }
+      if (p.aiExplanation) setAiExplanation(p.aiExplanation);
+    }
     if (p.fuelType !== undefined) { setSelectedFuels([p.fuelType]); hasNew = true; }
     if (p.bodyType !== undefined) { setSelectedBody(p.bodyType); hasNew = true; }
     if (p.maxPrice != null) { setMaxPrice(Number(p.maxPrice)); hasNew = true; }
