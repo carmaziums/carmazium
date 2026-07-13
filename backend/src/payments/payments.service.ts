@@ -273,9 +273,10 @@ export class PaymentsService {
         listingId: string,
         userId: string,
         clientAmount: number,
-        type: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' | 'LISTING_FEE' = 'FULL_PAYMENT',
+        type: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' | 'LISTING_FEE' | 'HPI_REPORT' = 'FULL_PAYMENT',
         currency = 'gbp',
         badgeTier?: 'BASIC' | 'STANDARD' | 'PREMIUM',
+        vrm?: string,
     ) {
         const listing = await this.prisma.listing.findUnique({
             where: { id: listingId },
@@ -305,6 +306,12 @@ export class PaymentsService {
                 break;
             case 'COMMISSION':
                 amount = this.AUCTION_BUYER_FEE;
+                break;
+            case 'HPI_REPORT':
+                if (!vrm) {
+                    throw new BadRequestException('vrm is required for a HPI_REPORT payment.');
+                }
+                amount = this.HPI_REPORT_PRICE;
                 break;
             case 'DEPOSIT':
             default:
@@ -346,6 +353,7 @@ export class PaymentsService {
             FULL_PAYMENT: `Full payment for ${listing.title}`,
             COMMISSION: `Auction buyer fee — ${listing.title}`,
             LISTING_FEE: `${badgeTier ?? ''} Listing Fee — ${listing.title}`.trim(),
+            HPI_REPORT: `Comprehensive HPI Report for ${vrm}`,
         };
 
         // Create a pending transaction record first (we'll store the PI id after)
@@ -374,6 +382,9 @@ export class PaymentsService {
                 // Only present for LISTING_FEE — the payment_intent.succeeded webhook
                 // handler needs this to know which tier to activate the listing at.
                 ...(badgeTier ? { badgeTier } : {}),
+                // Only present for HPI_REPORT — the webhook needs this to know
+                // which VRM to run the check against.
+                ...(vrm ? { vrm } : {}),
             },
         });
 
@@ -552,7 +563,7 @@ export class PaymentsService {
             // ── Payment Sheet (native SDK) ──────────────────────────
             case 'payment_intent.succeeded': {
                 const pi = event.data.object;
-                const { transactionId, listingId, type, badgeTier } = pi.metadata ?? {};
+                const { transactionId, listingId, type, badgeTier, vrm } = pi.metadata ?? {};
 
                 if (transactionId) {
                     await this.prisma.transaction.update({
@@ -615,6 +626,12 @@ export class PaymentsService {
                             },
                         });
                     }
+                }
+
+                if (type === 'HPI_REPORT' && listingId) {
+                    this.hpiService.generateAndSaveReport(listingId, vrm, transactionId).catch(err => {
+                        console.error('Failed to generate HPI report after Payment Sheet payment:', err);
+                    });
                 }
                 break;
             }

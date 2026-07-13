@@ -44,8 +44,8 @@ export class CreatePaymentSheetDto {
     @ApiPropertyOptional({ description: 'Payment type', default: 'FULL_PAYMENT' })
     @IsOptional()
     @IsString()
-    @IsIn(['DEPOSIT', 'FULL_PAYMENT', 'COMMISSION', 'LISTING_FEE'])
-    type?: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' | 'LISTING_FEE';
+    @IsIn(['DEPOSIT', 'FULL_PAYMENT', 'COMMISSION', 'LISTING_FEE', 'HPI_REPORT'])
+    type?: 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' | 'LISTING_FEE' | 'HPI_REPORT';
 
     @ApiPropertyOptional({ description: 'ISO 4217 currency code', default: 'gbp' })
     @IsOptional()
@@ -59,4 +59,11 @@ export class CreatePaymentSheetDto {
     @ValidateIf((o) => o.type === 'LISTING_FEE')
     @IsIn(['BASIC', 'STANDARD', 'PREMIUM'])
     badgeTier?: 'BASIC' | 'STANDARD' | 'PREMIUM';
+
+    @ApiPropertyOptional({
+        description: 'Vehicle registration mark — required when type is HPI_REPORT so the webhook knows which VRM to run the check against',
+    })
+    @ValidateIf((o) => o.type === 'HPI_REPORT')
+    @IsString()
+    vrm?: string;
 }

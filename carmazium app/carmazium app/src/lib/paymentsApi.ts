@@ -15,6 +15,8 @@ export interface PaymentSheetParams {
   currency?: string;
   /** Required when type is 'LISTING_FEE' — tells the backend webhook which tier to activate the listing at. */
   badgeTier?: 'BASIC' | 'STANDARD' | 'PREMIUM';
+  /** Required when type is 'HPI_REPORT' — tells the backend webhook which VRM to run the check against. */
+  vrm?: string;
 }
 
 export interface PaymentSheetResult {

@@ -516,6 +516,18 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [badgeTier, setBadgeTier] = useState<BadgeTier>('BASIC');
   const [listingType, setListingType] = useState<'CLASSIFIED' | 'AUCTION'>('CLASSIFIED');
 
+  // ── HPI Report unlock (Review step) — mirrors web's HpiPaymentModal ──
+  // A listing has to exist before an HPI check can be run against it. If the
+  // user hasn't published yet, unlocking HPI creates a DRAFT listing early
+  // (same as web does) and remembers its id here — kept separate from
+  // editListingId/editMode so it doesn't retrigger the heavy edit-prefill
+  // effect. handlePublish below treats this draft the same way it treats an
+  // existing edit target: PATCH it rather than creating a second listing.
+  const [hpiDraftListingId, setHpiDraftListingId] = useState<string | null>(null);
+  const [hpiUnlocking, setHpiUnlocking] = useState(false);
+  const [hpiUnlocked, setHpiUnlocked] = useState(false);
+  const [hpiSummary, setHpiSummary] = useState<{ isClear?: boolean } | null>(null);
+
   // ── Step 4 — Auction Schedule (only when listingType=AUCTION) ──
   const [auctionStartMode, setAuctionStartMode] = useState<'NOW' | 'SCHEDULED'>('NOW');
   const [auctionStartDate, setAuctionStartDate] = useState('');
@@ -999,6 +1011,109 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     return true;
   }
 
+  // ─── HPI Report Payment ────────────────────────────────────────────────────────
+
+  async function triggerHpiPayment(listingId: string, reportVrm: string): Promise<boolean> {
+    const sheet = await createPaymentSheet({ listingId, amount: 9.99, type: 'HPI_REPORT', currency: 'gbp', vrm: reportVrm });
+    const { error: initError } = await initPaymentSheet({
+      merchantDisplayName: 'Carmazium',
+      customerId: sheet.customerId,
+      customerEphemeralKeySecret: sheet.ephemeralKey,
+      paymentIntentClientSecret: sheet.clientSecret,
+      allowsDelayedPaymentMethods: false,
+      appearance: {
+        colors: {
+          primary: Colors.accent,
+          background: Colors.bgSecondaryAlt,
+          componentBackground: Colors.deepBlue_18181f,
+          componentBorder: Colors.whiteAlpha08,
+          componentDivider: Colors.whiteAlpha06,
+          primaryText: Colors.white,
+          secondaryText: Colors.textSecondary,
+          componentText: Colors.white,
+          placeholderText: Colors.iconMuted,
+          icon: Colors.textSecondary,
+          error: Colors.accent,
+        },
+      },
+    });
+    if (initError) throw new Error(initError.message);
+
+    const { error: presentError } = await presentPaymentSheet();
+    if (presentError) {
+      if (presentError.code !== 'Canceled') throw new Error(presentError.message);
+      return false; // user cancelled
+    }
+    return true;
+  }
+
+  async function handleUnlockHpi() {
+    if (!vrm.trim()) {
+      Alert.alert('Registration required', 'Enter the vehicle\'s registration (VRM) above first.');
+      return;
+    }
+    setHpiUnlocking(true);
+    try {
+      let listingId = editListingId ?? hpiDraftListingId;
+      if (!listingId) {
+        const draft = await apiClient<{ success: boolean; data: { id: string } }>('/listings', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: title.trim() || `${make} ${model} ${year}`.trim() || vrm,
+            price: parseFloat(priceAsking) || 1,
+            mileage: parseInt(mileage) || 0,
+            year: parseInt(year) || new Date().getFullYear(),
+            vrm,
+            images: exteriorImages,
+            listingType,
+            make: make || undefined,
+            model: model || undefined,
+            status: 'DRAFT',
+            badgeTier,
+            vehicleType,
+          }),
+        });
+        listingId = draft?.data?.id ?? null;
+        if (!listingId) throw new Error('Could not save a draft listing to run the check against.');
+        setHpiDraftListingId(listingId);
+      }
+
+      const paid = await triggerHpiPayment(listingId, vrm);
+      if (!paid) return; // user cancelled — not an error
+
+      // Report generation happens async off the Stripe webhook — poll briefly
+      // for it rather than assuming it's ready the instant the sheet closes.
+      // (React state isn't readable synchronously after setHpiUnlocked below,
+      // hence the local flag rather than checking hpiUnlocked post-loop.)
+      let found = false;
+      for (let attempt = 0; attempt < 6; attempt++) {
+        await new Promise(r => setTimeout(r, 2000));
+        try {
+          const res = await apiClient<{ success: boolean; data: { isClear?: boolean } }>(
+            `/hpi/listing/${listingId}/summary`,
+          );
+          if (res?.success && res.data) {
+            setHpiSummary(res.data);
+            setHpiUnlocked(true);
+            found = true;
+            break;
+          }
+        } catch {
+          // not ready yet — keep polling
+        }
+      }
+      if (!found) {
+        // Payment succeeded even if the report isn't back yet — don't block
+        // the seller, just show it as pending rather than failed.
+        Alert.alert('Payment received', 'Your HPI check is being generated and will appear shortly.');
+      }
+    } catch (err: any) {
+      Alert.alert('HPI Check failed', err?.message ?? 'Please try again.');
+    } finally {
+      setHpiUnlocking(false);
+    }
+  }
+
   // ─── Publish ─────────────────────────────────────────────────────────────────
 
   async function handlePublish() {
@@ -1116,8 +1231,18 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           [{ text: 'Done', onPress: () => navigation?.navigate('SellerListings') }],
         );
       } else {
-        const res = await apiClient<{ success: boolean; data: { id: string } }>('/listings', { method: 'POST', body: JSON.stringify(payload) });
-        const newListingId = res?.data?.id;
+        // If an HPI check already created a draft for this listing, finish
+        // that same record (PATCH) instead of POSTing a duplicate — the rest
+        // of this branch (auction scheduling / listing-fee payment /
+        // publish) is unchanged either way.
+        let newListingId: string | null | undefined;
+        if (hpiDraftListingId) {
+          await apiClient(`/listings/${hpiDraftListingId}`, { method: 'PATCH', body: JSON.stringify(payload) });
+          newListingId = hpiDraftListingId;
+        } else {
+          const res = await apiClient<{ success: boolean; data: { id: string } }>('/listings', { method: 'POST', body: JSON.stringify(payload) });
+          newListingId = res?.data?.id;
+        }
 
         const damageSaved = newListingId ? await saveDamageRecords(newListingId) : true;
 
@@ -2395,19 +2520,44 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           )}
         </SectionBox>
 
-        {/* HPI Check Callout */}
-        <View style={s.hpiCallout}>
-          <View style={s.hpiCalloutIcon}>
-            <Ionicons name="shield-checkmark-outline" size={22} color={Colors.infoBlue} />
+        {/* HPI Check Callout — was a static, non-pressable promo card; now
+            actually triggers the £9.99 Payment Sheet and shows the unlocked
+            badge, matching web's HpiPaymentModal flow. */}
+        {hpiUnlocked ? (
+          <View style={s.hpiCallout}>
+            <View style={s.hpiCalloutIcon}>
+              <Ionicons name="shield-checkmark" size={22} color={Colors.accentGreen} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.hpiCalloutTitle}>HPI Check Verified</Text>
+              <Text style={s.hpiCalloutSub}>
+                {hpiSummary?.isClear === false
+                  ? 'This vehicle has records on file — full report available to buyers.'
+                  : 'No adverse history found — a Verified badge will show on your listing.'}
+              </Text>
+            </View>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={s.hpiCalloutTitle}>Add HPI Vehicle Check</Text>
-            <Text style={s.hpiCalloutSub}>Verified HPI badge increases buyer trust and helps cars sell 2× faster</Text>
-          </View>
-          <View style={s.hpiCalloutBadge}>
-            <Text style={s.hpiCalloutPrice}>£9.99</Text>
-          </View>
-        </View>
+        ) : (
+          <TouchableOpacity
+            style={s.hpiCallout}
+            activeOpacity={0.8}
+            onPress={handleUnlockHpi}
+            disabled={hpiUnlocking}
+          >
+            <View style={s.hpiCalloutIcon}>
+              {hpiUnlocking
+                ? <ActivityIndicator size="small" color={Colors.infoBlue} />
+                : <Ionicons name="shield-checkmark-outline" size={22} color={Colors.infoBlue} />}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.hpiCalloutTitle}>Add HPI Vehicle Check</Text>
+              <Text style={s.hpiCalloutSub}>Verified HPI badge increases buyer trust and helps cars sell 2× faster</Text>
+            </View>
+            <View style={s.hpiCalloutBadge}>
+              <Text style={s.hpiCalloutPrice}>{hpiUnlocking ? '...' : '£9.99'}</Text>
+            </View>
+          </TouchableOpacity>
+        )}
 
       </ScrollView>
     );
