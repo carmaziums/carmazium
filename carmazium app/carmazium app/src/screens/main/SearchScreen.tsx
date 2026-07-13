@@ -169,6 +169,7 @@ export const SearchScreen: React.FC = () => {
   const [maxDistanceMi, setMaxDistanceMi] = useState<number | null>(null);
   const [postcodeInput, setPostcodeInput] = useState('');
   const [postcodeSaving, setPostcodeSaving] = useState(false);
+  const [distancePickerVisible, setDistancePickerVisible] = useState(false);
   // AI search state
   const [aiModalVisible, setAiModalVisible] = useState(false);
   const [aiQuery, setAiQuery] = useState('');
@@ -1084,18 +1085,14 @@ export const SearchScreen: React.FC = () => {
                       <Text style={s.postcodeChangeLink}>Change</Text>
                     </TouchableOpacity>
                   </View>
-                  <View style={[s.chipGrid, { marginTop: 10 }]}>
-                    {DISTANCE_CHIPS.map(mi => (
-                      <TouchableOpacity
-                        key={mi}
-                        style={[s.filterChip, maxDistanceMi === mi && s.filterChipActive]}
-                        onPress={() => setMaxDistanceMi(prev => prev === mi ? null : mi)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[s.filterChipText, maxDistanceMi === mi && s.filterChipTextActive]}>{mi} mi</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                  <TouchableOpacity
+                    style={[s.inputBox, { marginTop: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+                    onPress={() => setDistancePickerVisible(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={s.inputBoxValue}>{maxDistanceMi != null ? `${maxDistanceMi} mi` : 'Any distance'}</Text>
+                    <Ionicons name="chevron-down" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
+                  </TouchableOpacity>
                 </>
               ) : (
                 <Text style={s.toggleHint}>Add your postcode to filter by distance.</Text>
@@ -1223,6 +1220,32 @@ export const SearchScreen: React.FC = () => {
             onPress={() => { setFilterOpen(false); setQuickFilter('custom'); }}
             hasChamfer
           />
+        </View>
+      </BottomSheet>
+
+      {/* ── Distance picker — was a row of 5 individual chips ("10 mi", "25 mi",
+          ...) reading like a number line; a single dropdown trigger + sheet is
+          more compact and matches how this app already presents single-choice
+          pickers (BottomSheet, same as the sort menu). ── */}
+      <BottomSheet visible={distancePickerVisible} onClose={() => setDistancePickerVisible(false)} title="Distance">
+        <View style={{ padding: 8 }}>
+          <TouchableOpacity
+            style={[s.sortOption, maxDistanceMi == null && s.sortOptionActive]}
+            onPress={() => { setMaxDistanceMi(null); setDistancePickerVisible(false); }}
+          >
+            <Text style={[s.sortOptionText, maxDistanceMi == null && { color: Colors.accent }]}>Any distance</Text>
+            {maxDistanceMi == null && <Ionicons name="checkmark" size={14} color={Colors.accent} />}
+          </TouchableOpacity>
+          {DISTANCE_CHIPS.map(mi => (
+            <TouchableOpacity
+              key={mi}
+              style={[s.sortOption, maxDistanceMi === mi && s.sortOptionActive]}
+              onPress={() => { setMaxDistanceMi(mi); setDistancePickerVisible(false); }}
+            >
+              <Text style={[s.sortOptionText, maxDistanceMi === mi && { color: Colors.accent }]}>{mi} mi</Text>
+              {maxDistanceMi === mi && <Ionicons name="checkmark" size={14} color={Colors.accent} />}
+            </TouchableOpacity>
+          ))}
         </View>
       </BottomSheet>
     </View>
