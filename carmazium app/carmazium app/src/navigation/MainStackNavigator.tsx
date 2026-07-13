@@ -43,6 +43,7 @@ import { SellerPerformanceScreen } from '../screens/seller/SellerPerformanceScre
 import { PaymentHistoryScreen } from '../screens/account/PaymentHistoryScreen';
 import { SellerListingsScreen } from '../screens/seller/SellerListingsScreen';
 import { SellerAuctionsScreen } from '../screens/seller/SellerAuctionsScreen';
+import { AcceptInviteScreen } from '../screens/main/AcceptInviteScreen';
 import { CarListing } from '../data/listings';
 import { Colors } from '../constants/colors';
 
@@ -109,6 +110,7 @@ export type MainStackParamList = {
   SellerProfile: { sellerId: string };
   SellerPerformance: undefined;
   PaymentHistory: undefined;
+  AcceptInvite: undefined;
 };
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
@@ -256,6 +258,7 @@ export const MainStackNavigator: React.FC = () => {
       <Stack.Screen name="SellerProfile" component={SellerProfileScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="SellerPerformance" component={SellerPerformanceScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="PaymentHistory" component={PaymentHistoryScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="AcceptInvite" component={AcceptInviteScreen} options={{ animation: 'slide_from_bottom' }} />
     </Stack.Navigator>
   );
 };

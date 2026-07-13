@@ -309,7 +309,13 @@ export class EmailService {
                     Accept Invitation →
                 </a>
             </div>
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; text-align: center; margin-top: 20px;">
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; margin-top: 20px;">
+                <p style="margin: 0 0 6px; font-size: 12px; color: #64748b; line-height: 1.5;">
+                    Using the CarMazium app? Open <strong style="color: #94a3b8;">Settings → Have a dealer team invite?</strong> and paste this code:
+                </p>
+                <p style="margin: 0; font-size: 13px; color: #ffffff; font-family: monospace; word-break: break-all;">${inviteToken}</p>
+            </div>
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; text-align: center; margin-top: 12px;">
                 <p style="margin: 0; font-size: 12px; color: #475569; line-height: 1.5;">
                     If you weren't expecting this invitation, you can safely ignore this email.
                 </p>

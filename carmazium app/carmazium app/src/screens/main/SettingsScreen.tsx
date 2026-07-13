@@ -642,6 +642,24 @@ export const SettingsScreen: React.FC = () => {
           </>
         )}
 
+        {/* ── Dealer team invite entry point (non-dealers only) ── */}
+        {/* Web's invite email links to a plain https:// page mobile can't
+            intercept (no Universal/App Links configured) — this gives
+            invited users a reachable way in: paste the link/code here. */}
+        {role !== 'dealer' && (
+          <TouchableOpacity
+            style={styles.inviteRow}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('AcceptInvite')}
+          >
+            <View style={styles.inviteIconWrap}>
+              <Ionicons name="mail-open-outline" size={16} color={Colors.accent} />
+            </View>
+            <Text style={styles.inviteRowText}>Have a dealer team invite? Accept it here</Text>
+            <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} />
+          </TouchableOpacity>
+        )}
+
         {/* ── 3. TRADER VERIFICATION ── */}
         <SectionHeader icon={isAddressVerified ? 'shield-checkmark-outline' : 'shield-outline'} label="TRADER VERIFICATION" />
         <View style={styles.card}>
@@ -929,6 +947,18 @@ const styles = StyleSheet.create({
   title: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, gap: 8 },
+
+  // Dealer invite entry point
+  inviteRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: Colors.bgSecondary, borderRadius: 14, borderWidth: 1, borderColor: Colors.whiteAlpha07,
+    padding: 14, marginTop: 16,
+  },
+  inviteIconWrap: {
+    width: 28, height: 28, borderRadius: 9,
+    backgroundColor: Colors.accentAlpha10, alignItems: 'center', justifyContent: 'center',
+  },
+  inviteRowText: { flex: 1, fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.white },
 
   // Section header
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16, marginBottom: 10 },
