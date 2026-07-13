@@ -64,8 +64,11 @@ const mapApiListing = (l: any): Listing => ({
   rawPrice: l.price ? Number(l.price) : 0,
   daysListed: l.createdAt ? Math.floor((Date.now() - new Date(l.createdAt).getTime()) / 86400000) : 0,
   views: l.viewCount ?? 0,
-  leads: 0,
-  offers: 0,
+  // Were hardcoded 0 — GET /listings/my now includes a real _count on
+  // offers/leads (backend previously only used the offers relation for
+  // sort order without ever selecting it).
+  leads: l._count?.leads ?? 0,
+  offers: l._count?.offers ?? 0,
   status: (l.status === 'ACTIVE' ? 'LIVE' : l.status === 'DRAFT' ? 'PENDING' : 'SOLD') as StatusTag,
   images: l.images || [],
   offersStatus: '',

@@ -1282,6 +1282,12 @@ export class ListingsService {
                 include: {
                     hpiReport: true,
                     linkedListing: { select: { id: true, status: true, badgeTier: true } },
+                    // Dealer inventory (mobile's DealerInventoryScreen, web's
+                    // inventory table) needs real per-listing lead/offer
+                    // counts — this endpoint previously only used the offers
+                    // relation for sort order (below) without ever selecting
+                    // it, so consumers always got 0.
+                    _count: { select: { offers: true, leads: true } },
                 },
             }),
             this.prisma.listing.count({ where }),
