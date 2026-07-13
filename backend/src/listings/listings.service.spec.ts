@@ -1,7 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { ListingsService } from './listings.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SellersService } from '../sellers/sellers.service';
+import { ScraperService } from '../scraper/scraper.service';
 
 /**
  * Listings service guarantees:
@@ -36,12 +38,16 @@ describe('ListingsService', () => {
             $transaction: jest.fn(async (cb: any) => cb(prisma)),
         };
         sellers = { incrementListings: jest.fn(), incrementSales: jest.fn() };
+        const config = { get: jest.fn() };
+        const scraper = {};
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ListingsService,
                 { provide: PrismaService, useValue: prisma },
                 { provide: SellersService, useValue: sellers },
+                { provide: ConfigService, useValue: config },
+                { provide: ScraperService, useValue: scraper },
             ],
         }).compile();
 
