@@ -402,7 +402,8 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
   const handleBoostSuccess = useCallback(async () => {
     setBoostCheckoutUrl(null);
     haptics.success();
-    setBoostToast('Boosted for 7 days');
+    // Was "7 days" — backend's BOOST_DURATION_DAYS is actually 28.
+    setBoostToast('Boosted for 28 days');
     setTimeout(() => setBoostToast(null), 3000);
     // Refresh the listings so the isFeatured pill reflects the new state
     // once the Stripe webhook has fired.

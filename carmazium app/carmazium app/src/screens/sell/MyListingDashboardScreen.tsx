@@ -128,7 +128,8 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
   const handleBoostSuccess = async () => {
     setBoostCheckoutUrl(null);
     haptics.success();
-    setToast('Boosted for 7 days');
+    // Was "7 days" — backend's BOOST_DURATION_DAYS is actually 28.
+    setToast('Boosted for 28 days');
     // Refetch the primary listing so the isFeatured flag/UI updates on this
     // screen once the Stripe webhook has flipped the boost status.
     try {

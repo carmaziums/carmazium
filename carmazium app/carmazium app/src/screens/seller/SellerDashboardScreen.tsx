@@ -22,6 +22,7 @@ import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { CarListing } from '../../data/listings';
+import { PRICING } from '../../constants/pricing';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
@@ -145,7 +146,9 @@ const QUICK_ACTIONS = [
     tone: Colors.warning,
     toneBg: Colors.warningAlpha12,
     label: 'Boost listing',
-    sub: 'More views for £9.99',
+    // Was hardcoded £9.99 — that's the HPI Check price, not Featured Boost
+    // (£25/28 days, src/constants/pricing.ts / web's pricingConfig.ts).
+    sub: `More views for £${PRICING.featuredBoost.price}`,
   },
   {
     key: 'share',
