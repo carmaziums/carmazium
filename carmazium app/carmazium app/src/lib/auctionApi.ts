@@ -93,6 +93,8 @@ export interface AuctionDetail {
     firstName: string;
     lastName: string;
   } | null;
+  customTags?: string[] | null;
+  sellerSelfRating?: number | null;
 }
 
 export interface BidBroadcastPayload {

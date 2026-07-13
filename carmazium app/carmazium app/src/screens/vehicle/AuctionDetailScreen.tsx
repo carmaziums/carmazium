@@ -1037,6 +1037,40 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               ))}
             </View>
 
+            {/* Digest — seller-authored custom tags + self-rating on their
+                own auction listing (PATCH /auctions/:id/digest). Placed
+                right after the hero stats and before the description,
+                matching web's live auction page. */}
+            {((auction?.customTags && auction.customTags.length > 0) || auction?.sellerSelfRating != null) && (
+              <View style={{ gap: 8 }}>
+                {auction?.customTags && auction.customTags.length > 0 && (
+                  <View style={s.digestTagRow}>
+                    {auction.customTags.map(tag => (
+                      <View key={tag} style={s.digestTagPill}>
+                        <Text style={s.digestTagPillText} numberOfLines={1}>{tag}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+                {auction?.sellerSelfRating != null && (
+                  <View style={s.digestRatingRow}>
+                    <Text style={s.digestRatingLabel}>Seller's own rating:</Text>
+                    <View style={{ flexDirection: 'row' }}>
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <Ionicons
+                          key={n}
+                          name={n <= auction.sellerSelfRating! ? 'star' : 'star-outline'}
+                          size={14}
+                          color={Colors.warning}
+                          style={{ marginRight: 2 }}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </View>
+            )}
+
             {/* Description */}
             {(auction?.listing?.description ?? listing.description) ? (
               <View style={s.card}>
@@ -1619,6 +1653,13 @@ const s = StyleSheet.create({
   statBox: { flex: 1, backgroundColor: Colors.bgSecondaryAlt, borderRadius: 12, borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 10, alignItems: 'center' },
   statLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size8, color: Colors.iconMuted, letterSpacing: 1, marginBottom: 4 },
   statValue: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white, textAlign: 'center' },
+
+  // Digest — seller custom tags + self-rating
+  digestTagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  digestTagPill: { backgroundColor: Colors.accentAlpha10, borderWidth: 1, borderColor: Colors.accentAlpha25, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5, maxWidth: 200 },
+  digestTagPillText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.accent },
+  digestRatingRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  digestRatingLabel: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textSecondary },
 
   // Specs
   specsSection: {},

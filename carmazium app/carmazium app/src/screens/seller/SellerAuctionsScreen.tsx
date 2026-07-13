@@ -61,6 +61,8 @@ interface AuctionItem {
   // Already returned by GET /auctions/my/list (confirmed in auctions.service.ts's
   // findMyAuctions) — just not read by this screen before.
   winner?: { id: string; firstName?: string | null; lastName?: string | null } | null;
+  customTags?: string[] | null;
+  sellerSelfRating?: number | null;
   listing: {
     id: string;
     title?: string | null;
@@ -145,6 +147,17 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
   // Close Bids (early-close an ACTIVE auction)
   const [closingId, setClosingId] = useState<string | null>(null);
+
+  // Digest modal — seller-authored custom tags + self-rating on their own
+  // auction (PATCH /auctions/:id/digest, live on the backend). Editable any
+  // time before the auction ends, so reachable from both the ACTIVE and
+  // SCHEDULED "Manage Auction" action sheets.
+  const [digestAuction, setDigestAuction] = useState<AuctionItem | null>(null);
+  const [digestTags, setDigestTags] = useState<string[]>([]);
+  const [digestTagInput, setDigestTagInput] = useState('');
+  const [digestRating, setDigestRating] = useState<number | null>(null);
+  const [digestSaving, setDigestSaving] = useState(false);
+  const [digestError, setDigestError] = useState<string | null>(null);
 
   // Auction Results modal (ENDED auctions)
   const [resultsAuction, setResultsAuction] = useState<AuctionItem | null>(null);
@@ -289,6 +302,14 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
   }
 
   // ── Auction overflow menu (SCHEDULED + ACTIVE) ──
+  function openDigestModal(item: AuctionItem) {
+    setDigestTags(item.customTags ?? []);
+    setDigestTagInput('');
+    setDigestRating(item.sellerSelfRating ?? null);
+    setDigestError(null);
+    setDigestAuction(item);
+  }
+
   function handleAuctionMenu(item: AuctionItem) {
     if (item.status === 'ACTIVE') {
       Alert.alert(
@@ -303,6 +324,10 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               setRetailError(null);
               setAlsoRetailAuction(item);
             },
+          },
+          {
+            text: 'Set Digest',
+            onPress: () => openDigestModal(item),
           },
           {
             text: 'Close Bids',
@@ -331,6 +356,10 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           onPress: () => openEditForm(item),
         },
         {
+          text: 'Set Digest',
+          onPress: () => openDigestModal(item),
+        },
+        {
           text: 'Cancel Auction',
           style: 'destructive',
           onPress: () => confirmCancelAuction(item),
@@ -338,6 +367,39 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         { text: 'Dismiss', style: 'cancel' },
       ],
     );
+  }
+
+  // ── Digest handler ──
+  async function handleDigestSubmit() {
+    if (!digestAuction) return;
+    setDigestSaving(true);
+    setDigestError(null);
+    try {
+      const res = await apiClient<{ success: boolean; data: { customTags: string[]; sellerSelfRating: number | null } }>(
+        `/auctions/${digestAuction.id}/digest`,
+        { method: 'PATCH', body: JSON.stringify({ customTags: digestTags, sellerSelfRating: digestRating }) },
+      );
+      haptics.success();
+      setAuctions(prev =>
+        prev.map(a =>
+          a.id === digestAuction.id
+            ? { ...a, customTags: res?.data?.customTags ?? digestTags, sellerSelfRating: res?.data?.sellerSelfRating ?? digestRating }
+            : a,
+        ),
+      );
+      setDigestAuction(null);
+    } catch (err: any) {
+      setDigestError(err?.message ?? 'Could not save digest. Please try again.');
+    } finally {
+      setDigestSaving(false);
+    }
+  }
+
+  function addDigestTag() {
+    const tag = digestTagInput.trim();
+    if (!tag || digestTags.length >= 10 || digestTags.includes(tag)) { setDigestTagInput(''); return; }
+    setDigestTags(prev => [...prev, tag]);
+    setDigestTagInput('');
   }
 
   // ── Also List for Sale handler ──
@@ -1017,6 +1079,90 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         >
           {retailSubmitting ? <ActivityIndicator color={Colors.white} size="small" /> : (
             <Text style={styles.retailSubmitText}>Create Listing</Text>
+          )}
+        </TouchableOpacity>
+      </BottomSheet>
+
+      {/* ── Digest Modal — custom tags + self-rating on your own auction
+          listing, shown to buyers on the live auction screen (PATCH
+          /auctions/:id/digest). ── */}
+      <BottomSheet
+        visible={digestAuction !== null}
+        onClose={() => setDigestAuction(null)}
+        title="Auction Digest"
+        avoidKeyboard
+      >
+        {digestAuction && (
+          <Text style={styles.retailModalSub} numberOfLines={1}>
+            {digestAuction.listing.title || [digestAuction.listing.year, digestAuction.listing.make, digestAuction.listing.model].filter(Boolean).join(' ')}
+          </Text>
+        )}
+
+        <Text style={[styles.retailFieldLabel, { marginTop: 18 }]}>CUSTOM TAGS ({digestTags.length}/10)</Text>
+        <Text style={styles.fieldHintSmall}>Batch labels buyers see on your listing, e.g. "Track Day Ready", "One Owner".</Text>
+        <View style={styles.digestTagRow}>
+          <TextInput
+            style={[styles.retailInput, { flex: 1 }]}
+            value={digestTagInput}
+            onChangeText={setDigestTagInput}
+            onSubmitEditing={addDigestTag}
+            placeholder="Add a tag..."
+            placeholderTextColor={Colors.textMuted}
+            maxLength={30}
+            editable={digestTags.length < 10}
+            returnKeyType="done"
+          />
+          <TouchableOpacity
+            style={[styles.digestAddTagBtn, digestTags.length >= 10 && { opacity: 0.4 }]}
+            onPress={addDigestTag}
+            disabled={digestTags.length >= 10}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="add" size={18} color={Colors.white} />
+          </TouchableOpacity>
+        </View>
+        {digestTags.length > 0 && (
+          <View style={styles.digestTagChipRow}>
+            {digestTags.map(tag => (
+              <View key={tag} style={styles.digestTagChip}>
+                <Text style={styles.digestTagChipText} numberOfLines={1}>{tag}</Text>
+                <TouchableOpacity onPress={() => setDigestTags(prev => prev.filter(t => t !== tag))} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                  <Ionicons name="close" size={12} color={Colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
+
+        <Text style={[styles.retailFieldLabel, { marginTop: 18 }]}>SELF RATING</Text>
+        <View style={styles.digestStarRow}>
+          {[1, 2, 3, 4, 5].map(n => (
+            <TouchableOpacity key={n} onPress={() => setDigestRating(prev => prev === n ? null : n)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+              <Ionicons
+                name={digestRating != null && n <= digestRating ? 'star' : 'star-outline'}
+                size={28}
+                color={digestRating != null && n <= digestRating ? Colors.warning : Colors.textMuted}
+                style={{ marginRight: 6 }}
+              />
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {digestError && (
+          <View style={styles.retailErrorBox}>
+            <Ionicons name="alert-circle-outline" size={12} color={Colors.error} />
+            <Text style={styles.retailErrorText}>{digestError}</Text>
+          </View>
+        )}
+
+        <TouchableOpacity
+          style={[styles.retailSubmitBtn, { marginTop: 18 }, digestSaving && { opacity: 0.6 }]}
+          onPress={handleDigestSubmit}
+          disabled={digestSaving}
+          activeOpacity={0.85}
+        >
+          {digestSaving ? <ActivityIndicator color={Colors.white} size="small" /> : (
+            <Text style={styles.retailSubmitText}>Save Digest</Text>
           )}
         </TouchableOpacity>
       </BottomSheet>
@@ -1825,6 +1971,15 @@ const styles = StyleSheet.create({
   retailErrorText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.error, flex: 1, lineHeight: 17 },
   retailSubmitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 50, borderRadius: 12, backgroundColor: Colors.infoBlue, marginTop: 16, marginBottom: 4 },
   retailSubmitText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white, letterSpacing: 0.3 },
+
+  // ── Digest modal ──
+  fieldHintSmall: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted, marginBottom: 8, lineHeight: 15 },
+  digestTagRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  digestAddTagBtn: { width: 46, height: 46, borderRadius: 10, backgroundColor: Colors.infoBlue, alignItems: 'center', justifyContent: 'center' },
+  digestTagChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
+  digestTagChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: Colors.whiteAlpha10, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 6, maxWidth: 180 },
+  digestTagChipText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.textPrimary },
+  digestStarRow: { flexDirection: 'row', alignItems: 'center' },
 
   // ── Create Auction Modal (shell now provided by shared <BottomSheet>) ──
   modalContainer: {
