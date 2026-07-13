@@ -21,6 +21,7 @@ import {
 import { AuctionsService } from './auctions.service';
 import { CreateAuctionDto } from './dto/create-auction.dto';
 import { UpdateAuctionDto } from './dto/update-auction.dto';
+import { UpdateAuctionDigestDto } from './dto/update-auction-digest.dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse } from '../listings/dto/response.dto';
@@ -99,6 +100,21 @@ export class AuctionsController {
         @CurrentUser() user: any,
     ) {
         const auction = await this.auctionsService.update(id, updateAuctionDto, user.id);
+        return new StandardResponse(auction);
+    }
+
+    @Patch(':id/digest')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Set custom tags/batch labels and a self-rating on your own auction listing' })
+    @ApiResponse({ status: 400, description: 'Cannot edit the digest of an ended or cancelled auction' })
+    @ApiResponse({ status: 403, description: 'You do not own this auction' })
+    async updateDigest(
+        @Param('id') id: string,
+        @Body() dto: UpdateAuctionDigestDto,
+        @CurrentUser() user: any,
+    ) {
+        const auction = await this.auctionsService.updateDigest(id, dto, user.id);
         return new StandardResponse(auction);
     }
 

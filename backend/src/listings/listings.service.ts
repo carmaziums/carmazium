@@ -269,6 +269,7 @@ export class ListingsService {
                 // Phase 13: departed/estate sale
                 isDepartedSale: createListingDto.isDepartedSale ?? false,
                 departedRelationship: createListingDto.departedRelationship ?? null,
+                notOwnerRelationship: createListingDto.notOwnerRelationship ?? null,
                 // Phase 15: delivery options
                 deliveryAvailable: createListingDto.deliveryAvailable ?? false,
                 deliveryPricePerMile: createListingDto.deliveryPricePerMile ?? null,
@@ -732,6 +733,7 @@ export class ListingsService {
         // Phase 13: departed/estate sale
         if (updateListingDto.isDepartedSale !== undefined) updateData.isDepartedSale = updateListingDto.isDepartedSale;
         if (updateListingDto.departedRelationship !== undefined) updateData.departedRelationship = updateListingDto.departedRelationship ?? null;
+        if (updateListingDto.notOwnerRelationship !== undefined) updateData.notOwnerRelationship = updateListingDto.notOwnerRelationship ?? null;
         // Phase 15: delivery options
         if (updateListingDto.deliveryAvailable !== undefined) updateData.deliveryAvailable = updateListingDto.deliveryAvailable;
         if (updateListingDto.deliveryPricePerMile !== undefined) updateData.deliveryPricePerMile = updateListingDto.deliveryPricePerMile ?? null;

@@ -1109,7 +1109,6 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                         {listing.motExpiryDate && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">MOT Expiry:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.motExpiryDate}</span></div>}
                                         {listing.taxStatus && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Tax Status:</span><span className={`font-semibold text-sm ${listing.taxStatus === 'Taxed' ? 'text-emerald-400' : 'text-amber-400'}`}>{listing.taxStatus}</span></div>}
                                         {listing.taxDueDate && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Tax Due:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.taxDueDate}</span></div>}
-                                        {listing.markedForExport !== null && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Exported:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.markedForExport ? "Yes" : "No"}</span></div>}
                                     </div>
                                 </div>
                             </div>
@@ -1268,17 +1267,6 @@ export default function VehicleDetailsPage({ params }: { params: Promise<{ id: s
                                     <CheckCircle size={16} className="text-emerald-400 shrink-0" />
                                     <span className="text-sm text-emerald-300 font-medium">Not Written Off</span>
                                 </div>
-                                {listing.markedForExport ? (
-                                    <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 px-3 py-2 rounded-lg">
-                                        <AlertTriangle size={16} className="text-amber-400 shrink-0" />
-                                        <span className="text-sm text-amber-300 font-medium">Exported</span>
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-lg">
-                                        <CheckCircle size={16} className="text-emerald-400 shrink-0" />
-                                        <span className="text-sm text-emerald-300 font-medium">UK Supplied</span>
-                                    </div>
-                                )}
                             </div>
 
                             {/* Blurred Report Section */}

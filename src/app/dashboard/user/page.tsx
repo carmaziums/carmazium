@@ -753,7 +753,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                         Publish
                                                     </button>
                                                 )}
-                                                {listing.status === 'ACTIVE' && !listing.isFeatured && listing.viewCount > 20 && (
+                                                {listing.status === 'ACTIVE' && !listing.isFeatured && (
                                                     <Button
                                                         size="sm"
                                                         className="h-8 px-3 text-xs bg-gradient-to-r from-amber-400 to-orange-500 text-black font-black"

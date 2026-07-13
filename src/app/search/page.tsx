@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/Input"
 import { CarCard } from "@/components/features/CarCard"
 import {
     Search, Filter, X, Gavel, AlertTriangle, Loader2,
-    RotateCcw, ChevronDown, ShieldCheck, Star, ArrowRight, MapPin, Truck,
+    RotateCcw, ChevronDown, ShieldCheck, Star, ArrowRight, MapPin, Truck, EyeOff,
 } from "lucide-react"
 import { getListings, getFeaturedListings, formatPrice, type Listing, type ListingFilters, type VehicleConditionValue, type EuroStandardValue } from "@/lib/listingApi"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
@@ -122,8 +122,7 @@ interface FilterState {
     features: string[]
     maxDistanceMi: number | null
     deliveryAvailable: boolean
-    isImported: boolean
-    markedForExport: boolean
+    isImported: 'yes' | 'no' | ''
 }
 
 const INITIAL_FILTERS: FilterState = {
@@ -143,8 +142,7 @@ const INITIAL_FILTERS: FilterState = {
     features: [],
     maxDistanceMi: null,
     deliveryAvailable: false,
-    isImported: false,
-    markedForExport: false,
+    isImported: '',
 }
 
 // ─── Collapsible Section ──────────────────────────────────────────────────────
@@ -273,8 +271,7 @@ function SearchPageContent() {
             features: searchParams.get('features')?.split(',').filter(Boolean) || [],
             maxDistanceMi: searchParams.get('maxDistanceMi') ? Number(searchParams.get('maxDistanceMi')) : null,
             deliveryAvailable: p('deliveryAvailable') === 'true',
-            isImported: p('isImported') === 'true',
-            markedForExport: p('markedForExport') === 'true',
+            isImported: (p('isImported') as 'yes' | 'no') || '',
         }
     }, [searchParams])
 
@@ -362,7 +359,6 @@ function SearchPageContent() {
         if (appliedFilters.maxDistanceMi) count++
         if (appliedFilters.deliveryAvailable) count++
         if (appliedFilters.isImported) count++
-        if (appliedFilters.markedForExport) count++
         return count
     }, [appliedFilters])
 
@@ -401,8 +397,8 @@ function SearchPageContent() {
         if (state.sortBy && state.sortBy !== 'newest') f.sortBy = state.sortBy
         if (state.features?.length) f.features = state.features
         if (state.deliveryAvailable) f.deliveryAvailable = true
-        if (state.isImported) f.isImported = true
-        if (state.markedForExport) f.markedForExport = true
+        if (state.isImported === 'yes') f.isImported = true
+        else if (state.isImported === 'no') f.isImported = false
         return f
     }, [])
 
@@ -956,21 +952,17 @@ function SearchPageContent() {
                                             </div>
                                         </div>
                                     )}
-                                    <div className="flex flex-wrap gap-2">
+                                    <select
+                                        value={filters.maxDistanceMi ?? ''}
+                                        onChange={(e) => set('maxDistanceMi', e.target.value === '' ? null : Number(e.target.value))}
+                                        disabled={!userLocation?.lat}
+                                        className="w-full bg-[var(--bg-card)] border border-[var(--border-default)] rounded-lg px-3 py-2 text-xs text-[var(--text-primary)] disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:border-primary/50"
+                                    >
+                                        <option value="">Any distance</option>
                                         {DISTANCE_CHIPS.map(d => (
-                                            <button
-                                                key={d}
-                                                onClick={() => set('maxDistanceMi', filters.maxDistanceMi === d ? null : d)}
-                                                disabled={!userLocation?.lat}
-                                                className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors disabled:opacity-40 disabled:cursor-not-allowed
-                                                    ${filters.maxDistanceMi === d
-                                                        ? 'bg-primary/20 border-primary/40 text-primary'
-                                                        : 'bg-[var(--bg-card)] border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'}`}
-                                            >
-                                                {d} mi
-                                            </button>
+                                            <option key={d} value={d}>Within {d} mi</option>
                                         ))}
-                                    </div>
+                                    </select>
                                     {userLocation?.lat && userLocation.source === 'postcode' && userLocation.postcode && (
                                         <p className="text-[10px] text-[var(--text-secondary)]">Using: {userLocation.postcode}</p>
                                     )}
@@ -1025,14 +1017,14 @@ function SearchPageContent() {
                                 </button>
                             </FilterSection>
 
-                            {/* Import / Export status */}
-                            <FilterSection title="Import / Export">
+                            {/* Import status */}
+                            <FilterSection title="Import">
                                 <div className="flex flex-col gap-2">
                                     <button
                                         type="button"
-                                        onClick={() => set('isImported', !filters.isImported)}
+                                        onClick={() => set('isImported', filters.isImported === 'yes' ? '' : 'yes')}
                                         className={`flex items-center gap-2 w-full py-1.5 px-2.5 rounded-md border text-xs font-semibold transition-all ${
-                                            filters.isImported
+                                            filters.isImported === 'yes'
                                                 ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300'
                                                 : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'
                                         }`}
@@ -1041,14 +1033,15 @@ function SearchPageContent() {
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => set('markedForExport', !filters.markedForExport)}
+                                        onClick={() => set('isImported', filters.isImported === 'no' ? '' : 'no')}
                                         className={`flex items-center gap-2 w-full py-1.5 px-2.5 rounded-md border text-xs font-semibold transition-all ${
-                                            filters.markedForExport
-                                                ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300'
-                                                : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'
+                                            filters.isImported === 'no'
+                                                ? 'border-primary/60 text-primary bg-transparent'
+                                                : 'border-dashed border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30 bg-transparent'
                                         }`}
                                     >
-                                        Marked for export
+                                        <EyeOff size={12} />
+                                        Hide imported cars
                                     </button>
                                 </div>
                             </FilterSection>
@@ -1135,10 +1128,10 @@ function SearchPageContent() {
                                 <FilterTag label="Delivery available" onRemove={() => clearFilter({ deliveryAvailable: false })} />
                             )}
                             {appliedFilters.isImported && (
-                                <FilterTag label="Imported" onRemove={() => clearFilter({ isImported: false })} />
-                            )}
-                            {appliedFilters.markedForExport && (
-                                <FilterTag label="Marked for export" onRemove={() => clearFilter({ markedForExport: false })} />
+                                <FilterTag
+                                    label={appliedFilters.isImported === 'yes' ? 'Imported' : 'Imported hidden'}
+                                    onRemove={() => clearFilter({ isImported: '' })}
+                                />
                             )}
                         </div>
                     )}

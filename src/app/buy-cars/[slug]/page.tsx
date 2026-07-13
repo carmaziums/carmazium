@@ -989,7 +989,6 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                                         {listing.motExpiryDate && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">MOT Expiry:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.motExpiryDate}</span></div>}
                                         {listing.taxStatus && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Tax Status:</span><span className={`font-semibold text-sm ${listing.taxStatus === 'Taxed' ? 'text-emerald-400' : 'text-amber-400'}`}>{listing.taxStatus}</span></div>}
                                         {listing.taxDueDate && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Tax Due:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.taxDueDate}</span></div>}
-                                        {listing.markedForExport !== null && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Exported:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.markedForExport ? "Yes" : "No"}</span></div>}
                                     </div>
                                 </div>
                             </div>

@@ -96,17 +96,16 @@ export class BidsController {
     }
 
     /**
-     * Cancel a bid within the 2-minute fat-finger window.
-     * Only the bid owner can cancel, and only while they are the current high bidder
-     * and the auction is ACTIVE.
+     * Cancel a bid within the 24-hour cancellation window.
+     * Only the bid owner can cancel, and only while the auction is ACTIVE.
      */
     @Patch(':id/cancel')
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Cancel a bid within the 2-minute fat-finger window' })
+    @ApiOperation({ summary: 'Cancel a bid within the 24-hour cancellation window' })
     @ApiResponse({ status: 200, description: 'Bid cancelled successfully' })
-    @ApiResponse({ status: 400, description: 'Cancel window expired, not high bidder, or auction not active' })
+    @ApiResponse({ status: 400, description: 'Cancel window expired, bid already cancelled, or auction not active' })
     @ApiResponse({ status: 401, description: 'Unauthorized' })
     @ApiResponse({ status: 403, description: 'Not your bid' })
     async cancelBid(@Param('id') id: string, @CurrentUser() user: any) {

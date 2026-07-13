@@ -186,7 +186,7 @@ describe('BidsService — cancelBid', () => {
         ).rejects.toBeInstanceOf(ForbiddenException);
     });
 
-    it('throws BadRequestException when the 2-minute cancel window has expired', async () => {
+    it('throws BadRequestException when the 24-hour cancel window has expired', async () => {
         const mockBid = {
             id: 'bid-1',
             bidderId: 'owner-user',
@@ -194,7 +194,7 @@ describe('BidsService — cancelBid', () => {
             amount: 7000,
             cancelledAt: null,
             deletedAt: null,
-            createdAt: new Date(Date.now() - 3 * 60 * 1000), // 3 minutes ago
+            createdAt: new Date(Date.now() - 25 * 60 * 60 * 1000), // 25 hours ago
         };
         prisma.bid.findUnique.mockResolvedValue(mockBid);
 
@@ -203,7 +203,7 @@ describe('BidsService — cancelBid', () => {
         ).rejects.toBeInstanceOf(BadRequestException);
     });
 
-    it('throws BadRequestException when caller is no longer the current high bidder', async () => {
+    it('succeeds even when the caller is no longer the current high bidder', async () => {
         const mockBid = {
             id: 'bid-1',
             bidderId: 'owner-user',
@@ -220,17 +220,16 @@ describe('BidsService — cancelBid', () => {
             id: 'listing-1',
             auction: { id: 'auction-1', status: 'ACTIVE' },
         });
-
-        // Top bid is a different bid (higher amount from another bidder)
-        prisma.bid.findFirst.mockResolvedValue({
-            id: 'bid-99',
-            bidderId: 'other-user',
-            amount: 8000,
-        });
+        prisma.bid.update.mockResolvedValue({ ...mockBid, cancelledAt: new Date() });
 
         await expect(
             (service as any).cancelBid('bid-1', 'owner-user'),
-        ).rejects.toBeInstanceOf(BadRequestException);
+        ).resolves.toBeUndefined();
+
+        expect(prisma.bid.update).toHaveBeenCalledWith({
+            where: { id: 'bid-1' },
+            data: { cancelledAt: expect.any(Date) },
+        });
     });
 
     it('throws BadRequestException when auction status is not ACTIVE', async () => {

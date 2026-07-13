@@ -71,6 +71,7 @@ export interface CreateListingRequest {
     videoUrls?: string[]
     isDepartedSale?: boolean
     departedRelationship?: string
+    notOwnerRelationship?: string
     deliveryAvailable?: boolean
     deliveryPricePerMile?: number | null
     deliveryMaxMiles?: number | null
@@ -192,6 +193,7 @@ export interface Listing {
     bannerLabel: string | null
     isDepartedSale?: boolean | null
     departedRelationship?: string | null
+    notOwnerRelationship?: string | null
     // Delivery fields (Phase 15)
     deliveryAvailable?: boolean | null
     deliveryPricePerMile?: number | string | null

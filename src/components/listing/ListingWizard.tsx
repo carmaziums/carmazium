@@ -76,6 +76,7 @@ interface FormData {
     stolenRecovered: boolean | null
     hasOutstandingFinance: boolean | null
     isLegalRegisteredKeeper: boolean | null
+    notOwnerRelationship: string
     declarationAcknowledged: boolean
     // UK Compliance
     ulezCompliant: boolean | null
@@ -145,6 +146,14 @@ const RELATIONSHIP_OPTIONS = [
     { value: 'Other',            label: 'Other' },
 ] as const
 
+const NOT_OWNER_RELATIONSHIP_OPTIONS = [
+    { value: 'Family member',                    label: 'Family member' },
+    { value: 'Friend',                            label: 'Friend' },
+    { value: 'Employer',                          label: 'Employer' },
+    { value: "Selling with owner's permission",   label: "Selling with owner's permission" },
+    { value: 'Other',                             label: 'Other' },
+] as const
+
 const INITIAL_FORM: FormData = {
     vehicleType: "CAR", vrm: "", vin: "", make: "", model: "", year: "", bodyType: "", location: "",
     mileage: "", fuelType: "", transmission: "", color: "",
@@ -154,7 +163,7 @@ const INITIAL_FORM: FormData = {
     deliveryAvailable: false, deliveryPricePerMile: '', deliveryMaxMiles: '',
     variant: "", driveType: "", numberOfKeys: "",
     torqueNm: "", topSpeedMph: "", zeroTo60Mph: "", combinedMpg: "", extraUrbanMpg: "",
-    writeOffCategory: "", stolenRecovered: null, hasOutstandingFinance: null, isLegalRegisteredKeeper: null, declarationAcknowledged: false,
+    writeOffCategory: "", stolenRecovered: null, hasOutstandingFinance: null, isLegalRegisteredKeeper: null, notOwnerRelationship: "", declarationAcknowledged: false,
     ulezCompliant: null, euroStandard: "", co2Emissions: "",
     motStatus: "", taxStatus: "", motExpiryDate: "", taxDueDate: "",
     markedForExport: null, monthOfFirstRegistration: "",
@@ -313,6 +322,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const [departedRelSelect, setDepartedRelSelect] = React.useState<string>('')
     const [departedRelOther, setDepartedRelOther] = React.useState<string>('')
 
+    // Not the legal registered keeper — ephemeral UI state for dropdown + freetext
+    const [notOwnerRelSelect, setNotOwnerRelSelect] = React.useState<string>('')
+    const [notOwnerRelOther, setNotOwnerRelOther] = React.useState<string>('')
+
     // Pre-fill form when editing an existing listing
     React.useEffect(() => {
         if (!editId) return
@@ -452,8 +465,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
     const isAuction = formData.listingType === 'AUCTION'
     const totalSteps = isAuction ? 5 : 4
+    // "Method" is a cosmetic-only leading step representing the Retail/Auction choice
+    // already made on the landing screen — it doesn't participate in currentStep/
+    // validateStep numbering, it just makes that choice visually register as Step 1
+    // in the progress indicator.
     const WIZARD_STEPS = isAuction
         ? [
+            { id: 0, icon: List, title: "Method" },
             { id: 1, icon: Car, title: "Details" },
             { id: 2, icon: Camera, title: "Media" },
             { id: 3, icon: DollarSign, title: "Pricing" },
@@ -461,6 +479,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             { id: 5, icon: CheckCircle, title: "Review" },
         ]
         : [
+            { id: 0, icon: List, title: "Method" },
             { id: 1, icon: Car, title: "Details" },
             { id: 2, icon: Camera, title: "Media" },
             { id: 3, icon: DollarSign, title: "Pricing" },
@@ -509,13 +528,32 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         set('departedRelationship', v)
     }
 
+    // ─── Not legal registered keeper handlers ───────────────────────────────────
+
+    const handleNotOwnerRelSelectChange = (v: string) => {
+        setNotOwnerRelSelect(v)
+        if (v !== 'Other') {
+            set('notOwnerRelationship', v)
+            setNotOwnerRelOther('')
+        } else {
+            set('notOwnerRelationship', '') // 'Other' sentinel — wait for freetext
+        }
+    }
+
+    const handleNotOwnerRelOtherChange = (v: string) => {
+        setNotOwnerRelOther(v)
+        set('notOwnerRelationship', v)
+    }
+
     // ─── Navigation ─────────────────────────────────────────────────────────────
 
     const validateStep = (): boolean => {
         switch (currentStep) {
             case 1: {
                 const baseValid = !!(formData.vrm && formData.make && formData.model && formData.year && formData.mileage && formData.fuelType && formData.transmission && formData.title && formData.title.length >= 5 && formData.location && formData.owners)
-                const declarationsValid = formData.writeOffCategory !== '' && formData.stolenRecovered !== null && formData.hasOutstandingFinance !== null && formData.isLegalRegisteredKeeper === true && formData.declarationAcknowledged
+                const isKeeperOrExplained = formData.isLegalRegisteredKeeper === true
+                    || (formData.isLegalRegisteredKeeper === false && (formData.notOwnerRelationship ?? '').trim() !== '')
+                const declarationsValid = formData.writeOffCategory !== '' && formData.stolenRecovered !== null && formData.hasOutstandingFinance !== null && isKeeperOrExplained && formData.declarationAcknowledged
                 // Cat A/B are total-loss write-offs — only allowed for auction listings
                 if ((formData.writeOffCategory === 'CAT_A' || formData.writeOffCategory === 'CAT_B') && formData.listingType !== 'AUCTION') return false
                 // Departed sale relationship is required when isDepartedSale is checked
@@ -638,6 +676,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 stolenRecovered: formData.stolenRecovered ?? undefined,
                 hasOutstandingFinance: formData.hasOutstandingFinance ?? undefined,
                 isLegalRegisteredKeeper: formData.isLegalRegisteredKeeper ?? undefined,
+                notOwnerRelationship: formData.notOwnerRelationship || undefined,
                 writeOffCategory: (formData.writeOffCategory !== '' ? formData.writeOffCategory : 'NONE') as 'NONE' | 'CAT_S' | 'CAT_N' | 'CAT_A' | 'CAT_B',
                 // Extended vehicle details
                 variant: formData.variant || undefined,
@@ -968,8 +1007,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     {!isDashboard && <div className="fixed inset-0 -z-10" style={{ background: 'var(--bg-body)' }} />}
                     <div className="container mx-auto px-5 max-w-4xl">
                         <div className="text-center mb-14">
+                            <p className="text-xs font-black uppercase tracking-widest text-primary mb-3">Step 1 · Choose Your Listing Method</p>
                             <h1 className="text-4xl md:text-5xl font-black font-heading mb-4 tracking-tight uppercase">CURATE YOUR LISTING</h1>
-                            <p className="text-lg text-[var(--text-muted)] max-w-lg mx-auto">Present your vehicle to thousands of high-intent buyers seeking premium quality.</p>
+                            <p className="text-lg text-[var(--text-muted)] max-w-lg mx-auto">Present your vehicle to thousands of high-intent buyers seeking premium quality. Choose Retail or Auction below.</p>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
@@ -1087,7 +1127,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     <h1 className="text-3xl md:text-4xl font-heading font-bold">
                         {formData.listingType === "AUCTION" ? "List for Auction" : "List Your Car"}
                     </h1>
-                    <p className="text-[var(--text-muted)] mt-2">Step {currentStep} of {totalSteps}</p>
+                    <p className="text-[var(--text-muted)] mt-2">Step {currentStep + 1} of {totalSteps + 1}</p>
                 </div>
 
                 {/* Progress stepper */}
@@ -1101,7 +1141,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         </div>
                     ))}
                     <div className="absolute top-[36px] left-0 w-full h-0.5 bg-[var(--bg-card)] -z-0">
-                        <div className="h-full bg-primary transition-all duration-500 shadow-neon" style={{ width: `${(currentStep - 1) / (totalSteps - 1) * 100}%` }} />
+                        <div className="h-full bg-primary transition-all duration-500 shadow-neon" style={{ width: `${(currentStep / totalSteps) * 100}%` }} />
                     </div>
                 </div>
 
@@ -2154,9 +2194,31 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         ))}
                                     </div>
                                     {formData.isLegalRegisteredKeeper === false && (
-                                        <p className="text-xs text-red-400 flex items-center gap-1.5">
-                                            <AlertTriangle size={12} /> Only the legal registered keeper may list this vehicle.
-                                        </p>
+                                        <div className="mt-3 space-y-2">
+                                            <p className="text-xs text-amber-400 flex items-center gap-1.5">
+                                                <AlertTriangle size={12} /> You may still list this vehicle, but please tell us your relationship to the legal registered keeper.
+                                            </p>
+                                            <SelectField
+                                                label="Relationship to the registered keeper"
+                                                required
+                                                error={hasAttemptedNext && !formData.notOwnerRelationship}
+                                                value={notOwnerRelSelect}
+                                                onChange={handleNotOwnerRelSelectChange}
+                                                options={NOT_OWNER_RELATIONSHIP_OPTIONS as unknown as { value: string; label: string }[]}
+                                            />
+                                            {hasAttemptedNext && !formData.notOwnerRelationship && (
+                                                <p className="text-red-400 text-xs mt-1">Please select your relationship to the registered keeper.</p>
+                                            )}
+                                            {notOwnerRelSelect === 'Other' && (
+                                                <input
+                                                    type="text"
+                                                    placeholder="Please specify your relationship"
+                                                    value={notOwnerRelOther}
+                                                    onChange={(e) => handleNotOwnerRelOtherChange(e.target.value)}
+                                                    className="mt-2 w-full px-4 py-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-default)] text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-blue-500/50"
+                                                />
+                                            )}
+                                        </div>
                                     )}
                                 </div>
 
@@ -2168,24 +2230,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             <button key={label} type="button"
                                                 onClick={() => set("isImported", val)}
                                                 className={`flex-1 py-2.5 rounded-xl border text-sm font-semibold transition-all ${formData.isImported === val
-                                                    ? "border-primary bg-primary/10 text-primary"
-                                                    : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"
-                                                    }`}
-                                            >
-                                                {label}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Marked for export */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-[var(--text-secondary)]">Is this vehicle marked for export?</label>
-                                    <div className="flex gap-3">
-                                        {([{ label: 'Yes', val: true }, { label: 'No', val: false }] as const).map(({ label, val }) => (
-                                            <button key={label} type="button"
-                                                onClick={() => set("markedForExport", val)}
-                                                className={`flex-1 py-2.5 rounded-xl border text-sm font-semibold transition-all ${formData.markedForExport === val
                                                     ? "border-primary bg-primary/10 text-primary"
                                                     : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"
                                                     }`}
@@ -2209,7 +2253,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </span>
                                 </label>
 
-                                {hasAttemptedNext && (formData.writeOffCategory === '' || formData.stolenRecovered === null || formData.hasOutstandingFinance === null || formData.isLegalRegisteredKeeper === null || !formData.declarationAcknowledged) && (
+                                {hasAttemptedNext && (formData.writeOffCategory === '' || formData.stolenRecovered === null || formData.hasOutstandingFinance === null || formData.isLegalRegisteredKeeper === null || (formData.isLegalRegisteredKeeper === false && !(formData.notOwnerRelationship ?? '').trim()) || !formData.declarationAcknowledged) && (
                                     <p className="text-xs text-red-400 flex items-center gap-1.5">
                                         <AlertTriangle size={12} /> Please complete all declarations above before proceeding.
                                     </p>
@@ -2355,95 +2399,107 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                             {/* ── Badge Plan Cards ───────────────────────────────── */}
                             <div className="pt-2">
-                                <h3 className="text-sm font-bold uppercase text-[var(--text-muted)] mb-3 flex items-center gap-2">
-                                    <Shield size={16} className="text-primary" /> Seller Badges
-                                </h3>
-                                <p className="text-xs text-[var(--text-muted)] mb-4">Boost buyer confidence with trust badges on your listing. Badges increase buyer engagement and sell rates.</p>
-
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                                    {/* Auction */}
-                                    <button type="button"
-                                        onClick={() => { set('badgeTier', 'FREE'); set('listingType', 'AUCTION') }}
-                                        className={`relative rounded-xl border p-4 text-left transition-all ${formData.listingType === 'AUCTION'
-                                            ? 'border-orange-500 bg-orange-500/10 ring-1 ring-orange-500/50'
-                                            : 'border-[var(--border-default)] bg-white/[0.02] hover:border-primary/30'
-                                            }`}
+                                <div className="flex items-start justify-between gap-3 mb-3">
+                                    <h3 className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-2">
+                                        <Shield size={16} className="text-primary" /> {isAuction ? "Auction Listing" : "Seller Badges"}
+                                    </h3>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSellingMethod(null)}
+                                        className="text-xs font-bold text-primary hover:underline shrink-0"
                                     >
-                                        {formData.listingType === 'AUCTION' && <span className="absolute top-2 right-2 text-[10px] bg-orange-500 text-white font-bold px-2 py-0.5 rounded-full">Selected</span>}
-                                        <p className="text-orange-400 font-bold text-sm mb-1 flex items-center gap-1"><Gavel size={14} /> Auction</p>
-                                        <div className="mb-3">
-                                            <p className="text-2xl font-black">Free</p>
-                                            <p className="text-[10px] text-orange-400/70 font-semibold">£0 seller listing fee</p>
-                                        </div>
-                                        <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
-                                            <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Open bidding</li>
-                                            <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> 24-hour auction</li>
-                                            <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Anyone can bid</li>
-                                            <li className="flex items-center gap-1.5 text-[var(--text-secondary)]"><X size={12} /> No trust badges</li>
-                                        </ul>
-                                        <div className="flex items-start gap-1.5 mt-3 pt-3 border-t border-[var(--border-default)]">
-                                            <Lock size={10} className="text-amber-500/70 shrink-0 mt-0.5" />
-                                            <p className="text-[10px] text-amber-500/70 leading-tight">Only verified dealers can list for auction</p>
-                                        </div>
+                                        Change listing method
                                     </button>
+                                </div>
+                                <p className="text-xs text-[var(--text-muted)] mb-4">
+                                    {isAuction
+                                        ? "You chose to list this vehicle for auction."
+                                        : "Boost buyer confidence with trust badges on your listing. Badges increase buyer engagement and sell rates."}
+                                </p>
 
-                                    {/* Basic */}
-                                    <button type="button"
-                                        onClick={() => { set('badgeTier', 'BASIC'); set('listingType', 'CLASSIFIED') }}
-                                        className={`relative rounded-xl border p-4 text-left transition-all ${formData.badgeTier === 'BASIC'
-                                            ? 'border-primary bg-primary/10 ring-1 ring-primary/50'
-                                            : 'border-[var(--border-default)] bg-white/[0.02] hover:border-primary/30'
-                                            }`}
-                                    >
-                                        {formData.badgeTier === 'BASIC' && <span className="absolute top-2 right-2 text-[10px] bg-primary text-black font-bold px-2 py-0.5 rounded-full">Selected</span>}
-                                        <p className="text-[var(--text-primary)] font-bold text-sm mb-1">Basic</p>
-                                        <p className="text-2xl font-black text-[var(--text-primary)] mb-3">£1</p>
-                                        <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
-                                            <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Standard listing</li>
-                                            <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Offer range system</li>
-                                            <li className="flex items-center gap-1.5 text-[var(--text-secondary)]"><X size={12} /> No trust badges</li>
-                                            <li className="flex items-center gap-1.5 text-[var(--text-secondary)]"><X size={12} /> No featured boost</li>
-                                        </ul>
-                                    </button>
+                                <div className={`grid grid-cols-1 gap-3 ${isAuction ? 'md:grid-cols-1 max-w-sm' : 'md:grid-cols-3'}`}>
+                                    {isAuction ? (
+                                        /* Auction — listing type already chosen on the landing screen; this only confirms badgeTier */
+                                        <button type="button"
+                                            onClick={() => set('badgeTier', 'FREE')}
+                                            className="relative rounded-xl border p-4 text-left transition-all border-orange-500 bg-orange-500/10 ring-1 ring-orange-500/50"
+                                        >
+                                            <span className="absolute top-2 right-2 text-[10px] bg-orange-500 text-white font-bold px-2 py-0.5 rounded-full">Selected</span>
+                                            <p className="text-orange-400 font-bold text-sm mb-1 flex items-center gap-1"><Gavel size={14} /> Auction</p>
+                                            <div className="mb-3">
+                                                <p className="text-2xl font-black">Free</p>
+                                                <p className="text-[10px] text-orange-400/70 font-semibold">£0 seller listing fee</p>
+                                            </div>
+                                            <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
+                                                <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Open bidding</li>
+                                                <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> 24-hour auction</li>
+                                                <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Anyone can bid</li>
+                                                <li className="flex items-center gap-1.5 text-[var(--text-secondary)]"><X size={12} /> No trust badges</li>
+                                            </ul>
+                                            <div className="flex items-start gap-1.5 mt-3 pt-3 border-t border-[var(--border-default)]">
+                                                <Lock size={10} className="text-amber-500/70 shrink-0 mt-0.5" />
+                                                <p className="text-[10px] text-amber-500/70 leading-tight">Only verified dealers can list for auction</p>
+                                            </div>
+                                        </button>
+                                    ) : (
+                                        <>
+                                            {/* Basic */}
+                                            <button type="button"
+                                                onClick={() => set('badgeTier', 'BASIC')}
+                                                className={`relative rounded-xl border p-4 text-left transition-all ${formData.badgeTier === 'BASIC'
+                                                    ? 'border-primary bg-primary/10 ring-1 ring-primary/50'
+                                                    : 'border-[var(--border-default)] bg-white/[0.02] hover:border-primary/30'
+                                                    }`}
+                                            >
+                                                {formData.badgeTier === 'BASIC' && <span className="absolute top-2 right-2 text-[10px] bg-primary text-black font-bold px-2 py-0.5 rounded-full">Selected</span>}
+                                                <p className="text-[var(--text-primary)] font-bold text-sm mb-1">Basic</p>
+                                                <p className="text-2xl font-black text-[var(--text-primary)] mb-3">£1</p>
+                                                <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
+                                                    <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Standard listing</li>
+                                                    <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Offer range system</li>
+                                                    <li className="flex items-center gap-1.5 text-[var(--text-secondary)]"><X size={12} /> No trust badges</li>
+                                                </ul>
+                                            </button>
 
-                                    {/* Standard */}
-                                    <button type="button"
-                                        onClick={() => { set('badgeTier', 'STANDARD'); set('listingType', 'CLASSIFIED') }}
-                                        className={`relative rounded-xl border p-4 text-left transition-all ${formData.badgeTier === 'STANDARD'
-                                            ? 'border-blue-500 bg-blue-500/10 ring-1 ring-blue-500/50'
-                                            : 'border-[var(--border-default)] bg-white/[0.02] hover:border-primary/30'
-                                            }`}
-                                    >
-                                        {formData.badgeTier === 'STANDARD' && <span className="absolute top-2 right-2 text-[10px] bg-blue-500 text-white font-bold px-2 py-0.5 rounded-full">Selected</span>}
-                                        <p className="text-blue-400 font-bold text-sm mb-1 flex items-center gap-1"><Shield size={14} /> Standard</p>
-                                        <p className="text-2xl font-black text-[var(--text-primary)] mb-3">£10</p>
-                                        <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
-                                            <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Everything in Basic</li>
-                                            <li className="flex items-center gap-1.5"><BadgeCheck size={12} className="text-blue-400" /> VIN Report badge</li>
-                                            <li className="flex items-center gap-1.5"><BadgeCheck size={12} className="text-blue-400" /> Verified Seller badge</li>
-                                            <li className="flex items-center gap-1.5 text-[var(--text-secondary)]"><X size={12} /> No featured boost</li>
-                                        </ul>
-                                    </button>
+                                            {/* Standard */}
+                                            <button type="button"
+                                                onClick={() => set('badgeTier', 'STANDARD')}
+                                                className={`relative rounded-xl border p-4 text-left transition-all ${formData.badgeTier === 'STANDARD'
+                                                    ? 'border-blue-500 bg-blue-500/10 ring-1 ring-blue-500/50'
+                                                    : 'border-[var(--border-default)] bg-white/[0.02] hover:border-primary/30'
+                                                    }`}
+                                            >
+                                                {formData.badgeTier === 'STANDARD' && <span className="absolute top-2 right-2 text-[10px] bg-blue-500 text-white font-bold px-2 py-0.5 rounded-full">Selected</span>}
+                                                <p className="text-blue-400 font-bold text-sm mb-1 flex items-center gap-1"><Shield size={14} /> Standard</p>
+                                                <p className="text-2xl font-black text-[var(--text-primary)] mb-3">£10</p>
+                                                <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
+                                                    <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Everything in Basic</li>
+                                                    <li className="flex items-center gap-1.5"><BadgeCheck size={12} className="text-blue-400" /> VIN Report badge</li>
+                                                    <li className="flex items-center gap-1.5"><BadgeCheck size={12} className="text-blue-400" /> Verified Seller badge</li>
+                                                </ul>
+                                            </button>
 
-                                    {/* Premium */}
-                                    <button type="button"
-                                        onClick={() => { set('badgeTier', 'PREMIUM'); set('listingType', 'CLASSIFIED') }}
-                                        className={`relative rounded-xl border p-4 text-left transition-all ${formData.badgeTier === 'PREMIUM'
-                                            ? 'border-amber-500 bg-amber-500/10 ring-1 ring-amber-500/50'
-                                            : 'border-[var(--border-default)] bg-white/[0.02] hover:border-primary/30'
-                                            }`}
-                                    >
-                                        <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold px-3 py-0.5 rounded-full flex items-center gap-1"><Sparkles size={10} /> Best Value</span>
-                                        {formData.badgeTier === 'PREMIUM' && <span className="absolute top-2 right-2 text-[10px] bg-amber-500 text-black font-bold px-2 py-0.5 rounded-full">Selected</span>}
-                                        <p className="text-amber-400 font-bold text-sm mb-1 mt-1 flex items-center gap-1"><Star size={14} /> Premium</p>
-                                        <p className="text-2xl font-black text-[var(--text-primary)] mb-3">£25</p>
-                                        <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
-                                            <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Everything in Standard</li>
-                                            <li className="flex items-center gap-1.5"><Zap size={12} className="text-amber-400" /> Featured boost (28 days)</li>
-                                            <li className="flex items-center gap-1.5"><Zap size={12} className="text-amber-400" /> Priority in search results</li>
-                                            <li className="flex items-center gap-1.5"><Zap size={12} className="text-amber-400" /> Featured badge on listing</li>
-                                        </ul>
-                                    </button>
+                                            {/* Premium */}
+                                            <button type="button"
+                                                onClick={() => set('badgeTier', 'PREMIUM')}
+                                                className={`relative rounded-xl border p-4 text-left transition-all ${formData.badgeTier === 'PREMIUM'
+                                                    ? 'border-amber-500 bg-amber-500/10 ring-1 ring-amber-500/50'
+                                                    : 'border-[var(--border-default)] bg-white/[0.02] hover:border-primary/30'
+                                                    }`}
+                                            >
+                                                <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold px-3 py-0.5 rounded-full flex items-center gap-1"><Sparkles size={10} /> Best Value</span>
+                                                {formData.badgeTier === 'PREMIUM' && <span className="absolute top-2 right-2 text-[10px] bg-amber-500 text-black font-bold px-2 py-0.5 rounded-full">Selected</span>}
+                                                <p className="text-amber-400 font-bold text-sm mb-1 mt-1 flex items-center gap-1"><Star size={14} /> Premium</p>
+                                                <p className="text-2xl font-black text-[var(--text-primary)] mb-3">£25</p>
+                                                <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
+                                                    <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Everything in Standard</li>
+                                                    <li className="flex items-center gap-1.5"><Zap size={12} className="text-amber-400" /> Featured boost (28 days)</li>
+                                                    <li className="flex items-center gap-1.5"><Zap size={12} className="text-amber-400" /> Priority in search results</li>
+                                                    <li className="flex items-center gap-1.5"><Zap size={12} className="text-amber-400" /> Featured badge on listing</li>
+                                                </ul>
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
 
                             </div>
@@ -2767,7 +2823,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             {formData.primaryColour && <SummaryField label="Primary Colour" value={formData.primaryColour} />}
                                             {formData.wheelplan && <SummaryField label="Wheelplan" value={formData.wheelplan} />}
                                             {formData.typeApproval && <SummaryField label="Type Approval" value={formData.typeApproval} />}
-                                            {formData.markedForExport !== null && <SummaryField label="Export" value={formData.markedForExport ? "Yes" : "No"} />}
                                         </div>
                                     </div>
                                 )}

@@ -652,6 +652,7 @@ model Listing {
   owners                   String?   // Number of previous keepers: "1", "2", "3+"
   isDepartedSale           Boolean?
   departedRelationship     String?
+  notOwnerRelationship     String?   // Relationship to the vehicle's legal registered keeper, when the seller is not the keeper
   torqueNm                 Int?      // Torque in Nm
   topSpeedMph              Int?      // Top speed in mph
   zeroTo60Mph              Float?    // 0-60 mph time in seconds
@@ -754,6 +755,10 @@ model Auction {
   sellerBonusReleasedAt  DateTime?
   stripePayoutTransferId String?   // Set when Stripe transfer succeeds
   stripePayoutError      String?   // Set if Stripe transfer fails — needs manual action
+
+  // Digest — seller-authored custom tags/batch labels and self-rating for their own auction
+  customTags       String[] @default([])
+  sellerSelfRating Int?
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt

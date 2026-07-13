@@ -58,6 +58,17 @@ function triggerNotificationRefresh() {
     window.dispatchEvent(new CustomEvent("auction:refresh-notifications"))
 }
 
+const BID_CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000
+
+function formatCancelCountdown(ms: number): string {
+    if (ms <= 0) return "0m"
+    const totalMinutes = Math.ceil(ms / 60000)
+    const hours = Math.floor(totalMinutes / 60)
+    const minutes = totalMinutes % 60
+    if (hours > 0) return `${hours}h ${minutes}m`
+    return `${minutes}m`
+}
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function LiveAuctionPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
@@ -96,10 +107,12 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const [binPending, setBinPending] = React.useState(false)
     const [showBinModal, setShowBinModal] = React.useState(false)
     const [binLoading, setBinLoading] = React.useState(false)
-    // Cancel bid state
-    const [cancelableBidId, setCancelableBidId] = React.useState<string | null>(null)
-    const [cancelWindowMs, setCancelWindowMs] = React.useState(0)
-    const [cancelLoading, setCancelLoading] = React.useState(false)
+    // Cancel bid state — map of bidId -> expiresAt (epoch ms), since a 24h window
+    // means the user can have more than one of their own bids cancellable at once
+    const [cancelableBids, setCancelableBids] = React.useState<Map<string, number>>(new Map())
+    const [cancelNowTick, setCancelNowTick] = React.useState(() => Date.now())
+    const [cancellingBidId, setCancellingBidId] = React.useState<string | null>(null)
+    const [cancelError, setCancelError] = React.useState<string | null>(null)
 
     const feedRef = React.useRef<HTMLDivElement>(null)
     const socketRef = React.useRef<Socket | null>(null)
@@ -125,6 +138,17 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                 })))
                 setAntiSnipeActive(new Date(data.endTime).getTime() - Date.now() <= 3 * 60 * 1000)
                 setBinPending(!!data.buyItNowPendingBuyerId)
+                // Rehydrate cancel eligibility from real bid data (survives refresh/navigation)
+                if (user) {
+                    const now = Date.now()
+                    const ownCancelable = new Map<string, number>()
+                    for (const b of bids) {
+                        if (b.bidderId !== user.id) continue
+                        const expiresAt = new Date(b.createdAt).getTime() + BID_CANCEL_WINDOW_MS
+                        if (expiresAt > now) ownCancelable.set(b.id, expiresAt)
+                    }
+                    setCancelableBids(ownCancelable)
+                }
                 // If auction already ended, synthesize endedPayload from DB data so banner renders on page load
                 if (data.status === "ENDED") {
                     const winningBid = bids[0] ? Number(bids[0].amount) : null
@@ -187,12 +211,12 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             setBidError(null)
             // If user was winning and got outbid, refresh notification bell
             if (wasWinning) triggerNotificationRefresh()
-            // Track cancel window for own bids
+            // Track cancel window for own bids — being outbid does NOT remove
+            // cancel eligibility, since the 24h window no longer requires being
+            // the current highest bidder to cancel
             if (payload.bidderId === user?.id) {
-                setCancelableBidId(payload.bidId)
-            } else {
-                // Outbid: clear own cancel window
-                setCancelableBidId(null)
+                const expiresAt = new Date(payload.timestamp).getTime() + BID_CANCEL_WINDOW_MS
+                setCancelableBids(prev => new Map(prev).set(payload.bidId, expiresAt))
             }
             // Hide BIN if reserve is now met (clears pending BIN)
             setAuction(p => {
@@ -209,7 +233,12 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
 
         socket.on("bid:cancelled", ({ bidId }: { auctionId: string; bidId: string }) => {
             setBidHistory(prev => prev.filter(b => b.bidId !== bidId))
-            setCancelableBidId(prev => prev === bidId ? null : prev)
+            setCancelableBids(prev => {
+                if (!prev.has(bidId)) return prev
+                const next = new Map(prev)
+                next.delete(bidId)
+                return next
+            })
         })
 
         socket.on("auction:ended", (payload: AuctionEndPayload) => {
@@ -241,23 +270,23 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
         return () => clearTimeout(t)
     }, [endTime, auction?.status])
 
-    // ── Cancel countdown (120s window after own bid) ──────────────────────────
+    // ── Cancel countdown (24h window after own bid) ────────────────────────────
     React.useEffect(() => {
-        if (!cancelableBidId) return
-        const WINDOW = 2 * 60 * 1000 // 120s
-        setCancelWindowMs(WINDOW)
+        if (cancelableBids.size === 0) return
         const intervalId = setInterval(() => {
-            setCancelWindowMs(prev => {
-                if (prev <= 100) {
-                    clearInterval(intervalId)
-                    setCancelableBidId(null)
-                    return 0
+            const now = Date.now()
+            setCancelNowTick(now)
+            setCancelableBids(prev => {
+                let changed = false
+                const next = new Map(prev)
+                for (const [bidId, expiresAt] of prev) {
+                    if (expiresAt <= now) { next.delete(bidId); changed = true }
                 }
-                return prev - 100
+                return changed ? next : prev
             })
-        }, 100)
+        }, 1000)
         return () => clearInterval(intervalId)
-    }, [cancelableBidId])
+    }, [cancelableBids])
 
     // ── Auto-scroll bid feed ──────────────────────────────────────────────────
     React.useEffect(() => {
@@ -334,18 +363,22 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     }
 
     // ── Cancel Bid ────────────────────────────────────────────────────────────
-    async function handleCancelBid() {
-        if (!cancelableBidId) return
-        const bidToCancel = cancelableBidId
-        setCancelLoading(true)
+    async function handleCancelBid(bidId: string) {
+        setCancellingBidId(bidId)
+        setCancelError(null)
         try {
-            await cancelBid(bidToCancel)
-            setCancelableBidId(null)
-            setBidHistory(prev => prev.filter(b => b.bidId !== bidToCancel))
-        } catch {
-            // Cancel failed — leave state as-is so user can retry
+            await cancelBid(bidId)
+            setCancelableBids(prev => {
+                if (!prev.has(bidId)) return prev
+                const next = new Map(prev)
+                next.delete(bidId)
+                return next
+            })
+            setBidHistory(prev => prev.filter(b => b.bidId !== bidId))
+        } catch (err: any) {
+            setCancelError(err.message ?? "Failed to cancel bid. Please try again.")
         } finally {
-            setCancelLoading(false)
+            setCancellingBidId(null)
         }
     }
 
@@ -924,6 +957,23 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             ))}
                                         </div>
 
+                                        {/* ── Digest: seller's custom tags + self-rating ──── */}
+                                        {((auction.customTags && auction.customTags.length > 0) || auction.sellerSelfRating) && (
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                {auction.sellerSelfRating && (
+                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                                        {"★".repeat(auction.sellerSelfRating)}{"☆".repeat(5 - auction.sellerSelfRating)}
+                                                        <span className="ml-1 text-[10px] text-[var(--text-muted)]">Seller self-rating</span>
+                                                    </span>
+                                                )}
+                                                {auction.customTags?.map((tag, i) => (
+                                                    <span key={i} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                                                        {tag}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+
                                         {/* ── Description ─────────────────────────────────── */}
                                         {auction.listing.description && (
                                             <div>
@@ -1288,34 +1338,45 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             )}
                                         </motion.div>
                                         {/* Cancel countdown — only visible to the bid owner, not sellers */}
-                                        {bid.bidId === cancelableBidId && !isSeller && (
-                                            <div className="flex items-center gap-2 mt-1 ml-2">
-                                                <svg width="24" height="24" viewBox="0 0 24 24" className="-rotate-90">
-                                                    <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2" className="text-[var(--border-default)]" />
-                                                    <circle
-                                                        cx="12" cy="12" r="10"
-                                                        fill="none"
-                                                        stroke="currentColor"
-                                                        strokeWidth="2"
-                                                        strokeDasharray={`${2 * Math.PI * 10}`}
-                                                        strokeDashoffset={`${2 * Math.PI * 10 * (1 - cancelWindowMs / 120000)}`}
-                                                        className="text-primary"
-                                                        style={{ transition: 'none' }}
-                                                    />
-                                                </svg>
-                                                <button
-                                                    onClick={handleCancelBid}
-                                                    disabled={cancelLoading || cancelWindowMs <= 0}
-                                                    className="text-xs text-red-400 hover:text-red-300 disabled:opacity-40"
-                                                >
-                                                    {cancelLoading ? 'Cancelling…' : `Cancel bid (${Math.ceil(cancelWindowMs / 1000)}s)`}
-                                                </button>
-                                            </div>
-                                        )}
+                                        {bid.bidId && cancelableBids.has(bid.bidId) && !isSeller && (() => {
+                                            const expiresAt = cancelableBids.get(bid.bidId)!
+                                            const remainingMs = Math.max(0, expiresAt - cancelNowTick)
+                                            const isCancelling = cancellingBidId === bid.bidId
+                                            return (
+                                                <div className="flex items-center gap-2 mt-1 ml-2">
+                                                    <svg width="24" height="24" viewBox="0 0 24 24" className="-rotate-90">
+                                                        <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2" className="text-[var(--border-default)]" />
+                                                        <circle
+                                                            cx="12" cy="12" r="10"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            strokeWidth="2"
+                                                            strokeDasharray={`${2 * Math.PI * 10}`}
+                                                            strokeDashoffset={`${2 * Math.PI * 10 * (1 - remainingMs / BID_CANCEL_WINDOW_MS)}`}
+                                                            className="text-primary"
+                                                            style={{ transition: 'none' }}
+                                                        />
+                                                    </svg>
+                                                    <button
+                                                        onClick={() => handleCancelBid(bid.bidId!)}
+                                                        disabled={isCancelling || remainingMs <= 0}
+                                                        className="text-xs text-red-400 hover:text-red-300 disabled:opacity-40"
+                                                    >
+                                                        {isCancelling ? 'Cancelling…' : `Cancel bid (${formatCancelCountdown(remainingMs)} left)`}
+                                                    </button>
+                                                </div>
+                                            )
+                                        })()}
                                     </div>
                                 ))
                             )}
                         </div>
+                        {cancelError && (
+                            <div className="flex items-start gap-2 mt-2 p-2.5 bg-red-500/10 border border-red-500/20 rounded-lg">
+                                <AlertCircle size={13} className="text-red-400 shrink-0 mt-0.5" />
+                                <p className="text-red-400 text-xs leading-relaxed">{cancelError}</p>
+                            </div>
+                        )}
                     </div>
 
                     {/* Bid controls */}

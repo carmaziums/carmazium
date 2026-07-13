@@ -91,6 +91,9 @@ export interface Auction {
     buyItNowPrice?: number | null;
     buyItNowPendingBuyerId?: string | null;
     buyItNowPendingAt?: string | null;  // ISO string from API
+    // Digest — seller-authored custom tags/batch labels and self-rating
+    customTags?: string[];
+    sellerSelfRating?: number | null;
 }
 
 export interface CreateAuctionRequest {
@@ -229,6 +232,21 @@ export async function declineBuyItNow(auctionId: string): Promise<void> {
 
 export async function cancelBid(bidId: string): Promise<void> {
     await apiClient(`/bids/${bidId}/cancel`, { method: 'PATCH' });
+}
+
+// ─── Digest — custom tags & self-rating ───────────────────────────────────────
+
+export interface UpdateAuctionDigestRequest {
+    customTags?: string[];
+    sellerSelfRating?: number;
+}
+
+export async function updateAuctionDigest(auctionId: string, data: UpdateAuctionDigestRequest): Promise<Auction> {
+    const res = await apiClient<{ data: Auction }>(`${API}/auctions/${auctionId}/digest`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+    });
+    return res.data;
 }
 
 // Socket events consumed by live auction page (no API function needed — socket.on() directly):

@@ -31,7 +31,7 @@ const TIER_FEATURES: TierFeature[] = [
     { label: "Performance analytics",         basic: false,    standard: true,    premium: true },
     { label: "Priority search placement",     basic: false,    standard: false,   premium: true },
     { label: "HPI Verified badge",            basic: "Add-on", standard: "Add-on", premium: "Included" },
-    { label: "Featured boost eligibility",    basic: false,    standard: true,    premium: true },
+    { label: "Featured boost eligibility",    basic: true,     standard: true,    premium: true },
     { label: "Listing duration",              basic: "30 days", standard: "30 days", premium: "Until sold" },
 ]
 
@@ -152,6 +152,7 @@ export default function PricingPage() {
                             <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-emerald-500 dark:text-emerald-400 shrink-0" /> Offer & negotiation system</li>
                             <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-emerald-500 dark:text-emerald-400 shrink-0" /> Direct buyer chat</li>
                             <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-emerald-500 dark:text-emerald-400 shrink-0" /> DVLA auto-fill</li>
+                            <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><CheckCircle size={15} className="text-emerald-500 dark:text-emerald-400 shrink-0" /> Featured boost eligible</li>
                             <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><XCircle size={15} className="text-[var(--text-faint)] shrink-0" /> Analytics</li>
                             <li className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]"><XCircle size={15} className="text-[var(--text-faint)] shrink-0" /> Priority placement</li>
                         </ul>

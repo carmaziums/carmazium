@@ -6,7 +6,7 @@ import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import {
     Gavel, PlusCircle, Loader2, Eye, XCircle, Clock,
-    ChevronUp, AlertCircle, CheckCircle2, Calendar, X
+    ChevronUp, AlertCircle, CheckCircle2, Calendar, X, Tags, Star
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PageHeader } from "@/components/dashboard/PageHeader"
@@ -16,7 +16,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useSearchParams } from "next/navigation"
 import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 import {
-    getMyAuctions, createAuction, cancelAuction,
+    getMyAuctions, createAuction, cancelAuction, updateAuctionDigest,
     getCurrentBid, getBidCount,
     type Auction, type CreateAuctionRequest,
 } from "@/lib/auctionApi"
@@ -73,6 +73,12 @@ function DealerAuctionsPage() {
     const [eligibleListings, setEligibleListings] = React.useState<Listing[]>([])
     const [cancelling, setCancelling] = React.useState<string | null>(null)
     const [tick, setTick] = React.useState(0)
+    // Digest — custom tags & self-rating on your own auction
+    const [digestAuction,  setDigestAuction]  = React.useState<Auction | null>(null)
+    const [digestTagsInput, setDigestTagsInput] = React.useState("")
+    const [digestRating,   setDigestRating]   = React.useState<number | null>(null)
+    const [digestLoading,  setDigestLoading]  = React.useState(false)
+    const [digestError,    setDigestError]    = React.useState<string | null>(null)
 
     // Form state
     const [formListingId, setFormListingId] = React.useState(preselectedListingId)
@@ -187,6 +193,32 @@ function DealerAuctionsPage() {
             alert(err.message || "Failed to cancel auction.")
         } finally {
             setCancelling(null)
+        }
+    }
+
+    function openDigest(auction: Auction) {
+        setDigestAuction(auction)
+        setDigestTagsInput((auction.customTags ?? []).join(', '))
+        setDigestRating(auction.sellerSelfRating ?? null)
+        setDigestError(null)
+    }
+
+    async function handleDigestSubmit() {
+        if (!digestAuction) return
+        const customTags = digestTagsInput.split(',').map(t => t.trim()).filter(Boolean).slice(0, 10)
+        setDigestLoading(true)
+        setDigestError(null)
+        try {
+            const updated = await updateAuctionDigest(digestAuction.id, {
+                customTags,
+                ...(digestRating ? { sellerSelfRating: digestRating } : {}),
+            })
+            setAuctions(prev => prev.map(a => a.id === updated.id ? { ...a, ...updated } : a))
+            setDigestAuction(null)
+        } catch (err: any) {
+            setDigestError(err.message ?? 'Failed to save digest')
+        } finally {
+            setDigestLoading(false)
         }
     }
 
@@ -448,6 +480,11 @@ function DealerAuctionsPage() {
                                     {auction.status === "ACTIVE" && (
                                         <Link href={`/auctions/live/${auction.id}`} className="w-full min-h-[46px] flex items-center justify-center rounded-xl bg-emerald-500 text-white font-bold text-sm">View live auction</Link>
                                     )}
+                                    {(auction.status === "ACTIVE" || auction.status === "SCHEDULED") && (
+                                        <button onClick={() => openDigest(auction)} className="w-full min-h-[46px] flex items-center justify-center gap-1.5 rounded-xl border border-violet-500/30 text-violet-400 font-bold text-sm">
+                                            <Tags size={16} /> Digest
+                                        </button>
+                                    )}
                                     {auction.status === "SCHEDULED" && (
                                         <button onClick={() => handleCancel(auction.id)} disabled={cancelling === auction.id} className="w-full min-h-[46px] rounded-xl border border-red-500/30 text-red-400 font-bold text-sm disabled:opacity-50">
                                             {cancelling === auction.id ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Cancel auction'}
@@ -605,6 +642,16 @@ function DealerAuctionsPage() {
                                                                 </Button>
                                                             </Link>
                                                         )}
+                                                        {(auction.status === "ACTIVE" || auction.status === "SCHEDULED") && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => openDigest(auction)}
+                                                                className="gap-1.5 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 border border-violet-500/20"
+                                                            >
+                                                                <Tags size={14} /> Digest
+                                                            </Button>
+                                                        )}
                                                         {auction.status === "SCHEDULED" && (
                                                             <Button
                                                                 variant="ghost"
@@ -642,6 +689,69 @@ function DealerAuctionsPage() {
                     </div>
                 </main>
             </div>
+
+            {digestAuction && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                    <div className="bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-2xl w-full max-w-sm p-6 space-y-5 shadow-2xl">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+                                    <Tags size={16} className="text-violet-400" />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-sm">Digest</p>
+                                    <p className="text-[var(--text-muted)] text-xs truncate max-w-[180px]">{digestAuction.listing?.title}</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setDigestAuction(null)} className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors"><X size={18} /></button>
+                        </div>
+
+                        <p className="text-xs text-[var(--text-muted)]">Add your own custom tags/batch labels and a self-rating to this listing — shown to buyers on the auction page.</p>
+
+                        <div className="space-y-3">
+                            <div>
+                                <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1.5">Custom Tags (comma-separated)</label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. Track Day Ready, One Owner"
+                                    value={digestTagsInput}
+                                    onChange={e => setDigestTagsInput(e.target.value)}
+                                    className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg px-3 h-10 text-sm focus:outline-none focus:border-primary/50"
+                                />
+                                <p className="text-[10px] text-[var(--text-muted)] mt-1">Up to 10 tags, 30 characters each.</p>
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1.5">Self-Rating</label>
+                                <div className="flex gap-1.5">
+                                    {[1, 2, 3, 4, 5].map(n => (
+                                        <button
+                                            key={n}
+                                            type="button"
+                                            onClick={() => setDigestRating(prev => prev === n ? null : n)}
+                                            className="p-1"
+                                        >
+                                            <Star
+                                                size={22}
+                                                className={(digestRating ?? 0) >= n ? "text-amber-400 fill-amber-400" : "text-[var(--text-muted)]"}
+                                            />
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {digestError && <p className="text-red-400 text-xs">{digestError}</p>}
+
+                        <button
+                            onClick={handleDigestSubmit}
+                            disabled={digestLoading}
+                            className="w-full h-10 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                            {digestLoading ? <><Loader2 size={14} className="animate-spin" /> Saving…</> : <><Tags size={14} /> Save Digest</>}
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

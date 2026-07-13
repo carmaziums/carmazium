@@ -13,6 +13,7 @@ import { AuctionGateway, AuctionEndPayload } from './auction.gateway';
 import { EmailService } from '../email/email.service';
 import { CreateAuctionDto } from './dto/create-auction.dto';
 import { UpdateAuctionDto } from './dto/update-auction.dto';
+import { UpdateAuctionDigestDto } from './dto/update-auction-digest.dto';
 import { Auction } from '@prisma/client';
 
 const AUCTION_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
@@ -261,6 +262,29 @@ export class AuctionsService {
                 ...(updateAuctionDto.reservePrice !== undefined && { reservePrice: updateAuctionDto.reservePrice }),
                 ...(updateAuctionDto.startingBid !== undefined && { startingBid: updateAuctionDto.startingBid }),
                 ...(updateAuctionDto.minIncrement !== undefined && { minIncrement: updateAuctionDto.minIncrement }),
+            },
+        });
+    }
+
+    // Digest — seller-authored custom tags/batch labels and self-rating for their own
+    // auction listing. Editable any time before the auction ends, unlike update() which
+    // is restricted to SCHEDULED auctions since it recalculates timing/pricing.
+    async updateDigest(id: string, dto: UpdateAuctionDigestDto, userId: string): Promise<Auction> {
+        const auction = await this.findOne(id);
+
+        if (auction.listing.sellerId !== userId) {
+            throw new ForbiddenException('You do not own this auction');
+        }
+
+        if (auction.status === 'ENDED' || auction.status === 'CANCELLED') {
+            throw new BadRequestException('Cannot edit the digest of an ended or cancelled auction');
+        }
+
+        return this.prisma.auction.update({
+            where: { id },
+            data: {
+                ...(dto.customTags !== undefined && { customTags: dto.customTags }),
+                ...(dto.sellerSelfRating !== undefined && { sellerSelfRating: dto.sellerSelfRating }),
             },
         });
     }

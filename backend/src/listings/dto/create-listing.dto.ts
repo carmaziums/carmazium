@@ -413,6 +413,12 @@ export class CreateListingDto {
     @MaxLength(200)
     departedRelationship?: string;
 
+    @ApiProperty({ description: 'Relationship of the seller to the legal registered keeper, when the seller is not the keeper (e.g. "Family member", "Employer")', required: false })
+    @IsOptional()
+    @IsString()
+    @MaxLength(200)
+    notOwnerRelationship?: string;
+
     @ApiProperty({ description: 'Torque in Nm', example: 400, required: false })
     @Type(() => Number)
     @IsInt()

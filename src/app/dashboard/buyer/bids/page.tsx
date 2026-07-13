@@ -6,8 +6,11 @@ import Image from "next/image"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { getMyBids, formatPrice, type Bid } from "@/lib/listingApi"
-import { Loader2, Gavel, MessageSquare, Radio, Trophy } from "lucide-react"
+import { cancelBid } from "@/lib/auctionApi"
+import { Loader2, Gavel, MessageSquare, Radio, Trophy, Ban } from "lucide-react"
 import { createChatRoom } from "@/lib/chatApi"
+
+const BID_CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000
 
 export default function MyBidsPage() {
     const { user, loading: authLoading } = useAuth()
@@ -16,6 +19,7 @@ export default function MyBidsPage() {
     const [page, setPage] = React.useState(1)
     const [totalPages, setTotalPages] = React.useState(1)
     const [connectingChat, setConnectingChat] = React.useState<string | null>(null)
+    const [cancellingBidId, setCancellingBidId] = React.useState<string | null>(null)
 
     React.useEffect(() => {
         async function fetchBids() {
@@ -49,6 +53,18 @@ export default function MyBidsPage() {
             auctionActive: auction?.status === "ACTIVE",
             userWon: auction?.status === "ENDED" && auction?.winnerId === user?.id && bid.isWinning,
             auctionEnded: auction?.status === "ENDED" || auction?.status === "CANCELLED",
+        }
+    }
+
+    async function handleCancelBid(bidId: string) {
+        setCancellingBidId(bidId)
+        try {
+            await cancelBid(bidId)
+            setBids(prev => prev.filter(b => b.id !== bidId))
+        } catch (err: any) {
+            alert(err.message || "Failed to cancel bid")
+        } finally {
+            setCancellingBidId(null)
         }
     }
 
@@ -198,12 +214,27 @@ export default function MyBidsPage() {
                                                                 </button>
                                                             </div>
                                                         ) : isAuction && auctionActive && auction ? (
-                                                            <Link
-                                                                href={`/auctions/live/${auction.id}`}
-                                                                className="inline-flex items-center gap-1.5 text-emerald-400 dark:hover:text-white text-sm font-bold transition-colors"
-                                                            >
-                                                                <Radio size={13} className="animate-pulse" /> View Live
-                                                            </Link>
+                                                            <div className="flex flex-col items-end gap-1.5">
+                                                                <Link
+                                                                    href={`/auctions/live/${auction.id}`}
+                                                                    className="inline-flex items-center gap-1.5 text-emerald-400 dark:hover:text-white text-sm font-bold transition-colors"
+                                                                >
+                                                                    <Radio size={13} className="animate-pulse" /> View Live
+                                                                </Link>
+                                                                {Date.now() - new Date(bid.createdAt).getTime() < BID_CANCEL_WINDOW_MS && (
+                                                                    <button
+                                                                        onClick={() => handleCancelBid(bid.id)}
+                                                                        disabled={cancellingBidId === bid.id}
+                                                                        className="inline-flex items-center gap-1 text-red-400 hover:text-red-300 text-xs font-bold transition-colors disabled:opacity-50"
+                                                                    >
+                                                                        {cancellingBidId === bid.id
+                                                                            ? <Loader2 size={11} className="animate-spin" />
+                                                                            : <Ban size={11} />
+                                                                        }
+                                                                        Cancel bid
+                                                                    </button>
+                                                                )}
+                                                            </div>
                                                         ) : isAuction && auction ? (
                                                             <Link
                                                                 href={`/auctions/live/${auction.id}`}

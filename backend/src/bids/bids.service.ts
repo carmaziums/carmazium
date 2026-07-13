@@ -13,6 +13,8 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { CreateBidDto } from './dto/create-bid.dto';
 import { Bid } from '@prisma/client';
 
+const BID_CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000;
+
 @Injectable()
 export class BidsService {
     constructor(
@@ -158,9 +160,8 @@ export class BidsService {
             throw new BadRequestException('Bid already cancelled');
         }
 
-        const twoMinMs = 2 * 60 * 1000;
-        if (Date.now() - bid.createdAt.getTime() > twoMinMs) {
-            throw new BadRequestException('Cancel window has expired (2 minutes)');
+        if (Date.now() - bid.createdAt.getTime() > BID_CANCEL_WINDOW_MS) {
+            throw new BadRequestException('Cancel window has expired (24 hours)');
         }
 
         const listing = await this.prisma.listing.findUnique({
@@ -170,15 +171,6 @@ export class BidsService {
 
         if (!listing?.auction || listing.auction.status !== 'ACTIVE') {
             throw new BadRequestException('Cannot cancel a bid on an auction that is not ACTIVE');
-        }
-
-        const topBid = await this.prisma.bid.findFirst({
-            where: { listingId: bid.listingId, deletedAt: null, cancelledAt: null },
-            orderBy: { amount: 'desc' },
-        });
-
-        if (topBid?.id !== bidId) {
-            throw new BadRequestException('You can only cancel your bid if you are the current highest bidder');
         }
 
         await this.prisma.bid.update({

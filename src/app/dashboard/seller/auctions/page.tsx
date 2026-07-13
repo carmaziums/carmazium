@@ -8,7 +8,7 @@ import {
     Gavel, PlusCircle, Loader2, Eye, XCircle, Clock,
     ChevronRight, AlertCircle, CheckCircle2, Calendar, X,
     Upload, Handshake, Info, CheckCircle, ImageIcon,
-    Trophy, MessageSquare, BarChart2, Users, TrendingUp, Tag,
+    Trophy, MessageSquare, BarChart2, Users, TrendingUp, Tag, Tags, Star,
 } from "lucide-react"
 import { createChatRoom } from "@/lib/chatApi"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
@@ -18,7 +18,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useSearchParams } from "next/navigation"
 import {
     getMyAuctions, createAuction, cancelAuction, closeAuctionEarly,
-    getCurrentBid, getBidCount,
+    getCurrentBid, getBidCount, updateAuctionDigest,
     type Auction, type CreateAuctionRequest,
 } from "@/lib/auctionApi"
 import { apiClient } from "@/lib/apiClient"
@@ -97,6 +97,12 @@ function SellerAuctionsPage() {
     const [alsoRetailTier,    setAlsoRetailTier]    = React.useState<'BASIC' | 'STANDARD' | 'PREMIUM'>('BASIC')
     const [alsoRetailLoading, setAlsoRetailLoading] = React.useState(false)
     const [alsoRetailError,   setAlsoRetailError]   = React.useState<string | null>(null)
+    // Digest — custom tags & self-rating on your own auction
+    const [digestAuction,  setDigestAuction]  = React.useState<Auction | null>(null)
+    const [digestTagsInput, setDigestTagsInput] = React.useState("")
+    const [digestRating,   setDigestRating]   = React.useState<number | null>(null)
+    const [digestLoading,  setDigestLoading]  = React.useState(false)
+    const [digestError,    setDigestError]    = React.useState<string | null>(null)
 
     React.useEffect(() => {
         const id = setInterval(() => setTick(t => t + 1), 1000)
@@ -234,6 +240,32 @@ function SellerAuctionsPage() {
             setAlsoRetailError(err.message ?? 'Failed to create retail listing')
         } finally {
             setAlsoRetailLoading(false)
+        }
+    }
+
+    function openDigest(auction: Auction) {
+        setDigestAuction(auction)
+        setDigestTagsInput((auction.customTags ?? []).join(', '))
+        setDigestRating(auction.sellerSelfRating ?? null)
+        setDigestError(null)
+    }
+
+    async function handleDigestSubmit() {
+        if (!digestAuction) return
+        const customTags = digestTagsInput.split(',').map(t => t.trim()).filter(Boolean).slice(0, 10)
+        setDigestLoading(true)
+        setDigestError(null)
+        try {
+            const updated = await updateAuctionDigest(digestAuction.id, {
+                customTags,
+                ...(digestRating ? { sellerSelfRating: digestRating } : {}),
+            })
+            setAuctions(prev => prev.map(a => a.id === updated.id ? { ...a, ...updated } : a))
+            setDigestAuction(null)
+        } catch (err: any) {
+            setDigestError(err.message ?? 'Failed to save digest')
+        } finally {
+            setDigestLoading(false)
         }
     }
 
@@ -631,6 +663,14 @@ function SellerAuctionsPage() {
                                                     <Tag size={13} /> Resume Retail Payment
                                                 </button>
                                             )}
+                                            {(auction.status === "ACTIVE" || auction.status === "SCHEDULED") && (
+                                                <button
+                                                    onClick={() => openDigest(auction)}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/10 text-violet-400 border border-violet-500/20 text-xs font-bold hover:bg-violet-500/20 transition-colors"
+                                                >
+                                                    <Tags size={13} /> Digest
+                                                </button>
+                                            )}
                                             {auction.status === "SCHEDULED" && (
                                                 <button
                                                     disabled={cancelling === auction.id}
@@ -804,6 +844,14 @@ function SellerAuctionsPage() {
                                                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-bold hover:bg-amber-500/20 transition-colors"
                                                             >
                                                                 <Tag size={13} /> Resume Retail Payment
+                                                            </button>
+                                                        )}
+                                                        {(auction.status === "ACTIVE" || auction.status === "SCHEDULED") && (
+                                                            <button
+                                                                onClick={() => openDigest(auction)}
+                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/10 text-violet-400 border border-violet-500/20 text-xs font-bold hover:bg-violet-500/20 transition-colors"
+                                                            >
+                                                                <Tags size={13} /> Digest
                                                             </button>
                                                         )}
                                                         {auction.status === "SCHEDULED" && (
@@ -1164,6 +1212,69 @@ function SellerAuctionsPage() {
                         className="w-full h-10 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                         {alsoRetailLoading ? <><Loader2 size={14} className="animate-spin" /> Creating…</> : <><Tag size={14} /> Create & Pay</>}
+                    </button>
+                </div>
+            </div>
+        )}
+
+        {digestAuction && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                <div className="bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-2xl w-full max-w-sm p-6 space-y-5 shadow-2xl">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+                                <Tags size={16} className="text-violet-400" />
+                            </div>
+                            <div>
+                                <p className="font-bold text-sm">Digest</p>
+                                <p className="text-[var(--text-muted)] text-xs truncate max-w-[180px]">{digestAuction.listing?.title}</p>
+                            </div>
+                        </div>
+                        <button onClick={() => setDigestAuction(null)} className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors"><X size={18} /></button>
+                    </div>
+
+                    <p className="text-xs text-[var(--text-muted)]">Add your own custom tags/batch labels and a self-rating to this listing — shown to buyers on the auction page.</p>
+
+                    <div className="space-y-3">
+                        <div>
+                            <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1.5">Custom Tags (comma-separated)</label>
+                            <input
+                                type="text"
+                                placeholder="e.g. Track Day Ready, One Owner"
+                                value={digestTagsInput}
+                                onChange={e => setDigestTagsInput(e.target.value)}
+                                className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg px-3 h-10 text-sm focus:outline-none focus:border-primary/50"
+                            />
+                            <p className="text-[10px] text-[var(--text-muted)] mt-1">Up to 10 tags, 30 characters each.</p>
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1.5">Self-Rating</label>
+                            <div className="flex gap-1.5">
+                                {[1, 2, 3, 4, 5].map(n => (
+                                    <button
+                                        key={n}
+                                        type="button"
+                                        onClick={() => setDigestRating(prev => prev === n ? null : n)}
+                                        className="p-1"
+                                    >
+                                        <Star
+                                            size={22}
+                                            className={(digestRating ?? 0) >= n ? "text-amber-400 fill-amber-400" : "text-[var(--text-muted)]"}
+                                        />
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {digestError && <p className="text-red-400 text-xs">{digestError}</p>}
+
+                    <button
+                        onClick={handleDigestSubmit}
+                        disabled={digestLoading}
+                        className="w-full h-10 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                        {digestLoading ? <><Loader2 size={14} className="animate-spin" /> Saving…</> : <><Tags size={14} /> Save Digest</>}
                     </button>
                 </div>
             </div>
