@@ -294,6 +294,24 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
           </View>
         </View>
 
+        {/* ── Payment receipts — PaymentHistoryScreen exists but had no
+            entry point reachable by sellers (only DealerEarningsScreen
+            linked to it). ── */}
+        <TouchableOpacity
+          style={styles.receiptsRow}
+          activeOpacity={0.8}
+          onPress={() => navigation?.navigate('PaymentHistory')}
+        >
+          <View style={styles.receiptsIconWrap}>
+            <Ionicons name="receipt-outline" size={17} color={Colors.accent} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.receiptsTitle}>Payment receipts</Text>
+            <Text style={styles.receiptsSub}>All platform fees, listing charges, and KYC payments</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} />
+        </TouchableOpacity>
+
         {/* ── Sale history ── */}
         <View style={styles.historySection}>
           <Text style={styles.sectionHeader}>SALE HISTORY</Text>
@@ -461,6 +479,37 @@ const styles = StyleSheet.create({
   },
 
   // ── History section ──
+  // ── Payment receipts row ──
+  receiptsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'rgba(20,26,42,0.70)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha08,
+    padding: 14,
+  },
+  receiptsIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: Colors.accentAlpha10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  receiptsTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.sm,
+    color: Colors.white,
+  },
+  receiptsSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.xs,
+    color: Colors.iconMuted,
+    marginTop: 1,
+  },
+
   historySection: {
     gap: 10,
   },
