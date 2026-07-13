@@ -89,6 +89,24 @@ const CONDITIONS = [
   { id: 'CAT_S',     label: 'Cat S' },
   { id: 'CAT_N',     label: 'Cat N' },
 ];
+// Mirrors web's src/app/search/page.tsx exactly — same doors/seats quick-select
+// values, same Euro Standard options, same 18-item features checklist.
+const DOOR_OPTS = ['2', '3', '4', '5'];
+const SEAT_OPTS = ['2', '4', '5', '7'];
+const EURO_OPTIONS = [
+  { value: 'EURO_4', label: 'Euro 4' },
+  { value: 'EURO_5', label: 'Euro 5' },
+  { value: 'EURO_6', label: 'Euro 6' },
+  { value: 'EURO_6D', label: 'Euro 6d' },
+];
+const POPULAR_FEATURES = [
+  'Air Conditioning', 'Climate Control', 'Alloy Wheels',
+  'Parking Sensors (Front)', 'Parking Sensors (Rear)', 'Reverse Camera',
+  'Sat Nav', 'Bluetooth / Hands Free', 'DAB Radio',
+  'Heated Seats', 'Cruise Control', 'Panoramic Roof',
+  'Apple CarPlay', 'Android Auto', 'Keyless Entry',
+  'Lane Assist', 'Blind Spot Monitoring', 'Adaptive Cruise Control',
+];
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -132,6 +150,13 @@ export const SearchScreen: React.FC = () => {
   const [vehicleType, setVehicleType] = useState<'' | 'CAR' | 'HGV' | 'MOTORCYCLE'>('');
   const [locationFilter, setLocationFilter] = useState('');
   const [modelFilter, setModelFilter] = useState('');
+  const [colorFilter, setColorFilter] = useState('');
+  const [minDoors, setMinDoors] = useState('');
+  const [minSeats, setMinSeats] = useState('');
+  const [euroStandard, setEuroStandard] = useState('');
+  const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
+  const [isImported, setIsImported] = useState(false);
+  const [markedForExport, setMarkedForExport] = useState(false);
   // AI search state
   const [aiModalVisible, setAiModalVisible] = useState(false);
   const [aiQuery, setAiQuery] = useState('');
@@ -222,6 +247,13 @@ export const SearchScreen: React.FC = () => {
       deliveryAvailable: deliveryAvailable ? true : undefined,
       sellerType: sellerType || undefined,
       listingType: listingType || undefined,
+      color: colorFilter.trim() || undefined,
+      minDoors: minDoors ? parseInt(minDoors) : undefined,
+      minSeats: minSeats ? parseInt(minSeats) : undefined,
+      euroStandard: euroStandard || undefined,
+      features: selectedFeatures.length ? selectedFeatures : undefined,
+      isImported: isImported ? true : undefined,
+      markedForExport: markedForExport ? true : undefined,
       sortBy: sortId,
       page: p,
       limit: 20,
@@ -252,7 +284,7 @@ export const SearchScreen: React.FC = () => {
       setLoadingMore(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, deliveryAvailable, sellerType, listingType, vehicleType, locationFilter, modelFilter, page]);
+  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, deliveryAvailable, sellerType, listingType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, markedForExport, page]);
 
   // Initial load
   useEffect(() => { fetch(true); }, []);
@@ -270,7 +302,7 @@ export const SearchScreen: React.FC = () => {
   useEffect(() => {
     fetch(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, deliveryAvailable, sellerType, listingType, vehicleType, locationFilter, modelFilter]);
+  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, deliveryAvailable, sellerType, listingType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, markedForExport]);
 
   const onRefresh = () => { setRefreshing(true); fetch(true); };
 
@@ -294,6 +326,13 @@ export const SearchScreen: React.FC = () => {
     !!vehicleType,
     !!locationFilter,
     !!modelFilter,
+    !!colorFilter,
+    !!minDoors,
+    !!minSeats,
+    !!euroStandard,
+    selectedFeatures.length > 0,
+    isImported,
+    markedForExport,
   ].filter(Boolean).length;
 
   const resetFilters = () => {
@@ -317,6 +356,13 @@ export const SearchScreen: React.FC = () => {
     setVehicleType('');
     setLocationFilter('');
     setModelFilter('');
+    setColorFilter('');
+    setMinDoors('');
+    setMinSeats('');
+    setEuroStandard('');
+    setSelectedFeatures([]);
+    setIsImported(false);
+    setMarkedForExport(false);
   };
 
   const applyQuickFilter = (id: string) => {
@@ -854,6 +900,102 @@ export const SearchScreen: React.FC = () => {
 
               <View style={s.divider} />
 
+              <Text style={s.filterLabel}>COLOUR</Text>
+              <View style={s.inputBox}>
+                <Text style={s.inputBoxLabel}>e.g. White, Black, Blue</Text>
+                <TextInput
+                  style={s.inputBoxValue}
+                  value={colorFilter}
+                  onChangeText={setColorFilter}
+                  placeholder="Any colour"
+                  placeholderTextColor={Colors.borderMuted}
+                  autoCapitalize="words"
+                />
+              </View>
+
+              <View style={s.divider} />
+
+              {/* Doors / Seats — mirrors web's quick-select buttons */}
+              <Text style={s.filterLabel}>DOORS</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {DOOR_OPTS.map(d => (
+                  <TouchableOpacity
+                    key={d}
+                    style={[s.segmentBtn, minDoors === d && s.segmentBtnActive]}
+                    onPress={() => setMinDoors(prev => prev === d ? '' : d)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.segmentBtnText, minDoors === d && s.segmentBtnTextActive]}>{d}+</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={{ height: 16 }} />
+
+              <Text style={s.filterLabel}>SEATS</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {SEAT_OPTS.map(sv => (
+                  <TouchableOpacity
+                    key={sv}
+                    style={[s.segmentBtn, minSeats === sv && s.segmentBtnActive]}
+                    onPress={() => setMinSeats(prev => prev === sv ? '' : sv)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.segmentBtnText, minSeats === sv && s.segmentBtnTextActive]}>{sv}+</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={s.divider} />
+
+              {/* Euro Standard */}
+              <Text style={s.filterLabel}>EURO STANDARD</Text>
+              <View style={s.chipGrid}>
+                <TouchableOpacity
+                  style={[s.filterChip, !euroStandard && s.filterChipActive]}
+                  onPress={() => setEuroStandard('')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[s.filterChipText, !euroStandard && s.filterChipTextActive]}>Any</Text>
+                </TouchableOpacity>
+                {EURO_OPTIONS.map(o => (
+                  <TouchableOpacity
+                    key={o.value}
+                    style={[s.filterChip, euroStandard === o.value && s.filterChipActive]}
+                    onPress={() => setEuroStandard(prev => prev === o.value ? '' : o.value)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.filterChipText, euroStandard === o.value && s.filterChipTextActive]}>{o.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={s.divider} />
+
+              {/* Features / Options — 18-item checklist, matches web's POPULAR_FEATURES */}
+              <Text style={s.filterLabel}>FEATURES / OPTIONS</Text>
+              <View style={s.chipGrid}>
+                {POPULAR_FEATURES.map(feat => {
+                  const selected = selectedFeatures.includes(feat);
+                  return (
+                    <TouchableOpacity
+                      key={feat}
+                      style={[s.filterChip, selected && s.filterChipActive]}
+                      onPress={() =>
+                        setSelectedFeatures(prev =>
+                          prev.includes(feat) ? prev.filter(x => x !== feat) : [...prev, feat],
+                        )
+                      }
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[s.filterChipText, selected && s.filterChipTextActive]}>{feat}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <View style={s.divider} />
+
               <Text style={s.filterLabel}>LOCATION</Text>
               <View style={s.inputBox}>
                 <Text style={s.inputBoxLabel}>CITY OR POSTCODE</Text>
@@ -932,6 +1074,30 @@ export const SearchScreen: React.FC = () => {
                 <Switch
                   value={deliveryAvailable}
                   onValueChange={setDeliveryAvailable}
+                  trackColor={{ false: Colors.darkBlue_2a2a35, true: Colors.accent }}
+                  thumbColor={Colors.white}
+                />
+              </View>
+              <View style={[s.toggleRow, { marginTop: 14 }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.toggleLabel}>IMPORTED ONLY</Text>
+                  <Text style={s.toggleHint}>Only show vehicles imported from abroad</Text>
+                </View>
+                <Switch
+                  value={isImported}
+                  onValueChange={setIsImported}
+                  trackColor={{ false: Colors.darkBlue_2a2a35, true: Colors.accent }}
+                  thumbColor={Colors.white}
+                />
+              </View>
+              <View style={[s.toggleRow, { marginTop: 14 }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.toggleLabel}>MARKED FOR EXPORT ONLY</Text>
+                  <Text style={s.toggleHint}>Only show vehicles marked for export</Text>
+                </View>
+                <Switch
+                  value={markedForExport}
+                  onValueChange={setMarkedForExport}
                   trackColor={{ false: Colors.darkBlue_2a2a35, true: Colors.accent }}
                   thumbColor={Colors.white}
                 />

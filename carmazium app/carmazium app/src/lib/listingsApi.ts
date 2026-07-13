@@ -317,6 +317,14 @@ export async function searchListings(params: {
   listingType?: string;
   /** Multi-select transmissions — serialized as `transmissions=MANUAL,AUTOMATIC` to match web. */
   transmissions?: string[];
+  color?: string;
+  minDoors?: number;
+  minSeats?: number;
+  euroStandard?: string;
+  /** Listings must have ALL of these features (comma-separated, AND-match on backend). */
+  features?: string[];
+  isImported?: boolean;
+  markedForExport?: boolean;
   sortBy?: string;
   page?: number;
   limit?: number;
@@ -343,6 +351,13 @@ export async function searchListings(params: {
     if (params.deliveryAvailable) query.set('deliveryAvailable', 'true');
     if (params.sellerType) query.set('sellerType', params.sellerType);
     if (params.listingType) query.set('listingType', params.listingType);
+    if (params.color) query.set('color', params.color);
+    if (params.minDoors != null) query.set('minDoors', String(params.minDoors));
+    if (params.minSeats != null) query.set('minSeats', String(params.minSeats));
+    if (params.euroStandard) query.set('euroStandard', params.euroStandard);
+    if (params.features?.length) query.set('features', params.features.join(','));
+    if (params.isImported) query.set('isImported', 'true');
+    if (params.markedForExport) query.set('markedForExport', 'true');
     if (params.sortBy)    query.set('sortBy', params.sortBy);
     if (params.page  != null) query.set('page',  String(params.page));
     if (params.limit != null) query.set('limit', String(params.limit));
