@@ -49,8 +49,20 @@ interface BidEntry {
   name: string;
   amount: number;
   time: string;
+  createdAt: string; // ISO timestamp — needed to compute the 24h cancel window
   bidderId?: string; // needed to recalculate isWinning after bid:cancelled
   isNew?: boolean;
+}
+
+const BID_CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function formatCancelWindowRemaining(ms: number): string {
+  if (ms <= 0) return '0m';
+  const totalMinutes = Math.ceil(ms / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) return `${minutes}m`;
+  return `${hours}h ${minutes}m`;
 }
 
 const { width: SW } = Dimensions.get('window');
@@ -151,10 +163,13 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [binBannerDismissed, setBinBannerDismissed] = useState(false);
   const [binLoading, setBinLoading] = useState(false);
 
-  // ── Bid cancel window ──
-  const [cancelableBidId, setCancelableBidId] = useState<string | null>(null);
-  const [cancelWindowMs, setCancelWindowMs] = useState(0);
-  const [cancelLoading, setCancelLoading] = useState(false);
+  // ── Bid cancel window — derived live from bidHistory (see cancelableBids
+  // below) rather than tracked as separate state, so it reflects the real
+  // 24h server-side rule regardless of how the screen was reached (fresh
+  // load, reconnect, or a live bid:new event) instead of only the single
+  // most-recently-placed bid in this session. ──
+  const [nowMs, setNowMs] = useState(Date.now());
+  const [cancelLoadingId, setCancelLoadingId] = useState<string | null>(null);
 
   // ── Seller tools ──
   const [acceptingBidId, setAcceptingBidId] = useState<string | null>(null);
@@ -226,6 +241,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             name: fullName || 'Anonymous',
             amount: Number(b.amount),
             time: new Date(b.timestamp).toLocaleTimeString('en-GB'),
+            createdAt: b.timestamp,
             bidderId: b.bidderId,
           };
         }));
@@ -294,20 +310,19 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         setCurrentBid(payload.amount);
         setIsWinning(!!currentUser && payload.bidderId === currentUser.id);
         setBidHistory(prev => [
-          { id: payload.bidId, initials: payload.bidderInitials || '??', name: payload.bidderInitials || '??', amount: payload.amount, time: new Date(payload.timestamp).toLocaleTimeString('en-GB'), bidderId: payload.bidderId, isNew: true },
+          { id: payload.bidId, initials: payload.bidderInitials || '??', name: payload.bidderInitials || '??', amount: payload.amount, time: new Date(payload.timestamp).toLocaleTimeString('en-GB'), createdAt: payload.timestamp, bidderId: payload.bidderId, isNew: true },
           ...prev.map(b => ({ ...b, isNew: false })),
         ]);
-        // Bid flash + haptic for own bids; track cancel window
+        // Bid flash + haptic for own bids. The cancel window itself is
+        // derived from bidHistory (see cancelableBids) — being outbid no
+        // longer clears eligibility, since the 24h window applies
+        // regardless of current ranking (server-side restriction removed).
         if (currentUser && payload.bidderId === currentUser.id) {
           bidFlash.value = withSequence(
             withTiming(1, { duration: 120 }),
             withTiming(0, { duration: 400 }),
           );
           haptics.medium();
-          setCancelableBidId(payload.bidId); // start the 2-minute cancel window
-        } else {
-          // Outbid — clear our cancel window (the separate useEffect will clean up the interval)
-          setCancelableBidId(null);
         }
         if (payload.newEndTime) {
           const newEnd = new Date(payload.newEndTime);
@@ -379,26 +394,21 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     return () => { socket?.disconnect(); };
   }, [auctionId, currentUser]);
 
-  // ─── Cancel bid countdown — 120s window that starts when own bid lands ──────
-  // Driven by cancelableBidId: when it's set, start the interval; when it becomes
-  // null (outbid, expired, or user cancelled), the cleanup clears the interval.
+  // ─── Cancel bid countdown — 24h window, ticks every 30s (no need for
+  // per-second precision over a day-long window). ─────────────────────────
 
   useEffect(() => {
-    if (!cancelableBidId) return;
-    const WINDOW_MS = 2 * 60 * 1000; // 120 000ms
-    setCancelWindowMs(WINDOW_MS);
-    const id = setInterval(() => {
-      setCancelWindowMs(prev => {
-        if (prev <= 100) {
-          clearInterval(id);
-          setCancelableBidId(null);
-          return 0;
-        }
-        return prev - 100;
-      });
-    }, 100);
+    const id = setInterval(() => setNowMs(Date.now()), 30000);
     return () => clearInterval(id);
-  }, [cancelableBidId]);
+  }, []);
+
+  // Any of the current user's own bids placed within the last 24h — the
+  // "must be highest bidder" restriction was removed server-side, so being
+  // outbid no longer disqualifies a bid from cancellation, and more than one
+  // can be eligible at once.
+  const cancelableBids = currentUser
+    ? bidHistory.filter(b => b.bidderId === currentUser.id && (nowMs - new Date(b.createdAt).getTime()) < BID_CANCEL_WINDOW_MS)
+    : [];
 
   // ─── Anti-snipe timer ─────────────────────────────────────────────────────
 
@@ -465,9 +475,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // ─── Cancel bid ──────────────────────────────────────────────────────────────
 
-  const handleCancelBid = useCallback(() => {
-    if (!cancelableBidId) return;
-    const bidId = cancelableBidId; // capture before async gap
+  const handleCancelBid = useCallback((bidId: string) => {
     Alert.alert(
       'Cancel your bid?',
       'Your bid will be removed. The auction continues with the previous highest bid.',
@@ -477,23 +485,22 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           text: 'Cancel Bid',
           style: 'destructive',
           onPress: async () => {
-            setCancelLoading(true);
+            setCancelLoadingId(bidId);
             try {
               await apiClient(`/bids/${bidId}/cancel`, { method: 'PATCH' });
               haptics.light();
-              // Clear local cancel state — bid:cancelled socket event will update bidHistory
-              setCancelableBidId(null);
-              setCancelWindowMs(0);
+              // bid:cancelled socket event removes it from bidHistory, which
+              // in turn drops it from the derived cancelableBids list.
             } catch (err: any) {
               Alert.alert('Failed', err?.message ?? 'Could not cancel bid. Please try again.');
             } finally {
-              setCancelLoading(false);
+              setCancelLoadingId(null);
             }
           },
         },
       ],
     );
-  }, [cancelableBidId]);
+  }, []);
 
   // ─── Buy It Now handlers ──────────────────────────────────────────────────────
 
@@ -1495,30 +1502,35 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </View>
             )}
 
-            {/* Cancel bid countdown banner — visible for 120s after own bid lands */}
-            {cancelableBidId && (
-              <View style={[s.banner, s.bannerRed, s.cancelBidBanner]}>
-                <Ionicons name="timer-outline" size={12} color={Colors.accent} />
-                <Text style={[s.bannerText, { color: Colors.paleRed_fca5a5, flex: 1 }]} numberOfLines={1}>
-                  {'Cancel window — '}
-                  <Text style={{ fontFamily: FontFamily.mono }}>
-                    {Math.ceil(cancelWindowMs / 1000)}s
+            {/* Cancel bid countdown banners — one per own bid still within the
+                24h cancel window (there can be more than one, since being
+                outbid no longer clears eligibility). */}
+            {cancelableBids.map(bid => {
+              const remaining = BID_CANCEL_WINDOW_MS - (nowMs - new Date(bid.createdAt).getTime());
+              return (
+                <View key={bid.id} style={[s.banner, s.bannerRed, s.cancelBidBanner]}>
+                  <Ionicons name="timer-outline" size={12} color={Colors.accent} />
+                  <Text style={[s.bannerText, { color: Colors.paleRed_fca5a5, flex: 1 }]} numberOfLines={1}>
+                    {`Bid of ${fmt(bid.amount)} — `}
+                    <Text style={{ fontFamily: FontFamily.mono }}>
+                      {formatCancelWindowRemaining(remaining)}
+                    </Text>
+                    {' left to cancel'}
                   </Text>
-                  {' remaining'}
-                </Text>
-                <TouchableOpacity
-                  style={s.cancelBidBtn}
-                  onPress={handleCancelBid}
-                  disabled={cancelLoading}
-                  activeOpacity={0.8}
-                >
-                  {cancelLoading
-                    ? <ActivityIndicator size="small" color={Colors.white} />
-                    : <Text style={s.cancelBidBtnText}>Cancel Bid</Text>
-                  }
-                </TouchableOpacity>
-              </View>
-            )}
+                  <TouchableOpacity
+                    style={s.cancelBidBtn}
+                    onPress={() => handleCancelBid(bid.id)}
+                    disabled={cancelLoadingId === bid.id}
+                    activeOpacity={0.8}
+                  >
+                    {cancelLoadingId === bid.id
+                      ? <ActivityIndicator size="small" color={Colors.white} />
+                      : <Text style={s.cancelBidBtnText}>Cancel Bid</Text>
+                    }
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
 
             {/* Buyer fee notice */}
             <View style={s.feeNotice}>

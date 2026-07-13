@@ -75,6 +75,22 @@ interface BidsResponse {
 }
 
 const PAGE_SIZE = 10;
+const BID_CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+// Web's /dashboard/buyer/bids page never had a cancel action at all — the
+// backend's PATCH /bids/:id/cancel (24h window, no "must be highest
+// bidder" restriction) was reachable only from the live auction screen.
+const isCancelable = (bid: Bid) =>
+  bid.auctionStatus === 'ACTIVE' && (Date.now() - new Date(bid.createdAt).getTime()) < BID_CANCEL_WINDOW_MS;
+
+function formatCancelWindowRemaining(ms: number): string {
+  if (ms <= 0) return '0m';
+  const totalMinutes = Math.ceil(ms / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) return `${minutes}m`;
+  return `${hours}h ${minutes}m`;
+}
 
 // Same transform dashboard.service.ts used to apply server-side — kept
 // client-side now that mobile reads the dedicated, paginated /bids/my
@@ -172,6 +188,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
   const [error, setError] = useState<string | null>(null);
   const [tappingId, setTappingId] = useState<string | null>(null);
   const [connectingChatId, setConnectingChatId] = useState<string | null>(null);
+  const [cancelingId, setCancelingId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -242,6 +259,34 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
     } finally {
       setConnectingChatId(null);
     }
+  };
+
+  // ── cancel bid ────────────────────────────────────────────────
+  const handleCancelBid = (bid: Bid) => {
+    Alert.alert(
+      'Cancel your bid?',
+      'Your bid will be removed. The auction continues with the previous highest bid.',
+      [
+        { text: 'Keep Bid', style: 'cancel' },
+        {
+          text: 'Cancel Bid',
+          style: 'destructive',
+          onPress: async () => {
+            setCancelingId(bid.id);
+            try {
+              await apiClient(`/bids/${bid.id}/cancel`, { method: 'PATCH' });
+              haptics.light();
+              setBids((prev) => prev.filter((b) => b.id !== bid.id));
+              setTotalCount((prev) => Math.max(0, prev - 1));
+            } catch (err: any) {
+              Alert.alert('Failed', err?.message ?? 'Could not cancel bid. Please try again.');
+            } finally {
+              setCancelingId(null);
+            }
+          },
+        },
+      ],
+    );
   };
 
   // ── render helpers ─────────────────────────────────────────────
@@ -384,9 +429,31 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
             </TouchableOpacity>
           </View>
         )}
+
+        {/* Cancel bid — 24h window, any own bid on a still-ACTIVE auction
+            regardless of current ranking (matches the live auction screen). */}
+        {isCancelable(bid) && (
+          <View style={styles.cancelRow}>
+            <Text style={styles.cancelRowHint}>
+              {formatCancelWindowRemaining(BID_CANCEL_WINDOW_MS - (Date.now() - new Date(bid.createdAt).getTime()))} left to cancel
+            </Text>
+            <TouchableOpacity
+              style={styles.cancelBtn}
+              activeOpacity={0.85}
+              onPress={() => handleCancelBid(bid)}
+              disabled={cancelingId === bid.id}
+            >
+              {cancelingId === bid.id ? (
+                <ActivityIndicator size="small" color={Colors.accent} />
+              ) : (
+                <Text style={styles.cancelBtnText}>CANCEL BID</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
       </TouchableOpacity>
     );
-  }, [tappingId, handleViewAuction, connectingChatId, handleChatWithSeller]);
+  }, [tappingId, handleViewAuction, connectingChatId, handleChatWithSeller, cancelingId]);
 
   // ── main render ────────────────────────────────────────────────
   return (
@@ -679,6 +746,34 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(16,185,129,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  // ── Cancel bid ──
+  cancelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    marginTop: -4,
+  },
+  cancelRowHint: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+  },
+  cancelBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.accent,
+  },
+  cancelBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size10,
+    color: Colors.accent,
+    letterSpacing: 0.5,
   },
 
   // ── Pagination ──
