@@ -16,13 +16,25 @@ import {FontFamily, FontSize } from '../../constants/typography';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { GlobalToastContext } from '../../components/GlobalToastProvider';
+import { useAuthStore } from '../../store/authStore';
 
 import { IconButton } from '../../components/IconButton';
 type NotifView = 'main' | 'delivery';
 
+// FROM/UNTIL used to be static "22:00"/"08:00" text with a decorative
+// chevron-down that did nothing on tap — looked like a picker, wasn't one.
+// Tapping now cycles through hourly options rather than pulling in a new
+// picker dependency for two fields.
+const QUIET_HOUR_TIMES = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, '0')}:00`);
+const cycleTime = (current: string) => {
+  const idx = QUIET_HOUR_TIMES.indexOf(current);
+  return QUIET_HOUR_TIMES[(idx + 1) % QUIET_HOUR_TIMES.length] ?? QUIET_HOUR_TIMES[0];
+};
+
 export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { showToast } = useContext(GlobalToastContext);
+  const { user } = useAuthStore();
   const [view, setView] = useState<NotifView>('main');
 
   // Main Toggles
@@ -41,6 +53,8 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
   const [sms, setSms] = useState(false);
   const [freq, setFreq] = useState('immediate'); // immediate, 30min, daily
   const [quietHours, setQuietHours] = useState(true);
+  const [quietStart, setQuietStart] = useState('22:00');
+  const [quietEnd, setQuietEnd] = useState('08:00');
 
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -67,6 +81,8 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
           if (typeof saved.sms === 'boolean') setSms(saved.sms);
           if (typeof saved.freq === 'string') setFreq(saved.freq);
           if (typeof saved.quietHours === 'boolean') setQuietHours(saved.quietHours);
+          if (typeof saved.quietStart === 'string') setQuietStart(saved.quietStart);
+          if (typeof saved.quietEnd === 'string') setQuietEnd(saved.quietEnd);
         }
       })
       .catch(() => {})
@@ -84,7 +100,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
             notifications: {
               muteAll, outbid, winning, endingSoon, newLot,
               counterOffer, offerAccepted, offerDeclined,
-              push, email, sms, freq, quietHours,
+              push, email, sms, freq, quietHours, quietStart, quietEnd,
             },
           },
         }),
@@ -238,14 +254,22 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
     <View style={{ flex: 1 }}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 14 }]}>
          
-        {/* Header */}
+        {/* Header — was missing a Save action entirely, so toggling push/
+            email/SMS/quiet hours here and backing out via the chevron never
+            persisted anything (savePreferences only lived on the main
+            view's header). */}
         <View style={[styles.header, { marginBottom: 32 }]}>
            <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => setView('main')} accessibilityLabel="Go back" />
            <View style={styles.headerCenter}>
               <Text style={styles.headerSubText}>NOTIFICATIONS</Text>
               <Text style={styles.headerTitleCenter}>Delivery & quiet hours</Text>
            </View>
-           <View style={{ width: 38 }} />
+           <TouchableOpacity onPress={savePreferences} disabled={saving} activeOpacity={0.7}>
+              {saving
+                ? <ActivityIndicator size="small" color={Colors.white} />
+                : <Text style={styles.resetText}>Save</Text>
+              }
+           </TouchableOpacity>
         </View>
 
         <Text style={[styles.sectionTitle, { marginLeft: 24, marginBottom: 16 }]}>DELIVERY CHANNELS</Text>
@@ -268,7 +292,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
               </View>
               <View style={styles.toggleTextWrap}>
                  <Text style={styles.toggleTitle}>Email</Text>
-                 <Text style={styles.toggleSub}>airaf@example.com</Text>
+                 <Text style={styles.toggleSub}>{user?.email || 'Not set'}</Text>
               </View>
               <CustomSwitch value={email} onValueChange={setEmail} />
            </View>
@@ -279,7 +303,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
               </View>
               <View style={styles.toggleTextWrap}>
                  <Text style={styles.toggleTitle}>SMS</Text>
-                 <Text style={styles.toggleSub}>+44 7700 900123</Text>
+                 <Text style={styles.toggleSub}>{user?.phone || 'Not set'}</Text>
               </View>
               <CustomSwitch value={sms} onValueChange={setSms} />
            </View>
@@ -333,17 +357,17 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
            <View style={styles.quietTimeRow}>
               <View style={styles.timeBlock}>
                  <Text style={styles.timeLabel}>FROM</Text>
-                 <View style={styles.timeInput}>
-                    <Text style={styles.timeText}>22:00</Text>
+                 <TouchableOpacity style={styles.timeInput} onPress={() => setQuietStart(cycleTime(quietStart))} activeOpacity={0.7}>
+                    <Text style={styles.timeText}>{quietStart}</Text>
                     <Ionicons name="chevron-down" size={16} color={Colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no" />
-                 </View>
+                 </TouchableOpacity>
               </View>
               <View style={styles.timeBlock}>
                  <Text style={styles.timeLabel}>UNTIL</Text>
-                 <View style={styles.timeInput}>
-                    <Text style={styles.timeText}>08:00</Text>
+                 <TouchableOpacity style={styles.timeInput} onPress={() => setQuietEnd(cycleTime(quietEnd))} activeOpacity={0.7}>
+                    <Text style={styles.timeText}>{quietEnd}</Text>
                     <Ionicons name="chevron-down" size={16} color={Colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no" />
-                 </View>
+                 </TouchableOpacity>
               </View>
            </View>
         </View>

@@ -88,6 +88,22 @@ export const AboutScreen: React.FC = () => {
           </Text>
         </View>
 
+        {/* ── Stats — matches web's About page (src/app/about/page.tsx), which
+            was previously the only place these numbers appeared. Static copy
+            on both platforms, not sourced from an API — there's no public
+            stats endpoint on the backend for this. ── */}
+        <View style={styles.statsRow}>
+          <View style={styles.statCell}>
+            <Text style={styles.statValue}>50,000+</Text>
+            <Text style={styles.statLabel}>Users</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statCell}>
+            <Text style={styles.statValue}>£200M+</Text>
+            <Text style={styles.statLabel}>Traded</Text>
+          </View>
+        </View>
+
         {/* ── Why Carmazium ── */}
         <Text style={styles.sectionTitle}>Why Carmazium</Text>
 
@@ -192,6 +208,38 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     fontSize: FontSize.sm,
     color: Colors.accent,
+    letterSpacing: 1,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    backgroundColor: Colors.bgSecondary,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha07,
+    paddingVertical: 18,
+    marginBottom: 24,
+  },
+  statCell: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+  },
+  statDivider: {
+    width: 1,
+    alignSelf: 'stretch',
+    backgroundColor: Colors.whiteAlpha07,
+  },
+  statValue: {
+    fontFamily: FontFamily.extraBold,
+    fontSize: FontSize.xl,
+    color: Colors.accent,
+  },
+  statLabel: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size9,
+    color: Colors.iconMuted,
     letterSpacing: 1,
   },
   heroDesc: {
