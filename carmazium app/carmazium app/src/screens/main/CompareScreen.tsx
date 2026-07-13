@@ -5,6 +5,8 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TextInput,
+  ActivityIndicator,
   Dimensions,
   StatusBar,
   Alert,
@@ -104,6 +106,14 @@ export const CompareScreen: React.FC = () => {
   const [selectModalVisible, setSelectModalVisible] = useState(false);
   const [activeSlotToReplace, setActiveSlotToReplace] = useState<number | null>(null);
 
+  // Picker search — was previously just the same static 30-newest-listings
+  // array with no way to actually search for a specific car (mobile-audit.md
+  // finding). null = showing the default 30-newest list; non-null = a real
+  // search result set.
+  const [pickerQuery, setPickerQuery] = useState('');
+  const [pickerResults, setPickerResults] = useState<CarListing[] | null>(null);
+  const [pickerSearching, setPickerSearching] = useState(false);
+
   // Highlight Winners Toggle State
   const [highlightWinners, setHighlightWinners] = useState(true);
 
@@ -124,6 +134,26 @@ export const CompareScreen: React.FC = () => {
     })();
     return () => { isMounted = false; };
   }, []);
+
+  // Debounced search within the "select vehicle" picker modal — falls back
+  // to the default 30-newest list when the query is cleared.
+  useEffect(() => {
+    if (!selectModalVisible || !pickerQuery.trim()) {
+      setPickerResults(null);
+      setPickerSearching(false);
+      return;
+    }
+    let cancelled = false;
+    setPickerSearching(true);
+    const timer = setTimeout(async () => {
+      const { listings: results } = await searchListings({ search: pickerQuery.trim(), limit: 30 });
+      if (!cancelled) {
+        setPickerResults(results);
+        setPickerSearching(false);
+      }
+    }, 350);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [pickerQuery, selectModalVisible]);
 
   const carA = selectedCarIds[0] ? (listings.find((l) => l.id === selectedCarIds[0]) ?? null) : null;
   const carB = selectedCarIds[1] ? (listings.find((l) => l.id === selectedCarIds[1]) ?? null) : null;
@@ -161,10 +191,17 @@ export const CompareScreen: React.FC = () => {
 
   const handleOpenSelect = (slotIndex: number) => {
     setActiveSlotToReplace(slotIndex);
+    setPickerQuery('');
+    setPickerResults(null);
     setSelectModalVisible(true);
   };
 
-  const handleSelectCar = (carId: string) => {
+  const handleSelectCar = (car: CarListing) => {
+    // A car picked from a search result may not be in the base `listings`
+    // array the display rows read from — merge it in, or carA/B/C would
+    // silently render as null despite selectedCarIds pointing at a real id.
+    setListings(prev => (prev.some(l => l.id === car.id) ? prev : [...prev, car]));
+    const carId = car.id;
     if (activeSlotToReplace === 0) {
       setSelectedCarIds([carId, selectedCarIds[1] || '', selectedCarIds[2] || ''].filter(Boolean));
     } else if (activeSlotToReplace === 1) {
@@ -473,11 +510,26 @@ export const CompareScreen: React.FC = () => {
         title="Select Vehicle"
         maxHeightPercent={75}
       >
+        <View style={styles.pickerSearchWrap}>
+          <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
+          <TextInput
+            style={styles.pickerSearchInput}
+            value={pickerQuery}
+            onChangeText={setPickerQuery}
+            placeholder="Search make, model, or keyword..."
+            placeholderTextColor={Colors.textMuted}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {pickerSearching && <ActivityIndicator size="small" color={Colors.accent} />}
+        </View>
         <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-          {listings.length === 0 && (
-            <Text style={styles.selectCarDetails}>No listings available right now.</Text>
+          {(pickerResults ?? listings).length === 0 && (
+            <Text style={styles.selectCarDetails}>
+              {pickerQuery.trim() ? 'No matching listings found.' : 'No listings available right now.'}
+            </Text>
           )}
-          {listings.map((car) => {
+          {(pickerResults ?? listings).map((car) => {
             const isAlreadySelected = selectedCarIds.includes(car.id);
             return (
               <TouchableOpacity
@@ -486,7 +538,7 @@ export const CompareScreen: React.FC = () => {
                   styles.carSelectRow,
                   isAlreadySelected && styles.carSelectRowDisabled,
                 ]}
-                onPress={() => handleSelectCar(car.id)}
+                onPress={() => handleSelectCar(car)}
                 disabled={isAlreadySelected}
                 activeOpacity={0.7}
               >
@@ -985,6 +1037,25 @@ const styles = StyleSheet.create({
   // Modal selection styles
   modalBody: {
     padding: 20,
+  },
+  pickerSearchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginHorizontal: 20,
+    marginTop: 4,
+    paddingHorizontal: 14,
+    height: 46,
+    borderRadius: 12,
+    backgroundColor: Colors.whiteAlpha04,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha08,
+  },
+  pickerSearchInput: {
+    flex: 1,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: Colors.white,
   },
   carSelectRow: {
     flexDirection: 'row',
