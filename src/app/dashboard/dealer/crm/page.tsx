@@ -25,7 +25,11 @@ const COLUMNS = [
     { key: "LOST", label: "Lost", color: "border-red-500/40", dotColor: "bg-red-400", bg: "from-red-500/5" },
 ]
 
-const SOURCES = ["direct", "chat", "walk-in", "referral", "online-ad", "phone"] as const
+// Was ["direct", "chat", "walk-in", "referral", "online-ad", "phone"] — a
+// separately invented set that didn't match what the backend's DTO actually
+// documents (CreateLeadDto: "listing_enquiry, chat, offer, walk_in, phone"),
+// which is also what mobile's DealerLeadsScreen.tsx already sends.
+const SOURCES = ["listing_enquiry", "chat", "offer", "walk_in", "phone"] as const
 
 // ─── Add Lead Modal ────────────────────────────────────────────────────────────
 
@@ -40,7 +44,7 @@ function AddLeadModal({
         buyerName: "",
         buyerEmail: "",
         buyerPhone: "",
-        source: "direct",
+        source: "listing_enquiry",
         notes: "",
     })
     const [listings, setListings] = React.useState<any[]>([])
@@ -149,7 +153,7 @@ function AddLeadModal({
                             className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary/50 transition-colors appearance-none cursor-pointer"
                         >
                             {SOURCES.map(s => (
-                                <option key={s} value={s} className="bg-[var(--bg-dropdown)] capitalize">{s.replace('-', ' ')}</option>
+                                <option key={s} value={s} className="bg-[var(--bg-dropdown)] capitalize">{s.replace(/_/g, ' ')}</option>
                             ))}
                         </select>
                     </div>
@@ -426,7 +430,7 @@ export default function DealerCRMPage() {
                                                             </div>
                                                             <div>
                                                                 <p className="font-black text-sm tracking-tight">{lead.buyerName}</p>
-                                                                <p className="text-xs font-bold text-primary uppercase tracking-widest">{lead.source || 'direct'}</p>
+                                                                <p className="text-xs font-bold text-primary uppercase tracking-widest">{lead.source?.replace(/_/g, ' ') || 'Unknown source'}</p>
                                                             </div>
                                                         </div>
                                                     </div>
