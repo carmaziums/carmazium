@@ -54,7 +54,7 @@ export type MainStackParamList = {
   Search: undefined;
   Messages: undefined;
   ChatScreen: { threadId: string };
-  Compare: undefined;
+  Compare: { initialListing?: CarListing } | undefined;
   Settings: undefined;
   DealerAnalytics: undefined;
   DealerInventory: undefined;

@@ -12,7 +12,7 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -90,6 +90,11 @@ const getCapsuleTitle = (car: CarListing) => {
 export const CompareScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
+  const route = useRoute<any>();
+  // "Compare" icon on VehicleDetailScreen navigates here with the car the
+  // buyer was already looking at — previously there was no entry point from
+  // a listing at all, and Compare always started from scratch.
+  const initialListing: CarListing | undefined = route.params?.initialListing;
 
   const [listings, setListings] = useState<CarListing[]>([]);
   const [loadingListings, setLoadingListings] = useState(true);
@@ -107,8 +112,14 @@ export const CompareScreen: React.FC = () => {
     (async () => {
       const { listings: fetched } = await searchListings({ limit: 30, sortBy: 'newest' });
       if (!isMounted) return;
-      setListings(fetched);
-      setSelectedCarIds(fetched.slice(0, 2).map((l) => l.id));
+      const merged = initialListing && !fetched.some(l => l.id === initialListing.id)
+        ? [initialListing, ...fetched]
+        : fetched;
+      setListings(merged);
+      const defaultIds = initialListing
+        ? [initialListing.id, ...merged.filter(l => l.id !== initialListing.id).slice(0, 1).map(l => l.id)]
+        : merged.slice(0, 2).map((l) => l.id);
+      setSelectedCarIds(defaultIds);
       setLoadingListings(false);
     })();
     return () => { isMounted = false; };
