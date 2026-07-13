@@ -1759,15 +1759,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             />
           </View>
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
-            <Text style={s.sectionLabel}>MARKED FOR EXPORT</Text>
-            <Switch
-              value={markedForExport}
-              onValueChange={setMarkedForExport}
-              trackColor={{ false: Colors.darkBlue_2a2a35, true: Colors.accent }}
-              thumbColor={Colors.white}
-            />
-          </View>
+          {/* "Marked for export" question removed from the form — it's real
+              DVLA-sourced data (see markedForExport state/autofill/payload
+              below, all untouched), not something a seller should be asked
+              to declare as an opinion. Still silently populated by DVLA
+              autofill and still sent in the submit payload. */}
 
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
             <Text style={s.sectionLabel}>DEPARTED / ESTATE SALE</Text>
