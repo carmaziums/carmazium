@@ -2276,14 +2276,50 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           )}
         </SectionBox>
 
-        {/* Seller Badges */}
+        {/* Listing Method — tapping a pricing tier used to silently flip
+            listingType as a side effect (setListingType(badge.listingType)
+            in the tier card's onPress below), so choosing "Premium" from a
+            Retail mindset could silently switch you to a completely
+            different flow with no explicit choice ever made. This is now
+            the one place listingType changes; tier cards only set badgeTier. */}
+        <SectionBox title="Listing Method">
+          <Text style={s.fieldHint}>
+            Choose how you want to sell — a fixed-price retail listing, or a live auction.
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+            {([
+              { v: 'CLASSIFIED' as const, l: 'Retail Listing' },
+              { v: 'AUCTION' as const, l: 'Auction' },
+            ]).map(opt => (
+              <TouchableOpacity
+                key={opt.v}
+                style={[s.pill, { flex: 1, justifyContent: 'center' }, listingType === opt.v && s.pillActive]}
+                onPress={() => {
+                  if (listingType === opt.v) return;
+                  setListingType(opt.v);
+                  // Previous tier no longer applies to the new method —
+                  // reset to that method's default rather than leaving a
+                  // stale FREE/BASIC selection that doesn't match.
+                  setBadgeTier(opt.v === 'AUCTION' ? 'FREE' : 'BASIC');
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={[s.pillText, listingType === opt.v && s.pillTextActive]}>{opt.l}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </SectionBox>
+
+        {/* Seller Badges — only the tiers relevant to the listing method
+            chosen above (Auction's Free tier vs Classified's Basic/Standard/
+            Premium tiers were never really alternatives to each other). */}
         <SectionBox title="Seller Badges">
           <Text style={s.fieldHint}>
             Boost buyer confidence with trust badges on your listing. Badges increase buyer engagement and sell rates.
           </Text>
           <View style={{ gap: 10, marginTop: 8 }}>
-            {BADGES.map(badge => {
-              const active = badge.id === 'FREE' ? listingType === 'AUCTION' : (badgeTier === badge.id && listingType === 'CLASSIFIED');
+            {BADGES.filter(badge => (badge.listingType === 'AUCTION') === (listingType === 'AUCTION')).map(badge => {
+              const active = badgeTier === badge.id;
               return (
                 <TouchableOpacity
                   key={badge.id}
@@ -2291,10 +2327,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                     s.badgeCard,
                     active && { borderColor: badge.accent, backgroundColor: `${badge.accent}14` },
                   ]}
-                  onPress={() => {
-                    setBadgeTier(badge.id);
-                    setListingType(badge.listingType);
-                  }}
+                  onPress={() => setBadgeTier(badge.id)}
                   activeOpacity={0.8}
                 >
                   {badge.id === 'STANDARD' && (
