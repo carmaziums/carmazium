@@ -356,7 +356,11 @@ export async function searchListings(params: {
     if (params.minSeats != null) query.set('minSeats', String(params.minSeats));
     if (params.euroStandard) query.set('euroStandard', params.euroStandard);
     if (params.features?.length) query.set('features', params.features.join(','));
-    if (params.isImported) query.set('isImported', 'true');
+    // Was `if (params.isImported)` — only ever sent 'true', so there was no
+    // way to explicitly request isImported=false (exclude imports) even
+    // though the backend supports it. undefined still omits the param.
+    if (params.isImported === true) query.set('isImported', 'true');
+    else if (params.isImported === false) query.set('isImported', 'false');
     if (params.markedForExport) query.set('markedForExport', 'true');
     if (params.sortBy)    query.set('sortBy', params.sortBy);
     if (params.page  != null) query.set('page',  String(params.page));

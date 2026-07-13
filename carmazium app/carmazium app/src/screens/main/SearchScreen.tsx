@@ -164,8 +164,9 @@ export const SearchScreen: React.FC = () => {
   const [minSeats, setMinSeats] = useState('');
   const [euroStandard, setEuroStandard] = useState('');
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
-  const [isImported, setIsImported] = useState(false);
-  const [markedForExport, setMarkedForExport] = useState(false);
+  // Tri-state: '' = any, 'yes' = imported only, 'no' = explicitly hide
+  // imported cars (was a plain boolean toggle with no way to exclude imports).
+  const [isImported, setIsImported] = useState<'' | 'yes' | 'no'>('');
   const [maxDistanceMi, setMaxDistanceMi] = useState<number | null>(null);
   const [postcodeInput, setPostcodeInput] = useState('');
   const [postcodeSaving, setPostcodeSaving] = useState(false);
@@ -286,8 +287,7 @@ export const SearchScreen: React.FC = () => {
       minSeats: minSeats ? parseInt(minSeats) : undefined,
       euroStandard: euroStandard || undefined,
       features: selectedFeatures.length ? selectedFeatures : undefined,
-      isImported: isImported ? true : undefined,
-      markedForExport: markedForExport ? true : undefined,
+      isImported: isImported === 'yes' ? true : isImported === 'no' ? false : undefined,
       sortBy: sortId,
       page: p,
       limit: 20,
@@ -331,7 +331,7 @@ export const SearchScreen: React.FC = () => {
       setLoadingMore(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, deliveryAvailable, sellerType, listingType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, markedForExport, maxDistanceMi, userLat, userLng, page]);
+  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, deliveryAvailable, sellerType, listingType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng, page]);
 
   // Initial load
   useEffect(() => { fetch(true); }, []);
@@ -349,7 +349,7 @@ export const SearchScreen: React.FC = () => {
   useEffect(() => {
     fetch(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, deliveryAvailable, sellerType, listingType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, markedForExport, maxDistanceMi]);
+  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, deliveryAvailable, sellerType, listingType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi]);
 
   const onRefresh = () => { setRefreshing(true); fetch(true); };
 
@@ -378,8 +378,7 @@ export const SearchScreen: React.FC = () => {
     !!minSeats,
     !!euroStandard,
     selectedFeatures.length > 0,
-    isImported,
-    markedForExport,
+    !!isImported,
     maxDistanceMi != null,
   ].filter(Boolean).length;
 
@@ -409,8 +408,7 @@ export const SearchScreen: React.FC = () => {
     setMinSeats('');
     setEuroStandard('');
     setSelectedFeatures([]);
-    setIsImported(false);
-    setMarkedForExport(false);
+    setIsImported('');
     setMaxDistanceMi(null);
   };
 
@@ -1185,29 +1183,25 @@ export const SearchScreen: React.FC = () => {
                   thumbColor={Colors.white}
                 />
               </View>
-              <View style={[s.toggleRow, { marginTop: 14 }]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.toggleLabel}>IMPORTED ONLY</Text>
-                  <Text style={s.toggleHint}>Only show vehicles imported from abroad</Text>
-                </View>
-                <Switch
-                  value={isImported}
-                  onValueChange={setIsImported}
-                  trackColor={{ false: Colors.darkBlue_2a2a35, true: Colors.accent }}
-                  thumbColor={Colors.white}
-                />
-              </View>
-              <View style={[s.toggleRow, { marginTop: 14 }]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.toggleLabel}>MARKED FOR EXPORT ONLY</Text>
-                  <Text style={s.toggleHint}>Only show vehicles marked for export</Text>
-                </View>
-                <Switch
-                  value={markedForExport}
-                  onValueChange={setMarkedForExport}
-                  trackColor={{ false: Colors.darkBlue_2a2a35, true: Colors.accent }}
-                  thumbColor={Colors.white}
-                />
+              {/* Import status — was a plain "Imported only" toggle with no
+                  way to explicitly exclude imports. Segmented control matches
+                  the Vehicle Type / Listing Type pattern already used above. */}
+              <Text style={[s.toggleLabel, { marginTop: 18, marginBottom: 10 }]}>IMPORT STATUS</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {[
+                  { id: '' as const, label: 'Any' },
+                  { id: 'yes' as const, label: 'Imported only' },
+                  { id: 'no' as const, label: 'Hide imported' },
+                ].map(opt => (
+                  <TouchableOpacity
+                    key={opt.id}
+                    style={[s.segmentBtn, isImported === opt.id && s.segmentBtnActive]}
+                    onPress={() => setIsImported(opt.id)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.segmentBtnText, isImported === opt.id && s.segmentBtnTextActive]}>{opt.label}</Text>
+                  </TouchableOpacity>
+                ))}
               </View>
 
               <View style={{ height: 80 }} />
