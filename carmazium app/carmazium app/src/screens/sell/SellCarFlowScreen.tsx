@@ -97,6 +97,12 @@ const BANNER_LABELS = [
 const RELATIONSHIP_OPTIONS = [
   'Son', 'Daughter', 'Sibling', 'Spouse', 'Executor of Will', 'Solicitor', 'Other',
 ];
+// Matches web's NOT_OWNER_RELATIONSHIP_OPTIONS exactly (ListingWizard.tsx) —
+// distinct from RELATIONSHIP_OPTIONS above, which is for the departed/estate
+// sale case, a different question with a different option set.
+const NOT_OWNER_RELATIONSHIP_OPTIONS = [
+  'Family member', 'Friend', 'Employer', "Selling with owner's permission", 'Other',
+];
 const EURO_STANDARDS = ['EURO_4', 'EURO_5', 'EURO_6', 'EURO_6D'];
 const WRITE_OFF_CATS = [
   { v: 'NONE', l: 'None' }, { v: 'CAT_S', l: 'Cat S' },
@@ -492,6 +498,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [stolenRecovered, setStolenRecovered] = useState<boolean | null>(null);
   const [outstandingFinance, setOutstandingFinance] = useState<boolean | null>(null);
   const [isLegalKeeper, setIsLegalKeeper] = useState<boolean | null>(null);
+  const [notOwnerRelSelect, setNotOwnerRelSelect] = useState('');
+  const [notOwnerRelOther, setNotOwnerRelOther] = useState('');
+  const notOwnerRelationship = notOwnerRelSelect === 'Other' ? notOwnerRelOther : notOwnerRelSelect;
   const [declAcknowledged, setDeclAcknowledged] = useState(false);
 
   // ── Step 2 — Media ──
@@ -662,6 +671,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         if (l.stolenRecovered != null) setStolenRecovered(!!l.stolenRecovered);
         if (l.hasOutstandingFinance != null) setOutstandingFinance(!!l.hasOutstandingFinance);
         if (l.isLegalRegisteredKeeper != null) setIsLegalKeeper(!!l.isLegalRegisteredKeeper);
+        if (l.notOwnerRelationship) {
+          const opt = NOT_OWNER_RELATIONSHIP_OPTIONS.find(o => o === l.notOwnerRelationship);
+          if (opt) { setNotOwnerRelSelect(opt); } else { setNotOwnerRelSelect('Other'); setNotOwnerRelOther(String(l.notOwnerRelationship)); }
+        }
         // Editing an already-published listing implies the declaration was
         // already made and accepted at initial publish time.
         setDeclAcknowledged(true);
@@ -748,6 +761,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     if (key === 'stolenRecovered' && stolenRecovered === null) return 'Required';
     if (key === 'outstandingFinance' && outstandingFinance === null) return 'Required';
     if (key === 'isLegalKeeper' && isLegalKeeper === null) return 'Required';
+    if (key === 'notOwnerRelationship' && isLegalKeeper === false && !notOwnerRelationship.trim()) return 'Please select your relationship to the registered keeper.';
     if (key === 'declAcknowledged' && !declAcknowledged) return 'You must acknowledge this declaration to continue';
     if (key === 'auctionStartDate' && auctionStartMode === 'SCHEDULED' && !auctionStartDate.trim()) return 'Required';
     if (key === 'reservePrice' && (!reservePrice.trim() || parseFloat(reservePrice) <= 0)) return 'Enter a valid reserve price';
@@ -758,7 +772,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   // All field keys validated per step — used to force every field's error to show
   // (mark touched) when Next is tapped, and to know which keys to check.
-  const STEP1_FIELD_KEYS = ['make', 'model', 'year', 'mileage', 'title', 'condition', 'owners', 'departedRelationship', 'writeOffCat', 'stolenRecovered', 'outstandingFinance', 'isLegalKeeper', 'declAcknowledged'];
+  const STEP1_FIELD_KEYS = ['make', 'model', 'year', 'mileage', 'title', 'condition', 'owners', 'departedRelationship', 'writeOffCat', 'stolenRecovered', 'outstandingFinance', 'isLegalKeeper', 'notOwnerRelationship', 'declAcknowledged'];
   const STEP3_FIELD_KEYS = ['priceAsking'];
   const STEP4_AUCTION_FIELD_KEYS = ['auctionStartDate', 'reservePrice', 'startingBid', 'minIncrement'];
 
@@ -1153,6 +1167,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         writeOffCategory: writeOffCat,
         stolenRecovered, hasOutstandingFinance: outstandingFinance,
         isLegalRegisteredKeeper: isLegalKeeper,
+        notOwnerRelationship: isLegalKeeper === false ? (notOwnerRelationship || undefined) : undefined,
         images: allImages,
         videoUrls: videoUrls.length ? videoUrls : undefined,
         priceMin: priceMin ? parseFloat(priceMin.replace(/[^0-9.]/g, '')) : undefined,
@@ -1852,10 +1867,46 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             <YesNoRow
               label="ARE YOU THE LEGAL REGISTERED KEEPER OF THIS VEHICLE? *"
               value={isLegalKeeper}
-              onChange={v => { setIsLegalKeeper(v); setTouched(prev => ({ ...prev, isLegalKeeper: true })); }}
+              onChange={v => {
+                setIsLegalKeeper(v);
+                setTouched(prev => ({ ...prev, isLegalKeeper: true }));
+                if (v) { setNotOwnerRelSelect(''); setNotOwnerRelOther(''); }
+              }}
               required
               error={fieldError('isLegalKeeper') ?? undefined}
             />
+            {isLegalKeeper === false && (
+              <View style={{ marginTop: 12 }}>
+                <SL label="RELATIONSHIP TO THE REGISTERED KEEPER" required />
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                  {NOT_OWNER_RELATIONSHIP_OPTIONS.map(opt => (
+                    <TouchableOpacity
+                      key={opt}
+                      style={[s.pill, notOwnerRelSelect === opt && s.pillActive]}
+                      onPress={() => {
+                        setNotOwnerRelSelect(opt);
+                        if (opt !== 'Other') setNotOwnerRelOther('');
+                        setTouched(prev => ({ ...prev, notOwnerRelationship: true }));
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[s.pillText, notOwnerRelSelect === opt && s.pillTextActive]}>{opt}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                {notOwnerRelSelect === 'Other' && (
+                  <TextInput
+                    style={[s.input, { marginTop: 8 }]}
+                    value={notOwnerRelOther}
+                    onChangeText={v => { setNotOwnerRelOther(v); setTouched(prev => ({ ...prev, notOwnerRelationship: true })); }}
+                    placeholder="Describe your relationship"
+                    placeholderTextColor={Colors.borderMuted}
+                    autoCorrect={false}
+                  />
+                )}
+                {fieldError('notOwnerRelationship') ? <Text style={s.inlineError}>{fieldError('notOwnerRelationship')}</Text> : null}
+              </View>
+            )}
           </View>
           <TouchableOpacity
             style={[s.declRow, declAcknowledged && s.declRowActive]}

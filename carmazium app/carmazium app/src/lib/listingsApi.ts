@@ -88,6 +88,7 @@ export interface ApiListing {
   markedForExport?: boolean | null;
   departedRelationship?: string | null;
   isLegalRegisteredKeeper?: boolean | null;
+  notOwnerRelationship?: string | null;
   priceMin?: number | null;
 }
 
