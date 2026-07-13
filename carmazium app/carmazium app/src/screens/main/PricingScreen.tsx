@@ -76,6 +76,12 @@ const PLANS: PlanCard[] = [
       { label: 'Offer & negotiation system', included: true },
       { label: 'Direct buyer chat', included: true },
       { label: 'DVLA auto-fill', included: true },
+      // Featured Boost has no tier restriction server-side (POST
+      // /featured-boost/:listingId only checks ownership + not-already-
+      // featured) — web's pricing page lists this as included on all three
+      // tiers including Basic; mobile omitted it here entirely, implying
+      // (incorrectly) that Basic-tier listings couldn't be boosted.
+      { label: 'Featured boost eligible', included: true },
       { label: 'Analytics', included: false },
       { label: 'Priority placement', included: false },
     ],
