@@ -437,6 +437,15 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [lastV5C, setLastV5C] = useState('');
   const [wheelplan, setWheelplan] = useState('');
   const [typeApproval, setTypeApproval] = useState('');
+  // Read-only buyer-trust signal, mirrors web's "MOT History" list — display
+  // only, never sent in any payload (backend has no field for it on Listing).
+  const [motHistory, setMotHistory] = useState<Array<{
+    completedDate: string;
+    testResult: 'PASSED' | 'FAILED';
+    odometerValue?: string;
+    odometerUnit?: string;
+    defects?: Array<{ text: string; type: string }>;
+  }>>([]);
   // Model Details
   const [variant, setVariant] = useState('');
   const [driveType, setDriveType] = useState('');
@@ -800,6 +809,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       if (data.wheelplan) setWheelplan(String(data.wheelplan));
       if (data.typeApproval) setTypeApproval(String(data.typeApproval));
       if (data.dateOfLastV5CIssued) setLastV5C(String(data.dateOfLastV5CIssued));
+      if (Array.isArray(data.motHistory)) setMotHistory(data.motHistory);
       setDvlaFetched(true);
     } catch (err: any) {
       Alert.alert('DVLA Lookup Failed', err.message || 'Could not fetch vehicle data. Fill in details manually.');
@@ -1342,6 +1352,28 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           <FieldInput label="TYPE APPROVAL" value={typeApproval} onChange={setTypeApproval} placeholder="e.g. M1" />
           <FieldInput label="WHEELPLAN" value={wheelplan} onChange={setWheelplan} placeholder="e.g. 2 AXLE RIGID BODY" />
           <FieldInput label="VIN" value={vin} onChange={setVin} placeholder="17-character VIN" hint="Optional — from VIN database" />
+          {motHistory.length > 0 && (
+            <View style={s.motHistoryBox}>
+              <Text style={s.motHistoryTitle}>MOT HISTORY</Text>
+              {motHistory.slice(0, 5).map((test, i) => (
+                <View key={i} style={s.motHistoryRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.motHistoryDate}>
+                      {new Date(test.completedDate).toLocaleDateString('en-GB')}
+                    </Text>
+                    {test.odometerValue ? (
+                      <Text style={s.motHistoryMeta}>
+                        {Number(test.odometerValue).toLocaleString()} {test.odometerUnit}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <View style={[s.motHistoryBadge, test.testResult === 'PASSED' ? s.motHistoryBadgePass : s.motHistoryBadgeFail]}>
+                    <Text style={s.motHistoryBadgeText}>{test.testResult}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
         </SectionBox>
 
         {/* Make / Model / Year */}
@@ -2529,6 +2561,15 @@ const s = StyleSheet.create({
   dvlaField: { width: '50%', paddingVertical: 8, paddingRight: 8 },
   dvlaFieldLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.iconMuted, letterSpacing: 1, marginBottom: 3 },
   dvlaFieldValue: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.white },
+  motHistoryBox: { marginTop: 12, padding: 12, borderRadius: 10, backgroundColor: Colors.infoBlueAlpha08, borderWidth: 1, borderColor: Colors.infoBlueAlpha20 },
+  motHistoryTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.infoBlue, letterSpacing: 1, marginBottom: 8 },
+  motHistoryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 },
+  motHistoryDate: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white },
+  motHistoryMeta: { fontFamily: FontFamily.regular, fontSize: FontSize.size9, color: Colors.iconMuted, marginTop: 2 },
+  motHistoryBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  motHistoryBadgePass: { backgroundColor: Colors.accentGreenAlpha20 },
+  motHistoryBadgeFail: { backgroundColor: Colors.errorAlpha20 },
+  motHistoryBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size8, color: Colors.white, letterSpacing: 0.5 },
 
   // Pills
   pill: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: Colors.whiteAlpha04, borderWidth: 1, borderColor: Colors.whiteAlpha08 },
