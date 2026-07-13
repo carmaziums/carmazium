@@ -14,6 +14,8 @@ import { searchListings } from '../../lib/listingsApi';
 import { naturalLanguageSearch } from '../../lib/aiApi';
 import { HorizontalVehicleCard } from '../../components/HorizontalVehicleCard';
 import { BottomSheet } from '../../components/BottomSheet';
+import { useLocation } from '../../context/LocationContext';
+import { haversineDistanceMiles } from '../../lib/distance';
 import { Colors } from '../../constants/colors';
 import { getBodyTypeIcon } from '../../constants/bodyTypes';
 import {FontFamily, FontSize } from '../../constants/typography';
@@ -107,6 +109,12 @@ const POPULAR_FEATURES = [
   'Apple CarPlay', 'Android Auto', 'Keyless Entry',
   'Lane Assist', 'Blind Spot Monitoring', 'Adaptive Cruise Control',
 ];
+// "Near Me" — the backend has no lat/lng/radius filter param at all (confirmed
+// against listing-filter.dto.ts), so web itself just filters/sorts the already-
+// fetched page client-side by haversine distance (src/app/search/page.tsx).
+// Mirrors that same (imperfect — doesn't reach across pages) behavior here
+// rather than inventing server-side geo support that doesn't exist.
+const DISTANCE_CHIPS = [10, 25, 50, 100, 200];
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -114,6 +122,7 @@ export const SearchScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const route = useRoute<any>();
+  const { postcode: userPostcode, latitude: userLat, longitude: userLng, setPostcode: saveUserPostcode } = useLocation();
 
   // ── Search state ──
   const [query, setQuery] = useState('');
@@ -157,6 +166,9 @@ export const SearchScreen: React.FC = () => {
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
   const [isImported, setIsImported] = useState(false);
   const [markedForExport, setMarkedForExport] = useState(false);
+  const [maxDistanceMi, setMaxDistanceMi] = useState<number | null>(null);
+  const [postcodeInput, setPostcodeInput] = useState('');
+  const [postcodeSaving, setPostcodeSaving] = useState(false);
   // AI search state
   const [aiModalVisible, setAiModalVisible] = useState(false);
   const [aiQuery, setAiQuery] = useState('');
@@ -265,7 +277,20 @@ export const SearchScreen: React.FC = () => {
     else setLoadingMore(true);
     const p = reset ? 1 : page;
     try {
-      const { listings: items, total: t } = await searchListings(buildParams(p));
+      const { listings: rawItems, total: t } = await searchListings(buildParams(p));
+      // Backend has no lat/lng/radius filter param — same client-side
+      // haversine filter+sort web's search page does on the already-fetched
+      // page (doesn't reach across pagination, matching web's actual, if
+      // imperfect, behavior).
+      let items = rawItems;
+      if (maxDistanceMi != null && userLat != null && userLng != null) {
+        items = rawItems
+          .filter(l => l.latitude != null && l.longitude != null &&
+            haversineDistanceMiles(userLat, userLng, l.latitude, l.longitude) <= maxDistanceMi)
+          .sort((a, b) =>
+            haversineDistanceMiles(userLat, userLng, a.latitude!, a.longitude!) -
+            haversineDistanceMiles(userLat, userLng, b.latitude!, b.longitude!));
+      }
       if (reset) {
         setListings(items);
         setPage(2);
@@ -275,7 +300,7 @@ export const SearchScreen: React.FC = () => {
         setPage(prev => prev + 1);
         setTotal(t);
       }
-      setHasMore(items.length === 20);
+      setHasMore(rawItems.length === 20);
     } catch {
       // keep existing
     } finally {
@@ -284,7 +309,7 @@ export const SearchScreen: React.FC = () => {
       setLoadingMore(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, deliveryAvailable, sellerType, listingType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, markedForExport, page]);
+  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, deliveryAvailable, sellerType, listingType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, markedForExport, maxDistanceMi, userLat, userLng, page]);
 
   // Initial load
   useEffect(() => { fetch(true); }, []);
@@ -302,7 +327,7 @@ export const SearchScreen: React.FC = () => {
   useEffect(() => {
     fetch(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, deliveryAvailable, sellerType, listingType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, markedForExport]);
+  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, deliveryAvailable, sellerType, listingType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, markedForExport, maxDistanceMi]);
 
   const onRefresh = () => { setRefreshing(true); fetch(true); };
 
@@ -333,6 +358,7 @@ export const SearchScreen: React.FC = () => {
     selectedFeatures.length > 0,
     isImported,
     markedForExport,
+    maxDistanceMi != null,
   ].filter(Boolean).length;
 
   const resetFilters = () => {
@@ -363,6 +389,18 @@ export const SearchScreen: React.FC = () => {
     setSelectedFeatures([]);
     setIsImported(false);
     setMarkedForExport(false);
+    setMaxDistanceMi(null);
+  };
+
+  const handleSavePostcode = async () => {
+    if (!postcodeInput.trim() || postcodeSaving) return;
+    setPostcodeSaving(true);
+    try {
+      await saveUserPostcode(postcodeInput.trim());
+      setPostcodeInput('');
+    } finally {
+      setPostcodeSaving(false);
+    }
   };
 
   const applyQuickFilter = (id: string) => {
@@ -1011,6 +1049,57 @@ export const SearchScreen: React.FC = () => {
 
               <View style={s.divider} />
 
+              {/* Distance ("Near Me") — needs a postcode on record since the
+                  app doesn't request device geolocation (deliberate choice,
+                  see LocationContext.tsx); geocodes via postcodes.io same as
+                  web's fallback path. */}
+              <Text style={s.filterLabel}>DISTANCE</Text>
+              {userLat != null ? (
+                <>
+                  <View style={s.postcodeRow}>
+                    <Ionicons name="location" size={14} color={Colors.accent} />
+                    <Text style={s.postcodeRowText}>Using {userPostcode}</Text>
+                    <TouchableOpacity onPress={() => setPostcodeInput(userPostcode ?? '')}>
+                      <Text style={s.postcodeChangeLink}>Change</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={[s.chipGrid, { marginTop: 10 }]}>
+                    {DISTANCE_CHIPS.map(mi => (
+                      <TouchableOpacity
+                        key={mi}
+                        style={[s.filterChip, maxDistanceMi === mi && s.filterChipActive]}
+                        onPress={() => setMaxDistanceMi(prev => prev === mi ? null : mi)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[s.filterChipText, maxDistanceMi === mi && s.filterChipTextActive]}>{mi} mi</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              ) : (
+                <Text style={s.toggleHint}>Add your postcode to filter by distance.</Text>
+              )}
+              {(userLat == null || postcodeInput) && (
+                <View style={[s.inputBox, { marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
+                  <TextInput
+                    style={[s.inputBoxValue, { flex: 1 }]}
+                    value={postcodeInput}
+                    onChangeText={setPostcodeInput}
+                    placeholder="e.g. SW1X 7LY"
+                    placeholderTextColor={Colors.borderMuted}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                  />
+                  <TouchableOpacity onPress={handleSavePostcode} disabled={postcodeSaving || !postcodeInput.trim()}>
+                    {postcodeSaving
+                      ? <ActivityIndicator size="small" color={Colors.accent} />
+                      : <Text style={[s.postcodeChangeLink, (!postcodeInput.trim()) && { opacity: 0.4 }]}>Save</Text>}
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              <View style={s.divider} />
+
               {/* Listing Type */}
               <Text style={s.filterLabel}>LISTING TYPE</Text>
               <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -1182,6 +1271,9 @@ const s = StyleSheet.create({
   inputBoxValue: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white },
   miniChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: Colors.whiteAlpha04, borderWidth: 1, borderColor: Colors.whiteAlpha06 },
   miniChipText: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textSecondary },
+  postcodeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  postcodeRowText: { flex: 1, fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.white },
+  postcodeChangeLink: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accent },
 
   // AI search button
   aiSearchWrap: { paddingHorizontal: 24, marginBottom: 6 },
