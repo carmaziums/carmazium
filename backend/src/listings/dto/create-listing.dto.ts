@@ -457,6 +457,7 @@ export class CreateListingDto {
     @ApiProperty({ description: 'Attention label shown as a ribbon on the vehicle card', example: 'Below Market Value', required: false })
     @IsString()
     @IsOptional()
+    @MaxLength(40)
     bannerLabel?: string;
 
     @ApiProperty({ description: 'Whether seller offers delivery for this listing', required: false })

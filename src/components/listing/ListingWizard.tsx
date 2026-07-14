@@ -2528,6 +2528,17 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         )
                                     })}
                                 </div>
+                                <div>
+                                    <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1.5">Or write your own custom label</label>
+                                    <input
+                                        type="text"
+                                        maxLength={40}
+                                        placeholder="e.g. Just Reduced!"
+                                        value={BANNER_LABELS.some(b => b.value === formData.bannerLabel) ? '' : formData.bannerLabel}
+                                        onChange={(e) => set("bannerLabel", e.target.value)}
+                                        className="w-full px-3 py-2.5 rounded-lg bg-[var(--bg-input)] border border-[var(--border-default)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-primary/50"
+                                    />
+                                </div>
                                 {formData.bannerLabel && (
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs text-[var(--text-muted)]">Preview:</span>
