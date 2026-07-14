@@ -612,6 +612,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                     <span className="text-xl font-black">{formatPrice(listing.price)}</span>
                                     <span className="text-sm text-[var(--text-muted)] flex items-center gap-1"><Eye size={14} /> {listing.viewCount || 0} views</span>
                                 </div>
+                                <p className="text-xs text-[var(--text-muted)] mt-1">Listed on {new Date(listing.createdAt).toLocaleDateString('en-GB')}</p>
 
                                 <div className="grid grid-cols-2 gap-2 mt-3">
                                     {listing.status === 'DRAFT' ? (
@@ -688,19 +689,20 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                 <th className="px-6 py-4">Status</th>
                                 <th className="px-6 py-4">Price</th>
                                 <th className="px-6 py-4">Stats</th>
+                                <th className="px-6 py-4">Listed</th>
                                 <th className="px-6 py-4 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-[var(--border-default)]">
                             {loading ? (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-20 text-center">
+                                    <td colSpan={6} className="px-6 py-20 text-center">
                                         <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
                                     </td>
                                 </tr>
                             ) : listings.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-20 text-center text-[var(--text-muted)] italic">
+                                    <td colSpan={6} className="px-6 py-20 text-center text-[var(--text-muted)] italic">
                                         No listings found. Start selling today!
                                     </td>
                                 </tr>
@@ -740,6 +742,9 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                             <div className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
                                                 <span className="flex items-center gap-1"><Eye size={12} /> {listing.viewCount || 0}</span>
                                             </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-xs text-[var(--text-muted)]">
+                                            {new Date(listing.createdAt).toLocaleDateString('en-GB')}
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex justify-end gap-2 items-center">
