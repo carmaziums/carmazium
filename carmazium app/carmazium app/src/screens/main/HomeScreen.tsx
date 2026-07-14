@@ -636,6 +636,34 @@ export const HomeScreen: React.FC = () => {
           </Section>
         )}
 
+        {/* Live Auctions CTA — a direct, prominent entry point matching the
+            "Sell your car" card's visual weight, not just the small quick-chip
+            + "See all" link this used to be the only way in via (see
+            mobile-production-readiness-plan.md F9). Only shown when there's
+            something live to jump into; the quick chip below still covers the
+            zero-live-auctions case. */}
+        {liveAuctions.length > 0 && (
+          <TouchableOpacity
+            style={s.auctionCta}
+            onPress={() => navigation.navigate('Tabs', { screen: 'Live' })}
+            activeOpacity={0.85}
+          >
+            <View style={s.auctionCtaIconWrap}>
+              <Ionicons name="hammer" size={20} color={Colors.accent} />
+              <View style={s.auctionLiveDot} />
+            </View>
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Text style={s.auctionCtaTitle}>
+                {liveAuctions.length} live auction{liveAuctions.length !== 1 ? 's' : ''} right now
+              </Text>
+              <Text style={s.auctionCtaHint}>Bid live before time runs out</Text>
+            </View>
+            <View style={s.auctionCtaBtn}>
+              <Text style={s.auctionCtaBtnText}>VIEW</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+
         {/* Sell your car CTA */}
         <TouchableOpacity
           style={s.sellCta}
@@ -789,6 +817,15 @@ const s = StyleSheet.create({
   // Empty state
   emptyState: { width: 240, height: 100, alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.whiteAlpha02, borderRadius: 14, borderWidth: 1, borderColor: Colors.whiteAlpha05 },
   emptyStateText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.midBlue_505060 },
+
+  // Live Auctions CTA
+  auctionCta: { marginHorizontal: 24, marginBottom: 12, backgroundColor: Colors.bgSecondary, borderRadius: 18, borderWidth: 1, borderColor: Colors.accentAlpha25, padding: 18, flexDirection: 'row', alignItems: 'center' },
+  auctionCtaIconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: Colors.accentAlpha12, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
+  auctionLiveDot: { position: 'absolute', top: -2, right: -2, width: 9, height: 9, borderRadius: 4.5, backgroundColor: Colors.accent, borderWidth: 1.5, borderColor: Colors.bgSecondary },
+  auctionCtaTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, marginBottom: 2 },
+  auctionCtaHint: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted },
+  auctionCtaBtn: { backgroundColor: Colors.accent, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
+  auctionCtaBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white, letterSpacing: 0.8 },
 
   // Sell CTA
   sellCta: { marginHorizontal: 24, marginBottom: 8, backgroundColor: Colors.bgSecondary, borderRadius: 18, borderWidth: 1, borderColor: Colors.accentAlpha25, padding: 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

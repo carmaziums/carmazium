@@ -29,8 +29,8 @@ This document does not repeat content already well-covered in the four existing 
 > **F7–F9 added 2026-07-15**, from user-reported gaps while using the app (not a re-audit of already-covered ground — see each finding for exactly what was checked).
 > - **F7 — DONE.** Seller/dealer phone now surfaced on both `SellerProfileScreen.tsx` and `VehicleDetailScreen.tsx` via the gated `/sellers/{id}/phone` endpoint.
 > - **F8 — DONE**, scoped to buyer-visibility only. Buyer screens now render the real (read-only) `ThreeDVehicleViewer` instead of the flat `DamageMapViewer`, which was deleted as dead code. The related per-body-type GLB asset gap is unfixed (asset-production task, not code).
-> - **F9 — OPEN.** Needs a product-side answer first (see finding) — web's own "Browse Auctions" hero button is currently disabled, so it's unclear whether mobile should add a prominent auctions CTA to match web's *current* state or its *evidently intended* one.
-> - Neither F7 nor F8 has been verified on a real device — no adb/emulator in this environment (same limitation as F1/F3).
+> - **F9 — DONE.** Product decided mobile should have the prominent auctions CTA regardless of web's currently-disabled hero button. `HomeScreen.tsx` now has an `auctionCta` card above `sellCta`, shown whenever there's a live auction.
+> - None of F7/F8/F9 has been verified on a real device — no adb/emulator in this environment (same limitation as F1/F3).
 
 ---
 
@@ -174,6 +174,8 @@ User-reported: "on the homepage there is no Direct button for Auction Now like t
 - Caveat: web's own hero "Action Hub" (`HomeClient.tsx:234-254`) currently has its `"Browse Auctions"` pill button **commented out** (`:235-239`) — only `"Retail Listings"` and `"Sell My Car"` render today. So matching *current* web behavior wouldn't add a prominent auctions CTA either; matching web's *evidently intended but disabled* design would. Worth a quick check with whoever owns the web homepage on whether that button was intentionally killed (e.g. auctions not ready for a hard marketing push) or just left commented out — that answer should drive whether mobile adds this card at all, not just how.
 
 **Fix (if greenlit):** add a second homepage CTA card, same visual treatment as `sellCta`, e.g. "N live auctions right now" / "See what's live" with a "VIEW" button navigating to the `Live` tab — conditionally rendered only when `liveAuctions.length > 0` (falls back to the existing quick-chip entry point when there are none, so the card doesn't promise live auctions that aren't there).
+
+**Status: DONE** (2026-07-15). Greenlit by product — mobile should have the prominent auctions CTA regardless of web's currently-disabled hero button. Added `auctionCta` to `HomeScreen.tsx`, directly above the existing `sellCta`: same card shape/border treatment, an icon-wrap + live-dot on the left (`hammer` icon, matching the existing "Live Auctions" quick-chip's iconography), "`N live auctions right now`" / "Bid live before time runs out", and a filled "VIEW" button navigating to `Tabs → Live`. Rendered only when `liveAuctions.length > 0` per the fix note — the quick chip still covers the zero-live case. `npx tsc --noEmit` clean.
 
 ---
 
