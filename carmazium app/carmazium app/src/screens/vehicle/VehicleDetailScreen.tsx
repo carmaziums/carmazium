@@ -37,7 +37,7 @@ import { apiClient } from '../../lib/apiClient';
 import { getListingById } from '../../lib/listingsApi';
 import { createChatRoom } from '../../lib/chatApi';
 import { useChat } from '../../context/ChatContext';
-import { DamageMapViewer } from '../../components/DamageMapViewer';
+import { BuyerDamageViewer } from '../../components/damage/BuyerDamageViewer';
 import { useAuthStore } from '../../store/authStore';
 import { haptics } from '../../lib/haptics';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
@@ -123,6 +123,10 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // Damage records
   const [damageRecords, setDamageRecords] = useState<any[]>([]);
   const [damageLoading, setDamageLoading] = useState(true);
+
+  // Seller contact phone — gated by login server-side (see /sellers/:id/phone)
+  const [sellerPhone, setSellerPhone] = useState<string | null>(null);
+  const [sellerPhoneAvailable, setSellerPhoneAvailable] = useState(false);
 
   // Finance calculator
   const [financeExpanded, setFinanceExpanded] = useState(false);
@@ -288,6 +292,21 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       .catch(() => {})
       .finally(() => setDamageLoading(false));
   }, [listing.id]);
+
+  // Fetch the seller's gated contact phone (web parity: BlurredPhone / SellerContactPhone)
+  useEffect(() => {
+    if (!listing.seller?.id) return;
+    apiClient<{ success: boolean; data: { phone: string | null; phoneAvailable: boolean } }>(
+      `/sellers/${listing.seller.id}/phone`
+    )
+      .then(res => {
+        if (res.success && res.data) {
+          setSellerPhone(res.data.phone);
+          setSellerPhoneAvailable(res.data.phoneAvailable);
+        }
+      })
+      .catch(() => {});
+  }, [listing.seller?.id]);
 
   // Fetch the current user's offer status for this listing (to gate "Request Delivery")
   const { user: currentUser } = useAuthStore();
@@ -922,7 +941,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {/* Section: Damage Assessment */}
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionHeaderTitle}>DAMAGE ASSESSMENT</Text>
-            <DamageMapViewer records={damageRecords} isLoading={damageLoading} />
+            <BuyerDamageViewer records={damageRecords} isLoading={damageLoading} bodyTypeLabel={listing.category} />
           </View>
 
           {/* Section: Seller */}
@@ -955,6 +974,19 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   {listing.totalSales != null ? ` (${listing.totalSales} sales)` : ''}
                 </Text>
               </View>
+              {sellerPhoneAvailable && sellerPhone && (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  style={[styles.sellerChatBtn, { backgroundColor: Colors.successAlpha06, borderColor: Colors.successAlpha20 }]}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    Linking.openURL(`tel:${sellerPhone}`);
+                  }}
+                  accessibilityLabel={`Call ${sellerPhone}`}
+                >
+                  <Ionicons name="call" size={15} color={Colors.success} />
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 activeOpacity={0.7}
                 style={styles.sellerChatBtn}

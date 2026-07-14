@@ -26,6 +26,12 @@ This document does not repeat content already well-covered in the four existing 
 > **Only these remain open** as of 2026-07-12:
 > - On-device verification of the F1/F3 payment flows and the `SellerAuctionsScreen` BottomSheet migration (can't be done from this environment — no adb/emulator, and payment flows would mean live Stripe/DB writes).
 
+> **F7–F9 added 2026-07-15**, from user-reported gaps while using the app (not a re-audit of already-covered ground — see each finding for exactly what was checked).
+> - **F7 — DONE.** Seller/dealer phone now surfaced on both `SellerProfileScreen.tsx` and `VehicleDetailScreen.tsx` via the gated `/sellers/{id}/phone` endpoint.
+> - **F8 — DONE**, scoped to buyer-visibility only. Buyer screens now render the real (read-only) `ThreeDVehicleViewer` instead of the flat `DamageMapViewer`, which was deleted as dead code. The related per-body-type GLB asset gap is unfixed (asset-production task, not code).
+> - **F9 — OPEN.** Needs a product-side answer first (see finding) — web's own "Browse Auctions" hero button is currently disabled, so it's unclear whether mobile should add a prominent auctions CTA to match web's *current* state or its *evidently intended* one.
+> - Neither F7 nor F8 has been verified on a real device — no adb/emulator in this environment (same limitation as F1/F3).
+
 ---
 
 ## 0. Document inventory — what already exists
@@ -116,6 +122,58 @@ Discovered while fixing F2 in the sibling `createPaymentSheet` method. `createCh
 **Fix:** apply the identical pattern from F2's fix (re-derive `amount` server-side per `type`, using the same `LISTING_FEES`/`AUCTION_BUYER_FEE`/`DEPOSIT_AMOUNT` constants already added to the class) to `createCheckoutSession`. This is a clean, well-scoped follow-up — same file, same constants, same shape of fix, just the other one of the two `amount`-accepting methods in this service.
 
 **Status: DONE** (2026-07-12). `createCheckoutSession` now re-derives `amount` server-side identically to `createPaymentSheet` (F2): `FULL_PAYMENT` → `listing.price`, `COMMISSION` → `AUCTION_BUYER_FEE`, `DEPOSIT` → `DEPOSIT_AMOUNT`. (No `LISTING_FEE` case needed here — that type never reaches this method; `CreateCheckoutSessionDto` only allows `DEPOSIT`/`FULL_PAYMENT`/`COMMISSION`, and the web's listing-fee flow goes through the separate `createListingSession`, which already derived its amount server-side from `badgeTier` before this fix.) Covered by 3 new unit tests (12 total in `payments.service.spec.ts`, all passing). Both `amount`-accepting methods in `PaymentsService` now trust nothing from the client — this closes out the payments-integrity gap across the whole service.
+
+---
+
+### F7 — CONFIRMED: mobile never surfaces the seller/dealer's phone number anywhere a buyer can see it
+
+**Files:** `src/screens/seller/SellerProfileScreen.tsx` (full file read), `src/screens/vehicle/VehicleDetailScreen.tsx` (grepped for `phone`/`contact`/`Call` — zero matches)
+
+User-reported: "the profile does not have the number being shown." Confirmed against the web source of truth:
+
+- Web's public seller profile (`src/app/seller/[id]/page.tsx:13,290`) renders `<SellerContactPhone sellerId={user.id} />`, a client island that calls `GET /sellers/{id}/phone` (`src/components/seller/SellerContactPhone.tsx`) and shows a real `tel:` link via `BlurredPhone` only for logged-in viewers, or a blurred "Log in to view" placeholder otherwise. Mobile's `SellerProfileScreen.tsx` — the direct equivalent screen (fetches `/sellers/{id}`, `/sellers/{id}/listings`, `/sellers/{id}/reviews`) — has no phone UI at all and never calls `/sellers/{id}/phone`. Read the full file to confirm: hero card, stats grid, listings, reviews — no contact affordance of any kind.
+- Separately, web's listing detail page (`src/app/vehicle/[id]/page.tsx:800-805,1372-1374`) also renders a direct `tel:` link for `listing.seller.dealerProfile.phone` when the seller is a dealer with a listing-level phone. Mobile's `VehicleDetailScreen.tsx` has no equivalent — grepped for `phone`/`contact`/`Call` across the whole file, zero matches tied to seller contact.
+
+Net effect: a buyer on mobile has **no path at all** to see a seller's or dealer's phone number, gated or otherwise — not on the profile screen, not on the listing detail screen. On web there are two independent paths (gated seller-profile number, direct dealer-listing number) and mobile implements neither.
+
+**Fix:** add a phone section to `SellerProfileScreen.tsx`'s hero card that calls `GET /sellers/{id}/phone` and renders the real number (if `phoneAvailable`) or a "Log in to view" prompt (if not), mirroring `SellerContactPhone`/`BlurredPhone`'s gating logic — use `Linking.openURL(\`tel:${phone}\`)` for the tap action. Separately, on `VehicleDetailScreen.tsx`, render `listing.seller?.dealerProfile?.phone` as a tappable `tel:` row when present, matching the web listing-detail behavior.
+
+**Status: DONE** (2026-07-15). Both screens now call `GET /sellers/{id}/phone` (the same gated endpoint `SellerContactPhone` uses on web) and render a real `tel:` row when `phoneAvailable && phone`. Simplification from the original fix note: rather than reading `listing.seller.dealerProfile.phone` off the nav-param `CarListing` (which the mapper strips down to `seller: {id}` and which mobile never re-fetches fresh anyway — `VehicleDetailScreen` receives its `listing` via `route.params`, not a live `GET /listings/:id` call), `VehicleDetailScreen.tsx` calls the same `/sellers/{id}/phone` endpoint as the profile screen, keyed on `listing.seller.id`. One consequence worth flagging: `RootNavigator.tsx` only mounts the `Main` stack (which contains both these screens) once `isAuthenticated && hasCompletedOnboarding` — unlike web, mobile has no anonymous-browsing mode at all. So the backend's `viewerId`-gated "blurred / log in to view" branch is effectively unreachable on mobile today; every viewer who can see this screen is already authenticated, and will just see the real number whenever `phoneAvailable` is true. Implemented the null-phone case defensively anyway (renders nothing rather than a broken `tel:` link) in case a seller has no phone on file. **Not yet on-device verified** — same environment limitation as F1/F3 (no adb/emulator on this machine).
+
+---
+
+### F8 — CONFIRMED: the interactive 3D damage viewer is never shown to buyers — mobile silently downgrades to a flat 2D silhouette on every buyer-facing screen
+
+**Files:** `src/components/DamageMapViewer.tsx`, `src/screens/vehicle/VehicleDetailScreen.tsx:924-925`, `src/screens/vehicle/AuctionDetailScreen.tsx:146-153`, `src/components/damage/ThreeDVehicleViewer.tsx` (only importer: `src/screens/sell/SellCarFlowScreen.tsx`)
+
+User-reported: "the 3D model only renders in the listing and does not appear on the buyer facing side." Confirmed:
+
+- Web renders the real interactive `ThreeDVehicleViewer` (WebView+Three.js, clickable zones) to buyers in two places: `src/app/buy-cars/[slug]/page.tsx:1027` (listing detail) and (per `mobile-audit.md` P5's own framing) `src/app/auctions/live/[id]/page.tsx` (live auction room).
+- Mobile's `ThreeDVehicleViewer.tsx` component exists and works (confirmed fixed in `mobile-audit.md` P5) but its **only** call site anywhere in the app is `SellCarFlowScreen.tsx` — the seller-side listing-creation/damage-marking flow. Both buyer-facing screens (`VehicleDetailScreen.tsx:925`, `AuctionDetailScreen.tsx`) use `DamageMapViewer.tsx` instead — a flat `View`-based silhouette with 2D `%`-positioned dots, not the 3D model at all.
+- This is not an accident: `AuctionDetailScreen.tsx:146-151` has an explicit comment recording the decision — *"Mobile uses the simpler DamageMapViewer... same data, same trust signal"* — so a prior session deliberately chose not to give buyers the 3D view. It's a real parity gap against web either way; whether it's "acceptable" is a product call, not something this audit can resolve.
+- Related and compounding: even where mobile's `ThreeDVehicleViewer` *is* used (the Sell flow), it only has one GLB asset (`vehicle.glb`) and renders it regardless of the vehicle's actual body type, vs. web's three body-shape models (documented in `CLAUDE.md`, "Getting per-body-type models... is an asset task, not a code task" — this is the user's separately-reported "3D model only shows Sedan" item). If F8 is fixed by wiring the real viewer into buyer screens, the single-Sedan-model limitation becomes buyer-visible too, not just seller-visible during listing creation — worth scoping both together rather than fixing F8 first and hitting this immediately after.
+
+**Fix:** decide (product call) whether buyer screens should get the real `ThreeDVehicleViewer` or whether `DamageMapViewer`'s 2D view is an intentional, permanent mobile-specific simplification. If the former: swap `DamageMapViewer` for `ThreeDVehicleViewer` in `VehicleDetailScreen.tsx` and `AuctionDetailScreen.tsx` (read-only mode — no zone-editing UI, just `markedZones`/`selectedZone` display, same props shape already used in `SellCarFlowScreen.tsx`), and resolve the per-body-type GLB asset gap in the same pass since it'll now be buyer-visible.
+
+**Status: DONE** (2026-07-15), scoped to the buyer-visibility gap only — the per-body-type GLB asset limitation noted above is a separate asset-production task, not re-scoped in. Changes:
+- `ThreeDVehicleViewer.tsx` gained a `readOnly?: boolean` prop (default `false`, so `SellCarFlowScreen.tsx`'s editing behavior is unchanged). When `true`: tapping a hotspot only calls `onZoneClick` for selection — the Mark/Hide/Photo action pill never opens, so buyers can't invoke the seller-only image picker or hide toggle. Hint copy changes to "tap a marked zone for details".
+- New `src/components/damage/BuyerDamageViewer.tsx` wraps `ThreeDVehicleViewer` in `readOnly` mode plus a tappable damage list below it (part name, type, size, thumbnail if `imageUrl` is present) synced to the same selection state — mirrors web's `buy-cars/[slug]` layout (3D model + damage list, `onZoneClick` just toggles `selectedDamageZone`) rather than reintroducing edit affordances. Handles the `part` (id) → `label` lookup via `DAMAGE_ZONES_3D` since `ThreeDVehicleViewer` identifies zones by `label` internally, not `id` (confirmed by reading `SellCarFlowScreen.tsx`'s own id↔label round-trip, `:707,1214`).
+- `VehicleDetailScreen.tsx` and `AuctionDetailScreen.tsx` now render `BuyerDamageViewer` instead of `DamageMapViewer`, passing `bodyTypeLabel={listing.category}`.
+- `src/components/DamageMapViewer.tsx` deleted — confirmed orphaned (only those two screens imported it) rather than left as dead code.
+- `npx tsc --noEmit` clean (pre-existing, unrelated `jest` type errors in `VehicleCard.test.tsx` aside — not touched this session, not introduced by this fix). **Not yet on-device verified**: WebView/GLB rendering inside a `ScrollView`-hosted card (vs. `SellCarFlowScreen`'s presumably full-screen-ish placement) and the hotspot tap-through behavior should both get a real-device pass before shipping.
+
+---
+
+### F9 — Homepage has no CTA for auctions with visual weight comparable to "Sell your car"; web parity itself is ambiguous here
+
+**Files:** `src/screens/main/HomeScreen.tsx:474-494` (quick chips), `:496-513` (LIVE AUCTIONS section), `:639-652` (`sellCta`), `src/app/HomeClient.tsx:234-254` (web hero Action Hub)
+
+User-reported: "on the homepage there is no Direct button for Auction Now like there is for Sell Car." Confirmed the asymmetry on mobile, with a caveat about what web actually does today:
+
+- Mobile's `sellCta` (`HomeScreen.tsx:639-652`) is a full-width card with title, subtitle, and a colored "START" button — the single most visually prominent action on the home screen besides the hero search. The nearest equivalent for auctions is `"Live Auctions"`, one of five small horizontal filter chips (`:474-494`, icon + label, same visual weight as `"Under £15k"` or `"Electric"`), plus a `"See All"` link in the LIVE AUCTIONS section header (`:500`). Neither is comparable in prominence to `sellCta`.
+- Caveat: web's own hero "Action Hub" (`HomeClient.tsx:234-254`) currently has its `"Browse Auctions"` pill button **commented out** (`:235-239`) — only `"Retail Listings"` and `"Sell My Car"` render today. So matching *current* web behavior wouldn't add a prominent auctions CTA either; matching web's *evidently intended but disabled* design would. Worth a quick check with whoever owns the web homepage on whether that button was intentionally killed (e.g. auctions not ready for a hard marketing push) or just left commented out — that answer should drive whether mobile adds this card at all, not just how.
+
+**Fix (if greenlit):** add a second homepage CTA card, same visual treatment as `sellCta`, e.g. "N live auctions right now" / "See what's live" with a "VIEW" button navigating to the `Live` tab — conditionally rendered only when `liveAuctions.length > 0` (falls back to the existing quick-chip entry point when there are none, so the card doesn't promise live auctions that aren't there).
 
 ---
 

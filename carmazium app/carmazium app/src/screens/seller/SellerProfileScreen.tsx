@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Linking,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -41,6 +42,11 @@ interface SellerProfileData {
   };
   reviewCount: number;
   averageRating: number;
+}
+
+interface ContactPhone {
+  phone: string | null;
+  phoneAvailable: boolean;
 }
 
 interface ReviewItem {
@@ -113,6 +119,7 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
   const [profile, setProfile] = useState<SellerProfileData | null>(null);
   const [listings, setListings] = useState<ApiListing[]>([]);
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
+  const [contactPhone, setContactPhone] = useState<ContactPhone | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -131,9 +138,10 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
       const data = profileRes.data;
       setProfile(data);
 
-      const [listingsRes, reviewsRes] = await Promise.allSettled([
+      const [listingsRes, reviewsRes, phoneRes] = await Promise.allSettled([
         apiClient<BackendPaginatedResponse<ApiListing>>(`/sellers/${sellerId}/listings?limit=6`),
         apiClient<BackendPaginatedResponse<ReviewItem>>(`/sellers/${data.profile.id}/reviews?limit=5`),
+        apiClient<{ success: boolean; data: ContactPhone }>(`/sellers/${sellerId}/phone`),
       ]);
 
       if (listingsRes.status === 'fulfilled' && Array.isArray(listingsRes.value?.data)) {
@@ -141,6 +149,9 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
       }
       if (reviewsRes.status === 'fulfilled' && Array.isArray(reviewsRes.value?.data)) {
         setReviews(reviewsRes.value.data);
+      }
+      if (phoneRes.status === 'fulfilled' && phoneRes.value?.data) {
+        setContactPhone(phoneRes.value.data);
       }
     } catch {
       setNotFound(true);
@@ -228,6 +239,17 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
               {averageRating.toFixed(1)} ({reviewCount} {reviewCount === 1 ? 'review' : 'reviews'})
             </Text>
           </View>
+          {contactPhone?.phoneAvailable && contactPhone.phone && (
+            <TouchableOpacity
+              style={styles.phoneRow}
+              activeOpacity={0.75}
+              onPress={() => Linking.openURL(`tel:${contactPhone.phone}`)}
+              accessibilityLabel={`Call ${contactPhone.phone}`}
+            >
+              <Ionicons name="call" size={13} color={Colors.success} />
+              <Text style={styles.phoneText}>{contactPhone.phone}</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Stats grid */}
@@ -376,6 +398,23 @@ const styles = StyleSheet.create({
     fontSize: FontSize.size12,
     fontFamily: FontFamily.medium,
     color: Colors.textSecondary,
+  },
+  phoneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 12,
+    backgroundColor: Colors.successAlpha06,
+    borderWidth: 1,
+    borderColor: Colors.successAlpha20,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  phoneText: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.semiBold,
+    color: Colors.success,
   },
 
   statsGrid: {

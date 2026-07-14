@@ -31,6 +31,11 @@ export interface ThreeDVehicleViewerProps {
    *  The GLB model itself doesn't change shape per body type yet — this only
    *  keeps the on-screen label honest about what vehicle the listing is. */
   bodyTypeLabel?: string;
+  /** Buyer-facing viewing mode: tapping a zone only selects/highlights it —
+   *  no Mark/Hide/Photo action pill, no image picker. `onZoneHide`/`onZonePhoto`
+   *  are ignored when this is set. Defaults to false (the seller-editing behavior
+   *  SellCarFlowScreen relies on). */
+  readOnly?: boolean;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -44,6 +49,7 @@ export function ThreeDVehicleViewer({
   onZonePhoto,
   height = 280,
   bodyTypeLabel,
+  readOnly = false,
 }: ThreeDVehicleViewerProps) {
   const webViewRef = useRef<WebView>(null);
 
@@ -133,8 +139,8 @@ export function ThreeDVehicleViewer({
 
   const handleHotspotPress = useCallback((zone: DamageZone3D) => {
     onZoneClick(zone.label);
-    setPillZoneId(zone.id);
-  }, [onZoneClick]);
+    if (!readOnly) setPillZoneId(zone.id);
+  }, [onZoneClick, readOnly]);
 
   const handleHideToggle = useCallback((zoneId: string) => {
     setHiddenZones((prev) => {
@@ -299,7 +305,9 @@ export function ThreeDVehicleViewer({
 
       {/* Hint */}
       <View style={styles.hint} pointerEvents="none">
-        <Text style={styles.hintText}>Drag to rotate · Tap a zone to mark damage</Text>
+        <Text style={styles.hintText}>
+          {readOnly ? 'Drag to rotate · Tap a marked zone for details' : 'Drag to rotate · Tap a zone to mark damage'}
+        </Text>
       </View>
 
     </View>

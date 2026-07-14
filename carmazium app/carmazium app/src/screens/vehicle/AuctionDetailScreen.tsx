@@ -35,7 +35,7 @@ import { io } from 'socket.io-client';
 import { getAccessToken } from '../../lib/supabase';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { haptics } from '../../lib/haptics';
-import { DamageMapViewer } from '../../components/DamageMapViewer';
+import { BuyerDamageViewer } from '../../components/damage/BuyerDamageViewer';
 import { Button } from '../../components/Button';
 
 import { IconButton } from '../../components/IconButton';
@@ -144,11 +144,11 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [endedPayload, setEndedPayload] = useState<AuctionEndPayload | null>(null);
 
   // Damage records — fetched from /damage/:listingId once the auction loads.
-  // Auctions must show damage on the buyer side for parity with the web
-  // /auctions/live/[id] page, which renders the ThreeDVehicleViewer with
-  // clickable zones tied to DamageRecord.part strings. Mobile uses the
-  // simpler DamageMapViewer (2D FRONT/SIDE/REAR/TOP view tabs with pins)
-  // that VehicleDetailScreen already uses — same data, same trust signal.
+  // Auctions show damage on the buyer side for parity with the web
+  // /auctions/live/[id] page, which renders the real ThreeDVehicleViewer with
+  // clickable zones tied to DamageRecord.part strings. Mobile now shares the
+  // same read-only BuyerDamageViewer as VehicleDetailScreen (mobile-production-
+  // readiness-plan.md F8 — this used to be the flatter 2D DamageMapViewer).
   const [damageRecords, setDamageRecords] = useState<any[]>([]);
   const [damageLoading, setDamageLoading] = useState(true);
   const [endTime, setEndTime] = useState<Date | null>(listingObj.endsAt ? new Date(listingObj.endsAt) : null);
@@ -1192,7 +1192,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <Ionicons name="warning-outline" size={13} color={Colors.warning} />
                 <Text style={[s.cardSectionTitle, { marginBottom: 0 }]}>Damage Report</Text>
               </View>
-              <DamageMapViewer records={damageRecords} isLoading={damageLoading} />
+              <BuyerDamageViewer records={damageRecords} isLoading={damageLoading} bodyTypeLabel={listing.category} />
             </View>
 
             {/* Trust note */}
