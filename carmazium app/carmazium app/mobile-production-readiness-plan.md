@@ -493,6 +493,10 @@ In `AuctionCompleteScreen.tsx`, replace the immediate `setPaid(true)` after `pre
 
 **Acceptance:** `npx tsc --noEmit` clean; manual check that switching a lead's stage from the board updates the same backend state the existing detail-sheet flow does (no new endpoint, just a second UI entry point to the same `PATCH`); the Won/Lost filter split ships independently checkable.
 
+**Status: DONE** (2026-07-15). Both parts shipped in `DealerLeadsScreen.tsx`:
+- **Won/Lost filter split** — `FilterTab` gained `'Won'`/`'Lost'`, `FILTERS` and `filteredLeads` updated accordingly. Ships independently of the board — list view alone now lets a dealer find Won/Lost leads without scrolling "All."
+- **Board view** — a `viewMode` toggle (list/board icon pair) next to the existing add-lead button. Board is a horizontal `FlatList` of `BOARD_STAGES` (NEW/CONTACTED/QUALIFIED/NEGOTIATING/WON/LOST — NEW added since leads do sit there even though it's not a `STATUS_OPTIONS` manual-reassignment target), each column an inner vertical `FlatList` of memoized `BoardCard` rows grouped via a `useMemo` (`leadsByStage`) so the grouping only recomputes when `leads` actually changes, not on every render. No drag gesture anywhere — tapping a card's move icon opens a `BottomSheet` listing the same `STATUS_OPTIONS` the list-view detail screen's status footer already uses, reusing `handleUpdateLeadStatus` (the exact same `PATCH /dealers/leads/:id` call, just a second UI entry point to it — no new endpoint). Board is a pure client-side transform of the already-fetched `leads` state; no separate fetch, so it can't drift out of sync with list view. Filter tabs are hidden in board mode (the board already shows every stage at once) but unaffected in list mode. `npx tsc --noEmit` clean. **Not on-device verified** — horizontal-outer/vertical-inner nested `FlatList` scroll behavior (perpendicular axes, should be conflict-free per standard RN board patterns) should get a real-device pass before shipping, along with general density/readability of 240px-wide columns on smaller screens.
+
 ---
 
 ### Stage 15 — F19: dealer phone gate — soft nudge, not a hard block

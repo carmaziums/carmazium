@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -34,7 +34,8 @@ import { Button } from '../../components/Button';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
-type FilterTab = 'All' | 'Hot' | 'Warm' | 'New';
+type FilterTab = 'All' | 'Hot' | 'Warm' | 'New' | 'Won' | 'Lost';
+type ViewMode = 'list' | 'board';
 
 interface Lead {
   id: string;
@@ -64,6 +65,20 @@ interface StaffOption {
 }
 
 const STATUS_OPTIONS: { key: string; label: string; color: string }[] = [
+  { key: 'CONTACTED', label: 'Contacted', color: Colors.infoBlue },
+  { key: 'QUALIFIED', label: 'Qualified', color: Colors.success },
+  { key: 'NEGOTIATING', label: 'Negotiating', color: Colors.warning },
+  { key: 'WON', label: 'Won', color: Colors.success },
+  { key: 'LOST', label: 'Lost', color: Colors.accent },
+];
+
+// Board view's 6 columns — NEW is a starting state (not one of STATUS_OPTIONS'
+// manual-reassignment targets above), but leads do sit in it until a dealer
+// acts, so it still needs a column. Mirrors web's dashboard/dealer/crm Kanban
+// stage set (mobile-production-readiness-plan.md F16) as a tap-based board
+// rather than drag-and-drop — see that finding for why.
+const BOARD_STAGES: { key: string; label: string; color: string }[] = [
+  { key: 'NEW', label: 'New', color: Colors.textMuted },
   { key: 'CONTACTED', label: 'Contacted', color: Colors.infoBlue },
   { key: 'QUALIFIED', label: 'Qualified', color: Colors.success },
   { key: 'NEGOTIATING', label: 'Negotiating', color: Colors.warning },
@@ -409,10 +424,47 @@ const LeadRow: React.FC<{ lead: Lead; onPress: (id: string) => void }> = React.m
   </TouchableOpacity>
 ));
 
+// ─── Board card — compact, memoized (same rationale as LeadRow above).
+// Deliberately no drag handle: tapping the move icon opens a stage-picker
+// sheet instead of a physical drag gesture (see BOARD_STAGES comment). ──
+const BoardCard: React.FC<{
+  lead: Lead;
+  onPress: (id: string) => void;
+  onMove: (id: string) => void;
+}> = React.memo(({ lead, onPress, onMove }) => (
+  <TouchableOpacity style={styles.boardCard} onPress={() => onPress(lead.id)} activeOpacity={0.75}>
+    <View style={styles.boardCardTopRow}>
+      <View style={styles.boardAvatar}>
+        <Text style={styles.boardAvatarText}>{lead.initials}</Text>
+      </View>
+      <TouchableOpacity
+        style={styles.boardMoveBtn}
+        onPress={() => onMove(lead.id)}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        accessibilityLabel={`Move ${lead.name} to a different stage`}
+      >
+        <Ionicons name="swap-horizontal-outline" size={14} color={Colors.textMuted} />
+      </TouchableOpacity>
+    </View>
+    <Text style={styles.boardCardName} numberOfLines={1}>{lead.name}</Text>
+    <Text style={styles.boardCardVehicle} numberOfLines={1}>{lead.vehicle}</Text>
+    <View style={styles.boardCardFooterRow}>
+      {formatPrice(lead.listingPrice) && (
+        <Text style={styles.boardCardPrice}>{formatPrice(lead.listingPrice)}</Text>
+      )}
+      {lead.assignedToName && (
+        <Text style={styles.boardCardAssignee} numberOfLines={1}>→ {lead.assignedToName}</Text>
+      )}
+    </View>
+  </TouchableOpacity>
+));
+
 // ─── Main Leads Screen ───────────────────────────────────────────────────────
 export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [reassignLeadId, setReassignLeadId] = useState<string | null>(null);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -514,6 +566,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
   };
 
   const selectedLead = selectedLeadId ? leads.find(l => l.id === selectedLeadId) ?? null : null;
+  const reassignLead = reassignLeadId ? leads.find(l => l.id === reassignLeadId) ?? null : null;
 
   const handleUpdateLeadStatus = async (leadId: string, newStatus: string) => {
     setUpdatingId(leadId);
@@ -553,6 +606,44 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
     ({ item }: { item: Lead }) => <LeadRow lead={item} onPress={handleLeadPress} />,
     [handleLeadPress],
   );
+  const handleOpenReassign = useCallback((id: string) => setReassignLeadId(id), []);
+
+  // Board view groups the same `leads` state by stage — no separate fetch,
+  // just a client-side transform, recomputed only when leads actually change.
+  const leadsByStage = useMemo(() => {
+    const map: Record<string, Lead[]> = {};
+    for (const stage of BOARD_STAGES) map[stage.key] = [];
+    for (const lead of leads) {
+      (map[lead.status] ?? (map[lead.status] = [])).push(lead);
+    }
+    return map;
+  }, [leads]);
+
+  const renderBoardColumn = useCallback(
+    ({ item: stage }: { item: (typeof BOARD_STAGES)[number] }) => {
+      const stageLeads = leadsByStage[stage.key] ?? [];
+      return (
+        <View style={styles.boardColumn}>
+          <View style={styles.boardColumnHeader}>
+            <View style={[styles.boardColumnDot, { backgroundColor: stage.color }]} />
+            <Text style={styles.boardColumnTitle}>{stage.label}</Text>
+            <Text style={styles.boardColumnCount}>{stageLeads.length}</Text>
+          </View>
+          <FlatList
+            data={stageLeads}
+            keyExtractor={(l) => l.id}
+            renderItem={({ item }) => (
+              <BoardCard lead={item} onPress={handleLeadPress} onMove={handleOpenReassign} />
+            )}
+            contentContainerStyle={{ paddingBottom: 12 }}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={<Text style={styles.boardColumnEmpty}>No leads</Text>}
+          />
+        </View>
+      );
+    },
+    [leadsByStage, handleLeadPress, handleOpenReassign],
+  );
 
   if (selectedLead) {
     return (
@@ -573,11 +664,16 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
   const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const newThisWeek = leads.filter(l => l.createdAtIso && new Date(l.createdAtIso).getTime() >= weekAgo).length;
 
+  // Won/Lost used to be invisible inside a catch-all "Cold" tag with no
+  // dedicated filter — only reachable by scrolling "All" (mobile-production-
+  // readiness-plan.md F16). Explicit tabs now, independent of the board view.
   const FILTERS: { label: FilterTab; count: number }[] = [
     { label: 'All', count: leads.length },
     { label: 'Hot', count: leads.filter(l => l.tag === 'HOT').length },
     { label: 'Warm', count: leads.filter(l => l.tag === 'WARM').length },
     { label: 'New', count: newCount },
+    { label: 'Won', count: leads.filter(l => l.status === 'WON').length },
+    { label: 'Lost', count: leads.filter(l => l.status === 'LOST').length },
   ];
 
   const filteredLeads = leads.filter(lead => {
@@ -585,6 +681,8 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
     if (activeFilter === 'Hot') return lead.tag === 'HOT';
     if (activeFilter === 'Warm') return lead.tag === 'WARM';
     if (activeFilter === 'New') return lead.status === 'NEW';
+    if (activeFilter === 'Won') return lead.status === 'WON';
+    if (activeFilter === 'Lost') return lead.status === 'LOST';
     return true;
   });
 
@@ -618,28 +716,48 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
             </View>
          </View>
          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={styles.viewModeToggle}>
+               <TouchableOpacity
+                  style={[styles.viewModeBtn, viewMode === 'list' && styles.viewModeBtnActive]}
+                  onPress={() => setViewMode('list')}
+                  activeOpacity={0.7}
+                  accessibilityLabel="List view"
+               >
+                  <Ionicons name="list-outline" size={15} color={viewMode === 'list' ? Colors.white : Colors.textMuted} />
+               </TouchableOpacity>
+               <TouchableOpacity
+                  style={[styles.viewModeBtn, viewMode === 'board' && styles.viewModeBtnActive]}
+                  onPress={() => setViewMode('board')}
+                  activeOpacity={0.7}
+                  accessibilityLabel="Board view"
+               >
+                  <Ionicons name="albums-outline" size={15} color={viewMode === 'board' ? Colors.white : Colors.textMuted} />
+               </TouchableOpacity>
+            </View>
             <IconButton style={styles.addLeadBtn} icon={<Ionicons name="add" size={20} color={Colors.white} />} onPress={() => setCreateModalVisible(true)} accessibilityLabel="Add lead" />
             <HamburgerButton />
          </View>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
-         {FILTERS.map(f => (
-            <TouchableOpacity
-               key={f.label}
-               style={[styles.filterTab, activeFilter === f.label && styles.filterTabActive]}
-               onPress={() => setActiveFilter(f.label)}
-               activeOpacity={0.7}
-            >
-               {(f.label === 'Hot' || f.label === 'Warm') && (
-                  <View style={[styles.filterDot, { backgroundColor: f.label === 'Hot' ? Colors.accent : Colors.warning }]} />
-               )}
-               <Text style={[styles.filterTabText, activeFilter === f.label && styles.filterTabTextActive]}>
-                  {f.label} <Text style={{opacity: 0.7}}>{f.count}</Text>
-               </Text>
-            </TouchableOpacity>
-         ))}
-      </ScrollView>
+      {viewMode === 'list' && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
+           {FILTERS.map(f => (
+              <TouchableOpacity
+                 key={f.label}
+                 style={[styles.filterTab, activeFilter === f.label && styles.filterTabActive]}
+                 onPress={() => setActiveFilter(f.label)}
+                 activeOpacity={0.7}
+              >
+                 {(f.label === 'Hot' || f.label === 'Warm') && (
+                    <View style={[styles.filterDot, { backgroundColor: f.label === 'Hot' ? Colors.accent : Colors.warning }]} />
+                 )}
+                 <Text style={[styles.filterTabText, activeFilter === f.label && styles.filterTabTextActive]}>
+                    {f.label} <Text style={{opacity: 0.7}}>{f.count}</Text>
+                 </Text>
+              </TouchableOpacity>
+           ))}
+        </ScrollView>
+      )}
 
       {loading && leads.length === 0 ? (
         <View style={{ paddingHorizontal: 16, paddingTop: 8, gap: 10 }}>
@@ -647,6 +765,16 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
             <Skeleton key={i} w={SCREEN_WIDTH - 32} h={84} r={20} />
           ))}
         </View>
+      ) : viewMode === 'board' ? (
+        <FlatList
+          horizontal
+          style={styles.boardScroll}
+          contentContainerStyle={styles.boardContent}
+          showsHorizontalScrollIndicator={false}
+          data={BOARD_STAGES}
+          keyExtractor={(s) => s.key}
+          renderItem={renderBoardColumn}
+        />
       ) : filteredLeads.length === 0 ? (
         renderEmptyState()
       ) : (
@@ -659,6 +787,37 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
         renderItem={renderLeadRow}
       />
       )}
+
+      {/* Board-view stage reassignment sheet — same STATUS_OPTIONS the list-view
+          lead detail's status footer uses, triggered from a board card's move
+          icon instead of drag-and-drop (mobile-production-readiness-plan.md F16). */}
+      <BottomSheet
+        visible={!!reassignLeadId}
+        onClose={() => setReassignLeadId(null)}
+        title={reassignLead ? `Move ${reassignLead.name}` : 'Move lead'}
+      >
+        <View style={{ gap: 8, paddingBottom: 8 }}>
+          {STATUS_OPTIONS.map(opt => {
+            const active = reassignLead?.status === opt.key;
+            return (
+              <TouchableOpacity
+                key={opt.key}
+                style={[styles.reassignRow, active && { borderColor: opt.color, backgroundColor: `${opt.color}14` }]}
+                disabled={active || updatingId === reassignLeadId}
+                onPress={async () => {
+                  if (reassignLeadId) await handleUpdateLeadStatus(reassignLeadId, opt.key);
+                  setReassignLeadId(null);
+                }}
+                activeOpacity={0.75}
+              >
+                <View style={[styles.reassignDot, { backgroundColor: opt.color }]} />
+                <Text style={[styles.reassignRowText, active && { color: opt.color }]}>{opt.label}</Text>
+                {active && <Ionicons name="checkmark" size={16} color={opt.color} />}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </BottomSheet>
 
       {/* Create Lead modal */}
       <BottomSheet
@@ -773,6 +932,16 @@ const styles = StyleSheet.create({
      width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.accent,
      alignItems: 'center', justifyContent: 'center',
   },
+  viewModeToggle: {
+     flexDirection: 'row', backgroundColor: Colors.whiteAlpha05, borderRadius: 12,
+     borderWidth: 1, borderColor: Colors.whiteAlpha08, padding: 2,
+  },
+  viewModeBtn: {
+     width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center',
+  },
+  viewModeBtnActive: {
+     backgroundColor: Colors.accent,
+  },
   headerSub: {
      fontFamily: FontFamily.bold,
      fontSize: FontSize.size9,
@@ -811,6 +980,86 @@ const styles = StyleSheet.create({
   },
   listScroll: {
      flex: 1,
+  },
+
+  // Board view
+  boardScroll: {
+     flex: 1,
+  },
+  boardContent: {
+     paddingHorizontal: 16,
+     paddingBottom: 20,
+     gap: 12,
+  },
+  boardColumn: {
+     width: 240,
+     backgroundColor: Colors.whiteAlpha03,
+     borderRadius: 16,
+     borderWidth: 1,
+     borderColor: Colors.whiteAlpha06,
+     padding: 10,
+  },
+  boardColumnHeader: {
+     flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10, paddingHorizontal: 4,
+  },
+  boardColumnDot: {
+     width: 7, height: 7, borderRadius: 3.5,
+  },
+  boardColumnTitle: {
+     flex: 1, fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white,
+  },
+  boardColumnCount: {
+     fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.textMuted,
+     backgroundColor: Colors.whiteAlpha08, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1,
+  },
+  boardColumnEmpty: {
+     fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted,
+     textAlign: 'center', paddingVertical: 16,
+  },
+  boardCard: {
+     backgroundColor: Colors.bgSecondaryAlt, borderRadius: 12, borderWidth: 1,
+     borderColor: Colors.whiteAlpha06, padding: 10, marginBottom: 8,
+  },
+  boardCardTopRow: {
+     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6,
+  },
+  boardAvatar: {
+     width: 24, height: 24, borderRadius: 12, backgroundColor: Colors.deepBlue_1c1c24,
+     alignItems: 'center', justifyContent: 'center',
+  },
+  boardAvatarText: {
+     fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.white,
+  },
+  boardMoveBtn: {
+     width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+     backgroundColor: Colors.whiteAlpha05,
+  },
+  boardCardName: {
+     fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, marginBottom: 2,
+  },
+  boardCardVehicle: {
+     fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary, marginBottom: 6,
+  },
+  boardCardFooterRow: {
+     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6,
+  },
+  boardCardPrice: {
+     fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.accent,
+  },
+  boardCardAssignee: {
+     flex: 1, fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: Colors.textMuted, textAlign: 'right',
+  },
+
+  // Reassign sheet
+  reassignRow: {
+     flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 13,
+     borderRadius: 12, backgroundColor: Colors.whiteAlpha04, borderWidth: 1, borderColor: Colors.whiteAlpha08,
+  },
+  reassignDot: {
+     width: 8, height: 8, borderRadius: 4,
+  },
+  reassignRowText: {
+     flex: 1, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.white,
   },
   // Dealer leads is a power-user surface, so it uses the compact row density
   // preset instead of buyer-card spacing (mobile-ui-ux-audit.md §C9).
