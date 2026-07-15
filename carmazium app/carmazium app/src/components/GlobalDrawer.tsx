@@ -48,6 +48,11 @@ const ITEMS: MenuItem[] = [
   { id: 'auctions', label: 'Auctions',   icon: 'gavel',                     iconLib: 'mci', tabName: 'Live'   },
   { id: 'compare',  label: 'Compare',    icon: 'git-compare-outline',       iconLib: 'ion', stackScreen: 'Compare' },
   { id: 'pricing',  label: 'Pricing',    icon: 'pricetag-outline',          iconLib: 'ion', stackScreen: 'Pricing' },
+  // No mobile equivalent existed at all — not even a stub (mobile-production-
+  // readiness-plan.md F14). See ReviewsScreen.tsx/FinanceScreen.tsx for why
+  // these deliberately don't port web's fabricated testimonials/fake lenders.
+  { id: 'reviews',  label: 'Trust & Reviews', icon: 'star-outline',         iconLib: 'ion', stackScreen: 'Reviews' },
+  { id: 'finance',  label: 'Vehicle Finance', icon: 'card-outline',         iconLib: 'ion', stackScreen: 'Finance' },
   { id: 'about',    label: 'About',      icon: 'information-circle-outline', iconLib: 'ion', stackScreen: 'About' },
   { id: 'how-it-works', label: 'How It Works', icon: 'compass-outline',     iconLib: 'ion', stackScreen: 'HowItWorks' },
   { id: 'services', label: 'Services',   icon: 'construct-outline',         iconLib: 'ion', stackScreen: 'Services' },

@@ -24,6 +24,8 @@ import { HowItWorksScreen } from '../screens/main/HowItWorksScreen';
 import { AboutScreen } from '../screens/main/AboutScreen';
 import { ContactScreen } from '../screens/main/ContactScreen';
 import { PricingScreen } from '../screens/main/PricingScreen';
+import { ReviewsScreen } from '../screens/main/ReviewsScreen';
+import { FinanceScreen } from '../screens/main/FinanceScreen';
 import { AuctionCompleteScreen } from '../screens/main/AuctionCompleteScreen';
 import { NotificationSettingsScreen } from '../screens/main/NotificationSettingsScreen';
 import { NotificationsScreen } from '../screens/main/NotificationsScreen';
@@ -73,6 +75,8 @@ export type MainStackParamList = {
   About: undefined;
   Contact: undefined;
   Pricing: undefined;
+  Reviews: undefined;
+  Finance: undefined;
   AuctionComplete: {
     listingId: string;
     auctionId: string;
@@ -193,6 +197,8 @@ export const MainStackNavigator: React.FC = () => {
       <Stack.Screen name="About" component={AboutScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="Contact" component={ContactScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="Pricing" component={PricingScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="Reviews" component={ReviewsScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="Finance" component={FinanceScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen
         name="AuctionComplete"
         component={AuctionCompleteScreen}

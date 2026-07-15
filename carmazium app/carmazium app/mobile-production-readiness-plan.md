@@ -515,6 +515,14 @@ In `AuctionCompleteScreen.tsx`, replace the immediate `setPaid(true)` after `pre
 
 **Acceptance:** both screens reachable from the drawer; `npx tsc --noEmit` clean.
 
+**Status: DONE** (2026-07-15), with a scope correction discovered while reading web's actual pages closely. Both `/reviews` and `/finance` on web turned out to be **static marketing pages with fabricated content, not real data** — `/reviews` hardcodes "50k+ Happy Customers" / "4.9/5 Average Rating" and six identical fake testimonials (same quote, different names); `/finance` has a "Trusted Lending Partners" grid of made-up company names (Global Bank, Auto Finance Co, ...) and an application `<form>` with no `onSubmit` at all — neither wired to anything real even on web. Faithfully porting either would mean shipping new fabricated user-facing claims, directly against the principle this session's other fixes were built on (mobile-audit.md W1's hardcoded-fake-HPI-data fix, F8's buyer-facing damage viewer).
+
+Built `ReviewsScreen.tsx` and `FinanceScreen.tsx` as honest alternatives instead:
+- **Reviews**: real, verifiable trust claims (KYC-verified dealers, Stripe payments, deposit/delivery protection — all real platform features, no invented numbers), an explainer that real reviews live on seller profiles after a completed sale, and a CTA into Search to find one. No fake testimonials.
+- **Finance**: ported the *genuine* generic terms (eligibility bullets, the representative-example disclosure — real product terms, not fabricated), but replaced the fake lender grid and dead-end form with a pointer to the per-listing finance calculator that already exists on `VehicleDetailScreen.tsx`, plus a Contact CTA.
+
+Both registered in `MainStackNavigator.tsx` and `GlobalDrawer.tsx`. `npx tsc --noEmit` clean.
+
 ---
 
 ### Stage 17 — F23 + F24: backend-touching cross-cutting fixes (coordinate with whoever owns `backend/`)
