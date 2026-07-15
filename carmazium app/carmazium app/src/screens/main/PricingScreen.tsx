@@ -82,14 +82,14 @@ const PLANS: PlanCard[] = [
       // tiers including Basic; mobile omitted it here entirely, implying
       // (incorrectly) that Basic-tier listings couldn't be boosted.
       { label: 'Featured boost eligible', included: true },
-      { label: 'Analytics', included: false },
+      { label: 'Performance analytics', included: true },
       { label: 'Priority placement', included: false },
     ],
   },
   {
     id: 'standard',
     title: 'Standard',
-    subtitle: '30-day listing, more reach',
+    subtitle: '60-day listing, more reach',
     price: `£${PRICING.listing.standard.price}`,
     period: 'one-off',
     accentColor: Colors.infoBlue,
@@ -100,7 +100,7 @@ const PLANS: PlanCard[] = [
       { label: 'Up to 50 photos', included: true },
       { label: 'Performance analytics', included: true },
       { label: 'Featured boost eligible', included: true },
-      { label: '30-day listing duration', included: true },
+      { label: '60-day listing duration', included: true },
       { label: 'Priority search placement', included: false },
       { label: 'Free HPI included', included: false },
     ],

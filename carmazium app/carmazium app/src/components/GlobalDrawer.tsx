@@ -49,7 +49,12 @@ const ITEMS: MenuItem[] = [
   { id: 'compare',  label: 'Compare',    icon: 'git-compare-outline',       iconLib: 'ion', stackScreen: 'Compare' },
   { id: 'pricing',  label: 'Pricing',    icon: 'pricetag-outline',          iconLib: 'ion', stackScreen: 'Pricing' },
   { id: 'about',    label: 'About',      icon: 'information-circle-outline', iconLib: 'ion', stackScreen: 'About' },
+  { id: 'how-it-works', label: 'How It Works', icon: 'compass-outline',     iconLib: 'ion', stackScreen: 'HowItWorks' },
+  { id: 'services', label: 'Services',   icon: 'construct-outline',         iconLib: 'ion', stackScreen: 'Services' },
   { id: 'contact',  label: 'Contact',    icon: 'call-outline',              iconLib: 'ion', stackScreen: 'Contact' },
+  // Built but previously unreachable from anywhere in the app — no nav entry
+  // existed at all (mobile-production-readiness-plan.md F13).
+  { id: 'terms',    label: 'Terms of Service', icon: 'document-text-outline', iconLib: 'ion', stackScreen: 'Terms' },
 ];
 
 const SELLER_ITEMS: MenuItem[] = [
@@ -120,18 +125,16 @@ const DEALER_ITEMS: MenuItem[] = [
     stackScreen: 'DealerKYC',
   },
   {
-    // No dedicated dealer-auction-management screen exists yet — the previous
-    // alert copy described reserve-price editing and sales history as if they
-    // were live features, which was misleading. Match the "Coming Soon"
-    // labeling convention used elsewhere in the app (Pricing tiers, Finance
-    // Calculator) instead of implying a feature that isn't built.
+    // SellerAuctionsScreen is role-agnostic (fetches /auctions/my/list) and
+    // already reachable for dealers via DealerInventoryScreen's "PUT ON
+    // AUCTION" button and DealerProfileScreen's "Manage auctions" row — this
+    // entry used to show a "Coming Soon" alert that was stale by the time
+    // those two entry points shipped (mobile-production-readiness-plan.md F17).
     id: 'dealer-auctions',
     label: 'Dealer auction manager',
     icon: 'gavel',
     iconLib: 'mci',
-    action: 'alert',
-    alertTitle: 'Coming Soon',
-    alertMsg: 'Scheduling auctions, adjusting reserve prices, and viewing sales history from here is on the roadmap — not available yet.',
+    stackScreen: 'SellerAuctions',
   },
   { 
     id: 'dealer-leads', 

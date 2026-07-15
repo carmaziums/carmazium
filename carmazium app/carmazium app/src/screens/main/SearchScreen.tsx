@@ -178,6 +178,9 @@ export const SearchScreen: React.FC = () => {
   const [ulezCompliant, setUlezCompliant] = useState(false);
   const [minBhp, setMinBhp] = useState('');
   const [maxBhp, setMaxBhp] = useState('');
+  const [minEngine, setMinEngine] = useState('');
+  const [maxEngine, setMaxEngine] = useState('');
+  const [maxCo2, setMaxCo2] = useState('');
   const [deliveryAvailable, setDeliveryAvailable] = useState(false);
   const [sellerType, setSellerType] = useState<'' | 'DEALER' | 'PRIVATE'>('');
   const [listingType, setListingType] = useState<'' | 'CLASSIFIED' | 'AUCTION'>('');
@@ -307,6 +310,9 @@ export const SearchScreen: React.FC = () => {
       ulezCompliant: ulezCompliant ? true : undefined,
       minBhp: minBhp ? parseInt(minBhp) : undefined,
       maxBhp: maxBhp ? parseInt(maxBhp) : undefined,
+      minEngine: minEngine ? parseInt(minEngine) : undefined,
+      maxEngine: maxEngine ? parseInt(maxEngine) : undefined,
+      maxCo2: maxCo2 ? parseInt(maxCo2) : undefined,
       deliveryAvailable: deliveryAvailable ? true : undefined,
       sellerType: sellerType || undefined,
       listingType: listingType || undefined,
@@ -359,7 +365,7 @@ export const SearchScreen: React.FC = () => {
       setLoadingMore(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, deliveryAvailable, sellerType, listingType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng, page]);
+  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, deliveryAvailable, sellerType, listingType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng, page]);
 
   // Initial load
   useEffect(() => { fetch(true); }, []);
@@ -377,7 +383,7 @@ export const SearchScreen: React.FC = () => {
   useEffect(() => {
     fetch(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, deliveryAvailable, sellerType, listingType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi]);
+  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, deliveryAvailable, sellerType, listingType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi]);
 
   const onRefresh = () => { setRefreshing(true); fetch(true); };
 
@@ -395,6 +401,8 @@ export const SearchScreen: React.FC = () => {
     conditions.length > 0,
     ulezCompliant,
     !!minBhp || !!maxBhp,
+    !!minEngine || !!maxEngine,
+    !!maxCo2,
     deliveryAvailable,
     !!sellerType,
     !!listingType,
@@ -425,6 +433,9 @@ export const SearchScreen: React.FC = () => {
     setUlezCompliant(false);
     setMinBhp('');
     setMaxBhp('');
+    setMinEngine('');
+    setMaxEngine('');
+    setMaxCo2('');
     setDeliveryAvailable(false);
     setSellerType('');
     setListingType('');
@@ -944,6 +955,63 @@ export const SearchScreen: React.FC = () => {
                     keyboardType="number-pad"
                   />
                 </View>
+              </View>
+
+              <View style={s.divider} />
+
+              {/* Engine Size */}
+              <Text style={s.filterLabel}>ENGINE SIZE (CC)</Text>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={[s.inputBox, { flex: 1 }]}>
+                  <Text style={s.inputBoxLabel}>MIN CC</Text>
+                  <TextInput
+                    style={s.inputBoxValue}
+                    value={minEngine}
+                    onChangeText={setMinEngine}
+                    placeholder="0"
+                    placeholderTextColor={Colors.borderMuted}
+                    keyboardType="number-pad"
+                  />
+                </View>
+                <View style={[s.inputBox, { flex: 1 }]}>
+                  <Text style={s.inputBoxLabel}>MAX CC</Text>
+                  <TextInput
+                    style={s.inputBoxValue}
+                    value={maxEngine}
+                    onChangeText={setMaxEngine}
+                    placeholder="Any"
+                    placeholderTextColor={Colors.borderMuted}
+                    keyboardType="number-pad"
+                  />
+                </View>
+              </View>
+
+              <View style={s.divider} />
+
+              {/* CO2 Emissions */}
+              <Text style={s.filterLabel}>CO₂ EMISSIONS (G/KM)</Text>
+              <View style={[s.inputBox, { marginBottom: 10 }]}>
+                <Text style={s.inputBoxLabel}>MAX G/KM</Text>
+                <TextInput
+                  style={s.inputBoxValue}
+                  value={maxCo2}
+                  onChangeText={setMaxCo2}
+                  placeholder="Any"
+                  placeholderTextColor={Colors.borderMuted}
+                  keyboardType="number-pad"
+                />
+              </View>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {['100', '120', '150', '200'].map(v => (
+                  <TouchableOpacity
+                    key={v}
+                    style={[s.segmentBtn, maxCo2 === v && s.segmentBtnActive]}
+                    onPress={() => setMaxCo2(prev => prev === v ? '' : v)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.segmentBtnText, maxCo2 === v && s.segmentBtnTextActive]}>≤{v}</Text>
+                  </TouchableOpacity>
+                ))}
               </View>
 
               <View style={s.divider} />

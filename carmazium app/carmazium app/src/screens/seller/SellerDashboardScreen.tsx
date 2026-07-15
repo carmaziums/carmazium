@@ -186,6 +186,11 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
   const [recentOffers, setRecentOffers] = useState<IncomingOffer[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  // Web's /dashboard/seller has a PeriodToggle (7d/30d) switching the KPI
+  // row; mobile always got the backend's 30d default silently (mobile-
+  // production-readiness-plan.md F22). Only /dashboard/seller supports
+  // ?period= — /listings/stats has no period param, it's lifetime totals.
+  const [period, setPeriod] = useState<'7d' | '30d'>('30d');
 
   const fetchData = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -193,7 +198,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
       const [statsRes, listingsRes, dashRes] = await Promise.allSettled([
         apiClient<StatsResponse>('/listings/stats'),
         apiClient<MyListingsResponse>('/listings/my?page=1&limit=5'),
-        apiClient<SellerDashResponse>('/dashboard/seller'),
+        apiClient<SellerDashResponse>(`/dashboard/seller?period=${period}`),
       ]);
 
       if (statsRes.status === 'fulfilled' && statsRes.value?.success) {
@@ -224,7 +229,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
   useEffect(() => {
     fetchData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [period]);
 
   const heroListing = listings[0] ?? null;
   const heroStatusKey = (heroListing?.status ?? 'DRAFT').toUpperCase();
@@ -281,6 +286,20 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
           <Text style={styles.headerTitle}>Selling</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={styles.periodToggle}>
+            {(['7d', '30d'] as const).map(p => (
+              <TouchableOpacity
+                key={p}
+                style={[styles.periodToggleBtn, period === p && styles.periodToggleBtnActive]}
+                onPress={() => setPeriod(p)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.periodToggleText, period === p && styles.periodToggleTextActive]}>
+                  {p.toUpperCase()}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
           <IconButton style={styles.bellBtn} icon={<Ionicons name="notifications-outline" size={18} color={Colors.white} />} onPress={() => navigation?.navigate('Notifications')} accessibilityLabel="Notifications" />
           <HamburgerButton />
         </View>
@@ -665,6 +684,30 @@ const styles = StyleSheet.create({
     color: Colors.white,
     letterSpacing: -0.22,
     marginTop: 4,
+  },
+  periodToggle: {
+    flexDirection: 'row',
+    backgroundColor: Colors.whiteAlpha07,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha10,
+    padding: 2,
+  },
+  periodToggleBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  periodToggleBtnActive: {
+    backgroundColor: Colors.accent,
+  },
+  periodToggleText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size10,
+    color: Colors.textMuted,
+  },
+  periodToggleTextActive: {
+    color: Colors.white,
   },
   bellBtn: {
     width: 36,

@@ -452,6 +452,17 @@ F10/F11 (the two broken filters) are already fixed above. This continues the num
 
 **Acceptance:** `npx tsc --noEmit` clean; each of the 7 items independently spot-checked against the corresponding web page/behavior described in its finding above.
 
+**Status: DONE** (2026-07-15). All 7 items shipped:
+- **F13** — added `Services`/`HowItWorks`/`Terms` drawer entries. `Terms` needed a second registration inside `AuthNavigator.tsx` (not just `MainStackNavigator.tsx`) — `RootNavigator` renders Auth/Main as mutually exclusive stacks, so a pre-signup user couldn't reach the Main-stack copy at all; `SignupScreen.tsx`'s "Terms" text now navigates there via the newly-typed `AuthStackParamList['Terms']`. `TermsScreen.tsx` itself needed no changes — it only calls `navigation.goBack()`, which works regardless of which stack mounted it.
+- **F15** — added a make/model search bar to `LiveScreen.tsx`, filtering both Live and Upcoming sections client-side (no backend auction-search param exists, matches web's own approach). Empty states now distinguish "no auctions at all" from "no results for this search."
+- **F17** — repointed the drawer item to `navigation.navigate('SellerAuctions')`.
+- **F20** — both copy fixes applied, text now matches web exactly.
+- **F21** — added `createdAt` to `SellerListingsScreen.tsx`'s local `ApiListing` type and render a "Listed on `<date>`" line using the same `toLocaleDateString('en-GB')` format as web.
+- **F22** — added a 7D/30D toggle to `SellerDashboardScreen.tsx`'s header, wired to `/dashboard/seller?period=`. Note: `/listings/stats` (the other endpoint this screen calls) has no `period` param — it's lifetime totals — so only the offers/saved-count figures sourced from `/dashboard/seller` respond to the toggle, matching what the backend actually supports.
+- **F12** — added Engine Size (cc) min/max and CO₂ (g/km) max + preset-chip filters to `SearchScreen.tsx`, plus the `minEngine`/`maxEngine`/`maxCo2` params to `listingsApi.ts`'s `searchListings()`. Wired into the active-filter count and "Clear All" reset alongside the existing BHP filter it mirrors.
+
+`npx tsc --noEmit` clean across all 7. Not on-device verified (no adb/emulator in this environment).
+
 ---
 
 ### Stage 13 — F25: auction buyer-fee payment needs the same server-confirmation pattern as HPI/KYC

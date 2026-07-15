@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  TextInput,
   TouchableOpacity,
   Dimensions,
   StatusBar,
@@ -76,6 +77,11 @@ export const LiveScreen: React.FC = () => {
 
   // Global ticker reference time
   const [now, setNow] = useState(Date.now());
+
+  // Make/model search — web's /auctions page has this, mobile didn't
+  // (mobile-production-readiness-plan.md F15). Filters client-side like
+  // web does; no dedicated backend search param for auctions exists.
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchData = async () => {
     try {
@@ -165,6 +171,12 @@ export const LiveScreen: React.FC = () => {
     ? [...activeList].sort((a, b) => b.currentBid - a.currentBid)[0]
     : null;
 
+  const q = searchQuery.trim().toLowerCase();
+  const matchesQuery = (make: string, model: string) =>
+    !q || `${make} ${model}`.toLowerCase().includes(q);
+  const filteredActive = q ? activeList.filter(a => matchesQuery(a.make, a.model)) : activeList;
+  const filteredUpcoming = q ? upcomingList.filter(u => matchesQuery(u.listing.make, u.listing.model)) : upcomingList;
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
@@ -188,6 +200,24 @@ export const LiveScreen: React.FC = () => {
             <Text style={styles.headerTitle}>Live Auctions</Text>
           </View>
           <HamburgerButton />
+        </View>
+
+        {/* ─── Search ──────────────────────────────────────────────── */}
+        <View style={styles.searchBar}>
+          <Ionicons name="search-outline" size={18} color={Colors.textMuted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search make or model…"
+            placeholderTextColor={Colors.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            returnKeyType="search"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="close" size={16} color={Colors.textMuted} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* ─── Auction your car CTA ───────────────────────────────── */}
@@ -243,17 +273,17 @@ export const LiveScreen: React.FC = () => {
               </View>
             ))}
           </View>
-        ) : activeList.length === 0 ? (
+        ) : filteredActive.length === 0 ? (
           <EmptyState
             icon="flame-outline"
-            title="No live auctions right now"
-            subtitle="Check back soon — new lots go live throughout the day."
-            ctaLabel="Browse listings"
-            onCtaPress={() => navigation.navigate('Tabs' as any, { screen: 'Search' } as any)}
+            title={q ? 'No live auctions match your search' : 'No live auctions right now'}
+            subtitle={q ? 'Try a different make or model.' : 'Check back soon — new lots go live throughout the day.'}
+            ctaLabel={q ? undefined : 'Browse listings'}
+            onCtaPress={q ? undefined : () => navigation.navigate('Tabs' as any, { screen: 'Search' } as any)}
           />
         ) : null}
 
-        {activeList.map((auction) => {
+        {filteredActive.map((auction) => {
           const secsLeft = getRemainingSeconds(auction.endsAt);
           const reserveDiff = auction.currentBid - auction.reserve;
           const reserveText = reserveDiff >= 0
@@ -331,8 +361,8 @@ export const LiveScreen: React.FC = () => {
           <Text style={styles.sectionTitle}>UPCOMING</Text>
         </View>
 
-        {upcomingList.length > 0 ? (
-          upcomingList.map((auc, idx) => {
+        {filteredUpcoming.length > 0 ? (
+          filteredUpcoming.map((auc, idx) => {
             const estPriceRange = `Est. £${Math.round(Number(auc.startingBid) / 1000)}k – £${Math.round(Number(auc.reservePrice) / 1000)}k`;
             const startTimeDate = new Date(auc.startTime);
             const timeText = `Starts ${startTimeDate.toLocaleDateString('en-GB')} ${startTimeDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
@@ -412,7 +442,9 @@ export const LiveScreen: React.FC = () => {
         ) : !isLoading ? (
           <View style={styles.emptyUpcoming}>
             <Ionicons name="calendar-clear-outline" size={28} color={Colors.textMuted} />
-            <Text style={styles.emptyUpcomingText}>No upcoming auctions scheduled right now</Text>
+            <Text style={styles.emptyUpcomingText}>
+              {q ? 'No upcoming auctions match your search' : 'No upcoming auctions scheduled right now'}
+            </Text>
           </View>
         ) : null}
 
@@ -487,6 +519,26 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+
+  // ─── Search ────────────────────────────────────────────────────
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: Colors.bgSecondary,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+    paddingHorizontal: 16,
+    gap: 10,
+    marginBottom: 14,
+  },
+  searchInput: {
+    flex: 1,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.size14,
+    color: Colors.white,
   },
 
   // ─── Auction CTA Banner ─────────────────────────────────────────

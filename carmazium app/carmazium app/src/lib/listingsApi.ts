@@ -313,6 +313,9 @@ export async function searchListings(params: {
   ulezCompliant?: boolean;
   minBhp?: number;
   maxBhp?: number;
+  minEngine?: number;
+  maxEngine?: number;
+  maxCo2?: number;
   deliveryAvailable?: boolean;
   sellerType?: string;
   listingType?: string;
@@ -349,6 +352,9 @@ export async function searchListings(params: {
     if (params.ulezCompliant) query.set('ulezCompliant', 'true');
     if (params.minBhp != null) query.set('minBhp', String(params.minBhp));
     if (params.maxBhp != null) query.set('maxBhp', String(params.maxBhp));
+    if (params.minEngine != null) query.set('minEngine', String(params.minEngine));
+    if (params.maxEngine != null) query.set('maxEngine', String(params.maxEngine));
+    if (params.maxCo2 != null) query.set('maxCo2', String(params.maxCo2));
     if (params.deliveryAvailable) query.set('deliveryAvailable', 'true');
     if (params.sellerType) query.set('sellerType', params.sellerType);
     if (params.listingType) query.set('listingType', params.listingType);

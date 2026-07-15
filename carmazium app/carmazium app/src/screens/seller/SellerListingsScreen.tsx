@@ -49,6 +49,7 @@ interface ApiListing {
   badgeTier?: string;
   description?: string;
   mileage?: number;
+  createdAt?: string;
   linkedListingId?: string | null;
   linkedListing?: {
     id: string;
@@ -549,6 +550,11 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           <Text style={styles.cardTitle} numberOfLines={1}>{getTitle(item)}</Text>
           <Text style={styles.cardPrice}>{formatPrice(item.price)}</Text>
           <Text style={styles.cardViews}>Views: {item.viewCount ?? 0}</Text>
+          {item.createdAt && (
+            <Text style={styles.cardListedDate}>
+              Listed on {new Date(item.createdAt).toLocaleDateString('en-GB')}
+            </Text>
+          )}
         </View>
 
         {/* Right */}
@@ -1060,6 +1066,12 @@ const styles = StyleSheet.create({
     fontSize: FontSize.size12,
     color: Colors.textMuted,
     marginTop: 3,
+  },
+  cardListedDate: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.size10,
+    color: Colors.textFaint,
+    marginTop: 2,
   },
   cardRight: {
     alignItems: 'flex-end',

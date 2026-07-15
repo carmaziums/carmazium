@@ -300,7 +300,8 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
                 {agreeTerms && <Ionicons name="checkmark" size={12} color={Colors.white} />}
               </View>
               <Text style={styles.checkboxLabel}>
-                I agree to the <Text style={styles.boldText}>Terms</Text> and{' '}
+                I agree to the{' '}
+                <Text style={styles.boldText} onPress={() => navigation.navigate('Terms')}>Terms</Text> and{' '}
                 <Text style={styles.boldText}>Privacy Policy</Text>.
               </Text>
             </TouchableOpacity>
