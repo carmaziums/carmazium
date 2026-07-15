@@ -630,6 +630,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
             <Text style={styles.boardColumnCount}>{stageLeads.length}</Text>
           </View>
           <FlatList
+            style={styles.boardColumnList}
             data={stageLeads}
             keyExtractor={(l) => l.id}
             renderItem={({ item }) => (
@@ -993,11 +994,20 @@ const styles = StyleSheet.create({
   },
   boardColumn: {
      width: 240,
+     // Columns need a resolved height for their inner FlatList to actually
+     // virtualize/scroll instead of expanding to full content height — a
+     // plain View would stretch to the outer horizontal FlatList's row
+     // height automatically, but a nested FlatList (ScrollView-based) needs
+     // an explicit dimension of its own, not just an unconstrained parent.
+     height: '100%',
      backgroundColor: Colors.whiteAlpha03,
      borderRadius: 16,
      borderWidth: 1,
      borderColor: Colors.whiteAlpha06,
      padding: 10,
+  },
+  boardColumnList: {
+     flex: 1,
   },
   boardColumnHeader: {
      flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10, paddingHorizontal: 4,

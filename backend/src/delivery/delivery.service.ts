@@ -70,6 +70,14 @@ export class DeliveryService {
     listingId: string,
     postcode: string,
   ): Promise<{ distanceMiles: number; estimatedCostGbp: number; withinRadius: boolean; ratePerMile: number }> {
+    // Unlike the POST endpoints in this controller, listingId/postcode arrive
+    // as raw @Query() strings with no DTO/class-validator behind them — guard
+    // explicitly so a missing/empty value 400s cleanly instead of reaching
+    // Prisma as `id: undefined` and throwing an unhandled 500.
+    if (!listingId || !postcode) {
+      throw new BadRequestException('listingId and postcode are both required.');
+    }
+
     const listing = await this.prisma.listing.findUnique({
       where: { id: listingId },
       select: {
