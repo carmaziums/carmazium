@@ -19,6 +19,7 @@ import {
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 import { Image } from 'expo-image';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -427,12 +428,14 @@ const LeadRow: React.FC<{ lead: Lead; onPress: (id: string) => void }> = React.m
 // ─── Board card — compact, memoized (same rationale as LeadRow above).
 // Deliberately no drag handle: tapping the move icon opens a stage-picker
 // sheet instead of a physical drag gesture (see BOARD_STAGES comment). ──
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+
 const BoardCard: React.FC<{
   lead: Lead;
   onPress: (id: string) => void;
   onMove: (id: string) => void;
 }> = React.memo(({ lead, onPress, onMove }) => (
-  <TouchableOpacity style={styles.boardCard} onPress={() => onPress(lead.id)} activeOpacity={0.75}>
+  <AnimatedTouchable entering={FadeIn.duration(200)} style={styles.boardCard} onPress={() => onPress(lead.id)} activeOpacity={0.75}>
     <View style={styles.boardCardTopRow}>
       <View style={styles.boardAvatar}>
         <Text style={styles.boardAvatarText}>{lead.initials}</Text>
@@ -456,7 +459,7 @@ const BoardCard: React.FC<{
         <Text style={styles.boardCardAssignee} numberOfLines={1}>→ {lead.assignedToName}</Text>
       )}
     </View>
-  </TouchableOpacity>
+  </AnimatedTouchable>
 ));
 
 // ─── Main Leads Screen ───────────────────────────────────────────────────────

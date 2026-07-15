@@ -5,6 +5,7 @@ import {
   TextInput, ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -170,10 +171,12 @@ const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => voi
 
 // Memoized + stable-id callbacks so a parent re-render (watchlist toggle, countdown
 // tick from a sibling card, etc.) doesn't re-render every card in the row (mobile-audit.md P4).
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+
 const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => void; onToggle: (id: string) => void; saved: boolean }>(({
   listing, onPress, onToggle, saved
 }) => (
-  <TouchableOpacity style={s.listingCard} onPress={() => onPress(listing.id)} activeOpacity={0.9}>
+  <AnimatedTouchable entering={FadeIn.duration(220)} style={s.listingCard} onPress={() => onPress(listing.id)} activeOpacity={0.9}>
     <View style={s.cardImgWrap}>
       {listing.images?.[0]
         ? <Image source={{ uri: listing.images[0] }} style={s.cardImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
@@ -199,7 +202,7 @@ const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => v
       <Text style={s.cardTitle} numberOfLines={1}>{listing.make} {listing.model}</Text>
       <Text style={s.cardPrice}>{formatPrice(listing.price)}</Text>
     </View>
-  </TouchableOpacity>
+  </AnimatedTouchable>
 ));
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────

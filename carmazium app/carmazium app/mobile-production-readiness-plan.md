@@ -608,6 +608,16 @@ What changed internally:
 
 Zero use of Reanimated's `FadeIn`/`SlideIn`/`entering=`/`exiting=`/`LinearTransition` anywhere in `src/` today — every list, wizard-step change, and skeleton→content swap currently "pops" instantly. Start narrow (a handful of high-traffic list screens — `HomeScreen`'s rails, `SearchScreen`'s results, `DealerLeadsScreen`'s board cards) rather than all 60+ screens at once; confirm the pattern feels right (subtle, not distracting, no perf regression on long lists) before expanding further.
 
+**Status: DONE** (2026-07-15), scoped exactly as above — four card/row components got a one-line `entering={FadeIn.duration(...)}` addition, nothing else changed in their layout or logic:
+
+- `VehicleCard.tsx` / `HorizontalVehicleCard.tsx` — the shared card components. `AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity)` already existed in `HorizontalVehicleCard.tsx` from Stage 21-adjacent work; `VehicleCard.tsx` got the same treatment. `entering={FadeIn.duration(220)}` added to the root `AnimatedTouchable`.
+- **Scope-gap catch**: a code comment claimed these two shared components render "across Home/Search/Saved/Live," but `grep -rl "VehicleCard\|HorizontalVehicleCard" src/screens` showed only `SearchScreen.tsx` actually consumes them — `HomeScreen.tsx` has its own separate, locally-defined `ListingCard` component that was never wired to the shared cards. Since "HomeScreen's rails" was explicitly named in this stage's scope, `HomeScreen.tsx`'s `ListingCard` got the same `AnimatedTouchable` + `entering={FadeIn.duration(220)}` conversion directly, rather than silently dropping that part of the plan.
+- `DealerLeadsScreen.tsx` — the board view's `BoardCard` (added in Stage 14) converted to `AnimatedTouchable` with `entering={FadeIn.duration(200)}`, covering the third named target.
+
+`npx tsc --noEmit` clean (the only errors present are pre-existing `@types/jest`-missing errors in `src/components/__tests__/VehicleCard.test.tsx`, confirmed via `git stash` to exist identically on `main` before this stage — unrelated to these changes). **Not on-device verified** — `FadeIn` is a mount-time entrance animation with low interaction-surface risk relative to Stage 21's gesture work, but list-scroll perf on a real long list (60+ cards) is still worth a spot-check per Section 5.
+
+This closes out Phase 3 (Stages 18-22) — the full UI/UX consistency + animation pass scoped after the 2026-07-15 audit is now implemented and type-checked.
+
 ---
 
 <details>

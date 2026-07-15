@@ -16,6 +16,7 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  FadeIn,
 } from 'react-native-reanimated';
 import { CarListing, formatPrice, formatMileage } from '../data/listings';
 import { useWatchlistStore } from '../store/watchlistStore';
@@ -83,6 +84,7 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
 
   return (
     <AnimatedTouchable
+      entering={FadeIn.duration(220)}
       style={[styles.card, { width }, animatedStyle]}
       onPress={() => onPress(listing.id)}
       onPressIn={handlePressIn}
