@@ -432,6 +432,89 @@ This merges `mobile-audit-plan.md`'s 5 stages, `mobile-ui-ux-plan.md`'s 6 stages
 
 ---
 
+## 2B. Staged roadmap — F12–F25 (added 2026-07-15)
+
+F10/F11 (the two broken filters) are already fixed above. This continues the numbering for the rest of the 2026-07-15 sweep.
+
+**Cross-cutting constraint for every stage below:** none of this work may reintroduce the patterns `mobile-audit.md` P1–P7 already flagged and Stage 8 above already cleaned up — no `ScrollView` + `.map()` for anything that can grow (use `FlatList`), no unmemoized row/card components, no inline closures passed as `onPress`/`renderItem` where a stable `useCallback` is cheap to provide. This matters concretely for Stage 14 (the CRM board) and Stage 12 (more filter chips) below — both add new lists.
+
+### Stage 12 — Mechanical, low-risk fixes: F12, F13, F15, F17, F20, F21, F22
+
+**Why grouped:** all seven are small, well-scoped, and need no product decision — pure "make mobile say/do what web already does." Bundling them into one stage/session is more efficient than seven separate ones.
+
+- **F12** — add Engine Size (cc) and CO2 Emissions range filters to `SearchScreen.tsx`'s filter modal, same range-input/preset-chip pattern already used for BHP.
+- **F13** — wire up navigation to `TermsScreen`/`HowItWorksScreen`/`ServicesScreen` (drawer entries + link `SignupScreen.tsx`'s "Terms" text) — they're already built, just unreachable.
+- **F15** — add a make/model search input above `LiveScreen.tsx`'s Live/Upcoming sections, reusing `SearchScreen.tsx`'s existing search-input pattern.
+- **F17** — one-line fix: repoint `GlobalDrawer.tsx`'s "Dealer auction manager" item from the "Coming Soon" alert to `navigation.navigate('SellerAuctions')`.
+- **F20** — two copy fixes in `PricingScreen.tsx`: Standard tier "30-day" → "60-day"; Basic tier `Analytics: included: false` → `true`.
+- **F21** — add "Listed on `<date>`" to `SellerListingsScreen.tsx`'s listing rows, reusing the `getDaysListed()`-style helper already in `SellerDashboardScreen.tsx`.
+- **F22** — low priority, only do if touching `SellerDashboardScreen.tsx` for something else anyway: add a 7d/30d period toggle matching web's `PeriodToggle`.
+
+**Acceptance:** `npx tsc --noEmit` clean; each of the 7 items independently spot-checked against the corresponding web page/behavior described in its finding above.
+
+---
+
+### Stage 13 — F25: auction buyer-fee payment needs the same server-confirmation pattern as HPI/KYC
+
+**Why here, ahead of the bigger items:** this is payment-adjacent (not a new charge, but a confirmation gap that can silently block the post-auction handover/chat flow), mobile-only (no backend change — `/payments/apply-auction-fee` already exists for exactly this), and small — same shape of fix as the F1/F2/F6 payment-integrity work that was correctly prioritized first in Stage 0.
+
+In `AuctionCompleteScreen.tsx`, replace the immediate `setPaid(true)` after `presentPaymentSheet()` with the same poll-with-backoff pattern already used in `VehicleDetailScreen.tsx`'s HPI checkout (`:314-360`) and `DealerKYCScreen.tsx`'s KYC checkout (`:371-388`): poll `/auctions/:id` or `/listings/:id` for `buyerFeePaid` a handful of times with backoff, and if it hasn't flipped by the end of the retry budget, call `/payments/apply-auction-fee` as the explicit fallback before declaring success or surfacing a retry to the user.
+
+**Acceptance:** code review confirms the same poll shape as the other two flows; **cannot be on-device verified from this environment** (would mean a live Stripe charge) — flag for a real-device pass alongside the other unverified payment flows already listed in Section 3.
+
+---
+
+### Stage 14 — F16: dealer CRM — board view + real Won/Lost visibility, deliberately *not* drag-and-drop
+
+**Decision (made per direction to prioritize long-term stability and performance over literal web parity):** mobile will **not** implement physical drag-and-drop reordering. Reasoning:
+
+- Drag-and-drop across a horizontally-scrolling multi-column layout is a well-documented source of gesture-conflict bugs on React Native (the drag gesture and the column `ScrollView`'s own pan gesture compete for the same touch stream) and a known perf sink on mid/low-tier Android — exactly the device tier `mobile-ui-ux-audit.md`'s density/perf findings are already worried about.
+- The actual user-facing gap identified in F16 is **visibility** (no pipeline overview, Won/Lost buried in "All") and **reassignment friction** (one lead at a time via a nested sheet) — not specifically the physical act of dragging. Both are addressable without a drag gesture.
+- This keeps the implementation inside patterns already proven stable in this codebase (`FlatList`, `BottomSheet` action sheets) rather than introducing a new gesture paradigm this app has never used.
+
+**What to build instead:**
+1. A horizontally-scrollable board: outer horizontal `FlatList` of 6 stage columns (NEW/CONTACTED/QUALIFIED/NEGOTIATING/WON/LOST), each column an inner vertical `FlatList` of memoized lead cards (`React.memo`, stable `renderItem` via `useCallback` — required by the cross-cutting constraint above, and especially important here since this is a brand-new list, not a retrofit).
+2. Stage reassignment via a tap target on each card (small "move" icon or long-press) opening the same `STATUS_OPTIONS` action sheet `DealerLeadsScreen.tsx` already has — no new interaction pattern, just triggered from the board instead of only from the detail sheet.
+3. Fix the Won/Lost visibility gap regardless of the above: `DealerLeadsScreen.tsx`'s existing flat-list view keeps its `FilterTab`, but split the current catch-all "Cold" grouping into explicit Won/Lost filter tabs — this alone closes the "can't find Won leads without scrolling All" complaint and should ship even if the board view slips.
+4. Existing CRUD (status update, notes, staff reassignment, message lead, manual creation — already confirmed working) is reused as-is; this stage is purely the board UI + the Won/Lost filter fix.
+
+**Acceptance:** `npx tsc --noEmit` clean; manual check that switching a lead's stage from the board updates the same backend state the existing detail-sheet flow does (no new endpoint, just a second UI entry point to the same `PATCH`); the Won/Lost filter split ships independently checkable.
+
+---
+
+### Stage 15 — F19: dealer phone gate — soft nudge, not a hard block
+
+**Decision (same stability/long-term framing as Stage 14):** web blocks the *entire* dealer dashboard with a non-dismissable modal until a phone is set. A hard, unskippable full-screen block is a heavier interruption pattern than most mobile apps use for a non-blocking data-completeness nudge, and risks feeling broken/buggy if it fires at an awkward moment (e.g. mid-notification-tap deep link into a specific screen). Proposed default: a dismissible-but-recurring banner/card at the top of the dealer dashboard (`DealerProfileScreen.tsx`) when `dealerProfile.phone` is unset, reappearing each session until resolved — real pressure without a mobile-inappropriate blocking modal. This is a judgment call, not a certainty; revisit if product wants the harder web-equivalent block instead.
+
+**Acceptance:** banner appears/disappears correctly based on `dealerProfile.phone` presence; dismissal doesn't set any "seen" flag that suppresses it permanently (it should return next session, per "recurring").
+
+---
+
+### Stage 16 — F14: Reviews and Finance marketing hub pages
+
+**Decision:** port both as mobile screens rather than leaving them web-only — a buyer/dealer using only the mobile app should be able to read reviews and explore finance options, both of which plausibly influence a purchase decision, without needing to switch to a browser. Build as mobile-native screens (not literal ports) — `ReviewsScreen.tsx` (trust stats + review list, reusing existing review-fetching logic already proven in `SellerProfileScreen.tsx`/`AuctionCompleteScreen.tsx`) and `FinanceScreen.tsx` (calculator + lending-partner info; note mobile already has a "Coming Soon"-labeled inline finance calculator on `VehicleDetailScreen.tsx` — decide whether this new screen supersedes that inline widget or the two coexist, don't build two competing finance calculators).
+
+**Acceptance:** both screens reachable from the drawer; `npx tsc --noEmit` clean.
+
+---
+
+### Stage 17 — F23 + F24: backend-touching cross-cutting fixes (coordinate with whoever owns `backend/`)
+
+**Why grouped:** both are "mobile shows/promises something the backend doesn't actually back up" bugs, both need a `backend/` change, neither is mobile-only like Stage 13.
+
+- **F23** — in `backend/src/notifications/notifications.service.ts`'s `NotificationsService.create`, read and honor `preferences.notifications.*` (mute-all, per-event mutes, quiet hours at minimum) before sending — currently only `expoPushToken` is read, so every saved preference is inert. Either implement real SMS delivery (a provider needs to be chosen and wired) or remove the SMS toggle from `NotificationSettingsScreen.tsx` until there's a backend to support it — don't leave a control that can never work.
+- **F24** — replace `deliveryApi.ts`'s fabricated tiered formula with the real backend figure. Check whether `backend/src/delivery/delivery.service.ts` exposes a quote/estimate endpoint separate from request creation; if not, this likely needs a small new `GET` endpoint before mobile can show a real number pre-submission. Until that exists, at minimum re-label mobile's current number as an approximate estimate rather than presenting a fabricated formula as if it were the server's own logic.
+
+**Acceptance:** F23 — a muted event type no longer generates a notification (test via a real event, e.g. an outbid notification with `outbid: false`); F24 — the pre-submission estimate and the real `DeliveryRequest.estimatedCostGbp` match (or mobile's UI is honestly labeled as approximate if a live-quote endpoint isn't feasible this pass).
+
+---
+
+## Phase 3 (future, not started) — UI/UX consistency & transition-animation pass
+
+Explicitly deferred — noted here so it's on the roadmap, not detailed or started in this session. Once Stages 12–17 land, the next phase is a dedicated pass on interaction polish: consistent, subtle screen-transition and micro-interaction animations across the app (this codebase already depends on `react-native-reanimated`/`react-native-gesture-handler` for the damage viewer and pinch-to-zoom, so the tooling is already in place — this phase is about applying it more broadly, not introducing a new animation dependency), plus finishing the design-token consistency work `mobile-ui-ux-plan.md` Stage 2 started. Scope this properly (its own audit of current transition inconsistencies) when the time comes rather than bolting animation work onto the functional fixes above — mixing "make it correct" and "make it feel polished" work in the same PRs makes both harder to review and to roll back independently.
+
+---
+
 ## 3. Production-readiness checklist (after Stage 11)
 
 Combining both existing docs' "after" sections with new items from this cross-check:
