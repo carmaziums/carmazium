@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Dimensions, Animated, RefreshControl,
+  StatusBar, Dimensions, RefreshControl,
   TextInput, ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -17,6 +17,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useWatchlistStore } from '../../store/watchlistStore';
 import { Logo } from '../../components/Logo';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { Colors } from '../../constants/colors';
 import { getBodyTypeIcon } from '../../constants/bodyTypes';
 import {FontFamily, FontSize } from '../../constants/typography';
@@ -25,21 +26,6 @@ import { MainStackParamList } from '../../navigation/MainStackNavigator';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 const { width: SW } = Dimensions.get('window');
-
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
-
-const Skeleton: React.FC<{ w: number; h: number; r?: number }> = ({ w, h, r = 14 }) => {
-  const opacity = useRef(new Animated.Value(0.35)).current;
-  useEffect(() => {
-    const p = Animated.loop(Animated.sequence([
-      Animated.timing(opacity, { toValue: 0.7, duration: 700, useNativeDriver: true }),
-      Animated.timing(opacity, { toValue: 0.35, duration: 700, useNativeDriver: true }),
-    ]));
-    p.start();
-    return () => p.stop();
-  }, [opacity]);
-  return <Animated.View style={{ width: w, height: h, borderRadius: r, backgroundColor: Colors.deepBlue_1e1e28, opacity }} />;
-};
 
 // ─── Countdown hook ───────────────────────────────────────────────────────────
 

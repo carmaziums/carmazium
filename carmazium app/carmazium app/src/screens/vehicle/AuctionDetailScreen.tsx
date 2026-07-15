@@ -672,7 +672,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
         <Ionicons name="hammer-outline" size={40} color={Colors.borderMuted} />
         <Text style={s.muted}>{loadError}</Text>
-        <TouchableOpacity style={s.retryBtn} onPress={loadAuction}>
+        <TouchableOpacity style={s.retryBtn} onPress={loadAuction} activeOpacity={0.8}>
           <Text style={s.retryBtnText}>Try Again</Text>
         </TouchableOpacity>
       </View>
@@ -858,6 +858,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <TouchableOpacity
                   style={s.bannerBtn}
                   disabled={connectingChat}
+                  activeOpacity={0.8}
                   onPress={async () => {
                     const sellerId = auction?.listing?.sellerId;
                     if (!sellerId) return;
@@ -880,6 +881,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               ) : (
                 <TouchableOpacity
                   style={s.bannerBtn}
+                  activeOpacity={0.8}
                   onPress={() =>
                     navigation.navigate('PurchaseFlow' as any, {
                       listingId: auction?.listingId,
@@ -1344,6 +1346,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <TouchableOpacity
                 style={[s.bidBtn, { backgroundColor: Colors.accentGreen, marginTop: 8 }]}
                 disabled={connectingChat}
+                activeOpacity={0.8}
                 onPress={async () => {
                   const sellerId = auction?.listing?.sellerId;
                   if (!sellerId) return;
@@ -1368,6 +1371,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {userWon && !auction?.buyerFeePaid && (
               <TouchableOpacity
                 style={[s.bidBtn, { backgroundColor: Colors.accent, marginTop: 8 }]}
+                activeOpacity={0.8}
                 onPress={() =>
                   navigation.navigate('PurchaseFlow' as any, {
                     listingId: auction?.listingId,

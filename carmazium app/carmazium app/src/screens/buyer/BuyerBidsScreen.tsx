@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   ActivityIndicator,
+  Dimensions,
   FlatList,
   RefreshControl,
   ScrollView,
@@ -20,7 +21,10 @@ import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { haptics } from '../../lib/haptics';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 import { IconButton } from '../../components/IconButton';
 // ─────────────────────────── types ───────────────────────────────
@@ -293,7 +297,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
 
   const renderSkeletons = () =>
     Array.from({ length: 3 }).map((_, i) => (
-      <View key={`sk-${i}`} style={styles.skeletonCard} />
+      <Skeleton key={`sk-${i}`} w={SCREEN_WIDTH - 48} h={76} r={14} />
     ));
 
   const renderEmptyState = () => (
@@ -616,13 +620,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 8,
     gap: 14,
-  },
-
-  // ── Skeleton ──
-  skeletonCard: {
-    height: 76,
-    borderRadius: 14,
-    backgroundColor: Colors.whiteAlpha04,
   },
 
   // ── Empty state ──

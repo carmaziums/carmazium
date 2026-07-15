@@ -176,23 +176,23 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
 
   const renderTabBar = () => (
      <View style={[styles.mockTabBar, { paddingBottom: insets.bottom || 12 }]}>
-         <TouchableOpacity style={styles.tabItem} onPress={() => navTab('Home')}>
+         <TouchableOpacity style={styles.tabItem} onPress={() => navTab('Home')} activeOpacity={0.8}>
             <Ionicons name="home-outline" size={24} color={Colors.textSecondary} />
             <Text style={styles.tabLabel}>HOME</Text>
          </TouchableOpacity>
-         <TouchableOpacity style={styles.tabItem} onPress={() => navTab('Search')}>
+         <TouchableOpacity style={styles.tabItem} onPress={() => navTab('Search')} activeOpacity={0.8}>
             <Ionicons name="search-outline" size={24} color={Colors.textSecondary} />
             <Text style={styles.tabLabel}>SEARCH</Text>
          </TouchableOpacity>
-         <TouchableOpacity style={styles.tabItem} onPress={() => navTab('Live')}>
+         <TouchableOpacity style={styles.tabItem} onPress={() => navTab('Live')} activeOpacity={0.8}>
             <MaterialCommunityIcons name="gavel" size={24} color={Colors.textSecondary} />
             <Text style={styles.tabLabel}>LIVE</Text>
          </TouchableOpacity>
-         <TouchableOpacity style={styles.tabItem} onPress={() => navTab('Saved')}>
+         <TouchableOpacity style={styles.tabItem} onPress={() => navTab('Saved')} activeOpacity={0.8}>
             <Ionicons name="heart-outline" size={24} color={Colors.textSecondary} />
             <Text style={styles.tabLabel}>SAVED</Text>
          </TouchableOpacity>
-         <TouchableOpacity style={styles.tabItem} onPress={openDrawer}>
+         <TouchableOpacity style={styles.tabItem} onPress={openDrawer} activeOpacity={0.8}>
             <Ionicons name="person" size={24} color={Colors.accent} />
             <Text style={[styles.tabLabel, { color: Colors.accent }]}>PROFILE</Text>
          </TouchableOpacity>
@@ -324,22 +324,22 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
 
               {/* Action Grid */}
               <View style={styles.actionGrid}>
-                <TouchableOpacity style={styles.actionCard} onPress={handleBoostListing} disabled={actionBusy}>
+                <TouchableOpacity style={styles.actionCard} onPress={handleBoostListing} disabled={actionBusy} activeOpacity={0.8}>
                   <Ionicons name="flash-outline" size={20} color={Colors.warning} style={styles.actionIcon} />
                   <Text style={styles.actionTitle}>Boost listing</Text>
                   <Text style={styles.actionSub}>Get more views</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.actionCard} onPress={handleShareListing}>
+                <TouchableOpacity style={styles.actionCard} onPress={handleShareListing} activeOpacity={0.8}>
                   <Ionicons name="share-social-outline" size={20} color={Colors.lightTeal_38bdf8} style={styles.actionIcon} />
                   <Text style={styles.actionTitle}>Share listing</Text>
                   <Text style={styles.actionSub}>Share with friends</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.actionCard} onPress={handleViewInsights} disabled={actionBusy}>
+                <TouchableOpacity style={styles.actionCard} onPress={handleViewInsights} disabled={actionBusy} activeOpacity={0.8}>
                   <Ionicons name="bar-chart-outline" size={20} color={Colors.palePurple_a78bfa} style={styles.actionIcon} />
                   <Text style={styles.actionTitle}>View insights</Text>
                   <Text style={styles.actionSub}>Views & performance</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.actionCard} onPress={() => navigation?.navigate('SellCarFlow')}>
+                <TouchableOpacity style={styles.actionCard} onPress={() => navigation?.navigate('SellCarFlow')} activeOpacity={0.8}>
                   <Ionicons name="add-circle-outline" size={20} color={Colors.accentGreen} style={styles.actionIcon} />
                   <Text style={styles.actionTitle}>New listing</Text>
                   <Text style={styles.actionSub}>List another car</Text>

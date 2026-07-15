@@ -559,6 +559,14 @@ Staged as five parts — 18 first since it's small, safe, and needs no upfront d
 
 **Acceptance:** `npx tsc --noEmit` clean; the three dead-skeleton screens visually pulse like the rest of the app (can't verify visually here — see Section 5 checklist); `grep -c "fontWeight: '" GlobalDrawer.tsx` returns 0 (or only the pre-existing unrelated ones, if any).
 
+**Status: DONE** (2026-07-15). All 4 items shipped:
+- **#1** — `HomeScreen.tsx` now imports the shared `Skeleton`; local duplicate and its now-unused `Animated`/`useRef` imports removed.
+- **#2** — all three screens now use the shared animated `Skeleton` (`BuyerBidsScreen.tsx`/`BuyerOffersScreen.tsx` sized off `Dimensions` to match their previous full-width static boxes; `PaymentHistoryScreen.tsx` likewise); the now-unused `skeletonCard`/`skeletonBlock` style definitions removed.
+- **#3** — all 13 `fontWeight` string literals replaced with the matching `FontFamily` token (`'700'`→`bold`, `'500'`→`medium`, `'400'`→`regular`, `'800'`→`extraBold`); `FontFamily` added to the file's imports. `grep -c fontWeight GlobalDrawer.tsx` now 0.
+- **#4** — 36 `activeOpacity={0.8}` (or `0.7` for small icon-only controls, matching the surrounding convention in each file) additions across the 5 flagged screens: `MyListingDashboardScreen.tsx` (9: the bottom tab-bar row + 4 action cards), `AuctionDetailScreen.tsx` (5: retry button, 2 banner CTAs, 2 sticky chat/pay buttons), `SellerAuctionsScreen.tsx` (6: menu/results buttons, discard link, handover upload, tag-remove and star-rating icons), `SearchScreen.tsx` (10: reset link, sort-menu option, 4 year/mileage mini-chips, postcode change/save links, 2 distance-picker options), `SellCarFlowScreen.tsx` (6: cancel/confirm damage-mark buttons, 4 review-step "Edit" links — 2 of which were an exact duplicate string fixed via `replace_all`). Every count verified against the actual file before editing (not assumed from the audit's estimate), and each one matched the audit's per-file count exactly.
+
+`npx tsc --noEmit` clean after every individual edit in this stage, not just at the end.
+
 ---
 
 ### Stage 19 — Screen-transition re-map

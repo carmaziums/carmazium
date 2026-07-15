@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Dimensions,
   FlatList,
   ScrollView,
   StatusBar,
@@ -16,8 +17,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import {FontFamily, FontSize } from '../../constants/typography';
+import { Skeleton } from '../../components/ui/Skeleton';
 
 import { IconButton } from '../../components/IconButton';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // ─────────────────────────── interfaces ───────────────────────────
 
 type TransactionType = 'DEPOSIT' | 'FULL_PAYMENT' | 'COMMISSION' | 'REFUND' | 'HPI_REPORT' | 'LISTING_FEE' | 'BOOST';
@@ -131,7 +135,7 @@ export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigatio
   const renderSkeleton = () => (
     <View style={{ paddingHorizontal: 20, gap: 10 }}>
       {[0, 1, 2, 3, 4].map((i) => (
-        <View key={i} style={[styles.txCard, styles.skeletonBlock, { height: 76 }]} />
+        <Skeleton key={i} w={SCREEN_WIDTH - 40} h={76} r={14} />
       ))}
     </View>
   );
@@ -390,10 +394,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.size9,
     fontFamily: FontFamily.semiBold,
     letterSpacing: 0.3,
-  },
-
-  skeletonBlock: {
-    backgroundColor: Colors.whiteAlpha04,
   },
 
   emptyWrap: {

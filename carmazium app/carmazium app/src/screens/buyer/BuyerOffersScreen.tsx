@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   FlatList,
   RefreshControl,
   ScrollView,
@@ -19,6 +20,7 @@ import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { CounterLedger } from '../../components/offers/CounterLedger';
 import { haptics } from '../../lib/haptics';
 import {
@@ -30,6 +32,8 @@ import {
 } from '../../lib/deliveryApi';
 
 import { IconButton } from '../../components/IconButton';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // ─────────────────────────── interfaces ───────────────────────────
 
 type OfferStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'COUNTERED' | 'WITHDRAWN';
@@ -424,7 +428,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
 
   const renderSkeleton = () =>
     Array.from({ length: 3 }).map((_, i) => (
-      <View key={`sk-${i}`} style={styles.skeletonCard} />
+      <Skeleton key={`sk-${i}`} w={SCREEN_WIDTH - 48} h={140} r={16} />
     ));
 
   const renderEmptyState = () => (
@@ -958,15 +962,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 8,
     gap: 16,
-  },
-
-  // ── Skeleton ──
-  skeletonCard: {
-    height: 140,
-    borderRadius: 16,
-    backgroundColor: Colors.whiteAlpha04,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha04,
   },
 
   // ── Empty state ──

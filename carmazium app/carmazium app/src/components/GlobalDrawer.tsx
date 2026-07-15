@@ -21,7 +21,7 @@ import { RootStackParamList } from '../navigation/RootNavigator';
 import { MainStackParamList } from '../navigation/MainStackNavigator';
 import { TabParamList } from '../navigation/TabNavigator';
 import { Colors } from '../constants/colors';
-import { FontSize } from '../constants/typography';
+import { FontFamily, FontSize } from '../constants/typography';
 
 import { IconButton } from './IconButton';
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
@@ -605,7 +605,7 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     fontSize: FontSize.xl,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: Colors.white,
   },
   userMeta: {
@@ -613,13 +613,13 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: FontSize.base,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: Colors.white,
     marginBottom: 2,
   },
   userEmail: {
     fontSize: FontSize.xs,
-    fontWeight: '400',
+    fontFamily: FontFamily.regular,
     color: Colors.lightGrey,
   },
   verifiedDot: {
@@ -643,7 +643,7 @@ const styles = StyleSheet.create({
   // Group label
   groupLabel: {
     fontSize: FontSize.size9,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: Colors.iconMuted,
     letterSpacing: 1.6,
     marginLeft: 24,
@@ -705,29 +705,29 @@ const styles = StyleSheet.create({
   rowLabel: {
     flex: 1,
     fontSize: FontSize.base,
-    fontWeight: '500',
+    fontFamily: FontFamily.medium,
     color: Colors.lightGrey,
   },
   rowLabelActive: {
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: Colors.accent,
   },
   rowLabelRed: {
     flex: 1,
     fontSize: FontSize.base,
-    fontWeight: '500',
+    fontFamily: FontFamily.medium,
     color: Colors.accent,
   },
   rowLabelDealer: {
     flex: 1,
     fontSize: FontSize.size14,
-    fontWeight: '500',
+    fontFamily: FontFamily.medium,
     color: Colors.midOrange_d4a017,
   },
   rowLabelSeller: {
     flex: 1,
     fontSize: FontSize.size14,
-    fontWeight: '500',
+    fontFamily: FontFamily.medium,
     color: Colors.infoBlueLight,
   },
   groupLabelDealer: {
@@ -746,7 +746,7 @@ const styles = StyleSheet.create({
   },
   activePillText: {
     fontSize: FontSize.size8,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: Colors.white,
     letterSpacing: 0.5,
   },
@@ -779,12 +779,12 @@ const styles = StyleSheet.create({
   },
   dealerToggleTitle: {
     fontSize: FontSize.size14,
-    fontWeight: '700',
+    fontFamily: FontFamily.bold,
     color: Colors.warning,
   },
   dealerToggleSub: {
     fontSize: FontSize.xs,
-    fontWeight: '400',
+    fontFamily: FontFamily.regular,
     color: Colors.midOrange_a0783a,
   },
 
@@ -797,14 +797,14 @@ const styles = StyleSheet.create({
   },
   footerBrand: {
     fontSize: FontSize.size12,
-    fontWeight: '800',
+    fontFamily: FontFamily.extraBold,
     color: Colors.accent,
     letterSpacing: 2,
     marginBottom: 2,
   },
   footerTagline: {
     fontSize: FontSize.size10,
-    fontWeight: '400',
+    fontFamily: FontFamily.regular,
     color: Colors.iconMuted,
     letterSpacing: 0.2,
   },

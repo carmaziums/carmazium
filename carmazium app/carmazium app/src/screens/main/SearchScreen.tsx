@@ -624,6 +624,7 @@ export const SearchScreen: React.FC = () => {
                 key={o.id}
                 style={[s.sortOption, o.id === sortId && s.sortOptionActive]}
                 onPress={() => { setSortId(o.id); setShowSortMenu(false); }}
+                activeOpacity={0.7}
               >
                 <Text style={[s.sortOptionText, o.id === sortId && { color: Colors.accent }]}>{o.label}</Text>
                 {o.id === sortId && <Ionicons name="checkmark" size={14} color={Colors.accent} />}
@@ -727,7 +728,7 @@ export const SearchScreen: React.FC = () => {
         <View style={s.modalHeader}>
           <IconButton style={s.modalClose} icon={<Ionicons name="close" size={18} color={Colors.white} />} onPress={() => setFilterOpen(false)} accessibilityLabel="Close" />
           <Text style={s.modalTitle}>Refine Search</Text>
-          <TouchableOpacity onPress={resetFilters}>
+          <TouchableOpacity onPress={resetFilters} activeOpacity={0.7}>
             <Text style={s.modalReset}>Reset</Text>
           </TouchableOpacity>
         </View>
@@ -832,7 +833,7 @@ export const SearchScreen: React.FC = () => {
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <View style={{ flexDirection: 'row', gap: 6 }}>
                     {YEAR_OPTS.map(y => (
-                      <TouchableOpacity key={y} style={[s.miniChip, minYear === y && s.filterChipActive]} onPress={() => setMinYear(y)}>
+                      <TouchableOpacity key={y} style={[s.miniChip, minYear === y && s.filterChipActive]} onPress={() => setMinYear(y)} activeOpacity={0.7}>
                         <Text style={[s.miniChipText, minYear === y && { color: Colors.white }]}>{y}</Text>
                       </TouchableOpacity>
                     ))}
@@ -845,7 +846,7 @@ export const SearchScreen: React.FC = () => {
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     <View style={{ flexDirection: 'row', gap: 6 }}>
                       {YEAR_OPTS_MAX.map(y => (
-                        <TouchableOpacity key={y} style={[s.miniChip, maxYear === y && s.filterChipActive]} onPress={() => setMaxYear(y)}>
+                        <TouchableOpacity key={y} style={[s.miniChip, maxYear === y && s.filterChipActive]} onPress={() => setMaxYear(y)} activeOpacity={0.7}>
                           <Text style={[s.miniChipText, maxYear === y && { color: Colors.white }]}>{y}</Text>
                         </TouchableOpacity>
                       ))}
@@ -863,7 +864,7 @@ export const SearchScreen: React.FC = () => {
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <View style={{ flexDirection: 'row', gap: 6 }}>
                     {MILES_OPTS_MIN.map(m => (
-                      <TouchableOpacity key={m} style={[s.miniChip, minMiles === m && s.filterChipActive]} onPress={() => setMinMiles(m)}>
+                      <TouchableOpacity key={m} style={[s.miniChip, minMiles === m && s.filterChipActive]} onPress={() => setMinMiles(m)} activeOpacity={0.7}>
                         <Text style={[s.miniChipText, minMiles === m && { color: Colors.white }]}>{m}</Text>
                       </TouchableOpacity>
                     ))}
@@ -876,7 +877,7 @@ export const SearchScreen: React.FC = () => {
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     <View style={{ flexDirection: 'row', gap: 6 }}>
                       {MILES_OPTS.map(m => (
-                        <TouchableOpacity key={m} style={[s.miniChip, maxMiles === m && s.filterChipActive]} onPress={() => setMaxMiles(m)}>
+                        <TouchableOpacity key={m} style={[s.miniChip, maxMiles === m && s.filterChipActive]} onPress={() => setMaxMiles(m)} activeOpacity={0.7}>
                           <Text style={[s.miniChipText, maxMiles === m && { color: Colors.white }]}>{m}</Text>
                         </TouchableOpacity>
                       ))}
@@ -1175,7 +1176,7 @@ export const SearchScreen: React.FC = () => {
                   <View style={s.postcodeRow}>
                     <Ionicons name="location" size={14} color={Colors.accent} />
                     <Text style={s.postcodeRowText}>Using {userPostcode}</Text>
-                    <TouchableOpacity onPress={() => setPostcodeInput(userPostcode ?? '')}>
+                    <TouchableOpacity onPress={() => setPostcodeInput(userPostcode ?? '')} activeOpacity={0.7}>
                       <Text style={s.postcodeChangeLink}>Change</Text>
                     </TouchableOpacity>
                   </View>
@@ -1202,7 +1203,7 @@ export const SearchScreen: React.FC = () => {
                     autoCapitalize="characters"
                     autoCorrect={false}
                   />
-                  <TouchableOpacity onPress={handleSavePostcode} disabled={postcodeSaving || !postcodeInput.trim()}>
+                  <TouchableOpacity onPress={handleSavePostcode} disabled={postcodeSaving || !postcodeInput.trim()} activeOpacity={0.7}>
                     {postcodeSaving
                       ? <ActivityIndicator size="small" color={Colors.accent} />
                       : <Text style={[s.postcodeChangeLink, (!postcodeInput.trim()) && { opacity: 0.4 }]}>Save</Text>}
@@ -1322,6 +1323,7 @@ export const SearchScreen: React.FC = () => {
           <TouchableOpacity
             style={[s.sortOption, maxDistanceMi == null && s.sortOptionActive]}
             onPress={() => { setMaxDistanceMi(null); setDistancePickerVisible(false); }}
+            activeOpacity={0.7}
           >
             <Text style={[s.sortOptionText, maxDistanceMi == null && { color: Colors.accent }]}>Any distance</Text>
             {maxDistanceMi == null && <Ionicons name="checkmark" size={14} color={Colors.accent} />}
@@ -1331,6 +1333,7 @@ export const SearchScreen: React.FC = () => {
               key={mi}
               style={[s.sortOption, maxDistanceMi === mi && s.sortOptionActive]}
               onPress={() => { setMaxDistanceMi(mi); setDistancePickerVisible(false); }}
+              activeOpacity={0.7}
             >
               <Text style={[s.sortOptionText, maxDistanceMi === mi && { color: Colors.accent }]}>{mi} mi</Text>
               {maxDistanceMi === mi && <Ionicons name="checkmark" size={14} color={Colors.accent} />}

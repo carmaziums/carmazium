@@ -385,10 +385,10 @@ function Damage3DMapper({
             placeholderTextColor={Colors.borderMuted}
           />
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            <TouchableOpacity style={[s.pill, { flex: 1, justifyContent: 'center', paddingVertical: 12 }]} onPress={() => setAddingZone(null)}>
+            <TouchableOpacity style={[s.pill, { flex: 1, justifyContent: 'center', paddingVertical: 12 }]} onPress={() => setAddingZone(null)} activeOpacity={0.8}>
               <Text style={s.pillText}>CANCEL</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[s.pill, s.pillActive, { flex: 2, justifyContent: 'center', paddingVertical: 12 }]} onPress={confirmAdd}>
+            <TouchableOpacity style={[s.pill, s.pillActive, { flex: 2, justifyContent: 'center', paddingVertical: 12 }]} onPress={confirmAdd} activeOpacity={0.8}>
               <Text style={s.pillTextActive}>MARK DAMAGE</Text>
             </TouchableOpacity>
           </View>
@@ -2490,7 +2490,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
         {/* Vehicle Identity */}
         <SectionBox title="Vehicle Identity" action={
-          <TouchableOpacity style={s.reviewEditBtn} onPress={() => setStep(1)}>
+          <TouchableOpacity style={s.reviewEditBtn} onPress={() => setStep(1)} activeOpacity={0.7}>
             <Ionicons name="create-outline" size={12} color={Colors.accent} />
             <Text style={s.reviewEditText}>Edit</Text>
           </TouchableOpacity>
@@ -2507,7 +2507,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
         {/* Photos */}
         <SectionBox title={`Photos (${allImages.length})`} action={
-          <TouchableOpacity style={s.reviewEditBtn} onPress={() => setStep(2)}>
+          <TouchableOpacity style={s.reviewEditBtn} onPress={() => setStep(2)} activeOpacity={0.7}>
             <Ionicons name="create-outline" size={12} color={Colors.accent} />
             <Text style={s.reviewEditText}>Edit</Text>
           </TouchableOpacity>
@@ -2531,7 +2531,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
         {/* Technical Specs */}
         <SectionBox title="Technical Specs" action={
-          <TouchableOpacity style={s.reviewEditBtn} onPress={() => setStep(1)}>
+          <TouchableOpacity style={s.reviewEditBtn} onPress={() => setStep(1)} activeOpacity={0.7}>
             <Ionicons name="create-outline" size={12} color={Colors.accent} />
             <Text style={s.reviewEditText}>Edit</Text>
           </TouchableOpacity>
@@ -2575,7 +2575,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
         {/* Pricing */}
         <SectionBox title="Pricing" action={
-          <TouchableOpacity style={s.reviewEditBtn} onPress={() => setStep(3)}>
+          <TouchableOpacity style={s.reviewEditBtn} onPress={() => setStep(3)} activeOpacity={0.7}>
             <Ionicons name="create-outline" size={12} color={Colors.accent} />
             <Text style={s.reviewEditText}>Edit</Text>
           </TouchableOpacity>

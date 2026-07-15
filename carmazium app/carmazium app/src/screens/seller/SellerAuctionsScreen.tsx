@@ -748,6 +748,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 style={styles.menuBtn}
                 onPress={() => handleAuctionMenu(item)}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                activeOpacity={0.7}
               >
                 <Ionicons name="ellipsis-vertical" size={18} color={Colors.textMuted} />
               </TouchableOpacity>
@@ -757,6 +758,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 style={styles.resultsBtn}
                 onPress={() => setResultsAuction(item)}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                activeOpacity={0.8}
               >
                 <Ionicons name="bar-chart-outline" size={13} color={Colors.accent} style={{ marginRight: 4 }} />
                 <Text style={styles.resultsBtnText}>Results</Text>
@@ -851,6 +853,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 onPress={closeEditForm}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 disabled={editSaving}
+                activeOpacity={0.7}
               >
                 <Text style={styles.editDiscard}>Discard</Text>
               </TouchableOpacity>
@@ -888,6 +891,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 style={styles.handoverButton}
                 onPress={() => handleHandoverUpload(item.id)}
                 disabled={handoverUploading[item.id]}
+                activeOpacity={0.8}
               >
                 {handoverUploading[item.id] ? (
                   <ActivityIndicator color={Colors.white} />
@@ -1126,7 +1130,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             {digestTags.map(tag => (
               <View key={tag} style={styles.digestTagChip}>
                 <Text style={styles.digestTagChipText} numberOfLines={1}>{tag}</Text>
-                <TouchableOpacity onPress={() => setDigestTags(prev => prev.filter(t => t !== tag))} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                <TouchableOpacity onPress={() => setDigestTags(prev => prev.filter(t => t !== tag))} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} activeOpacity={0.7}>
                   <Ionicons name="close" size={12} color={Colors.textMuted} />
                 </TouchableOpacity>
               </View>
@@ -1137,7 +1141,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         <Text style={[styles.retailFieldLabel, { marginTop: 18 }]}>SELF RATING</Text>
         <View style={styles.digestStarRow}>
           {[1, 2, 3, 4, 5].map(n => (
-            <TouchableOpacity key={n} onPress={() => setDigestRating(prev => prev === n ? null : n)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+            <TouchableOpacity key={n} onPress={() => setDigestRating(prev => prev === n ? null : n)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} activeOpacity={0.7}>
               <Ionicons
                 name={digestRating != null && n <= digestRating ? 'star' : 'star-outline'}
                 size={28}
