@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,11 +6,11 @@ import {
   Modal,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  Animated,
   Dimensions,
   Alert,
   ScrollView,
 } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -209,40 +209,21 @@ export const GlobalDrawer: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
 
-  const translateX = useRef(new Animated.Value(DRAWER_WIDTH)).current;
-  const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const translateX = useSharedValue(DRAWER_WIDTH);
+  const backdropOpacity = useSharedValue(0);
 
   useEffect(() => {
     if (isOpen) {
-      Animated.parallel([
-        Animated.spring(translateX, {
-          toValue: 0,
-          useNativeDriver: true,
-          damping: 22,
-          stiffness: 200,
-          mass: 0.7,
-        }),
-        Animated.timing(backdropOpacity, {
-          toValue: 1,
-          duration: 220,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      translateX.value = withSpring(0, { damping: 22, stiffness: 200, mass: 0.7 });
+      backdropOpacity.value = withTiming(1, { duration: 220 });
     } else {
-      Animated.parallel([
-        Animated.timing(translateX, {
-          toValue: DRAWER_WIDTH,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(backdropOpacity, {
-          toValue: 0,
-          duration: 180,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      translateX.value = withTiming(DRAWER_WIDTH, { duration: 200 });
+      backdropOpacity.value = withTiming(0, { duration: 180 });
     }
-  }, [isOpen]);
+  }, [isOpen, translateX, backdropOpacity]);
+
+  const backdropStyle = useAnimatedStyle(() => ({ opacity: backdropOpacity.value }));
+  const panelStyle = useAnimatedStyle(() => ({ transform: [{ translateX: translateX.value }] }));
 
   // Determine which tab is active
   const getActiveTab = (): string => {
@@ -333,15 +314,15 @@ export const GlobalDrawer: React.FC = () => {
     >
       {/* Dimmed backdrop */}
       <TouchableWithoutFeedback onPress={closeDrawer}>
-        <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]} />
+        <Animated.View style={[styles.backdrop, backdropStyle]} />
       </TouchableWithoutFeedback>
 
       {/* Slide-in panel */}
       <Animated.View
         style={[
           styles.panel,
+          panelStyle,
           {
-            transform: [{ translateX }],
             paddingTop: insets.top + 10,
             paddingBottom: insets.bottom + 16,
           },
