@@ -632,7 +632,12 @@ export class AuctionsService {
                 this.prisma.user.findUnique({ where: { id: winnerId }, select: { email: true, firstName: true } }),
                 listing.sellerId ? this.prisma.user.findUnique({ where: { id: listing.sellerId }, select: { email: true, firstName: true } }) : null,
             ]);
-            if (buyer?.email) {
+            // Winner email respects their "You're winning"/Email toggles — same
+            // AUCTION_WON type as the notification above (mobile-production-
+            // readiness-plan.md F23 follow-up). The seller's "auction ended"
+            // email has no dedicated toggle in NotificationSettingsScreen.tsx,
+            // so it stays ungated like before.
+            if (buyer?.email && await this.notificationsService.shouldSendEmail(winnerId, 'AUCTION_WON')) {
                 this.emailService.sendAuctionWonEmail(buyer.email, buyer.firstName || 'there', vehicle || listing.title, winningAmount, auction.id).catch(console.error);
             }
             if (seller?.email) {

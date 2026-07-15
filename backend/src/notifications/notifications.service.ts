@@ -43,6 +43,24 @@ export class NotificationsService {
         return !!key && notifPrefs[key] === false;
     }
 
+    // Used by EmailService call sites (offers.service.ts, auctions.service.ts)
+    // whose email corresponds 1:1 to one of the events NotificationSettingsScreen.tsx
+    // actually offers a toggle for — see TYPE_PREF_KEY above. Emails with no
+    // dedicated toggle (welcome, KYC, staff invite, offer-received, handover,
+    // etc.) are intentionally not routed through this and keep sending
+    // unconditionally, same as before.
+    async shouldSendEmail(userId: string, type: string): Promise<boolean> {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { preferences: true },
+        });
+        const prefs = user?.preferences as Record<string, any> | null;
+        const notifPrefs = prefs?.notifications as Record<string, any> | undefined;
+        if (!notifPrefs) return true;
+        if (this.isMuted(type, notifPrefs)) return false;
+        return notifPrefs.email !== false;
+    }
+
     // Server-local-time comparison — there's no per-user timezone on the User
     // model to do this precisely, so this is a best-effort improvement over
     // the previous "always push, quiet hours are decorative" behavior, not a

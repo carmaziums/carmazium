@@ -437,9 +437,13 @@ export class OffersService {
             });
             this.notificationsGateway.sendNotification(offer.buyerId, buyerNotification);
 
-            // Email the buyer
+            // Email the buyer — respects the buyer's per-event + "Email" delivery
+            // toggle in NotificationSettingsScreen.tsx (mobile-production-
+            // readiness-plan.md F23 follow-up); notifType is the exact same
+            // string used for the notification row above, so this stays in sync
+            // with whatever toggle actually governs that event.
             const buyer = await this.prisma.user.findUnique({ where: { id: offer.buyerId }, select: { email: true, firstName: true } });
-            if (buyer?.email) {
+            if (buyer?.email && await this.notificationsService.shouldSendEmail(offer.buyerId, notifType)) {
                 const slug = offer.listing.slug;
                 const amt = agreedAmt;
                 if (prismaStatus === 'ACCEPTED') {
@@ -768,8 +772,9 @@ export class OffersService {
                 });
                 this.notificationsGateway.sendNotification(offer.listing.sellerId, sellerNotification);
 
-                // Email the seller when buyer accepts counter
-                if (prismaStatus === 'ACCEPTED' && offer.counterAmount) {
+                // Email the seller when buyer accepts counter — same "Offer
+                // accepted" toggle as the buyer-side acceptance email above.
+                if (prismaStatus === 'ACCEPTED' && offer.counterAmount && await this.notificationsService.shouldSendEmail(offer.listing.sellerId, 'OFFER_ACCEPTED')) {
                     const seller = await this.prisma.user.findUnique({ where: { id: offer.listing.sellerId }, select: { email: true, firstName: true } });
                     if (seller?.email) {
                         this.emailService.sendCounterAcceptedEmail(
