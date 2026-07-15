@@ -538,9 +538,65 @@ Both registered in `MainStackNavigator.tsx` and `GlobalDrawer.tsx`. `npx tsc --n
 
 ---
 
-## Phase 3 (future, not started) — UI/UX consistency & transition-animation pass
+## Phase 3 — UI/UX consistency & transition-animation pass (scoped 2026-07-15)
 
-Explicitly deferred — noted here so it's on the roadmap, not detailed or started in this session. Once Stages 12–17 land, the next phase is a dedicated pass on interaction polish: consistent, subtle screen-transition and micro-interaction animations across the app (this codebase already depends on `react-native-reanimated`/`react-native-gesture-handler` for the damage viewer and pinch-to-zoom, so the tooling is already in place — this phase is about applying it more broadly, not introducing a new animation dependency), plus finishing the design-token consistency work `mobile-ui-ux-plan.md` Stage 2 started. Scope this properly (its own audit of current transition inconsistencies) when the time comes rather than bolting animation work onto the functional fixes above — mixing "make it correct" and "make it feel polished" work in the same PRs makes both harder to review and to roll back independently.
+Scoping audit done (research only, no code changes) — see full findings archived below this header. Four areas surveyed: screen-transition consistency, existing animation-tooling baseline, micro-interaction gaps, and design-token consistency. Summary: the animation *tooling* is solid (press-scale idiom already proven in 4 components, gesture-driven zoom, pulse/color-interpolation), but it's fragmented across two systems (Reanimated vs. legacy RN `Animated`), screen transitions have no documented convention (19 vs. 26 screens split with no legible pattern), there's zero content/list entrance animation anywhere in the app, and one real design-token hole survived the earlier "done" claim (`GlobalDrawer.tsx` uses zero `FontFamily` tokens).
+
+Staged as five parts — 18 first since it's small, safe, and needs no upfront decision; 19–22 need the two decisions below made first.
+
+**Two decisions made up front (same reasoning-shown approach as F16/F19 earlier in this doc):**
+- **Consolidate on Reanimated, not legacy `Animated`.** `CLAUDE.md`'s stated stack doesn't mention the legacy API at all, Reanimated is already the proven pattern in 8 files, and running two animation systems long-term just means every future screen has to guess which one to use. `Skeleton.tsx`, `HomeScreen.tsx`'s duplicate skeleton, and `GlobalDrawer.tsx`'s drawer motion should migrate.
+- **Screen-transition convention: `slide_from_bottom` for flows entered via an explicit CTA (checkout-like, wizard-like, or a dashboard you "enter"), `slide_from_right` for drill-down navigation (tapping a list item, a menu row).** This is the closest fit to the existing 19/26 split's rough intent, just made explicit and applied consistently — e.g. it explains why `VehicleDetail`/`LiveAuctionDetailed` (entered via a prominent card tap into a full experience) feel right on `slide_from_bottom` while `SellerProfile`/`SellerPerformance` (drill-down from a menu) belong on `slide_from_right`. Applying this consistently will *move* some currently-`slide_from_right` dealer screens (`DealerTeam`, `DealerOffers`, etc.) to match their `slide_from_bottom` siblings, not just leave the split as-is.
+
+---
+
+### Stage 18 — Quick, well-defined fixes (no architecture decision needed)
+
+1. `HomeScreen.tsx:29-42` — delete the locally-duplicated `Skeleton` and import the shared `src/components/ui/Skeleton.tsx` instead (also fixes its drifted `Colors.deepBlue_1e1e28` vs. the shared component's `Colors.bgTertiary`).
+2. `BuyerBidsScreen.tsx:294-297`, `PaymentHistoryScreen.tsx:131-134`, `BuyerOffersScreen.tsx:425-428` — replace the static, non-animated `styles.skeletonCard`/`skeletonBlock` boxes with the shared animated `Skeleton` component, matching the ~24 screens that already do this correctly.
+3. `GlobalDrawer.tsx` — replace all 13 `fontWeight: '<n>'` string literals (`:608,616,622,646,708,712,718,724,730,749,782,787,800,807`) with the matching `FontFamily.bold`/`FontFamily.medium`/etc. token, per the app's own convention. High-visibility fix — this file renders on every screen.
+4. Add missing `activeOpacity` (value `0.8`, the already-dominant convention — 111 existing uses vs. 103/71 for the next two values) to the `TouchableOpacity`s that currently have none: `MyListingDashboardScreen.tsx` (9 of 12 missing, worst offender — the 4 action cards and most tab-bar rows), plus the gaps in `SellCarFlowScreen.tsx`, `SearchScreen.tsx`, `SellerAuctionsScreen.tsx`, `AuctionDetailScreen.tsx`. Scoped to *missing* feedback only — not a full sweep changing existing 0.7/0.75/0.85 instances to 0.8, which would be a much larger, lower-value, higher-risk change across hundreds of call sites; that's a separate decision for later if it's ever worth doing.
+
+**Acceptance:** `npx tsc --noEmit` clean; the three dead-skeleton screens visually pulse like the rest of the app (can't verify visually here — see Section 5 checklist); `grep -c "fontWeight: '" GlobalDrawer.tsx` returns 0 (or only the pre-existing unrelated ones, if any).
+
+---
+
+### Stage 19 — Screen-transition re-map
+
+Apply the convention above across all 45 screens in `MainStackNavigator.tsx` plus `AuthNavigator.tsx`'s `Terms` override. This is a mechanical re-classification once the convention is fixed, but touch every `options={{animation: ...}}` line deliberately rather than batch-replacing, since a few current placements may already be correct under the new rule by coincidence (re-verify each, don't assume the current 19/26 split is 100% wrong).
+
+---
+
+### Stage 20 — Consolidate legacy `Animated` → Reanimated
+
+`Skeleton.tsx` (after Stage 18 fixes the duplicate, there's one canonical component to migrate) and `GlobalDrawer.tsx`'s slide-in/backdrop-fade (`:212-238`, `Animated.spring`/`Animated.timing` → Reanimated `useSharedValue`/`withSpring`/`withTiming`, keeping the same timing/feel, not redesigning the motion). `GlobalDrawer.tsx`'s `Modal` already has `animationType="none"` so the hand-rolled animation is doing all the work — this needs careful before/after comparison since it's the app's primary navigation surface.
+
+---
+
+### Stage 21 — `BottomSheet.tsx` gesture-driven drag-to-dismiss
+
+Currently RN's built-in `Modal` with a fixed `animationType="slide"` — no drag gesture despite the app already having proven `GestureDetector`/pan-gesture code in `VehicleDetailScreen.tsx`'s lightbox. 13 files depend on this shared component (`DealerLeadsScreen`, `VehicleDetailScreen`, `SearchScreen`, `SellerListingsScreen`, `SellerAuctionsScreen`, `DealerInventoryScreen`, `CompareScreen`, `SettingsScreen`, `DealerPurchasesScreen`, `DealerOffersScreen`, `DealerTeamScreen`, `SellerOffersScreen`, `EnquireModal.tsx`) — highest blast-radius item in this phase, do last and test broadly (every caller's `avoidKeyboard`/`maxHeightPercent`/`title` usage needs to keep working identically, this is a motion upgrade not a behavior change).
+
+---
+
+### Stage 22 — Subtle content/list entrance animations
+
+Zero use of Reanimated's `FadeIn`/`SlideIn`/`entering=`/`exiting=`/`LinearTransition` anywhere in `src/` today — every list, wizard-step change, and skeleton→content swap currently "pops" instantly. Start narrow (a handful of high-traffic list screens — `HomeScreen`'s rails, `SearchScreen`'s results, `DealerLeadsScreen`'s board cards) rather than all 60+ screens at once; confirm the pattern feels right (subtle, not distracting, no perf regression on long lists) before expanding further.
+
+---
+
+<details>
+<summary>Archived: full scoping-audit findings (2026-07-15)</summary>
+
+**1. Screen transitions** — three navigators, three different default animations (`RootNavigator`: `fade`; `AuthNavigator`: `fade_from_bottom`; `MainStackNavigator`: `slide_from_right` default). Of 45 `MainStackNavigator` screens: 19 override to `slide_from_bottom` (VehicleDetail, LiveAuctionDetailed, Messages, Compare, Settings, DealerAnalytics, DealerInventory, DealerLeads, DealerKYC, DealerOnboarding, AuctionComplete, NotificationSettings, MyListingDashboard, PurchaseFlow, SellCarFlow, BuyerDashboard, SellerDashboard, UnifiedDashboard, AcceptInvite), 26 explicitly re-set `slide_from_right` (redundant with the default but written out anyway). No `presentation:` set anywhere. Same-category screens land on opposite sides with no evident rule (e.g. dealer screens split arbitrarily between the two).
+
+**2. Reanimated/gesture-handler baseline** — used in exactly 8 non-test files: `VehicleDetailScreen.tsx` (gesture-driven photo gallery + pinch-zoom lightbox), `AuctionDetailScreen.tsx` (live pulse + bid-flash color interpolation), `VehicleCard.tsx`/`HorizontalVehicleCard.tsx`/`CategoryPill.tsx`/`PrimaryCTA.tsx` (press-scale idiom, scale values 0.94–0.98, inconsistent damping/stiffness across the four), `SplashScreen.tsx` (entrance fade+scale, looping glow), `TabNavigator.tsx` (tab-icon bounce on focus). Legacy RN `Animated` still in active use in 3 places that never migrated: `Skeleton.tsx` (shimmer pulse), `HomeScreen.tsx` (a duplicate, drifted copy of Skeleton), `GlobalDrawer.tsx` (drawer slide-in/backdrop-fade, the `Modal`'s own `animationType="none"` means this hand-rolled animation is the only motion).
+
+**3. Micro-interactions** — `activeOpacity`: all 67 files using `TouchableOpacity` set it *somewhere* but not everywhere (`MyListingDashboardScreen.tsx`: 3 of 12; also gaps in `SellCarFlowScreen.tsx` 28/34, `SearchScreen.tsx` 21/31, `SellerAuctionsScreen.tsx` 14/20, `AuctionDetailScreen.tsx` 11/16); where set, 9 distinct values in use (0.7×103, 0.75×71, 0.8×111, 0.85×61, plus scattered 0.88/0.9/0.92/0.95/1) with no standard token. Loading transitions: shared `Skeleton.tsx` correctly used by ~24 screens, but `HomeScreen.tsx`/`UnifiedDashboardScreen.tsx` duplicate it locally (drifted color), and `BuyerBidsScreen.tsx`/`PaymentHistoryScreen.tsx`/`BuyerOffersScreen.tsx` render static non-animated skeletons; everywhere, loading→loaded is a hard ternary with no crossfade. List/content entrance: zero matches for `FadeIn`/`SlideIn`/`entering=`/`exiting=`/`LinearTransition` anywhere in `src/` — an app-wide gap, not per-screen. `BottomSheet.tsx` uses RN's built-in `Modal` (`animationType="slide"`, fixed, no drag-to-dismiss) despite the gesture tooling existing elsewhere; used by 13 files. 6 files still use a raw `Modal` outside `BottomSheet.tsx`: `VehicleDetailScreen.tsx`'s lightbox (correctly excluded — needs full-screen gesture space), `GlobalAIChatBot.tsx`, `ImportListingModal.tsx`, `StripeCheckoutModal.tsx`, `BulkImportModal.tsx` (previously-noted deliberate exclusions), and `GlobalDrawer.tsx` (legitimately distinct side-drawer pattern, but hand-rolled `Animated`-API motion rather than either `BottomSheet`'s slide or Reanimated).
+
+**4. Design tokens** — hex colors and hardcoded `fontSize`/font-family-string literals: 0 hits each, confirms the earlier "done" claim still holds for those. One real gap the earlier sweep didn't check: `fontWeight: '<n>'` string literals instead of `FontFamily` tokens — 15 occurrences, 13 in `GlobalDrawer.tsx` alone (confirmed 0 `FontFamily.` usage anywhere in that file), 2 likely-intentional in `GlobalAIChatBot.tsx` (a decorative glyph).
+
+</details>
 
 ---
 
