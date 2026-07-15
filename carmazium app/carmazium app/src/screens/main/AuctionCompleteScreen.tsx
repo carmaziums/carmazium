@@ -83,6 +83,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
 
   const {
     listingId,
+    auctionId,
     hammerPrice,
     buyerFee = 125,
     bidCount,
@@ -156,6 +157,10 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
 
   const [paying, setPaying] = useState(false);
   const [paid, setPaid] = useState(false);
+  // True once we've confirmed the backend's payment_intent.succeeded webhook
+  // actually landed (Auction.buyerFeePaid) — false if we gave up waiting
+  // after the retry budget (mobile-production-readiness-plan.md F25).
+  const [feeConfirmPending, setFeeConfirmPending] = useState(false);
 
   // ── Seller review state (shown in success screen) ─────────────────────────
   const [sellerProfileId, setSellerProfileId] = useState<string | null>(null);
@@ -223,14 +228,38 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
         return;
       }
 
-      // 4. Fee paid — show success state
+      // 4. Stripe confirmed the charge — always show success from here (the
+      // card has genuinely been charged), but confirm the backend's
+      // payment_intent.succeeded webhook has actually flipped
+      // Auction.buyerFeePaid before trusting downstream gates (chat unlock,
+      // handover) are ready. Same poll-with-backoff pattern already used by
+      // VehicleDetailScreen's HPI checkout and DealerKYCScreen's KYC
+      // checkout — this flow has no Checkout-Session-based fallback
+      // endpoint to call (/payments/apply-auction-fee is specifically for
+      // the hosted-Checkout flow, not the native Payment Sheet flow this
+      // screen uses), so if the webhook hasn't landed yet we just say so
+      // rather than silently pretending everything downstream is ready.
+      let confirmed = false;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        try {
+          const res = await apiClient<{ success: boolean; data: { buyerFeePaid?: boolean } }>(
+            `/auctions/${auctionId}`,
+          );
+          if (res.success && res.data?.buyerFeePaid) {
+            confirmed = true;
+            break;
+          }
+        } catch { /* not ready yet — retry */ }
+        await new Promise(r => setTimeout(r, 1500));
+      }
+      setFeeConfirmPending(!confirmed);
       setPaid(true);
     } catch (err: any) {
       Alert.alert('Payment error', err?.message ?? 'Something went wrong. Please try again.');
     } finally {
       setPaying(false);
     }
-  }, [listingId, buyerFee, timeLeft, initPaymentSheet, presentPaymentSheet]);
+  }, [listingId, auctionId, buyerFee, timeLeft, initPaymentSheet, presentPaymentSheet]);
 
   // ── Fetch seller profile ID once payment succeeds ──────────────────────────
   useEffect(() => {
@@ -314,6 +343,15 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
               </View>
             </View>
           </View>
+
+          {feeConfirmPending && (
+            <View style={styles.feeConfirmPendingBanner}>
+              <Ionicons name="time-outline" size={15} color={Colors.warning} />
+              <Text style={styles.feeConfirmPendingText}>
+                Your card has been charged — we're still confirming it with our system. Chat and handover may take a minute to unlock.
+              </Text>
+            </View>
+          )}
 
           <Text style={styles.sectionLabel}>YOUR JOURNEY</Text>
 
@@ -797,6 +835,25 @@ const styles = StyleSheet.create({
     borderColor: Colors.accentGreenAlpha20,
     padding: 16,
     marginBottom: 32,
+  },
+  feeConfirmPendingBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: Colors.warningAlpha05,
+    borderWidth: 1,
+    borderColor: Colors.warningAlpha30,
+    borderRadius: 14,
+    padding: 14,
+    marginTop: -16,
+    marginBottom: 24,
+  },
+  feeConfirmPendingText: {
+    flex: 1,
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.xs,
+    color: Colors.warning,
+    lineHeight: 17,
   },
   carImg: { width: 70, height: 50, borderRadius: 8, marginRight: 16 },
   carImgPlaceholder: {
