@@ -18,6 +18,7 @@ import { DealerOffersScreen } from '../screens/main/DealerOffersScreen';
 import { DealerMyOffersScreen } from '../screens/main/DealerMyOffersScreen';
 import { DealerPurchasesScreen } from '../screens/main/DealerPurchasesScreen';
 import { DealerEarningsScreen } from '../screens/main/DealerEarningsScreen';
+import { DealerFinanceScreen } from '../screens/main/DealerFinanceScreen';
 import { ServicesScreen } from '../screens/main/ServicesScreen';
 import { TermsScreen } from '../screens/main/TermsScreen';
 import { HowItWorksScreen } from '../screens/main/HowItWorksScreen';
@@ -69,6 +70,7 @@ export type MainStackParamList = {
   DealerMyOffers: undefined;
   DealerPurchases: undefined;
   DealerEarnings: undefined;
+  DealerFinance: undefined;
   Services: undefined;
   Terms: undefined;
   HowItWorks: undefined;
@@ -209,6 +211,11 @@ export const MainStackNavigator: React.FC = () => {
       <Stack.Screen
         name="DealerEarnings"
         component={DealerEarningsScreen}
+        options={{ animation: 'slide_from_bottom' }}
+      />
+      <Stack.Screen
+        name="DealerFinance"
+        component={DealerFinanceScreen}
         options={{ animation: 'slide_from_bottom' }}
       />
       <Stack.Screen name="Services" component={ServicesScreen} options={{ animation: 'slide_from_right' }} />

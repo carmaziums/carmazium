@@ -373,6 +373,22 @@ export const DealerProfileScreen: React.FC = () => {
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
 
+            {/* Finance applications */}
+            <TouchableOpacity
+              style={styles.attentionRow}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('DealerFinance')}
+            >
+              <View style={[styles.attentionIconWrap, { backgroundColor: Colors.infoBlueAlpha08, borderColor: Colors.infoBlueAlpha15 }]}>
+                <Ionicons name="card-outline" size={18} color={Colors.infoBlue} />
+              </View>
+              <View style={styles.attentionTextCol}>
+                <Text style={styles.attentionTitle}>Finance applications</Text>
+                <Text style={styles.attentionSub}>Track vehicle finance you've applied for</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
+            </TouchableOpacity>
+
             {/* Team */}
             <TouchableOpacity
               style={styles.attentionRow}

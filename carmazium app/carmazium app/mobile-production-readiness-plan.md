@@ -32,7 +32,7 @@ This document does not repeat content already well-covered in the four existing 
 > - **F9 — DONE.** Product decided mobile should have the prominent auctions CTA regardless of web's currently-disabled hero button. `HomeScreen.tsx` now has an `auctionCta` card above `sellCta`, shown whenever there's a live auction.
 > - None of F7/F8/F9 has been verified on a real device — no adb/emulator in this environment (same limitation as F1/F3).
 
-> **F10–F25 added 2026-07-15**, from a full-surface parity sweep (four parallel passes: buyer, seller, dealer, cross-cutting), each verified by reading both web and mobile source directly rather than assuming from doc silence. **All 16 are now DONE** — see each finding below for what shipped and any scope notes. Highlights: the two broken filters (F10 fuel, F11 body type) fixed at the root (`SearchScreen.tsx`/`constants/bodyTypes.ts`), which also turned out to fix the same wrong values in listing creation; the dealer CRM got a board view (F16, deliberately not drag-and-drop — see that finding); Notification Settings' toggles are now mostly honored server-side (F23, email delivery is a flagged follow-up, SMS disabled with "Coming soon"); the delivery fee estimate now calls a real new backend endpoint instead of a fabricated formula that also had a fake VAT markup (F24). **None of F10–F25 has been on-device verified** — no adb/emulator in this environment, same limitation noted throughout this document for every payment/native-feeling flow.
+> **F10–F25 added 2026-07-15**, from a full-surface parity sweep (four parallel passes: buyer, seller, dealer, cross-cutting), each verified by reading both web and mobile source directly rather than assuming from doc silence. **All 16 are now DONE** (2026-07-16) — see each finding below for what shipped and any scope notes. Highlights: the two broken filters (F10 fuel, F11 body type) fixed at the root (`SearchScreen.tsx`/`constants/bodyTypes.ts`), which also turned out to fix the same wrong values in listing creation; the dealer CRM got a board view (F16, deliberately not drag-and-drop — see that finding); Notification Settings' toggles are now honored server-side for both push/socket (Stage 17) and the three toggle-mapped transactional emails (F23 follow-up, 2026-07-16), SMS disabled with "Coming soon"; the delivery fee estimate now calls a real new backend endpoint instead of a fabricated formula that also had a fake VAT markup (F24). **Correction (2026-07-16):** this line previously claimed all 16 were done when the Stage 12–17 roadmap actually never scheduled F18 — caught while doing a fresh sweep of the doc for "what's left," not by the original audit. F18 is now built as Stage 23, see below. **None of F10–F25 has been on-device verified** — no adb/emulator in this environment, same limitation noted throughout this document for every payment/native-feeling flow.
 
 ---
 
@@ -278,6 +278,8 @@ The drawer's "Dealer auction manager" item is wired to show a "Coming Soon" aler
 Web's dealer Finance page lets a dealer view and update the status (PENDING/APPROVED/FUNDED/REJECTED) of finance applications where they're the buyer. No mobile screen, API wrapper, or navigation entry exists for this at all — not in the stack navigator, drawer, or dealer profile's "Needs Attention" list.
 
 **Fix:** add a `DealerFinanceScreen.tsx` calling the same two endpoints, matching web's status-badge/metric-card layout, with a drawer/profile entry point.
+
+**Status: DONE** (2026-07-16, Stage 23 — see Section 2B). Scoped down from "the same two endpoints": web's `PATCH /finance/:id/status` requires the calling user to hold a `FINANCE_PARTNER` `PartnerProfile` (`finance.controller.ts`'s `updateStatus` throws `ForbiddenException` otherwise) — a real dealer never has one, so web's own Approve/Review/Reject buttons 403 for every actual dealer using that page, and two of the statuses those buttons write (`FUNDED`, `REVIEWING`) don't exist in the real `FinanceApplicationStatus` enum (`PENDING`/`APPROVED`/`REJECTED`/`COMPLETED` — checked `prisma/schema.prisma` directly). Built `DealerFinanceScreen.tsx` as a read-only view of `GET /finance/my` instead of porting those broken buttons — matches this session's established "honest content over literal web port" precedent (Stage 16's `ReviewsScreen`).
 
 ---
 
@@ -634,6 +636,16 @@ This closes out Phase 3 (Stages 18-22) — the full UI/UX consistency + animatio
 **4. Design tokens** — hex colors and hardcoded `fontSize`/font-family-string literals: 0 hits each, confirms the earlier "done" claim still holds for those. One real gap the earlier sweep didn't check: `fontWeight: '<n>'` string literals instead of `FontFamily` tokens — 15 occurrences, 13 in `GlobalDrawer.tsx` alone (confirmed 0 `FontFamily.` usage anywhere in that file), 2 likely-intentional in `GlobalAIChatBot.tsx` (a decorative glyph).
 
 </details>
+
+---
+
+### Stage 23 — F18: Dealer Finance dashboard (missed from the original F10–F25 roadmap)
+
+Found while re-surveying this document for "what's left" (2026-07-16): F18 was documented back on 2026-07-15 but never actually scheduled into Stage 12–17, and the section-header summary claiming "all 16 done" was wrong as a result — a real gap that sat undetected for a day of otherwise-completed work.
+
+**Status: DONE** (2026-07-16). See F18 above for the full write-up on why this is a read-only view (`GET /finance/my` only) rather than a straight port of web's Approve/Review/Reject buttons, which 403 for real dealers and reference two statuses (`FUNDED`, `REVIEWING`) that don't exist in the schema. New files: `src/lib/financeApi.ts` (thin wrapper, `getMyFinanceApplications()`), `src/screens/main/DealerFinanceScreen.tsx` (stat-card grid over the real `PENDING`/`APPROVED`/`REJECTED`/`COMPLETED` enum + application list, modeled on `DealerPurchasesScreen.tsx`'s layout). Registered `DealerFinance` route in `MainStackNavigator.tsx` (`slide_from_bottom`, matching sibling dealer screens per Stage 19's transition remap) and a "Finance applications" entry in `DealerProfileScreen.tsx`'s Needs Attention list. `npx tsc --noEmit` clean. **Not on-device verified** — same blanket limitation as everything else in this document.
+
+**Process note for future passes**: this happened because the roadmap (Section 2B) was written by hand from the finding list rather than mechanically checked against it — worth a quick `grep -c "^### F"` vs. staged-item count sanity check before declaring a sweep "all done" next time.
 
 ---
 
