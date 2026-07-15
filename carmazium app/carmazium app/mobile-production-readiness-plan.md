@@ -562,3 +562,32 @@ Combining both existing docs' "after" sections with new items from this cross-ch
 - Admin, Finance Partner, Insurance Partner, Contractor dashboards — out of scope, same as `FEATURE_AUDIT.md`'s own scope decision (internal/partner-only surfaces).
 - A full re-audit of mobile's API coverage against every backend controller — spot-checked broadly (auctions, bids, offers, delivery requests, dealer staff/leads, Stripe Connect, address verification, watchlist, chat, sellers/reviews) and found **thorough parity** beyond the three gaps in F1/F2/F3. The existing two mobile audits already cover UI/UX and performance/correctness exhaustively; this document's job was specifically to check the mobile ↔ backend contract, which they couldn't do without source access.
 - Product decisions flagged as needing design/business input in either existing plan's "not staged" section (dealer bulk actions, onboarding role-picker, filterable analytics date ranges) — unchanged, still deferred.
+
+---
+
+## 5. On-device test checklist — F7–F25 (2026-07-15 session)
+
+Every fix in this document from F7 onward was verified with `npx tsc --noEmit` only — no adb/emulator/physical device was available in the environment that wrote it. That's a real gap: type-checking catches type errors, not layout bugs, gesture conflicts, WebView rendering issues, or anything that only shows up at runtime. The code-review pass on 2026-07-15 already caught one such bug purely by re-reading the diff (the CRM board's unbounded column height) — there are likely others that only surface on a real screen. Test in this order (highest-risk / highest-blast-radius first):
+
+**Payments (real Stripe charges — use test-mode keys, never production):**
+1. F1/F3 (from the original Stage 0 work, still never verified) — publish a BASIC/STANDARD/PREMIUM classified listing end to end; confirm the listing reaches `ACTIVE` with the right `badgeTier`, not just that the Stripe charge succeeds.
+2. F25 — win a test auction, pay the buyer fee, confirm the success screen. Specifically try to catch the `feeConfirmPending` banner state (may need to introduce artificial webhook delay in a test environment to trigger it) — confirm it clears and chat/handover unlock once the webhook lands.
+
+**New/changed UI most likely to have layout bugs (nothing here has been visually confirmed):**
+3. F16 — dealer CRM board view: confirm columns render with visibly equal height and each column scrolls independently when it has more leads than fit on screen (this is the exact bug the 2026-07-15 review fixed — confirm the fix actually worked on a real device, not just in theory). Also test the move-icon → reassignment sheet from a board card.
+4. F8 — the buyer-facing 3D damage viewer (`BuyerDamageViewer.tsx`) on `VehicleDetailScreen` and `AuctionDetailScreen`: confirm the WebView actually renders the 3D model (not just the fallback error state), hotspot taps select the right zone, and the damage list below stays in sync.
+5. F15 — Live Auctions search box: confirm it actually filters both Live and Upcoming sections and the keyboard doesn't cover the input.
+6. F9 — homepage `auctionCta` card: confirm it only appears when there's a live auction, and tapping it lands on the Live tab.
+
+**Everything else (lower risk, but genuinely never rendered):**
+7. F7 — seller/dealer phone: view a seller profile and a listing detail screen while logged in, confirm the real number renders and `tel:` tap works.
+8. F10/F11 — search filters: select a fuel type and a body type (especially Sedan/Crossover/Sports Car/Minivan/Station Wagon/Pickup Truck, the newly-added ones) and confirm results actually come back instead of an empty list.
+9. F12 — Engine Size/CO2 filters: confirm they narrow results.
+10. F13 — Terms/How It Works/Services: open each from the drawer; open Terms specifically from the Signup screen's "Terms" link (pre-login) since that's a second, separately-registered route.
+11. F14 — Reviews/Finance screens: open both from the drawer, confirm layout.
+12. F19 — dealer phone banner: log in as a dealer with no phone set, confirm the banner shows on `DealerProfileScreen`; dismiss it, relaunch the app, confirm it reappears (recurring-not-permanent dismissal).
+13. F20/F21/F22 — pricing copy, listed-on date, period toggle: visual spot-check only.
+14. F23 — notification preferences: mute a specific event type (e.g. "outbid"), trigger that event from another account, confirm no push/in-app toast arrives but the notification still appears in the list when you check it.
+15. F24 — delivery fee estimate on `VehicleDetailScreen`: enter a postcode for a listing with delivery enabled, confirm a real number appears (not instant — there's a network round-trip now) and matches what a real delivery request would show.
+
+If anything in this list fails, it's a straightforward bug-fix — but confirming *before* production is the whole point of this checklist existing.
