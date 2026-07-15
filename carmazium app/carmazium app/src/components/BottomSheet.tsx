@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Modal,
   View,
@@ -9,6 +9,14 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  runOnJS,
+} from 'react-native-reanimated';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../constants/colors';
 import { FontFamily, FontSize } from '../constants/typography';
@@ -25,6 +33,14 @@ import { IconButton } from './IconButton';
 // so this doesn't copy web 1:1 — it keeps the native mobile bottom-sheet
 // convention but aligns the backdrop/border/shadow language (dark, blurred-feel
 // backdrop, rounded card, subtle border) to match the web app's dialog styling.
+//
+// Drag-to-dismiss: the gesture is scoped to the handle + header strip only,
+// not the whole sheet body — most callers put a ScrollView/FlatList as their
+// first child (filters, create-lead forms, etc.), and a pan gesture covering
+// that content would fight the list's own scroll gesture. Dragging the handle
+// down past a distance/velocity threshold closes the sheet exactly the way
+// tapping the backdrop or the X button already does — same onClose() call,
+// no new behavior surface for the 13 existing callers to account for.
 
 interface BottomSheetProps {
   visible: boolean;
@@ -36,6 +52,9 @@ interface BottomSheetProps {
   maxHeightPercent?: number;
 }
 
+const DISMISS_DISTANCE = 80;
+const DISMISS_VELOCITY = 800;
+
 export const BottomSheet: React.FC<BottomSheetProps> = ({
   visible,
   onClose,
@@ -45,27 +64,63 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   maxHeightPercent = 92,
 }) => {
   const insets = useSafeAreaInsets();
+  const translateY = useSharedValue(0);
+
+  // Reset drag position on every fresh open — otherwise re-opening after a
+  // drag-dismiss would start the sheet already translated off-screen.
+  useEffect(() => {
+    if (visible) translateY.value = 0;
+  }, [visible, translateY]);
+
+  const handleDismiss = () => {
+    translateY.value = 0;
+    onClose();
+  };
+
+  const dragGesture = Gesture.Pan()
+    .onUpdate((e) => {
+      // Only allow dragging down — the sheet is already at its natural
+      // resting position, dragging up has nothing to reveal.
+      translateY.value = Math.max(0, e.translationY);
+    })
+    .onEnd((e) => {
+      if (translateY.value > DISMISS_DISTANCE || e.velocityY > DISMISS_VELOCITY) {
+        translateY.value = withTiming(600, { duration: 200 }, () => {
+          runOnJS(handleDismiss)();
+        });
+      } else {
+        translateY.value = withSpring(0, { damping: 20, stiffness: 300 });
+      }
+    });
+
+  const sheetAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
 
   const sheetContent = (
     <>
       <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={onClose} />
-      <View
+      <Animated.View
         style={[
           styles.sheet,
           { maxHeight: `${maxHeightPercent}%`, paddingBottom: Math.max(insets.bottom, 20) + 12 },
+          sheetAnimatedStyle,
         ]}
       >
-        <View style={styles.handle} />
-
-        {!!title && (
-          <View style={styles.headerRow}>
-            <Text style={styles.title} numberOfLines={1}>{title}</Text>
-            <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={18} color={Colors.textPrimary} />} onPress={onClose} accessibilityLabel="Close" />
+        <GestureDetector gesture={dragGesture}>
+          <View style={styles.dragArea}>
+            <View style={styles.handle} />
+            {!!title && (
+              <View style={styles.headerRow}>
+                <Text style={styles.title} numberOfLines={1}>{title}</Text>
+                <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={18} color={Colors.textPrimary} />} onPress={onClose} accessibilityLabel="Close" />
+              </View>
+            )}
           </View>
-        )}
+        </GestureDetector>
 
         {children}
-      </View>
+      </Animated.View>
     </>
   );
 
@@ -104,6 +159,13 @@ const styles = StyleSheet.create({
     borderColor: Colors.glassBorder,
     paddingHorizontal: 22,
     paddingTop: 12,
+  },
+  dragArea: {
+    // Extra invisible top padding widens the drag hit-area beyond the thin
+    // 4px handle bar itself, without changing its visible size.
+    marginHorizontal: -22,
+    paddingHorizontal: 22,
+    paddingTop: 4,
   },
   handle: {
     width: 36,

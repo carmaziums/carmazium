@@ -591,6 +591,17 @@ Apply the convention above across all 45 screens in `MainStackNavigator.tsx` plu
 
 Currently RN's built-in `Modal` with a fixed `animationType="slide"` — no drag gesture despite the app already having proven `GestureDetector`/pan-gesture code in `VehicleDetailScreen.tsx`'s lightbox. 13 files depend on this shared component (`DealerLeadsScreen`, `VehicleDetailScreen`, `SearchScreen`, `SellerListingsScreen`, `SellerAuctionsScreen`, `DealerInventoryScreen`, `CompareScreen`, `SettingsScreen`, `DealerPurchasesScreen`, `DealerOffersScreen`, `DealerTeamScreen`, `SellerOffersScreen`, `EnquireModal.tsx`) — highest blast-radius item in this phase, do last and test broadly (every caller's `avoidKeyboard`/`maxHeightPercent`/`title` usage needs to keep working identically, this is a motion upgrade not a behavior change).
 
+**Status: DONE** (2026-07-15), scoped to avoid the exact risk this stage flagged. The `BottomSheetProps` interface is completely unchanged (`visible`/`onClose`/`title`/`children`/`avoidKeyboard`/`maxHeightPercent` — same names, same types) — every one of the 13 callers needed zero changes. Confirmed via `grep -rl BottomSheet src` that the dependent count is still exactly 13.
+
+What changed internally:
+- The sheet `View` became an `Animated.View` (from `react-native-reanimated`) driven by a `translateY` shared value.
+- The drag gesture (`Gesture.Pan()`) is deliberately scoped to a new `dragArea` wrapper containing **only the handle + header row**, not the whole sheet body. Most callers put a `ScrollView`/`FlatList` as their first child (filters, forms, lists) — a pan gesture covering that content would fight the list's own scroll gesture. This was the main design decision for this stage: drag-to-dismiss from the handle/header only, exactly like the physical grab-handle convention users already expect from bottom sheets, without touching how any existing scrollable content behaves.
+- Drag down past 80px or a 800px/s flick calls the same `onClose()` every other dismissal path already uses (backdrop tap, X button) — no new behavior surface, just a third way to trigger the existing one. Dragging up does nothing (`Math.max(0, translationY)` — nothing to reveal past the sheet's natural resting position). Released short of the threshold springs back (`withSpring(0, {damping:20, stiffness:300})`).
+- `translateY` resets to 0 whenever `visible` flips back to `true`, so re-opening after a drag-dismiss doesn't start the sheet pre-translated off-screen.
+- The close (X) button still lives inside the now-gesture-covered header row — standard bottom-sheet libraries (e.g. `@gorhom/bottom-sheet`) do the same, and RNGH's `Pan` gesture requires actual movement to activate so a simple tap shouldn't be captured by it, but this specific interaction (does the X button still register a clean tap under the gesture detector) is the one thing in this stage that genuinely needs an on-device check, not just a code read.
+
+`npx tsc --noEmit` clean. **Not on-device verified** — this is the single highest-risk item in Phase 3 given the blast radius, and the one most worth prioritizing in a device pass over everything else in this document.
+
 ---
 
 ### Stage 22 — Subtle content/list entrance animations
@@ -661,3 +672,9 @@ Every fix in this document from F7 onward was verified with `npx tsc --noEmit` o
 15. F24 — delivery fee estimate on `VehicleDetailScreen`: enter a postcode for a listing with delivery enabled, confirm a real number appears (not instant — there's a network round-trip now) and matches what a real delivery request would show.
 
 If anything in this list fails, it's a straightforward bug-fix — but confirming *before* production is the whole point of this checklist existing.
+
+**Phase 3 additions (Stages 18–21, same "never on-device verified" caveat):**
+16. **`BottomSheet.tsx` drag-to-dismiss (Stage 21, highest priority of this batch)** — open any of the 13 dependent sheets (e.g. `DealerLeadsScreen`'s create-lead sheet, `SearchScreen`'s filter modal) and: (a) confirm dragging the handle down dismisses it, (b) confirm a short drag springs back instead of dismissing, (c) confirm the close (X) button inside the header still registers a clean tap rather than being swallowed by the drag gesture, (d) specifically test a sheet with a `ScrollView`/`FlatList` child (e.g. `SearchScreen`'s filters) to confirm scrolling that content doesn't accidentally trigger the drag gesture.
+17. **`GlobalDrawer.tsx` motion (Stage 20)** — open/close the drawer several times, confirm the slide-in spring and backdrop fade feel the same as before the Reanimated migration (same numbers were used, but only a device can confirm the *feel* matches).
+18. **Dealer screen transitions (Stage 19)** — open `DealerTeam`/`DealerOffers`/`DealerMyOffers`/`DealerPurchases`/`DealerEarnings` from the dealer menu, confirm they now slide up from the bottom like their dealer-suite siblings instead of sliding in from the right.
+19. **Skeleton loading states (Stage 18/20)** — trigger loading states on `HomeScreen`, `BuyerBidsScreen`, `PaymentHistoryScreen`, `BuyerOffersScreen` and confirm the pulse animation plays smoothly (Reanimated-driven now, should be at least as smooth as before, ideally smoother since it runs off the JS thread).
