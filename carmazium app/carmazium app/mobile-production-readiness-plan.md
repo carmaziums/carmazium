@@ -32,6 +32,12 @@ This document does not repeat content already well-covered in the four existing 
 > - **F9 — DONE.** Product decided mobile should have the prominent auctions CTA regardless of web's currently-disabled hero button. `HomeScreen.tsx` now has an `auctionCta` card above `sellCta`, shown whenever there's a live auction.
 > - None of F7/F8/F9 has been verified on a real device — no adb/emulator in this environment (same limitation as F1/F3).
 
+> **F10–F25 added 2026-07-15**, from a full-surface parity sweep (four parallel passes: buyer, seller, dealer, cross-cutting), each verified by reading both web and mobile source directly rather than assuming from doc silence. All are **documented only, not yet fixed**. Two (F10, F11) are confirmed live bugs, not just missing features — worth fixing before anything else in this batch:
+> - **F10 — CRITICAL, BROKEN.** Fuel-type filter sends raw UI labels (`'Petrol'`) instead of backend enum values (`'PETROL'`) — selecting *any* fuel chip in Search silently returns zero results. Also only 5 of 14 web fuel types offered.
+> - **F11 — BROKEN.** Body-type filter sends `'SALOON'`/`'PICKUP'`, which aren't real backend enum values (`SEDAN`/`PICKUP_TRUCK` are) — causes a 400, silently swallowed. Reachable from a Home-screen quick category, not just Search. Also missing 5 of 13 web body types.
+> - **F12–F25 — MISSING or cosmetic-but-misleading.** See each finding below. Highlights: dealer CRM is a flat list, not web's Kanban board (F16); Notification Settings has 15 controls the backend never reads (F23); the buyer-facing delivery fee estimate uses a formula that doesn't match what the backend actually charges (F24).
+> - None of F10–F25 has been fixed or on-device verified yet.
+
 ---
 
 ## 0. Document inventory — what already exists
@@ -176,6 +182,170 @@ User-reported: "on the homepage there is no Direct button for Auction Now like t
 **Fix (if greenlit):** add a second homepage CTA card, same visual treatment as `sellCta`, e.g. "N live auctions right now" / "See what's live" with a "VIEW" button navigating to the `Live` tab — conditionally rendered only when `liveAuctions.length > 0` (falls back to the existing quick-chip entry point when there are none, so the card doesn't promise live auctions that aren't there).
 
 **Status: DONE** (2026-07-15). Greenlit by product — mobile should have the prominent auctions CTA regardless of web's currently-disabled hero button. Added `auctionCta` to `HomeScreen.tsx`, directly above the existing `sellCta`: same card shape/border treatment, an icon-wrap + live-dot on the left (`hammer` icon, matching the existing "Live Auctions" quick-chip's iconography), "`N live auctions right now`" / "Bid live before time runs out", and a filled "VIEW" button navigating to `Tabs → Live`. Rendered only when `liveAuctions.length > 0` per the fix note — the quick chip still covers the zero-live case. `npx tsc --noEmit` clean.
+
+---
+
+## 1B. Full-surface parity sweep (2026-07-15) — F10–F25
+
+Four parallel audit passes, each scoped to one surface (buyer, seller, dealer, cross-cutting), each told to read `FEATURE_AUDIT.md` and all prior mobile audit docs first so nothing already tracked gets re-reported, and to confirm every finding by reading actual mobile source rather than inferring from doc silence. Findings below are de-duplicated across passes (body-type filter was independently found by two passes and is written up once, under F11).
+
+### F10 — CRITICAL, CONFIRMED BROKEN: fuel-type filter returns zero results for any selection
+
+**Files:** `src/screens/main/SearchScreen.tsx:60` (`FUELS` array), `:271` (`buildParams()`), `backend/src/listings/dto/listing-filter.dto.ts:81-85`, `backend/src/listings/listings.service.ts:361`
+
+Web translates UI labels to backend enum values before sending (`src/app/search/page.tsx:31-44`, `FUEL_TYPES`/`FUEL_MAP` — `'Petrol' → 'PETROL'`, `'Plugin Hybrid' → 'PLUGIN_HYBRID'`, 14 types total). Mobile's `SearchScreen.tsx` has no such translation layer: `FUELS = ['Petrol','Diesel','Hybrid','Plug-in Hybrid','Electric']` (5 types, not 14) and `buildParams()` sends `fuelTypes: selectedFuels` — the raw display labels — straight through as the query param. The backend's `fuelTypes` DTO field has no enum validation or case normalization, and `listings.service.ts:361` runs `where.fuelType = { in: fuelTypes }` as a raw Prisma filter — exact-match against the stored enum (`'PETROL'`, not `'Petrol'`). Every fuel chip a buyer taps in the Filters modal therefore returns zero listings, and it isn't even a request error to catch — it's a "successful" empty result, so there's no error surface at all, just an empty list that looks like "no cars match." This is reachable by any buyer trying to filter by fuel type, one of the most common search filters on a car marketplace.
+
+**Fix:** add a label→enum mapping (mirror web's `FUEL_MAP`) in `SearchScreen.tsx` or a shared constants file, translate before sending `fuelTypes`, and expand `FUELS` to cover all 14 backend values (Bi Fuel, Diesel Hybrid, Diesel Plug-in Hybrid, Hydrogen, LPG, Natural Gas, Petrol Hybrid, Petrol Plug-in Hybrid, Unlisted, plus the 5 already present).
+
+---
+
+### F11 — CONFIRMED BROKEN: body-type filter 400s on "Saloon"/"Pickup"; 5 of 13 web body types missing entirely
+
+**Files:** `src/constants/bodyTypes.ts:16,23`, `src/screens/main/SearchScreen.tsx:54,63-72`, `src/screens/main/HomeScreen.tsx:255`, `backend/src/listings/dto/listing-filter.dto.ts:104-107` (`@IsEnum(BodyType)`, no alias/transform)
+
+Same shape of bug as F10, different field. Mobile's shared body-type constant (`bodyTypes.ts:16,23`) invents `'SALOON'` and `'PICKUP'` — the real backend `BodyType` enum values are `SEDAN`/`PICKUP_TRUCK`. These wrong values are sent from three places: `HomeScreen.tsx:255`'s "Saloon" quick category, and two spots in `SearchScreen.tsx` (`:54` quick chip, `:65` filter chip). Unlike F10, this one fails loudly at the network layer — `@IsEnum` rejects the value and `GET /listings` 400s — but `SearchScreen.tsx:326`'s empty `catch {}` swallows it, so the buyer just sees nothing happen. This is reachable from the Home screen, not just deep in Search filters. Separately: mobile only offers 8 of web's 13 body types (`BODY_TYPE_KEYS`, `src/components/icons/BodyTypeIcons.tsx:177-180`) — missing Crossover, Sports Car, Minivan, Station Wagon, MPV.
+
+**Fix:** change `bodyTypes.ts`'s `SALOON`→`SEDAN`, `PICKUP`→`PICKUP_TRUCK` (check all call sites, including any display-label assumptions), add the 5 missing body types with chips/icons, and add a repo-wide grep for any other hardcoded `'SALOON'`/`'PICKUP'` strings before calling this closed — the same wrong values may be baked into other screens (e.g. listing creation body-type pickers) beyond just Search/Home.
+
+---
+
+### F12 — MISSING: Engine Size (cc) and CO2 Emissions filters absent from mobile Search
+
+**Files:** `src/screens/main/SearchScreen.tsx` (no `minEngine`/`maxEngine`/`maxCo2` anywhere, confirmed via grep), `src/app/search/page.tsx:108-110,763-780` (web), `backend/src/listings/dto/listing-filter.dto.ts:134,141,148`
+
+Web has a working engine-size range filter and a CO2-emissions cap filter with quick-select presets; both are real, validated DTO fields. Mobile otherwise closely mirrors web's filter set (fuel, transmission, condition, ULEZ, Euro standard, BHP range, seller type, doors/seats, an 18-item features list, isImported, distance — all present) but has no UI or param for either of these two.
+
+**Fix:** add both filter sections to `SearchScreen.tsx`'s filter modal, matching web's range-input/preset-chip pattern already used for BHP.
+
+---
+
+### F13 — MISSING: Terms, How It Works, and Services screens are built but unreachable
+
+**Files:** `src/navigation/MainStackNavigator.tsx:190-194` (registers `TermsScreen`/`HowItWorksScreen`/`ServicesScreen`), `src/components/GlobalDrawer.tsx:45-52` (drawer links, none of the three), `src/screens/auth/SignupScreen.tsx:303` ("I agree to the Terms" — plain unlinked text)
+
+All three screens are fully implemented and registered as routes, but a repo-wide search for `navigation.navigate('Terms'|'HowItWorks'|'Services')` returns zero call sites. No drawer entry, no signup-flow link, nothing. A buyer can never actually open Terms of Service, How It Works, or Services content on mobile — the screens exist but are dead code from a reachability standpoint. Same bug class as `FEATURE_AUDIT.md` Issue 12 (`/dashboard/user` unreachable via the web's own role-router).
+
+**Fix:** add drawer entries (or footer links, matching wherever makes sense in the mobile IA) for all three, and link `SignupScreen.tsx:303`'s "Terms" text to `navigation.navigate('Terms')`.
+
+---
+
+### F14 — MISSING: Reviews and Finance marketing hub pages have no mobile equivalent
+
+**Files:** `src/app/reviews/page.tsx`, `src/app/finance/page.tsx` (web) — no `ReviewsScreen`/`FinanceScreen` anywhere in mobile `src/screens/`, no route, no drawer entry
+
+Web's `/reviews` (trust stats + review grid) and `/finance` (finance calculator, lending-partner grid, application form) are full marketing/discovery pages with no mobile counterpart at all. This is distinct from the already-tracked "Finance Calculator: Coming Soon" widget on `VehicleDetailScreen` (that's a per-listing inline widget, correctly labeled incomplete) — this finding is about the top-level Finance hub and Reviews page, which don't exist on mobile in any form, complete or stubbed.
+
+**Fix:** product call on whether these need mobile screens at all (marketing pages are sometimes deliberately web-only) — if yes, port both as new screens; if these are intentionally web-only, note that decision here so it isn't re-flagged.
+
+---
+
+### F15 — MISSING, minor: Live Auctions screen has no search/filter box
+
+**Files:** `src/screens/main/LiveScreen.tsx` (no search/filter control), `src/app/auctions/page.tsx:320-330` (web — live make/model search input)
+
+Web's `/auctions` page has a search input filtering the live/upcoming auction grid by make/model. Mobile's `LiveScreen.tsx` renders both sections with no search or filter at all. Likely low-impact given auction volume is probably smaller than general listings, but a real, unambiguous capability gap.
+
+**Fix:** add a simple make/model text filter above the Live/Upcoming sections, consistent with `SearchScreen.tsx`'s existing search-input pattern.
+
+---
+
+### F16 — MISSING, dealer: CRM is a flat filtered list, not web's Kanban board — a materially smaller feature, not just a UI difference
+
+**Files:** `src/screens/main/DealerLeadsScreen.tsx:37,66-72,340-362,580-587`, `src/app/dashboard/dealer/crm/page.tsx:19-25,374-497` (web)
+
+Web's dealer CRM is a true 6-column drag-and-drop Kanban board (NEW/CONTACTED/QUALIFIED/NEGOTIATING/WON/LOST) giving an at-a-glance pipeline view with drag-to-reassign. Mobile's `DealerLeadsScreen.tsx` has `FilterTab = 'All' | 'Hot' | 'Warm' | 'New'` only — status changes happen one lead at a time via a chip-tap footer inside a detail sheet, and the filter tabs collapse WON and LOST into an untitled "Cold" bucket with **no dedicated filter to view just Won or just Lost leads** (only reachable by scrolling "All"). There is no visual pipeline overview anywhere on mobile — the funnel bar chart elsewhere (`DealerProfileScreen.tsx:465-476`) is read-only aggregate counts, not a working board. All underlying CRUD (status update, notes, staff reassignment, message lead, manual creation) works correctly on mobile — this is specifically about the missing pipeline-visualization/drag-reassign interaction that web markets as the headline feature of "CRM."
+
+**Fix:** product call on whether mobile needs a true Kanban interaction (drag-and-drop is awkward on touch and would need real design work — e.g. long-press-to-reassign via a stage picker instead of drag) or whether a dedicated Won/Lost filter plus a visual (non-interactive) pipeline summary is an acceptable mobile-appropriate substitute. Flagging as the single biggest feature-scope gap found in this sweep — worth a product decision before any code work.
+
+---
+
+### F17 — cosmetic/minor, dealer: drawer's "Dealer auction manager" item falsely claims the feature is "Coming Soon"
+
+**Files:** `src/components/GlobalDrawer.tsx:122-135`, `src/screens/main/DealerInventoryScreen.tsx:319-329` ("PUT ON AUCTION" button, works), `src/screens/main/DealerProfileScreen.tsx:332-348` ("Manage auctions" row, works)
+
+The drawer's "Dealer auction manager" item is wired to show a "Coming Soon" alert, but dealer auction management is fully functional and reachable from two other places (`DealerInventoryScreen`'s put-on-auction button, `DealerProfileScreen`'s "Manage auctions" row — both route to the working, role-agnostic `SellerAuctionsScreen.tsx`). The drawer item is stale, not the feature — it was accurate once but the feature shipped without updating this entry point.
+
+**Fix:** one-line change — repoint the drawer item's `action` to navigate to `SellerAuctions` instead of showing the alert.
+
+---
+
+### F18 — MISSING, dealer: Dealer Finance dashboard has zero mobile implementation
+
+**Files:** `src/app/dashboard/dealer/finance/page.tsx` (web, 219 lines, `GET /finance/my` + `PATCH /finance/:id/status`) — repo-wide grep for `FinanceApplication`/`/finance`/`financeApi` in mobile `src/` returns zero matches
+
+Web's dealer Finance page lets a dealer view and update the status (PENDING/APPROVED/FUNDED/REJECTED) of finance applications where they're the buyer. No mobile screen, API wrapper, or navigation entry exists for this at all — not in the stack navigator, drawer, or dealer profile's "Needs Attention" list.
+
+**Fix:** add a `DealerFinanceScreen.tsx` calling the same two endpoints, matching web's status-badge/metric-card layout, with a drawer/profile entry point.
+
+---
+
+### F19 — MISSING, dealer: no mobile equivalent of the mandatory dealer phone gate
+
+**Files:** `src/app/dashboard/dealer/layout.tsx` (`DealerPhoneGate`, web) — no "Gate"-named component anywhere in mobile `src/`, `dealerProfile.phone` only referenced as an optional field in `SettingsScreen.tsx:80,125,171,596-597`
+
+Web blocks the entire dealer dashboard with a full-screen, non-dismissable modal until a verified dealer sets a contact phone (`PATCH /users/dealer-profile`). Mobile has no equivalent gate, banner, or nag — a verified dealer can use every dealer screen indefinitely without ever being prompted to set a phone. Distinct from F7 (already fixed — that's about buyers *seeing* a number once set); this is about mobile never *enforcing or nudging toward* setting it in the first place. Downstream consequence: phone-less dealer listings will show no contact number to buyers (per F7's own gating logic) with nothing on mobile warning the dealer why.
+
+**Fix:** add a blocking or dismissable-but-recurring prompt (product call on how hard to gate, matching web's severity or intentionally softer for mobile UX) when a verified dealer has no `dealerProfile.phone` set, surfaced on dealer dashboard entry.
+
+---
+
+### F20 — cosmetic, seller: Pricing screen has stale copy from before two recent web commits
+
+**Files:** `src/screens/main/PricingScreen.tsx:85,92,103`, `src/app/pricing/page.tsx` (web, commits `c5528d53`, `83c3f1eb`)
+
+Two things web fixed recently that mobile's `PricingScreen.tsx` still contradicts: (1) Standard tier still says "30-day listing" (`:92,103`) — web bumped this to 60 days in `c5528d53`. (2) Basic tier still says `{ label: 'Analytics', included: false }` (`:85`) — web's `83c3f1eb` corrected this to "included," since `SellerPerformanceScreen.tsx`'s underlying `/listings/performance` call has no tier gating on mobile either (independently confirmed) — the claim was already wrong before web's fix, mobile just never caught up.
+
+**Fix:** two one-line copy changes matching web's current text.
+
+---
+
+### F21 — cosmetic, seller: seller listings screen missing "Listed on <date>"
+
+**Files:** `src/screens/seller/SellerListingsScreen.tsx` (no `createdAt` reference, confirmed via grep), `src/app/dashboard/user/page.tsx` (web, commit `c5528d53` added this to both card and table views)
+
+Web just added a "Listed on {date}" line to each listing row. Mobile's equivalent screen shows title/price/view-count only, no listed date.
+
+**Fix:** add the date, reusing the `getDaysListed()`-style helper pattern already used in `SellerDashboardScreen.tsx:110-114`, or a literal `toLocaleDateString` matching web's format.
+
+---
+
+### F22 — cosmetic, minor, seller: no 7d/30d period toggle on seller dashboard KPIs
+
+**Files:** `src/screens/seller/SellerDashboardScreen.tsx` (calls `/dashboard/seller`/`/listings/stats` with no `period` param), `backend/src/dashboard/dashboard.service.ts:14` (`period: '7d' | '30d' = '30d'` default)
+
+Web's `/dashboard/seller` has a `PeriodToggle` switching the KPI row between 7-day and 30-day views. Mobile always gets the backend's `30d` default silently, with no way to switch. Not incorrect data, just missing a control web offers.
+
+**Fix:** low-priority — add a toggle if/when other seller-dashboard polish work happens; not worth a dedicated pass on its own.
+
+---
+
+### F23 — MISSING/inert, cross-cutting: Notification Settings screen is fully built but every control is disconnected from actual notification delivery
+
+**Files:** `src/screens/main/NotificationSettingsScreen.tsx` (~15 controls, `:96-107` PATCHes `preferences.notifications.*` successfully), `backend/src/notifications/notifications.service.ts:26-59` (`NotificationsService.create` — only reads `preferences.expoPushToken`)
+
+The settings screen correctly saves per-event-type mute toggles, push/email/SMS delivery-channel choices, digest frequency, and quiet hours with start/end time. But the only place a notification actually gets sent (`NotificationsService.create`) reads *only* `expoPushToken` from `preferences` — it never checks `muteAll`, `outbid`, `quietHours`, `sms`, `freq`, or any other field the settings screen writes. Every notification fires unconditionally to every user regardless of configuration. Compounding this: no SMS provider (Twilio or otherwise) exists anywhere in `backend/src/`, so the "SMS" toggle promises a channel that can never work even if the backend did read it. This is a `backend/` fix, not mobile-only — the UI is already correct, it's writing to a preferences object nothing downstream consults.
+
+**Fix:** in `NotificationsService.create`, branch on the relevant `preferences.notifications.*` fields before sending (mute check, quiet-hours window check at minimum) — coordinate with whoever owns `backend/`, this is shared infrastructure. Either implement SMS delivery or remove the SMS toggle from the settings UI until there's a provider to back it.
+
+---
+
+### F24 — MISLEADING, medium-high severity, cross-cutting: buyer-facing delivery fee estimate doesn't match what the backend actually charges
+
+**Files:** `src/lib/deliveryApi.ts:39` (`calcDeliveryFeeExVat`), `src/screens/vehicle/VehicleDetailScreen.tsx:164,169,1117`, `backend/src/delivery/delivery.service.ts:132-134`
+
+Mobile's `calcDeliveryFeeExVat` implements a hardcoded tiered formula (£30 flat ≤10mi, £30+(d−10)×£2 for 11–30mi, £70+(d−30)×£1.50 beyond) with a comment claiming "server uses the same tiered logic." It doesn't: the actual backend computes `estimatedCostGbp = roadDistanceMiles × listing.deliveryPricePerMile` — a per-listing, seller-configurable rate applied to Google Maps road distance — defaulting to **£0** if the seller never set a rate. Mobile also uses client-side haversine (straight-line) distance rather than road distance. This fabricated estimate is shown to buyers twice before they submit a delivery request (`:169` live estimate, `:1117` final display) and can differ substantially from the real figure the backend returns in the actual `DeliveryRequest`.
+
+**Fix:** either fetch the real estimate from the backend (check if `delivery.service.ts` exposes a quote/estimate endpoint separate from request creation — if not, this may need a new lightweight `GET` endpoint) or, at minimum, label mobile's number clearly as a rough estimate and reconcile it against the real number once the request is created, rather than presenting a fabricated formula as if it were the server's own logic.
+
+---
+
+### F25 — medium severity, cross-cutting: auction buyer-fee payment has no server-confirmation step, unlike mobile's own HPI/KYC flows
+
+**Files:** `src/screens/vehicle/AuctionCompleteScreen.tsx:211-227`, `src/screens/vehicle/VehicleDetailScreen.tsx:314-360` (HPI checkout, polls 5× with backoff), `src/screens/main/DealerKYCScreen.tsx:371-388` (KYC checkout, same pattern), `backend/src/payments/payments.controller.ts:108-116` (`POST /payments/apply-auction-fee`, an explicit "webhook fallback" endpoint)
+
+Mobile already has an established, correct pattern for Stripe-redirect-then-confirm flows: HPI checkout and dealer KYC checkout both poll the relevant `GET` endpoint several times with backoff before declaring success, specifically to handle webhook delay. `AuctionCompleteScreen.tsx` doesn't follow its own app's pattern — it sets `setPaid(true)` (`:227`) immediately once `presentPaymentSheet()` returns without error, never polls `/auctions/:id`/`/listings/:id` for `buyerFeePaid`, and never calls the backend's purpose-built fallback endpoint. If the webhook is delayed, the UI shows a paid/success screen while the server may still show unpaid, silently blocking downstream gates (chat unlock, handover flow) with no retry surfaced.
+
+**Fix:** apply the same poll-with-backoff pattern already used for HPI/KYC to `AuctionCompleteScreen.tsx`, and call `/payments/apply-auction-fee` as the explicit fallback if polling doesn't confirm within the retry budget — the backend already built this endpoint for exactly this purpose.
 
 ---
 
