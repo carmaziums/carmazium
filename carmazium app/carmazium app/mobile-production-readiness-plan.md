@@ -505,6 +505,8 @@ In `AuctionCompleteScreen.tsx`, replace the immediate `setPaid(true)` after `pre
 
 **Acceptance:** banner appears/disappears correctly based on `dealerProfile.phone` presence; dismissal doesn't set any "seen" flag that suppresses it permanently (it should return next session, per "recurring").
 
+**Status: DONE** (2026-07-15). `DealerProfileScreen.tsx` fetches `GET /users/me` on mount (the same endpoint `SettingsScreen.tsx` already uses for `dealerProfile.phone` — confirmed by reading its fetch, since `authStore`'s lightweight `User` type doesn't carry this field) and shows a dismissible warning-toned banner ("Add a contact phone" / tap → `Settings`) whenever `dealerProfile.phone` is empty. Dismissal is local component state only — no `AsyncStorage`/persisted flag — so it reappears on the next screen mount (next session), per the "recurring" design. `npx tsc --noEmit` clean.
+
 ---
 
 ### Stage 16 — F14: Reviews and Finance marketing hub pages

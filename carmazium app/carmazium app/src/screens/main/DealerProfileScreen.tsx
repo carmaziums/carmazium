@@ -92,6 +92,32 @@ export const DealerProfileScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Web blocks the whole dealer dashboard with a non-dismissable modal until
+  // a verified dealer sets a contact phone (DealerPhoneGate). Mobile uses a
+  // softer, dismissible-but-recurring banner instead — a full-screen block
+  // is a heavier interruption than anything else in this app and risks
+  // firing at an awkward moment (e.g. a deep link into a specific screen).
+  // Dismissal is local-state only (no persisted "seen" flag), so it comes
+  // back next session until the dealer actually sets a phone (mobile-
+  // production-readiness-plan.md F19). Without this, phone-less dealer
+  // listings show no contact number to buyers (per F7's gating) with
+  // nothing on mobile telling the dealer why.
+  const [dealerPhone, setDealerPhone] = useState<string | null>(null);
+  const [phoneCheckDone, setPhoneCheckDone] = useState(false);
+  const [phoneBannerDismissed, setPhoneBannerDismissed] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await apiClient<{ success: boolean; data: any }>('/users/me');
+        if (res?.success) setDealerPhone(res.data?.dealerProfile?.phone ?? null);
+      } catch { /* fail open — don't nag if we can't tell */ }
+      finally { setPhoneCheckDone(true); }
+    })();
+  }, []);
+
+  const showPhoneBanner = phoneCheckDone && !dealerPhone && !phoneBannerDismissed;
+
   const loadData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     try {
@@ -569,6 +595,27 @@ export const DealerProfileScreen: React.FC = () => {
         {/* Render Dynamic Header */}
         {renderHeader()}
 
+        {showPhoneBanner && (
+          <TouchableOpacity
+            style={styles.phoneBanner}
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate('Settings' as any)}
+          >
+            <Ionicons name="call-outline" size={18} color={Colors.warning} />
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={styles.phoneBannerTitle}>Add a contact phone</Text>
+              <Text style={styles.phoneBannerSub}>Buyers can't see a number to call you until you set one in Settings.</Text>
+            </View>
+            <TouchableOpacity
+              onPress={(e) => { e.stopPropagation(); setPhoneBannerDismissed(true); }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel="Dismiss"
+            >
+              <Ionicons name="close" size={16} color={Colors.iconMuted} />
+            </TouchableOpacity>
+          </TouchableOpacity>
+        )}
+
         {/* TODAY / THIS WEEK SUB-TABS SELECTOR */}
         <View style={styles.tabToggleRow}>
           <TouchableOpacity
@@ -725,6 +772,30 @@ const styles = StyleSheet.create({
   },
 
   // Toggle sub-tabs
+  phoneBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.warningAlpha05,
+    borderWidth: 1,
+    borderColor: Colors.warningAlpha30,
+    borderRadius: 14,
+    marginHorizontal: 24,
+    marginBottom: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  phoneBannerTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.sm,
+    color: Colors.white,
+  },
+  phoneBannerSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
+    marginTop: 2,
+    lineHeight: 15,
+  },
   tabToggleRow: {
     flexDirection: 'row',
     backgroundColor: Colors.whiteAlpha02,
