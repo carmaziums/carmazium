@@ -41,12 +41,11 @@ import { BuyerDamageViewer } from '../../components/damage/BuyerDamageViewer';
 import { useAuthStore } from '../../store/authStore';
 import { haptics } from '../../lib/haptics';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
-import { createDeliveryRequest, calcDeliveryFeeExVat } from '../../lib/deliveryApi';
+import { createDeliveryRequest, getDeliveryQuote, DeliveryQuote } from '../../lib/deliveryApi';
 import { StripeCheckoutModal } from '../../components/StripeCheckoutModal';
 import { BottomSheet } from '../../components/BottomSheet';
 import { EnquireModal } from '../../components/listing/EnquireModal';
 import { useLocation } from '../../context/LocationContext';
-import { haversineDistanceMiles } from '../../lib/distance';
 
 import { IconButton } from '../../components/IconButton';
 type Props = NativeStackScreenProps<MainStackParamList, 'VehicleDetail'>;
@@ -148,31 +147,40 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // yet can type it here without leaving the listing.
   const {
     postcode: userPostcode,
-    latitude: userLat,
-    longitude: userLng,
     setPostcode: savePostcode,
   } = useLocation();
   const [postcodeDraft, setPostcodeDraft] = useState('');
   const [postcodeSaving, setPostcodeSaving] = useState(false);
 
-  // Distance is only computable when we have lat/lng on both sides.
+  // Real server-computed estimate (road distance x the listing's own
+  // deliveryPricePerMile) — replaces a client-side haversine distance + a
+  // hardcoded tiered fee formula + a fabricated x1.2 "VAT" markup that
+  // didn't match what the backend actually charges (the backend has no VAT
+  // concept for delivery at all). mobile-production-readiness-plan.md F24.
+  const [deliveryQuote, setDeliveryQuote] = useState<DeliveryQuote | null>(null);
+  const [deliveryQuoteLoading, setDeliveryQuoteLoading] = useState(false);
+
+  useEffect(() => {
+    if (!listing.id || !listing.deliveryAvailable || !userPostcode) {
+      setDeliveryQuote(null);
+      return;
+    }
+    let cancelled = false;
+    setDeliveryQuoteLoading(true);
+    getDeliveryQuote(listing.id, userPostcode)
+      .then(q => { if (!cancelled) setDeliveryQuote(q); })
+      .catch(() => { if (!cancelled) setDeliveryQuote(null); })
+      .finally(() => { if (!cancelled) setDeliveryQuoteLoading(false); });
+    return () => { cancelled = true; };
+  }, [listing.id, listing.deliveryAvailable, userPostcode]);
+
   const deliveryDistanceMiles: number | null =
-    userLat != null &&
-    userLng != null &&
-    listing.latitude != null &&
-    listing.longitude != null
-      ? Math.round(haversineDistanceMiles(userLat, userLng, listing.latitude, listing.longitude))
-      : null;
+    deliveryQuote ? Math.round(deliveryQuote.distanceMiles) : null;
 
-  const deliveryFeeIncVat: number | null =
-    deliveryDistanceMiles != null
-      ? Math.round(calcDeliveryFeeExVat(deliveryDistanceMiles) * 1.2)
-      : null;
+  const deliveryFee: number | null =
+    deliveryQuote ? deliveryQuote.estimatedCostGbp : null;
 
-  const outsideRadius =
-    deliveryDistanceMiles != null &&
-    listing.deliveryMaxMiles != null &&
-    deliveryDistanceMiles > listing.deliveryMaxMiles;
+  const outsideRadius = deliveryQuote ? !deliveryQuote.withinRadius : false;
 
   const getInitials = (name: string) => {
     return name
@@ -1110,13 +1118,21 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   ) : null}
                 </View>
                 <View style={styles.deliveryFeeWrap}>
-                  <Text style={styles.deliveryFeeLabel}>
-                    {deliveryFeeIncVat != null ? 'ESTIMATE' : 'FROM'}
-                  </Text>
-                  <Text style={styles.deliveryFeeValue}>
-                    £{deliveryFeeIncVat ?? Math.round(calcDeliveryFeeExVat(10) * 1.2)}
-                  </Text>
-                  <Text style={styles.deliveryFeeHint}>inc. VAT</Text>
+                  {deliveryQuoteLoading ? (
+                    <ActivityIndicator size="small" color={Colors.accentGreen} />
+                  ) : deliveryFee != null ? (
+                    <>
+                      <Text style={styles.deliveryFeeLabel}>ESTIMATE</Text>
+                      <Text style={styles.deliveryFeeValue}>£{deliveryFee}</Text>
+                    </>
+                  ) : listing.deliveryPricePerMile ? (
+                    <>
+                      <Text style={styles.deliveryFeeLabel}>FROM</Text>
+                      <Text style={styles.deliveryFeeValue}>£{listing.deliveryPricePerMile}/mi</Text>
+                    </>
+                  ) : (
+                    <Text style={styles.deliveryFeeHint}>Enter postcode for a quote</Text>
+                  )}
                 </View>
               </View>
 

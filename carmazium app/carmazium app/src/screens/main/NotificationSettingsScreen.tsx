@@ -50,7 +50,6 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
   // Delivery Toggles
   const [push, setPush] = useState(true);
   const [email, setEmail] = useState(true);
-  const [sms, setSms] = useState(false);
   const [freq, setFreq] = useState('immediate'); // immediate, 30min, daily
   const [quietHours, setQuietHours] = useState(true);
   const [quietStart, setQuietStart] = useState('22:00');
@@ -78,7 +77,6 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
           if (typeof saved.offerDeclined === 'boolean') setOfferDeclined(saved.offerDeclined);
           if (typeof saved.push === 'boolean') setPush(saved.push);
           if (typeof saved.email === 'boolean') setEmail(saved.email);
-          if (typeof saved.sms === 'boolean') setSms(saved.sms);
           if (typeof saved.freq === 'string') setFreq(saved.freq);
           if (typeof saved.quietHours === 'boolean') setQuietHours(saved.quietHours);
           if (typeof saved.quietStart === 'string') setQuietStart(saved.quietStart);
@@ -100,7 +98,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
             notifications: {
               muteAll, outbid, winning, endingSoon, newLot,
               counterOffer, offerAccepted, offerDeclined,
-              push, email, sms, freq, quietHours, quietStart, quietEnd,
+              push, email, sms: false, freq, quietHours, quietStart, quietEnd,
             },
           },
         }),
@@ -111,15 +109,16 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
     } finally {
       setSaving(false);
     }
-  }, [muteAll, outbid, winning, endingSoon, newLot, counterOffer, offerAccepted, offerDeclined, push, email, sms, freq, quietHours]);
+  }, [muteAll, outbid, winning, endingSoon, newLot, counterOffer, offerAccepted, offerDeclined, push, email, freq, quietHours]);
 
-  const CustomSwitch = ({ value, onValueChange, activeColor = Colors.accent }: any) => (
+  const CustomSwitch = ({ value, onValueChange, activeColor = Colors.accent, disabled }: any) => (
     <Switch
        value={value}
        onValueChange={onValueChange}
        trackColor={{ false: Colors.whiteAlpha10, true: activeColor }}
        thumbColor={Colors.white}
        ios_backgroundColor={Colors.whiteAlpha10}
+       disabled={disabled}
     />
   );
 
@@ -303,9 +302,15 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
               </View>
               <View style={styles.toggleTextWrap}>
                  <Text style={styles.toggleTitle}>SMS</Text>
-                 <Text style={styles.toggleSub}>{user?.phone || 'Not set'}</Text>
+                 {/* No SMS provider exists in the backend at all — this toggle
+                     could never have worked regardless of preference-reading
+                     fixes elsewhere (mobile-production-readiness-plan.md F23).
+                     Disabled + labeled, not silently inert, matching the
+                     Apple sign-in / Finance Calculator "Coming Soon" pattern
+                     already used elsewhere in this app. */}
+                 <Text style={styles.toggleSub}>Coming soon</Text>
               </View>
-              <CustomSwitch value={sms} onValueChange={setSms} />
+              <CustomSwitch value={false} onValueChange={() => {}} disabled />
            </View>
         </View>
 

@@ -30,19 +30,33 @@ export interface DeliveryRequest {
   updatedAt: string;
 }
 
-// ─── Fee formula (server uses the same tiered logic) ─────────────────────────
-
-/**
- * Calculates delivery fee in GBP excluding VAT.
- * Tiers: ≤10mi = £30 flat; 11-30mi = £30 + (d-10)×£2; >30mi = £70 + (d-30)×£1.50
- */
-export function calcDeliveryFeeExVat(miles: number): number {
-  if (miles <= 10) return 30;
-  if (miles <= 30) return 30 + (miles - 10) * 2;
-  return 70 + (miles - 30) * 1.5;
+export interface DeliveryQuote {
+  distanceMiles: number;
+  estimatedCostGbp: number;
+  withinRadius: boolean;
+  ratePerMile: number;
 }
 
 // ─── API Functions ────────────────────────────────────────────────────────────
+
+/**
+ * Real server-computed delivery estimate (road distance via Google Maps x
+ * the listing's own deliveryPricePerMile) — same calculation
+ * createDeliveryRequest uses, just without creating a request. Replaces a
+ * hardcoded client-side tiered formula (calcDeliveryFeeExVat, removed) that
+ * didn't match what the backend actually charges, and a fabricated x1.2
+ * "VAT" markup — the backend has no VAT concept for delivery at all, so
+ * that multiplier was inventing a second discrepancy on top of the first
+ * (mobile-production-readiness-plan.md F24). No offer or existing request
+ * required; this is purely a preview.
+ */
+export async function getDeliveryQuote(listingId: string, postcode: string): Promise<DeliveryQuote> {
+  const res = await apiClient<{ data: DeliveryQuote }>(
+    `/delivery-requests/quote?listingId=${encodeURIComponent(listingId)}&postcode=${encodeURIComponent(postcode)}`,
+    { method: 'GET' },
+  );
+  return res.data;
+}
 
 export async function createDeliveryRequest(data: {
   listingId: string;

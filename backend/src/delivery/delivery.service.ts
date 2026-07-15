@@ -60,6 +60,52 @@ export class DeliveryService {
     return element.distance.value / 1609.344;
   }
 
+  // ─── Buyer: Get a delivery cost estimate (no offer/request required) ───────
+  // Added so mobile can show buyers the same server-computed figure
+  // (real road distance x the listing's own deliveryPricePerMile) instead of
+  // a client-side formula that didn't match what createDeliveryRequest
+  // actually charges (mobile-production-readiness-plan.md F24).
+
+  async getDeliveryQuote(
+    listingId: string,
+    postcode: string,
+  ): Promise<{ distanceMiles: number; estimatedCostGbp: number; withinRadius: boolean; ratePerMile: number }> {
+    const listing = await this.prisma.listing.findUnique({
+      where: { id: listingId },
+      select: {
+        deliveryAvailable: true,
+        deliveryMaxMiles: true,
+        deliveryPricePerMile: true,
+        latitude: true,
+        longitude: true,
+      },
+    });
+
+    if (!listing || !listing.deliveryAvailable) {
+      throw new NotFoundException(
+        'Listing not found or delivery is not available for this listing.',
+      );
+    }
+
+    if (listing.latitude == null) {
+      throw new BadRequestException(
+        'The seller has not set a location for this listing.',
+      );
+    }
+
+    const distanceMiles = await this.getRoadDistanceMiles(
+      listing.latitude,
+      listing.longitude!,
+      postcode,
+    );
+
+    const ratePerMile = listing.deliveryPricePerMile ? Number(listing.deliveryPricePerMile) : 0;
+    const estimatedCostGbp = Math.round(distanceMiles * ratePerMile);
+    const withinRadius = listing.deliveryMaxMiles == null || distanceMiles <= listing.deliveryMaxMiles;
+
+    return { distanceMiles, estimatedCostGbp, withinRadius, ratePerMile };
+  }
+
   // ─── Buyer: Create a delivery request ──────────────────────────────────────
 
   async createDeliveryRequest(

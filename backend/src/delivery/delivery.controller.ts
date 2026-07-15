@@ -5,6 +5,7 @@ import {
   Get,
   Body,
   Param,
+  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -28,6 +29,24 @@ import { StandardResponse } from '../listings/dto/response.dto';
 @ApiCookieAuth()
 export class DeliveryController {
   constructor(private readonly deliveryService: DeliveryService) {}
+
+  /**
+   * Buyer: Get a delivery cost estimate for a listing + postcode, without
+   * creating a request (no existing offer required — this is a preview).
+   * GET /delivery-requests/quote?listingId=...&postcode=...
+   */
+  @Get('quote')
+  @ApiOperation({ summary: 'Get delivery cost estimate', description: 'Real road-distance x per-mile-rate estimate for a listing, computed the same way createDeliveryRequest does — no offer or request required.' })
+  @ApiResponse({ status: 200, description: 'Estimate returned' })
+  @ApiResponse({ status: 400, description: 'Seller has not set a location, or the postcode could not be resolved' })
+  @ApiResponse({ status: 404, description: 'Listing not found or delivery not available' })
+  async getQuote(
+    @Query('listingId') listingId: string,
+    @Query('postcode') postcode: string,
+  ): Promise<StandardResponse<any>> {
+    const quote = await this.deliveryService.getDeliveryQuote(listingId, postcode);
+    return new StandardResponse(quote);
+  }
 
   /**
    * Buyer: Create a delivery request for a listing (requires an existing offer)
