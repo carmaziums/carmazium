@@ -98,6 +98,8 @@ const ICON_MAP: Record<string, string> = {
   'car-convertible': 'Car',
   'car-2-plus': 'Car',
   'car-minivan': 'Car',
+  'van-utility': 'Truck',
+  'car-pickup': 'Truck',
   'gavel': 'Hammer',
   'hammer-outline': 'Hammer',
   'hammer': 'Hammer',

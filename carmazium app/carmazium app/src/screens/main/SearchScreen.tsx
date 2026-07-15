@@ -51,24 +51,49 @@ const QUICK_FILTERS: QuickFilter[] = [
   { id: 'electric',  label: 'Electric',     params: { fuelType: 'ELECTRIC' } },
   { id: 'hybrid',    label: 'Hybrid',       params: { fuelType: 'HYBRID' } },
   { id: 'suv',       label: 'SUVs',         params: { bodyType: 'SUV' } },
-  { id: 'saloon',    label: 'Saloon',       params: { bodyType: 'SALOON' } },
+  { id: 'sedan',     label: 'Sedan',        params: { bodyType: 'SEDAN' } },
   { id: 'new',       label: '2020+',        params: { minYear: 2020 } },
   { id: 'manual',    label: 'Manual',       params: { transmission: 'MANUAL' } },
 ];
 
 const MAKES = ['BMW', 'Audi', 'Mercedes', 'Volkswagen', 'Ford', 'Toyota', 'Honda', 'Porsche', 'Range Rover', 'Tesla'];
-const FUELS = ['Petrol', 'Diesel', 'Hybrid', 'Plug-in Hybrid', 'Electric'];
+// Display labels only — the backend's FuelType enum uses different casing/wording
+// for several of these ('Plug-in Hybrid' -> 'PLUGIN_HYBRID', 'Hydrogen' ->
+// 'HYDROGEN_CELL', etc.), so FUEL_MAP below must run before any of these reach the
+// network. Mirrors web's src/app/search/page.tsx FUEL_MAP exactly (mobile-
+// production-readiness-plan.md F10 — mobile used to send these labels raw, which
+// silently matched nothing since Prisma enum comparison is exact-match).
+const FUELS = [
+  'Petrol', 'Diesel', 'Hybrid', 'Plug-in Hybrid', 'Electric',
+  'LPG', 'Hydrogen', 'Bi Fuel', 'Natural Gas',
+  'Petrol Hybrid', 'Diesel Hybrid', 'Petrol Plug-in Hybrid', 'Diesel Plug-in Hybrid', 'Unlisted',
+];
+const FUEL_MAP: Record<string, string> = {
+  'Petrol': 'PETROL', 'Diesel': 'DIESEL', 'Hybrid': 'HYBRID', 'Electric': 'ELECTRIC',
+  'Plug-in Hybrid': 'PLUGIN_HYBRID', 'LPG': 'LPG', 'Hydrogen': 'HYDROGEN_CELL',
+  'Bi Fuel': 'BI_FUEL', 'Natural Gas': 'NATURAL_GAS', 'Petrol Hybrid': 'PETROL_HYBRID',
+  'Diesel Hybrid': 'DIESEL_HYBRID', 'Petrol Plug-in Hybrid': 'PETROL_PLUGIN_HYBRID',
+  'Diesel Plug-in Hybrid': 'DIESEL_PLUGIN_HYBRID', 'Unlisted': 'UNLISTED',
+};
 // Icons sourced from the shared body-type set (src/constants/bodyTypes.ts) so
 // Home/Search/Sell all show identical icons per body type (mobile-ui-ux-audit.md §C6).
+// `id` values are the real backend BodyType enum members (mobile-production-
+// readiness-plan.md F11 — used to contain invented 'SALOON'/'PICKUP' values that
+// 400'd against the backend, and was missing 5 of the 13 real body types).
 const BODY_TYPES = [
   { id: 'SUV', label: 'SUV', icon: getBodyTypeIcon('SUV') },
-  { id: 'SALOON', label: 'Saloon', icon: getBodyTypeIcon('SALOON') },
+  { id: 'SEDAN', label: 'Sedan', icon: getBodyTypeIcon('SEDAN') },
   { id: 'HATCHBACK', label: 'Hatchback', icon: getBodyTypeIcon('HATCHBACK') },
   { id: 'ESTATE', label: 'Estate', icon: getBodyTypeIcon('ESTATE') },
+  { id: 'STATION_WAGON', label: 'Station Wagon', icon: getBodyTypeIcon('STATION_WAGON') },
   { id: 'COUPE', label: 'Coupé', icon: getBodyTypeIcon('COUPE') },
+  { id: 'SPORTS_CAR', label: 'Sports Car', icon: getBodyTypeIcon('SPORTS_CAR') },
   { id: 'CONVERTIBLE', label: 'Convertible', icon: getBodyTypeIcon('CONVERTIBLE') },
+  { id: 'CROSSOVER', label: 'Crossover', icon: getBodyTypeIcon('CROSSOVER') },
+  { id: 'MINIVAN', label: 'Minivan', icon: getBodyTypeIcon('MINIVAN') },
+  { id: 'MPV', label: 'MPV', icon: getBodyTypeIcon('MPV') },
   { id: 'VAN', label: 'Van', icon: getBodyTypeIcon('VAN') },
-  { id: 'PICKUP', label: 'Pickup', icon: getBodyTypeIcon('PICKUP') },
+  { id: 'PICKUP_TRUCK', label: 'Pickup Truck', icon: getBodyTypeIcon('PICKUP_TRUCK') },
 ];
 const SORT_OPTIONS = [
   { id: 'newest', label: 'Newest first' },
@@ -268,7 +293,10 @@ export const SearchScreen: React.FC = () => {
       // Was selectedFuels[0] — selecting 2+ fuel chips silently ignored
       // everything past the first. fuelTypes sends the full selection; the
       // quick-filter fallback only applies when nothing was explicitly picked.
-      fuelTypes: selectedFuels.length ? selectedFuels : undefined,
+      // Translate display labels to backend enum values (F10) — selectedFuels
+      // holds labels (e.g. 'Plug-in Hybrid') since that's what the chip UI and
+      // any nav-param seed (route.params?.fuelType) both use.
+      fuelTypes: selectedFuels.length ? selectedFuels.map(f => FUEL_MAP[f] ?? f) : undefined,
       fuelType: selectedFuels.length ? undefined : qf?.params.fuelType,
       minYear: minYear !== 'Any' ? parseInt(minYear) : qf?.params.minYear,
       maxYear: maxYear !== 'Any' ? parseInt(maxYear) : undefined,

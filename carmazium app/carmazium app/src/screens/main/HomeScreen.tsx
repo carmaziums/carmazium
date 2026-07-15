@@ -252,13 +252,13 @@ const EmptyState: React.FC<{ icon: string; text: string }> = ({ icon, text }) =>
 // Home/Search/Sell all show identical icons per body type (mobile-ui-ux-audit.md §C6).
 const BODY_TYPES = [
   { label: 'SUV', icon: getBodyTypeIcon('SUV'), color: Colors.infoBlue, bodyType: 'SUV' },
-  { label: 'Saloon', icon: getBodyTypeIcon('SALOON'), color: Colors.accentGreen, bodyType: 'SALOON' },
+  { label: 'Sedan', icon: getBodyTypeIcon('SEDAN'), color: Colors.accentGreen, bodyType: 'SEDAN' },
   { label: 'Hatchback', icon: getBodyTypeIcon('HATCHBACK'), color: Colors.lightPurple, bodyType: 'HATCHBACK' },
   { label: 'Estate', icon: getBodyTypeIcon('ESTATE'), color: Colors.warning, bodyType: 'ESTATE' },
   { label: 'Coupé', icon: getBodyTypeIcon('COUPE'), color: Colors.accent, bodyType: 'COUPE' },
   { label: 'Convertible', icon: getBodyTypeIcon('CONVERTIBLE'), color: Colors.lightPink, bodyType: 'CONVERTIBLE' },
   { label: 'Van', icon: getBodyTypeIcon('VAN'), color: Colors.lightBlue_6366f1, bodyType: 'VAN' },
-  { label: 'Pickup', icon: getBodyTypeIcon('PICKUP'), color: Colors.midTeal_14b8a6, bodyType: 'PICKUP' },
+  { label: 'Pickup Truck', icon: getBodyTypeIcon('PICKUP_TRUCK'), color: Colors.midTeal_14b8a6, bodyType: 'PICKUP_TRUCK' },
 ];
 
 // ─── Home Screen ──────────────────────────────────────────────────────────────
