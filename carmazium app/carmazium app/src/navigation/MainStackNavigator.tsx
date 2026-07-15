@@ -181,16 +181,36 @@ export const MainStackNavigator: React.FC = () => {
         component={DealerKYCScreen}
         options={{ animation: 'slide_from_bottom' }}
       />
-      <Stack.Screen name="DealerTeam" component={DealerTeamScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen
+        name="DealerTeam"
+        component={DealerTeamScreen}
+        options={{ animation: 'slide_from_bottom' }}
+      />
       <Stack.Screen
         name="DealerOnboarding"
         component={DealerOnboardingScreen}
         options={{ animation: 'slide_from_bottom' }}
       />
-      <Stack.Screen name="DealerOffers" component={DealerOffersScreen} options={{ animation: 'slide_from_right' }} />
-      <Stack.Screen name="DealerMyOffers" component={DealerMyOffersScreen} options={{ animation: 'slide_from_right' }} />
-      <Stack.Screen name="DealerPurchases" component={DealerPurchasesScreen} options={{ animation: 'slide_from_right' }} />
-      <Stack.Screen name="DealerEarnings" component={DealerEarningsScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen
+        name="DealerOffers"
+        component={DealerOffersScreen}
+        options={{ animation: 'slide_from_bottom' }}
+      />
+      <Stack.Screen
+        name="DealerMyOffers"
+        component={DealerMyOffersScreen}
+        options={{ animation: 'slide_from_bottom' }}
+      />
+      <Stack.Screen
+        name="DealerPurchases"
+        component={DealerPurchasesScreen}
+        options={{ animation: 'slide_from_bottom' }}
+      />
+      <Stack.Screen
+        name="DealerEarnings"
+        component={DealerEarningsScreen}
+        options={{ animation: 'slide_from_bottom' }}
+      />
       <Stack.Screen name="Services" component={ServicesScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="Terms" component={TermsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="HowItWorks" component={HowItWorksScreen} options={{ animation: 'slide_from_right' }} />
