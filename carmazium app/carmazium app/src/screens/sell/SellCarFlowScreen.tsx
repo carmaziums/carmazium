@@ -26,6 +26,7 @@ import { DAMAGE_ZONES_3D, DAMAGE_ZONE_SECTIONS } from '../../components/damage/d
 import { getRawListingById } from '../../lib/listingsApi';
 import { CAR_MAKES, getModelsForMake } from '../../data/carData';
 import { BottomSheet } from '../../components/BottomSheet';
+import * as Location from 'expo-location';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -556,6 +557,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // Body & Location
   const [bodyType, setBodyType] = useState('');
   const [location, setLocation] = useState('');
+  const [locatingMe, setLocatingMe] = useState(false);
   // Technical Specs
   const [mileage, setMileage] = useState('');
   const [fuelType, setFuelType] = useState('');
@@ -943,6 +945,39 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       Alert.alert('DVLA Lookup Failed', err.message || 'Could not fetch vehicle data. Fill in details manually.');
     } finally {
       setDvlaLoading(false);
+    }
+  }
+
+  // ─── Locate Me (F30) ─────────────────────────────────────────────────────────
+  // Mirrors web's ListingWizard.tsx "Use my location" button. Web reverse-
+  // geocodes via Nominatim; this reuses postcodes.io instead (already the
+  // app's geocoding provider, see LocationContext.tsx's forward-geocode) via
+  // its nearest-postcode reverse-lookup endpoint, rather than adding a
+  // second external provider for one button.
+  async function handleLocateMe() {
+    setLocatingMe(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Location permission needed', 'Enable location access to use this, or type your location manually.');
+        return;
+      }
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const res = await fetch(
+        `https://api.postcodes.io/postcodes?lon=${pos.coords.longitude}&lat=${pos.coords.latitude}`,
+      );
+      const body = await res.json();
+      const nearest = body?.result?.[0];
+      if (!nearest) {
+        Alert.alert('Could not determine location', 'No nearby postcode found. Please type your location manually.');
+        return;
+      }
+      const city = nearest.admin_district || nearest.parish || nearest.admin_ward;
+      setLocation(city ? `${city}, ${nearest.postcode}` : nearest.postcode);
+    } catch {
+      Alert.alert('Location failed', 'Could not fetch your location. Please type it in manually.');
+    } finally {
+      setLocatingMe(false);
     }
   }
 
@@ -1734,6 +1769,13 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         {/* Location */}
         <SectionBox title="Location">
           <FieldInput label="LOCATION" value={location} onChange={setLocation} placeholder="e.g. London" />
+          <TouchableOpacity style={s.locateMeBtn} onPress={handleLocateMe} activeOpacity={0.7} disabled={locatingMe}>
+            {locatingMe
+              ? <ActivityIndicator size="small" color={Colors.accent} />
+              : <Ionicons name="locate" size={15} color={Colors.accent} />
+            }
+            <Text style={s.locateMeBtnText}>{locatingMe ? 'Locating…' : 'Use my location'}</Text>
+          </TouchableOpacity>
         </SectionBox>
 
         {/* Technical Specs */}
@@ -2917,6 +2959,10 @@ const s = StyleSheet.create({
   pickerOptionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: Colors.whiteAlpha06 },
   pickerOptionText: { fontFamily: FontFamily.medium, fontSize: FontSize.size14, color: Colors.white, flex: 1 },
   pickerEmptyText: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary, textAlign: 'center', paddingVertical: 20 },
+
+  // Locate Me button (F30)
+  locateMeBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: Colors.accentSubtle, backgroundColor: Colors.accentAlpha10 },
+  locateMeBtnText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.xs, color: Colors.accent },
 
   // DVLA
   vrmRow: { flexDirection: 'row', gap: 8, alignItems: 'stretch' },

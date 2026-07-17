@@ -784,6 +784,8 @@ See correction note above. `UnifiedDashboardScreen.tsx:214-221`'s "Inventory" ti
 
 **F30 decision (2026-07-16): approved to add `expo-location`.** User chose the full fix over staying postcode-only — reverse-geocode via postcodes.io/Nominatim like web. Scheduled as Stage 26, after the JS-only Stage 24/25 fixes, since it's a native-dependency change requiring `expo prebuild --clean` before it's testable (can't hot-reload).
 
+**Status: DONE** (2026-07-16). Installed `expo-location` via `npx expo install` (SDK-matched version) and registered its config plugin in `app.json` with `locationWhenInUsePermission` reusing the exact permission message that was already sitting unused in `ios.infoPlist.NSLocationWhenInUseUsageDescription` (a leftover string with no effect before, since no location API was ever actually installed to trigger it). Chose postcodes.io's reverse-lookup endpoint (`GET /postcodes?lon=&lat=`) over web's Nominatim — the app already depends on postcodes.io for forward geocoding (`LocationContext.tsx`), so this avoids introducing a second external geocoding provider for one button. Added a "Use my location" button under `SellCarFlowScreen.tsx`'s Location field: requests foreground permission, gets current position, reverse-geocodes to a `"City, Postcode"` string matching web's format exactly. **This is the one change in today's batch that needs a fresh `expo prebuild --clean` + native rebuild before it's testable** — a JS-only reload will not pick up the new native module.
+
 ---
 
 ## 5. On-device test checklist — F7–F25 (2026-07-15 session)

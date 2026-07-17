@@ -106,7 +106,13 @@
       ],
       "@react-native-community/datetimepicker",
       "expo-web-browser",
-      "expo-dev-client"
+      "expo-dev-client",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Location access to show vehicles near you"
+        }
+      ]
     ],
     "owner": "pizn-01s-team"
   }
