@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,7 +25,7 @@ import { Colors } from '../../constants/colors';
 import { IconButton } from '../../components/IconButton';
 export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { role, initializeAuth } = useAuthStore();
+  const { role, user, accountRole, initializeAuth, setRole } = useAuthStore();
   const { showToast } = useContext(GlobalToastContext);
 
   // Form states — start EMPTY. These previously shipped pre-filled with fake
@@ -40,6 +41,40 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ tradingName?: string; vatNumber?: string }>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Self-contained guard: DealerProfile/KYC verification persists per-user
+  // forever (never reset when a dealer switches to buyer/seller view), so a
+  // previously-verified user landing here — from any entry point, not just
+  // the one drawer link that was fixed directly — should never see this
+  // form again. Re-elevate silently if needed (no wizard, matching web's
+  // dashboard/dealer/layout.tsx gate, which checks isVerified alone) and
+  // jump straight past both onboarding and KYC.
+  const [reactivating, setReactivating] = useState(!!user?.isVerified);
+  useEffect(() => {
+    if (!user?.isVerified) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        if (accountRole !== 'dealer') {
+          await apiClient('/users/elevate', {
+            method: 'POST',
+            body: JSON.stringify({ newRole: 'DEALER' }),
+          });
+          await initializeAuth();
+        }
+        if (cancelled) return;
+        setRole('dealer');
+        showToast('Welcome back — your dealer account is already verified', 'success');
+        navigation?.goBack();
+      } catch (err: any) {
+        if (cancelled) return;
+        setReactivating(false);
+        setSubmitError(err?.message || 'Could not switch to dealer mode. Please try again.');
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Submits the business details to the backend and advances the user into
   // verification (DealerKYCScreen). Two real backend calls:
@@ -90,6 +125,16 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
       setSubmitting(false);
     }
   };
+
+  if (reactivating) {
+    return (
+      <View style={[styles.container, styles.reactivatingWrap]}>
+        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <ActivityIndicator size="large" color={Colors.accent} />
+        <Text style={styles.reactivatingText}>Your dealer account is already verified — switching you over…</Text>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -225,6 +270,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.bgPrimary,
+  },
+  reactivatingWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 40,
+    gap: 16,
+  },
+  reactivatingText: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.size14,
+    color: Colors.textSecondary,
+    textAlign: 'center',
   },
   scrollContent: {
     paddingBottom: 100,

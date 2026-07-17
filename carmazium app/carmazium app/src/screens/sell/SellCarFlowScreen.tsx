@@ -962,20 +962,61 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         Alert.alert('Location permission needed', 'Enable location access to use this, or type your location manually.');
         return;
       }
-      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      const res = await fetch(
-        `https://api.postcodes.io/postcodes?lon=${pos.coords.longitude}&lat=${pos.coords.latitude}`,
-      );
+
+      // Device-level Location Services being off (separate from app
+      // permission) can otherwise hang or reject with no way to tell why —
+      // this was previously indistinguishable from a network failure
+      // (mobile-production-readiness-plan.md F42). expo-location has no
+      // built-in timeout option, so race it against our own.
+      const servicesEnabled = await Location.hasServicesEnabledAsync();
+      if (!servicesEnabled) {
+        Alert.alert('Location is turned off', 'Turn on Location Services for this device, or type your location manually.');
+        return;
+      }
+
+      let pos: Awaited<ReturnType<typeof Location.getCurrentPositionAsync>>;
+      try {
+        pos = await Promise.race([
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('LOCATE_TIMEOUT')), 15000)),
+        ]);
+      } catch (err: any) {
+        console.warn('[handleLocateMe] getCurrentPositionAsync failed:', err);
+        if (err?.message === 'LOCATE_TIMEOUT') {
+          Alert.alert('Location timed out', 'Could not get a GPS fix in time. Please try again or type your location manually.');
+        } else {
+          Alert.alert('Location failed', 'Could not read your device location. Please type it in manually.');
+        }
+        return;
+      }
+
+      let res: Response;
+      try {
+        res = await fetch(
+          `https://api.postcodes.io/postcodes?lon=${pos.coords.longitude}&lat=${pos.coords.latitude}`,
+        );
+      } catch (err) {
+        console.warn('[handleLocateMe] postcodes.io fetch failed (network):', err);
+        Alert.alert('Location failed', 'No internet connection. Please check your connection and try again.');
+        return;
+      }
+      if (!res.ok) {
+        console.warn('[handleLocateMe] postcodes.io returned HTTP', res.status);
+        Alert.alert('Location failed', 'The location lookup service is unavailable right now. Please try again shortly.');
+        return;
+      }
+
       const body = await res.json();
       const nearest = body?.result?.[0];
       if (!nearest) {
-        Alert.alert('Could not determine location', 'No nearby postcode found. Please type your location manually.');
+        Alert.alert('Could not determine location', 'No nearby postcode found for your position. Please type your location manually.');
         return;
       }
       const city = nearest.admin_district || nearest.parish || nearest.admin_ward;
       setLocation(city ? `${city}, ${nearest.postcode}` : nearest.postcode);
-    } catch {
-      Alert.alert('Location failed', 'Could not fetch your location. Please type it in manually.');
+    } catch (err) {
+      console.warn('[handleLocateMe] unexpected error:', err);
+      Alert.alert('Location failed', 'Something went wrong. Please try again or type your location manually.');
     } finally {
       setLocatingMe(false);
     }

@@ -41,7 +41,34 @@ import { HamburgerButton } from '../../components/HamburgerButton';
 // ─────────────────────────── Types ───────────────────────────
 
 type AuctionStatus = 'SCHEDULED' | 'ACTIVE' | 'ENDED' | 'CANCELLED';
-type TabFilter = 'ALL' | 'LIVE' | 'SCHEDULED' | 'ENDED';
+// WON is a distinct data source (GET /auctions/my/won — auctions won AS A
+// BIDDER) from the other three, which all filter the seller-scoped
+// GET /auctions/my/list client-side. Added for mobile-production-readiness-
+// plan.md F43 — previously won-auction purchases were only visible via the
+// separate, generic Purchases screen with no auction-specific context.
+type TabFilter = 'ALL' | 'LIVE' | 'SCHEDULED' | 'ENDED' | 'WON';
+
+interface WonAuctionItem {
+  id: string;
+  status: AuctionStatus;
+  endTime: string;
+  winningBidAmount?: number | null;
+  listing: {
+    id: string;
+    title?: string | null;
+    make?: string | null;
+    model?: string | null;
+    year?: number | null;
+    price?: number | null;
+    images?: string[];
+    seller?: {
+      id: string;
+      firstName?: string | null;
+      lastName?: string | null;
+      dealerProfile?: { companyName?: string | null } | null;
+    } | null;
+  };
+}
 
 interface AuctionItem {
   id: string;           // auction id
@@ -120,6 +147,8 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
   const [preselectHandled, setPreselectHandled] = useState(false);
 
   const [auctions, setAuctions] = useState<AuctionItem[]>([]);
+  const [wonAuctions, setWonAuctions] = useState<WonAuctionItem[]>([]);
+  const [wonLoading, setWonLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabFilter>('ALL');
@@ -201,7 +230,24 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     finally { setLoading(false); setRefreshing(false); }
   }, []);
 
-  useEffect(() => { fetchAuctions(); }, [fetchAuctions]);
+  const fetchWonAuctions = useCallback(async (isRefresh = false) => {
+    if (!isRefresh) setWonLoading(true);
+    try {
+      const res = await apiClient<{ success: boolean; data: { data?: WonAuctionItem[] } | WonAuctionItem[] }>(
+        '/auctions/my/won?page=1&limit=50'
+      );
+      let items: WonAuctionItem[] = [];
+      if (res.success) {
+        const inner = (res as any).data;
+        if (Array.isArray(inner)) items = inner;
+        else if (Array.isArray(inner?.data)) items = inner.data;
+      }
+      setWonAuctions(items);
+    } catch { /* silently fail — same pattern as fetchAuctions */ }
+    finally { setWonLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchAuctions(); fetchWonAuctions(); }, [fetchAuctions, fetchWonAuctions]);
 
   // ── Tab counts ──
   const counts: Record<TabFilter, number> = {
@@ -209,6 +255,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     LIVE:      auctions.filter(a => a.status === 'ACTIVE').length,
     SCHEDULED: auctions.filter(a => a.status === 'SCHEDULED').length,
     ENDED:     auctions.filter(a => a.status === 'ENDED' || a.status === 'CANCELLED').length,
+    WON:       wonAuctions.length,
   };
 
   const displayed = (() => {
@@ -216,6 +263,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       case 'LIVE':      return auctions.filter(a => a.status === 'ACTIVE');
       case 'SCHEDULED': return auctions.filter(a => a.status === 'SCHEDULED');
       case 'ENDED':     return auctions.filter(a => a.status === 'ENDED' || a.status === 'CANCELLED');
+      case 'WON':       return wonAuctions;
       default:          return auctions;
     }
   })();
@@ -925,6 +973,61 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     handleHandoverUpload,
   ]);
 
+  // Won auctions are a read-only, buyer-perspective list — none of the
+  // seller actions above (edit, close bids, handover upload, results modal)
+  // apply since the current user isn't the seller on these. Tapping reuses
+  // handleTap's existing ENDED-status branch (navigates to VehicleDetail,
+  // which already surfaces seller contact/chat).
+  const renderWonCard = useCallback(({ item }: { item: WonAuctionItem }) => {
+    const thumb = item.listing.images?.[0];
+    const listingTitle = item.listing.title
+      || [item.listing.year, item.listing.make, item.listing.model].filter(Boolean).join(' ')
+      || 'Untitled';
+    const wonFor = item.winningBidAmount != null
+      ? `£${Number(item.winningBidAmount).toLocaleString('en-GB')}`
+      : (item.listing.price ? `£${Number(item.listing.price).toLocaleString('en-GB')}` : '–');
+    const sellerName = item.listing.seller?.dealerProfile?.companyName
+      || [item.listing.seller?.firstName, item.listing.seller?.lastName].filter(Boolean).join(' ')
+      || 'Private seller';
+    const isLoadingNav = navigating === item.id;
+
+    return (
+      <TouchableOpacity
+        style={[styles.card, { borderLeftColor: Colors.success }]}
+        onPress={() => handleTap(item as any)}
+        activeOpacity={0.8}
+        disabled={!!navigating}
+      >
+        <View style={styles.cardRow}>
+          <View style={styles.thumb}>
+            {thumb ? (
+              <Image source={{ uri: thumb }} style={styles.thumbImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+            ) : (
+              <View style={styles.thumbPlaceholder}>
+                <MaterialCommunityIcons name="trophy" size={22} color={Colors.textMuted} />
+              </View>
+            )}
+          </View>
+          <View style={styles.cardInfo}>
+            <Text style={styles.cardTitle} numberOfLines={1}>{listingTitle}</Text>
+            <Text style={styles.cardPrice}>Won for {wonFor}</Text>
+            <Text style={styles.cardMeta} numberOfLines={1}>{sellerName} · Ended {fmtDate(item.endTime)}</Text>
+          </View>
+          <View style={styles.cardRight}>
+            <View style={[styles.statusChip, { backgroundColor: Colors.successAlpha15 }]}>
+              <Text style={[styles.statusChipText, { color: Colors.success }]}>WON</Text>
+            </View>
+            {isLoadingNav ? (
+              <ActivityIndicator size="small" color={Colors.textMuted} style={{ width: 28, height: 28 }} />
+            ) : (
+              <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
+            )}
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  }, [navigating, handleTap]);
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
@@ -952,7 +1055,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.tabsContent}
       >
-        {(['ALL', 'LIVE', 'SCHEDULED', 'ENDED'] as TabFilter[]).map(tab => (
+        {(['ALL', 'LIVE', 'SCHEDULED', 'ENDED', 'WON'] as TabFilter[]).map(tab => (
           <TouchableOpacity
             key={tab}
             style={[styles.tab, activeTab === tab && styles.tabActive]}
@@ -967,7 +1070,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       </ScrollView>
 
       {/* Content */}
-      {loading ? (
+      {(activeTab === 'WON' ? wonLoading : loading) ? (
         <View style={styles.skeletonList}>
           {Array.from({ length: 5 }).map((_, i) => (
             <View key={`sk-${i}`} style={styles.skeletonRow}>
@@ -986,13 +1089,30 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         </View>
       ) : displayed.length === 0 ? (
         <EmptyState
-          icon="hammer-outline"
-          title="No auctions yet"
-          subtitle="Your live and scheduled auctions will appear here."
+          icon={activeTab === 'WON' ? 'trophy-outline' : 'hammer-outline'}
+          title={activeTab === 'WON' ? 'No auctions won yet' : 'No auctions yet'}
+          subtitle={activeTab === 'WON' ? 'Auctions you win as a bidder will appear here.' : 'Your live and scheduled auctions will appear here.'}
+        />
+      ) : activeTab === 'WON' ? (
+        <FlatList
+          data={wonAuctions}
+          keyExtractor={item => item.id}
+          renderItem={renderWonCard}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => fetchWonAuctions(true)}
+              tintColor={Colors.accent}
+            />
+          }
+          ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+          ListFooterComponent={<View style={{ height: 40 }} />}
         />
       ) : (
         <FlatList
-          data={displayed}
+          data={displayed as AuctionItem[]}
           keyExtractor={item => item.id}
           renderItem={renderCard}
           contentContainerStyle={styles.list}

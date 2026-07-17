@@ -67,6 +67,19 @@ export class AuctionsController {
         return new StandardResponse(result);
     }
 
+    @Get('my/won')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Get auctions the current user has WON as a bidder' })
+    async findWonAuctions(
+        @CurrentUser() user: any,
+        @Query('page') page = '1',
+        @Query('limit') limit = '20',
+    ) {
+        const result = await this.auctionsService.findWonAuctions(user.id, +page, +limit);
+        return new StandardResponse(result);
+    }
+
     @Get(':id')
     @ApiOperation({ summary: 'Get full auction details by ID' })
     @ApiResponse({ status: 200, description: 'Auction details with bids and listing' })

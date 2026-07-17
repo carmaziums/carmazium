@@ -151,6 +151,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // readiness-plan.md F8 — this used to be the flatter 2D DamageMapViewer).
   const [damageRecords, setDamageRecords] = useState<any[]>([]);
   const [damageLoading, setDamageLoading] = useState(true);
+  const [damageError, setDamageError] = useState(false);
   const [endTime, setEndTime] = useState<Date | null>(listingObj.endsAt ? new Date(listingObj.endsAt) : null);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [watchers, setWatchers] = useState<number>(listingObj.viewers ?? 0);
@@ -268,15 +269,24 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // ─── Damage records fetch ────────────────────────────────────────────────
   // Runs once the linked listingId is known (from route or loaded auction).
-  useEffect(() => {
+  // Extracted to a stable callback so the buyer damage viewer's retry button
+  // can re-run the exact same fetch — a failed fetch used to be swallowed
+  // silently and render identically to "no damage recorded," indistinguishable
+  // from the 3D model failing to load (mobile-production-readiness-plan.md F41).
+  const fetchDamageRecords = useCallback(() => {
     const listingId = listingObj?.id;
     if (!listingId) return;
     setDamageLoading(true);
+    setDamageError(false);
     apiClient<{ success: boolean; data: any[] }>(`/damage/${listingId}`)
       .then(res => { if (res?.success) setDamageRecords(res.data || []); })
-      .catch(() => {})
+      .catch(() => setDamageError(true))
       .finally(() => setDamageLoading(false));
   }, [listingObj?.id]);
+
+  useEffect(() => {
+    fetchDamageRecords();
+  }, [fetchDamageRecords]);
 
   // ─── Socket ───────────────────────────────────────────────────────────────
 
@@ -1194,7 +1204,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <Ionicons name="warning-outline" size={13} color={Colors.warning} />
                 <Text style={[s.cardSectionTitle, { marginBottom: 0 }]}>Damage Report</Text>
               </View>
-              <BuyerDamageViewer records={damageRecords} isLoading={damageLoading} bodyTypeLabel={listing.category} />
+              <BuyerDamageViewer records={damageRecords} isLoading={damageLoading} bodyTypeLabel={listing.category} hasError={damageError} onRetry={fetchDamageRecords} />
             </View>
 
             {/* Trust note */}

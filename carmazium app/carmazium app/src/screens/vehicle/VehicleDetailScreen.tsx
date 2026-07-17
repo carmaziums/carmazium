@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -122,6 +122,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // Damage records
   const [damageRecords, setDamageRecords] = useState<any[]>([]);
   const [damageLoading, setDamageLoading] = useState(true);
+  const [damageError, setDamageError] = useState(false);
 
   // Seller contact phone — gated by login server-side (see /sellers/:id/phone)
   const [sellerPhone, setSellerPhone] = useState<string | null>(null);
@@ -314,14 +315,23 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     ]);
   };
 
-  useEffect(() => {
+  // Extracted so the buyer damage viewer's retry button can re-run the exact
+  // same fetch (mobile-production-readiness-plan.md F41) — a failed fetch
+  // used to be swallowed silently and render identically to "no damage
+  // recorded," indistinguishable from the 3D model failing to load.
+  const fetchDamageRecords = useCallback(() => {
     if (!listing.id) return;
-    // Fetch damage records
+    setDamageLoading(true);
+    setDamageError(false);
     apiClient<{ success: boolean; data: any[] }>(`/damage/${listing.id}`)
       .then(res => { if (res.success) setDamageRecords(res.data || []); })
-      .catch(() => {})
+      .catch(() => setDamageError(true))
       .finally(() => setDamageLoading(false));
   }, [listing.id]);
+
+  useEffect(() => {
+    fetchDamageRecords();
+  }, [fetchDamageRecords]);
 
   // Fetch the seller's gated contact phone (web parity: BlurredPhone / SellerContactPhone)
   useEffect(() => {
@@ -971,7 +981,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {/* Section: Damage Assessment */}
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionHeaderTitle}>DAMAGE ASSESSMENT</Text>
-            <BuyerDamageViewer records={damageRecords} isLoading={damageLoading} bodyTypeLabel={listing.category} />
+            <BuyerDamageViewer records={damageRecords} isLoading={damageLoading} bodyTypeLabel={listing.category} hasError={damageError} onRetry={fetchDamageRecords} />
           </View>
 
           {/* Section: Seller */}

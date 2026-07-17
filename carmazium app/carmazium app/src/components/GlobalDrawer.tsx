@@ -9,6 +9,7 @@ import {
   Dimensions,
   Alert,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
@@ -17,6 +18,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useDrawer } from '../context/DrawerContext';
 import { useAuthStore } from '../store/authStore';
+import { apiClient } from '../lib/apiClient';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { MainStackParamList } from '../navigation/MainStackNavigator';
 import { TabParamList } from '../navigation/TabNavigator';
@@ -201,11 +203,19 @@ const DEALER_ITEMS: MenuItem[] = [
 
 export const GlobalDrawer: React.FC = () => {
   const { isOpen, closeDrawer } = useDrawer();
-  const user    = useAuthStore((s) => s.user);
-  const logout  = useAuthStore((s) => s.logout);
-  const role    = useAuthStore((s) => s.role);
-  const setRole = useAuthStore((s) => s.setRole);
-  const isActualDealer = role === 'dealer';
+  const user         = useAuthStore((s) => s.user);
+  const logout       = useAuthStore((s) => s.logout);
+  const role         = useAuthStore((s) => s.role);
+  const accountRole  = useAuthStore((s) => s.accountRole);
+  const setRole      = useAuthStore((s) => s.setRole);
+  const initializeAuth = useAuthStore((s) => s.initializeAuth);
+  // Real account status, not the buyer-preview toggle (`role`) — a dealer
+  // browsing with "VIEW MY PROFILE" would otherwise look like a non-dealer
+  // here and get routed back through onboarding/KYC on every tap
+  // (mobile-production-readiness-plan.md F38's accountRole fix, extended to
+  // this file too).
+  const isActualDealer = accountRole === 'dealer';
+  const [switchingDealer, setSwitchingDealer] = React.useState(false);
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
 
@@ -460,18 +470,56 @@ export const GlobalDrawer: React.FC = () => {
               <TouchableOpacity
                 style={styles.dealerToggleCard}
                 activeOpacity={0.8}
-                onPress={() => {
+                disabled={switchingDealer}
+                onPress={async () => {
+                  // user?.isVerified is checked FIRST, independent of
+                  // accountRole/isActualDealer — DealerProfile/KYC persist
+                  // per-user forever, never reset by switching away from
+                  // dealer (confirmed: backend's /users/elevate only ever
+                  // touches the `role` column). Web's equivalent gate
+                  // (dashboard/dealer/layout.tsx) checks isVerified alone
+                  // for exactly this reason. Previously this only checked
+                  // isVerified inside the isActualDealer branch, and
+                  // isActualDealer used the buyer-preview-mutable `role`
+                  // instead of accountRole, so a previously-verified dealer
+                  // who'd switched to buyer/seller view was always sent
+                  // through onboarding/KYC again on this tap
+                  // (mobile-production-readiness-plan.md — KYC-forced-again
+                  // finding, 2026-07-18).
+                  if (user?.isVerified) {
+                    if (isActualDealer) {
+                      closeDrawer();
+                      setTimeout(() => setRole('dealer'), 160);
+                      return;
+                    }
+                    // Verified from a past dealer stint but the backend role
+                    // isn't DEALER right now — re-elevate silently (no form,
+                    // matching web) then switch the view.
+                    setSwitchingDealer(true);
+                    try {
+                      await apiClient('/users/elevate', {
+                        method: 'POST',
+                        body: JSON.stringify({ newRole: 'DEALER' }),
+                      });
+                      await initializeAuth();
+                      setRole('dealer');
+                      closeDrawer();
+                    } catch (err: any) {
+                      Alert.alert('Could not switch to dealer mode', err?.message || 'Please try again.');
+                    } finally {
+                      setSwitchingDealer(false);
+                    }
+                    return;
+                  }
                   closeDrawer();
                   setTimeout(() => {
-                    if (isActualDealer && user?.isVerified) {
-                      setRole('dealer');
-                    } else if (isActualDealer) {
-                      // Already a dealer, just not verified yet — resume at KYC (step 2).
+                    if (isActualDealer) {
+                      // Already elevated but not yet verified — resume at KYC (step 2).
                       navigation.navigate('Main', { screen: 'DealerKYC' } as never);
                     } else {
-                      // Not a dealer at all — start at onboarding (step 1), which grants
-                      // the DEALER role before KYC. Sending these users straight to
-                      // DealerKYC skipped the role-elevation step entirely.
+                      // Never a dealer at all — start at onboarding (step 1), which
+                      // grants the DEALER role before KYC. Sending these users
+                      // straight to DealerKYC skipped the role-elevation step entirely.
                       navigation.navigate('Main', { screen: 'DealerOnboarding' } as never);
                     }
                   }, 160);
@@ -482,17 +530,20 @@ export const GlobalDrawer: React.FC = () => {
                 </View>
                 <View style={styles.dealerToggleText}>
                   <Text style={styles.dealerToggleTitle}>
-                    {isActualDealer ? 'Switch to Dealer Mode' : 'Become a Dealer'}
+                    {user?.isVerified ? 'Switch to Dealer Mode' : isActualDealer ? 'Complete Verification' : 'Become a Dealer'}
                   </Text>
                   <Text style={styles.dealerToggleSub}>
-                    {isActualDealer && user?.isVerified
+                    {user?.isVerified
                       ? 'Your account is verified — tap to switch'
                       : isActualDealer
                       ? 'Complete KYC to unlock dealer features'
                       : 'Set up your dealership to unlock dealer features'}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={15} color={Colors.warning} accessibilityElementsHidden importantForAccessibility="no" />
+                {switchingDealer
+                  ? <ActivityIndicator size="small" color={Colors.warning} />
+                  : <Ionicons name="chevron-forward" size={15} color={Colors.warning} accessibilityElementsHidden importantForAccessibility="no" />
+                }
               </TouchableOpacity>
             </>
           )}

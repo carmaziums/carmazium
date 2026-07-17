@@ -237,6 +237,49 @@ export class AuctionsService {
         return { data, total };
     }
 
+    // Auctions the current user WON as a bidder — distinct from findMyAuctions
+    // above, which is scoped to auctions the user SOLD. Mobile's Auctions tab
+    // previously only ever showed the seller-side list; won-auction purchases
+    // were only discoverable via the separate, generic Purchases screen (Sale
+    // records, no auction-specific fields). Added for mobile-production-
+    // readiness-plan.md F43. Includes `listing.seller` (unlike findMyAuctions,
+    // which has no reason to — the buyer needs to know who to contact).
+    async findWonAuctions(userId: string, page = 1, limit = 20): Promise<{ data: any[]; total: number }> {
+        const skip = (page - 1) * limit;
+        const where = { deletedAt: null, winnerId: userId };
+        const [data, total] = await Promise.all([
+            this.prisma.auction.findMany({
+                where,
+                include: {
+                    listing: {
+                        include: {
+                            bids: {
+                                where: { deletedAt: null, cancelledAt: null },
+                                orderBy: { amount: 'desc' },
+                                take: 1,
+                                select: { amount: true },
+                            },
+                            _count: { select: { bids: true } },
+                            seller: {
+                                select: {
+                                    id: true,
+                                    firstName: true,
+                                    lastName: true,
+                                    dealerProfile: { select: { companyName: true } },
+                                },
+                            },
+                        },
+                    },
+                },
+                orderBy: { updatedAt: 'desc' },
+                skip,
+                take: limit,
+            }),
+            this.prisma.auction.count({ where }),
+        ]);
+        return { data, total };
+    }
+
     async update(id: string, updateAuctionDto: UpdateAuctionDto, userId: string): Promise<Auction> {
         const auction = await this.findOne(id);
 

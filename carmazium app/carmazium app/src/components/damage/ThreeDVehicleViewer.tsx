@@ -17,6 +17,59 @@ const GLB_MODULE  = require('../../assets/3d/vehicle.glb');
 // CDN import so the viewer works fully offline.
 const THREE_BUNDLE_MODULE = require('../../assets/3d/three-bundle.txt');
 
+// ── Module-level asset caches ───────────────────────────────────────────────
+// This component gets fully unmounted and remounted very often — every
+// wizard-step change AND every Exterior/Interior/Damage tab switch in
+// SellCarFlowScreen, plus every fresh screen instance on the buyer side.
+// Before this cache, EVERY mount re-downloaded + re-read the HTML template,
+// the ~744KB Three.js bundle, and re-read + re-base64-encoded the ~2.4MB GLB
+// from scratch, then threw away a brand-new native WebView instance on the
+// next unmount. Rapid remounts (exactly what "going back and forth between
+// steps" produces) is a known failure mode for RN WebView under that load —
+// this was the root cause of the 3D model silently failing to (re)render
+// (mobile-production-readiness-plan.md F41). Caching the resolved data at
+// module scope means the expensive I/O/encoding happens once per app
+// session — shared across every viewer instance, seller and buyer alike —
+// and every remount after that only has to spin up a fresh WebView with
+// already-ready data, not redo the disk work.
+let cachedViewerHtmlPromise: Promise<string> | null = null;
+function loadViewerHtml(): Promise<string> {
+  if (!cachedViewerHtmlPromise) {
+    cachedViewerHtmlPromise = (async () => {
+      const htmlAsset = Asset.fromModule(HTML_MODULE);
+      const bundleAsset = Asset.fromModule(THREE_BUNDLE_MODULE);
+      await Promise.all([htmlAsset.downloadAsync(), bundleAsset.downloadAsync()]);
+      const [html, threeBundle] = await Promise.all([
+        FileSystem.readAsStringAsync(htmlAsset.localUri!),
+        FileSystem.readAsStringAsync(bundleAsset.localUri!),
+      ]);
+      // A function replacer avoids String.prototype.replace's special
+      // $-pattern handling (e.g. a literal "$&" in the minified bundle
+      // gets read as "insert matched substring" and corrupts the splice).
+      return html.replace('/*__THREE_BUNDLE__*/', () => threeBundle);
+    })();
+    // Don't cache a rejected attempt forever — let the next mount retry.
+    cachedViewerHtmlPromise.catch(() => { cachedViewerHtmlPromise = null; });
+  }
+  return cachedViewerHtmlPromise;
+}
+
+let cachedGlbBase64Promise: Promise<string> | null = null;
+function loadGlbBase64(): Promise<string> {
+  if (!cachedGlbBase64Promise) {
+    cachedGlbBase64Promise = (async () => {
+      const glbAsset = Asset.fromModule(GLB_MODULE);
+      await glbAsset.downloadAsync();
+      if (!glbAsset.localUri) throw new Error('no localUri for GLB');
+      return FileSystem.readAsStringAsync(glbAsset.localUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+    })();
+    cachedGlbBase64Promise.catch(() => { cachedGlbBase64Promise = null; });
+  }
+  return cachedGlbBase64Promise;
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface ThreeDVehicleViewerProps {
@@ -71,40 +124,25 @@ export function ThreeDVehicleViewer({
   const hotspotZonesRef = useRef(hotspotZones);
   hotspotZonesRef.current = hotspotZones;
 
+  // GLB injection can fail after the WebView has already mounted (unlike
+  // loadError below, which blocks the WebView from mounting at all) — needs
+  // its own visible state + manual retry, see handleWebViewLoad.
+  const [glbError, setGlbError] = useState(false);
+
   // ── Load viewer.html + the vendored Three.js bundle on mount ────────────────
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      try {
-        const htmlAsset = Asset.fromModule(HTML_MODULE);
-        const bundleAsset = Asset.fromModule(THREE_BUNDLE_MODULE);
-        await Promise.all([htmlAsset.downloadAsync(), bundleAsset.downloadAsync()]);
-        const [html, threeBundle] = await Promise.all([
-          FileSystem.readAsStringAsync(htmlAsset.localUri!),
-          FileSystem.readAsStringAsync(bundleAsset.localUri!),
-        ]);
-        // A function replacer avoids String.prototype.replace's special
-        // $-pattern handling (e.g. a literal "$&" in the minified bundle
-        // gets read as "insert matched substring" and corrupts the splice).
-        const spliced = html.replace('/*__THREE_BUNDLE__*/', () => threeBundle);
-        if (!cancelled) setViewerHtml(spliced);
-      } catch (e: any) {
-        if (!cancelled) setLoadError('Could not initialise 3D viewer');
-      }
-    })();
+    loadViewerHtml()
+      .then((html) => { if (!cancelled) setViewerHtml(html); })
+      .catch(() => { if (!cancelled) setLoadError('Could not initialise 3D viewer'); });
     return () => { cancelled = true; };
   }, []);
 
   // ── Once the WebView has loaded the HTML, inject the GLB as a data URL ───────
   const handleWebViewLoad = useCallback(async () => {
+    setGlbError(false);
     try {
-      const glbAsset = Asset.fromModule(GLB_MODULE);
-      await glbAsset.downloadAsync();
-      if (!glbAsset.localUri) throw new Error('no localUri for GLB');
-
-      const base64 = await FileSystem.readAsStringAsync(glbAsset.localUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
+      const base64 = await loadGlbBase64();
 
       // Base64 uses only A-Za-z0-9+/= — safe inside a JS double-quoted string
       webViewRef.current?.injectJavaScript(
@@ -116,7 +154,14 @@ export function ThreeDVehicleViewer({
         'window.setZones(' + JSON.stringify(JSON.stringify(zonesForWire)) + '); true;'
       );
     } catch {
-      // The viewer.html error overlay handles the visible failure state
+      // Previously silent — the comment here used to claim "the viewer.html
+      // error overlay handles the visible failure state," which is only
+      // true if injectJavaScript above actually ran. If asset resolution
+      // itself throws (e.g. loadGlbBase64 rejects), the WebView never even
+      // gets told to try loading a model, so its own error UI never fires
+      // either — the user was left staring at a permanent blank/loading
+      // viewer with no signal at all (F41).
+      setGlbError(true);
     }
   }, []);
 
@@ -192,6 +237,19 @@ export function ThreeDVehicleViewer({
       ) : (
         <View style={styles.loading} pointerEvents="none">
           <ActivityIndicator color={Colors.accent} size="small" />
+        </View>
+      )}
+
+      {/* GLB injection failed after the WebView itself loaded fine — distinct
+          from loadError above, and needs to sit on top of the (blank) WebView
+          rather than replace it. Manual retry re-runs the same load path. */}
+      {glbError && (
+        <View style={styles.errorState}>
+          <Text style={styles.errorText}>Couldn't load the 3D model.</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={handleWebViewLoad} activeOpacity={0.75}>
+            <Ionicons name="refresh" size={14} color={Colors.white} />
+            <Text style={styles.retryBtnText}>Retry</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -336,12 +394,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
+    gap: 12,
+    backgroundColor: Colors.deepNearBlack,
   },
   errorText: {
     color: Colors.textMuted,
     fontSize: FontSize.sm,
     fontFamily: FontFamily.regular,
     textAlign: 'center',
+  },
+  retryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 8,
+    backgroundColor: Colors.accent,
+  },
+  retryBtnText: {
+    color: Colors.white,
+    fontSize: FontSize.xs,
+    fontFamily: FontFamily.semiBold,
   },
 
   // Generic-model disclosure banner

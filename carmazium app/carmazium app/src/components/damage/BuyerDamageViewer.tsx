@@ -19,6 +19,13 @@ interface Props {
   records: DamageRecord[];
   isLoading: boolean;
   bodyTypeLabel?: string;
+  /** True when the /damage fetch itself failed (network/auth/5xx) — distinct
+   *  from a genuinely empty `records` array. Previously any fetch failure
+   *  was swallowed and rendered identically to "no damage recorded," which
+   *  is indistinguishable from the 3D viewer failing to initialize
+   *  (mobile-production-readiness-plan.md F41). */
+  hasError?: boolean;
+  onRetry?: () => void;
 }
 
 const PIN_COLORS: Record<string, string> = {
@@ -37,11 +44,28 @@ const formatPart = (part: string): string =>
 // renders the real interactive ThreeDVehicleViewer plus a damage list below it, synced
 // by selection — this mirrors that layout instead of the flat 2D DamageMapViewer that
 // used to render here (see mobile-production-readiness-plan.md F8).
-export const BuyerDamageViewer: React.FC<Props> = ({ records, isLoading, bodyTypeLabel }) => {
+export const BuyerDamageViewer: React.FC<Props> = ({ records, isLoading, bodyTypeLabel, hasError, onRetry }) => {
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
 
   if (isLoading) {
     return <View style={[styles.skeletonRect, { height: 280 }]} />;
+  }
+
+  if (hasError) {
+    return (
+      <View style={styles.errorState}>
+        <Ionicons name="alert-circle-outline" size={22} color={Colors.warning} />
+        <View style={styles.emptyTextBlock}>
+          <Text style={styles.emptyTitle}>Couldn't load damage info</Text>
+          <Text style={styles.emptySubtitle}>Check your connection and try again</Text>
+        </View>
+        {onRetry && (
+          <TouchableOpacity style={styles.retryBtn} onPress={onRetry} activeOpacity={0.75}>
+            <Ionicons name="refresh" size={14} color={Colors.white} />
+          </TouchableOpacity>
+        )}
+      </View>
+    );
   }
 
   if (records.length === 0) {
@@ -125,6 +149,24 @@ const styles = StyleSheet.create({
     borderColor: Colors.successAlpha20,
     borderRadius: 12,
     padding: 16,
+  },
+  errorState: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Colors.warningAlpha08,
+    borderWidth: 1,
+    borderColor: Colors.warningAlpha20,
+    borderRadius: 12,
+    padding: 16,
+  },
+  retryBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.whiteAlpha08,
   },
   emptyTextBlock: { flex: 1 },
   emptyTitle: {
