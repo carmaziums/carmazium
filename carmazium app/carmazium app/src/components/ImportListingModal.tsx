@@ -183,7 +183,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
             primary: Colors.accent,
             background: Colors.bgSecondaryAlt,
             componentBackground: Colors.deepBlue_18181f,
-            componentBorder: Colors.whiteAlpha08,
+            componentBorder: Colors.whiteAlpha08Hex,
             primaryText: Colors.white,
             secondaryText: Colors.textSecondary,
             componentText: Colors.white,

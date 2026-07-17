@@ -670,6 +670,120 @@ Combining both existing docs' "after" sections with new items from this cross-ch
 
 ---
 
+## Phase 4 — Manual QA findings (2026-07-16 device-test session)
+
+The first real on-device testing pass (see Section 5's own "never verified" caveats — the checklist did its job) surfaced 14 issues, none of which map to F1–F25. Each was independently investigated against mobile, web (parity source of truth), and backend code before any fix — two of them turned out to have a materially different root cause than the initial bug report implied; both are called out explicitly below rather than silently reinterpreted.
+
+**Corrections to the original reports:**
+- **F35 (auction bidding)** — the report described sellers bidding on their own auctions and non-dealers bidding at all as if both were live exploits. On investigation, `AuctionDetailScreen.tsx` and `backend/src/bids/bids.service.ts` already correctly block both (seller-owns-listing check, `role === 'DEALER' && dealerProfile.isVerified` check) — this matches F4's existing "do not regress" finding. The actual bug is one screen upstream: `LiveScreen.tsx`'s auction list card shows an unconditional "BID NOW" label on every card, including the viewer's own auction, with no `sellerId` comparison available in that screen's data at all. Not exploitable (the real gate still fires on the next screen), but misleading.
+- **F39 (dealer inventory)** — not a single wrong `navigation.navigate()` call. `UnifiedDashboardScreen.tsx`'s "Inventory" tile is correct when it thinks it's talking to a seller/dealer (`isSeller` true → `SellerListings`, though note this still isn't `DealerInventoryScreen` for an actual dealer). The bug is that a dealer can reach this screen at all: `DealerProfileScreen.tsx`'s "VIEW MY PROFILE" button flips a display-only `role` state to `'buyer'` (to preview the buyer-facing profile), which also swaps the Profile tab to `UnifiedDashboardScreen` per `TabNavigator.tsx`. With `role` now `'buyer'`, the tile's `isSeller`/`isDealer` checks are both false even though the underlying account is still a dealer with real listings, so it falls through to the `SellCarFlow` branch.
+
+### F26 — Make/Model fields are free text, no dropdown
+
+`SellCarFlowScreen.tsx:1519-1541` — both fields are plain `FieldInput` (`TextInput`) components, no relationship enforced between them. No makes/models data source exists anywhere in the mobile app or backend.
+
+Web already has this fully solved: `src/lib/carData.ts` — `CAR_MAKES` (~78 makes), `MODELS_BY_MAKE` (full map), `getModelsForMake()` helper — consumed by `ListingWizard.tsx:1375-1442`'s select-with-`"__other__"`-fallback pattern (Make dropdown always shows; Model dropdown shows only if the selected make has known models, otherwise falls back to free text; selecting Make resets Model).
+
+**Fix:** port `carData.ts` to mobile (`src/data/carData.ts` or similar), build a picker UI reusing the app's existing `BottomSheet` pattern (already used for offer/filter pickers elsewhere) with a manual-entry fallback option, matching web's UX. No backend change — `make`/`model` are already plain strings server-side.
+
+### F27 — Damage zone pill doesn't turn red on tap
+
+Real state/style mismatch, not a missing feature. `SellCarFlowScreen.tsx:317-330` (`Damage3DMapper`'s 2D chip list, distinct from the 3D hotspot dots): tapping a pill sets `addingZone` (opens the inline "mark damage" form) but the pill's `style` only reads `isMarked` (derived from already-saved `damageRecords`) — `addingZone` is never wired into the style at all. The pill only goes red *after* the user fills out and confirms the inline form, giving zero feedback on the initial tap. The 3D hotspot overlay in `ThreeDVehicleViewer.tsx:220-263` already correctly distinguishes "marked" vs. "currently selected" — same pattern needs porting to the 2D chip list.
+
+**Fix:** add an `isSelected = addingZone === zone.label` check to the pill's style array alongside the existing `isMarked` check.
+
+### F28 — No custom text option for the listing ribbon label
+
+`SellCarFlowScreen.tsx:2190-2206` — preset-only chip list (`BANNER_LABELS`, 10 hardcoded strings), no free-text option. Backend already accepts any string ≤40 chars (`create-listing.dto.ts:457-461`, `@IsString() @MaxLength(40)`, no enum) — this is purely a mobile UI gap. Web's `ListingWizard.tsx:2507-2553` already does exactly this: preset chips + a `maxLength={40}` text input sharing the same underlying field, mutually exclusive by construction (typing overwrites the preset).
+
+**Fix:** add the same free-text input below the preset chips, no backend change needed.
+
+### F29 — Mileage isn't validated until final Publish
+
+Real logic bug in `touchAndCheck()` (`SellCarFlowScreen.tsx:952-959`), not a missing validation rule. It marks all Step-1 fields "touched" via `setTouched(...)` (a deferred state update) and then immediately calls `fieldError(k)` in the same synchronous tick — `fieldError` still reads the *stale* `touched` object from before the update, and (per its own `if (!touched[key]) return null` guard, line 737) silently reports no error for any field the user hadn't already individually focused+blurred. Mileage's only touch trigger is its own `onBlur` (line 1633), so a mileage field the user never tapped into stays permanently un-validated until the raw backend rejection at final submit.
+
+**Fix:** make `touchAndCheck` evaluate `fieldError` against the *fully-touched* state (e.g. build the merged touched object once and pass it into a `fieldError`-equivalent that takes touched as a parameter, rather than closing over component state), so a skipped field is caught at the step boundary. Re-check whether any other step's equivalent gate reuses the same buggy pattern.
+
+**Status: DONE** (2026-07-16). Split `fieldError(key)` into a new `fieldErrorRaw(key)` (the actual per-field rule, unconditional) plus a thin `fieldError(key)` wrapper (`if (!touched[key]) return null; return fieldErrorRaw(key);`) kept for every display call site (inline error text, `fieldBorderColor`, `step1HasErrors`/`step3HasErrors` — these correctly stay touched-gated, that's intentional progressive-disclosure UX, not the bug). `touchAndCheck` now calls `fieldErrorRaw` directly instead of `fieldError`, so it evaluates real field validity at the moment it force-touches everything rather than reading the pre-update `touched` snapshot. `touchAndCheck` is shared by Steps 1, 3, and 4-if-auction (`STEP1_FIELD_KEYS`/`STEP3_FIELD_KEYS`/`STEP4_AUCTION_FIELD_KEYS`), so this one fix closes the same gap on all three — confirmed by reading `validateStep`'s full body that no other step reimplements this pattern separately. Step 2 (Media/photos) has no field-key validation gate at all, by design — nothing to fix there.
+
+### F30 — No "locate me" button on the listing location field
+
+`SellCarFlowScreen.tsx:1619-1621` — plain free-text `TextInput`, no geolocation of any kind. This one is not a straight web port: mobile deliberately has no `expo-location` dependency — `LocationContext.tsx:9-15` documents that buyers type a postcode instead, which is then forward-geocoded via postcodes.io for distance calculations. Web's "Use my location" (`ListingWizard.tsx:1591-1621`) uses browser `navigator.geolocation` + Nominatim reverse-geocoding, neither of which exists on mobile today.
+
+**Fix requires a real scope decision** (see question below) — either add `expo-location` + request permission + reverse-geocode (via Nominatim like web, or `postcodes.io`'s reverse endpoint), which means a new native dependency and therefore an `expo prebuild` before it reaches a real build; or keep mobile postcode-only and just improve the manual-entry UX instead. Flagging rather than silently reversing an app-wide decision made earlier in this project.
+
+### F31 — Stripe Payment Sheet crashes on every payment flow in the app
+
+**Highest-priority fix** — this isn't isolated to the classified-listing publish step; it's systemic. `src/constants/colors.ts` defines `whiteAlpha08: 'rgba(255, 255, 255, 0.08)'` and `whiteAlpha06: 'rgba(255, 255, 255, 0.06)'`, both fed directly into `appearance.colors.componentBorder`/`componentDivider` in **every** `initPaymentSheet()` call in the app — Stripe's native SDK requires hex, not `rgba()`, and TypeScript's `string`-typed `appearance.colors.*` fields don't catch the mismatch. Confirmed identical bug at all 7 call sites: `useListingFeePayment.ts:24-45`, `ImportListingModal.tsx:175-195`, `SellerAuctionsScreen.tsx:425-445`, `SellCarFlowScreen.tsx:996-1017` (retail publish — what the report caught) and `:1032-1053` (HPI fee), `AuctionCompleteScreen.tsx:193-214` (auction buyer fee), `PurchaseFlowScreen.tsx:114-136`. Every payment flow in the app is currently broken identically; the report happened to catch it via the retail-listing path first.
+
+**Fix:** replace `Colors.whiteAlpha08`/`whiteAlpha06` with hex+alpha equivalents (`#FFFFFF14`/`#FFFFFF0F`) at all 7 call sites — or add dedicated `Colors.stripeBorderHex`/`stripeDividerHex` tokens to make the hex-only constraint explicit for any future Payment Sheet call site.
+
+### F32 — "Bucket not found" on auction handover-proof upload
+
+Systemic, not per-record. `SellerAuctionsScreen.tsx:255` calls `uploadToStorage(jpegUri, 'handover', ...)` — the second argument is the **Supabase bucket name**, and no bucket literally named `handover` exists (confirmed: backend only references `listings` and `backups` buckets anywhere). Web's equivalent (`src/app/dashboard/seller/auctions/page.tsx:291`) correctly uploads into the `listings` bucket under a `handover/` **path prefix** — mobile passed the intended path prefix as the bucket name instead. Every handover-proof upload fails identically; the QA screenshot showing the error on only one card is just because the error is stored in per-item React state that's only populated once a user has attempted that specific card.
+
+**Fix:** change the bucket argument from `'handover'` to `'listings'` and prefix the path with `handover/`, matching web exactly.
+
+**Status: DONE** (2026-07-16). Also found and fixed the exact same bug one screen over while verifying this fix: `DealerKYCScreen.tsx:275` uploaded dealer KYC documents (VAT proof, company registration, director ID) to a bucket literally named `'kyc-documents'` — also confirmed never to exist (grepped web + backend, zero hits). Web's `KycOverlayForm.tsx:87` uses `uploadImage(file, "listings", "kyc")` — same `listings` bucket, `kyc/` path prefix pattern as the handover fix. This means dealer KYC document uploads were also silently broken for every dealer attempting business verification; fixed identically (bucket → `'listings'`, existing `kyc/${userId}/...` path already correct, just needed the right bucket argument). The old code even had a comment flagging its own uncertainty ("kyc-documents bucket must have public access enabled in Supabase dashboard") — it was a guess that was never verified against the actual Supabase project.
+
+### F33 — AI search ("yellow car") returns an empty box, no results
+
+Field-name mismatch between mobile's expected response shape and what the backend actually returns — a real regression, not an unimplemented feature. Backend `POST /ai/search` returns `{ text, filterCard: { label, params } }` (confirmed in `ai.service.ts`'s system prompt, which explicitly extracts `color` as a param) — mobile's `AiSearchResult` interface (`aiApi.ts:26-37`) expects `{ explanation, filters }`, fields that don't exist in the real response. Both `explanation` and `filters` resolve to `undefined`, rendering as an empty box with no thrown error (the fetch itself succeeds). Note `SearchScreen.tsx`'s AI-filter consumer also never maps a `color` param even after the shape is fixed, despite `colorFilter` state already existing in that screen.
+
+**Fix:** correct `AiSearchResult` to `{ text: string; filterCard?: { label: string; params: Record<string,string> } }` matching web's `aiApi.ts` exactly, update `HomeScreen.tsx`/`SearchScreen.tsx` consumers accordingly, and add `color` to `SearchScreen.tsx`'s AI-param-to-filter mapping.
+
+**Status: DONE** (2026-07-16). Reused the existing `AiFilterCard` type (`aiApi.ts`) rather than duplicating it — `/ai/chat` already used the correct shape, only `/ai/search` was wrong. While re-verifying every param key against `ai.service.ts`'s actual `SEARCH_SYSTEM_PROMPT` (not just trusting the mobile code's existing field list), found the mapping in both `SearchScreen.tsx`'s own AI-search handler and its route-param-from-Home effect was checking six keys the AI never sends at all (`listingType`, `sellerType`, `vehicleType`, `location`, `ulezCompliant`, `deliveryAvailable` — dead branches, removed) while missing three real ones the AI does send and mobile already has state setters for (`color`, `minDoors`, `minSeats` — added). Left `minMileage`/`maxMileage` unmapped: `SearchScreen.tsx`'s mileage filter is a fixed-chip UI (`'Any'`, `'10k'`, `'20k'`, …), not a raw-number input, so directly assigning the AI's numeric string would silently not match any chip — mapping it correctly needs a value-to-nearest-chip normalizer, out of scope for this fix; flagging as a known remaining gap rather than shipping a subtly-wrong mapping.
+
+### F34 — Can't type a custom offer amount
+
+Confirmed no text input exists — `VehicleDetailScreen.tsx:1343-1354`'s offer modal is a plain non-editable `<Text>` adjustable only via ±£500 stepper buttons (`adjustOffer`, lines 209-211). Floor bound exists (`listing.price - 15000`); **no ceiling at all** — repeatedly tapping "+" has no upper limit, a secondary bug worth fixing in the same pass. Backend's `CreateOfferDto` already accepts arbitrary numeric `amount` — no backend constraint forces £500 increments, this is mobile-only UX. Web's `BidModal` (`src/app/vehicle/[id]/page.tsx:268-305`) already does direct numeric entry with inline min/max validation, ±buttons as a supplement rather than the only input.
+
+**Fix:** add a numeric `TextInput` to the offer modal (keeping the ± buttons as a supplement, matching web), and add a sensible upper bound.
+
+**Status: DONE** (2026-07-16). Added a `number-pad` `TextInput` in place of the plain `<Text>`, kept the ± buttons working on the same shared `offerAmount` state. Added an explicit `OFFER_MAX = listing.price` ceiling alongside the existing `OFFER_MIN = listing.price - 15000` floor — a classified offer can no longer be pushed above the asking price via either the steppers or typed entry. Typed input is digit-filtered live and clamped on every change (not just on blur), with the displayed text snapping back to the clamped value on blur for a clean final state.
+
+### F35 — Tapping a notification doesn't navigate correctly
+
+`NotificationsScreen.tsx:98-145` (`handleTap`) is a hardcoded `switch (n.type)` covering only 6 type strings (and one, `COUNTER_RECEIVED`, is dead code — the backend actually emits `OFFER_COUNTERED`). `MESSAGE_RECEIVED` has no case at all — tapping a "New Message" notification does nothing. Auction types (`AUCTION_WON`, `AUCTION_ENDED`, etc.) also no-op, with a code comment rationalizing it as "can't navigate without fetching the full listing" — but the notification already carries `entityId` (the auction ID) that could drive exactly that navigation. The backend's `Notification` model has no top-level `link` column at all (`link` gets merged into the `data` JSON blob server-side) — mobile's `AppNotification` interface expects a top-level `link` that never actually exists in a stored row. Web's `NotificationBell.tsx:139-212` is the correct reference: reads `data.link` → `entityType`/`entityId` → `data.roomId` (for messages) → `type`-string-prefix fallback, in that priority order.
+
+**Fix:** rewrite `handleTap` to read `n.data`/`n.entityType`/`n.entityId` the way web does, not just `n.type`; specifically wire `MESSAGE_RECEIVED`'s `data.roomId` to the `ChatScreen` route's `threadId` param, and `AUCTION_*` types to `entityId` → auction detail.
+
+**Status: DONE** (2026-07-16). `handleTap` now checks `entityType === 'AUCTION'` first — this uniformly covers `AUCTION_WON`/`AUCTION_ENDED`/`AUCTION_ENDING` in one branch instead of the old type-by-type switch (confirmed all three backend call sites set the same `entityType`/`entityId` fields), fetching the auction via `getAuction(entityId)` and converting to `LiveAuctionDetailed`'s required `CarListing` shape. That conversion (`auctionToListingParam`) was previously a `HomeScreen.tsx`-local function — extracted to `src/lib/auctionApi.ts` as a shared export so this screen could reuse it rather than duplicating it. `MESSAGE_RECEIVED` now reads `n.data.roomId` → `ChatScreen`'s `threadId` param. Also fixed the dead `COUNTER_RECEIVED` case (backend never emits that string, only `OFFER_COUNTERED`) and added `OFFER_WITHDRAWN`/`DEAL_CLOSED` routing that was previously falling through to the no-op default.
+
+### F36 — Bid button shown on the viewer's own live auction
+
+See correction note above — the real gate (`AuctionDetailScreen.tsx` + backend) already works; this is `LiveScreen.tsx`'s list card (lines 343-354) showing an unconditional "BID NOW" label with no `sellerId` check available in that screen's data at all (the `AuctionListing` type it renders from carries no `sellerId` field). Not exploitable, but misleading — a dealer sees "BID NOW" on their own auction card.
+
+**Fix:** include `sellerId` in whatever endpoint populates the live-auctions list (confirm it's already in the underlying Prisma query, likely just needs adding to the response/type), and either hide the button or swap its label (e.g. "YOUR AUCTION") when `auction.listing.sellerId === currentUser.id`.
+
+**Status: DONE** (2026-07-16). `sellerId` didn't need a backend change — `a.listing.seller.id` was already present in the API response and even in `AuctionListing`'s type (`CarListing.seller?: { id: string }`), it just wasn't being copied into the screen's locally-mapped object. Added `seller: seller?.id ? { id: seller.id } : undefined` to the mapping and swapped the button to a muted "YOUR AUCTION" state (eye icon, no accent color) when `auction.seller?.id === currentUser.id`, still navigable to the detail screen. Upcoming-section cards have no equivalent CTA at all (no bid button before an auction starts), so nothing needed there.
+
+### F37 — Compare screen starts with 2 cards pre-filled
+
+`CompareScreen.tsx:120-136` unconditionally seeds both comparison slots on mount — either `[the listing you arrived from, next-newest listing]` or `[newest, 2nd-newest]` with no originating context. The add-vehicle picker UI (debounced search `BottomSheet`, empty-slot placeholder cards) is already fully built (lines 303-342, 507-561) and simply never shown because the slots are pre-filled. Max is already correctly 3, not unlimited. Web (`src/app/compare/page.tsx:66`) starts with `[null, null, null]` and only pre-fills a single slot when arriving via a listing's "Compare" link.
+
+**Fix:** change the seeding logic to fill only the slot matching `initialListing` (if any) and leave the rest empty, matching web exactly. No new UI needed — just stop overriding the existing empty-slot rendering.
+
+**Status: DONE** (2026-07-16). Confirmed `carA`/`carB`/`carC` are already derived as `selectedCarIds[i] ? listings.find(...) : null` (`CompareScreen.tsx:158-160`), so a shorter/empty `selectedCarIds` array safely falls straight through to the existing "Add vehicle" placeholder rendering with no other change needed — the fix was purely removing the over-eager auto-fill.
+
+### F38 — Dealer "Inventory" navigates to the listing-creation flow
+
+See correction note above. `UnifiedDashboardScreen.tsx:214-221`'s "Inventory" tile branches on a **display-only** `role` state that a dealer can flip to `'buyer'` via `DealerProfileScreen.tsx`'s "VIEW MY PROFILE" button — the tile then can't tell it's still looking at a dealer account and falls through to `SellCarFlow`. Separately, even the "correct" branch (`isSeller` true) routes to generic `SellerListingsScreen`, not `DealerInventoryScreen` — the actual dealer inventory screen (`DealerInventoryScreen.tsx`, correctly reachable from `DealerProfileScreen.tsx:212` and the drawer) is never reached from this tile at all.
+
+**Fix:** have the tile check the account's real dealer/seller status (`authStore`, not the toggled display-role) and route dealers specifically to `DealerInventoryScreen`, sellers to `SellerListingsScreen`, and only pure buyers with no listings to `SellCarFlow`.
+
+**Status: DONE** (2026-07-16). This needed an actual store change, not just a screen fix: `authStore.ts`'s `role` field was the *only* role signal anywhere in client state, and `setRole()` (the preview toggle) mutates that exact same field — there was no way for any screen to tell "real dealer previewing as buyer" apart from "an actual buyer" using existing state. Added a second field, `accountRole`, set alongside `role` at every real auth-state-change site (`initializeAuth`, `login`, `signup`'s three `mappedRole` assignments, plus all 5 `'buyer'`-reset sites on logout/failed-auth) but never touched by `setRole()`. `UnifiedDashboardScreen.tsx`'s Inventory tile now computes `isDealerAccount`/`isSellerAccount` from `accountRole` (used only for this routing decision) while its existing `isDealer`/`isSeller` (from `role`) are left untouched for their other job — the avatar styling and role pill correctly still reflect whatever's being *previewed*, not the underlying account. Also fixed the previously-noted secondary gap: the tile now routes dealers to `DealerInventoryScreen` specifically instead of falling through to the generic `SellerListingsScreen`.
+
+### F39 — No light/dark theme (mobile is dark-only)
+
+**Scope note, not a bug fix — this is a real architecture decision, flagged separately from the rest of this batch.** `src/constants/colors.ts` is a single static hardcoded dark palette (`// Dark-mode first, Crimson accent` per its own header comment) — no `useColorScheme`, `Appearance`, or theme context exists anywhere in the mobile app. Web uses `next-themes` + CSS custom properties (`ThemeProvider.tsx`, `ThemeToggle.tsx`, `:root`/`.dark` variable blocks in `globals.css`). Scale check: **95 of 126 files** (~75% of the mobile app's source) import `Colors` directly — this is a full-app design-token migration, not a contained fix, comparable in size to the entire Phase 3 UI/UX pass already completed this session.
+
+**Decision (2026-07-16): deferred as its own future phase, not bundled into Stage 24/25/26.** User chose not to start this alongside the current bug-fix batch, given the scale. Revisit as a dedicated multi-stage phase (design token migration + ThemeContext + doubled palette) when explicitly requested.
+
+**F30 decision (2026-07-16): approved to add `expo-location`.** User chose the full fix over staying postcode-only — reverse-geocode via postcodes.io/Nominatim like web. Scheduled as Stage 26, after the JS-only Stage 24/25 fixes, since it's a native-dependency change requiring `expo prebuild --clean` before it's testable (can't hot-reload).
+
+---
+
 ## 5. On-device test checklist — F7–F25 (2026-07-15 session)
 
 Every fix in this document from F7 onward was verified with `npx tsc --noEmit` only — no adb/emulator/physical device was available in the environment that wrote it. That's a real gap: type-checking catches type errors, not layout bugs, gesture conflicts, WebView rendering issues, or anything that only shows up at runtime. The code-review pass on 2026-07-15 already caught one such bug purely by re-reading the diff (the CRM board's unbounded column height) — there are likely others that only surface on a real screen. Test in this order (highest-risk / highest-blast-radius first):

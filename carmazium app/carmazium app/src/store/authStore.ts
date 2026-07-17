@@ -42,6 +42,14 @@ interface AuthState {
   user: User | null;
   isLoading: boolean;
   role: 'buyer' | 'seller' | 'dealer';
+  // The real, backend-sourced account role — unlike `role`, this is never
+  // touched by setRole()'s "preview as buyer" toggle (DealerProfileScreen's
+  // "VIEW MY PROFILE"). Screens that need to know whether the underlying
+  // account actually is a dealer/seller (not just how it's currently being
+  // previewed) must read this instead of `role`
+  // (mobile-production-readiness-plan.md F38 — a dealer previewing as buyer
+  // could no longer be told apart from a real buyer using `role` alone).
+  accountRole: 'buyer' | 'seller' | 'dealer';
 
   completeOnboarding: () => Promise<void>;
   initializeAuth: () => Promise<void>;
@@ -60,6 +68,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isLoading: false,
   role: 'buyer' as 'buyer' | 'seller' | 'dealer',
+  accountRole: 'buyer' as 'buyer' | 'seller' | 'dealer',
 
   completeOnboarding: async () => {
     await SecureStore.setItemAsync(ONBOARDING_KEY, '1').catch(() => {});
@@ -106,6 +115,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             pendingEmailVerification: false,
             hasCompletedOnboarding,
             role: mappedRole,
+            accountRole: mappedRole,
             user: {
               id: profile.id,
               email: profile.email,
@@ -127,7 +137,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Also reset role: a failed init must never leave a stale 'dealer'
       // preview-toggle value in memory (it would otherwise survive into the
       // next login/signup attempt and contaminate persisted account data).
-      set({ isAuthenticated: false, user: null, role: 'buyer' });
+      set({ isAuthenticated: false, user: null, role: 'buyer', accountRole: 'buyer' });
     } finally {
       set({ isLoading: false });
     }
@@ -194,6 +204,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isAuthenticated: true,
           hasCompletedOnboarding,
           role: mappedRole,
+          accountRole: mappedRole,
           user: {
             id: profile.id,
             email: profile.email,
@@ -211,7 +222,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Reset role on a failed login too — see comment in initializeAuth's
       // catch block: a stale 'dealer' preview-toggle value must never survive
       // an interrupted auth flow into the next login/signup attempt.
-      set({ isAuthenticated: false, user: null, role: 'buyer' });
+      set({ isAuthenticated: false, user: null, role: 'buyer', accountRole: 'buyer' });
       throw err;
     } finally {
       set({ isLoading: false });
@@ -285,6 +296,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             isAuthenticated: true,
             hasCompletedOnboarding: false,
             role: mappedRole,
+            accountRole: mappedRole,
             user: {
               id: profile.id,
               email: profile.email,
@@ -309,6 +321,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           pendingEmailVerification: true,
           hasCompletedOnboarding: false,
           role: 'buyer',
+          accountRole: 'buyer',
           user: {
             id: user.id,
             email,
@@ -322,7 +335,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Reset role on failure too — an interrupted signup must never leave a
       // stale 'dealer' preview-toggle value sitting in memory to leak into
       // whatever auth flow the user lands on next.
-      set({ isAuthenticated: false, user: null, role: 'buyer' });
+      set({ isAuthenticated: false, user: null, role: 'buyer', accountRole: 'buyer' });
       throw err;
     } finally {
       set({ isLoading: false });
@@ -350,6 +363,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         pendingEmailVerification: false,
         user: null,
         role: 'buyer',
+        accountRole: 'buyer',
         hasCompletedOnboarding: false,
         isLoading: false,
       });

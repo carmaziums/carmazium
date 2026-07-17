@@ -1,4 +1,5 @@
 import { apiClient } from './apiClient';
+import { CarListing } from '../data/listings';
 
 export interface AuctionBid {
   id: string;
@@ -95,6 +96,42 @@ export interface AuctionDetail {
   } | null;
   customTags?: string[] | null;
   sellerSelfRating?: number | null;
+}
+
+// Shared AuctionDetail → CarListing adapter, needed anywhere an auction is
+// navigated to via LiveAuctionDetailed (route requires a full CarListing,
+// not just an id) — was previously duplicated as a HomeScreen-local
+// function; extracted here so NotificationsScreen's tap-through (F35) can
+// reuse it too.
+export function auctionToListingParam(a: AuctionDetail): CarListing & { auctionId: string } {
+  const l = a.listing as any;
+  return {
+    id: l?.id ?? a.id,
+    auctionId: a.id,
+    make: l?.make ?? '',
+    model: l?.model ?? '',
+    variant: l?.variant ?? '',
+    year: l?.year ?? new Date().getFullYear(),
+    price: Number(l?.price ?? 0),
+    mileage: l?.mileage ?? 0,
+    fuelType: l?.fuelType ?? 'Petrol',
+    transmission: l?.transmission === 'MANUAL' ? 'Manual' : 'Automatic',
+    category: 'Saloon',
+    condition: 'Used',
+    colour: l?.colour ?? l?.color ?? '',
+    bhp: l?.bhp ?? 0,
+    zeroToSixty: l?.zeroToSixty ?? l?.zeroTo60Mph ?? 0,
+    topSpeed: l?.topSpeed ?? l?.topSpeedMph ?? 0,
+    location: l?.location ?? '',
+    dealer: l?.seller?.dealerProfile?.companyName
+      || `${l?.seller?.firstName || ''} ${l?.seller?.lastName || ''}`.trim()
+      || 'Private Seller',
+    images: l?.images ?? [],
+    isFeatured: false,
+    isNew: false,
+    description: l?.description ?? '',
+    features: Array.isArray(l?.features) ? l.features : [],
+  } as any;
 }
 
 export interface BidBroadcastPayload {

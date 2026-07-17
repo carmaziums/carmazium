@@ -12,8 +12,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CarListing, formatPrice } from '../../data/listings';
 import { getFeaturedListings, searchListings } from '../../lib/listingsApi';
-import { getActiveAuctions, getScheduledAuctions, AuctionDetail } from '../../lib/auctionApi';
-import { naturalLanguageSearch } from '../../lib/aiApi';
+import { getActiveAuctions, getScheduledAuctions, AuctionDetail, auctionToListingParam } from '../../lib/auctionApi';
+import { naturalLanguageSearch, AiSearchResult } from '../../lib/aiApi';
 import { useAuthStore } from '../../store/authStore';
 import { useWatchlistStore } from '../../store/watchlistStore';
 import { Logo } from '../../components/Logo';
@@ -46,39 +46,6 @@ function useCountdown(targetIso: string) {
     return () => clearInterval(id);
   }, [targetIso]);
   return str;
-}
-
-// ─── Helper to map auction → listing nav params ───────────────────────────────
-
-function auctionToListingParam(a: AuctionDetail): CarListing & { auctionId: string } {
-  const l = a.listing as any;
-  return {
-    id: l?.id ?? a.id,
-    auctionId: a.id,
-    make: l?.make ?? '',
-    model: l?.model ?? '',
-    variant: l?.variant ?? '',
-    year: l?.year ?? new Date().getFullYear(),
-    price: Number(l?.price ?? 0),
-    mileage: l?.mileage ?? 0,
-    fuelType: l?.fuelType ?? 'Petrol',
-    transmission: l?.transmission === 'MANUAL' ? 'Manual' : 'Automatic',
-    category: 'Saloon',
-    condition: 'Used',
-    colour: l?.colour ?? l?.color ?? '',
-    bhp: l?.bhp ?? 0,
-    zeroToSixty: l?.zeroToSixty ?? l?.zeroTo60Mph ?? 0,
-    topSpeed: l?.topSpeed ?? l?.topSpeedMph ?? 0,
-    location: l?.location ?? '',
-    dealer: l?.seller?.dealerProfile?.companyName
-      || `${l?.seller?.firstName || ''} ${l?.seller?.lastName || ''}`.trim()
-      || 'Private Seller',
-    images: l?.images ?? [],
-    isFeatured: false,
-    isNew: false,
-    description: l?.description ?? '',
-    features: Array.isArray(l?.features) ? l.features : [],
-  } as any;
 }
 
 // ─── Live Auction Card ────────────────────────────────────────────────────────
@@ -273,7 +240,7 @@ export const HomeScreen: React.FC = () => {
   // already calls.
   const [aiQuery, setAiQuery] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiResult, setAiResult] = useState<{ explanation: string; filters: Record<string, string> } | null>(null);
+  const [aiResult, setAiResult] = useState<AiSearchResult | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
@@ -320,7 +287,7 @@ export const HomeScreen: React.FC = () => {
 
   const viewAiResults = () => {
     if (!aiResult) return;
-    navigation.navigate('Search' as any, { aiFilters: aiResult.filters, aiExplanation: aiResult.explanation, _t: Date.now() });
+    navigation.navigate('Search' as any, { aiFilters: aiResult.filterCard?.params, aiExplanation: aiResult.text, _t: Date.now() });
     setAiResult(null);
     setAiQuery('');
   };
@@ -444,8 +411,8 @@ export const HomeScreen: React.FC = () => {
               <Ionicons name="sparkles" size={13} color={Colors.warning} />
               <Text style={s.aiResultLabel}>MAZIUM AI</Text>
             </View>
-            <Text style={s.aiResultText}>{aiResult.explanation}</Text>
-            {Object.keys(aiResult.filters ?? {}).length > 0 && (
+            <Text style={s.aiResultText}>{aiResult.text}</Text>
+            {Object.keys(aiResult.filterCard?.params ?? {}).length > 0 && (
               <TouchableOpacity style={s.aiResultBtn} onPress={viewAiResults} activeOpacity={0.85}>
                 <Text style={s.aiResultBtnText}>VIEW MATCHING CARS</Text>
                 <Ionicons name="arrow-forward" size={14} color={Colors.white} />

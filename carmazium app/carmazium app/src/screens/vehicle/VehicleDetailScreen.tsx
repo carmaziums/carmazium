@@ -206,8 +206,30 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     savedTranslateX.value = target;
   };
 
+  // Floor matches the pre-existing behavior; ceiling is new — the ± steppers
+  // previously had no upper bound at all, so repeatedly tapping "+" could
+  // push an offer arbitrarily above the asking price.
+  const OFFER_MIN = listing.price - 15000;
+  const OFFER_MAX = listing.price;
+  const clampOffer = (v: number) => Math.min(OFFER_MAX, Math.max(OFFER_MIN, v));
+
   const adjustOffer = (amount: number) => {
-    setOfferAmount((prev) => Math.max(listing.price - 15000, prev + amount));
+    setOfferAmount((prev) => clampOffer(prev + amount));
+  };
+
+  const [offerAmountDraft, setOfferAmountDraft] = useState(String(offerAmount));
+  useEffect(() => { setOfferAmountDraft(String(offerAmount)); }, [offerModalVisible]);
+
+  const handleOfferAmountChange = (text: string) => {
+    const digits = text.replace(/[^0-9]/g, '');
+    setOfferAmountDraft(digits);
+    if (digits) setOfferAmount(clampOffer(parseInt(digits, 10)));
+  };
+
+  const handleOfferAmountBlur = () => {
+    // Snap the visible text back to the clamped numeric value once the user
+    // finishes typing (e.g. a value that got clamped, or an empty field).
+    setOfferAmountDraft(String(offerAmount));
   };
 
   const handleSubmitOffer = async () => {
@@ -1345,9 +1367,20 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <View style={styles.adjusterRow}>
                 <IconButton style={styles.adjustBtn} icon={<Ionicons name="remove" size={20} color={Colors.white} />} onPress={() => adjustOffer(-500)} accessibilityLabel="Decrease offer by £500" />
 
-                <Text style={styles.offerAmountText}>
-                  {formatPrice(offerAmount)}
-                </Text>
+                <View style={styles.offerAmountInputWrap}>
+                  <Text style={styles.offerAmountCurrency}>£</Text>
+                  <TextInput
+                    style={styles.offerAmountInput}
+                    value={offerAmountDraft}
+                    onChangeText={handleOfferAmountChange}
+                    onBlur={handleOfferAmountBlur}
+                    keyboardType="number-pad"
+                    placeholder="0"
+                    placeholderTextColor={Colors.textSecondary}
+                    selectTextOnFocus
+                    accessibilityLabel="Your offer amount"
+                  />
+                </View>
 
                 <IconButton style={styles.adjustBtn} icon={<Ionicons name="add" size={20} color={Colors.white} />} onPress={() => adjustOffer(500)} accessibilityLabel="Increase offer by £500" />
               </View>
@@ -2386,6 +2419,25 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bold,
     fontSize: FontSize['2xl'],
     color: Colors.white,
+  },
+  offerAmountInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  offerAmountCurrency: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize['2xl'],
+    color: Colors.white,
+  },
+  offerAmountInput: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize['2xl'],
+    color: Colors.white,
+    minWidth: 90,
+    padding: 0,
+    textAlign: 'center',
   },
   submitOfferBtn: {
     height: 48,

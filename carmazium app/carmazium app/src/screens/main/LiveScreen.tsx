@@ -23,6 +23,7 @@ import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { getActiveAuctions, getScheduledAuctions, AuctionDetail } from '../../lib/auctionApi';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { useAuthStore } from '../../store/authStore';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
@@ -68,6 +69,7 @@ const FlipTimer: React.FC<{ seconds: number }> = ({ seconds }) => {
 export const LiveScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
+  const { user: currentUser } = useAuthStore();
 
   // Live states for dynamic API data
   const [liveAuctions, setLiveAuctions] = useState<AuctionListing[]>([]);
@@ -115,6 +117,7 @@ export const LiveScreen: React.FC = () => {
           location: a.listing.location || '',
           dealer: seller?.dealerProfile?.companyName || sellerName || 'Private Seller',
           rating: seller?.sellerProfile?.reliabilityScore || 0,
+          seller: seller?.id ? { id: seller.id } : undefined,
           images: a.listing.images && a.listing.images.length > 0 ? a.listing.images : ['https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=900&q=80'],
           isFeatured: true,
           isNew: false,
@@ -340,18 +343,27 @@ export const LiveScreen: React.FC = () => {
                 </View>
               </View>
 
-              {/* BID NOW Button */}
-              <TouchableOpacity
-                style={styles.bidNowBtn}
-                activeOpacity={0.8}
-                onPress={() =>
-                  navigation.navigate('LiveAuctionDetailed', { listing: auction })
-                }
-              >
-                <MaterialCommunityIcons name="gavel" size={16} color={Colors.white} style={styles.bidBtnIcon} />
-                <Text style={styles.bidNowBtnText}>BID NOW</Text>
-                <Ionicons name="arrow-forward" size={15} color={Colors.white} style={styles.bidBtnArrow} />
-              </TouchableOpacity>
+              {/* BID NOW Button — was unconditional on every card, including
+                  the viewer's own auction. Not actually exploitable (the
+                  real seller/dealer-only gate lives on AuctionDetailScreen
+                  and the backend), but misleading (mobile-production-
+                  readiness-plan.md F36). */}
+              {(() => {
+                const isOwnAuction = !!currentUser?.id && auction.seller?.id === currentUser.id;
+                return (
+                  <TouchableOpacity
+                    style={[styles.bidNowBtn, isOwnAuction && styles.bidNowBtnOwn]}
+                    activeOpacity={0.8}
+                    onPress={() =>
+                      navigation.navigate('LiveAuctionDetailed', { listing: auction })
+                    }
+                  >
+                    <MaterialCommunityIcons name={isOwnAuction ? 'eye-outline' : 'gavel'} size={16} color={Colors.white} style={styles.bidBtnIcon} />
+                    <Text style={styles.bidNowBtnText}>{isOwnAuction ? 'YOUR AUCTION' : 'BID NOW'}</Text>
+                    <Ionicons name="arrow-forward" size={15} color={Colors.white} style={styles.bidBtnArrow} />
+                  </TouchableOpacity>
+                );
+              })()}
             </View>
           );
         })}
@@ -813,6 +825,11 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 13,
     gap: 6,
+  },
+  bidNowBtnOwn: {
+    backgroundColor: Colors.bgTertiary,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha10,
   },
   bidBtnIcon: {
     marginRight: 2,

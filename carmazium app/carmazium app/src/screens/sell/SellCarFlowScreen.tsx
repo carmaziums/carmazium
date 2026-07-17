@@ -317,14 +317,19 @@ function Damage3DMapper({
             <View style={s.zoneChipRow}>
               {DAMAGE_ZONES_3D.filter(z => z.section === section).map(zone => {
                 const isMarked = markedLabels.includes(zone.label);
+                // Selected (currently being marked, form not yet confirmed)
+                // gets the same red treatment as marked — the pill previously
+                // gave zero feedback on tap, only turning red after the
+                // inline form was filled in and confirmed.
+                const isSelected = addingZone === zone.label;
                 return (
                   <TouchableOpacity
                     key={zone.id}
-                    style={[s.pill, isMarked && s.pillActive]}
+                    style={[s.pill, (isMarked || isSelected) && s.pillActive]}
                     onPress={() => setAddingZone(zone.label)}
                     activeOpacity={0.7}
                   >
-                    <Text style={[s.pillText, isMarked && s.pillTextActive]}>{zone.label}</Text>
+                    <Text style={[s.pillText, (isMarked || isSelected) && s.pillTextActive]}>{zone.label}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -732,9 +737,12 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     return () => { cancelled = true; };
   }, [editMode, editListingId]);
 
-  // Validation rules — returns null (valid) or an error string (invalid)
-  const fieldError = (key: string): string | null => {
-    if (!touched[key]) return null;
+  // Core per-field validation — returns null (valid) or an error string
+  // (invalid), regardless of touched state. Split out from fieldError() so
+  // touchAndCheck() (below) can check a field's real validity at the moment
+  // it force-touches it, instead of going through the touched-gated wrapper
+  // and reading the pre-update `touched` state from its own render closure.
+  const fieldErrorRaw = (key: string): string | null => {
     if (key === 'priceAsking') {
       const v = parseFloat(priceAsking.replace(/[^0-9.]/g, ''));
       if (!priceAsking.trim() || isNaN(v) || v <= 0) return 'Enter a valid asking price (e.g. 12500)';
@@ -768,6 +776,15 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     if (key === 'startingBid' && (!startingBid.trim() || parseFloat(startingBid) <= 0)) return 'Enter a valid starting bid';
     if (key === 'minIncrement' && (!minIncrement.trim() || parseFloat(minIncrement) <= 0)) return 'Enter a valid minimum increment';
     return null;
+  };
+
+  // Touched-gated wrapper — used everywhere the UI should only show an error
+  // after the user has actually interacted with that specific field (inline
+  // error text, border color). Do NOT use this inside touchAndCheck(); see
+  // fieldErrorRaw's comment above.
+  const fieldError = (key: string): string | null => {
+    if (!touched[key]) return null;
+    return fieldErrorRaw(key);
   };
 
   // All field keys validated per step — used to force every field's error to show
@@ -955,7 +972,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       for (const k of keys) next[k] = true;
       return next;
     });
-    return keys.some(k => fieldError(k) != null);
+    // fieldErrorRaw, not fieldError — the setTouched above hasn't landed yet
+    // in this render, so fieldError's own `touched` guard would still see
+    // the pre-update state and silently report "no error" for any field the
+    // user hadn't already individually focused+blurred.
+    return keys.some(k => fieldErrorRaw(k) != null);
   }
 
   function validateStep(s: Step): boolean {
@@ -1004,8 +1025,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           primary: Colors.accent,
           background: Colors.bgSecondaryAlt,
           componentBackground: Colors.deepBlue_18181f,
-          componentBorder: Colors.whiteAlpha08,
-          componentDivider: Colors.whiteAlpha06,
+          componentBorder: Colors.whiteAlpha08Hex,
+          componentDivider: Colors.whiteAlpha06Hex,
           primaryText: Colors.white,
           secondaryText: Colors.textSecondary,
           componentText: Colors.white,
@@ -1040,8 +1061,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           primary: Colors.accent,
           background: Colors.bgSecondaryAlt,
           componentBackground: Colors.deepBlue_18181f,
-          componentBorder: Colors.whiteAlpha08,
-          componentDivider: Colors.whiteAlpha06,
+          componentBorder: Colors.whiteAlpha08Hex,
+          componentDivider: Colors.whiteAlpha06Hex,
           primaryText: Colors.white,
           secondaryText: Colors.textSecondary,
           componentText: Colors.white,
@@ -2203,6 +2224,20 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 </TouchableOpacity>
               ))}
             </ScrollView>
+            {/* Custom text — shares the same bannerLabel field as the presets
+                above (mutually exclusive by construction, matching web's
+                ListingWizard.tsx): typing here overwrites whatever preset was
+                selected, and the input shows blank whenever the current value
+                is one of the presets rather than custom text. */}
+            <TextInput
+              style={[s.input, { marginTop: 10 }]}
+              value={BANNER_LABELS.includes(bannerLabel) ? '' : bannerLabel}
+              onChangeText={setBannerLabel}
+              placeholder="Or type your own label…"
+              placeholderTextColor={Colors.borderMuted}
+              maxLength={40}
+              autoCorrect={false}
+            />
           </View>
         </SectionBox>
 

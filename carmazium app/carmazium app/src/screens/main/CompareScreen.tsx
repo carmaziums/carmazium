@@ -126,10 +126,14 @@ export const CompareScreen: React.FC = () => {
         ? [initialListing, ...fetched]
         : fetched;
       setListings(merged);
-      const defaultIds = initialListing
-        ? [initialListing.id, ...merged.filter(l => l.id !== initialListing.id).slice(0, 1).map(l => l.id)]
-        : merged.slice(0, 2).map((l) => l.id);
-      setSelectedCarIds(defaultIds);
+      // Only pre-fill the slot for whatever listing the user arrived from
+      // (e.g. tapping "Compare" on a listing detail screen) — every other
+      // slot starts empty for the user to search/add via the picker below,
+      // matching web's src/app/compare/page.tsx ([null, null, null] by
+      // default, single-slot pre-fill only via a `slug` query param).
+      // Previously this always filled 2 slots regardless of how the screen
+      // was reached (mobile-production-readiness-plan.md F37).
+      setSelectedCarIds(initialListing ? [initialListing.id] : []);
       setLoadingListings(false);
     })();
     return () => { isMounted = false; };

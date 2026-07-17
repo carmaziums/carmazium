@@ -24,6 +24,7 @@ import {
   notifStyle,
   notifTimeAgo,
 } from '../../lib/notificationsApi';
+import { getAuction, auctionToListingParam } from '../../lib/auctionApi';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuthStore } from '../../store/authStore';
@@ -96,7 +97,7 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
   // ── actions ──────────────────────────────────────────────────────────────────
 
   const handleTap = useCallback(
-    (n: AppNotification) => {
+    async (n: AppNotification) => {
       if (!n.isRead) {
         // Optimistic update — mark locally immediately
         setNotifications((prev) =>
@@ -105,11 +106,27 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
         markNotificationRead(n.id).catch(() => {});
       }
 
-      // Deep-link to the relevant screen based on notification type.
-      // Types not listed here are terminal info notifications with no actionable
-      // destination (AUCTION_ENDING — auction may already be over) or require a
-      // network fetch to reconstruct navigation params (AUCTION_WON, AUCTION_ENDED
-      // — LiveAuctionDetailed needs a full CarListing object we don't have locally).
+      // Deep-link to the relevant screen. Priority mirrors web's
+      // NotificationBell.tsx: entityType/entityId first (works for any
+      // AUCTION_* type uniformly — WON, ENDED, ENDING all carry the same
+      // fields), then type-specific data (chat room id), then a plain
+      // type-string fallback for everything else.
+      if (n.entityType === 'AUCTION' && n.entityId) {
+        try {
+          const auction = await getAuction(n.entityId);
+          navigation?.navigate('LiveAuctionDetailed', { listing: auctionToListingParam(auction) });
+        } catch {
+          // Auction may be gone/inaccessible by tap time — fail silently
+          // rather than block on an error the user can't act on.
+        }
+        return;
+      }
+
+      if (n.type === 'MESSAGE_RECEIVED' && n.data?.roomId) {
+        navigation?.navigate('ChatScreen', { threadId: n.data.roomId });
+        return;
+      }
+
       switch (n.type) {
         case 'OUTBID':
         case 'BID_PLACED':
@@ -117,7 +134,7 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
           break;
 
         case 'OFFER_RECEIVED':
-        case 'COUNTER_RECEIVED':
+        case 'OFFER_COUNTERED':
           if (role === 'seller' || role === 'dealer') {
             navigation?.navigate('SellerOffers');
           } else {
@@ -127,16 +144,19 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
 
         case 'OFFER_ACCEPTED':
         case 'OFFER_REJECTED':
+        case 'OFFER_WITHDRAWN':
           navigation?.navigate('BuyerOffers');
+          break;
+
+        case 'DEAL_CLOSED':
+          navigation?.navigate('SellerOffers');
           break;
 
         case 'PAYOUT_FAILED':
           navigation?.navigate('Settings');
           break;
 
-        // AUCTION_WON, AUCTION_ENDED: can't navigate to LiveAuctionDetailed without
-        // fetching the full listing. AUCTION_ENDING: auction may be over by tap time.
-        // All other types: informational only.
+        // All other types: informational only, no actionable destination.
         default:
           break;
       }

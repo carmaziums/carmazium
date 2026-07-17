@@ -251,8 +251,11 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     setHandoverError(prev => ({ ...prev, [auctionId]: null }));
     try {
       const jpegUri = await convertAndCompress(result.assets[0].uri);
+      // Bucket is 'listings' (the only bucket this exists in) with a
+      // 'handover/' path prefix — 'handover' is not itself a bucket name.
+      // Matches web's src/app/dashboard/seller/auctions/page.tsx.
       const proofUrl = await uploadToStorage(
-        jpegUri, 'handover', `${userId}/${auctionId}-${Date.now()}.jpg`, 'image/jpeg',
+        jpegUri, 'listings', `handover/${userId}/${auctionId}-${Date.now()}.jpg`, 'image/jpeg',
       );
       await submitHandoverProof(auctionId, proofUrl);
       haptics.success();
@@ -433,7 +436,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               primary: Colors.accent,
               background: Colors.bgSecondaryAlt,
               componentBackground: Colors.deepBlue_18181f,
-              componentBorder: Colors.whiteAlpha08,
+              componentBorder: Colors.whiteAlpha08Hex,
               primaryText: Colors.white,
               secondaryText: Colors.textSecondary,
               componentText: Colors.white,

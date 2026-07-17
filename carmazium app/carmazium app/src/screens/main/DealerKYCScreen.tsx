@@ -271,8 +271,12 @@ export const DealerKYCScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
 
       const ext = mimeType === 'application/pdf' ? 'pdf' : 'jpg';
       const path = `kyc/${userId}/${fieldName}-${Date.now()}.${ext}`;
-      // NOTE: using public URL pattern — kyc-documents bucket must have public access enabled in Supabase dashboard
-      const url = await uploadToStorage(localUri, 'kyc-documents', path, mimeType);
+      // Bucket is 'listings' (the only bucket this exists in) with a 'kyc/'
+      // path prefix, matching web's KycOverlayForm.tsx
+      // (uploadImage(file, "listings", "kyc")) — 'kyc-documents' was never
+      // a real bucket, same class of bug as the handover-proof upload
+      // (mobile-production-readiness-plan.md F32).
+      const url = await uploadToStorage(localUri, 'listings', path, mimeType);
       setDocUrls((prev) => ({ ...prev, [fieldName]: url }));
       haptics.medium();
     } catch (err: any) {

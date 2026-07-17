@@ -238,7 +238,8 @@ export const SearchScreen: React.FC = () => {
     if (!p?._t) return;
     let hasNew = false;
     // AI filters from HomeScreen's inline search ("View matching cars") —
-    // same mapping this screen's own AI Search modal already applies.
+    // same mapping this screen's own AI Search modal already applies (keys
+    // per ai.service.ts's SEARCH_SYSTEM_PROMPT).
     if (p.aiFilters) {
       const f = p.aiFilters;
       if (f.make) { setSelectedMakes([f.make]); hasNew = true; }
@@ -249,13 +250,10 @@ export const SearchScreen: React.FC = () => {
       if (f.minYear) { setMinYear(f.minYear); hasNew = true; }
       if (f.maxYear) { setMaxYear(f.maxYear); hasNew = true; }
       if (f.transmission) { setTransmissions([f.transmission]); hasNew = true; }
-      if (f.listingType) { setListingType(f.listingType as any); hasNew = true; }
-      if (f.sellerType) { setSellerType(f.sellerType as any); hasNew = true; }
-      if (f.vehicleType) { setVehicleType(f.vehicleType as any); hasNew = true; }
-      if (f.location) { setLocationFilter(f.location); hasNew = true; }
       if (f.model) { setModelFilter(f.model); hasNew = true; }
-      if (f.ulezCompliant === 'true') { setUlezCompliant(true); hasNew = true; }
-      if (f.deliveryAvailable === 'true') { setDeliveryAvailable(true); hasNew = true; }
+      if (f.color) { setColorFilter(f.color); hasNew = true; }
+      if (f.minDoors) { setMinDoors(f.minDoors); hasNew = true; }
+      if (f.minSeats) { setMinSeats(f.minSeats); hasNew = true; }
       if (p.aiExplanation) setAiExplanation(p.aiExplanation);
     }
     if (p.fuelType !== undefined) { setSelectedFuels([p.fuelType]); hasNew = true; }
@@ -483,8 +481,13 @@ export const SearchScreen: React.FC = () => {
     setAiLoading(true);
     try {
       const result = await naturalLanguageSearch(aiQuery.trim());
-      const f = result.filters ?? {};
-      // Apply whatever filter params the AI returned
+      const f = result.filterCard?.params ?? {};
+      // Apply whatever filter params the AI returned. Keys must match
+      // ai.service.ts's SEARCH_SYSTEM_PROMPT exactly (make, model, bodyType,
+      // fuelType, transmission, color, min/maxPrice, min/maxYear,
+      // min/maxMileage, minDoors, minSeats) — listingType/sellerType/
+      // vehicleType/location/ulezCompliant/deliveryAvailable are NOT
+      // extracted by the AI and were dead branches here.
       if (f.make) setSelectedMakes([f.make]);
       if (f.fuelType) setSelectedFuels([f.fuelType]);
       if (f.bodyType) setSelectedBody(f.bodyType);
@@ -493,15 +496,12 @@ export const SearchScreen: React.FC = () => {
       if (f.minYear)  setMinYear(f.minYear);
       if (f.maxYear)  setMaxYear(f.maxYear);
       if (f.transmission) setTransmissions([f.transmission]);
-      if (f.listingType)  setListingType(f.listingType as any);
-      if (f.sellerType)   setSellerType(f.sellerType as any);
-      if (f.vehicleType)  setVehicleType(f.vehicleType as any);
-      if (f.location)     setLocationFilter(f.location);
       if (f.model)        setModelFilter(f.model);
-      if (f.ulezCompliant === 'true') setUlezCompliant(true);
-      if (f.deliveryAvailable === 'true') setDeliveryAvailable(true);
+      if (f.color)        setColorFilter(f.color);
+      if (f.minDoors)     setMinDoors(f.minDoors);
+      if (f.minSeats)     setMinSeats(f.minSeats);
       setQuickFilter('custom');
-      setAiExplanation(result.explanation ?? null);
+      setAiExplanation(result.text ?? null);
       setAiModalVisible(false);
       setAiQuery('');
     } catch (err: any) {

@@ -24,8 +24,8 @@ export async function sendAiChatMessage(messages: AiChatMessage[]): Promise<AiCh
 }
 
 export interface AiSearchResult {
-  filters: Record<string, string>;
-  explanation: string;
+  text: string;
+  filterCard?: AiFilterCard | null;
 }
 
 export async function naturalLanguageSearch(query: string): Promise<AiSearchResult> {

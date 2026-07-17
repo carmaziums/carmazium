@@ -103,7 +103,7 @@ const Tile: React.FC<TileProps> = ({ label, icon, iconLib = 'ion', accentColor, 
 
 export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { user, role, logout } = useAuthStore();
+  const { user, role, accountRole, logout } = useAuthStore();
   const [data, setData] = useState<UnifiedDashboardData>(EMPTY);
   const [loading, setLoading] = useState(true);
 
@@ -125,6 +125,13 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
   const initials = getInitials(user?.firstName ?? null, user?.lastName ?? null, email);
   const isDealer = role === 'dealer';
   const isSeller = role === 'seller' || isDealer;
+  // Real account status, independent of the "preview as buyer" toggle
+  // (DealerProfileScreen's "VIEW MY PROFILE" flips `role` to 'buyer' without
+  // changing what the account actually is) — used only where routing
+  // depends on the real account, not the buyer/seller/dealer preview
+  // currently being shown (mobile-production-readiness-plan.md F38).
+  const isDealerAccount = accountRole === 'dealer';
+  const isSellerAccount = accountRole === 'seller' || isDealerAccount;
 
   const handleSignOut = () => {
     Alert.alert('Sign out', 'Are you sure you want to sign out?', [
@@ -216,8 +223,12 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
             label="Inventory"
             icon="car-outline"
             accentColor={Colors.success}
-            sublabel={isSeller ? `${seller.activeListings} active` : 'Sell a car'}
-            onPress={() => isSeller ? nav('SellerListings') : nav('SellCarFlow')}
+            sublabel={isSellerAccount ? `${seller.activeListings} active` : 'Sell a car'}
+            onPress={() =>
+              isDealerAccount ? nav('DealerInventory')
+              : isSellerAccount ? nav('SellerListings')
+              : nav('SellCarFlow')
+            }
           />
           <Tile
             label="Auctions"

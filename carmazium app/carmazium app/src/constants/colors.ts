@@ -14,6 +14,13 @@ export const Colors = {
   whiteAlpha07: 'rgba(255, 255, 255, 0.07)',
   whiteAlpha08: 'rgba(255, 255, 255, 0.08)',
   whiteAlpha09: 'rgba(255, 255, 255, 0.09)',
+  // Stripe's native Payment Sheet `appearance.colors.*` requires hex
+  // (#RRGGBB/#RRGGBBAA), not rgba() strings — passing whiteAlpha06/08 there
+  // throws "Expected hex string of length 6 or 8" at runtime (TS's `string`
+  // typing on those fields doesn't catch it). Same visual value as
+  // whiteAlpha08/06, hex-encoded for that one consumer.
+  whiteAlpha08Hex: '#FFFFFF14',
+  whiteAlpha06Hex: '#FFFFFF0F',
   accentAlpha10: 'rgba(220, 31, 38, 0.10)',
   accentAlpha14: 'rgba(220, 31, 38, 0.14)',
 
