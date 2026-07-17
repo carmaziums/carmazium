@@ -51,7 +51,13 @@ export async function convertAndCompress(uri: string): Promise<string> {
  * Returns the public URL of the uploaded file.
  *
  * @param localUri   - file:// URI from ImagePicker or ImageManipulator
- * @param bucket     - Supabase Storage bucket name (e.g. 'listings', 'kyc-documents')
+ * @param bucket     - Supabase Storage bucket name. 'listings' is the only
+ *                     bucket that actually exists — confirmed via backend +
+ *                     web grep while fixing mobile-production-readiness-
+ *                     plan.md F32, which found 'handover' and 'kyc-documents'
+ *                     both being passed here as if they were real buckets.
+ *                     Use a path prefix inside 'listings' instead (e.g.
+ *                     'handover/...', 'kyc/...').
  * @param path       - destination path within bucket (e.g. 'userId/category/filename.jpg')
  * @param contentType - MIME type (default: 'image/jpeg')
  */
