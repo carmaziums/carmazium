@@ -24,6 +24,8 @@ import { createPaymentSheet } from '../../lib/paymentsApi';
 import { ThreeDVehicleViewer } from '../../components/damage/ThreeDVehicleViewer';
 import { DAMAGE_ZONES_3D, DAMAGE_ZONE_SECTIONS } from '../../components/damage/damageZones';
 import { getRawListingById } from '../../lib/listingsApi';
+import { CAR_MAKES, getModelsForMake } from '../../data/carData';
+import { BottomSheet } from '../../components/BottomSheet';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -184,6 +186,89 @@ function FieldInput({
         autoCorrect={false}
       />
       {error ? <Text style={s.inlineError}>{error}</Text> : null}
+    </View>
+  );
+}
+
+// Searchable select-or-type field — used for Make/Model (mobile-production-
+// readiness-plan.md F26). Web's equivalent is an HTML <select> with an
+// "__other__" sentinel that reveals a free-text input; this adapts the same
+// pick-from-list-or-type-your-own idea to a touch UI: a BottomSheet with a
+// search box, a filtered list of known options, and an always-available
+// "Use '<query>'" row so a value that isn't in the list (or an empty
+// options list entirely, e.g. Model before Make is set to something with no
+// known models) can still be entered directly.
+function PickerField({
+  label, value, onChange, options, placeholder, required, hint, error, disabled,
+}: {
+  label: string; value: string; onChange: (v: string) => void;
+  options: string[]; placeholder?: string; required?: boolean;
+  hint?: string; error?: string; disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+
+  const filtered = query.trim()
+    ? options.filter(o => o.toLowerCase().includes(query.trim().toLowerCase()))
+    : options;
+  const exactMatch = options.some(o => o.toLowerCase() === query.trim().toLowerCase());
+
+  const openSheet = () => {
+    if (disabled) return;
+    setQuery('');
+    setOpen(true);
+  };
+
+  const select = (v: string) => {
+    onChange(v);
+    setOpen(false);
+  };
+
+  return (
+    <View style={{ marginBottom: 16 }}>
+      <SL label={label} required={required} />
+      {hint ? <Text style={s.fieldHint}>{hint}</Text> : null}
+      <TouchableOpacity
+        style={[s.input, s.pickerFieldInput, error ? { borderColor: Colors.error } : null, disabled && { opacity: 0.5 }]}
+        onPress={openSheet}
+        activeOpacity={0.7}
+        disabled={disabled}
+      >
+        <Text style={value ? s.pickerFieldValue : s.pickerFieldPlaceholder} numberOfLines={1}>
+          {value || placeholder}
+        </Text>
+        <Ionicons name="chevron-down" size={16} color={Colors.textSecondary} />
+      </TouchableOpacity>
+      {error ? <Text style={s.inlineError}>{error}</Text> : null}
+
+      <BottomSheet visible={open} onClose={() => setOpen(false)} title={label.replace(' *', '')} avoidKeyboard>
+        <TextInput
+          style={s.pickerSearchInput}
+          value={query}
+          onChangeText={setQuery}
+          placeholder={options.length ? 'Search or type your own…' : 'Type it in…'}
+          placeholderTextColor={Colors.borderMuted}
+          autoCorrect={false}
+          autoFocus
+        />
+        <ScrollView style={{ maxHeight: 320 }} keyboardShouldPersistTaps="handled">
+          {!!query.trim() && !exactMatch && (
+            <TouchableOpacity style={s.pickerOptionRow} onPress={() => select(query.trim())} activeOpacity={0.7}>
+              <Ionicons name="add-circle-outline" size={16} color={Colors.accent} />
+              <Text style={[s.pickerOptionText, { color: Colors.accent }]}>Use "{query.trim()}"</Text>
+            </TouchableOpacity>
+          )}
+          {filtered.map(opt => (
+            <TouchableOpacity key={opt} style={s.pickerOptionRow} onPress={() => select(opt)} activeOpacity={0.7}>
+              <Text style={s.pickerOptionText}>{opt}</Text>
+              {value === opt && <Ionicons name="checkmark" size={16} color={Colors.accent} />}
+            </TouchableOpacity>
+          ))}
+          {!filtered.length && !query.trim() && (
+            <Text style={s.pickerEmptyText}>No preset list for this — type your own above.</Text>
+          )}
+        </ScrollView>
+      </BottomSheet>
     </View>
   );
 }
@@ -1541,22 +1626,31 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         <SectionBox title="Make / Model / Year">
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <View style={{ flex: 1 }}>
-              <FieldInput
+              <PickerField
                 label="MAKE *"
                 value={make}
-                onChange={v => { setMake(v); if (touched.make) setTouched(prev => ({ ...prev, make: true })); }}
+                options={CAR_MAKES}
+                onChange={v => {
+                  setMake(v);
+                  if (touched.make) setTouched(prev => ({ ...prev, make: true }));
+                  // Model list depends on Make — a model picked under the
+                  // previous make may not even exist for the new one.
+                  if (model) setModel('');
+                }}
                 placeholder="e.g. BMW"
                 required
                 error={fieldError('make') ?? undefined}
               />
             </View>
             <View style={{ flex: 1 }}>
-              <FieldInput
+              <PickerField
                 label="MODEL *"
                 value={model}
+                options={getModelsForMake(make)}
                 onChange={v => { setModel(v); if (touched.model) setTouched(prev => ({ ...prev, model: true })); }}
                 placeholder="e.g. M4"
                 required
+                hint={!make.trim() ? 'Pick a Make first for a model list' : undefined}
                 error={fieldError('model') ?? undefined}
               />
             </View>
@@ -2814,6 +2908,15 @@ const s = StyleSheet.create({
   // Input
   input: { backgroundColor: Colors.deepBlue_1a1a22, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha08, paddingHorizontal: 14, paddingVertical: 12, fontFamily: FontFamily.medium, fontSize: FontSize.size14, color: Colors.white, marginBottom: 0 },
   inlineError: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.error, marginTop: 4 },
+
+  // PickerField (Make/Model search-or-type sheet — F26)
+  pickerFieldInput: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  pickerFieldValue: { fontFamily: FontFamily.medium, fontSize: FontSize.size14, color: Colors.white, flex: 1 },
+  pickerFieldPlaceholder: { fontFamily: FontFamily.medium, fontSize: FontSize.size14, color: Colors.borderMuted, flex: 1 },
+  pickerSearchInput: { backgroundColor: Colors.deepBlue_1a1a22, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha08, paddingHorizontal: 14, paddingVertical: 12, fontFamily: FontFamily.medium, fontSize: FontSize.size14, color: Colors.white, marginBottom: 10 },
+  pickerOptionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: Colors.whiteAlpha06 },
+  pickerOptionText: { fontFamily: FontFamily.medium, fontSize: FontSize.size14, color: Colors.white, flex: 1 },
+  pickerEmptyText: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary, textAlign: 'center', paddingVertical: 20 },
 
   // DVLA
   vrmRow: { flexDirection: 'row', gap: 8, alignItems: 'stretch' },
