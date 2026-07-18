@@ -2,7 +2,7 @@ import Link from "next/link"
 import { ShieldCheck, Scale, AlertTriangle, FileText, CheckCircle, Info } from "lucide-react"
 
 export const metadata = {
-    title: 'Terms & Conditions - CarMazium',
+    title: 'Terms & Conditions',
     description: 'Terms and Conditions for using the CarMazium platform.',
 }
 

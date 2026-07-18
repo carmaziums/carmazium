@@ -9,7 +9,7 @@ import { PRICING } from "@/lib/pricingConfig"
 import { DealerCtaButton } from "@/components/features/DealerCtaButton"
 
 export const metadata: Metadata = {
-    title: "Pricing — CarMazium",
+    title: "Pricing",
     description: "Transparent pricing for listing your car, HPI vehicle checks, and featured boosts. List for free or upgrade to reach more buyers faster.",
 }
 

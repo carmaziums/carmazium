@@ -146,10 +146,10 @@ async function getSellerReviews(sellerProfileId: string): Promise<{ data: Review
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
     const { id } = await params
     const seller = await getSellerProfile(id)
-    if (!seller) return { title: "Seller Not Found | Carmazium" }
+    if (!seller) return { title: "Seller Not Found" }
     const name = [seller.user.firstName, seller.user.lastName].filter(Boolean).join(" ") || "Seller"
     return {
-        title: `${name} — Seller Profile | Carmazium`,
+        title: `${name} — Seller Profile`,
         description: `View ${name}'s listings, reliability score of ${seller.profile.reliabilityScore.toFixed(1)}/5, and ${seller.reviewCount} reviews on Carmazium.`,
     }
 }

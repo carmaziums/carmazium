@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-    title: "Pricing — CarMazium",
+    title: "Pricing",
 }
 
 export default function PricingLayout({ children }: { children: React.ReactNode }) {

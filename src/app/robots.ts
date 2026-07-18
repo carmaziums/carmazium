@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
             {
                 userAgent: "*",
                 allow: "/",
-                disallow: ["/dashboard", "/profile", "/auth"],
+                disallow: ["/dashboard", "/profile", "/auth", "/checkout"],
             },
         ],
         sitemap: `${process.env.NEXT_PUBLIC_APP_URL || "https://carmazium.com"}/sitemap.xml`,

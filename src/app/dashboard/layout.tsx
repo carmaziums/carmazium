@@ -1,5 +1,11 @@
 import { Suspense } from "react"
+import type { Metadata } from "next"
 import { ProfileCompletionGate } from "@/components/dashboard/ProfileCompletionGate"
+
+// Everything under /dashboard is behind auth and role-gated — never indexable.
+export const metadata: Metadata = {
+    robots: { index: false, follow: false },
+}
 
 export default function DashboardLayout({
     children,
