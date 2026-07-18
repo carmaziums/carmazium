@@ -501,7 +501,7 @@ function VehicleDetailsContent({ params }: { params: Promise<{ slug: string }> }
                 name={listing.title}
                 description={`${listing.year} ${listing.make} ${listing.model} — ${formatPrice(listing.price)}. ${listing.mileage?.toLocaleString() || 0} miles, ${listing.fuelType || 'N/A'}, ${listing.transmission || 'N/A'}.`}
                 image={validImages[0]}
-                url={`https://carmazium.co.uk/buy-cars/${listing.slug}`}
+                url={`${process.env.NEXT_PUBLIC_APP_URL || "https://carmazium.com"}/buy-cars/${listing.slug}`}
                 make={listing.make || 'Unknown'}
                 model={listing.model || 'Unknown'}
                 year={listing.year ?? 0}

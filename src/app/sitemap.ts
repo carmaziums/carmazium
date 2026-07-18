@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next"
 
-const BASE_URL = "https://carmazium.co.uk"
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://carmazium.com"
 
 /** Static routes that should appear in the sitemap */
 const STATIC_ROUTES = [

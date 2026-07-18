@@ -13,6 +13,7 @@ import { ChatProvider } from "@/context/ChatContext";
 import { CompareProvider } from "@/context/CompareContext";
 import { LocationProvider } from "@/context/LocationContext";
 import { PageViewTracker } from "@/components/analytics/PageViewTracker";
+import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
 
 const poppins = Poppins({
   variable: "--font-poppins",
@@ -31,7 +32,7 @@ const montserrat = Montserrat({
 const inter = Inter({ subsets: ["latin"], display: "swap" })
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://carmazium.co.uk"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://carmazium.com"),
   title: {
     default: "CarMazium — Buy & Sell Cars in London",
     template: "%s | CarMazium",
@@ -55,7 +56,7 @@ export const metadata: Metadata = {
     title: "CarMazium — Buy & Sell Cars in London",
     description:
       "London's trusted car marketplace. Browse verified vehicles, sell for free, transparent pricing.",
-    url: "https://carmazium.co.uk",
+    url: process.env.NEXT_PUBLIC_APP_URL || "https://carmazium.com",
   },
   twitter: {
     card: "summary_large_image",
@@ -66,6 +67,9 @@ export const metadata: Metadata = {
   robots: {
     index: true,
     follow: true,
+  },
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
   },
   other: {
     "geo.region": "GB-LND",
@@ -85,6 +89,7 @@ export default function RootLayout({
         className={`${inter.className} selection:bg-red-500/30 selection:text-red-200`}
       >
         <AutoDealerJsonLd />
+        <GoogleAnalytics />
         <ThemeProvider>
           <AuthProvider>
             <ChatProvider>

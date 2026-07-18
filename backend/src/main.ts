@@ -35,6 +35,8 @@ async function bootstrap() {
     'https://carmazium.vercel.app',
     'https://carmazium.fly.dev',
     'https://carmazium-hjoh9w.fly.dev',
+    'https://carmazium.com',
+    'https://www.carmazium.com',
   ];
   const extraOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)

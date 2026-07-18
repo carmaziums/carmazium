@@ -14,7 +14,7 @@ interface AutoDealerJsonLdProps {
  */
 export function AutoDealerJsonLd({
     name = "CarMazium",
-    url = "https://carmazium.co.uk",
+    url = process.env.NEXT_PUBLIC_APP_URL || "https://carmazium.com",
     city = "London",
 }: AutoDealerJsonLdProps = {}) {
     const schema = {
@@ -101,7 +101,7 @@ export function VehicleJsonLd({
             seller: {
                 "@type": "AutoDealer",
                 name: "CarMazium",
-                url: "https://carmazium.co.uk",
+                url: process.env.NEXT_PUBLIC_APP_URL || "https://carmazium.com",
             },
         },
     }

@@ -47,7 +47,7 @@ export function Footer() {
                         <h3 className="text-xl font-bold font-heading uppercase tracking-wide">Contact Us</h3>
                         <ul className="space-y-3 text-gray-400">
                             <li className="flex items-center gap-3 hover:text-primary transition-colors">
-                                <Mail size={18} className="text-primary shrink-0" /> support@carmazium.co.uk
+                                <Mail size={18} className="text-primary shrink-0" /> support@carmazium.com
                             </li>
                             <li className="flex items-center gap-3 hover:text-primary transition-colors">
                                 <Phone size={18} className="text-primary shrink-0" /> +44 2034 757619

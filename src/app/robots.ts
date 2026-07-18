@@ -9,6 +9,6 @@ export default function robots(): MetadataRoute.Robots {
                 disallow: ["/dashboard", "/profile", "/auth"],
             },
         ],
-        sitemap: "https://carmazium.co.uk/sitemap.xml",
+        sitemap: `${process.env.NEXT_PUBLIC_APP_URL || "https://carmazium.com"}/sitemap.xml`,
     }
 }

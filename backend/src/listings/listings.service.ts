@@ -150,7 +150,7 @@ export class ListingsService {
         try {
             const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location)}&countrycodes=gb&format=json&limit=1`;
             const res = await fetch(url, {
-                headers: { 'User-Agent': 'Carmazium/1.0 (contact@carmazium.co.uk)' },
+                headers: { 'User-Agent': 'Carmazium/1.0 (contact@carmazium.com)' },
                 signal: AbortSignal.timeout(5000),
             });
             const data = await res.json();
