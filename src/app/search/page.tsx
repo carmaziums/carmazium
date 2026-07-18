@@ -87,6 +87,8 @@ const CURRENT_YEAR = new Date().getFullYear()
 
 const DISTANCE_CHIPS = [10, 25, 50, 100, 200] as const
 
+const PAGE_SIZE = 10
+
 // ─── Filter State ─────────────────────────────────────────────────────────────
 
 interface FilterState {
@@ -204,10 +206,11 @@ function SearchPageContent() {
     const [detectingLocation, setDetectingLocation] = React.useState(false)
     const [listings, setListings] = React.useState<Listing[]>([])
     const [loading, setLoading] = React.useState(true)
-    const [loadingMore, setLoadingMore] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
     const [totalCount, setTotalCount] = React.useState(0)
     const [currentPage, setCurrentPage] = React.useState(1)
+    const [totalPages, setTotalPages] = React.useState(1)
+    const resultsTopRef = React.useRef<HTMLDivElement>(null)
     const [featuredListings, setFeaturedListings] = React.useState<Listing[]>([])
 
     // Fetch featured listings once on mount
@@ -258,10 +261,10 @@ function SearchPageContent() {
     const didInitialHydrate = React.useRef(false)
 
     // Ref holding latest state for the unmount-save without re-subscribing effects
-    const searchCacheRef = React.useRef({ listings, totalCount, currentPage, filters: appliedFilters })
+    const searchCacheRef = React.useRef({ listings, totalCount, currentPage, totalPages, filters: appliedFilters })
     React.useEffect(() => {
-        searchCacheRef.current = { listings, totalCount, currentPage, filters: appliedFilters }
-    }, [listings, totalCount, currentPage, appliedFilters])
+        searchCacheRef.current = { listings, totalCount, currentPage, totalPages, filters: appliedFilters }
+    }, [listings, totalCount, currentPage, totalPages, appliedFilters])
 
     // Save state to sessionStorage on unmount (navigation away from search page)
     React.useEffect(() => {
@@ -335,7 +338,7 @@ function SearchPageContent() {
 
     // Build API filters from state
     const buildApiFilters = React.useCallback((state: FilterState): ListingFilters => {
-        const f: ListingFilters = { limit: 16 }
+        const f: ListingFilters = { limit: PAGE_SIZE }
         if (state.search) f.search = state.search
         if (state.make) f.make = state.make
         if (state.model) f.model = state.model
@@ -374,10 +377,9 @@ function SearchPageContent() {
     }, [])
 
     // Fetch listings
-    const fetchListings = React.useCallback(async (filterState: FilterState, page = 1, append = false) => {
+    const fetchListings = React.useCallback(async (filterState: FilterState, page = 1) => {
         try {
-            if (append) setLoadingMore(true)
-            else { setLoading(true); setCurrentPage(1) }
+            setLoading(true)
             setError(null)
             const apiFilters = buildApiFilters(filterState)
             apiFilters.page = page
@@ -395,19 +397,15 @@ function SearchPageContent() {
                     return dA - dB
                 })
             }
-            if (append) {
-                setListings(prev => [...prev, ...filtered])
-            } else {
-                setListings(filtered)
-            }
+            setListings(filtered)
             setTotalCount(response.pagination.total)
+            setTotalPages(response.pagination.totalPages)
             setCurrentPage(page)
         } catch (err) {
             console.error('Failed to fetch listings:', err)
             setError(err instanceof Error ? err.message : 'Failed to load listings')
         } finally {
             setLoading(false)
-            setLoadingMore(false)
         }
     }, [buildApiFilters])
 
@@ -425,6 +423,7 @@ function SearchPageContent() {
                         setListings(cache.listings)
                         setTotalCount(cache.totalCount)
                         setCurrentPage(cache.currentPage)
+                        setTotalPages(cache.totalPages ?? (Math.ceil(cache.totalCount / PAGE_SIZE) || 1))
                         setAppliedFilters(cache.filters)
                         setFilters(cache.filters)
                         setLoading(false)
@@ -494,6 +493,11 @@ function SearchPageContent() {
         setFilters(prev => ({ ...prev, sortBy: value }))
         setAppliedFilters(updated)
         fetchListings(updated)
+    }
+    const handlePageChange = (page: number) => {
+        if (page < 1 || page > totalPages || page === currentPage) return
+        fetchListings(appliedFilters, page)
+        resultsTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
     const toggleFuelType = (f: string) => setFilters(prev => ({ ...prev, fuelTypes: prev.fuelTypes.includes(f) ? prev.fuelTypes.filter(x => x !== f) : [...prev.fuelTypes, f] }))
     const toggleTransmission = (t: string) => setFilters(prev => ({ ...prev, transmissions: prev.transmissions.includes(t) ? prev.transmissions.filter(x => x !== t) : [...prev.transmissions, t] }))
@@ -1041,14 +1045,16 @@ function SearchPageContent() {
                 </aside>
 
                 {/* ── Results Column ─────────────────────────────────────────── */}
-                <div className="flex-1 min-w-0">
+                <div ref={resultsTopRef} className="flex-1 min-w-0">
                     {/* Sort Bar */}
                     <div className="flex justify-between items-center mb-6 gap-4 flex-wrap">
                         <p className="text-[var(--text-muted)] text-sm">
                             {loading ? <span>Loading...</span> : appliedFilters.maxDistanceMi ? (
                                 <span className="text-xs text-[var(--text-muted)]">Filtered results ({listings.length} within {appliedFilters.maxDistanceMi} mi)</span>
+                            ) : totalCount === 0 ? (
+                                <>Showing <span className="font-bold">0</span> vehicles</>
                             ) : (
-                                <>Showing <span className="font-bold">{listings.length}</span> of <span className="font-bold">{totalCount}</span> vehicles</>
+                                <>Showing <span className="font-bold">{(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, totalCount)}</span> of <span className="font-bold">{totalCount}</span> vehicles</>
                             )}
                         </p>
                         <select value={appliedFilters.sortBy} onChange={(e) => handleSortChange(e.target.value)}
@@ -1208,23 +1214,13 @@ function SearchPageContent() {
                         </div>
                     )}
 
-                    {/* Load More */}
-                    {!loading && !error && listings.length > 0 && listings.length < totalCount && (
-                        <div className="mt-12 text-center">
-                            <Button
-                                variant="outline"
-                                size="lg"
-                                disabled={loadingMore}
-                                onClick={() => fetchListings(appliedFilters, currentPage + 1, true)}
-                                className="border-[var(--border-default)] text-[var(--text-secondary)] hover:text-primary dark:hover:text-white hover:border-primary/40 hover:bg-[var(--bg-card)] font-bold"
-                            >
-                                {loadingMore ? (
-                                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading...</>
-                                ) : (
-                                    `Load More (${listings.length} of ${totalCount})`
-                                )}
-                            </Button>
-                        </div>
+                    {/* Pagination */}
+                    {!loading && !error && listings.length > 0 && (
+                        <PaginationControls
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={handlePageChange}
+                        />
                     )}
                 </div>
             </div>
@@ -1252,6 +1248,52 @@ function SearchPageContent() {
                 </div>
             </div>
         </div>
+    )
+}
+
+// ─── Pagination ───────────────────────────────────────────────────────────────
+
+function PaginationControls({ currentPage, totalPages, onPageChange }: {
+    currentPage: number; totalPages: number; onPageChange: (page: number) => void
+}) {
+    if (totalPages <= 1) return null
+
+    const pages: (number | 'ellipsis')[] = [1]
+    const windowStart = Math.max(2, currentPage - 1)
+    const windowEnd = Math.min(totalPages - 1, currentPage + 1)
+    if (windowStart > 2) pages.push('ellipsis')
+    for (let p = windowStart; p <= windowEnd; p++) pages.push(p)
+    if (windowEnd < totalPages - 1) pages.push('ellipsis')
+    if (totalPages > 1) pages.push(totalPages)
+
+    const navBtn = "h-9 px-3 rounded-lg border border-[var(--border-default)] text-sm font-semibold text-[var(--text-secondary)] hover:border-primary/40 hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+
+    return (
+        <nav aria-label="Search results pages" className="mt-12 flex items-center justify-center gap-1.5 flex-wrap">
+            <button type="button" disabled={currentPage === 1} onClick={() => onPageChange(currentPage - 1)} className={navBtn}>
+                Prev
+            </button>
+            {pages.map((p, i) => p === 'ellipsis' ? (
+                <span key={`ellipsis-${i}`} className="px-2 text-[var(--text-muted)] text-sm select-none">…</span>
+            ) : (
+                <button
+                    key={p}
+                    type="button"
+                    aria-current={p === currentPage ? 'page' : undefined}
+                    onClick={() => onPageChange(p)}
+                    className={`h-9 min-w-9 px-3 rounded-lg border text-sm font-semibold transition-colors ${
+                        p === currentPage
+                            ? 'border-primary bg-primary/15 text-primary'
+                            : 'border-[var(--border-default)] text-[var(--text-secondary)] hover:border-primary/40 hover:text-primary'
+                    }`}
+                >
+                    {p}
+                </button>
+            ))}
+            <button type="button" disabled={currentPage === totalPages} onClick={() => onPageChange(currentPage + 1)} className={navBtn}>
+                Next
+            </button>
+        </nav>
     )
 }
 
