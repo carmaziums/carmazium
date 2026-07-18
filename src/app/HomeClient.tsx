@@ -440,25 +440,9 @@ export default function HomeClient({ initialListings }: HomeClientProps) {
         </div>
       </section>
 
-      {/* Trust & Security + Personalization */}
+      {/* Personalization */}
       <section className="py-24 text-center">
         <div className="container mx-auto px-5 flex flex-col items-center gap-12">
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="text-3xl font-bold mb-2">Secure & Trusted Platform</h2>
-            <p className="mb-8" style={{ color: 'var(--text-muted)' }}>Your safety and security are our top priorities</p>
-            <div className="inline-flex flex-wrap justify-center gap-4 bg-emerald-500/5 border border-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-8 py-4 rounded-full font-semibold">
-              <span className="flex items-center gap-2"><ShieldCheck size={18} /> SSL Secured</span>
-              <div className="w-1 h-1 bg-emerald-500/30 rounded-full self-center hidden sm:block" />
-              <span className="flex items-center gap-2"><Shield size={18} /> 256-bit Encryption</span>
-              <div className="w-1 h-1 bg-emerald-500/30 rounded-full self-center hidden sm:block" />
-              <span className="flex items-center gap-2"><CheckCircle size={18} /> GDPR Compliant</span>
-            </div>
-          </motion.div>
-
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
