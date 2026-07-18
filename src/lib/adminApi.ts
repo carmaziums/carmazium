@@ -97,6 +97,26 @@ export async function deleteListingForce(listingId: string) {
   return result;
 }
 
+// ─── Listing Review ───────────────────────────────────────────────────────────
+
+export async function getPendingListingReviews() {
+  const result = await apiClient<{ data: any[] }>('/admin/listings/pending-review');
+  return result.data;
+}
+
+export async function approveListing(listingId: string) {
+  const result = await apiClient<any>(`/admin/listings/${listingId}/approve`, { method: 'POST' });
+  return result;
+}
+
+export async function rejectListing(listingId: string, reason: string) {
+  const result = await apiClient<any>(`/admin/listings/${listingId}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+  return result;
+}
+
 export async function getPendingKycList() {
   const result = await apiClient<{ data: any[] }>('/admin/dealers/kyc-pending');
   return result.data;

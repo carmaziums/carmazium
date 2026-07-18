@@ -106,7 +106,7 @@ function CheckoutSuccessContent() {
                 >
                     <h1 className="text-3xl md:text-4xl font-heading font-bold text-white">
                         {sessionData?.metadata?.type === 'LISTING_FEE'
-                            ? 'Your Listing is Live!'
+                            ? 'Submitted for Review'
                             : sessionData?.metadata?.type === 'COMMISSION'
                             ? 'Buyer Fee Paid!'
                             : sessionData?.metadata?.type === 'KYC_VERIFICATION'
@@ -115,7 +115,7 @@ function CheckoutSuccessContent() {
                     </h1>
                     <p className="mt-3 text-lg text-gray-300">
                         {sessionData?.metadata?.type === 'LISTING_FEE'
-                            ? 'Your vehicle is now published and visible to buyers.'
+                            ? "Payment confirmed. Your vehicle details are now under review and will be listed shortly — we'll notify you once it's approved."
                             : sessionData?.metadata?.type === 'COMMISSION'
                             ? 'Your £125 buyer fee is confirmed. Submit your handover proof to release the seller payout.'
                             : sessionData?.metadata?.type === 'KYC_VERIFICATION'

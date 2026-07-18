@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import Image from "next/image"
 import { ImageUpload } from "@/components/listing/ImageUpload"
+import { PendingReviewModal } from "@/components/listing/PendingReviewModal"
 import {
     createListing, formatPrice, getDamageRecords,
     type CreateListingRequest, type BodyTypeValue,
@@ -286,6 +287,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const [formData, setFormData] = React.useState<FormData>(INITIAL_FORM)
     const [sellingMethod, setSellingMethod] = React.useState<"list" | null>(null)
     const [showLoginModal, setShowLoginModal] = React.useState(false)
+    const [pendingReview, setPendingReview] = React.useState<{ title: string; onContinue: () => void } | null>(null)
     const [isSubmitting, setIsSubmitting] = React.useState(false)
     const [submitError, setSubmitError] = React.useState<string | null>(null)
     const [dvlaLoading, setDvlaLoading] = React.useState(false)
@@ -735,6 +737,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         router.push('/dashboard/seller/listings')
                         return
                     }
+                    if (publish.pendingReview) {
+                        // Already paid (e.g. resubmitting after a rejection) — no need to charge again
+                        setPendingReview({ title: payload.title, onContinue: () => router.push('/dashboard/seller/listings') })
+                        return
+                    }
                     // No completed payment found — go to Stripe
                     const checkout = await createListingCheckoutSession(editId, payload.badgeTier as string)
                     window.location.href = checkout.url
@@ -800,6 +807,19 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         router.push(`/buy-cars/${finalSlug}`)
                         return
                     }
+                    if (publish.pendingReview) {
+                        // Already paid (e.g. resubmitting after a rejection) — no need to charge again
+                        setPendingReview({
+                            title: payload.title,
+                            onContinue: () => {
+                                setFormData(INITIAL_FORM)
+                                setCurrentStep(1)
+                                setSellingMethod(null)
+                                router.push('/dashboard/seller/listings')
+                            },
+                        })
+                        return
+                    }
                     // No completed payment — go to Stripe
                     const checkout = await createListingCheckoutSession(finalListingId, payload.badgeTier as string)
                     window.location.href = checkout.url
@@ -855,21 +875,25 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 }
 
                 if (isPaidTier) {
-                    // Redirect to Stripe — webhook activates listing on success
+                    // Redirect to Stripe — webhook moves the listing to PENDING_REVIEW on success
                     const checkout = await createListingCheckoutSession(newListingId, payload.badgeTier as string)
                     window.location.href = checkout.url
                     return
                 }
 
-                setFormData(INITIAL_FORM)
-                localStorage.removeItem('carmazium_listing_draft')
-                setCurrentStep(1)
-                setSellingMethod(null)
-                if (payload.listingType === 'AUCTION') {
-                    router.push('/dashboard/seller/auctions')
-                } else {
-                    router.push(`/buy-cars/${response.data.slug}`)
-                }
+                // FREE tier (auctions) — no payment step, so it's already submitted for
+                // review at this point. Show the same "under review" messaging as the
+                // paid-tier checkout-success flow before sending them onward.
+                setPendingReview({
+                    title: payload.title,
+                    onContinue: () => {
+                        setFormData(INITIAL_FORM)
+                        localStorage.removeItem('carmazium_listing_draft')
+                        setCurrentStep(1)
+                        setSellingMethod(null)
+                        router.push(payload.listingType === 'AUCTION' ? '/dashboard/seller/auctions' : '/dashboard/seller/listings')
+                    },
+                })
             }
         } catch (error: any) {
             console.error("Submission error:", error)
@@ -1002,6 +1026,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             <>
                 <LoginModal />
                 <HpiPaymentModal />
+                <PendingReviewModal open={!!pendingReview} listingTitle={pendingReview?.title} onContinue={() => pendingReview?.onContinue()} />
                 <div className={`relative ${isDashboard ? 'pb-12 w-full' : 'min-h-screen pt-24 pb-12'}`}>
                     {/* Background Effects */}
                     {!isDashboard && <div className="fixed inset-0 -z-10" style={{ background: 'var(--bg-body)' }} />}
@@ -1106,6 +1131,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             <div className="container mx-auto px-5 max-w-3xl">
                 <LoginModal />
                 <HpiPaymentModal />
+                <PendingReviewModal open={!!pendingReview} listingTitle={pendingReview?.title} onContinue={() => pendingReview?.onContinue()} />
 
                 {/* Back link */}
                 <div className="mb-6 flex items-center">

@@ -26,6 +26,7 @@ import { PaymentsService } from './payments.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { HpiService } from '../hpi/hpi.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { EmailService } from '../email/email.service';
 
 function buildPrismaMock() {
@@ -66,6 +67,7 @@ function buildModule(prisma: any) {
             { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('sk_test_mock') } },
             { provide: HpiService, useValue: { generateAndSaveReport: jest.fn() } },
             { provide: NotificationsService, useValue: { create: jest.fn().mockResolvedValue(null) } },
+            { provide: NotificationsGateway, useValue: { sendNotification: jest.fn() } },
             { provide: EmailService, useValue: {} },
         ],
     }).compile();
@@ -182,7 +184,7 @@ describe('PaymentsService — handleWebhook payment_intent.succeeded (LISTING_FE
         service = module.get<PaymentsService>(PaymentsService);
     });
 
-    it('activates the listing at the correct tier when a LISTING_FEE PaymentIntent succeeds (PREMIUM → featured)', async () => {
+    it('moves the listing to PENDING_REVIEW (not ACTIVE) when a PREMIUM LISTING_FEE PaymentIntent succeeds — featuring is deferred to admin approval', async () => {
         mockConstructEvent.mockReturnValue({
             type: 'payment_intent.succeeded',
             data: {
@@ -202,14 +204,13 @@ describe('PaymentsService — handleWebhook payment_intent.succeeded (LISTING_FE
         expect(prisma.listing.update).toHaveBeenCalledWith({
             where: { id: 'listing-1' },
             data: expect.objectContaining({
-                status: 'ACTIVE',
+                status: 'PENDING_REVIEW',
                 badgeTier: 'PREMIUM',
-                isFeatured: true,
             }),
         });
     });
 
-    it('activates the listing without featuring it for a BASIC tier LISTING_FEE payment', async () => {
+    it('moves a BASIC tier LISTING_FEE payment to PENDING_REVIEW the same way', async () => {
         mockConstructEvent.mockReturnValue({
             type: 'payment_intent.succeeded',
             data: {
@@ -225,10 +226,8 @@ describe('PaymentsService — handleWebhook payment_intent.succeeded (LISTING_FE
         expect(prisma.listing.update).toHaveBeenCalledWith({
             where: { id: 'listing-1' },
             data: expect.objectContaining({
-                status: 'ACTIVE',
+                status: 'PENDING_REVIEW',
                 badgeTier: 'BASIC',
-                isFeatured: false,
-                featuredUntil: null,
             }),
         });
     });

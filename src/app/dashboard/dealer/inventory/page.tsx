@@ -46,10 +46,20 @@ function getListingCompleteness(listing: any) {
 // ─── Status colours ─────────────────────────────────────────────────────────
 
 const STATUS_COLORS: Record<string, string> = {
-    ACTIVE: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-    DRAFT:  "bg-gray-500/10 text-[var(--text-muted)] border-gray-500/20",
-    SOLD:   "bg-blue-500/10 text-blue-400 border-blue-500/20",
-    IN_PREP:"bg-amber-500/10 text-amber-400 border-amber-500/20",
+    ACTIVE:         "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+    DRAFT:          "bg-gray-500/10 text-[var(--text-muted)] border-gray-500/20",
+    SOLD:           "bg-blue-500/10 text-blue-400 border-blue-500/20",
+    IN_PREP:        "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    PENDING_REVIEW: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    REJECTED:       "bg-red-500/10 text-red-400 border-red-500/20",
+}
+
+const STATUS_LABELS: Record<string, string> = {
+    ACTIVE: "Live",
+    DRAFT: "Draft",
+    SOLD: "Sold",
+    PENDING_REVIEW: "Under Review",
+    REJECTED: "Rejected",
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -241,7 +251,7 @@ export default function DealerInventoryPage() {
                             />
                         </div>
                         <div className="flex gap-2 p-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl w-full lg:w-auto overflow-x-auto">
-                            {["ALL", "ACTIVE", "DRAFT", "SOLD"].map(s => (
+                            {["ALL", "ACTIVE", "PENDING_REVIEW", "REJECTED", "DRAFT", "SOLD"].map(s => (
                                 <button
                                     key={s}
                                     onClick={() => setStatusFilter(s)}
@@ -249,7 +259,7 @@ export default function DealerInventoryPage() {
                                         statusFilter === s ? 'vip-tab-active' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
                                     }`}
                                 >
-                                    {s}
+                                    {s === 'ALL' ? s : (STATUS_LABELS[s] || s).toUpperCase()}
                                 </button>
                             ))}
                         </div>
@@ -287,8 +297,11 @@ export default function DealerInventoryPage() {
                                                 <p className="font-black text-base leading-snug truncate">{listing.title}</p>
                                                 <p className="text-sm text-[var(--text-muted)] mt-0.5">{listing.vrm || 'Private'}</p>
                                                 <span className={`inline-flex mt-1.5 px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-widest border ${STATUS_COLORS[listing.status] || STATUS_COLORS.DRAFT}`}>
-                                                    {listing.status === 'ACTIVE' ? 'Live' : listing.status === 'SOLD' ? 'Sold' : listing.status === 'DRAFT' ? 'Draft' : listing.status}
+                                                    {STATUS_LABELS[listing.status] || listing.status}
                                                 </span>
+                                                {listing.status === 'REJECTED' && listing.rejectionReason && (
+                                                    <p className="text-xs text-red-400 mt-1">{listing.rejectionReason}</p>
+                                                )}
                                                 {comp && !comp.isComplete && <p className="text-xs text-amber-400 font-bold mt-1">{comp.complete}/{comp.total} fields complete</p>}
                                             </div>
                                         </div>
@@ -474,8 +487,11 @@ export default function DealerInventoryPage() {
                                                     <td className="px-6 py-6 text-center">
                                                         <div className="flex flex-col items-center gap-1.5">
                                                             <span className={`inline-flex px-3 py-1.5 rounded-lg text-xs font-black tracking-widest border shadow-sm ${STATUS_COLORS[listing.status] || STATUS_COLORS.DRAFT}`}>
-                                                                {listing.status}
+                                                                {STATUS_LABELS[listing.status] || listing.status}
                                                             </span>
+                                                            {listing.status === 'REJECTED' && listing.rejectionReason && (
+                                                                <p className="text-[10px] text-red-400 max-w-[160px] text-center">{listing.rejectionReason}</p>
+                                                            )}
                                                             {comp && (
                                                                 <div
                                                                     title={comp.isComplete ? 'Listing complete — ready to publish' : `Missing: ${comp.missing.join(', ')}`}

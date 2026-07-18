@@ -21,6 +21,7 @@ import {
 } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { ReviewKycDto } from './dto/review-kyc.dto';
+import { RejectListingDto } from './dto/reject-listing.dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -124,6 +125,36 @@ export class AdminController {
     @ApiParam({ name: 'id', description: 'Listing UUID' })
     async deleteListing(@Param('id') id: string): Promise<StandardResponse<any>> {
         const listing = await this.adminService.deleteListing(id);
+        return new StandardResponse(listing);
+    }
+
+    // ── Listing Review ───────────────────────────────────────────────────────
+
+    @Get('listings/pending-review')
+    @ApiOperation({ summary: 'Get all listings awaiting admin review (or previously rejected)' })
+    async getPendingListingReviews(): Promise<StandardResponse<any>> {
+        const list = await this.adminService.getPendingListingReviews();
+        return new StandardResponse(list);
+    }
+
+    @Post('listings/:id/approve')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Approve a pending listing — it goes live immediately' })
+    @ApiParam({ name: 'id', description: 'Listing UUID' })
+    async approveListing(@Param('id') id: string): Promise<StandardResponse<any>> {
+        const listing = await this.adminService.approveListing(id);
+        return new StandardResponse(listing);
+    }
+
+    @Post('listings/:id/reject')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Reject a pending listing with a reason the seller must address' })
+    @ApiParam({ name: 'id', description: 'Listing UUID' })
+    async rejectListing(
+        @Param('id') id: string,
+        @Body() dto: RejectListingDto,
+    ): Promise<StandardResponse<any>> {
+        const listing = await this.adminService.rejectListing(id, dto);
         return new StandardResponse(listing);
     }
 

@@ -731,6 +731,65 @@ export class EmailService {
         });
     }
 
+    // ─── Listing Review Emails ───────────────────────────────────────
+
+    async sendListingApprovedAlert(sellerEmail: string, sellerName: string, listingTitle: string, listingSlug: string) {
+        const bodyHtml = `
+            <h1 style="margin: 0 0 16px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 24px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
+                Your Listing is Live! 🎉
+            </h1>
+            <p style="margin: 0 0 24px; font-size: 15px; color: #cbd5e1; line-height: 1.6;">
+                Hi <strong>${sellerName}</strong>, good news — our team has reviewed and approved your listing. It's now visible to buyers on CarMazium.
+            </p>
+            <div style="background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.15); border-radius: 14px; padding: 24px; margin-bottom: 32px;">
+                <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b;">Vehicle</p>
+                <p style="margin: 0; font-size: 16px; font-weight: 700; color: #ffffff;">${listingTitle}</p>
+            </div>
+            <div style="text-align: center; margin: 36px 0 24px;">
+                <a href="${this.frontendUrl}/buy-cars/${listingSlug}" target="_blank"
+                   style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #4ade80, #16a34a); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 8px 25px rgba(74,222,128,0.35);">
+                    View Live Listing →
+                </a>
+            </div>
+        `;
+        return this.sendBrandedEmail({
+            to: sellerEmail,
+            subject: `Your listing "${listingTitle}" is now live — CarMazium 🎉`,
+            bodyHtml,
+        });
+    }
+
+    async sendListingRejectedAlert(sellerEmail: string, sellerName: string, listingTitle: string, reason: string) {
+        const bodyHtml = `
+            <h1 style="margin: 0 0 16px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 24px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
+                Your Listing Needs Attention ⚠️
+            </h1>
+            <p style="margin: 0 0 24px; font-size: 15px; color: #cbd5e1; line-height: 1.6;">
+                Hi <strong>${sellerName}</strong>, our team reviewed your listing and it wasn't approved as submitted. Here's why:
+            </p>
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 24px; margin-bottom: 24px;">
+                <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b;">Vehicle</p>
+                <p style="margin: 0 0 20px; font-size: 16px; font-weight: 700; color: #ffffff;">${listingTitle}</p>
+                <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b;">Reason</p>
+                <p style="margin: 0; font-size: 14px; font-style: italic; color: #fda4af; line-height: 1.5; padding-left: 12px; border-left: 2px solid #f43f5e;">"${reason}"</p>
+            </div>
+            <p style="margin: 0 0 28px; font-size: 14px; color: #94a3b8; line-height: 1.6;">
+                Log in to your dashboard, update the listing to address this feedback, and resubmit — no need to pay the listing fee again.
+            </p>
+            <div style="text-align: center; margin: 36px 0 24px;">
+                <a href="${this.frontendUrl}/dashboard/seller/listings" target="_blank"
+                   style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #ed1c24, #c41920); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 8px 25px rgba(237,28,36,0.35);">
+                    Update Listing
+                </a>
+            </div>
+        `;
+        return this.sendBrandedEmail({
+            to: sellerEmail,
+            subject: `Action needed: your listing "${listingTitle}" wasn't approved — CarMazium ⚠️`,
+            bodyHtml,
+        });
+    }
+
     async sendAddressVerificationCodeEmail(toEmail: string, name: string, code: string, address: string) {
         const bodyHtml = `
             <h1 style="margin: 0 0 8px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">

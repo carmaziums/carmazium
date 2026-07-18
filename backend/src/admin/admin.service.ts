@@ -4,8 +4,10 @@ import { PaymentsService } from '../payments/payments.service';
 import { UserRole } from '@prisma/client';
 import { EmailService } from '../email/email.service';
 import { ReviewKycDto } from './dto/review-kyc.dto';
+import { RejectListingDto } from './dto/reject-listing.dto';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
+import { SellersService } from '../sellers/sellers.service';
 
 @Injectable()
 export class AdminService {
@@ -15,6 +17,7 @@ export class AdminService {
         private readonly emailService: EmailService,
         private readonly notificationsGateway: NotificationsGateway,
         private readonly notificationsService: NotificationsService,
+        private readonly sellersService: SellersService,
     ) { }
 
     async getAllUsers(page = 1, limit = 20, search?: string) {
@@ -133,6 +136,121 @@ export class AdminService {
             where: { id },
             data: { deletedAt: new Date() },
         });
+    }
+
+    // ── Listing Review ───────────────────────────────────────────────────────
+
+    /**
+     * All listings currently awaiting admin review, plus previously-rejected
+     * listings still sitting in that state (mirrors getPendingKyc's "pending or
+     * rejected" pattern so the admin can track outstanding fixes, not just new
+     * submissions).
+     */
+    async getPendingListingReviews() {
+        return this.prisma.listing.findMany({
+            where: { status: { in: ['PENDING_REVIEW', 'REJECTED'] }, deletedAt: null },
+            orderBy: { createdAt: 'asc' },
+            include: { seller: { select: { id: true, email: true, firstName: true, lastName: true, phone: true } } },
+        });
+    }
+
+    async approveListing(id: string) {
+        const listing = await this.prisma.listing.findUnique({ where: { id } });
+        if (!listing) {
+            throw new NotFoundException('Listing not found');
+        }
+        if (listing.status !== 'PENDING_REVIEW') {
+            throw new BadRequestException('Only listings awaiting review can be approved');
+        }
+
+        const isPremium = listing.badgeTier === 'PREMIUM';
+        const updated = await this.prisma.listing.update({
+            where: { id },
+            data: {
+                status: 'ACTIVE',
+                rejectionReason: null,
+                reviewedAt: new Date(),
+                isFeatured: isPremium,
+                featuredUntil: isPremium ? new Date(Date.now() + 28 * 24 * 60 * 60 * 1000) : null,
+            },
+        });
+
+        if (listing.sellerId) {
+            await this.sellersService.incrementListings(listing.sellerId);
+
+            const seller = await this.prisma.user.findUnique({
+                where: { id: listing.sellerId },
+                select: { email: true, firstName: true },
+            });
+            if (seller?.email) {
+                await this.emailService
+                    .sendListingApprovedAlert(seller.email, seller.firstName || 'there', listing.title, listing.slug)
+                    .catch(console.error);
+            }
+
+            const notification = await this.notificationsService.create({
+                userId: listing.sellerId,
+                type: 'LISTING_APPROVED',
+                title: 'Your Listing is Live!',
+                message: `"${listing.title}" has been approved and is now visible to buyers.`,
+                link: `/buy-cars/${listing.slug}`,
+                entityType: 'Listing',
+                entityId: listing.id,
+                actionType: 'APPROVED',
+            }).catch(() => null);
+            if (notification) {
+                this.notificationsGateway.sendNotification(listing.sellerId, notification);
+            }
+        }
+
+        return updated;
+    }
+
+    async rejectListing(id: string, dto: RejectListingDto) {
+        const listing = await this.prisma.listing.findUnique({ where: { id } });
+        if (!listing) {
+            throw new NotFoundException('Listing not found');
+        }
+        if (listing.status !== 'PENDING_REVIEW') {
+            throw new BadRequestException('Only listings awaiting review can be rejected');
+        }
+
+        const updated = await this.prisma.listing.update({
+            where: { id },
+            data: {
+                status: 'REJECTED',
+                rejectionReason: dto.reason,
+                reviewedAt: new Date(),
+            },
+        });
+
+        if (listing.sellerId) {
+            const seller = await this.prisma.user.findUnique({
+                where: { id: listing.sellerId },
+                select: { email: true, firstName: true },
+            });
+            if (seller?.email) {
+                await this.emailService
+                    .sendListingRejectedAlert(seller.email, seller.firstName || 'there', listing.title, dto.reason)
+                    .catch(console.error);
+            }
+
+            const notification = await this.notificationsService.create({
+                userId: listing.sellerId,
+                type: 'LISTING_REJECTED',
+                title: 'Listing Needs Attention',
+                message: `"${listing.title}" was not approved: ${dto.reason}`,
+                link: '/dashboard/seller/listings',
+                entityType: 'Listing',
+                entityId: listing.id,
+                actionType: 'REJECTED',
+            }).catch(() => null);
+            if (notification) {
+                this.notificationsGateway.sendNotification(listing.sellerId, notification);
+            }
+        }
+
+        return updated;
     }
 
     async getAllAuctions(page = 1, limit = 20) {

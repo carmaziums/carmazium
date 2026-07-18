@@ -154,7 +154,8 @@ export interface Listing {
     transmission: string | null
     bodyType: string | null
     type: 'AUCTION' | 'CLASSIFIED'
-    status: 'DRAFT' | 'ACTIVE' | 'SOLD' | 'WITHDRAWN'
+    status: 'DRAFT' | 'PENDING_REVIEW' | 'ACTIVE' | 'OFFER_ACCEPTED' | 'SOLD' | 'WITHDRAWN' | 'REJECTED'
+    rejectionReason?: string | null
     viewCount: number
     color: string | null
     doors: number | null
@@ -1146,11 +1147,13 @@ export async function createListingCheckoutSession(listingId: string, badgeTier:
 }
 
 /**
- * Activate a DRAFT listing after verifying completed payment.
- * Returns { activated: true } if now live, or { activated: false, requiresPayment: true } if unpaid.
+ * Submit a DRAFT (or previously-REJECTED) listing for admin review after verifying payment.
+ * Returns { activated: true } if already live (rare — idempotent re-call),
+ * { activated: false, pendingReview: true } once submitted and awaiting an admin decision, or
+ * { activated: false, requiresPayment: true } if the listing fee hasn't been paid yet.
  */
-export async function publishListing(listingId: string): Promise<{ activated: boolean; requiresPayment?: boolean }> {
-    const data = await apiClient<{ data: { activated: boolean; requiresPayment?: boolean } }>(`/listings/${listingId}/publish`, {
+export async function publishListing(listingId: string): Promise<{ activated: boolean; requiresPayment?: boolean; pendingReview?: boolean }> {
+    const data = await apiClient<{ data: { activated: boolean; requiresPayment?: boolean; pendingReview?: boolean } }>(`/listings/${listingId}/publish`, {
         method: 'POST',
     })
     return data.data

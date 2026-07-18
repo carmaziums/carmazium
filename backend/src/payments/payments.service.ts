@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { HpiService } from '../hpi/hpi.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { EmailService } from '../email/email.service';
 
 @Injectable()
@@ -12,8 +13,39 @@ export class PaymentsService {
         private readonly config: ConfigService,
         private readonly hpiService: HpiService,
         private readonly notificationsService: NotificationsService,
+        private readonly notificationsGateway: NotificationsGateway,
         private readonly emailService: EmailService,
     ) {}
+
+    /**
+     * Notify a seller in-app that their listing fee payment went through and the
+     * listing is now awaiting admin review. Best-effort — must never block the
+     * webhook handler that triggered it.
+     */
+    private async notifyListingSubmittedForReview(listingId: string) {
+        try {
+            const listing = await this.prisma.listing.findUnique({
+                where: { id: listingId },
+                select: { id: true, title: true, sellerId: true },
+            });
+            if (!listing?.sellerId) return;
+            const notification = await this.notificationsService.create({
+                userId: listing.sellerId,
+                type: 'LISTING_SUBMITTED',
+                title: 'Listing Submitted for Review',
+                message: `"${listing.title}" has been submitted and is awaiting admin review before it goes live.`,
+                link: '/dashboard/seller/listings',
+                entityType: 'Listing',
+                entityId: listing.id,
+                actionType: 'SUBMITTED',
+            }).catch(() => null);
+            if (notification) {
+                this.notificationsGateway.sendNotification(listing.sellerId, notification);
+            }
+        } catch {
+            // best-effort only
+        }
+    }
 
     // Prices in GBP
     private readonly HPI_REPORT_PRICE = 9.99;
@@ -522,17 +554,20 @@ export class PaymentsService {
 
                 if (type === 'LISTING_FEE') {
                     const badgeTier = session.metadata.badgeTier;
-                    const isPremium = badgeTier === 'PREMIUM';
-                    
+
+                    // Payment doesn't publish the listing — it moves to PENDING_REVIEW
+                    // and only goes live once an admin approves it. isFeatured/
+                    // featuredUntil (for PREMIUM) are set at approval time instead, so
+                    // sellers don't lose boost days while sitting in the review queue.
                     await this.prisma.listing.update({
                         where: { id: listingId },
-                        data: { 
-                            status: 'ACTIVE',
+                        data: {
+                            status: 'PENDING_REVIEW',
                             badgeTier,
-                            isFeatured: isPremium,
-                            featuredUntil: isPremium ? new Date(Date.now() + 28 * 24 * 60 * 60 * 1000) : null
+                            rejectionReason: null,
                         },
                     });
+                    this.notifyListingSubmittedForReview(listingId).catch(() => { });
                 }
 
                 if (type === 'HPI_REPORT') {
@@ -576,16 +611,16 @@ export class PaymentsService {
                 }
 
                 if (type === 'LISTING_FEE' && listingId) {
-                    const isPremium = badgeTier === 'PREMIUM';
+                    // Same review gate as the web checkout.session.completed path above.
                     await this.prisma.listing.update({
                         where: { id: listingId },
                         data: {
-                            status: 'ACTIVE',
+                            status: 'PENDING_REVIEW',
                             badgeTier,
-                            isFeatured: isPremium,
-                            featuredUntil: isPremium ? new Date(Date.now() + 28 * 24 * 60 * 60 * 1000) : null,
+                            rejectionReason: null,
                         },
                     });
+                    this.notifyListingSubmittedForReview(listingId).catch(() => { });
                 }
 
                 if (type === 'FULL_PAYMENT' && listingId) {

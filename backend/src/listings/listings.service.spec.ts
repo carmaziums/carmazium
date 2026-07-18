@@ -4,6 +4,8 @@ import { ListingsService } from './listings.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SellersService } from '../sellers/sellers.service';
 import { ScraperService } from '../scraper/scraper.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 
 /**
  * Listings service guarantees:
@@ -35,11 +37,14 @@ describe('ListingsService', () => {
                 create: jest.fn(),
             },
             dealerStaff: { findFirst: jest.fn() },
+            user: { findUnique: jest.fn() },
             $transaction: jest.fn(async (cb: any) => cb(prisma)),
         };
         sellers = { incrementListings: jest.fn(), incrementSales: jest.fn() };
         const config = { get: jest.fn() };
         const scraper = {};
+        const notifications = { create: jest.fn().mockResolvedValue(null) };
+        const notificationsGateway = { sendNotification: jest.fn() };
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -48,6 +53,8 @@ describe('ListingsService', () => {
                 { provide: SellersService, useValue: sellers },
                 { provide: ConfigService, useValue: config },
                 { provide: ScraperService, useValue: scraper },
+                { provide: NotificationsService, useValue: notifications },
+                { provide: NotificationsGateway, useValue: notificationsGateway },
             ],
         }).compile();
 

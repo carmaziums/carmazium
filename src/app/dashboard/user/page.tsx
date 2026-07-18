@@ -600,11 +600,16 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                         <span className={`inline-flex mt-1.5 px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-widest border ${
                                             listing.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
                                             listing.status === 'SOLD' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                            listing.status === 'PENDING_REVIEW' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                            listing.status === 'REJECTED' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
                                             listing.status === 'DRAFT' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
                                             'bg-slate-700/50 text-[var(--text-muted)] border-[var(--border-default)]'
                                         }`}>
-                                            {listing.status === 'ACTIVE' ? 'Live' : listing.status === 'SOLD' ? 'Sold' : listing.status === 'DRAFT' ? 'Draft' : listing.status}
+                                            {listing.status === 'ACTIVE' ? 'Live' : listing.status === 'SOLD' ? 'Sold' : listing.status === 'PENDING_REVIEW' ? 'Under Review' : listing.status === 'REJECTED' ? 'Rejected' : listing.status === 'DRAFT' ? 'Draft' : listing.status}
                                         </span>
+                                        {listing.status === 'REJECTED' && listing.rejectionReason && (
+                                            <p className="text-xs text-red-400 mt-1">{listing.rejectionReason}</p>
+                                        )}
                                     </div>
                                 </div>
 
@@ -731,11 +736,16 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                             <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-widest border ${
                                                 listing.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
                                                 listing.status === 'SOLD' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                                listing.status === 'PENDING_REVIEW' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                                listing.status === 'REJECTED' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
                                                 listing.status === 'DRAFT' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
                                                 'bg-slate-700/50 text-[var(--text-muted)] border-[var(--border-default)]'
                                             }`}>
-                                                {listing.status}
+                                                {listing.status === 'PENDING_REVIEW' ? 'Under Review' : listing.status === 'REJECTED' ? 'Rejected' : listing.status}
                                             </span>
+                                            {listing.status === 'REJECTED' && listing.rejectionReason && (
+                                                <p className="text-[10px] text-red-400 mt-1 max-w-[180px]">{listing.rejectionReason}</p>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 font-black text-sm">{formatPrice(listing.price)}</td>
                                         <td className="px-6 py-4">

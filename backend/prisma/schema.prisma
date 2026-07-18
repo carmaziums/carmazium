@@ -72,10 +72,12 @@ enum VehicleType {
 
 enum ListingStatus {
   DRAFT
+  PENDING_REVIEW
   ACTIVE
   OFFER_ACCEPTED
   SOLD
   WITHDRAWN
+  REJECTED
 
   @@map("listing_status")
 }
@@ -660,6 +662,10 @@ model Listing {
   extraUrbanMpg            Float?    // Extra urban MPG
   // Attention attribute — buyer-facing label shown as a ribbon on the vehicle card
   bannerLabel              String?
+
+  // Admin review — set when status transitions to/from PENDING_REVIEW
+  rejectionReason          String?
+  reviewedAt               DateTime?
 
   // Cross-channel link — set when this listing is simultaneously available in both auction and retail
   linkedListingId String?

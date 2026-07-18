@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import Image from "next/image"
 import { ImageUpload } from "@/components/listing/ImageUpload"
+import { PendingReviewModal } from "@/components/listing/PendingReviewModal"
 import {
     createListing, publishListing, createListingCheckoutSession,
     type CreateListingRequest,
@@ -66,6 +67,7 @@ export function DealerQuickList() {
     const [submitError,      setSubmitError]      = React.useState<string | null>(null)
     const [publishAs,        setPublishAs]        = React.useState<"ACTIVE" | "DRAFT">("ACTIVE")
     const [listingType,      setListingType]      = React.useState<"CLASSIFIED" | "AUCTION">("CLASSIFIED")
+    const [pendingReview,    setPendingReview]    = React.useState<{ title: string } | null>(null)
     const [videoUrls,        setVideoUrls]        = React.useState<string[]>([])
     const [videoUrlInput,    setVideoUrlInput]    = React.useState("")
     const [videoUrlError,    setVideoUrlError]    = React.useState("")
@@ -302,7 +304,13 @@ export function DealerQuickList() {
                         }),
                     }).catch(e => console.error('Failed to save damage records:', e))
                 }
-                router.push('/dashboard/dealer/inventory')
+                // FREE-tier (auction) listings have no payment step and are submitted
+                // straight to review — surface that instead of implying it's already live.
+                if (listingType === 'AUCTION' && payload.status !== 'DRAFT') {
+                    setPendingReview({ title: payload.title })
+                } else {
+                    router.push('/dashboard/dealer/inventory')
+                }
             }
         } catch (error: any) {
             setSubmitError(error.message || "Failed to save listing.")
@@ -950,6 +958,12 @@ export function DealerQuickList() {
                     </div>
                 </div>
             )}
+
+            <PendingReviewModal
+                open={!!pendingReview}
+                listingTitle={pendingReview?.title}
+                onContinue={() => router.push('/dashboard/dealer/inventory')}
+            />
         </div>
     )
 }

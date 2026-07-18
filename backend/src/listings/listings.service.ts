@@ -27,6 +27,8 @@ import {
 import { randomBytes } from 'crypto';
 import { SellersService } from '../sellers/sellers.service';
 import { ScraperService } from '../scraper/scraper.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 
 // ─── Enum mappers ─────────────────────────────────────────────────────────────
 
@@ -90,7 +92,39 @@ export class ListingsService {
         private readonly sellersService: SellersService,
         private readonly config: ConfigService,
         private readonly scraper: ScraperService,
+        private readonly notificationsService: NotificationsService,
+        private readonly notificationsGateway: NotificationsGateway,
     ) { }
+
+    /**
+     * Notify a seller in-app + by email that their listing was submitted and is
+     * awaiting admin review. Best-effort — failures here must never block the
+     * status transition that triggered them.
+     */
+    private async notifySubmittedForReview(listing: { id: string; title: string; sellerId?: string | null }) {
+        if (!listing.sellerId) return;
+        try {
+            const seller = await this.prisma.user.findUnique({
+                where: { id: listing.sellerId },
+                select: { email: true, firstName: true },
+            });
+            const notification = await this.notificationsService.create({
+                userId: listing.sellerId,
+                type: 'LISTING_SUBMITTED',
+                title: 'Listing Submitted for Review',
+                message: `"${listing.title}" has been submitted and is awaiting admin review before it goes live.`,
+                link: '/dashboard/seller/listings',
+                entityType: 'Listing',
+                entityId: listing.id,
+                actionType: 'SUBMITTED',
+            }).catch(() => null);
+            if (notification) {
+                this.notificationsGateway.sendNotification(listing.sellerId, notification);
+            }
+        } catch {
+            // best-effort only
+        }
+    }
 
     /**
      * Generate a URL-friendly slug from title + short UUID
@@ -173,13 +207,16 @@ export class ListingsService {
         const badgeTier = (rawBadgeTier === 'FREE' && listingType !== 'AUCTION') ? 'BASIC' : rawBadgeTier;
         const isPremium = badgeTier === 'PREMIUM';
 
-        // Auction (FREE) listings go live immediately; all paid tiers start as DRAFT
-        // and are activated by the Stripe webhook once payment completes.
-        const listingStatus: ListingStatus = badgeTier !== 'FREE'
+        // Every new listing must pass admin review before it can go live — nothing
+        // is ever created directly as ACTIVE. Paid tiers start DRAFT (moved to
+        // PENDING_REVIEW once payment completes, see publishListing()/the Stripe
+        // webhook). FREE tier (auctions) has no payment step, so it goes straight
+        // to PENDING_REVIEW unless the caller explicitly asked to save as a DRAFT.
+        const listingStatus: ListingStatus = createListingDto.status === 'DRAFT'
             ? 'DRAFT'
-            : createListingDto.status === 'ACTIVE' ? 'ACTIVE'
-            : createListingDto.status === 'SOLD' ? 'SOLD'
-            : 'DRAFT';
+            : badgeTier !== 'FREE'
+                ? 'DRAFT'
+                : 'PENDING_REVIEW';
 
         // Cat A and Cat B are total-loss / body-salvage write-offs that cannot be
         // re-registered. They may only be listed for auction (parts/scrapping).
@@ -299,9 +336,12 @@ export class ListingsService {
                 .catch(() => { /* silent */ });
         }
 
-        // Phase 2: Increment seller's total listings count
-        if (userId && listingStatus === 'ACTIVE') {
-            await this.sellersService.incrementListings(userId);
+        // FREE-tier (auction) listings have no payment step, so this create() call
+        // is the only signal that the seller has finished submitting — notify them
+        // it's now awaiting admin review. Paid tiers get this from publishListing()
+        // / the Stripe webhook once payment completes instead.
+        if (listingStatus === 'PENDING_REVIEW') {
+            this.notifySubmittedForReview({ id: listing.id, title: listing.title, sellerId: userId ?? listing.sellerId }).catch(() => { });
         }
 
         return listing;
@@ -798,6 +838,17 @@ export class ListingsService {
             }
         }
 
+        // Going live must always go through payment + admin review (publishListing()
+        // then an admin approval) — this generic status endpoint may only relist a
+        // listing that has already been through that gate once (i.e. it's currently
+        // ACTIVE, SOLD, WITHDRAWN, or OFFER_ACCEPTED). It may never be used to skip
+        // review for a brand-new, still-DRAFT, still-PENDING_REVIEW, or REJECTED listing.
+        if (status === 'ACTIVE' && !['ACTIVE', 'SOLD', 'WITHDRAWN', 'OFFER_ACCEPTED'].includes(listing.status)) {
+            throw new BadRequestException(
+                'This listing has not been approved yet. Submit it for review from the listing editor instead.',
+            );
+        }
+
         // For SOLD transitions we wrap the listing update + Sale insert in a transaction
         // so total earnings can never drift from the listings.status state.
         const isNewSold = status === 'SOLD' && listing.status !== 'SOLD';
@@ -852,7 +903,7 @@ export class ListingsService {
      *
      * Returns { activated: true } or { activated: false, requiresPayment: true }.
      */
-    async publishListing(id: string, userId: string): Promise<{ activated: boolean; requiresPayment?: boolean }> {
+    async publishListing(id: string, userId: string): Promise<{ activated: boolean; requiresPayment?: boolean; pendingReview?: boolean }> {
         const listing = await this.findById(id);
 
         if (!listing || listing.sellerId !== userId) {
@@ -871,15 +922,23 @@ export class ListingsService {
             return { activated: true };
         }
 
-        if (listing.status !== 'DRAFT') {
-            throw new BadRequestException('Only DRAFT listings can be published');
+        // Already submitted — nothing to do, still waiting on the admin
+        if (listing.status === 'PENDING_REVIEW') {
+            return { activated: false, pendingReview: true };
         }
 
-        // FREE tier listings have no fee — activate directly
+        // A REJECTED listing may be resubmitted (the seller has presumably fixed the
+        // issue the admin flagged) without paying again, since the fee was already
+        // charged the first time.
+        if (listing.status !== 'DRAFT' && listing.status !== 'REJECTED') {
+            throw new BadRequestException('Only DRAFT or REJECTED listings can be submitted for review');
+        }
+
+        // FREE tier listings have no fee — submit for review directly
         if (listing.badgeTier === 'FREE') {
-            await this.prisma.listing.update({ where: { id }, data: { status: 'ACTIVE' } });
-            if (listing.sellerId) await this.sellersService.incrementListings(listing.sellerId);
-            return { activated: true };
+            await this.prisma.listing.update({ where: { id }, data: { status: 'PENDING_REVIEW', rejectionReason: null } });
+            await this.notifySubmittedForReview(listing);
+            return { activated: false, pendingReview: true };
         }
 
         // Find ALL LISTING_FEE transactions for this listing (there may be several if the user
@@ -897,18 +956,12 @@ export class ListingsService {
         // Case 1: any transaction already marked COMPLETED
         const completedTx = transactions.find((t: any) => t.status === 'COMPLETED');
         if (completedTx) {
-            // Activate and return
-            const isPremium = listing.badgeTier === 'PREMIUM';
             await this.prisma.listing.update({
                 where: { id },
-                data: {
-                    status: 'ACTIVE',
-                    isFeatured: isPremium,
-                    featuredUntil: isPremium ? new Date(Date.now() + 28 * 24 * 60 * 60 * 1000) : null,
-                },
+                data: { status: 'PENDING_REVIEW', rejectionReason: null },
             });
-            if (listing.sellerId) await this.sellersService.incrementListings(listing.sellerId);
-            return { activated: true };
+            await this.notifySubmittedForReview(listing);
+            return { activated: false, pendingReview: true };
         }
 
         // Case 2: no COMPLETED transaction — verify each PENDING one against Stripe
@@ -947,21 +1000,13 @@ export class ListingsService {
             return { activated: false, requiresPayment: true };
         }
 
-        const isPremium = listing.badgeTier === 'PREMIUM';
         await this.prisma.listing.update({
             where: { id },
-            data: {
-                status: 'ACTIVE',
-                isFeatured: isPremium,
-                featuredUntil: isPremium ? new Date(Date.now() + 28 * 24 * 60 * 60 * 1000) : null,
-            },
+            data: { status: 'PENDING_REVIEW', rejectionReason: null },
         });
+        await this.notifySubmittedForReview(listing);
 
-        if (listing.sellerId) {
-            await this.sellersService.incrementListings(listing.sellerId);
-        }
-
-        return { activated: true };
+        return { activated: false, pendingReview: true };
     }
 
     /**

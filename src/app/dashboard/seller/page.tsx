@@ -178,9 +178,11 @@ export default function SellerDashboard() {
                                                 <td className="px-6 py-4 text-center">
                                                     <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold ${listing.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
                                                         listing.status === 'SOLD' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
-                                                            'bg-gray-500/10 text-[var(--text-muted)] border border-gray-500/20'
+                                                            listing.status === 'PENDING_REVIEW' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                                                                listing.status === 'REJECTED' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                                                                    'bg-gray-500/10 text-[var(--text-muted)] border border-gray-500/20'
                                                         }`}>
-                                                        {listing.status}
+                                                        {listing.status === 'PENDING_REVIEW' ? 'Under Review' : listing.status === 'REJECTED' ? 'Rejected' : listing.status}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 text-right font-bold">{formatPrice(listing.price)}</td>
